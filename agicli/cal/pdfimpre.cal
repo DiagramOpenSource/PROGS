@@ -1,0 +1,244 @@
+|FICHEROS;
+     pdfimtmp #100;
+|FIN;
+
+|VARIABLES;
+     aAlfa = "";
+     aLinea = "";
+     nLinea = 0;
+     aValor = "";
+     aCampo = "";
+     nTipo  = 0;
+
+     &aArchivo = "";
+     &aID      = "";
+     aArchivoPDF = "";
+     aArchivoFDF = "";
+     aPathLocPDF = "";
+     aPathSerPDF = "";
+     aPathLocFDF = "";
+     aPathSerFDF = "";
+     aPathReader = "";
+     aOrigen = "";
+     aDestino = "";
+     nCanal = 0;
+     aSystem = "";
+     aDirBase = "";
+     aLongitud = "";
+     nLongitud = "";
+     aCaracter = "";
+     aCaracterSal = "";
+     aCadena = "";
+     aCadenaSal = "";
+     nPos = 0;
+     nBusca = 0;
+     nAscii = 0;
+     aIP = "";
+     aUnidad = "";
+     aDirPatron = "";
+     aFichero   = "";
+
+     {1}aContiene     = "";
+|FIN;
+
+|PROCESO sustituye2;
+     nAscii = & aCaracter;
+     aCaracterSal = aCaracter;
+     |SI nAscii = 160;
+          aCaracterSal = "\341";
+     |FINSI;
+     |SI nAscii = 130;
+          aCaracterSal = "\351";
+     |FINSI;
+     |SI nAscii = 161;
+          aCaracterSal = "\355";
+     |FINSI;
+     |SI nAscii = 162;
+          aCaracterSal = "\363";
+     |FINSI;
+     |SI nAscii = 163;
+          aCaracterSal = "\372";
+     |FINSI;
+     |SI nAscii = 164;
+          aCaracterSal = "\361";
+     |FINSI;
+|FPRC;
+
+|PROCESO sustituye;
+     aCadenaSal = "";
+     aLongitud = aCadena % 0;
+     nLongitud = aLongitud;
+     |PARA nPos = 1; |SI nPos [ nLongitud; |HACIENDO nPos = nPos + 1;
+          nBusca = (nPos * 100) + 1;
+          aCaracter = aCadena % nBusca;
+          |HAZ sustituye2;
+          aCadenaSal = aCadenaSal + aCaracterSal;
+     |SIGUE;
+|FPRC;
+
+|PROCESO CargaInicial;
+     aContiene = "";
+     |ESPECIFICA "RBASS", aContiene;
+     aUnidad = (aContiene1 % 102) > "";
+
+     aAlfa = aUnidad % -101;
+     |SI aAlfa ! ":";
+         aUnidad = "";
+     |FINSI;
+
+     aAlfa = aUnidad % 101;
+
+     |DBASS aDirBase;
+
+     aPathLocPDF = "/" + aAlfa + "/modelos/pdf/";
+     aPathLocFDF = aUnidad + "\modelos";        |RMKDIR aPathLocFDF;
+     aPathLocFDF = aUnidad + "\modelos\pdf";    |RMKDIR aPathLocFDF;
+     aPathLocFDF = aUnidad + "\modelos\pdf\";
+
+     aPathSerPDF = aDirBase + "agicli/pdf/";  || aqui van todas las plantillas PDF
+     aPathSerFDF = aDirBase + "agicli/fich/"; || aqui va el FDF en el servidor
+
+     aDirPatron  = aDirBase + "agicli/pdf/";
+     aFichero    = aDirPatron + "zdocspdf.tgz";
+     |DESCOMPRIME aFichero;
+
+     aFichero   = aDirPatron + "zdocspdf.tar";
+     |DETAR aFichero, aPathSerPDF;
+     |FBORRA aFichero;
+|FPRC;
+
+|PROCESO Cabecera;
+     aLinea = "%FDF-1.2";
+     |XGRABA nCanal, aLinea;
+     aLinea = "%‚„œ”";
+     |XGRABA nCanal, aLinea;
+     aLinea = "1 0 obj";
+     |XGRABA nCanal, aLinea;
+     aLinea = "<< /FDF ";
+     |XGRABA nCanal, aLinea;
+     aLinea = "<< /Fields [ ";
+     |XGRABA nCanal, aLinea;
+|FPRC;
+
+|PROCESO Lineas;
+     |LEE 000#pdfimtmp.p;
+     |SI FSalida = 0;
+          aCampo = #pdfimtmp#0;    || nombre del campo
+          aValor = #pdfimtmp#1;    || valor
+          nTipo  = #pdfimtmp#2;    || TIpo > 90 sin parentesis
+          |QBF aCampo;
+          |QBF aValor;
+          |SI nTipo < 90;
+              aLinea = "<< /V (" + aValor + ")/T (" + aCampo + ")>> ";
+          |SINO;
+              aLinea = "<< /V " + aValor + "/T (" + aCampo + ")>> ";
+          |FINSI;
+          aCadena = aLinea;
+          |HAZ sustituye;
+          aLinea = aCadenaSal;
+          |XGRABA nCanal, aLinea;
+     |FINSI;
+     |PARA nLinea = 2; |SI nLinea [ 250; |HACIENDO nLinea = nLinea + 1;
+          |LEE 000#pdfimtmp.s;
+          |SI FSalida ! 0;
+               |SAL;
+          |FINSI;
+          aCampo = #pdfimtmp#0;    || nombre del campo
+          aValor = #pdfimtmp#1;    || valor
+          |QBF aCampo;
+          |QBF aValor;
+          aAlfa = aCampo % 110;
+          |SI aAlfa = "clausadici";
+               |HAZ Clausulas;
+          |SINO;
+               aLinea = "<< /V (" + aValor + ")/T (" + aCampo + ")>> ";
+          |FINSI;
+          aCadena = aLinea;
+          |HAZ sustituye;
+          aLinea = aCadenaSal;
+          |XGRABA nCanal, aLinea;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Clausulas;
+     |SI aCampo = "clausadici01";                  || PRIMERA LINEA
+          aLinea = "<< /V (" + aValor + "\r";
+     |SINO;
+          |SI aCampo = "clausadici17";
+               aLinea = aValor + "\r) /T (clausadici)>> "; || ULTIMA LINEA
+          |SINO;
+               aLinea = aValor + "\r";   || NI LA PRIMERA NI LA ULTIMA LINEA
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Pie;
+     aLinea = "] ";
+     |XGRABA nCanal, aLinea;
+     aLinea = "/F (" + aPathLocPDF + aArchivoPDF + ")";
+     |XGRABA nCanal, aLinea;
+     |QBF aID;
+     aLinea = "/ID [ " + aID + "] >>";
+     |XGRABA nCanal, aLinea;
+     aLinea = ">> ";
+     |XGRABA nCanal, aLinea;
+     aLinea = "endobj";
+     |XGRABA nCanal, aLinea;
+     aLinea = "trailer";
+     |XGRABA nCanal, aLinea;
+     aLinea = "<</Root 1 0 R >>";
+     |XGRABA nCanal, aLinea;
+     aLinea = "%%EOF";
+     |XGRABA nCanal, aLinea;
+|FPRC;
+
+|PROCESO copia_fichero;
+     aIP = "";
+     |IP_REMOTO aIP;
+
+     aOrigen = aPathSerPDF + aArchivoPDF;
+     aDestino = aPathLocFDF + aArchivoPDF;
+     |QBF aOrigen;
+     |QBF aDestino;
+     |SI aIP ! "";
+          |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+          |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+     aOrigen = aPathSerFDF + aArchivoFDF;
+     aDestino = aPathLocFDF + aArchivoFDF;
+     |QBF aOrigen;
+     |QBF aDestino;
+     |SI aIP ! "";
+          |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+          |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+|FPRC;
+
+|PROCESO imprime_fichero;
+     |RSYSTEM aDestino;
+     aAlfa = aPathSerFDF + aArchivoFDF;
+     |FBORRA aAlfa;
+|FPRC;
+
+
+|PROGRAMA;
+     |HAZ CargaInicial;
+     aAlfa = Usuario; |QBT aAlfa;    aAlfa = ("c" + aAlfa) % 108;
+     |NOME_DAT #100 aAlfa;
+     |ABRE #pdfimtmp;
+     aArchivoPDF = aArchivo;
+     aArchivoFDF = aArchivo - ".pdf";
+     aArchivoFDF = aArchivoFDF + "_" + Usuario + ".fdf";
+     aAlfa = aPathSerFDF + aArchivoFDF;
+     |FBORRA aAlfa;
+     |XABRE "A", aAlfa, nCanal;
+     |HAZ Cabecera;
+     |HAZ Lineas;
+     |HAZ Pie;
+     |XCIERRA nCanal;
+     |CIERRA #pdfimtmp;
+     |HAZ copia_fichero;
+     |HAZ imprime_fichero;
+|FPRO;

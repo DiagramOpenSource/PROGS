@@ -1,0 +1,306 @@
+     PedVenta, PedVentaC
+
+|FICHEROS;
+     dsm00003 #3;
+     okm00009 #9;
+     okm00010 #10,MANTE;
+     agifa019 #19;
+     agifa024 #24;
+     agifa025 #25;
+     agifa073 #73;
+     okm00001 #100;
+     agifa104 #104;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     &aDivisa = "";
+     &aMoneda = "";
+     &enSwMenu = 0;
+     &eaSerie = "";
+     &enForma = 0;
+     &enDirEnt      = 0;
+     &enDescuento1  = 0;
+     &enDescuento2  = 0;
+     &enComision    = 0;
+     &eaRepre       = "";
+     &eaCliente     = "";
+     &eaArticulo    = "";
+     &enAlmacen     = 0;
+     &eaTComision   = "";
+     &efFecha       = @;
+     &nImpo = 0;
+     &eaTag = "";
+     &eaCli = "";
+     &enTiva = 0;
+     &efFiva = @;
+     &enIva = 0;
+     &enRec = 0;
+     &enImpCliPed = 0;
+     nImpoIva = 0;
+     nCalc = 0;
+     fmes = "";
+     mes = 0;
+     nLin = 0;
+
+     &fed_dt = @;   || Fecha....
+     &art_dt = "";  || Articulo.
+     &cli_dt = "";  || Cliente..
+     &fam_dt = "";  || Familia.
+     &iva_dt = 0;   || Tipo Iva.
+     &dtos_2 = 0;   || Descuento 2.
+     &dto_pt = 0;   || Descuento Ptas.
+     &dtos_1 = 0;   || Descuento 1.
+     &pvp_ve = 0;   || Precio Venta.
+     &tarifa = 0;   || Tarifa Cliente.
+     &quedto = 0;   || 1=cli./art, 2=cli./familia, 3=cli./subfam.
+     &gru_dt = "";  || Grupo Cliente.
+     &uni_dt = 0;
+     &uni_dt2 = 0;
+     &enMensaje = 0;
+     &aParam    = "";
+     &nPromo    = 0;
+     &eaCliArtDiviSN = "";
+     &enInterno = 0;
+     aTipo = "";
+|FIN;
+
+|PROCESO PrecioVta;
+     fed_dt = #104#1;   || Fecha....
+     art_dt = #73#2;   || Articulo.
+     cli_dt = #73#20;  || Cliente..
+     fam_dt = #73#18;  || Familia.
+     iva_dt = #19#30;  || Tipo Iva.
+     dtos_2 = 0;      || Descuento 2.
+     dto_pt = 0;      || Descuento Ptas.
+     dtos_1 = 0;      || Descuento 1.
+     pvp_ve = 0;      || Precio Venta.
+     tarifa = #24#39;  || Tarifa Cliente....
+     gru_dt = #24#158; || Grupo Cliente.
+     uni_dt = #73#5;
+     uni_dt2 = #73#44;
+     nPromo = #104#56;
+     enMensaje = 0;
+     aParam = "";
+     eaSerie = #73#28;
+     enDirEnt = #104#57;
+     |SI #19#176 = "S";  enMensaje = 1;  |FINSI;
+     enAlmacen = #73#3;
+     enInterno = tarifa;
+     |HAZ calcdtos;    || Calculo Dtos.....
+     |SI eaCliArtDiviSN = "S";
+          pvp_ve = pvp_ve * #104#41 / #104#36; ||Cam.Base * Cambio
+     |FINSI;
+     eaCliArtDiviSN = "N";
+
+     |SI #73#53 = 9;
+          || El modulo Tagloma marca este campo con 9
+     |SINO;
+          #73#53 = enInterno;
+     |FINSI;
+     #73#6 = pvp_ve - dto_pt;  || Precio Venta. sin iva.
+     #73#8 = dtos_1;  || 1¦ Dto.
+     #73#29 = dtos_2;  || 2§ Dto.
+|FPRC;
+
+|PROCESO ActCli;
+     #19#0 = #73#2;
+     |LEE 000#19=;
+     |SI FSalida ! 0; |DDEFECTO #19; |FINSI;
+
+     #24#0 = #104#4;
+     |LEE 101#24=;
+     |SI FSalida = 0;
+          |SI #19#194 = 2;
+               nImpo = ((((#73#44 * #73#6) < #73#8) < #73#29) < #104#5) < #104#17;
+          |SINO;
+               nImpo = ((((#73#5 * #73#6) < #73#8) < #73#29) < #104#5) < #104#17;
+          |FINSI;
+          |SI #142#115 = "S";
+               nImpo = nImpo < #104#6;
+          |FINSI;
+          fmes = #104#1 % A402;
+          mes = fmes - 1;
+          mes = mes * 3;
+          mes = mes + 114;
+          #24mes = #24mes   + nImpo;     || VENTA.
+          #24#150 = #24#150 + nImpo;
+          |GRABA 020#24a;
+          |LIBERA #24;
+
+          eaCliente = #104#4;
+          efFecha = #104#1;
+          enImpCliPed = nImpo;
+          |HAZ AcumulaCli;
+     |FINSI;
+
+     eaCli = #104#4;
+     enTiva = #73#14;
+     efFiva = #104#1;
+     |HAZ IVACli;
+     nCalc = #73#11 % enIva;
+     |SI #24#47 = "S";
+          nCalc = nCalc + (#73#11 % enRec);
+     |FINSI;
+     nImpoIva = nImpoIva + (#73#11 + nCalc);
+|FPRC;
+
+|PROCESO ComisionVta;
+     enDescuento1 = #73#8;
+     enDescuento2 = #73#29;
+     eaTComision  = #73#17;
+     eaCliente    = #104#4;
+     eaRepre      = #104#7;
+     eaArticulo   = #73#2;
+     efFecha      = #104#1;
+     eaSerie      = #73#28;
+     enDirEnt     = #104#57;
+     enAlmacen    = #73#3;
+     |SI #73#36 ! 0; uni_dt = #73#36; |SINO; uni_dt = #73#5; |FINSI;
+     |HAZ Comisiones;
+|FPRC;
+
+|PROCESO LinPedVta;
+     |ABRE #19;
+     #19#0 = #10#4;
+     |LEE 000#19=;
+     |SI FSalida ! 0; |DDEFECTO #19; |FINSI;
+     |CIERRA #19;
+
+     nLin = nLin + 1;
+     |DDEFECTO #73;
+     #73#28 = #104#25;
+     #73#0 = #104#0;
+     #73#1 = nLin;
+     #73#2 = #10#4;
+     #73#3 = 1; ||#100#10;
+     #73#4 = #10#5;
+     #73#5 = #10#6;
+     #73#13 = #104#2;
+     #73#14 = #19#30;
+     #73#16 = #104#7;
+     #73#17 = #104#16;
+     #73#18 = #19#2;
+     #73#19 = #104#18;
+     #73#20 = #104#4;
+     #73#23 = #104#5;
+     #73#24 = #104#6;
+     #73#25 = #104#17;
+     #73#26 = #104#9;
+     #73#42 = #73#5;
+     |HAZ ComisionVta;
+     #73#10 = enComision;
+     |HAZ PrecioVta;
+  ||   #73#6 = #10#7;
+     #73#38 = #73#6;
+     #73#40 = #73#6;
+     |GRABA 020#73n;
+
+     enForma = 1;
+     |HAZ AcumulaPV;
+|FPRC;
+
+|DEFBUCLE LinPedVta;
+     #10#1;
+     10;
+     #9#2, 001, aTipo;
+     #9#2, 999, aTipo;
+     ;
+     NULL, LinPedVta;
+|FIN;
+
+|PROCESO PedVenta0;
+     |ABRE #104;
+     |ABRE #73;
+     nLin = 0;
+     #104#25 = #100#11;
+     enSwMenu = 1;
+     |HAZ ContaPV7;
+     |GRABA 020#104b;
+
+     |ABRE #3;
+     #3#0 = #9#4;
+     #3#1 = #9#6;
+     |LEE 000#3=;
+     |SI FSalida ! 0; |DDEFECTO #3; |FINSI;
+     |CIERRA #3;
+
+     |ABRE #24;
+     #24#0 = #9#4;
+     |LEE 000#24=;
+     |SI FSalida ! 0; |DDEFECTO #24; |FINSI;
+     |CIERRA #24;
+     |ABRE #25;
+     #25#0 = #24#25;
+     |LEE 000#25=;
+     |SI FSalida ! 0; |DDEFECTO #25; |FINSI;
+     |CIERRA #25;
+
+     #104#1 = ~;
+     #104#2 = ~;
+     #104#4 = #9#4;
+     #104#5 = #9#8;
+     #104#6 = #9#9;
+     |SI #3#14 = "  ";
+         #104#7 = #24#25;
+     |SINO;
+         #104#7 = #3#14;
+     |FINSI;
+     #104#8 = #24#2;
+     #104#9 = #24#20;
+     #104#14 = #3#2;
+     #104#15 = #9#12;
+     #104#16 = #25#7;
+     #104#17 = #9#10;
+     #104#18 = #24#4;
+     #104#19 = #3#10;
+     #104#20 = #3#3;
+     #104#21 = #3#7;
+     #104#22 = #24#47;
+     #104#23 = #24#41;
+     #104#35 = "EUR";
+     #104#36 = 1;
+     #104#37 = "B";
+     #104#40 = "EUR";
+     #104#41 = 1;
+     #104#57 = #9#6;
+     #104#59 = #3#6;
+     #104#60 = #24#202;
+     #104#64 = #24#15;
+
+     aDivisa = #104#35;
+     aMoneda = #104#37;
+     |HAZ Divisas104;
+
+     |BUCLE LinPedVta;
+     |HAZ CalCabAgifa104;
+
+     nImpoIva = 0;
+     |ABRE #24;
+     |ABRE #19;
+     |BUCLELIN 2 ActCli #104;
+     |CIERRA #24;
+     |CIERRA #19;
+     nImpo = nImpoIva; eaTag = "PE";  |HAZ Riesgos;
+
+     |CIERRA #73;
+     |CIERRA #104;
+|FPRC;
+
+|PROCESO PedVenta;
+     aTipo = "P";
+     |HAZ PedVenta0;
+     #9#13 = "S";
+     #9#16 = #104#25;
+     #9#17 = #104#0;
+     |GRABA 020#9a;
+|FPRC;
+
+|PROCESO PedVentaC;
+     aTipo = "C";
+     |HAZ PedVenta0;
+     #9#13 = "S";
+     #9#19 = #104#25;
+     #9#20 = #104#0;
+     |GRABA 020#9a;
+|FPRC;

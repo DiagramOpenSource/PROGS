@@ -1,0 +1,769 @@
+|FICHEROS;
+   caimpkro #0;
+
+   calibros #1;
+
+   caenlace #100;
+
+   caivaasi #200;
+   :/modelos/def/dsmom030 #330;        || conceptos
+   canempre #30;
+|FIN;
+
+|VARIABLES;
+   &PRMNT_enError = 0;
+
+   nSwPr      = 0;
+   Local    = 0;
+   nError   = 0;
+   nCopio   = 0;
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   aVarAlfa = "";
+
+   aDatos1  = "";
+   aDatos2  = "";
+   aDatos3  = "";
+   aDatos4  = "";
+   aCuenta  = "";
+   aLong    = "";
+
+   aCtaCli  = "";
+   nTotFra  = 0;
+
+   aFichOri = "";
+   aOrigen  = "";
+   aDestino = "";
+   aIP      = "";
+
+   nHandle = 0;
+
+   fFecha        = @;
+   fFecha1       = @;
+   fFechaAntAsto = @;
+
+   nCont  = 0;
+   nLong  = 0;
+   nLinea = 0;
+   nCalc  = 0;
+   nCalc1 = 0;
+   nCalcH = 0;
+   nCalcL = 0;
+   nSw    = 0;
+
+   nNbase = 0;
+   nTotalBase = 0;
+   nNume1     = 0;
+   nNumBases = 0;
+   nNumIvas  = 0;
+   nNumAsto  = 0;
+   nImpDebe  = 0;
+   nImpHaber = 0;
+   nAntAsto  = 0;
+   nNumFra   = 0;
+   nBytes    = 0;
+   nBytesLeidos = 0;
+
+   aSerie  = "";
+   nBase   = 0;
+   nIVA    = 0;
+   nREC    = 0;
+
+{10}nBaseFra = 0;
+{10}nIVAFra  = 0;
+{10}nRECFra  = 0;
+
+   nContador = 0;
+
+   nPosDatos = 0;
+   nLongReg  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+
+|CALCULO Alprincio; |TIPO 8;
+   |HAZ inicio;
+   |ABRE #200;
+   |DDEFECTO #200;
+   |LEE 000#200p;
+   |CIERRA #200;
+   eaPaCTA1 = #caivaasi#135;  ||permitir alta no estructuras 2008
+   eaPaCTA2 = #caivaasi#136;  ||Aviso 1990
+   eaPaNif1 = #caivaasi#152;
+   eaPaNif2 = #caivaasi#153;
+   eaABanco = #caivaasi#161;
+   eaObClPr = #caivaasi#186;
+|FCAL;
+
+|PROCESO MiraFichero;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   |SI FSalida = 10;
+      aAlfa = #0#0; |QBF aAlfa;
+      |SI aAlfa = ""; aAlfa = "*"; |FINSI;
+      aAlfa = "F" + aAlfa;
+      |BROWSE aAlfa;
+      aAlfa = aAlfa - "F";
+      #0#0 = aAlfa;
+      |PINTA #0Campo;
+   |FINSI;
+
+   aAlfa = #0#0; |QBF aAlfa;
+
+   nError = 0;
+   nCopio = 0;
+   |XABRE "UB", aAlfa, nHandle;
+   |SI FSalida < 0;
+       |XABRE "CUB", aAlfa, nHandle;
+       |SI FSalida = 0;
+           nCopio = 1;
+       |SINO;
+           nError = 1;
+       |FINSI;
+   |FINSI;
+   |XCIERRA nHandle;
+
+   |SI nError = 1;
+       |MENAV "0000Error. No existe fichero";
+       |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO Libro; |TIPO 0;
+    |ABRE #1;
+    #1#0 = #0Campo;
+    |LEE 041#1=;
+    |SI FSalida ! 0;
+        |MENAV "0000Error No existe Libro de IVA";
+        |ERROR;
+    |SINO;
+        |SI Campo = 3; |Y #1#2 ! "R";
+            |MENAV "0000Error. El Libro no es de IVA Repercutido";
+            |ERROR;
+        |SINO;
+            |SI Campo = 4; |Y #1#2 ! "S";
+                |MENAV "0000Error. El Libro no es de IVA Repercutido";
+                |ERROR;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+    |CIERRA #1;
+|FPRC;
+
+|PROCESO LeeConcepto; |TIPO 6;
+   |ABRE #330;
+   #330#0 = #0Campo;
+   |LEE 041#330=;
+   |SI FSalida ! 0;
+       |MENAV "0000Error. No existe Concepto";
+       |ERROR;
+   |SINO;
+       |SI Campo ! 8;
+           |SI #330#4 = "N";
+               |MENAV "0000Error. Este Concepto no es de IVA";
+               |ERROR;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+   |CIERRA #330;
+|FPRC;
+|| ***********************************************************
+
+|PROCESO LeeBytes;
+   |PARA nCont = nBytes; |SI nCont > 0; |HACIENDO nCont = nCont - 250;
+      |SI nCont > 250;
+         |XLEE nHandle, 250, aVarAlfa;
+      |SINO;
+         |XLEE nHandle, nCont, aVarAlfa;
+      |FINSI;
+   |SIGUE;
+|FPRC;
+
+|PROCESO LeeCabDBF;
+   Pos = -1;
+
+   |XLEE nHandle, 8, aVarAlfa;
+
+   |XLEE nHandle, 1, aVarAlfa; nCalcL = &aVarAlfa;
+   |XLEE nHandle, 1, aVarAlfa; nCalcH = &aVarAlfa;
+   nPosDatos = (nCalcH * 256) + nCalcL;
+
+   |XLEE nHandle, 1, aVarAlfa; nCalcL = &aVarAlfa;
+   |XLEE nHandle, 1, aVarAlfa; nCalcH = &aVarAlfa;
+   nLongReg = (nCalcH * 256) + nCalcL;
+
+   Pos = -1;
+   nBytes = nPosDatos - 12; |HAZ LeeBytes;
+   || Le resto 12 bytes que son los que llevamos leidos. Al parecer el Pos no
+   ||     vale de mucho.
+|FPRC;
+
+|PROCESO LeeDatos;
+|ET OtroReg;
+   aDatos1 = ""; aDatos2 = ""; aDatos3 = ""; aDatos4 = "";
+   nCont = nBytes; nBytesLeidos = 0;
+
+   |PARA nCont = nBytes; |SI nCont > 0; |HACIENDO nCont = nCont - 250;
+      |SI nCont > 250;
+         |XLEE nHandle, 250, aVarAlfa;
+      |SINO;
+         |XLEE nHandle, nCont, aVarAlfa;
+      |FINSI;
+      nBytesLeidos = nBytesLeidos + FSalida;
+      |SI aDatos1 = "";
+         aDatos1 = aVarAlfa;
+      |SINO;
+         |SI aDatos2 = "";
+            aDatos2 = aVarAlfa;
+         |SINO;
+            |SI aDatos3 = "";
+               aDatos3 = aVarAlfa;
+            |SINO;
+               aDatos4 = aVarAlfa;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |SIGUE;
+   aAlfa = aDatos1; |QBF aAlfa; aAlfa = aAlfa % 0101;
+   aDatos1 = aDatos1 - aAlfa; nCalc = &aAlfa;
+   |SI nCalc = 42; |VETE OtroReg; |FINSI;
+|FPRC;
+
+|| ////////////////////////////////////////////////////////////////////
+
+|PROCESO DatosIva;
+   aAlfa = #caenlace#4; |QBF aAlfa;
+   aAlfa1 = aAlfa % 0102;
+   |SI #caenlace#26 = " "; || Omito el I
+       |SI aTipoIVA = "R";
+           |SI #caenlace#9 = nTotFra;
+               #caenlace#26 = "F";
+               #caenlace#27 = 0;
+           |FINSI;
+      |FINSI;
+      |SI aTipoIVA = "S";
+         |SI #caenlace#9 = nTotFra;
+             #caenlace#26 = "F";
+             #caenlace#27 = 0;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   #caenlace#10 = aTipoIVA;
+   #caenlace#12 = aSerie;
+   #caenlace#13 = nNumFra;
+
+   |SI aTipoIVA = "R";
+       #caenlace#6  = #0#6;
+       #caenlace#11 = #0#3;
+   |FINSI;
+   |SI aTipoIVA = "S";
+       #caenlace#6  = #0#7;
+       #caenlace#11 = #0#4;
+   |FINSI;
+
+   |GRABA 020#caenlace.a;
+|FPRC;
+
+|DEFBUCLE DatosIva;
+    #caenlace#1;
+    ;
+    #0#2, fFecha, nContador, 0001, enEmpresa, enPeriodo;
+    #0#2, fFecha, nContador, 9999, enEmpresa, enPeriodo;
+    ;
+    NULL, DatosIva;
+|FIN;
+
+|PROCESO DatosBases;
+   |SI #caenlace#26 ! "B"; |Y #caenlace#26 ! "I";
+       |ACABA;
+   |FINSI;
+
+   |SI nSw = 1;
+      |SI #caenlace#26 = "B";
+          nNumBases = nNumBases + 1;
+
+         |SI nNumAsto < 0;
+              nNumAsto = #caenlace#3;
+         |SINO;
+              nNumAsto = 0;
+         |FINSI;
+      |SINO;
+          nNumIvas = nNumIvas + 1;
+      |FINSI;
+   |FINSI;
+
+   |SI nSw = 2; |Y #caenlace#26 = "B";
+      |SI #caenlace#28 = 0; |Y #caenlace#33 = 0;
+          #caenlace#28 = nIVA;
+          #caenlace#33 = nREC;
+          |GRABA 020#caenlace.a;
+          |ERROR10;
+      |FINSI;
+   |FINSI;
+
+   |SI nSw = 3;  |Y #caenlace#26 = "B";
+       #caenlace#28 = nIVA;
+       #caenlace#33 = nREC;
+       |GRABA 020#caenlace.a;
+   |FINSI;
+
+   |SI nSw = 4; |Y #caenlace#26 = "B";
+
+      |PARA nCont = 0; |SI nCont < 10; |HACIENDO nCont = nCont + 1;
+            InBaseFra = nBaseFra1<-;
+            InIVAFra  = nIVAFra1<-;
+            InRECFra  = nRECFra1<-;
+            InBaseFra = InBaseFra + nCont;
+            InIVAFra  = InIVAFra + nCont;
+            InRECFra = InRECFra + nCont;
+
+            |SI #caenlace#9 = nBaseFra;
+                #caenlace#27 = nCont + 1;
+                #caenlace#28 = nIVAFra;
+                #caenlace#33 = nRECFra;
+                |GRABA 020#caenlace.a;
+                |SAL;
+            |FINSI;
+      |SIGUE;
+   |FINSI;
+
+   |SI nSw = 5; |Y #caenlace#26 = "B";
+
+       nTotalBase = nTotalBase + #caenlace#9;
+
+       |PARA nCont = nNume1; |SI nCont < 10; |HACIENDO nCont = nCont + 1;
+             InBaseFra = nBaseFra1<-;
+             InIVAFra  = nIVAFra1<-;
+             InRECFra  = nRECFra1<-;
+             InBaseFra = InBaseFra + nCont;
+             InIVAFra  = InIVAFra + nCont;
+             InRECFra  = InRECFra + nCont;
+
+             |SI nTotalBase [ nBaseFra;
+                 #caenlace#27 = nCont + 1;
+                 #caenlace#28 = nIVAFra;
+                 #caenlace#33 = nRECFra;
+                 |GRABA 020#caenlace.a;
+                 |SI nTotalBase = nBaseFra;
+                     nTotalBase = 0;
+                     nNume1     = nCont;
+                 |FINSI;
+                 |SAL;
+            |FINSI;
+      |SIGUE;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE DatosBases;
+   #caenlace#1;
+   26;
+   #0#2, fFecha, nContador, 0001, enEmpresa, enPeriodo, "B";
+   #0#2, fFecha, nContador, 9999, enEmpresa, enPeriodo, "I";
+   be;
+   NULL, DatosBases;
+|FIN;
+
+|PROCESO BorraFactura;
+   |BORRA 020#caenlace.a;
+|FPRC;
+
+|DEFBUCLE BorraFactura;
+   #caenlace#1;
+   ;
+   #0#2, fFecha, nContador, 0001, enEmpresa, enPeriodo;
+   #0#2, fFecha, nContador, 9999, enEmpresa, enPeriodo;
+   be;
+   NULL, BorraFactura;
+|FIN;
+
+|PROCESO CuadraBases;
+   || Primero compruebo si solo tengo un tipo de IVA, ya que seria grabar en
+   ||     todas las bases lo mismo
+
+   || ABDON 18/12/2012   Tiquet 004799/00013
+   || Si pongo esto as¡ , cuando la factura es negativa no calcula la cuota
+   || nBase = -1; nIVA = -1; nREC = -1;
+
+   nBase = 0;
+   nIVA  = 0;
+   nREC  = 0;
+   |PARA nCont = 0; |SI nCont < 10; |HACIENDO nCont = nCont + 1;
+         InBaseFra = nBaseFra1<-;
+         InIVAFra  = nIVAFra1<-;
+         InRECFra  = nRECFra1<-;
+         InBaseFra = InBaseFra + nCont;
+         InIVAFra  = InIVAFra + nCont;
+         InRECFra  = InRECFra + nCont;
+
+         |SI nBaseFra ! 0; |O nIVAFra ! 0; |O nRECFra ! 0;
+                      ||SI nBase > 0;  || ABDON 18/12/2012   Tiquet 004799/00013
+             |SI nBase ! 0;
+                 nBase = 0; nIVA = 0; nREC = 0; |SAL;
+             |SINO;
+                 nBase = nBaseFra; nIVA = nIVAFra; nREC = nRECFra;
+             |FINSI;
+         |FINSI;
+   |SIGUE;
+
+   |SI nBase ! 0;
+       nSw = 3; |BUCLE DatosBases;
+   |FINSI;
+
+   || Ahora compruebo si tengo una sola base y varios tipos de iva, con lo que
+   ||    tendria que rectificar la linea de base que hay grabada y desglosarla
+   ||    en tantas bases como tipos de iva haya
+
+   |SI nBase = 0; |Y nIVA = 0; |Y nREC = 0;  || Hay mas de un tipo de IVA
+
+       nNumAsto  = -1;
+       nNumBases = 0; nNumIvas = 0;
+       nSw = 1; |BUCLE DatosBases;
+       |SI nNumBases = 1;                    || primer Caso
+           #caenlace#0 = #0#2;               || suma total de base y varias cuotas
+           #caenlace#1 = fFecha;
+           #caenlace#2 = nContador;
+           #caenlace#3 = nNumAsto;
+           #caenlace#37 = enEmpresa;
+           #caenlace#38 = enPeriodo;
+           |LEE 000#caenlace.=;
+           |SI FSalida = 0;
+                || Rectifico la primera linea de base grabada con el importe de
+                ||     la base 1 ...
+
+            #caenlace#9 = nBaseFra1;
+            #caenlace#27 = 1;
+            #caenlace#28 = nIVAFra1;
+            #caenlace#33 = nRECFra1;
+            |GRABA 020#caenlace.a;
+            nNumAsto = nNumAsto + 1;
+
+            || ... y a partir de aqui creo tantas bases como tipos de iva haya
+            ||     encontrado
+
+            |PARA nCont = 1; |SI nCont < 10; |HACIENDO nCont = nCont + 1;
+                  InBaseFra = nBaseFra1<-;
+                  InIVAFra  = nIVAFra1<-;
+                  InRECFra  = nRECFra1<-;
+                  InBaseFra = InBaseFra + nCont;
+                  InIVAFra  = InIVAFra + nCont;
+                  InRECFra  = InRECFra + nCont;
+                  |SI nBaseFra ! 0;
+                      |SALVA_DATOS #caenlace;
+                      #caenlace#3 = nNumAsto; nNumAsto = nNumAsto + 1;
+                      #caenlace#9 = nBaseFra;
+                      #caenlace#27 = nCont + 1;
+                      #caenlace#28 = nIVAFra;
+                      #caenlace#33 = nRECFra;
+                      |GRABA 020#caenlace.n;
+                      |REPON_DATOS #caenlace;
+                  |FINSI;
+            |SIGUE;
+         |FINSI;
+      |FINSI;
+
+
+      || Si tengo varias bases y varios tipos de IVA, doy un aviso de que esa
+      ||     factura no se puede importar
+
+
+      |SI nNumBases > 1;
+          |SI nNumIvas = nNumBases;
+              nSw = 4; |BUCLE DatosBases;
+          |SINO;
+              nTotalBase = 0;
+              nNume1     = 0;
+              nSw = 5; |BUCLE DatosBases;
+          |FINSI;
+      |FINSI;
+
+   |FINSI;
+|FPRC;
+
+|PROCESO CalcTotFra;
+   |SI #caenlace#26 ! " ";
+       nTotFra = nTotFra + #caenlace#9;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CalcTotFra;
+    #caenlace#1;
+    ;
+    #0#2, fFecha, nContador, 0001, enEmpresa, enPeriodo;
+    #0#2, fFecha, nContador, 9999, enEmpresa, enPeriodo;
+    ;
+    NULL, CalcTotFra;
+|FIN;
+
+|PROCESO EmpezarAsto;
+      nAntAsto      = nCalc;
+      fFechaAntAsto = fFecha1;
+      |SI nSwPr = 0;
+          |HAZ contador;
+          nContador = nDOCUMENTO;
+      |SINO;
+          nContador = nContador + 1;
+      |FINSI;
+      nLinea    = 1;
+      nNumFra   = 0;
+      fFecha    = "01.01.0000";
+      aSerie    = "";
+      nBase     = 0;
+      nIVA      = 0;
+      nREC      = 0;
+      aTipoIVA  = "";
+      nNbase    = 0;
+      |PARA nCont = 0; |SI nCont < 10; |HACIENDO nCont = nCont + 1;
+            InBaseFra = nBaseFra1<-;
+            InIVAFra  = nIVAFra1<-;
+            InRECFra  = nRECFra1<-;
+            InBaseFra = InBaseFra + nCont;
+            InIVAFra  = InIVAFra + nCont;
+            InRECFra  = InRECFra + nCont;
+            nBaseFra  = 0;
+            nIVAFra   = 0;
+            nRECFra   = 0;
+      |SIGUE;
+|FPRC;
+
+|PROCESO GrabaPuente;
+
+  aAlfa   = aDatos1 % 0106;
+  nCalc   = aAlfa;
+
+  aAlfa   = aDatos1 % 0708;
+  aAlfa   = (aAlfa % 0702) + "." + (aAlfa % 0502) + "." + (aAlfa % 0104);
+  fFecha1 = aAlfa;
+
+  |SI nCalc ! nAntAsto; |O fFechaAntAsto ! fFecha1; |O nSwPr = 0;
+      |SI nNumFra ! 0;
+          nTotFra = 0;
+          |BUCLE CalcTotFra;
+          nTotFra = nTotFra ! 2;
+          |HAZ CuadraBases;
+          |BUCLE DatosIva;
+      |FINSI;
+
+      |HAZ EmpezarAsto;
+      nSwPr = 1;
+  |FINSI;
+
+  |DDEFECTO #caenlace;
+
+  #caenlace#0 = #0#2;
+  #caenlace#1 = fFechaAntAsto;  fFecha = #caenlace#1;
+  #caenlace#2 = nContador;
+  #caenlace#3 = nLinea;         nLinea = nLinea + 10;
+
+  aAlfa = aDatos1 % 1512;
+  #caenlace#4 = aAlfa;
+  eaCuenta = aAlfa; |HAZ SacaNivel;
+  #caenlace#5 = enNivel;
+
+  aAlfa = aDatos1 % 3916;  nImpDebe  = aAlfa;
+  aAlfa = aDatos1 % 11816; nImpHaber = aAlfa;
+
+  |SI nImpDebe ! 0; |Y nImpHaber = 0;
+      #caenlace#8 = "D";
+      #caenlace#9 = nImpDebe;
+  |SINO;
+      #caenlace#8 = "H";
+      #caenlace#9 = nImpHaber;
+  |FINSI;
+
+  #caenlace#6 = #0#8;
+  aAlfa = aDatos1 % 5555;
+  #caenlace#7 = aAlfa;
+
+  aAlfa = aDatos1 % 17602; #caenlace#15 = aAlfa;
+  aAlfa = aDatos1 % 13108; nCalc = aAlfa;
+  |SI nCalc ! 0;
+      nNumFra = nCalc;
+      aCtaCli = aDatos1 % 2712;  |QBF aCtaCli;
+      aAlfa   = aDatos1 % 13916;  nTotFra = aAlfa;
+      aAlfa   = aDatos2 % 5716;   nBase = aAlfa;
+      aAlfa   = aDatos1 % 15505;  nIVA  = aAlfa;
+      aAlfa   = aDatos1 % 16005;  nREC  = aAlfa;
+
+      |PARA nCont = 0; |SI nCont < 10; |HACIENDO nCont = nCont + 1;
+            InBaseFra = nBaseFra1<-;
+            InIVAFra  = nIVAFra1<-;
+            InRECFra  = nRECFra1<-;
+            InBaseFra = InBaseFra + nCont;
+            InIVAFra  = InIVAFra + nCont;
+            InRECFra  = InRECFra + nCont;
+            |SI nBaseFra = 0; |Y nIVAFra = 0; |Y nRECFra = 0;
+                nBaseFra = nBase;
+                nIVAFra  = nIVA;
+                nRECFra  = nREC;
+                |SAL;
+            |FINSI;
+      |SIGUE;
+
+      aAlfa = aDatos1 % 24701; aSerie = aAlfa;
+
+      aAlfa = #caenlace#4; |QBF aAlfa;
+      aAlfa = aAlfa % 0103;
+      |SI aAlfa = "477"; aTipoIVA = "R"; |FINSI;
+      |SI aAlfa = "472"; aTipoIVA = "S"; |FINSI;
+
+      #caenlace#26 = "I";
+      #caenlace#27 = nCont + 1;
+  |FINSI;
+
+  aAlfa1 = #caenlace#4; |QBF aAlfa1;
+  aAlfa1 = aAlfa1 % 0101;
+  |SI aAlfa1 = "7"; |O aAlfa1 = "6";
+      #caenlace#26 = "B";
+      nNbase       = nNbase + 1;
+      #caenlace#27 = nNbase;
+  |FINSI;
+
+  #caenlace#29 = #caenlace#1;
+  #caenlace#37 = enEmpresa;
+  #caenlace#38 = enPeriodo;
+  |GRABA 020#caenlace.n;
+|FPRC;
+
+|PROCESO BorroDatos;
+       aAlfa = #0#0; |QBF aAlfa;
+       |FBORRA aAlfa;
+
+       |SI nCopio = 1;
+           |SI Local = 0;
+               |RFBORRA aFichOri;
+           |SINO;
+               |FBORRA aFichOri;
+           |FINSI;
+       |FINSI;
+|FPRC;
+
+
+|PROCESO LaImportacion;
+
+   aIP = "";
+   |IP_REMOTO aIP; |QBF aIP;
+   |SI aAlfa = "";
+       Local = 1;
+   |SINO;
+       Local = 0;
+   |FINSI;
+
+   aFichOri = #0#0; |QBF aFichOri;
+   |SI nCopio = 1;
+       aAlfa  = #0#0; |QBF aAlfa;
+       aAlfa1 = "";
+       aAlfa2 = aAlfa % -101;
+       aAlfa  = aAlfa % -299;
+       |PARA; |SI aAlfa2 ! "/"; |Y aAlfa2 ! "\"; |HACIENDO;
+              aAlfa1 = aAlfa2 + aAlfa1;
+              aAlfa2 = aAlfa % -101;
+              aAlfa = aAlfa % -299;
+       |SIGUE;
+
+       |DBASE aAlfa; |QBF aAlfa;
+       aAlfa = aAlfa + "tmp/"; |MKDIR aAlfa;
+       aDestino = aAlfa; aDestino = aDestino + aAlfa1;
+       aOrigen  = #0#0; |QBF aOrigen;
+
+       |SI Local = 0;
+            |RECIBE_FICHERO aOrigen, aDestino;
+       |SINO;
+            |COPIA_FICHERO aOrigen, aDestino;
+       |FINSI;
+       #0#0 = aDestino;
+   |FINSI;
+
+   aAlfa = "pu" + Usuario;
+   |NOME_DAT #caenlace#aAlfa#;
+   |DELINDEX #caenlace;
+
+   |ABRE #caenlace;
+
+   aAlfa = #0#0; |QBF aAlfa;
+   |XABRE "B", aAlfa, nHandle;
+   |SI FSalida ] 0;
+       |HAZ LeeCabDBF;
+
+       nBytes = nLongReg;  |HAZ LeeDatos;
+       |PARA; |SI nBytesLeidos = nBytes; |HACIENDO;
+              |HAZ GrabaPuente;
+              nBytes = nLongReg;  |HAZ LeeDatos;
+       |SIGUE;
+
+       |SI nNumFra ! 0;
+           nTotFra = 0;
+           |BUCLE CalcTotFra;
+           nTotFra = nTotFra ! 2;
+           |HAZ CuadraBases;
+           |BUCLE DatosIva;
+       |FINSI;
+
+       |SI nContador ! 0;
+           |HAZ ActContador;
+       |FINSI;
+       |XCIERRA nHandle;
+   |FINSI;
+
+   |CIERRA #caenlace;
+
+/*
+   |ABRE #caenlace;
+   |CONSULTA_CLAVE #1#caenlace;
+   |CIERRA #caenlace;
+*/
+
+   |DFICE aAlfa; |QBF aAlfa;
+   aAlfa = "dsapunte.tab;" + aAlfa + ",pu" + Usuario;
+   |SUB_EJECUTA aAlfa;
+
+   |SI PRMNT_enError = 0;
+
+       |HAZ BorroDatos;
+
+   |SINO;
+        aAlfa = "    NSe han encontrado errores." + &191 + " Desea eliminar los ficheros origen del enlace ?";
+        |CONFI aAlfa;
+        |SI FSalida = 0;
+            |HAZ BorroDatos;
+        |FINSI;
+   |FINSI;
+
+   #0#0 = aFichOri;
+   |DELINDEX #caenlace;
+|FPRC;
+
+|PROGRAMA;
+
+   |HAZ Alprincio;
+
+   |ABRE #0;
+   |LEE 041#0p;
+   |SI FSalida ! 0;
+       |DDEFECTO #0;
+       #0#3 = #200#3;
+       #0#4 = #200#29;
+       #0#6 = #200#5;
+       #0#7 = #200#31;
+       |GRABA 020#0c;
+   |FINSI;
+
+   |CLS;
+   |CABEZA "Importacion contabilidad K Root";
+   |PINPA #0#0;
+   |PINDA #0#0;
+
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+
+       |SI #0#1 = "S";
+           |HAZ LaImportacion;
+       |FINSI;
+       #0#1 = "N";
+       |GRABA 020#0a;
+   |FINSI;
+   |LIBERA #0;
+   |CIERRA #0;
+|FPRO;

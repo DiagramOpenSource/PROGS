@@ -1,0 +1,154 @@
+|FICHEROS;
+     primz006 #0;
+     prim0005 #5;
+||     prim0006 #6;
+     agifa019 #19;
+     agifa073 #73;
+     agifa104 #104;
+|FIN;
+
+|VARIABLES;
+     &aDivisa = "";
+     &aMoneda = "";
+     aTab = "";
+     nConta = 0;
+     nPdte = 0;
+     nPrime = 0;
+     nHandle = 0;
+     nError = 0;
+     aPath = "";
+     aFic = "";
+     aDato = "";
+     aTipo = "";
+     aAlfa = "";
+|FIN;
+
+|PROCESO FinLinea;
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO Linea;
+     aDato = #73#28 + aTab;
+     aDato = aDato + #73#0 + aTab;
+     aDato = aDato + #73#1 + aTab;
+     aDato = aDato + #73#2 + aTab;
+     aDato = aDato + #73#4 + aTab;
+     aDato = aDato + nPdte + aTab;
+     aDato = aDato + #73#6;
+     |XGRABA nHandle, aDato;
+|FPRC;
+
+|PROCESO Cabecera;
+     nConta = nConta + 1;
+     aFic = aPath + "pedcab_" + nConta + ".asc";
+     |XABRE aTipo, aFic, nHandle;
+     |SI FSalida ] 0;
+          aDato = #104#25 + aTab;
+          aDato = aDato + #104#0 + aTab;
+          aDato = aDato + #104#1 + aTab;
+          aDato = aDato + #104#4 + aTab;
+          aDato = aDato + #104#8;
+          |XGRABA nHandle, aDato;
+          |XCIERRA nHandle;
+
+          aFic = aPath + "pedlin_" + nConta + ".asc";
+          |XABRE aTipo, aFic, nHandle;
+          |SI FSalida < 0;
+               |MENAV "0000Error al crear fichero (pedlin).";
+               nError = 1;
+          |FINSI;
+
+/*
+          |HORA aAlfa;
+          #6#0 = #104#25;
+          #6#1 = #104#0;
+          #6#2 = ~;
+          #6#3 = aAlfa;
+          #6#4 = Usuario % 810;
+          |GRABA 020#6n;
+*/
+     |SINO;
+          |MENAV "0000Error al crear fichero (pedcab).";
+          nError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO PedLin;
+     |DDEFECTO #19;
+     #19#0 = #73#2;
+     |LEE 000#19=;
+     aAlfa = #19#111; |QBF aAlfa;
+     |SI aAlfa = ""; |ACABA; |FINSI;
+
+     nPdte = #73#5 - #73#43;
+     |SI nPdte [ 0; |ACABA; |FINSI;
+
+     |SI nPrime = 0;
+          |HAZ Cabecera;
+          |SI nError ! 0; |ERROR10; |ACABA; |FINSI;
+     |FINSI;
+     nPrime = 1;
+     |HAZ Linea;
+|FPRC;
+
+|PROCESO PedCab;
+     aDivisa = #104#35;
+     aMoneda = #104#37;
+     |HAZ Divisas104;
+
+     |SI nPrime ! 0;
+          |HAZ FinLinea;
+     |FINSI;
+     nPrime = 0;
+/*
+     #6#0 = #104#25;
+     #6#1 = #104#0;
+     |LEE 000#6=;
+     |SI FSalida = 0; |ERROR; |FINSI;
+*/
+|FPRC;
+
+|DEFBUCLE PedVenta;
+     #104#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, PedCab, PedLin;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#0 ! "SI"; |ACABA; |FINSI;
+
+     |SUB_EJECUTA_NP "primz007;AUTO";
+
+     aTab = &9;
+     |ABRE #5; |LEE 000#5p; |CIERRA #5;
+     |SI #5#1 = "C";
+          aTipo = "CW";
+     |SINO;
+          aTipo = "W";
+     |FINSI;
+     aPath = #5#3; |QBF aPath;
+     aAlfa = aPath % -101;
+     |SI aPath = "";
+          |MENAV "0000Parametros PDA no dado de alta..";
+     |SINO;
+          |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPath = aPath + "/"; |FINSI;
+          |ABRE #19;
+          ||ABRE #6;
+          |BUCLE PedVenta;
+          |HAZ PedCab;
+          ||CIERRA #6;
+          |CIERRA #19;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |SI PARAMETRO = "AUTO";
+          #0#0 ="SI";
+          |HAZ Tipo3;
+     |SINO;
+          |MANTE #0;
+     |FINSI;
+|FPRO;

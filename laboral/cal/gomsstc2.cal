@@ -1,0 +1,898 @@
+|FICHEROS;
+    gomsstc2 #0;    || emision TC2
+    labempax #2;    || aux. empresas
+    nomtepig #4;    || aux. epigrafes
+    || nomcalac #6;    || calculos cabs.
+    tsilcon1 #6;    || calculos cabs. (fuente calculos atrasos verdadera)
+    tsilcon6 #23;
+     nomcalac #21;
+|FIN;
+
+|VARIABLES;
+     runnom = "gomsstc2";
+
+
+     sw1 = 0;
+     &Desde_emp = 0;
+     &Hasta_emp = 0;
+     &nMes = 0;
+     &Anyo = 0;
+     &EURODB = 0;
+     &eaFuente = "";
+     &nEmpresa = 0;
+     &nTrabaj = 0;
+     &nAnyo = 0;
+     &nHastaTipo = 0;
+     &eaVengode = "";
+     &swSelTra = 0;
+
+     &nDesdeTipo = 0;
+     &nDesdeMes = 0;
+     &nHastaMes = 0;
+
+     Desde_Mes = 0;
+     Hasta_Mes = 0;
+
+     dmes = 0;
+     hmes = 0;
+     que_mes = 0;
+     nBIlt = 0;
+     &s_anyl = 0;
+|FIN;
+
+|INCLUYE i_recoa;
+|INCLUYE i_cuadr;
+|INCLUYE i_2ytc2;
+
+____________________________________/ CALCULOS PANTALLA
+|PROCESO defecto; |TIPO 7; ||calcula el periodo por defecto segun fecha sistema
+    fecsys = ~;
+    alfa1 = fecsys;
+    alfa1 = alfa1 % -104;
+    #0Campo = alfa1;
+|PINTA #0Campo;
+|FPRC;
+____________________________________/ CALCULOS DE IMPRESION
+|PROCESO rup_empre;
+|HAZ empresas;              || graba en la plantilla en la empresa
+|HAZ centros;               || graba en la plantilla en el centro
+    swbonif = 0;
+    swdetal = 0;
+    swenfer = 0;
+    swepigr = 1;            || carga el switch de impresion de epig.(*)
+    swclave = 0;
+    t_epigr = antepigr;     || carga el epigrafe accidente
+    t_epig0 = t_epig1;      || carga el total bases cont. comunes
+    t_epig3 = "...........";|| carga el literal del total
+||PRINT;                     || imprime total epigrafe accidente
+|HAZ auxiliar;              || graba en el auxiliar de empresas
+|HAZ epigrafe;              || graba en el aux. de epigrafes
+|SI t_enfe1 ! 0;|Y #50#16 = 2;
+        t_epigr = t_enfe0;       || carga el epigrafe de enfermedad
+        t_epig0 = t_enfe1;       || carga el total bases enfermedad
+        t_epig2 = t_enfe2;       || carga el nro. de trabajadores enfermos
+        t_epig3 = "ENFERMEDAD "; || carga el literal del total
+    ||PRINT;                      || imprime t.epig.enferm.+suplemento
+    |HAZ epigrafe;               || graba el 126 en el aux. de epigrafes
+|FINSI;
+||PIEINF;
+||FININF;                    || cierra y abre un nuevo informe
+|HAZ adjuntar;              || lanza, en su caso, la relacion adjunta
+|HAZ limpieza;              || inicializa variables acumuladoras
+|FPRC;
+
+|PROCESO BonifFPCont;
+     || por compatibilidad con el i_2ytc2
+|FPRC;
+
+|PROCESO auxiliar;      || ACTUALIZA FICHERO AUXILIAR DE EMPRESAS
+    #2#00 = antempre;   || codigo empresa
+    #2#01 = nDesdeMes;       || mes
+    #2#02 =    5;       || tipo
+    || #2#18 = 99;         || centro de trabajo
+    |SI #1#45 = "N";     || centro de trabajo
+         #2#18 = 99;
+    |SINO;
+         #2#18 = antcentr;
+    |FINSI;
+|LEE 101#2=;
+    FEstado = FSalida;
+|SI FEstado ! 0;
+    |DDEFECTO #2;
+|FINSI;
+     #2#00 = antempre;   || codigo empresa
+     #2#01 = nDesdeMes;  || mes
+     #2#02 =    5;       || tipo
+     #2#03 = #2#03 + t_aux1a;    || base cont. general, alta, con des.
+     #2#04 = #2#04 + t_aux2a;    || base cont. general, alta, sin des.
+     #2#07 = #2#07 + t_aux3a;    || base cont. jornadas, alta, con des
+     #2#08 = #2#08 + t_aux4a;    || base cont. jornadas, alta, sin des
+
+     |SI #0#3 ] 2012;
+          #2#83 = #2#83 + t_aux1a_01;    || base cont. jornadas, alta, sin des
+     |FINSI;
+
+     #2#70 = #2#70 + t_aux1b;    || base cont. general, IT, con des.
+     #2#71 = #2#71 + t_aux2b;    || base cont. general, IT, sin des.
+     #2#72 = #2#72 + t_aux3c;    || base cont. jornadas, IT, con des, pago emp
+     #2#72 = #2#73 + t_aux3b;    || base cont. jornadas, IT, con des, pago SS
+     #2#73 = #2#74 + t_aux4b;    || base cont. jornadas, IT, sin des (fogasa)
+     #2#48 = #2#48 + t_basefoga;  || total base FOGASA + DESEMPLEO
+
+     || #2#49 = #2#49 + t_cuotades1;  || total cuota desempleo trab+emp
+
+     #2#60 = #2#60 + t_basedestot1;
+     #2#62 = t_tipodestot1;
+     #2#61 = #2#61 + t_basedestot2;
+     #2#63 = t_tipodestot2;
+     #2#65 = #2#65 + t_basedestot3;
+     #2#66 = t_tipodestot3;
+
+     #2#75 = #2#75 + t_basedesemp1;
+     #2#76 = t_tipodesemp1;
+     #2#77 = #2#77 + t_basedesemp2;
+     #2#78 = t_tipodesemp2;
+     #2#79 = #2#79 + t_basedesemp3;
+     #2#80 = t_tipodesemp3;
+
+     #2#05 = #2#05 + t_08;       || horas extra 1
+     #2#06 = #2#06 + t_09;       || horas extra 2
+
+     #2#09 = #2#09 + t_12;       || importe I.L.T.
+     #2#10 = #2#10 + t_14;       || importe accidentes
+
+     #2#11 = #2#11 + t_bonif;    || bonificaciones contingencias
+     #2#12 = #2#12 + t_reducc;   || bonificaciones inem
+
+     #2#13 = #2#13 + t_enfe1;    || base enfermedad
+     #2#14 = #2#14 + t_15;       || numero de jornadas reales (*)
+
+     #2#15 = #2#15 + t_epig9;    || fijos con desempleo (*)
+     #2#16 = 0;
+     #2#17 = #2#17 + t_fijos;    || total trabajadores fijos (*)
+     |SI #1#45 = "N";     || centro de trabajo
+          #2#18 = 99;
+     |SINO;
+          #2#18 = antcentr;
+     |FINSI;
+     #2#19 = #2#19 + t_event;    || total trabajadores eventuales (*)
+     #2#50 = "A";                || regimen agrario
+     #2#51 = #2#51 + t_aux3;   || contingencias comunes 106 (ctos.<7dias)
+
+     || #2#64 = #2#64 + t_base4;       || total base extranjeros temporales
+     || #2#65 = #2#65 + t_aux4;        || total cuota fija extranjeros temporales
+
+     |SI t_por4 > 0;
+          #2#66 = t_por4;        || % cotiz. extranjeros temporales
+     |FINSI;
+
+     || #2#62 = g_pordesem;    || % desempleo en alta
+     || #2#63 = g_porit;       || % desempleo en IT
+     || uso estos tres campos del abreviado, ya que no se usan en el agrario
+     || el #62 es nuevo y para agrarios lo uso como % desempleo
+
+     ||SI #0#3 [ 2011; |O #7#21 ! 01;
+          #2#57 = #3#6 + #3#7;
+     ||FINSI;
+
+     |SI #0#3 ] 2012;
+          #2#84 = t_tipo_G01;
+     |FINSI;
+
+     |SI #0#3 ] 2012;                        || FP
+          #2#85 = #2#85 + t_aux5a;
+          #2#86 = #3#16 + #3#17;
+     |FINSI;
+
+     |SI #0#3 ] 2012;                        || cont emp, normal y G01
+          #2#89 = #2#89 + t_aux6;
+          #2#90 = #3#6;                      || %
+          #2#91 = #2#91 + t_aux6_01;         || cc emp G01
+          #2#92 = t_tipo_G01_emp;            || %
+     |FINSI;
+
+     || en este campo me guardo el % cont. comunes
+     #2#67 = #2#67 + t_nofog;
+
+     |SI #0#3 ] 2012;
+          #2#87 = #2#87 + nRedCCAlta + nRedCCEnf + nRedCCMat + nRedCCAcc + nRedCCEnfEmp;
+          #2#88 = #2#88 + nRedDesEnf + nRedDesMat + nRedDesAcc + nRedDesEnfEmp;
+     |FINSI;
+
+     #2#96 = #2#96 + t_aux7b;   || base cot. solidaridad
+     #2#97 = #2#97 + t_aux7c;   || cuota cot. solidaridad
+
+/*
+    #2#00 = antempre;   || codigo empresa
+    #2#01 = nDesdeMes;       || mes
+    #2#02 =    5;       || tipo
+    #2#03 = #2#03 + t_aux1;     || contingencias generales  (coef.reductor NO)
+    #2#04 = #2#04 + t_aux2;     || contingencias especiales (coef.reductor SI)
+    #2#05 = #2#05 + t_08;       || horas extra 1
+    #2#06 = #2#06 + t_09;       || horas extra 2
+    #2#07 = #2#07 + t_epiga;    || base ILT fijos (*)
+    #2#08 = #2#08 + t_epigb;    || base ILT no fijos (*)
+    #2#09 = #2#09 + t_12;       || importe I.L.T.
+    #2#10 = #2#10 + t_14;       || importe accidentes
+    #2#11 = #2#11 + t_bonif;    || bonificaciones contingencias
+    #2#12 = #2#12 + t_reducc;   || bonificaciones inem
+    #2#13 = #2#13 + t_enfe1;    || base enfermedad
+    #2#14 = #2#14 + t_15;       || numero de jornadas reales (*)
+    #2#15 = #2#15 + t_epig9;    || fijos con desempleo (*)
+    #2#16 = 0;                  || total trabajadores fijos (*)
+    #2#17 = #2#17 + t_fijos;    || total trabajadores fijos (*)
+    || #2#18 = 99;                 || centro de trabajo
+    |SI #1#45 = "N";     || centro de trabajo
+         #2#18 = 99;
+    |SINO;
+         #2#18 = antcentr;
+    |FINSI;
+    #2#19 = #2#19 + t_event;    || total trabajadores eventuales (*)
+    #2#50 = "A";                || regimen agrario
+    #2#60 = #2#60 + t_desemfijos;  || total cuota desempleo fijos
+    #2#61 = #2#61 + t_desemeven;  || total cuota desempleo eventuales
+    #2#48 = #2#48 + t_itfijos;  || total cuota IT fijos
+    #2#49 = #2#49 + t_iteven;   || total cuota IT eventuales
+    #2#51 = t_porit;            || % IT aplicado
+    || uso estos tres campos del abreviado, ya que no se usan en el agrario
+     #2#57 = #3#6 + #3#7;
+     || en este campo me guardo el % cont. comunes
+*/
+
+|SI FEstado ! 0;  |GRABA 020#2n;  |FINSI;
+|SI FEstado = 0;  |GRABA 020#2a;  |FINSI;
+|LIBERA #2;
+|FPRC;
+
+|PROCESO empresas;      || ACTUALIZA PLANTILLA EN EMPRESA
+    t_trab1 = t_traba - t_altas;  || calcula trabajadores mes anterior
+    t_trab2 = t_traba - t_bajas;  || calcula trabajadores que quedan
+|ABRE #1;
+    #1#0 = antempre;
+|LEE 121#1=;
+|SI FSalida = 0;
+        #1#14 = t_trab2;
+    |GRABA 020#1a;
+|FINSI;
+|LIBERA #1;
+|CIERRA #1;
+|SI #0#4 = "N";
+        t_trpo1 = t_trab1;   t_trpo2 = t_trab2;  || variables puente
+        t_altpo = t_altas;   t_bajpo = t_bajas;  || /para el informe
+|FINSI;
+    t_traba = 0;     || acumulador numero de trabajadores empresa
+    t_altas = 0;     || acumulador altas de trabajadores empresa
+    t_bajas = 0;     || acumulador bajas de trabajadores empresa
+|FPRC;
+
+|PROCESO centros;      || ACTUALIZA PLANTILLA EN CENTRO DE TRABAJO
+    t_trce1 = t_trcen - t_altce;  || calcula trabajadores mes anterior
+    t_trce2 = t_trcen - t_bajce;  || calcula trabajadores que quedan
+|ABRE #10;
+    #10#0 = antempre;
+    #10#1 = antcentr;
+|LEE 121#10=;
+|SI FSalida = 0;
+        #10#11 = t_trce2;
+    |GRABA 020#10a;
+|FINSI;
+|LIBERA #10;
+|CIERRA #10;
+|SI #0#4 = "S";
+        t_trpo1 = t_trce1;   t_trpo2 = t_trce2;  || variables puente
+        t_altpo = t_altce;   t_bajpo = t_bajce;  || /para el informe
+|FINSI;
+    t_trcen = 0;     || acumulador numero de trabajadores centro
+    t_altce = 0;     || acumulador altas de trabajadores centro
+    t_bajce = 0;     || acumulador bajas de trabajadores centro
+|FPRC;
+
+|PROCESO epigrafe;      || GRABA EN FICHERO DE EPIGRAFES PARA TC1
+|ABRE #4;               || se abre y cierra aqui para que este libre para
+|DDEFECTO #9;           ||                                   / el BUCLE 2
+|SI t_epigr = #3#2;
+        por_ilt = #3#3;  || guarda (%) ILT
+        por_ims = #3#4;  || guarda (%) IMS
+|SINO;
+        #9#0 = t_epigr;
+    |LEE 020#9=;         || lee en maestro de epigrafes
+        por_ilt = #9#1;  || guarda (%) ILT
+        por_ims = #9#2;  || guarda (%) IMS
+|FINSI;
+    #4#0 = antempre;    || codigo de empresa
+    #4#1 = nDesdeMes;        || mes
+    #4#2 = t_epigr;     || epigrafe
+    #4#9 = 5;           || tipo
+    || #4#10 = 99;         || centro de trabajo
+    |SI #1#45 = "N";
+         #4#10 = 99;
+    |SINO;
+         #4#10 = antcentr;
+    |FINSI;
+|LEE 101#4=;            || lee en trabajo de epigrafes
+    FEstado = FSalida;
+|SI FEstado ! 0;
+    |DDEFECTO #4;
+        t_epig4 = t_epig4 + 1;  || contador de epigrafes diferentes por empresa
+|FINSI;
+    #4#0 = antempre;    || codigo de empresa
+    #4#1 = nDesdeMes;        || mes
+    #4#2 = t_epigr;     || epigrafe
+    #4#3 = por_ilt;     || (%) I.L.T.
+    #4#4 = por_ims;     || (%) I.M.S.
+    #4#5 = #4#5 + t_epig0;     || base contingencias
+    #4#6 = #4#6 + t_epig2;     || nro. trabajadores
+    #4#7 = #4#5 % por_ilt;     || aplica porcentaje I.L.T.
+    #4#8 = #4#5 % por_ims;     || aplica porcentaje I.M.S.
+    #4#9 = 5;           || tipo
+    || #4#10 = 99;         || centro de trabajo
+    |SI #1#45 = "N";
+         #4#10 = 99;
+    |SINO;
+         #4#10 = antcentr;
+    |FINSI;
+|SI FEstado ! 0;  |GRABA 020#4n;  |FINSI;
+|SI FEstado = 0;  |GRABA 020#4a;  |FINSI;
+|LIBERA #4;
+    t_epig0 = 0;           || inicializa puente total epigrafe
+    t_epig1 = 0;           || inicializa acumulador total epigrafe
+    t_epig2 = 0;           || inicializa acumulador trabajadores
+|CIERRA #4;
+|FPRC;
+
+|PROCESO impresion1;
+    haentrat = 1;
+|SI antempre = -1;  |HAZ inicio;        |FINSI;
+|SI antcentr = -1;  antcentr = #7#14;   |FINSI;
+|SI antepigr = -1;  antepigr = #7#26;   |FINSI;
+
+|SI antempre ! #7#0;   || RUPTURA POR EMPRESA
+    |HAZ rup_empre;
+    |HAZ inicio;
+    |HAZ vacibusc;
+        antbonif = -1;
+        antepigr = #7#26;
+        antcentr = #7#14;
+|SINO;
+    |SI antcentr ! #7#14;  || RUPTURA POR CENTRO DE TRABAJO
+        |HAZ centros;                   || graba en la plantilla en el centro
+            antcentr = #7#14;
+    |FINSI;
+|FINSI;
+
+|SI antclave ! #7#47;
+        swbonif = 0;
+        swdetal = 0;
+        swenfer = 0;
+        swepigr = 0;
+        swclave = 1;            || carga el switch de impresion del titulo
+    |SI #7#47 = "A";  litecla = "FIJOS -";            |FINSI;
+    |SI #7#47 = "B";  litecla = "FIJOS SIN DESEM.-";  |FINSI;
+    |SI #7#47 = "E";  litecla = "EVENTUALES -";       |FINSI;
+    ||PRINT;
+        antclave = #7#47;
+|FINSI;
+
+|SI antepigr ! #7#26;          || RUPTURA POR EPIGRAFE
+        swbonif = 0;
+        swdetal = 0;
+        swenfer = 0;
+        swepigr = 1;          || carga el switch de impresion de epigrafe
+        swclave = 0;
+        t_epigr = antepigr;   || carga el epigrafe accidente
+        t_epig0 = t_epig1;    || carga el total bases cont. comunes
+        t_epig3 = "...........";   || carga el literal del total
+    ||PRINT;
+    |HAZ epigrafe;       || totaliza y graba en fich.de trabajo para TC1/8
+        antepigr = #7#26;
+|FINSI;
+
+|SI antbonif ! #7#35;          || RUPTURA POR BONIFICACION
+        #8#0 = #7#35;
+        antbonif = #7#35;
+    |LEE 000#8=;
+    |SI FSalida = 0; |Y #8#0 ! 0;  || si esta y no es cero
+            swenfer = 0;
+            swepigr = 0;
+            swdetal = 0;
+            swbonif = 1;       || carga el switch de impresion de bonificacion
+            swclave = 0;
+            desboni = #8#1;    || carga en variable la descripcion
+        ||PRINT;
+        |HAZ cuentc21;
+    |SINO;
+        |DDEFECTO #8;          || si no existe o es cero limpia los campos
+    |FINSI;
+|FINSI;
+
+    swbonif = 0;
+    swenfer = 0;
+    swepigr = 0;
+    swdetal = 1;
+    swclave = 0;
+
+    t_epig1 = t_epig1 + #7#30;      || acumula total epigrafe accidente
+|SI #50#16 = 1;
+        t_06 = t_06 + (#7#25 + #7#37);  || acumula total cont.comunes
+        t_07 = t_07 + #7#27;            || acumula total desempleo + enferm.
+|SINO;
+        t_06 = t_06 + #7#25;            || acumula total cont.comunes
+        t_07 = t_07 + (#7#27 + #7#37);  || acumula total desempleo + enferm.
+|FINSI;
+    t_08 = t_08 + #7#28;            || acumula total bases horas 1
+    t_09 = t_09 + #7#29;            || acumula total bases horas 2
+    t_10 = t_10 + #7#30;            || acumula total ayuda familiar
+    ||t_11 = t_11 + #7#31;            || acumula total ayuda subnormalidad
+    t_12 = t_12 + #7#32;            || acumula total dto. enfermedad
+    t_14 = t_14 + #7#34;            || acumula total dto. accid. trabaj.
+    t_15 = t_15 + #7#24;            || acumula jornadas reales (*)
+
+    t_traba = t_traba + 1;          || acumula nro. trabajadores empresas
+    t_trcen = t_trcen + 1;          || acumula nro. trabajadores centros
+||SI antclave = "A";    || solo los fijos cotizan para el desempleo (AGRARIA*)
+|SI antclave = "A"; |O antclave = "E";   || fijos y eventuales cotizan desempleo (AGRARIA*)
+        t_epig9 = t_epig9 + #7#25;
+|FINSI;
+|SI antclave = "A";
+     t_desemfijos = t_desemfijos + ((#7#25 * (#nomconst#12+#nomconst#13)/100) ! EURODB)
+|FINSI;
+|SI antclave = "E";
+     t_desemeven = t_desemeven + ((#7#25 * (#nomconst#12+#nomconst#13)/100) ! EURODB)
+|FINSI;
+|SI antclave = "A"; |O antclave = "B";
+        t_fijos = t_fijos + 1;     || total trabajadores fijos (*)
+        t_aux1  = t_aux1 + #7#25;  || conting. fijos (*)
+    |SI #50#15 ! "D";
+            t_epiga = t_epiga + #7#37; || base ILT fijos (*)
+    |SINO;
+            t_epiga = t_epiga + #7#31; || base ILT fijos DIFERENCIA MESES(*)
+    |FINSI;
+    |SI #7#37 ! 0;
+         t_itfijos = t_itfijos + (((#7#37 * #nomconst#12)/100) ! EURODB);
+         t_porit = #nomconst#12;
+    |FINSI;
+|FINSI;
+|SI antclave = "E";
+        t_event = t_event + 1;     || total trabajadores eventuales (*)
+        t_aux2  = t_aux2 + #7#25;  || conting. eventuales (*)
+        t_epigb = t_epigb + #7#37; || base ILT no fijos (*)
+        |SI #7#37 ! 0;
+            t_iteven = t_iteven + (((#7#37 * #nomconst#12)/100) ! EURODB);
+            t_porit = #nomconst#12;
+        |FINSI;
+|FINSI;
+
+|SI #7#13 = "X";
+        t_altas = t_altas + 1;  t_bajas = t_bajas + 1;
+        t_altce = t_altce + 1;  t_bajce = t_bajce + 1;
+|FINSI;
+|SI #7#13 = "A";  t_altas = t_altas + 1;  t_altce = t_altce + 1;  |FINSI;
+|SI #7#13 = "B";  t_bajas = t_bajas + 1;  t_bajce = t_bajce + 1;  |FINSI;
+
+|SI #7#38 = "E";|Y #50#16 = 2;
+        t_enfe2 = t_enfe2 + 1;     || acumula nro. trabajadores enfermos
+|SINO;
+        t_epig2 = t_epig2 + 1;     || acumula nro. trabajadores por epigrafe
+|FINSI;
+
+|SI #50#16 = 1;
+    |SI #7#25 ! 0;|O #7#27 ! 0;
+        ||PRINT;                    || LINEA DE DETALLE
+    |FINSI;
+|SINO;
+    ||PRINT;                        || LINEA DE DETALLE
+|FINSI;
+
+|SI #7#37 ! 0;|O #7#43 ! 0;|O #7#44 ! 0;       || LINEA DE ILT
+        swbonif = 0; swepigr = 0;
+        swdetal = 0; swenfer = 1;  || carga el switch de linea de enfermedad
+        swclave = 0;
+        t_enfe0 = #7#36;           || guarda el epigrafe de enfermedad
+        t_enfe1 = t_enfe1 + #7#37; || acumula total epigrafe enfermedad
+    ||PRINT;
+|SINO;
+    |SI #7#40 ! "                      "; |O #7#41 ! 0; |O #7#42 ! 0;
+            swbonif = 0; swepigr = 0;
+            swdetal = 0; swenfer = 1;
+            swclave = 0;
+            pp14 = #7#14; pp15 = #7#15; pp16 = #7#16; pp17 = #7#17;
+            pp18 = #7#18; pp36 = #7#36; pp37 = #7#37;
+            #7#14 =  0; #7#15 = ""; #7#16 = ""; #7#17 = "";  || chapuzilla !!!
+            #7#18 = ""; #7#36 =  0; #7#37 =  0;
+        ||PRINT;
+            #7#14 = pp14; #7#15 = pp15; #7#16 = pp16; #7#17 = pp17;
+            #7#18 = pp18; #7#36 = pp36; #7#37 = pp37;
+    |FINSI;                        || imprime suplemento !!!
+|FINSI;
+|FPRC;
+
+|| CLAVE: Empresa, CLAVE DIAS SALARIO, Bonificacion, Epigrafe,
+||                      / Provincia, S.S., Trabajador, Centro
+|DEFBUCLE impresion;
+ #7#3;
+ ;
+     0, "A",   0,   0, bot3,     0,  0;
+ 99999, "Z", 999, 999, top3, 99999, 99;
+ e;
+ NULL, impresion1;
+|FIN;
+____________________________________/ CALCULOS DE CARGA TEMPORAL
+|PROCESO comprueba;
+|DDEFECTO #7;
+    #7#00 = #1#0;   || empresa
+    #7#14 = #5#77;  || centro de Trabajo
+    #7#35 = #6#12;  || bonificacion
+    #7#26 = #5#32;  || epigrafe
+    afili = #5#75;
+|QBF afili;
+    sgdoalf = afili % 0;
+    sgdonum = sgdoalf;
+    sgdonum = sgdonum - 4;
+    sgdonum = sgdonum + 300;  || para coger 2do. digito
+    #7#15 = afili % 102;      || primer digito S.S.
+    #7#16 = afili % sgdonum;  || segundo digito S.S.
+    #7#52 = #7#15 + #7#16;    || campo clave
+    #7#39 = #6#1;             || codigo Trabajador
+    #7#48 = #6#3;             || tipo
+|LEE 000#7=;
+    FEstado = FSalida;
+|FPRC;
+
+|PROCESO nom_mes;
+|SI que_mes = 1;  #7#11 = "ENERO     "; |FINSI;
+|SI que_mes = 2;  #7#11 = "FEBRERO   "; |FINSI;
+|SI que_mes = 3;  #7#11 = "MARZO     "; |FINSI;
+|SI que_mes = 4;  #7#11 = "ABRIL     "; |FINSI;
+|SI que_mes = 5;  #7#11 = "MAYO      "; |FINSI;
+|SI que_mes = 6;  #7#11 = "JUNIO     "; |FINSI;
+|SI que_mes = 7;  #7#11 = "JULIO     "; |FINSI;
+|SI que_mes = 8;  #7#11 = "AGOSTO    "; |FINSI;
+|SI que_mes = 9;  #7#11 = "SEPTIEMBRE"; |FINSI;
+|SI que_mes = 10; #7#11 = "OCTUBRE   "; |FINSI;
+|SI que_mes = 11; #7#11 = "NOVIEMBRE "; |FINSI;
+|SI que_mes = 12; #7#11 = "DICIEMBRE "; |FINSI;
+|FPRC;
+
+____________________________________/ BORRADO DE AUXILIARES
+_________________________/ BORRA AUXILIARES
+|PROCESO bor_empresa;
+     |BORRA 020#2a;
+|FPRC;
+
+|DEFBUCLE bor_empresa;
+     #2#1;
+     50;
+     nEmpresa, 001, #0#2, 5, "A";
+     nEmpresa, 999, #0#2, 5, "A";
+     be;
+     NULL, bor_empresa;
+|FIN;
+
+|PROCESO bor_epi1;
+|BORRA 020#4a;
+|FPRC;
+
+|DEFBUCLE bor_epi;
+ #4#1;
+ ;
+ nEmpresa, 001, #0#2,   0, 5;
+ nEmpresa, 999, #0#2, 999, 5;
+ ;
+ NULL, bor_epi1;
+|FIN;
+
+|PROCESO borrado;
+|BUCLE bor_epi;
+|BUCLE bor_empresa;
+|FPRC;
+
+|PROCESO impre; |TIPO 3;
+     Desde_emp = #0#0;
+     Hasta_emp = #0#1;
+     Desde_Mes = #0#2;
+     Hasta_Mes = #0#6;
+     Anyo = #0#7;
+
+     |HAZ principal;
+|FPRC;
+____________________________________/ CALCULOS PARA LA RELACION ADJUNTA
+|PROCESO relacion;
+|PRINT;
+|FPRC;
+
+|DEFBUCLE gomsstc23;
+ #4#1;
+ ;
+ antempre, 001, dmes,   0, 5;
+ antempre, 999, hmes, 999, 5;
+ e;
+ NULL, relacion;
+|FIN;
+
+|PROCESO adjuntar;
+|SI t_epig4 > 0; |Y #0#5 = "S";    || si se activa la relacion adjunta
+    |HAZ leempre;       || recoge datos empresa
+        t_epig4 = 0;
+        t_epig5 = 0;
+        t_epig6 = 0;    || inicializa acumuladores
+        t_epig7 = 0;
+        t_epig8 = 0;
+    |INFOR "nomadjun";
+    |BUCLE gomsstc23;           || el resto se acumula sobre el septimo
+    |PIEINF;
+    |FININF;
+|FINSI;
+    t_epig4 = 0;        || inicializa contador
+|FPRC;
+
+|PROCESO leempre;       || ABRE EMPRESA PARA LEER DATOS CORRESPONDIENTES
+|ABRE #1;
+    #1#0 = antempre;
+|LEE 020#1=;
+    adjun_0 = #1#0;                    || codigo empresa
+    adjun_0 = "000" + adjun_0;
+    adjun_0 = adjun_0 % -103;
+    adjun_1 = #1#2;                    || nombre empresa
+    domi = #1#3;
+|QBF domi;
+    adjun_2 = domi+" "+#1#4+" "+#1#5;     || domicilio empresa
+    postal1 = "00" + #1#7;
+    postal1 = postal1 % -102;
+    postal2 = "000" + #1#8;
+    postal2 = postal2 % -103;
+    adjun_3 = postal1 + postal2;       || construye C.P.
+    adjun_4 = #1#6;                    || localidad
+    adjun_5 = #1#19;                   || clave entidad
+    adjun_6 = #1#20;                   || nombre entidad
+    adjun_7 = #1#10;                   || cif
+    afili = #1#13;
+|QBF afili;
+    sgdoalf = afili % 0;
+    sgdonum = sgdoalf;
+    sgdonum = sgdonum - 4;
+    sgdonum = sgdonum + 300;
+    adjun_8 = afili % 102;             || Primer digito S.S.
+    adjun_9 = afili % sgdonum;         || Segundo digito S.S.
+    adjun_A = afili % -102;            || Tercer digito S.S.
+    adjun_B = adjun_8 + adjun_9 + adjun_A;  || todo entero
+|CIERRA #1;
+|FPRC;
+
+
+____________________________________/ GRABACION DEL TEMPORAL (incluye)
+|PROCESO temporal1;
+|HAZ temporal2;
+|FPRC;
+
+|DEFBUCLE gomsstc20;
+     #6#1;
+     ;
+     #0#0,     0, #0#2, 0;
+     #0#1, 99999, #0#6, 0;
+     e;
+     NULL, temporal1;
+|FIN;
+
+|PROCESO temporal1_RED;
+     #0#2 = nMes;
+     || #0#3 = nAnyo;
+     #0#3 = s_anyl;
+     |SELECT #2#23;
+     #23#1 = #6#0;
+     #23#2 = #6#1;
+     |LEE 000#23=;
+     |SI swSelTra = 0;
+          |HAZ temporal2;
+     |SINO;
+          |SI FSalida = 0;|Y #23#7 = "*";
+               |HAZ temporal2;
+          |SINO;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+/*
+|DEFBUCLE gomsstc20_RED;
+ #6#1;
+ ;
+ nEmpresa,     0, nDesdeMes, nDesdeTipo;
+ nEmpresa, 99999, nHastaMes, nHastaTipo;
+ e;
+ NULL, temporal1_RED;
+|FIN;
+*/
+
+|DEFBUCLE gomsstc20_RED;
+ #6#1;
+ ;
+ nEmpresa,     0, nDesdeMes, 0;
+ nEmpresa, 99999, nDesdeMes, 0;
+ e;
+ NULL, temporal1_RED;
+|FIN;
+
+|PROCESO graba_nomcalac;
+     |DDEFECTO #6;
+     #6#0 = #21#0;       || empresa
+     #6#1 = #21#1;       || trabajador
+     #6#2 = #0#2;   || mes
+     #6#3 = 0;           || tipo
+
+     |LEE 101#6=;
+     FEstado = FSalida;
+     #6#4  = #21#4;           || fecha alta
+     #6#5  = #21#5;           || fecha baja
+     #6#6  = #21#6;           || fecha antiguedad.
+     #6#7  = #21#7;           || dias periodo
+     #6#8  = #6#8 + #21#8;   || dias alta
+     #6#9  = #21#9;           || tipo contrato
+     #6#10 = #6#10 + #21#10; || dias contrato
+     #6#11 = #6#11 + #21#11; || horas contrato
+     #6#12 = #21#12;          || cod.bonific.
+     #6#13 = #21#13;          || (%)irpf 1
+     #6#14 = #6#14 + #21#14; || base irpf 1
+     #6#15 = #6#15 + #21#15; || retencion 1
+     #6#16 = #6#16 + #21#16; || base irpf pagas
+     #6#17 = #6#17 + #21#17; || retencion pagas
+     #6#18 = #6#18 + #21#18; || base irpf exenta
+     #6#19 = #21#19;          || desde dia 1
+     #6#20 = #21#20;          || desde dia 2
+     #6#21 = #21#21;          || desde dia 3
+     #6#22 = #21#22;          || desde dia 4
+     #6#23 = #21#23;          || hasta dia 1
+     #6#24 = #21#24;          || hasta dia 2
+     #6#25 = #21#25;          || hasta dia 3
+     #6#26 = #21#26;          || hasta dia 4
+     #6#27 = #21#27;          || tipo falta 1
+     #6#28 = #21#28;          || tipo falta 2
+     #6#29 = #21#29;          || tipo falta 3
+     #6#30 = #21#30;          || tipo falta 4
+     #6#31 = #6#31 + #21#31; || total dias E
+     #6#32 = #6#32 + #21#32; || total dias A
+     #6#33 = #6#33 + #21#33; || total dias H
+     #6#34 = #6#34 + #21#34; || total dias F
+     |SI FEstado ! 0;
+           #6#35 = #21#35;       || prom.enferm.
+           #6#36 = #21#36;       || prom.accid.
+     |FINSI;
+     #6#37 = #6#37 + #21#37; || remuner. total
+     #6#38 = #6#38 + #21#38; || prorrata pagas
+     #6#39 = #6#39 + #21#39; || base cont.comunes
+     nume1 = #21#40 - #21#62;
+     |SI nume1 < 0;
+          nBIlt = #21#40;
+     |SINO;
+          nBIlt = #21#62;
+     |FINSI;
+     #6#40 = #6#40 + #21#40; || base cont.profes.
+     #6#62 = #6#62 + nBIlt;   || base ILT
+     #6#41 = #6#41 + #21#41; || base horas 1
+     #6#42 = #6#42 + #21#42; || base horas 2
+     #6#43 = #6#43 + #21#43; || base bonif. CC 1
+     #6#44 = #6#44 + #21#44; || base bonif. CP 1
+     #6#45 = #6#45 + #21#45; || s.s. cgo. empresa
+     #6#46 = #6#46 + #21#46; || bruto recibo
+     #6#47 = #6#47 + #21#47; || bruto paga
+     #6#48 = #6#48 + #21#48; || cuota cont.comunes
+     #6#49 = #6#49 + #21#49; || cuota cont.profes.
+     #6#50 = #6#50 + #21#50; || cuota horas 1
+     #6#51 = #6#51 + #21#51; || cuota horas 2
+     #6#52 = #6#52 + #21#52; || anticipos 1
+     #6#53 = #6#53 + #21#53; || anticipos 2
+     #6#54 = #6#54 + #21#54; || en especie
+     #6#56 = #21#56;          || ~
+     #6#57 = #6#57 + #21#57; || prest. enf. comun
+     #6#58 = #6#58 + #21#58; || prest. accid.
+     #6#59 = #6#59 + #21#59; || compl. enf. comun
+     #6#60 = #6#60 + #21#60; || compl. accid.
+     #6#61 = #21#61;          || (%) cont. comunes
+     ||#6#62 = #6#62 + #21#62; || base ILT
+     #6#63 = #6#63 + #21#63; || cuota bonif. 1
+     #6#64 = #6#64 + #21#64; || subv. horas formacion
+     #6#65 = #6#65 + #21#65; || total dias M
+     #6#66 = #6#66 + #21#66; || total dias V
+     #6#67 = #21#67;          || (%) irpf 2
+     #6#68 = #21#68;          || (%) irpf 3
+     #6#69 = #6#69 + #21#69; || base irpf 2
+     #6#70 = #6#70 + #21#70; || base irpf 3
+     #6#71 = #6#71 + #21#71; || retencion 2
+     #6#72 = #6#72 + #21#72; || retencion 3
+     #6#73 = #6#73 + #21#73; || prest. enf. comun empresa
+     #6#74 = #6#74 + #21#74; || total bases irpf
+     #6#75 = #6#75 + #21#75; || total retenciones
+     #6#76 = #21#76;          || dto. pagas huelga
+     #6#77 = #21#77;          || dto. pagas absentismo
+     #6#78 = #6#78 + #21#78; || total dias D
+     #6#79 = #6#79 + #21#79; || base bonif. CC 2
+     #6#80 = #6#80 + #21#80; || base bonif. CP 2
+     #6#81 = #6#81 + #21#81; || cuota bonif. 2
+     #6#82 = #21#82;          || (%) bonif. 1
+     #6#83 = #21#83;          || (%) bonif. 2
+     #6#84 = #6#84 + #21#84; || base ILT bonif. 1
+     #6#85 = #6#85 + #21#85; || base ILT bonif. 2
+     #6#92 = #6#92 + #21#88; || bonif. RDL 16/2001
+
+     #6#148 = #6#148 + #21#148;
+     #6#149 = #6#149 + #21#149;
+     #6#150 = #6#150 + #21#150;
+     #6#151 = #6#151 + #21#151;
+     #6#152 = #6#152 + #21#152;
+     #6#153 = #6#153 + #21#153;
+     #6#154 = #6#154 + #21#154;
+     #6#155 = #6#155 + #21#155;
+     #6#156 = #6#156 + #21#156;
+     #6#157 = #6#157 + #21#157;
+     #6#158 = #6#158 + #21#158;
+
+     ||HAZ maternidad;
+     |SI FEstado ! 0;    |GRABA 020#6n;     |FINSI;
+     |SI FEstado = 0;    |GRABA 020#6a;     |FINSI;
+     |LIBERA #6;
+|FPRC;
+
+|DEFBUCLE lee_nomcalac;
+     #21#1;
+     ;
+     #0#0,     1, #0#2, 5;
+     #0#1, 99999, #0#6, 5;
+     ;
+     NULL, graba_nomcalac;
+|FIN;
+
+|PROCESO temporal0;
+     |SI eaVengode ! "silcon16";
+          alfa2 = Usuario; |QBF alfa2;    alfa2 = ("9" + alfa2) % 108;
+          |NOME_DAT #6 alfa2;     || tmp. calculos
+          |DELINDEX #6;
+          |ABRE #6;
+
+          |BUCLE lee_nomcalac;
+
+          |CIERRA #6;
+
+          |BUCLE gomsstc20;
+     |SINO;
+          |BUCLE gomsstc20_RED;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |SI eaVengode ! "silcon16";
+          aAlfa = "    Opcion no disponible. Para Seguros Sociales del Regimen";
+          aAlfa = aAlfa + " Agrario dirigase a Creacion Lote FAN TC2/8";
+          |MENAV aAlfa;
+          |ACABA;
+
+          |CLS;
+          |CABEZA "EMISION MODELO TC2/8 ATRASOS";
+          |ABRE #0;
+          |LEE 101#0p;
+          |SI FSalida ! 0;
+               |DDEFECTO #0;
+               |GRABA 020#0b;
+          |FINSI;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          nDesdeMes = #0#2;
+          nHastaMes = #0#6;
+          |SI FSalida = 0;
+               |HAZ impre;
+          |FINSI;
+          |GRABA 020#0a;
+          |LIBERA #0;
+     |SINO;              || vengo del silcon16
+          alfa2 = Usuario; |QBT alfa2;    alfa2 = ("u" + alfa2) % 108;
+          |NOME_DAT #23 alfa2;
+          |ABRE #23;
+
+          alfa2 = Usuario; |QBF alfa2;    alfa2 = ("3" + alfa2) % 108;
+          |NOME_DAT #6 alfa2;     || tmp. calculos
+
+          |HAZ impre;
+
+          |CIERRA #6;
+          |CIERRA #23;
+     |FINSI;
+|FPRO;

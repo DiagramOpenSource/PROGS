@@ -1,0 +1,633 @@
+|FICHEROS;
+     caintvto;
+     caclipro;
+
+     caforpag;
+     caforopc,MANTE;    || pantalla vencimiento opcional
+     cafantas;
+
+     caivaasi;
+     cainliva;
+
+     Referen@;
+|FIN;
+
+|VARIABLES;
+
+    &entrada = 1;
+    nNume1   = 0;
+    nNume2   = 0;
+    aAlfa1   = "";
+
+    &eaRef     = "";
+    &pesetas   = 0;
+    &cuenta    = "";
+    &digito    = 0;
+    &libro     = 0;
+    &orden     = 0;
+    &serie     = "";
+    &emision   = "";
+    &repres    = "";
+    &enModoEsc = 0;
+    &enLinea   = 0;
+
+    recibo     = 0;
+    fFectra1   = @;
+    sw_alguno  = 0;
+    ptasrec1   = 0;
+    ptasrec2   = 0;
+    nEntrada   = 0;
+
+    &eaPath    = "";
+    &eaRetorno = "";
+
+    nSwSi      = 0;
+    nTotal     = 0;
+    nTotRec    = 0;
+    nOpera     = 0;
+
+    nDia  = 0;
+    nDia1 = 0;
+    nDia2 = 0;
+    nDia3 = 0;
+    aAlfa = "";
+    nCalc = 0;
+
+    fectra2 = @;
+    nume1   = 0;
+    nume2   = 0;
+    nume3   = 0;
+    nume4   = 0;
+    alfa1   = "";
+    alfa2   = "";
+    alfa3   = "";
+
+    nIncre1 = "";
+    aIncre1 = "";
+
+   nSwError = 0;
+   fFechaVto = @;
+   nSwModo   = 0;
+   aTipoCliPro  = "";
+   nCmpCtrlCert = 0;
+   nCmpFecCert  = 0;
+   nBanco       = 0;
+   nInkey       = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ************************************************************************
+|PROCESO MiraSiCertContr;
+   |SI aTipoIVA = "R";
+      aTipoCliPro = "C";
+      nCmpCtrlCert = 6; nCmpFecCert = 7;
+   |FINSI;
+   |SI aTipoIVA = "S";
+      aTipoCliPro = "P";
+      nCmpCtrlCert = 3; nCmpFecCert = 4;
+   |FINSI;
+
+   nSwError = 0;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "basica/def/tadm0001.mas";
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "basica/fich/"; |PATH_DAT #Referen@#aAlfa#;
+      |ABRE #Referen@; |ABRE #caclipro;
+      #caclipro#23 = aTipoCliPro;
+      #caclipro#10 = cuenta;
+      |LEE 000#caclipro.=;
+      |SI FSalida = 0;
+         #Referen@#0 = #48#2;
+         #Referen@#1 = #caclipro#9;
+         |LEE 000#Referen@.=;
+         |SI FSalida = 0;
+            |SI #Referen@#nCmpCtrlCert# = "S";
+               |SI #Referen@#nCmpFecCert# < fFechaVto;
+                  |SI nSwModo = 0;
+                     aAlfa = "    NEl vencimiento supera el certificado. " + &191 + " Consultar registro ? ";
+                     |CONFI aAlfa;
+                     |SI FSalida = 0;
+                        aAlfa = "|:basica/tadz0001.tab;" + (("00000" + #48#2) % -105) + "," + #48#8; |QBF aAlfa;
+                        aAlfa = aAlfa + "," + #48#1; |QBF aAlfa;
+                        aAlfa = aAlfa + "|" + #caclipro#9; |QBF aAlfa;
+                        |SUB_EJECUTA aAlfa;
+                     |FINSI;
+                     nSwModo = 1;
+                  |FINSI;
+                  nSwError = 1;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |CIERRA #caclipro;
+      |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+   |FINSI;
+|FPRC;
+
+|CALCULO ayudita; |TIPO 0;
+    nEntrada = (FEntrada / 100) ! 0;
+    |SI nEntrada = 1;
+        #caintvto#6    = emision;              || emision
+        nIncre1 = #caforpag#4;
+        |HAZ CalIncre;  || cuenta un vencimiento mas
+        |HAZ DiasFijos;
+        #caintvto#7 = fFectra1;             || vto.
+        #caintvto#10 = nBanco;
+        |PINTA #caintvto#6;
+        |PINTA #caintvto#7;
+        |PINTA #caintvto#10;
+    |FINSI;
+|FCAL;
+
+|CALCULO manuales; |TIPO 2;
+    #caintvto#4  = cuenta;
+    #caintvto#5  = digito;
+
+    nTotRec = nTotRec +. #caintvto#8;
+    |HAZ PintaTotal;
+|FCAL;
+
+|PROCESO PintaTotal;
+    #cafantas#0 = nTotal;  |ATRI P; |PINTA 0945, #cafantas#0; |ATRI 0;
+    #cafantas#1 = nTotRec;          |PINTA 2245, #cafantas#1;
+|FPRC;
+
+
+|PROCESO Cuadrar;
+    nInkey = FSalida;
+    |SI nInkey = 10;
+        #caintvto#8 = nTotal - nTotRec;
+        |PINTA #caintvto#8;
+    |FINSI;
+|FPRC;
+
+|PROCESO MiroFVto; |TIPO 0;
+ |SI #caintvto#6 > #caintvto#7;
+     |SI #caivaasi#162 = "S";
+         |CONFI "    NFecha de Emision menor que Fecha de Vencimiento. Continuar ?";
+         |SI FSalida ! 0;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+     |SI #caivaasi#162 = "X";
+         |MENAV "    Fecha de Emision menor que Fecha de Vencimiento.";
+         |ERROR;
+     |FINSI;
+ |FINSI;
+
+ nSwModo = 0;
+ |HAZ MiraSiCertContr;
+|FPRC;
+
+|| ************************************************************************
+|CALCULO Banco7; |TIPO 7;
+ |C_M #caintvto#Campo#, 0, aAlfa;
+ |SI aAlfa = "N"; |ACABA; |FINSI;
+
+ eaVC = "C";
+ enSwLoLeo = 0;
+ |HAZ LeeBanco;
+ |SI enElBanco = 1;
+     |C_M #caintvto#Campo#,1,"N";
+     #caintvto#Campo# = 999; |PINTA #caintvto#Campo#;
+ |SINO;
+     |C_M #caintvto#Campo#,1,"S";
+ |FINSI;
+|FCAL;
+
+|CALCULO Banco0; |TIPO 0;
+   nInkey = FSalida;
+   |C_M #caintvto#Campo#, 0, aAlfa;
+   |SI aAlfa = "N"; |ACABA; |FINSI;
+
+   |SI #caintvto#Campo# = 999; |Y nInkey ! 10;
+       |ACABA;
+   |FINSI;
+
+   eOpBan = 0; || 1 = Consulta pantalla
+   |SI nInkey = 10; eOpBan = 1;  |FINSI;
+
+   enSwLoLeo = 1;
+   enBanco = #caintvto#Campo#;
+   |HAZ LeeBanco;
+   |SI eswLect = 0;
+       #caintvto#Campo# = enBanco; |PINTA #caintvto#Campo#;
+   |SINO;
+       |SI #caintvto#Campo# ! 999;
+           |MENAV "0000NO EXISTE CODIGO DE BANCO PROPIO";
+       |FINSI;
+   |FINSI;
+
+   nBanco = #caintvto#Campo#;
+|FCAL;
+|| ************************************************************************
+
+|PROCESO carga;
+
+   |ABRE #caintvto;
+    recibo = 0;
+
+|| ..... Calculo de los importes
+   |SI #caforpag#2 = 1;
+       ptasrec1 = 0;
+       ptasrec2 = pesetas;
+   |SINO;
+       ptasrec1 = (pesetas / #caforpag#2) ! EURODB;   || todos vto.menos ultimo
+       nNume2   = ptasrec1 * (#caforpag#2 - 1);
+       ptasrec2 = pesetas - nNume2;               || ultimo vto.
+   |FINSI;
+
+   |SI #caforpag#2 ! 0;
+        fFectra1  = emision;
+        nIncre1   = #caforpag#3;
+        |HAZ CalIncre;
+        recibo = recibo + 1;
+        |HAZ graba;
+
+        recibo = recibo + 1;
+        |PARA nNume1 = recibo; |SI nNume1 [ #caforpag#2; |HACIENDO nNume1 = nNume1 + 1;
+              nIncre1 = #caforpag#4;
+              |HAZ CalIncre;
+              recibo = nNume1;
+              |HAZ graba;                     || incremento vencimientos
+        |SIGUE;
+    |SINO;
+        fFectra1 = emision;
+        recibo   = 1;
+        #caforpag#2     = 1;
+        |HAZ graba;
+    |FINSI;
+    |CIERRA #caintvto;
+|FPRC;
+
+|PROCESO graba;
+    #caintvto#0 = libro;
+    #caintvto#1 = orden;
+    #caintvto#2 = serie;
+    #caintvto#3 = recibo;
+    #caintvto#4 = cuenta;
+    #caintvto#5 = digito;
+    #caintvto#6 = emision; || emision
+    |HAZ DiasFijos;
+
+    fFechaVto = fFectra1;
+    |HAZ MiraSiCertContr;
+
+    #caintvto#7 = fFectra1; || vto.
+    |SI recibo ! #caforpag#2;
+        #caintvto#8 = ptasrec1;  || anteriores al ultimo
+    |SINO;
+        #caintvto#8 = ptasrec2;  || utlimo recibo
+    |FINSI;
+    #caintvto#9  = #caforpag#5;   || tipo recibo
+    #caintvto#10 = nBanco;
+    |SI nBanco = -1;
+        #caintvto#10  = #caclipro#28;
+        nBanco = #caintvto#10;
+    |FINSI;
+    |SI #caintvto#8 ! 0;
+        |GRABA 020#caintvto.n;
+    |FINSI;
+    nTotRec = nTotRec + #caintvto#8;
+|FPRC;
+
+|| ************************************************************************
+
+|PROCESO comprueba;
+
+  |SI nBanco = -1;
+      nBanco = #caintvto#10;
+  |FINSI;
+
+  sw_alguno = 1;
+  #caintvto#4      = cuenta;
+  #caintvto#5      = digito;
+  #caintvto#6      = emision;
+  fFectra1  = #caintvto#7; || guarda ultima fecha de vto.
+  nTotRec   = nTotRec + #caintvto#8;
+
+  fFechaVto = fFectra1;
+  |HAZ MiraSiCertContr;
+
+  |GRABA 020#caintvto.a;
+  |LIBERA #caintvto;
+|FPRC;
+
+|DEFBUCLE caintvto0;
+  #caintvto#1;
+  ;
+  libro, serie, orden,   1;
+  libro, serie, orden, 999;
+  be;
+  NULL, comprueba;
+|FIN;
+
+|| ____________________________________/ LECTURAS
+
+|PROCESO ClieProv;
+   |DDEFECTO #caclipro;
+   |ABRE #caclipro;
+   #caclipro#23 = "C";
+   #caclipro#10 = cuenta;      || cuenta
+   |LEE 001#caclipro.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #caclipro;
+       #caclipro#23 = "P";
+       #caclipro#10 = cuenta;
+       |LEE 001#caclipro.=;
+   |FINSI;
+   |CIERRA #caclipro;
+|FPRC;
+
+|PROCESO pide_pago;
+    |SI #cainliva#74 ! 0;
+        #caforopc#0 = #cainliva#74;
+    |SINO;
+        #caforopc#0 = #caclipro#20;
+    |FINSI;
+
+    |HAZ f_pago;
+
+    |SI #caforopc#0 ! 0;
+        |PUSHV 05012380;
+        |PINPA #0#caforopc;
+        |PINDA #0#caforopc;
+        |ATRI I; |PINTA 1332, #caforpag#1; |ATRI 0;
+        |ENDATOS #1#caforopc;
+        |SI FSalida ! 0;
+            #caforopc#0 = 0;
+        |FINSI;
+        |POPV;
+    |FINSI;
+|FPRC;
+
+|PROCESO f_pago;
+   |ABRE #caforpag;
+   |DDEFECTO #caforpag;
+   #caforpag#0 = #caforopc#0;
+   |LEE 001#caforpag.=;
+   |SI FSalida ! 0;
+       |SI #caforpag#0 = 0;
+           |DDEFECTO #caforpag;
+           #caforpag#0 = 0;
+           #caforpag#2 = 1;
+           |GRABA 040#caforpag.n;
+       |SINO;
+           |SI PARAMETRO ! "NOLINEAL";
+               |MENAV "    ATENCION!!! Codigo de Vencimiento inexistente ...";
+           |FINSI;
+       |FINSI;
+   |FINSI;
+   |CIERRA #caforpag;
+|FPRC;
+|| ----------------------------------------------------------------------
+
+|PROCESO CalIncre;
+ aIncre1 = "";
+ nume1   =  (nIncre1 / 30) - ((nIncre1 / 30) ! 0);
+ |SI nume1 = 0;
+
+     nume1 = nIncre1 / 30;
+     alfa1 = nume1;
+     alfa1 = ("000" + alfa1) % -103;
+     aIncre1 = "0." + alfa1 + "0000";
+
+     fFectra1 = fFectra1 + aIncre1;
+ |SINO;
+     fFectra1 = fFectra1 + nIncre1;
+ |FINSI;
+
+|FPRC;
+
+|PROCESO DiasFijos;
+
+     |SI #caclipro#34 = 0; |Y #caclipro#35 = 0; |Y #caclipro#36 = 0;
+         |ACABA;
+     |FINSI;
+
+     nDia1 = 0; nDia2 = 0; nDia3 = 0;
+     |SI #caclipro#34 ! 0; nDia1 = #caclipro#34; |FINSI;
+     |SI #caclipro#35 ! 0;
+         |SI nDia1 > #caclipro#35;
+             nDia2 = nDia1;
+             nDia1 = #caclipro#35;
+         |SINO;
+             nDia2 = #caclipro#35;
+         |FINSI;
+     |FINSI;
+     |SI #caclipro#36 ! 0;
+         |SI nDia2 > #caclipro#36;
+             nDia3 = nDia2;
+             nDia2 = #caclipro#36;
+         |SINO;
+             nDia3 = #caclipro#36;
+         |FINSI;
+         |SI nDia1 > #caclipro#36;
+             nDia2 = nDia1;
+             nDia1 = #caclipro#36;
+         |FINSI;
+     |FINSI;
+
+     aAlfa = fFectra1; aAlfa = aAlfa % 0102; nCalc = aAlfa;
+     nDia  = nCalc;
+     nCalc = 0;
+     |SI nDia [ nDia3; |Y nDia3 ! 0;
+         nCalc = nDia3;
+     |FINSI;
+     |SI nDia [ nDia2; |Y nDia2 ! 0;
+         nCalc = nDia2;
+     |FINSI;
+     |SI nDia [ nDia1; |Y nDia1 ! 0;
+         nCalc = nDia1;
+     |FINSI;
+     |SI nCalc = 0; nCalc = nDia1; |FINSI;
+
+     aAlfa = fFectra1; |QBF aAlfa;
+     aAlfa = (("00" + nCalc) % -102) + (aAlfa % 0308);
+
+     |SI fFectra1 > aAlfa;
+         fectra2 = aAlfa;
+         fectra2 = fectra2 + "0.001000";  || pasa al mes siguiente
+         aAlfa   = fectra2;
+     |FINSI;
+
+|| ... Problema de febrero
+     alfa1   = aAlfa % 402; nume1 = alfa1; ||mes
+     alfa2   = aAlfa % 102; nume2 = alfa2; ||dia
+
+     |SI nume1 = 2; |Y nume2 ] 29;
+         nCalc = 28;
+         alfa3 = aAlfa % -104; nume3 = alfa3; ||any
+         nume4 = (nume3 / 4) - ((nume3 / 4) ! 0);
+         |SI nume4 = 0; nCalc = 29; |FINSI;
+         aAlfa = (("00" + nCalc) % -102) + (aAlfa % 0308);
+     |FINSI;
+     |SI nume2 = 31;
+         |SI nume1 = 4; |O nume1 = 6; |O nume1 = 9; |O nume1 = 11;
+             aAlfa = "30" + (aAlfa % 0308);
+         |FINSI;
+    |FINSI;
+
+    fFectra1 = aAlfa;
+|FPRC;
+
+|| ----------------------------------------------------------------------
+|PROCESO BorrarySalir;
+
+ |SI nBanco = -1;
+     nBanco = #caintvto#10;
+ |FINSI;
+
+ |BORRA 020#caintvto.a;
+ |LIBERA #caintvto;
+|FPRC;
+
+|DEFBUCLE BorrarySalir;
+ #caintvto#1;
+ ;
+ libro,serie,orden,001;
+ libro,serie,orden,999;
+ be;
+ NULL, BorrarySalir;
+|FIN;
+
+|PROCESO ParaCal;
+ |SI #cainliva#1 ! enLinea;
+     nSwSi = 1;
+     |SI #cainliva#54 = "N";
+         nTotal = nTotal + #cainliva#29;
+     |SINO;
+         nTotal = nTotal + #cainliva#12;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE ParaCal;
+ #cainliva#1;
+ 2,26;
+ libro,001,orden,serie;
+ libro,999,orden,serie;
+ e;
+ NULL, ParaCal;
+|FIN;
+|| ---------------------------------------------------------------------
+
+
+|PROCESO min;
+    #caintvto#0 = libro;
+    #caintvto#1 = orden;
+    #caintvto#2 = serie;
+    #caintvto#3 = 1;
+|FPRC;
+
+|PROCESO max;
+    #caintvto#0 = libro;
+    #caintvto#1 = orden;
+    #caintvto#2 = serie;
+    #caintvto#3 = 999;
+|FPRC;
+
+|PROGRAMA;
+   nBanco = -1;
+   nSwSi  = 0;
+   nTotal = 0;
+   |BUCLE ParaCal;
+   |SI enModoEsc = 3; |Y nSwSi = 0;
+       |BUCLE BorrarySalir;
+       |ACABA;
+   |FINSI;
+   nCalc = nTotal;
+   |SI enModoEsc ! 3;
+       nTotal = nTotal + pesetas;
+   |FINSI;
+
+   |SI nCalc ! 0; |Y pesetas ! 0; || ABDON Tiquet 004082/00310
+                                  || Segun conversacion con Carlos Clemente,
+                                  || si meto una segunda base en una factura
+      |BUCLE BorrarySalir;        || debo borrar los vencimientos creados con
+                                  || la primera factura para crear todo en
+                                  || base al nuevo total factura
+   |FINSI;
+
+   |ABRE #caivaasi;
+   |LEE 000#caivaasi.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #caivaasi;
+      |GRABA 020#caivaasi.n;
+      |LEE 000#caivaasi.p;
+   |FINSI;
+   |CIERRA #caivaasi;
+   |SI #caivaasi#1 = "N"; |ACABA; |FINSI;
+
+   aAlfa1 = #caivaasi#56; |QBF aAlfa1;
+   |SI aAlfa1 = ""; |ACABA; |FINSI;
+   eaPath = aAlfa1;
+   |HAZ CreaPuente;
+   |SI eaRetorno = "ERROR"; |ACABA; |FINSI;
+
+   |HAZ ClieProv;
+
+   |SI PARAMETRO ! "NOLINEAL";
+       |PINPA #0#caintvto;
+       |ATRI R;
+       |SI aTipoIVA = "R";
+           |PINTA 0831, "COBROS ";
+           |ATRI 0;
+           |PINTA 1059, "¿";
+           |PINTA 1259, "´";
+           |PINTA 2159, "Ù";
+           |BLANCO 1060 2163;
+           |C_V #caintvto#10, 1, "N";
+           |C_M #caintvto#10, 1, "N";
+           |ATRI R;
+       |SINO;
+           |PINTA 0831, "PAGOS  ";
+       |FINSI;
+   |ATRI 0;
+   |FINSI;
+
+|ET otravez;
+   nSwModo   = 0;
+   sw_alguno = 0;
+   nTotRec   = 0;
+   |BUCLE caintvto0;
+
+   |HAZ PintaTotal;
+   |SI sw_alguno = 0;
+       |SI nBanco = -1; nBanco = #caclipro#28; |FINSI;
+       pesetas = nTotal;
+       |SI PARAMETRO ! "NOLINEAL";
+           |HAZ pide_pago;
+           |HAZ f_pago;
+       |FINSI;
+
+       |SI #caivaasi#1 = "S"; |Y #caforpag#2 ! 0;
+           |HAZ carga;
+
+           |SI PARAMETRO ! "NOLINEAL";
+              |HAZ PintaTotal;
+              |ENTLINEAL #1#caintvto, -4, 2, 20, 0, min, max;
+           |FINSI;
+       |FINSI;
+   |SINO;
+       |SI PARAMETRO ! "NOLINEAL";
+           |ENTLINEAL #1#caintvto, -4, 2, 20, 0, min, max;
+       |FINSI;
+   |FINSI;
+
+   |SI PARAMETRO ! "NOLINEAL";
+       nNume1 = (nTotRec - nTotal) ! EURODB;
+       |SI nNume1 ! 0; |Y nTotRec ! 0;
+           |CONFI "    SEl importe de los recibos es distinto al de la Factura. Continuar S/N";
+           |SI FSalida ! 0;
+               |VETE otravez;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |HAZ CiePuente2;
+|FPRO;
+|| ----------------------------------------------------------------

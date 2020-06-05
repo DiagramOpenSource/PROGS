@@ -1,0 +1,248 @@
+|FICHEROS;
+   caz00013 #10;
+   camoauxc #0,MANTE;
+   camoauxl #1,MANTE;
+
+   caexistl #2;                || Descarga de Existencias.
+   :/modelos/def/dsmom041 #3;  || Amortizaciones
+   cacuenta #5;
+   camaasil #6;
+
+   canempre #30;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   &sw_lin = 0;
+
+   aAlfa1        = "";
+   nModoEntrada  = 0;
+   nModoEntL     = 0;
+   nInkey        = 0;
+   sw_desc       = 0;
+   nImporte      = 0;
+   nNume1        = 0;
+   nSwSal        = 0;
+   &r_emp    = 0;
+   &r_per    = 0;
+   &r_eje    = 0;
+   &r_nom    = "";
+   &r_depar  = "";
+   &cue_exis = "";
+   &dig_exis = 0;
+   &des_exis = "";
+   &imp_exis = 0;
+
+   &swNOAmor = 0;
+   &aFModelo = "";
+   aElDepar  = "";
+   nElDepar  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ***********************************************************************
+|RUTINA ClaveBajaLin;
+     #1#7 = #0#6;
+     #1#0 = #0#0;
+     #1#2 = 001;
+|FRUT;
+
+|RUTINA ClaveAltaLin;
+     #1#7 = #0#6;
+     #1#0 = #0#0;
+     #1#2 = 999;
+|FRUT;
+
+|CALCULO PresLinea;  |TIPO 7;
+     nSwSal = 1;
+     |ENTLINEAL #1#1, -3, 7, 22, 0, ClaveBajaLin, ClaveAltaLin;
+|FCAL;
+
+|PROCESO BorraLineas;
+     |BORRA 140#1a;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE BorraLineas;
+     #1#1;
+     ;
+     #0#6, #0#0, 000;
+     #0#6, #0#0, 999;
+     be;
+     NULL, BorraLineas;
+|FIN;
+
+|CALCULO Tipo2_1;  |TIPO 2;
+     nModoEntrada = (FEntrada / 100) ! 0;
+     |SI nModoEntrada ! 3;  |ACABA;  |FINSI;
+     |BUCLE BorraLineas;
+|FCAL;
+
+|CALCULO Tipo3_1; |TIPO 3;
+    nSwSal = 0;
+    |ENTLINEAL #1#1, -3, 2, 22, 0, ClaveBajaLin, ClaveAltaLin;
+    |LIBERA #0;
+|FCAL;
+
+||***********************************************************************
+|CALCULO Tipo11_1; |TIPO 11;
+   nInkey = FSalida;
+   |SI nInkey = 10;
+       dig_exis = -1;
+       r_emp   = enEmpresa;
+       r_per   = enPeriodo;
+       aAlfa1  = enEjercicio; |QBF aAlfa1;
+       aAlfa1  = aAlfa1 % 302;
+       r_eje   = aAlfa1;
+       r_nom   = eaNombreEmp;
+       r_depar = #0#6;
+       |SUB_EJECUTA_NP "caexiaux";
+       nInkey = 0;
+       |ERROR;
+       |SI dig_exis ! -1;
+           #0#0 = cue_exis; |PINTA #0#0;
+           #0#1 = dig_exis;
+           #0#2 = des_exis; |PINTA #0#2;
+           #0#4 = imp_exis; |PINTA #0#4;
+           #0#6 = r_depar;
+           |PTEC 802;
+       |FINSI;
+   |FINSI;
+
+   |SI nInkey = 20;
+        salidas  = nInkey;
+       |HAZ FiltraPuntos;
+   |FINSI;
+|FCAL;
+
+|CALCULO cuenta; |TIPO 6;
+     nInkey = FSalida;
+
+     eaCuenta = #camoauxc#Campo#;
+     salidas  = 0;
+     |HAZ FiltraPuntos;
+     #camoauxc#Campo# = eaCuenta;
+     |PINTA #camoauxc#Campo#;
+|FCAL;
+
+|CALCULO refresca; |TIPO 0;
+   emCta    = 1;
+   eaCuenta = #0#0; |HAZ SacaNivel; #0#1 = enNivel;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+   |HAZ LeeCuenta;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+   #0#2 = #cacuenta#2; |PINTA #0#2;
+
+   nModoEntrada = (FEntrada / 100) ! 0;
+   |SI nModoEntrada = 1; |Y swNOAmor = 1;
+      |ABRE #3;
+      |SELECT #4#3;
+      #dsmom041#0 = enEmpresa;
+      #dsmom041#5 = #0#0;
+      #dsmom041#6 = #0#1;
+      |LEE 001#3=;
+      |SI FSalida = 0;
+         |MENAV "    La cuenta YA existe en Amortizaciones";
+         |ERROR;
+      |FINSI;
+      |SELECT #1#1;
+      |CIERRA #3;
+   |FINSI;
+
+   |HAZ PresLinea;
+|FCAL;
+
+|| ....................................................
+|PROCESO CalImporte0;
+ aElDepar = #6#21;
+ |SI Haybasica = 1;
+     |QBF aElDepar;
+     aElDepar = ("00" + aElDepar) % -102
+ |FINSI;
+ |SI aElDepar ! #0#6; |ACABA; |FINSI;    ||No suma
+
+|| .... La Suma
+ |SI #6#8 = "D";
+     nImporte = nImporte + #6#9;
+ |SINO;
+     nImporte = nImporte - #6#9;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE CalImporte;
+ #6#3;
+ ;
+ #0#0, fec1, 000001, 0001;
+ #0#0, fec2, 999999, 9999;
+ e;
+ NULL, CalImporte0;
+|FIN;
+
+|PROCESO descarga0;
+ sw_desc = 1;
+ nImporte = nImporte + #2#23;
+|FPRC;
+
+|DEFBUCLE descarga;
+ #2#1;
+ 2;
+ nElDepar, 001, #0#0;
+ nElDepar, 999, #0#0;
+ ;
+ NULL, descarga0;
+|FIN;
+
+|CALCULO recoge; |TIPO 0;
+   nInkey   = FSalida;
+   nImporte = #0#4;
+
+   |SI nInkey = 11;
+       |SI #0#6 = "00";
+           nImporte = #cacuenta#53;
+       |SINO;
+           nImporte = 0;
+           |BUCLE CalImporte;
+       |FINSI;
+       |ERROR;
+   |SINO;
+      |SI nInkey = 10;
+         sw_desc = 0;
+         nImporte = 0;
+         nElDepar = #0#6;
+         |BUCLE descarga;
+         |SI sw_desc = 0; |AVISO; |ERROR; |FINSI;
+         |ERROR;
+      |FINSI;
+   |FINSI;
+
+   #0#4 = nImporte;    |PINTA #0#4;
+   #0#5 = #0#4 - #0#3; |PINTA #0#5;
+|FCAL;
+
+|| ...... PROCESOS DE LINEAS
+|CALCULO salta; |TIPO 7;
+   |SI nSwSal = 1;  |PTEC 807;  |FINSI;
+   nModoEntL = (FEntrada / 100) ! 0;
+   |SI nModoEntL = 1;|Y FSalida ! 1;|Y FSalida ! 7;|Y #1#2 ! 1;
+      #1#2 = #1#2 + 4;
+      |PINTA #1#2;
+   |FINSI;
+|FCAL;
+
+|CALCULO actual; |TIPO 2;
+   #0#3 = #0#3 +. #1#6; |PINTA #0#3;
+   #0#5 = #0#4 -  #0#3; |PINTA #0#5;
+|FCAL;
+
+|CALCULO suma; |TIPO 0;
+   #1#6 = #1#4 * #1#5;
+   |PINTA #1#6;
+|FCAL;
+
+|CALCULO verdif; |TIPO 0;
+   nNume1 = #0#3 + #1#6;
+   |SI nNume1 > #0#4;
+      |MENAV "    ANTENCION! Importe Desglose MAYOR a Importe Contable";
+   |FINSI;
+|FCAL;

@@ -1,0 +1,134 @@
+|FICHEROS;
+   dscaz130 #0;
+
+   dscam023 #10,MANTE;
+   dscam024 #11;
+   dscam003 #12;
+   dscam038 #13;
+|FIN;
+
+|VARIABLES;
+   &enEmpGest = 0;
+
+   fFecha = @;
+   fFechaRef = @;
+
+   nCalc  = 0;
+   nSw    = 0;
+   nEmpCart = 0;
+   nSwPasada = 0;
+
+   aAlfa  = "";
+|FIN;
+
+|PROCESO Recibos;
+   |SI #dscam003#0 = "CD"; |O #dscam003#0 = "CI"; |O #dscam003#0 = "FC";
+    |O #dscam003#0 = "MU";
+      |ACABA;
+   |FINSI;
+
+   |SI #dscam003#12 = 2; |Y #dscam003#14 = "P"; |Y #dscam003#30 > 0; nSw = 1; |ERROR10; |FINSI;
+   |SI #dscam003#12 = 4; |Y #dscam003#14 = "V"; |Y #dscam003#30 > 0; nSw = 1; |ERROR10; |FINSI;
+   |SI #dscam003#12 = 5; |Y #dscam003#14 = "P"; |Y #dscam003#30 > 0; nSw = 1; |ERROR10; |FINSI;
+   |SI #dscam003#12 = 6; |Y #dscam003#14 = "P"; |Y #dscam003#30 > 0; |Y #dscam003#90 = "N";
+      nSw = 1; |ERROR10;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Recibos1;
+#dscam003#11;
+;
+#dscam023#0, "01.01.0000", "     ";
+#dscam023#0, fFechaRef   , "zzzzz";
+;
+NULL, Recibos;
+|FIN;
+
+|DEFBUCLE Recibos2;
+#dscam003#11;
+4;
+#dscam023#0, "01.01.0000", "     ", "01.01.0000";
+#dscam023#0, "31.12.2999", "zzzzz", fFechaRef;
+;
+NULL, Recibos;
+|FIN;
+
+|PROCESO Riesgo1;
+   aAlfa = #dscam023#10; |QBF aAlfa;
+   FSalida = 0; aAlfa = aAlfa - "AUTOMAT.";
+   |SI #dscam023#9 = "S"; |Y FSalida = 0; |ACABA; |FINSI;
+
+   nSw = 0;
+   |SI nSwPasada = 1; |BUCLE Recibos1; |FINSI;
+   |SI nSwPasada = 2; |BUCLE Recibos2; |FINSI;
+
+   |SI nSw ! 0;
+      #dscam023#9 = "S";
+      fFecha = ~; aAlfa = fFecha;
+      aAlfa = "AUTOMAT.-" + aAlfa;
+      #dscam023#10 = aAlfa;
+      |GRABA 020#dscam023.a; |LIBERA #dscam023;
+   |SINO;
+      |SI #dscam023#9 = "S";
+         #dscam023#9 = "N";
+         fFecha = ~; aAlfa = fFecha;
+         aAlfa = "AUTOMAT.-" + aAlfa;
+         #dscam023#10 = aAlfa;
+         |GRABA 020#dscam023.a; |LIBERA #dscam023;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Riesgo1;
+#dscam023#1;
+;
+#dscaz130#0;
+#dscaz130#1;
+be;
+NULL,Riesgo1;
+|FIN;
+
+|PROCESO BucleControl;
+   |SI nEmpCart ! #dscam038#5;
+      |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "fich/" + (("00000" + #dscam038#5) % -105) + "/";
+      |PATH_DAT #dscam023#aAlfa#; |PATH_DAT #dscam024#aAlfa#;
+      |PATH_DAT #dscam003#aAlfa#;
+      |BUCLE Riesgo1;
+      nEmpCart = #dscam038#5;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE BucleControl;
+#dscam038#1;
+8;
+enEmpGest, 001, "R";
+enEmpGest, 999, "R";
+;
+NULL,BucleControl;
+|FIN;
+
+|PROGRAMA;
+   |SI PARAMETRO = "";
+      |SI enEmpGest = 0; enEmpGest = #48#15; |FINSI;
+      |CLS;
+      |PINPA #0#dscaz130; |PINDA #0#dscaz130;
+      |ENDATOS #1#0;
+   |SINO;
+      |SI enEmpGest = 0; enEmpGest = PARAMETRO; |FINSI;
+      #dscaz130#0 = "      ";
+      #dscaz130#1 = "zzzzzz";
+      #dscaz130#2 = ~;
+      #dscaz130#3 = ~;
+      FSalida = 0;
+   |FINSI;
+
+   |SI FSalida = 0;
+      fFechaRef = #dscaz130#2; nSwPasada = 1; nEmpCart = 0;
+      |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "fich/";
+      |PATH_DAT #dscam038#aAlfa#; |BUCLE BucleControl;
+
+      fFechaRef = #dscaz130#3; nSwPasada = 2; nEmpCart = 0;
+      |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "fich/";
+      |PATH_DAT #dscam038#aAlfa#; |BUCLE BucleControl;
+   |FINSI;
+|FPRO;

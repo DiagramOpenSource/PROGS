@@ -1,0 +1,393 @@
+|FICHEROS;
+    agifa513 #0;  || Fichero de Cobros por caja
+    agifa027 #5;  || Fichero de contadores
+    agifa505 #4;  || Fichero configuracion TPV
+    agifa509 #8;  || Fichero diario
+    agifa514 #9;  || Cajero
+    agifa515 #10; || Tarjetas de credito
+    agifa516 #11; || Diario de tarjetas de credito
+    agifa517 #30; || Fichero parametros de tienda
+    agifa024 #31;
+    agifa501 #501;
+|FIN;
+
+|CAMPOS;
+   #0#0  codigo;
+   #5#1  contador;
+|FIN;
+
+|VARIABLES;
+    nError = 0;
+    &eswCta = 0;
+    &eaCta = "";
+    nGuarda = 0;
+    mascara = "0000000";
+    mensaje1= "0000ATENCION no existe diario para esta caja";
+    mensaje2= "0000ATENCION Este cajero no puede aceptar tarjetas";
+    mensaje3= "0000ATENCION Este cajero no puede aceptar cheques";
+    mensaje4= "0000ATENCION No existe la tarjeta de credito";
+    mensaje5= "0000ATENCION No existe la caja";
+    mensaje6= "0000ATENCION La caja esta cerrada";
+    mensaje7= "0000ATENCION las Tarjetas de Credito deben estar entre 01 y 99";
+    mensaje8= "0000ATENCION No existe el fichero PARAMETROS TIENDA";
+    tempo = " ";
+    filtro = "-106";
+    existe = 0;
+    opcion = 0;
+    mes    = 0;
+    abrircajon = "";
+    puente          = "";
+    empresa = 0;
+    informe = "agifa513";
+|FIN;
+
+||INC-LUYE llena_c1;
+
+|PROCESO entrar; |TIPO 8;
+     |DFICE puente; |QBF puente;
+     puente = puente % -205;
+     empresa = puente;
+|FPRC;
+
+|PROCESO contcobr; |TIPO 0;
+#5#0 = "contcobr";      || Asigno claves
+#5#2 = #0#14;           || Serie informada en el cobro
+|ABRE #5;               || Abro fichero de contadores
+|LEE 101#5=;
+|SI FSalida = 0;
+     codigo = contador;
+     contador = contador + 1;
+     |GRABA 101#5a;
+|SINO;
+     codigo   = "000001";
+     contador = contador +1;
+     |GRABA 101#5n;
+|FINSI;
+|LIBERA #5;
+|CIERRA #5;
+|FPRC;
+
+
+|| Este proceso comprueba que el diario de resumen correspondiente a la caja
+|| indicada y a la fecha indicada existe. Posteriormente habra que comprobar
+|| que no este cerrada.
+
+|PROCESO estadiario;|TIPO 0;
+     |ABRE #8;      || Fichero diario
+     #8#63 = empresa;
+     #8#0=#0#5;     || Numero caja fichero pago
+     #8#1=#0#11;    || Fecha de pago
+     |LEE 001#8=;
+     |SI FSalida ! 0;
+         |MENAV mensaje1;
+         |PTEC 807;   || Fuerzo CTRL + C
+       || |ERROR;
+     |FINSI;
+
+     |SI #8#56 = "N";     || Si esta cerrada debe avisar y hechar
+         |MENAV mensaje6;
+         |ERROR;
+     |FINSI;
+
+     |CIERRA #8;
+|FPRC;
+
+
+|| Este proceso es del tipo reversible. Aumenta el importe efectivo en caja
+|| de ese dia y aumenta el importe Ptas. pagadas en concepto de PAGOS VARIOS
+|| y actualiza el valor TOTAL CAJA;
+
+
+|PROCESO actdiario; |TIPO 2;
+     opcion = (FEntrada / 100) ! 0;
+     |SI opcion ] 3;
+         |HAZ abierta;
+         |SI nError ! 0; |ERROR; |ACABA; |FINSI;
+     |FINSI;
+
+
+     |DDEFECTO #8;
+     |ABRE #8;                || Fichero diario
+     #8#63 = empresa;
+     #8#0=#0#5;               || Numero caja fichero cobro
+     #8#1=#0#11;              || Fecha de cobro
+     |LEE 101#8=;
+     |SI FSalida ! 0; |GRABA 020#8b; |FINSI;
+
+     |SI #0#12="E";                || Si paga con Efectivo
+          #8#4 = #8#4 +. #0#4;     || Cobros varios  (diario)
+          #8#52= #8#52 +. #0#4;    || Efectivo Ptas (diario)
+          #8#55= #8#55 +. #0#4;    || Total caja    (diario)
+     |FINSI;
+
+     |SI #0#12="C";                || Si paga con Cheque
+          #8#4 = #8#4 +. #0#4;     || Cobros varios  (diario)
+          #8#54= #8#54 +. #0#4;    || Cheque Ptas (diario)
+          #8#55= #8#55 +. #0#4;    || Total caja    (diario)
+     |FINSI;
+
+     |SI #0#12="T";                || Si paga con Tarjeta
+          #8#4 = #8#4 +. #0#4;     || Cobros varios  (diario)
+          #8#53= #8#53 +. #0#4;    || Tarjeta Ptas (diario)
+          #8#55= #8#55 +. #0#4;    || Total caja    (diario)
+     |FINSI;
+
+     mes = 0 +. 1;
+     |SI mes = 1;
+          |HAZ abrecajon;
+     |FINSI;
+
+     |GRABA 101#8a;
+     |CIERRA #8;
+
+     |DDEFECTO #10;
+     |ABRE #10;               || Fichero tarjeta
+     #10#0=#0#13;             || Numero tarjeta fichero cobro
+     |LEE 101#10=;
+     |SI FSalida ! 0; |GRABA 020#10b; |FINSI;
+     #10#2 = #10#2 +. #0#4;   || Total Ptas. Cargadas  (tarjeta)
+     #10#3 = #0#11;           || Fecha ult. operacion
+     #10#4 = #0#4;            || Total Ptas. Ult.operacion (tarjeta)
+     |GRABA 101#10a;
+     |CIERRA #10;
+
+     |DDEFECTO #11;
+     |ABRE #11;       || Fichero diario de tarjetas
+     #11#0=#0#13;     || Numero tarjeta fichero cobro
+     #11#1=#0#11;     || Fecha del cobro
+     |LEE 101#11=;
+     |SI FSalida ! 0; |GRABA 020#11b; |FINSI;
+     #11#2 = #11#2 +. #0#4;    || Total Ptas. dia (Diario Tarjeta)
+
+     |GRABA 101#11a;
+     |CIERRA #11;
+
+|FPRC;
+
+
+
+|| Proceso que controla que ese cajero pueda cobrar un COBRO VARIO
+|| mediante cheques o Tarjeta.
+|PROCESO puede; |TIPO 0;
+   |ABRE #9;                     || Abro fichero de configuracion cajero
+   #9#0=#0#6;                    || Cargo la clave.
+   |LEE 001#9=;
+   |CIERRA #9;
+
+   |SI #0#12 = "T";|Y #9#3="N";  || Compruebo si acepta Tarjeta
+        |MENAV mensaje2;
+        |ERROR;
+   |FINSI;
+
+   |SI #0#12 = "C";|Y #9#2="N";  || Compruebo si acepta Cheque
+        |MENAV mensaje3;
+        |ERROR;
+   |FINSI;
+|FPRC;
+
+
+
+|| Este proceso es del tipo reversible. Actualiza el total de la tarjeta
+|| en concreto, el importe de la ultima operacion
+|| y la fecha de la ultima operacion
+|PROCESO xacttarjeta; |TIPO 2;
+|FPRC;
+
+
+|| Este proceso enseña y deja modificar el codigo de la tarjeta dependiendo
+|| de la modalidad de pago.
+
+|PROCESO modifitarj;|TIPO 7;
+    |SI #0#12 !  "T";                   || Si paga con... Es diferente de
+                                         || tarjeta no debe pasar por el codigo
+                                         || de la tarjeta.
+         |CAMPO_MODIFICA #0#13,1,"N";
+    |SINO;
+         |CAMPO_MODIFICA #0#13,1,"S";
+    |FINSI;
+|FPRC;
+
+
+||Este proceso controla que la caja con la que queremos trabajar este abierta
+
+|PROCESO abierta; |TIPO 0;
+     nError = 0;
+     opcion = (FEntrada / 100) ! 0;
+     |ABRE #4;     || Configuracion tpv
+     #4#0=#0#5;    || Cargo la caja del fichero cobro
+     |LEE 001#4=;
+     existe = FSalida;
+     |CIERRA #4;
+     |SI existe ! 0;         || Si no lo encuentra aviso de que no existe
+          |MENAV mensaje5;
+          |ERROR; nError = 1;
+     |SINO;                   || Si existe compruebo que este abierta
+          |SI #4#23 = "N";   || Si esta cerrada aviso y no dejo salir
+              |MENAV mensaje6;
+              |ERROR; nError = 1;
+          |SINO;             || Si existe descargo la fecha que hay en la caja
+              |SI opcion ! 3;
+                  #0#11 = #4#24;
+                  |PINTA #0#11;
+              |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+
+|| Proceso que controla que solo se puedan entrar tarjetas del 01 al 99
+|| aunque el valor minimo del campo sea 00. Con esto conseguimos que el
+|| 00 no moleste cuando no trabajemos con tarjetas.
+|PROCESO rango;
+    |SI #0#13=0;|Y #0#12 = "T";        || Si pago con tarjeta
+        |MENAV mensaje7;
+        |ERROR;
+    |FINSI;
+|FPRC;
+
+
+|| Este proceso recoge la serie por defecto informada en el fichero de
+|| empresas. De momento lo coge del fichero de parametros
+|PROCESO cogeserie;|TIPO 7;
+|ABRE #30;
+|LEE 000#30p;
+|SI FSalida!0;     || si no lo encuentra debe avisar y no seguir
+   |MENAV mensaje8;
+   |ERROR;
+   |ACABA;
+|SINO;
+  #0#14=#30#1;
+|FINSI;
+|CIERRA #30;
+|FPRC;
+
+|PROCESO abrecajon;
+     |ABRE #4;
+     #4#0 = #0#5;
+     |LEE 001#4=;
+     |SI FSalida ! 0; |DDEFECTO #4; |FINSI;
+     |CIERRA #4;
+     |HAZ AbreCajon;
+|FPRC;
+
+_________________________________/ IMPRIME RECIBO
+
+|PROCESO recibo; |TIPO 3;
+     |HAZ imprime;
+|FPRC;
+
+|PROCESO imprime; |TIPO 4;
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR informe;
+          |SI FSalida = 0;
+               |PRINT;
+               |PIEINF;
+               |FININF;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min;
+     #31#0 = "    ";
+|FPRC;
+
+|PROCESO Max;
+     #31#0 = "zzzz";
+|FPRC;
+
+|PROCESO Tipo66; |TIPO 66;
+     ||HAZ llena_c1;
+     |PUSHV 0101 2380;
+     |CLS;
+     nGuarda = FEntrada;
+     |ABRE #31;
+     #31#0 = #0#1;
+     |LEE 000#31=;
+     |SI #4#119 = "T";
+          |PINPA #0#31;
+          |PINDA #0#31;
+          |CONSULTA #0#31;
+          |SI FSalida = 0;
+               #0#1 = #31#0;
+          |FINSI;
+     |SINO;
+          |CONSULTA_F_CLAVE #1#31, Min, Max;
+          |SI FSalida = 0;
+               #0#1 = #31#0;
+               |PINPA #0#31;
+               |PINDA #0#31;
+               |PAUSA;
+          |FINSI;
+     |FINSI;
+     |POPV;
+     |ERROR;
+     FEntrada = nGuarda;
+|FPRC;
+
+|PROCESO ControlCli; |TIPO 6;
+     |SI #4#120 = "N";
+          |ABRE #31;
+          #31#0 = #0#1;
+          |LEE 000#31=;
+          |SI FSalida ! 0;
+               |MENAV "0000Cliente inexistente...";
+               |ERROR;
+          |FINSI;
+          |CIERRA #31;
+     |FINSI;
+|FPRC;
+
+|PROCESO Cta513; |TIPO 0;
+     eaCta = #0Campo;
+     |HAZ MFiltraPtos;
+     #0Campo = eaCta; |PINTA #0Campo;
+
+     |HAZ MCtaContable;
+     |SI eswCta = 1;
+          |MENAV "    Error. Longitud de Cuenta fuera de Nivel";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO ConsuTiquet; |TIPO 66;
+     |ABRE #501;
+     |SELECT #2#501;
+     #501#35 = #0#19;
+     #501#57 = #0#20;
+     #501#58 = #0#21;
+     |LEE 000#501];
+     |CONSULTA_CLAVE #1#501;
+     |SI FSalida = 0;
+          #0#19 = #501#35; |PINTA #0#19;
+          #0#20 = #501#57; |PINTA #0#20;
+          #0#21 = #501#58; |PINTA #0#21;
+          |SI #501#35 = "A";
+               |MENAV "0000El documento es un Albaran...";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+     |CIERRA #501;
+     |ERROR;
+|FPRC;
+
+|PROCESO MiraTiquet; |TIPO 0;
+     |SI FSalida = 2; |O #0#21 = 0; |ACABA; |FINSI;
+     |ABRE #501;
+     |SELECT #2#501;
+     #501#35 = #0#19;
+     #501#57 = #0#20;
+     #501#58 = #0#21;
+     |LEE 000#501=;
+     |SI FSalida ! 0;
+          |MENAV "0000No existe tiquet...";
+          |ERROR;
+     |SINO;
+          |SI #501#35 = "A";
+               |MENAV "0000El documento es un Albaran...";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+     |CIERRA #501;
+|FPRC;

@@ -1,0 +1,408 @@
+
+|INCLUYE agiutili;  || Rutinas comunes a Etiquetas,Mailings e impresoras
+
+|FICHEROS;
+     impresor  #0;
+|FIN;
+
+|VARIABLES;
+     nbuf_imp       = 0;
+     nlin_imp       = 0;
+     nhasta         = 0;
+     nbuenas        = 0;
+     nlin_ini       = 0;
+     nlin_fin       = 0;
+     nlin_bue       = 0;
+     nsalto_lin     = 0;
+     nnueva         = 0;
+     anueva         = "";
+     modo           = 0;
+     nerror         = 0;
+     acortar        = "";
+     ncortar        = 0;
+     adigito        = "";
+     ncampo         = 0;
+     nascii         = 0;
+     nconte         = 0;
+|FIN;
+
+
+|| *********************** BAJA DE IMPRESORAS **********************
+|| Borra el fichero *.prn
+|PROCESO borra_impre;
+      anom_fich = amodi_nom;
+      |HAZ compon_fich;
+      |FBORRA afich_imp;
+      |SI FSalida ! 0;
+            amensaje = "0000No se ha podido borrar " + afich_imp;
+            |MENAV amensaje;
+      |FINSI;
+|FPRC;
+
+|PROCESO baja_impre;
+     nborrar = 0;
+     |CONFI "2400NConfirmar Baja ";
+     |SI FSalida = 0;
+           |HAZ borra_impre;
+           || Dar de baja el fichero *.prn
+           nborrar = 1;
+     |FINSI;
+|FPRC;
+
+|| *********************** ALTA DE ETIQUETAS **********************
+|PROCESO alta_impre;
+     || Se presentan en pantalla los valores por defecto
+     || y despues de Endatos es correcto envio una orden
+     || para insertar una nueva
+
+     |PINPA #0#impresor;
+     |DDEFECTO #impresor;
+
+     |CAMPO_MODIFICA #impresor#0  ,1,"S";    || Nombre
+     |CAMPO_MODIFICA #impresor#204,1,"S";    || Titulo menu
+
+     || Lo pongo aqui, ya que me interesa que pase por "existe_ya" solo en
+     || este punto y con ENCAMPO FEntrada no actua
+     modo= 1;
+     |ENCAMPO #0#impresor;
+     |ENCAMPO #204#impresor;
+     modo = 0;
+     |CAMPO_MODIFICA #impresor#0  ,1,"N";    || Nombre
+     |CAMPO_MODIFICA #impresor#204,1,"N";    || Titulo menu
+
+     |PINDA #0#impresor;
+     |ENDATOS #1#impresor;
+     nnueva = 0;
+     |SI FSalida = 0;
+          anom_fich = #impresor#0;
+          |HAZ compon_fich;
+
+          |DIMENSIONA 204,nbuf_imp,0;
+          |HAZ carga_datos;
+
+          |GRABASECUENCIAL afich_imp,nbuf_imp,0,204;
+          |FINDIM nbuf_imp;
+
+          |SI FSalida ! 0;
+               amensaje = "0000No se ha podido grabar en " + afich_imp;
+               |MENAV amensaje;
+          |SINO;
+               || Le envio el nombre y el titulo para que se incluya en imp.d
+               amodi_nom = #impresor#0;
+               amodi_tit = #impresor#204;
+               nnueva =1;     || Ahora si que damos de alta en imp.d
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+
+
+|| *********************** CARGA AL SECUENCIAL-COMUN ***********************
+
+|PROCESO buenas_2;
+         nlin_fin = nlin_ini + nsalto_lin;
+         nbuenas = 0;
+         |PARA j = nlin_ini;|SI j [ nlin_fin;|HACIENDO j = j+1;
+             |SI #impresor#j# = "   ";    || Se ha acabado
+                   j = nlin_fin;          || Salgo
+             |SINO;
+                   nbuenas = nbuenas + 1;
+             |FINSI;
+         |SIGUE;
+|FPRC;
+
+|| Por cada secuencia, explorar cuantos son buenas, para guardarlo al final
+|| del secuencial.
+|PROCESO buenas;
+ || Comprimido, negrita, expandido
+   nlin_ini = 3
+   || Por cada linea de control
+   |PARA i = 194;|SI i [ 199;|HACIENDO i = i +1;
+         nsalto_lin = 14;
+         |HAZ buenas_2;
+         #impresor#i# = nbuenas;
+         nlin_ini = nlin_ini + 15;             || Salta los bloques de 15 lineas por
+   |SIGUE;
+
+ || Salto de pagina, Otro caracter
+   || Estan en medio el numero de lineas y el extendido de inicializacion
+   || y finalizacion
+   nlin_ini = 164;
+   |PARA i = 202;|SI i [ 203;|HACIENDO i = i +1;
+         nsalto_lin = 14;
+         |HAZ buenas_2;
+         #impresor#i# = nbuenas;
+         nlin_ini = nlin_ini + 15;             || Salta los bloques de 15 lineas por
+   |SIGUE;
+
+ || Inicializacion. Son 35 y esta en dos trozos
+   nlin_ini = 93;
+   nsalto_lin = 14;
+   |HAZ buenas_2;
+   #impresor#200 = 0;
+   #impresor#200 = nbuenas;
+
+   nlin_ini = 124;
+   nsalto_lin = 20;
+   |HAZ buenas_2;
+   #impresor#200 = #impresor#200+nbuenas;
+
+ || Finalizacion. Son 35 y esta en dos trozos
+   nlin_ini = 108;
+   nsalto_lin = 14;
+   |HAZ buenas_2;
+   #impresor#201 = 0;
+   #impresor#201 = nbuenas;
+
+   nlin_ini = 124;
+   nsalto_lin = 20;
+   |HAZ buenas_2;
+   #impresor#201 = #impresor#201+nbuenas;
+|FPRC;
+
+|| Carga sobre el secuencial segun lo modificado
+|PROCESO carga_datos;
+     |HAZ buenas;
+
+     |PARA i = 0;|SI i [ 203;|HACIENDO i = i+1;
+          atmp = #impresor#i#;
+          |SI atmp = "   ";
+              atmp = "0";
+          |FINSI;
+          |AL_BUF nbuf_imp,i,atmp;
+     |SIGUE;
+|FPRC;
+
+|| *********************** MODIFICACION DE ETIQUETAS **********************
+
+|| Relleno de 999 todos aquellos que no tienen nada teniendo en cuenta la
+|| informacion que hay en las lineas del 195 al 204 (Posicion en buffer
+|| 194-203) que nos indican cuantas lineas de un bloque de 15 son buenas.
+|| Esto lo hago para poder informar en un momento dado el caracter 0.
+
+|PROCESO pon_999_2;
+         nlin_fin = nlin_ini + nsalto_lin;
+         nlin_bue = nlin_ini + nbuenas;        || Hasta esa son buenas
+         |PARA j = nlin_bue;|SI j [ nlin_fin;|HACIENDO j = j+1;
+               #impresor#j# = "   ";
+         |SIGUE;
+|FPRC;
+
+
+|PROCESO pon_999;
+
+ || Comprimido, negrita, expandido
+   nlin_ini = 3
+   || Por cada linea de control
+   |PARA i = 194;|SI i [ 199;|HACIENDO i = i +1;
+         |DEL_BUF nbuf_imp,i,atmp;
+         nbuenas = atmp;
+         nsalto_lin = 14;
+         |HAZ pon_999_2;
+         nlin_ini = nlin_ini + 15;             || Salta los bloques de 15 lineas por
+   |SIGUE;
+
+ || Salto de pagina, Otro caracter
+   || Estan en medio el numero de lineas y el extendido de inicializacion
+   || y finalizacion
+   nlin_ini = 164;
+   |PARA i = 202;|SI i [ 203;|HACIENDO i = i +1;
+         |DEL_BUF nbuf_imp,i,atmp;
+         nbuenas = atmp;
+         nsalto_lin = 14;
+         |HAZ pon_999_2;
+         nlin_ini = nlin_ini + 15;             || Salta los bloques de 15 lineas por
+   |SIGUE;
+
+ || Inicializacion. Son 35 y esta en dos trozos
+   |DEL_BUF nbuf_imp,200,atmp;
+   nbuenas = atmp;
+   nlin_ini = 93;
+   nsalto_lin = 14;
+   |HAZ pon_999_2
+
+   |SI nbuenas > 15;             || Si hay 2 trozos otra pasada
+        nbuenas = nbuenas-15;    || Le quito las 15 que ya hemos contado
+   |SINO;
+        nbuenas = 0;
+   |FINSI;
+   nlin_ini = 124;
+   nsalto_lin = 19;
+   |HAZ pon_999_2
+
+ || Finalizacion. Son 35 y esta en dos trozos
+   |DEL_BUF nbuf_imp,201,atmp;
+   nbuenas = atmp;
+   nlin_ini = 108;
+   nsalto_lin = 14;
+   |HAZ pon_999_2
+
+   |SI nbuenas > 15;             || Si hay 2 trozos otra pasada
+        nbuenas = nbuenas-15;    || Le quito las 15 que ya hemos contado
+   |SINO;
+        nbuenas =0;
+   |FINSI;
+   nlin_ini = 144;
+   nsalto_lin = 19;
+   |HAZ pon_999_2
+
+|FPRC;
+
+|| Lee datos del secuencial y lo pone en fichero temporal de pantalla
+|PROCESO lee_datos;
+      nhasta = nlin_imp -1;
+      |PARA i =0; |SI i [ nhasta;|HACIENDO i = i+1;
+            |DEL_BUF nbuf_imp,i,atmp;
+            #impresor#i# = atmp;
+      |SIGUE;
+|FPRC;
+
+
+|PROCESO modi_impre;
+      anom_fich = amodi_nom;
+      |HAZ compon_fich;
+
+      |LEESECUENCIAL afich_imp,nbuf_imp,nlin_imp,0,0;
+      |SI nbuf_imp ] 0;
+            |HAZ lee_datos;
+            |HAZ pon_999;
+            |PINPA #0#impresor;
+            |PINDA #0#impresor;
+            |ENDATOS #2#impresor;
+            |SI FSalida = 0;
+                 |HAZ carga_datos;
+                 |GRABASECUENCIAL afich_imp,nbuf_imp,0,nlin_imp;
+            |FINSI;
+            |FINDIM nbuf_imp;
+      |SINO;
+            amensaje = "0000No se puede abrir el fichero " + afich_imp;
+            |MENAV amensaje;
+      |FINSI;
+|FPRC;
+
+
+|| *************************** BUCLE PRINCIPAL *******************************
+|PROGRAMA;
+      afich = "dev/imp/imp.d";
+
+      || Bucle principal
+      nsalir = 0;
+      |PARA;|SI nsalir = 0;|HACIENDO;
+           || Alta
+           |SI nmodo = 1;
+               |HAZ alta_impre;
+               |SI nnueva = 1;
+                   nmenug_modo = 1;
+               |SINO;
+                   nmenug_modo = 0;   || No hago nada con el *.d
+               |FINSI;
+           |FINSI;
+
+           || Modificacion
+           |SI nmodo = 2;
+               |HAZ modi_impre;
+               nmenug_modo = 2;
+           |FINSI;
+
+           || Baja
+           |SI nmodo = 3;
+               |HAZ baja_impre;
+               |SI nborrar = 1;
+                   nmenug_modo = 3;
+               |SINO;
+                   nmenug_modo = 0;   || Si hemos dicho que NO es Correcto
+                                      || no tocamos el *.d
+               |FINSI;
+           |FINSI;
+
+           |SI nmodo ] 1;
+               |HAZ actualiza_sec;    ||  Agiutil.cal
+           |FINSI;
+
+           acabeza= "Definicion de impresoras";
+           |HAZ menus;        || Agiutili.cal
+      |SIGUE;
+|FPRO;
+
+|| ************************** VALIDACIONES **********************************
+|| Controla que se introduzcan solo numeros y ademas comprendidos entre
+|| 0 y 255. El campo es un alfa por limpieza de pantalla cuando este blanco
+|| teniendo que pueden ponerme 0 y ser validos
+|PROCESO validacion;
+     atmp = "";
+     nerror = 0;
+     |PARA i = 1;|SI i [3;|HACIENDO i = i+1;
+          ncortar = (i*100)+1;
+          acortar = ncortar;
+          adigito = #impresor#Campo# % acortar;
+          |SI adigito ! " ";
+              nascii = &adigito;
+              |SI nascii < 48;|O nascii > 57;
+                 amensaje = "0000Debe introducir solo numeros ";
+                 |MENAV amensaje;
+                 nerror = 1;
+                 |ERROR;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+
+     |SI nerror = 0;
+         nconte = #impresor#Campo#;
+         |SI nconte < 0;|O nconte > 255
+               amensaje = "0000Introduzca un numero ASCII entre 0-255 o en Blanco";
+               |MENAV amensaje;
+               nerror = 1;
+               |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|| No permito que lo deje en blanco, ya que sera el nombre del fichero *.prn
+|| y podria hacer destrozos.Ademas quito todos los blancos.
+|PROCESO no_blanco;
+    anueva = #impresor#0;
+    |QBT anueva;
+    |SI anueva = "";
+         amensaje= "0000No puede dejarlo en blanco";
+         |MENAV amensaje;
+         |ERROR;
+    |SINO;
+         || Por si habia dejado espacios en blanco
+         #impresor#0 = anueva;
+         |PINTA #impresor#0;
+         adigito = #impresor#0 % "101";
+         |SI adigito ] "0";|Y adigito [ "9";
+             amensaje= "0000No puede empezar por un numero";
+             |MENAV amensaje;
+             |ERROR;
+         |SINO;
+             |HAZ existe_ya;
+         |FINSI;
+    |FINSI;
+    || Se podria afinar mas siguiendo las reglas de nombres de MSDOS.
+|FPRC;
+
+|| Compruebo que no exista ya la impresora;
+|PROCESO existe_ya;
+   |SI modo = 1;    || Viene de la linea anterior al encampo
+      anueva = #impresor#0;
+      anom_fich = anueva;
+      |HAZ compon_fich;
+
+      |LEESECUENCIAL afich_imp,nbuf_imp,nlin_imp,0,0;
+      |SI nbuf_imp ] 0;
+            |FINDIM nbuf_imp;
+            amensaje = "0000La impresora ya existe";
+            |MENAV amensaje;
+            |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|| No dejo que me salga con Ctrl+c en el nombre en blanco sino al ser un
+|| encampo se iria al siguiente y me desmonta
+|PROCESO no_ctrlc;|TIPO 11;
+     amensaje= "0000No puede dejarlo en blanco";
+     |MENAV amensaje;
+     |ERROR;
+|FPRC;

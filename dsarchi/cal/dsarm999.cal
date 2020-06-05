@@ -1,0 +1,291 @@
+||Crear Tarea de recepcion de correos en el Agitool.
+
+|FICHEROS;
+     crontcom@;     ||Crontab del rwnetcom
+|FIN;
+
+|VARIABLES;
+     aLetra = "";
+     aAux = "";
+     aDirBass = "";
+     aFicCron = "";
+     aDatos = "";
+     nLinea = 0;
+     aSistema = "";
+     aReturn = "";
+     aNomBat = "";
+     aFicBat = "";
+     aFicLanzaBat = "";
+     aAbre = "";
+     nHandle = 0;
+     aLinea = "";
+     aAlfa = "";
+     nContador = 0;
+
+     aMensaje = "";
+     aPathBin = "";
+     aDBass = "";
+     aComandoDOS = "";
+     nCanal = 0;
+
+     aMin     = "";
+     aHora    = "";
+     aDia_mes = "";
+     aMes     = "";
+     aDia_Sem = "";
+     aComando = "";
+
+     nAscii     = 0;
+     nAsciiB    = 0;
+
+     aCaracter    = "";
+     &eaCadena    = "";
+     &eaPassword  = "";
+|FIN;
+
+|PROCESO PonReturn;
+     aLinea = aReturn;
+     |XGRABA nHandle, aLinea;
+|FPRC;
+
+
+|PROCESO BorraCron;
+     ||Solo si ha sido creado por el dsarchi
+     aAux = #crontcom@#22;
+     |QBF aAux;
+     |SI aAux = "Tarea Generada Automaticamente por DSARCHI.";
+          |BORRA 020#crontcom@.a;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE BorraCron;
+ #crontcom@#3002;
+ ;
+ 000, "S";
+ 999, "S";
+ be;
+ NULL, BorraCron;
+|FIN;
+
+|PROCESO MeteCrontcom;
+     |QUE_SISTEMA aSistema;
+     |SI aSistema = "ESDOS";
+          aSistema = "ESDOS";
+          aReturn = &13 + &10;     ||DOS.
+     |SINO;
+          aSistema = "ESUNIX";
+          aReturn = &10;           ||Unix
+     |FINSI;
+
+     |DBASS aDBass; |QBF aDBass;
+     |SI aSistema = "ESUNIX";
+          aLetra = aDBass % 101;
+          |SI aLetra ! "/";
+               aDBass = "/" + aDBass;
+          |FINSI;
+     |FINSI;
+
+     |DBASS aDirBass;
+     |QBF aDirBass;
+     aFicCron = aDirBass + "agitool/def/crontcom";
+     |CARGA_DEF aFicCron, crontcom@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas con el CargaDef " + aFicCron;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aPathBin = aDirBass + "bin/";
+
+     aDatos = aDirBass + "agitool/fich/";
+     |PATH_DAT #crontcom@#aDatos#;
+
+     nLinea = 1;
+
+     |BUCLE BorraCron;
+
+     |HAZ GrabaRecepCorreos;
+
+     |HAZ GrabaTareasSrv;
+
+     |DESCARGA_DEF #crontcom@;
+|FPRC;
+
+|PROCESO GrabaRecepCorreos;
+     |SI aSistema = "ESDOS";
+          aNomBat = "correos.bat";
+     |SINO;
+          aNomBat = "correos.sh";
+     |FINSI;
+     aFicBat = aPathBin + aNomBat;
+     aFicLanzaBat = aPathBin + "l" + aNomBat;
+
+     aAbre = aFicLanzaBat;
+     |XABRE "WB", aAbre, nHandle;
+     |SI FSalida ] 0;
+          aLinea = "#Tarea de dsarchi. Recep. Correos";
+          |XGRABA nHandle, aLinea;
+          |HAZ PonReturn;
+
+          aLinea = aFicBat + " &";
+          |XGRABA nHandle, aLinea;
+          |HAZ PonReturn;
+     |FINSI;
+     |XCIERRA nHandle;
+
+     aAbre = aFicBat;
+     |XABRE "WB", aAbre, nHandle;
+     |SI FSalida ] 0;
+          |SI aSistema = "ESDOS";
+               aLinea = "@echo off";
+               |XGRABA nHandle, aLinea;
+               |HAZ PonReturn;
+
+               aLinea = aDBass + "bin\diagramx.exe /DS:" + &34 + "@" + aDBass + " $$$batch,batch# //(dsarchi)dsarz009" + &34;
+          |SINO;
+               aLinea = aDBass + "bin/serverds @" + aDBass + " " + &34 + "/!:dsarchi/dsarz009" + &34 + " >> /dev/null 2>> /dev/null";
+          |FINSI;
+          |XGRABA nHandle, aLinea;
+          |HAZ PonReturn;
+     |FINSI;
+
+     |XCIERRA nHandle;
+
+     |SI aSistema ! "ESDOS";
+          aAlfa = "chmod 777 " + aFicBat;
+          |SYSTEM aAlfa;
+     |FINSI;
+
+     |ABRE #crontcom@;
+
+     ||Controlar el numero de linea.
+     |HAZ DameLineaLibre;
+
+     |DDEFECTO #crontcom@;
+     #crontcom@#0 = 0;
+     #crontcom@#1 = nLinea;
+     |LEE 101#crontcom@.=;
+     |SI FSalida ! 0;
+          #crontcom@#2 = "30";
+          #crontcom@#3 = "0";
+          #crontcom@#4 = "*";
+          #crontcom@#5 = "*";
+          #crontcom@#6 = "*";
+          |SI aSistema = "ESDOS";
+               aComandoDOS = aFicBat;
+               #crontcom@#7 = aComandoDOS;
+          |SINO;
+               #crontcom@#7 = aFicLanzaBat;
+          |FINSI;
+          #crontcom@#8 = "S";
+          #crontcom@#9 = #crontcom@#2;
+          #crontcom@#10 = #crontcom@#3;
+          #crontcom@#11 = #crontcom@#4;
+          #crontcom@#12 = #crontcom@#5;
+          #crontcom@#13 = #crontcom@#6;
+          #crontcom@#14 = #crontcom@#7;
+          #crontcom@#15 = "N";
+          #crontcom@#22 = "Tarea Generada Automaticamente por DSARCHI.";
+          #crontcom@#23 = "S";
+
+          |GRABA 020#crontcom@.n;
+          |LIBERA #crontcom@;
+     |FINSI;
+
+     |CIERRA #crontcom@;
+|FPRC;
+
+
+|PROCESO DameLineaLibre;
+     ||Este proceso ira buscando una a una las lineas libres para ir ocupandolas
+     |PARA nContador = nLinea; |SI nContador [ 999; |HACIENDO nContador = nContador + 1;
+          #crontcom@#0 = 0;
+          #crontcom@#1 = nContador;
+          |LEE 000#crontcom@.=;
+          |SI FSalida ! 0;
+               nLinea = nContador;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+
+     |SI nContador ] 999;
+          aMensaje = "0000Error: Contador de Líneas en el crontcom, ha llegado a las 999.";
+          |MENAV aMensaje;
+     |FINSI;
+|FPRC;
+
+|| -------------- ESCRIBE EN EL FICHERO
+|PROCESO Escribe;
+     aMin     = #crontcom@#2;    |QBF aMin;
+     aHora    = #crontcom@#3;    |QBF aHora;
+     aDia_mes = #crontcom@#4;    |QBF aDia_mes;
+     aMes     = #crontcom@#5;    |QBF aMes;
+     aDia_Sem = #crontcom@#6;    |QBF aDia_Sem;
+     aComando = #crontcom@#7;    |QBF aComando;
+
+     aAlfa = "#" + #crontcom@#22 + aReturn;
+     |XGRABA nCanal, aAlfa;
+
+     |SI #crontcom@#8 = "S";
+          aAlfa = aMin + " " + aHora + " " + aDia_mes + " " + aMes + " " + aDia_Sem + " " + aComando + aReturn;
+     |SINO;
+          aAlfa = "#" + aMin + " " + aHora + " " + aDia_mes + " " + aMes + " " + aDia_Sem + " " + aComando + aReturn;
+     |FINSI;
+     |XGRABA nCanal, aAlfa;
+|FPRC;
+
+|DEFBUCLE crontcom;
+     #crontcom@#1002;
+     ;
+     00, 000;
+     00, 999;
+     ;
+     NULL, Escribe;
+|FIN;
+
+|| -------------- GRABA EL FICHERO "TAREAS.SRV" -----------------
+|PROCESO GrabaTareasSrv;
+     |DBASS aAbre;
+     aAbre = aAbre + "bin/tareas.srv";
+     |XABRE "WB", aAbre, nCanal;
+     |BUCLE crontcom;
+     |XCIERRA nCanal;
+|FPRC;
+
+|PROCESO SacaCrontcom;
+     |QUE_SISTEMA aSistema;
+     |SI aSistema = "ESDOS";
+          aSistema = "ESDOS";
+          aReturn = &13 + &10;     ||DOS.
+     |SINO;
+          aSistema = "ESUNIX";
+          aReturn = &10;           ||Unix
+     |FINSI;
+
+     |DBASS aDBass; |QBF aDBass;
+     |SI aSistema = "ESUNIX";
+          aLetra = aDBass % 101;
+          |SI aLetra ! "/";
+               aDBass = "/" + aDBass;
+          |FINSI;
+     |FINSI;
+
+     |DBASS aDirBass;
+     |QBF aDirBass;
+     aFicCron = aDirBass + "agitool/def/crontcom";
+     |CARGA_DEF aFicCron, crontcom@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas con el CargaDef " + aFicCron;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aDatos = aDirBass + "agitool/fich/";
+     |PATH_DAT #crontcom@#aDatos#;
+
+     |BUCLE BorraCron;
+
+     |HAZ GrabaTareasSrv;
+
+     |DESCARGA_DEF #crontcom@;
+|FPRC;

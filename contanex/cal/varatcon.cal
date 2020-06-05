@@ -1,0 +1,794 @@
+|INCLUYE dscnex_v;
+
+|FICHEROS;
+   varatcon #0;
+   vatr0002 #1;
+   vadacoli #2;         || Fichero para Cargar Datos
+   vadacoca #3;         || Cabecera
+
+
+   varatemp #103;       || Fichero de Ratios - Empresas
+   vaformul #104;       || Formulas
+   varatios #105;       || Ratios
+|FIN;
+
+|VARIABLES;
+  alfa1    = "";
+  alfa2    = "";
+  para1    = 0;
+  para2    = 0;
+
+  blancos  = "                                        ";
+  nume1    = 0;
+  altamod  = 0;
+
+
+  cue_perdi = "";
+  dig_perdi = 0;
+
+
+  sw       = 0;
+  sw_error = 0;
+  linea = 0;
+  d_digi = 0;
+  h_digi = 0;
+  d_cuen = "";
+  h_cuen = "";
+  eldesde = 0;
+  elhasta = 0;
+
+  act_cuent = "";
+  act_nivel = 0;
+  x = 0;
+  y = 0;
+  suma = 0;
+  activo    = 0;
+  pasivo    = 0;
+  beneficio = 0;
+  f_saldo   = 0;
+  i_saldo   = 0;
+  debe      = 0;
+  haber     = 0;
+  saldo     = 0;
+  descar    = 0;
+  des_exi   = 0;
+  has_exi   = 0;
+  sw_exp    = 0;
+  mes       = 0;
+|FIN;
+
+|INCLUYE calrat_v;  || Calculo de Ratios
+|INCLUYE i_ficher;
+
+|| *************************************************************************
+||                         CALCULOS DE PANTALLA
+|| *************************************************************************
+
+|PROCESO tipo8; |TIPO 8;
+ |HAZ vbase;
+ |SI dirfich0 = "*";
+     |MENAV "    NO EXISTE PROGRAMA DE CONTABILIDAD";
+     |PTEC 802;
+     |PTEC 815;
+ |FINSI;
+|FPRC;
+
+|PROCESO mayor; |TIPO 0;
+ alfa1 = #0Campo > " ";
+ #0Campo = alfa1;
+ |PINTA #0Campo;
+|FPRC;
+
+|CALCULO con_empr; |TIPO 0;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+
+  |SUB_EJECUTA_NP "vaconemp";
+  |ERROR;
+  |SI r_emp = 0; |PTEC 808; |ACABA; |FINSI;
+
+  #0#0 = r_emp; |PINTA #0#0;
+  #0#1 = r_per; |PINTA #0#1;
+  #0#2 = r_eje; |PINTA #0#2;
+||  #0#3 = r_nom; |PINTA #0#3;
+  |PTEC 802;
+|FCAL;
+
+|PROCESO leeregi; |TIPO 0;
+ |SI dirfich0 = "*"; |ACABA; |FINSI;
+ |SI FSalida = 2; |ACABA; |FINSI;
+ cod1 = #0#0;
+ cod2 = #0#1;
+ |HAZ leelo;
+ |SI swerror = 1;
+     |MENAV "     NO Existe la Empresa Contable";
+     |ERROR;
+     |ACABA;
+ |FINSI;
+  |SI #30#26 < 80;
+      #0#2 = 2000 + #30#26;
+  |SINO;
+      #0#2 = 1900 + #30#26;
+  |FINSI;
+ |PINTA #0#2;
+ #0#3 = #30#1; |PINTA #0#3;
+|FPRC;
+
+|PROCESO lee_reg; |TIPO 6;
+ |SI dirfich0 = "*"; |ACABA; |FINSI;
+ |SI FSalida = 2; |ACABA; |FINSI;
+ altamod = 0;
+ |ABRE #103;
+ |DDEFECTO #103;
+ #103#0 = #0#0;
+ #103#1 = #0#2;
+ #103#2 = #0#4;
+ |LEE 001#103=;
+ |SI FSalida = 0;
+     altamod = 1;
+     #0#5 = #103#3; |PINTA #0#5;
+     #0#6 = #103#4; |PINTA #0#6;
+ |FINSI;
+ |CIERRA #103;
+|FPRC;
+
+|PROCESO cuadro1; |TIPO 7;  || Datos Anteriores
+ |PUSHV  1614 2380;
+ |CUADRO 1614 1972;
+ |ATRI R;
+ |PINTA 1715, " (S) Pasa Datos CONTABILIDAD actuales a Datos ANTERIORES ";
+ |PINTA 1815, " (N) NO modifica Datos ANTERIORES                        ";
+ |ATRI r;
+|FPRC;
+
+|PROCESO cuadro; |TIPO 7;    || Datos Prevision
+ |PUSHV  1620 2380;
+ |CUADRO 1620 2075;
+ |ATRI R;
+ |PINTA 1721, " (S) Deja Datos PREVISION igual a Datos CONTABILIDAD  ";
+ |PINTA 1821, " (N) Pone a Cero Datos PREVISION                      ";
+ |PINTA 1921, " (D) NO modifica Datos PREVISION                      ";
+ |ATRI r;
+|FPRC;
+
+|PROCESO repon; |TIPO 0;
+ |POPV;
+|FPRC;
+
+|CALCULO estruct; |TIPO 0;
+  |SI dirfich0 = "*"; |ACABA; |FINSI;
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |HAZ lee_estr;
+  |SI sw_error  ! 0;
+      |MENAV "    No existe la estructura de descarga.";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI #0#13 = 0; |Y #0#10 = "S";
+      |MENAV "    Si actualiza la Entrada Gral, debe Informar Estructura ";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |ATRI I; |PINTA 1834, #caexistc#1; |ATRI 0;
+|FCAL;
+
+|CALCULO lee_estr;
+  sw_error = 0;
+  |SI #0#13 = 0;
+      #caexistc#1 = "SIN ESTRUCTURA DE DESCARGA ";
+      cue_perdi = ""; dig_perdi = 0;
+      |ACABA;
+  |FINSI;
+  alfa1 = #0#0; alfa1 = "00000" + alfa1; alfa1 = alfa1 % -105;
+  alfa2 = #0#1; alfa2 = "0"     + alfa2; alfa2 = alfa2 % -101;
+  dirfich = dirfich0 + alfa1 + alfa2 + "/";
+  |PATH_DAT #21 dirfich;
+  |ABRE #caexistc;
+  #caexistc#0 = #0#13;
+  |LEE 040#caexistc.=;
+  |SI FSalida ! 0
+      sw_error = 1;
+      |CIERRA #caexistc;
+      |ACABA;
+  |FINSI;
+  |CIERRA #caexistc;
+  cue_perdi = #caexistc#2;
+  dig_perdi = #caexistc#3;
+|FCAL;
+
+|CALCULO conexi;
+  |SI #0#13 = 0; |ACABA; |FINSI;
+  d_mes = #0#14;
+  h_mes = #0#15;
+  estru = #0#13;
+  r_emp = #0#0;
+  r_per = #0#1;
+  r_eje = #0#2;
+  r_nom = #0#3;
+  |SUB_EJECUTA_NP "vaexicon";
+|FCAL;
+
+|| **************************************************************************
+|| ********* CALCULOS PARA CREAR EL FICHERO AUXILIAR (SUMAS Y SALDOS) *******
+|PROCESO cab_grabar;
+ #3#0 = empresa;
+ #3#1 = anyo;
+ |LIBERA #3;
+ |LEE 101#3=;
+ |SI FSalida ! 0;
+     |DDEFECTO #3;
+     #3#0 = empresa;
+     #3#1 = anyo;
+     #3#2 = #30#1;
+     #3#3 = 0;
+     #3#4 = 0;
+     #3#5 = 0;
+     #3#6 = 0;
+     #3#7 = 0;
+     |GRABA 020#3c;
+     |LIBERA #3;
+ |FINSI;
+|FPRC;
+
+|PROCESO lin_grabar;
+  |PINTA 2229, " PASANDO:             ";
+  |ATRI I;
+  |PINTA 2239, #cacuenta#0;
+  |ATRI 0;
+  |DDEFECTO #2;
+
+  linea = linea + 1;
+  #2#0 = #3#0;
+  #2#1 = anyo;
+  #2#2 = linea;
+  #2#3 = #cacuenta#0;
+  #2#4 = #cacuenta#2;
+  #2#9 = f_saldo;
+  #2#5 = i_saldo;
+  #2#6 = debe;
+  #2#7 = haber;
+  #2#8 = saldo;
+  |GRABA 020#2n;
+
+  #3#3 = #3#3 + #2#5;
+  #3#4 = #3#4 + #2#6;
+  #3#5 = #3#5 + #2#7;
+  #3#6 = #3#6 + #2#8;
+  #3#7 = #3#7 + #2#9;
+  |GRABA 020#3a;
+  |LIBERA #3;
+|FPRC;
+
+|PROCESO beneficio; || lee la cuenta de descarga y graba el beneficio
+ |SI #0#10 = "S";
+     |HAZ cab_grabar;
+ |FINSI;
+
+ |DDEFECTO #cacuenta;
+ #cacuenta#0 = cue_perdi;
+ #cacuenta#1 = dig_perdi;
+ |SI #0#13 ! 0;
+     |LEE 101#cacuenta.=;
+     |SI FSalida ! 0;
+         #cacuenta#0 = cue_perdi;
+         #cacuenta#1 = dig_perdi;
+     |FINSI;
+ |FINSI;
+
+ i_saldo = 0; debe = 0; haber = 0; saldo = 0; f_saldo = 0;
+ |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+       y = x + 1;
+       debe  = debe  + ((#cacuenta#x# / enConversor) ! EURODBMOD);
+       haber = haber + ((#cacuenta#y# / enConversor) ! EURODBMOD);
+ |SIGUE;
+ f_saldo = (#cacuenta#11 / enConversor) ! EURODBMOD;
+ |SI #0#11 = 0;
+     i_saldo = (#cacuenta#11 / enConversor) ! EURODBMOD;
+     debe    = debe  - ((#cacuenta#9  / enConversor) ! EURODBMOD);
+     haber   = haber - ((#cacuenta#10 / enConversor) ! EURODBMOD);
+ |FINSI;
+ beneficio = activo + pasivo;
+ |SI beneficio > 0;
+     haber = haber + beneficio;
+ |SINO;
+     debe  = debe - beneficio;
+ |FINSI;
+ saldo = i_saldo + debe - haber
+
+ |SI #0#10 = "S";
+     #2#0 = #3#0;
+     #2#1 = anyo;
+     #2#3 = #cacuenta#0;
+     |LIBERA #2;
+     |LEE 110#2=;
+     |SI FSalida ! 0;
+         |HAZ lin_grabar;
+     |FINSI;
+ |FINSI;
+
+ |HAZ graba_cta; || Graba temporal para Ratios.
+|FPRC;
+
+|| **********************************************************************
+|CALCULO exis_expl;
+  descar = #caexistl#des_exi# - #caexistl#has_exi#; || iniciales - finales
+  descar = (descar / enConversor) ! EURODBMOD;
+  |SI descar = 0; |ACABA; |FINSI;
+  |SI descar ] 0;
+      act_cuent = #caexistl#5;     || cuenta descarga D
+      act_nivel = #caexistl#6;     || digito descarga D
+  |SINO;
+      act_cuent = #caexistl#8;     || cuenta descarga H
+      act_nivel = #caexistl#9;     || digito descarga H
+  |FINSI;
+
+  |SI act_cuent = #cacuenta#0; |Y act_nivel = #cacuenta#1;
+      sw_exp = 1;
+      |SI descar ] 0;
+          debe = debe + descar;
+      |SINO;
+          haber = haber - descar;
+      |FINSI;
+      saldo = debe - haber;
+      |HAZ graba_cta2;
+  |FINSI;
+|FCAL;
+
+|DEFBUCLE exis2;
+ #caexistl#1;
+ ;
+ #0#13, 01;
+ #0#13, 99;
+ be;
+ NULL, exis_expl;
+|FIN;
+
+|CALCULO exis_3000;
+ sw_exp  = 1;
+ f_saldo = (#caexistl#11 / enConversor) ! EURODBMOD;
+ i_saldo = (#caexistl#des_exi# / enConversor) ! EURODBMOD;
+ saldo   = (#caexistl#has_exi# / enConversor) ! EURODBMOD;
+ haber   = 0;
+ debe    = saldo - i_saldo;
+ |SI debe < 0; haber = - debe; debe = 0; |FINSI;
+ |HAZ graba_cta1;
+|FCAL;
+
+|DEFBUCLE exis1;
+ #caexistl#2;
+ ;
+ #0#13, #cacuenta#0;
+ #0#13, #cacuenta#0;
+ e;
+ NULL,exis_3000;
+|FIN;
+
+|CALCULO calcular;
+ f_saldo = 0;
+ i_saldo = 0;
+ saldo   = 0;
+ debe    = 0;
+ haber   = 0;
+ sw_exp  = 0;
+ alfa1   = #cacuenta#0 % 101;
+ |SI #0#13 ! 0;
+     |SI alfa1 = "3";                 |BUCLE exis1; |FINSI;
+     |SI alfa1 = "6"; |O alfa1 = "7"; |BUCLE exis2; |FINSI;
+ |FINSI;
+
+ |SI sw_exp = 1; |ACABA; |FINSI;
+
+ |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+       y = x + 1;
+       debe  = debe  + ((#cacuenta#x# / enConversor) ! EURODBMOD);
+       haber = haber + ((#cacuenta#y# / enConversor) ! EURODBMOD);
+       saldo = debe - haber;
+ |SIGUE;
+ f_saldo = (#cacuenta#11 / enConversor) ! EURODBMOD;
+ |SI #0#11 = 0;
+     i_saldo = (#cacuenta#11 / enConversor) ! EURODBMOD;
+     debe    = debe  - ((#cacuenta#9  / enConversor) ! EURODBMOD);
+     haber   = haber - ((#cacuenta#10 / enConversor) ! EURODBMOD);
+ |FINSI;
+|FCAL;
+
+|PROCESO grabar;
+ debe  = 0;
+ haber = 0;
+ saldo = 0;
+
+ |SI #0#13 = 0;      || Si no hay estructura
+     |HAZ calcular;
+ |SINO;
+     |SI #cacuenta#0 ! cue_perdi; || no es perdidas y ganancias
+         |HAZ calcular;
+     |FINSI;
+ |FINSI;
+
+ |SI debe ! 0; |O haber ! 0; |O saldo ! 0;
+     |SI #cacuenta#4 = 0;
+         |SI #cacuenta#5 = "A";
+             activo = activo + saldo;
+         |SINO;
+             pasivo = pasivo + saldo;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+
+ |SI #0#10 = "S";
+     |HAZ cab_grabar;
+     #2#0 = #3#0;
+     #2#1 = anyo;
+     #2#3 = #cacuenta#0;
+     |LIBERA #2;
+     |LEE 110#2=;
+     |SI FSalida ! 0;
+         |SI #cacuenta#0 ! cue_perdi; || no es perdidas y ganancias
+             |SI debe ! 0; |O haber ! 0; |O saldo ! 0;
+                 |HAZ lin_grabar;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+
+ |SI sw_exp = 0; |Y #cacuenta#0 ! cue_perdi;
+     |HAZ graba_cta; || Graba temporal para Ratios.
+ |FINSI;
+ |LIBERA #cacuenta;
+|FPRC;
+
+|PROCESO graba_cta;
+ sw = 1;
+ #1#0  = #cacuenta#0;    || Cuenta
+ #1#1  = #cacuenta#1;    || Nivel
+ |LEE 001#1=;
+ |SI FSalida ! 0;
+     |DDEFECTO #1;
+     #1#0  = #cacuenta#0; || Cuenta
+     #1#1  = #cacuenta#1; || Nivel
+     |GRABA 020#1b;
+ |FINSI;
+ suma = 0;
+ #1#2  = (#cacuenta#11 / enConversor) ! EURODBMOD; suma = suma + #1#2;   || Saldo Inicial.
+ #1#3  = (#cacuenta#14 / enConversor) ! EURODBMOD; suma = suma + #1#3;   || Enero
+ #1#4  = (#cacuenta#17 / enConversor) ! EURODBMOD; suma = suma + #1#4;   || Febrero
+ #1#5  = (#cacuenta#20 / enConversor) ! EURODBMOD; suma = suma + #1#5;   || Marzo
+ #1#6  = (#cacuenta#23 / enConversor) ! EURODBMOD; suma = suma + #1#6;   || Abril
+ #1#7  = (#cacuenta#26 / enConversor) ! EURODBMOD; suma = suma + #1#7;   || Mayo
+ #1#8  = (#cacuenta#29 / enConversor) ! EURODBMOD; suma = suma + #1#8;   || Junio
+ #1#9  = (#cacuenta#32 / enConversor) ! EURODBMOD; suma = suma + #1#9;   || Julio
+ #1#10 = (#cacuenta#35 / enConversor) ! EURODBMOD; suma = suma + #1#10;  || Agosto
+ #1#11 = (#cacuenta#38 / enConversor) ! EURODBMOD; suma = suma + #1#11;  || Septiembre
+ #1#12 = (#cacuenta#41 / enConversor) ! EURODBMOD; suma = suma + #1#12;  || Octubre
+ #1#13 = (#cacuenta#44 / enConversor) ! EURODBMOD; suma = suma + #1#13;  || Noviembre
+
+ |SI #cacuenta#0 ! cue_perdi; || no es perdidas y ganancias
+      #1#14 = (#cacuenta#47 / enConversor) ! EURODBMOD;        || Diciembre
+ |SINO;
+      #1#14 = saldo - suma; || Diciembre Perdidas y Ganancias
+ |FINSI;
+ |GRABA 020#1a;
+ |LIBERA #1;
+|FPRC;
+
+|PROCESO graba_cta1; || Existencias tipo 3000
+ sw = 1;
+ #1#0  = #cacuenta#0;    || Cuenta
+ #1#1  = #cacuenta#1;    || Nivel
+ |LEE 001#1=;
+ |SI FSalida ! 0;
+     |DDEFECTO #1;
+     #1#0  = #cacuenta#0; || Cuenta
+     #1#1  = #cacuenta#1; || Nivel
+     |GRABA 020#1b;
+ |FINSI;
+ suma = 0;
+ #1#2  = (#caexistl#11 / enConversor) ! EURODBMOD;
+ suma  = suma + #1#2;   || Saldo Inicial.
+
+ #1#3  = ((#caexistl#12 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#3;   || Enero
+
+ #1#4  = ((#caexistl#13 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#4;   || Febrero
+
+ #1#5  = ((#caexistl#14 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#5;   || Marzo
+
+ #1#6  = ((#caexistl#15 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#6;   || Abril
+
+ #1#7  = ((#caexistl#16 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#7;   || Mayo
+
+ #1#8  = ((#caexistl#17 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#8;   || Junio
+
+ #1#9  = ((#caexistl#18 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#9;   || Julio
+
+ #1#10 = ((#caexistl#19 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#10;  || Agosto
+
+ #1#11 = ((#caexistl#20 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#11;  || Septiembre
+
+ #1#12 = ((#caexistl#21 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#12;  || Octubre
+
+ #1#13 = ((#caexistl#22 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#13;  || Noviembre
+
+ #1#14 = ((#caexistl#23 / enConversor) ! EURODBMOD) - suma;
+ suma  = suma + #1#14;  || Diciembre
+
+ |GRABA 020#1a;
+ |LIBERA #1;
+|FPRC;
+
+|PROCESO graba_cta2; || Existencias tipo 6100
+ sw = 1;
+ #1#0  = #cacuenta#0;    || Cuenta
+ #1#1  = #cacuenta#1;    || Nivel
+ |LEE 001#1=;
+ |SI FSalida ! 0;
+     |DDEFECTO #1;
+     #1#0  = #cacuenta#0; || Cuenta
+     #1#1  = #cacuenta#1; || Nivel
+     |GRABA 020#1b;
+ |FINSI;
+
+  descar = #caexistl#des_exi# - #caexistl#has_exi#; || iniciales - finales
+  descar = (descar / enConversor) ! EURODBMOD;
+  #1#2  = 0;                   || Saldo Inicial siempre 0.
+
+  descar = ((#caexistl#11 - #caexistl#12) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Enero (ini-enero)
+  #1#3 = #1#3 + descar;                          || Enero
+  suma = descar;
+
+  descar = ((#caexistl#12 - #caexistl#13) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Febrero
+  #1#4 = #1#4 + (descar - suma); || Febrero
+  suma = descar;
+
+  descar = ((#caexistl#13 - #caexistl#14) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Marzo
+  #1#5 = #1#5 + (descar - suma); || Marzo
+  suma = descar;
+
+  descar = ((#caexistl#14 - #caexistl#15) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Abril
+  #1#6 = #1#6 + (descar - suma); || Abril
+  suma = descar;
+
+  descar = ((#caexistl#15 - #caexistl#16) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Mayo
+  #1#7 = #1#7 + (descar - suma); || Mayo
+  suma = descar;
+
+  descar = ((#caexistl#16 - #caexistl#17) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Junio
+  #1#8 = #1#8 + (descar - suma); || Junio
+  suma = descar;
+
+  descar = ((#caexistl#17 - #caexistl#18) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Julio
+  #1#9 = #1#9 + (descar - suma); || Julio
+  suma = descar;
+
+  descar = ((#caexistl#18 - #caexistl#19) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Agosto
+  #1#10 = #1#10 + (descar - suma); || Agosto
+  suma = descar;
+
+  descar = ((#caexistl#19 - #caexistl#20) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Septiembre
+  #1#11 = #1#11 + (descar - suma); || Septiembre
+  suma = descar;
+
+  descar = ((#caexistl#20 - #caexistl#21) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Octubre
+  #1#12 = #1#12 + (descar - suma); || Octubre
+  suma = descar;
+
+  descar = ((#caexistl#21 - #caexistl#22) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Noviembre
+  #1#13 = #1#13 + (descar - suma); || Noviembre
+  suma = descar;
+
+  descar = ((#caexistl#22 - #caexistl#23) / enConversor) ! EURODBMOD;
+                                                 || Saldo de Diciembre
+  #1#14 = #1#14 + (descar - suma); || Diciembre
+  suma = descar;
+
+ |GRABA 020#1a;
+ |LIBERA #1;
+|FPRC;
+
+|| _______________________________________
+|DEFBUCLE varatcon0;
+ #cacuenta#1;
+ 3;
+ d_cuen, "S";
+ h_cuen, "S";
+ be;
+ NULL,grabar;
+|FIN;
+
+|| **********************************************************************
+|PROCESO borralin;
+ |BORRA 020#2c;
+|FPRC;
+
+|PROCESO la_carga;
+  alfa1 = #0#0; alfa1 = "00000" + alfa1; alfa1 = alfa1 % -105;
+  alfa2 = #0#1; alfa2 = "0"     + alfa2; alfa2 = alfa2 % -101;
+  dirfich = dirfich0 + alfa1 + alfa2 + "/";
+
+ |SI #0#10 = "S";      ||Si actualiza Entrada Gral.
+     |ABRE #3;
+     #3#0 = empresa;
+     #3#1 = anyo;
+     |LEE 040#3=;
+     |SI FSalida = 0;
+         |BUCLELIN 0borralin#3;
+         |BORRA 020#3c;
+     |FINSI;
+     |CIERRA #3;
+ |FINSI;
+
+ linea = 0;
+ |ABRE #1;
+ |ABRE #2;
+ |ABRE #3;
+ |SELECT #2#2;
+
+ |PATH_DAT #20 dirfich;
+ |ABRE #cacuenta;
+ |SI #0#13 ! 0;
+     |PATH_DAT #22 dirfich;
+     |ABRE #caexistl;
+ |FINSI;
+
+ eldesde = (#0#11 * 3) + 9;
+ elhasta = (#0#12 * 3) + 9;
+ des_exi =  #0#14 + 11;
+ has_exi =  #0#15 + 11;
+
+ d_cuen = "            "; d_digi = 0;
+ h_cuen = "999999999999"; h_digi = 9;
+ activo = 0;
+ pasivo = 0;
+ beneficio = 0;
+
+ sw = 0;
+ |BUCLE varatcon0;
+ |HAZ beneficio;
+ |CIERRA #cacuenta;
+ |CIERRA #1;
+ |CIERRA #2;
+ |CIERRA #3;
+ |SI #0#13 ! 0; |CIERRA #caexistl; |FINSI;
+|FPRC;
+
+|| *********************************************************************
+|| ******* PROCESO PRINCIPAL TIPO 3 ************************************
+|| *********************************************************************
+|PROCESO pase; |TIPO 3
+  |SI dirfich0 = "*"; |ACABA; |FINSI;
+  |HAZ lee_estr; |SI sw_error = 1; |ACABA; |FINSI; || Estructura descarga
+
+  enEmpresa  = #0#0;
+  enPerConta = #0#1;
+  |HAZ EnConversor;
+
+  |HAZ conexi;                                     || Existencias
+
+  linea = 0;
+  empresa  = #0#0;
+  periodo  = #0#1;
+  anyo     = #0#2;
+  nombre   = #0#3;
+  codrati  = #0#4;
+  descrip  = #0#5;
+  codform  = #0#6;
+  fec_con  = #0#7;
+  mes      = #30#12;
+
+ |ABRE #103;                     || ...... Lee el Registro Ratio/Empresa
+ #103#0 = empresa;
+ #103#1 = anyo;
+ #103#2 = codrati;
+ |LEE 101#103=;
+ |SI FSalida ! 0;
+     |DDEFECTO #103;
+     #103#0  = empresa;
+     #103#1  = anyo;
+     #103#2  = codrati;
+     #103#3  = descrip;
+     #103#4  = codform;
+     |HAZ leeratio;
+     #103#57 = mes;
+     #103#58 = nombre;
+     #103#59 = periodo;
+     |GRABA 020#103b;
+ |FINSI;
+
+ |ABRE #104;                      || Lee la Formula
+ #104#0 = codform;
+ |LEE 040#104=;
+ |SI FSalida ! 0;
+     |MENAV "    NO EXISTE FORMULA ... ";
+     |CIERRA #103;
+     |CIERRA #104;
+     |ACABA;
+ |FINSI;
+ |CIERRA #104;
+
+|| ........................... Prepara Fichero Auxiliar de Cuentas
+ |HAZ fichero;
+ |NOME_DAT #1 fichero;
+ |ABRE #1;
+ |CIERRA #1;
+ |DELINDEX #1;
+
+ |D_CUADRO 2128,2351;
+ |ATRI P;|PINTA 2229,"      <TEMPORAL>      "; |ATRI 0;
+
+ sw = 0;
+ |HAZ la_carga;
+ |SI sw = 0;
+     |MENAV "    NO EXISTEN DATOS EN LA CONTABILIDAD DE LA EMPRESA ";
+     |CIERRA #103;
+     |DELINDEX #1;
+     |ACABA;
+ |FINSI;
+
+ |SI #0#9 = "S";
+     fec_ant = #103#28;
+     |PARA para1 = 30; |SI para1 [ 41; |HACIENDO para1 = para1 + 1;
+           para2 = para1 - 14;
+           #103para1 = #103para2;
+     |SIGUE;
+ |FINSI;
+
+ |ATRI I; |PINTA 2229, " Calculando Ratio ... "; |ATRI 0;
+ |HAZ calculo_ratio;
+
+ |SI error = 0;
+     |SI #0#8 ! "D";
+         fec_pre = "00.00.0000";
+         |SI #0#8 = "S";
+             |PARA para1 = 44; |SI para1 [ 55; |HACIENDO para1 = para1 + 1;
+                   para2 = para1 - 28;
+                   #103para1 = #103para2;
+             |SIGUE;
+         |FINSI;
+         |SI #0#8 = "N"; |PDEFECTO #103, 43,56; |FINSI;
+     |FINSI;
+
+     #103#28 = fec_con;
+     #103#42 = fec_ant;
+     #103#56 = fec_pre;
+     |GRABA 020#103a;
+     |LIBERA #103;
+ |FINSI;
+ |CIERRA #103;
+ |DELINDEX #1;
+|FPRC;
+
+|| **************************************************************
+|PROCESO leeratio;
+ |ABRE #105;
+ #105#0 = codrati;
+ |LEE 001#105=;
+ |SI FSalida ! 0;
+     |DDEFECTO #105;
+ |FINSI;
+ #103#5 = #105#3; #103#6 = #105#4;
+ #103#7 = #105#5; #103#8 = #105#6;
+ #103#9 = #105#6;
+ |CIERRA #105;
+|FPRC;
+
+***************************

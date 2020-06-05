@@ -1,0 +1,223 @@
+||-----------------------------------------------------------------------||
+|| guery012.cal [002743]                               Asfaltos Guerola  ||
+||                                                                       ||
+|| Informe que compara lo facturado con los costes soportados en el      ||
+|| taller.                                                               ||
+||                                                                       ||
+|| Ini -> 29.mar.2006                                                    ||
+|| Ult -> 29.mar.2006                                   mcm.dsProduccion ||
+||-----------------------------------------------------------------------||
+
+|FICHEROS;
+     guery012       #00;
+
+     con00601       #01;      || maestro de vehiculos
+
+     guerm205       #10;      || facturacion
+     con00625       #20;      || taller9 - repara/cab
+     con00626       #21;      || taller9 - repara/lin
+
+||     agif0041       #48;      || el acceso a empresas del dscomer9
+
+     guerw056       #100;     || TMP
+|FIN;
+
+|VARIABLES;
+     naux      = 0;
+     aAlfa     = "";
+     aAlfa1    = "";
+
+     swNew     = 0;
+
+     alimb     = "";
+     alimZ     = "";
+
+     al1_8     = "";
+     al2_8     = "";
+
+     swImp     = 0;
+|FIN;
+
+|PROCESO Tipo66; |TIPO 66;
+     |ABRE #48;
+     #48#0 = #0Campo;
+     |CONSULTA_CLAVE #1#48;
+     |SI FSalida = 0;
+          #0Campo = #48#0;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #48;
+|FPRC;
+
+
+|PROCESO Ini; |TIPO 7;
+
+     |DFICE aAlfa; |QBT aAlfa;
+     |DFICB aAlfa1; |QBT aAlfa1;
+     aAlfa = aAlfa - aAlfa1;
+     aAlfa = aAlfa - "/";
+
+     #00#00 = aAlfa; |PINTA #00#00;
+     #00#02 = aAlfa; |PINTA #00#02;
+
+|FPRC;
+
+
+
+|| Pintamos la empresa que indica el campo.
+|PROCESO DescEmp;
+     |ABRE     #48;
+     |DDEFECTO #48;
+     #48#00 = #00#Campo#;
+     |LEE 040#48.=;
+     |SI FSalida ! 0;
+          |MENAV "0000Empresa NO definida";
+          |CIERRA #48;
+          |ERROR;
+          |ACABA;
+     |FINSI;
+
+     naux = Campo; naux = naux + 1;
+     #00#naux# = #48#01;
+     |PINTA #00#naux#;
+     |CIERRA   #48;
+|FPRC;
+
+
+
+
+
+|PROCESO CreaTMP_Fact;
+     swNew = 1
+     |DDEFECTO #100;
+     #100#00 = #10#11;  || la matricula
+     |LEE 040#100.=;
+     |SI FSalida = 0; swNew = 0; |FINSI;
+
+     #100#00 = #10#11;
+     #100#02 = #100#02 + #10#20;
+
+     |SI swNew = 1;
+          |GRABA 040#100.n;
+     |SINO;
+          |GRABA 040#100.a;
+     |FINSI;
+
+|FPRC;
+|DEFBUCLE _CreaTMP_Fact;
+  #guerm205#6;
+  11;
+  #00#06, 000000, al1_8;
+  #00#07, 999999, al2_8;
+  e;
+  NULL, CreaTMP_Fact;
+|FIN;
+
+
+
+
+
+|PROCESO CreaTMP_CosteLin;
+     swNew = 1
+     |DDEFECTO #100;
+     #100#00 = #20#03;  || la matricula
+     |LEE 040#100.=;
+     |SI FSalida = 0; swNew = 0; |FINSI;
+
+     #100#00 = #20#03;
+     #100#03 = #100#03 + #21#08;
+
+     |SI swNew = 1;
+          |GRABA 040#100.n;
+     |SINO;
+          |GRABA 040#100.a;
+     |FINSI;
+
+|FPRC;
+
+|DEFBUCLE _CreaTMP_CosteLin;
+  #con00626#1;
+  ;
+  #20#00, #20#01, 0001;
+  #20#00, #20#01, 9999;
+  e;
+  NULL, CreaTMP_CosteLin;
+|FIN;
+
+|PROCESO CreaTMP_Coste;
+     |BUCLE _CreaTMP_CosteLin;
+|FPRC;
+
+
+|DEFBUCLE _CreaTMP_Coste;
+  #con00625#2;
+  ;
+  #00#04, #00#06, alimb;
+  #00#05, #00#07, alimZ;
+  e;
+  NULL, CreaTMP_Coste;
+|FIN;
+
+
+
+
+
+
+
+|PROCESO ImprimeTMP;
+     swImp = 1;
+     |PRINT;
+|FPRC;
+|DEFBUCLE _ImprimeTMP;
+  #100#1;
+  ;
+  INICIO;
+  FINAL;
+  ;
+  NULL, ImprimeTMP;
+|FIN;
+
+
+
+|PROCESO Tipo3; |TIPO 3;
+     aAlfa = "56" + Usuario; |NOME_DAT #100#aAlfa#;
+     |ABRE #100; |CIERRA #100; |DELINDEX #100;
+
+     || para no tener problemas con los defbucles.
+     alimb = " " * 60;
+     alimZ = "z" * 60;
+     al1_8 = #00#04 % 108;         || recortamos el final para tener 8 alfa
+     al2_8 = #00#05 % 108;
+
+     |IMPRE 0;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+     |INFOR "guery012";
+     |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+     || path de datos de facturacion (empresa)
+     |DFICB aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + #00#00 + "/";
+     |PATH_DAT #10 aAlfa;
+
+     || path de datos de taller (empresa)
+     |DFICB aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + #00#02 + "/";
+     |PATH_DAT #01 aAlfa;
+     |PATH_DAT #20 aAlfa;
+     |PATH_DAT #21 aAlfa;
+
+     |ABRE   #100;
+     |BUCLE _CreaTMP_Fact;
+     |BUCLE _CreaTMP_Coste;
+     |CIERRA #100;
+
+     swImp = 0;
+     |BUCLE _ImprimeTMP;
+     |SI swImp = 1; |PIEINF; |FINSI;
+
+     |FININF;
+     |FINIMP;
+
+     |ABRE #100; |CIERRA #100; |DELINDEX #100;
+|FPRC;

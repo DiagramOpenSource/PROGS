@@ -1,0 +1,209 @@
+|FICHEROS;
+     z0000004 #0;
+     maacceso #1;
+|FIN;
+
+|VARIABLES;
+     &EmpresaActual = 0;
+     &EmpresaNueva  = 0;
+     &enSwTrata     = 2;
+
+     Empresa        = 0;
+     SwRepetido     = 0;
+     PathFich       = "";
+     Fichero        = "";
+|FIN;
+
+
+|| ***************************** Control en el entlineal
+
+|PROCESO Tipo11;  |TIPO 11;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+
+  |LIBERA #0;
+  |LEE 140#0=;
+
+  |ET Campo2;
+      |ENCAMPO #2#0;
+      |SI FSalida = 7;  |ACABA;        |FINSI;
+      |SI FSalida = 2;  |VETE Campo2;  |FINSI;
+
+      |GRABA 140#0a;
+
+  |PTEC 809;
+|FPRC;
+
+|PROCESO Nuevo; |TIPO 0;
+  |ABRE #1;
+  #1#0 = #0#2;
+  #1#1 = 0;
+  |LEE 040#1];
+  |SI FSalida = 0; |Y #1#0 = #0#2;
+      |MENAV "      La Empresa ya existe.";
+      |ERROR;
+  |FINSI;
+  |CIERRA #1;
+|FPRC;
+
+|| ***************************** Realizando el cambio
+
+|PROCESO Cambio;
+     |PINTA 1624, #0#1;
+
+     EmpresaActual = #0#0;
+     EmpresaNueva  = #0#2;
+
+     |SUB_EJECUTA_NP "z0000001";
+|FPRC;
+
+|DEFBUCLE z0000004_2;
+     #0#1;
+     2;
+     00000, 00001;
+     99999, 99999;
+     e;
+     NULL, Cambio;
+|FIN;
+
+|| ********************************** Borrado del Acceso
+
+|| maacceso
+
+|PROCESO Graba00;
+     #1#0 = EmpresaNueva;
+     |GRABA 140#1n;
+     |LIBERA #1;
+
+     #1#0 = EmpresaActual;
+     |LIBERA #1;
+     |LEE 140#1=;
+|FPRC;
+
+|DEFBUCLE maaccesoG;
+     #1#1;
+     ;
+     EmpresaActual, 0000;
+     EmpresaActual, 9999;
+     be;
+     NULL, Graba00;
+|FIN;
+
+|PROCESO Borra00;
+     |BORRA 140#1a;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE maaccesoB;
+     #1#1;
+     ;
+     EmpresaActual, 0000;
+     EmpresaActual, 9999;
+     be;
+     NULL, Borra00;
+|FIN;
+
+|PROCESO CambioAcceso;
+     EmpresaActual = #0#0;
+     EmpresaNueva  = #0#2;
+
+     |BUCLE maaccesoG;
+     |BUCLE maaccesoB;
+|FPRC;
+
+|DEFBUCLE z0000004_3;
+     #0#1;
+     2;
+     00000, 00001;
+     99999, 99999;
+     e;
+     NULL, CambioAcceso;
+|FIN;
+|| ***************************** Filtrando que no haya ningun codigo repetido
+
+|PROCESO Filtrandolo;
+     |SI Empresa = #0#2; SwRepetido = 1;  |FINSI;
+
+     Empresa = #0#2;
+|FPRC;
+
+|DEFBUCLE z0000004_1;
+     #0#2;
+     2;
+     00000, 00001;
+     99999, 99999;
+     ;
+     NULL, Filtrandolo;
+|FIN;
+
+|| ***************************** Carga de Datos
+
+|RUTINA ClaveBaja;
+     #0#0 = 1;
+|FRUT;
+
+|RUTINA ClaveAlta;
+     #0#0 = 99999;
+|FRUT;
+
+|PROCESO GrabaTempo;
+     #0#0 = #1#0;
+     |LIBERA #0;
+     |LEE 140#0=;
+     |SI FSalida ! 0;
+         |DDEFECTO #0;
+         #0#0 = #1#0;
+         #0#1 = #1#2;
+         ||#0#2 = #1#0 + 1000;
+         |GRABA 140#0n;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE maacceso;
+     #1#1;
+     ;
+     00000, 0000;
+     99999, 9999;
+     be;
+     NULL, GrabaTempo;
+|FIN;
+
+|PROGRAMA;
+     enSwTrata     = 2;
+
+     |CLS;
+     |CABEZA "Cambio de Codigos";
+     |DFICE PathFich;
+     |TEMPO Fichero;    |FBORRA Fichero;
+     Fichero = Fichero - PathFich;
+     |NOME_DAT #0 Fichero;
+     |ABRE #0;  |CIERRA #0;  |DELINDEX #0;
+
+     |ABRE #0;
+     |BUCLE maacceso;
+     |CIERRA #0;
+
+     |ET otra_vez;
+         |PINPA #0#0;
+         |ENTLINEAL #1#0, 1, 4, 20, 0, ClaveBaja, ClaveAlta;
+
+         SwRepetido = 0;
+         |BUCLE z0000004_1;
+         |SI SwRepetido = 1;
+             |MENAV "     Hay Codigos Nuevos Repetidos";
+             |VETE otra_vez;
+         |FINSI;
+
+
+      |CONFI "2400NDesea realizar el Cambio : ";
+      |SI FSalida = 0;
+          |BLANCO 1424 1663;
+          |CUADRO 1323 1764;
+          |ATRI R;
+          |PINTA 1424, "          CAMBIANDO CODIGO A :          "
+          |ATRI 0;
+
+          |BUCLE z0000004_2;
+          |BUCLE z0000004_3;
+     |FINSI;
+     |ABRE #0;  |CIERRA #0;  |DELINDEX #0;
+|FPRO;

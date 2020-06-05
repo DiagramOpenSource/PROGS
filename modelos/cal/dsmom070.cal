@@ -1,0 +1,338 @@
+|FICHEROS;
+     dsmom070 #70;
+     dsmom071 #71;
+     dsmom004 #4;
+     dsmod309 #309;
+     :/basica/def/agitab99 #199;
+     :/contasoc/def/isocie29 #202;
+     :/contasoc/def/isom9000 #302;
+
+     &clientes@ #715;
+     &bancosc@ #720;
+|FIN;
+
+|VARIABLES;
+     nModo    = 0;
+     nForma   = 0;
+     nChequeo = 0;
+     nResult  = 0;
+     nRemesa  = 0;
+     nSuma    = 0;
+
+     aAlfa    = "";
+     aPathSoc = "";
+
+     &eaCuenta = "";
+|FIN;
+
+|INCLUYE i_variar;
+
+|PROCESO AltaNuevo;  |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 1;  |ACABA;  |FINSI;
+
+     |LEE 040#70u;
+     |SI FSalida ! 0;
+         #70#0 = 1;
+     |SINO;
+         #70#0 = #70#0 + 1;
+     |FINSI;
+
+     |PINTA #70#0;
+|FPRC;
+
+|PROCESO LeeBanco;  |TIPO 0;
+     enCodBanco = #70#2;
+     |HAZ LeeBancoCliente;
+
+     #70#3  = #720#2;   |PINTA #70#3;
+     #70#4  = #720#3;   |PINTA #70#4;
+     #70#5  = #720#1;   |PINTA #70#5;
+     #70#6  = #720#5;   |PINTA #70#6;
+|FPRC;
+
+|PROCESO LeeCliente;
+     enCodCli = #71#2;
+     |HAZ LeePersona;
+
+     |ABRE #715;
+     #715#0 = enCodCli;
+     |LEE 040#715=;
+     |SI FSalida ! 0;
+         |CIERRA #715;
+         |MENAV "     No existe el Cliente";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+     |CIERRA #715;
+
+     |SI enSwDeDonde = 1;
+         enModelo = #71#6;  enForzar = 1;  |HAZ CogeDatosBancos;
+
+         |SI enBanco ! #70#2;
+             |CONFI "0000NEl Banco de Cliente no trabaja con el Banco de la Remesa. Continuar";
+             |SI FSalida ! 0;
+                 |ERROR;
+                 |ACABA;
+             |FINSI;
+         |FINSI;
+         #71#4 = eaDC;       |PINTA #71#4;
+         #71#5 = eaCuenta;   |PINTA #71#5;
+     |SINO;
+         |SI #715#79 ! #70#2;
+             |CONFI "0000NEl Banco de Cliente no trabaja con el Banco de la Remesa. Continuar";
+             |SI FSalida ! 0;
+                 |ERROR;
+                 |ACABA;
+             |FINSI;
+         |FINSI;
+         #71#4 = #715#83;   |PINTA #71#4;
+         #71#5 = #715#84;   |PINTA #71#5;
+     |FINSI;
+
+     #71#3 = #715#1;
+     aAlfa = #71#3;  |QBF aAlfa;
+     |SI aAlfa = "";  #71#3 = #715#2;  |FINSI;
+     |PINTA #71#3;
+|FPRC;
+
+|PROCESO PonRemesa309;
+     |SI nChequeo = 0;
+         |SI #309#13 ! " ";
+             nRemesa = 1;
+             |ACABA;
+         |FINSI;
+
+         nResult = nResult + #309#18;
+
+         #309#13 = "X";
+         #309#14 = #70#0;
+         #309#15 = #70#1;
+     |FINSI;
+
+     |SI nChequeo = 1;
+         |SI nForma < 0;
+             #309#13 = " ";
+             #309#14 = 0;
+             #309#15 = "01.01.0000";
+         |SINO;
+             #309#13 = "X";
+             #309#14 = #70#0;
+             #309#15 = #70#1;
+         |FINSI;
+     |FINSI;
+
+     |GRABA 020#309a;
+     |LIBERA #309;
+|FPRC;
+
+|DEFBUCLE dsmod309;
+     #309#1;
+     ;
+     #71#2, 01, #71#7, #71#8, #71#11, 01;
+     #71#2, 98, #71#7, #71#8, #71#11, 99;
+     be;
+     NULL, PonRemesa309;
+|FIN;
+
+|PROCESO Modelo202_2009;
+     |DBASS aPathSoc;  |QBF aPathSoc;
+     aPathSoc = aPathSoc + "contasoc/fich/";
+     |PATH_DAT #202 aPathSoc;
+     |ABRE #202;
+     #202#0 = #71#2;
+     #202#1 = #71#7;
+     |LEE 000#202=;
+     |SI FSalida ! 0;
+         |MENAV "      No existe Modelo";
+     |SINO;
+         |SI #71#8 > 3;
+             |MENAV "0000 Periodos del 1 al 3.";
+             |ERROR;
+         |FINSI;
+
+         |SI #71#8 = 1;
+             |SI #202#9 = "          ";
+                 |MENAV "0000 Periodo sin Imprimir";
+                 |ERROR;
+             |FINSI;
+
+             #71#10 = #202#6 + #202#24;
+             |SI #71#10 < 0;  #71#10 = 0;  |FINSI;
+         |FINSI;
+
+         |SI #71#8 = 2;
+             |SI #202#10 = "          ";
+                 |MENAV "0000 Periodo sin Imprimir";
+                 |ERROR;
+             |FINSI;
+
+             #71#10 = #202#7 + #202#25;
+             |SI #71#10 < 0;  #71#10 = 0;  |FINSI;
+         |FINSI;
+
+         |SI #71#8 = 3;
+             |SI #202#11 = "          ";
+                 |MENAV "0000 Periodo sin Imprimir";
+                 |ERROR;
+             |FINSI;
+
+             #71#10 = #202#8 + #202#26;
+             |SI #71#10 < 0;  #71#10 = 0;  |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |SI #71#10 [ 0;
+         |MENAV "        Atencion Modelo Negativo o Importe Cero.";
+     |FINSI;
+
+     |CIERRA #202;
+|FPRC;
+
+|PROCESO Modelo202_2010;
+     |SI #71#8 > 3;
+         |MENAV "0000 Periodos del 1 al 3.";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |SI #71#8 = 1;  aAlfa = "1P";  |FINSI;
+     |SI #71#8 = 2;  aAlfa = "2P";  |FINSI;
+     |SI #71#8 = 3;  aAlfa = "3P";  |FINSI;
+
+     |ABRE #302;
+     #302#0  = #71#2;
+     #302#1  = #71#7;
+     #302#2  = aAlfa;
+     #302#3  = #71#11;
+     |LEE 000#302=;
+     |SI FSalida ! 0;  |O #302#8 ! "S";
+         |MENAV "      No existe Modelo o No esta Impreso.";
+         |ERROR;
+         |CIERRA #302;
+         |ACABA;
+     |FINSI;
+     |CIERRA #302;
+
+     nSuma = #302#14 + #302#34;
+     |SI nSuma [ 0;
+         |MENAV "        Atencion Modelo Negativo o Importe Cero.";
+     |FINSI;
+
+     #71#10 = nSuma;
+|FPRC;
+
+|PROCESO LeeModelo;  |TIPO 0;
+     |SI #71#6 ! 309;  |Y #71#6 ! 202;
+         |ABRE #4;
+         #4#0  = #71#2;
+         #4#1  = #71#7;
+         #4#2  = #71#8;
+         #4#3  = #71#6;
+         #4#4  = #71#11;
+         |LEE 040#4=;
+         |SI FSalida ! 0;  |O #4#9 ! "X";
+             |MENAV "      No existe Modelo o No esta Impreso.";
+             |ERROR;
+             |CIERRA #4;
+             |ACABA;
+         |FINSI;
+
+         |SI #4#11 = "X";
+             |MENAV "      Modelo ya Remesado.";
+             |ERROR;
+             |CIERRA #4;
+             |ACABA;
+         |FINSI;
+         |CIERRA #4;
+
+         |SI #4#15 [ 0;
+             |MENAV "        Atencion Modelo Negativo o Importe Cero.";
+         |FINSI;
+
+         #71#10 = #4#15;
+     |FINSI;
+
+     |SI #71#6 = 309;
+         nResult  = 0;
+         nChequeo = 0;
+         nRemesa  = 0;
+         |BUCLE dsmod309;
+
+         |SI nRemesa = 1;  |Y nResult = 0;
+             |MENAV "      Modelo ya Remesado.";
+             |ERROR;
+             |ACABA;
+         |FINSI;
+
+         |SI nResult [ 0;
+             |MENAV "        Atencion Modelo Negativo o Importe Cero.";
+         |FINSI;
+
+         #71#10 = nResult;
+     |FINSI;
+
+     |SI #71#6 = 202;
+        |SI #71#7 [ 2009;
+            |HAZ Modelo202_2009;
+        |FINSI;
+
+        |SI #71#7 ] 2010;
+            |HAZ Modelo202_2010;
+        |FINSI;
+     |FINSI;
+
+     |ABRE #199;
+     #199#0 = #71#6;
+     |LEE 040#199=;
+     |SI FSalida = 0;
+         #71#9 = #199#1;  |PINTA #71#9;
+     |FINSI;
+     |CIERRA #199;
+
+     |PINTA #71#10;
+|FPRC;
+
+|PROCESO Tipo2;  |TIPO 2;
+     #70#7 = #70#7 +. #71#10;  |PINTA #70#7;
+
+     nForma = +. 1;
+
+     |SI #71#6 ! 309;
+         |ABRE #4;
+         #4#0  = #71#2;
+         #4#1  = #71#7;
+         #4#2  = #71#8;
+         #4#3  = #71#6;
+         #4#4  = #71#11;
+         |LEE 101#4=;
+         |SI FSalida ! 0;  |CIERRA #4;  |ACABA;  |FINSI;
+
+         |SI nForma < 0;
+             #4#11  = " ";
+             #4#12 = "01.01.0000";
+             #4#18 = 0;
+         |SINO;
+             #4#11 = "X";
+             #4#12 = #70#1;
+             #4#18 = #70#0;
+         |FINSI;
+
+         |GRABA 020#4a;
+         |LIBERA #4;
+         |CIERRA #4;
+     |FINSI;
+
+     |SI #71#6 = 309;
+         nChequeo = 1;
+         |BUCLE dsmod309;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo5;  |TIPO 5;
+     FSalida = "SINBARRA";
+|FPRC;
+
+|PROCESO Tipo88;  |TIPO 88;
+     |HAZ Relaciones;
+|FPRC;

@@ -1,0 +1,357 @@
+|FICHEROS;
+    cacheapu #0;
+    camaasil #1;    || apuntes lins.
+    camaasic #2;    || apuntes cabs.
+
+    caivarep #3;    || iva soportado
+    caivasop #4;    || iva soportado
+    cacuenta #5;    || Plan Contable
+    ca8m0004 #404;  || Asiento apertura
+|FIN;
+
+|VARIABLES;
+  informe = "cacheapu";
+  fech1   = @;
+  fech2   = @;
+  sw      = 0;
+
+  &antdia  = 0;
+  &antfec  = @;
+  &antdoc  = 0;
+  &antapu  = 0;
+  &lerror  = 0;
+  &men     = "";
+  debe_p   = 0;
+  haber_p  = 0;
+  swmalo   = 0;
+
+  alfa1   = "";
+  alfa2   = "";
+  alfa3   = "";
+  alfa4   = "";
+
+  nume1   = 0;
+  aAlfa1  = "";
+  nNume1  = 0;
+  nNume2  = 0;
+
+  nivel   = 0;
+  cta     = "";
+  long    = "";
+
+  atip = "";
+  alib = 0;
+  afac = 0;
+  aser = "";
+  nGrabo = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+
+|| ************************** CALCULOS DESDE PANTALLA
+|PROCESO mayus; |TIPO 0;
+ #0Campo = #0Campo > #0Campo;
+ |PINTA #0Campo;
+|FPRC;
+
+|| ****************************************************************
+|PROCESO Ver8m004;
+      |ABRE #404;
+      #404#10 = #1#0;
+      #404#11 = #1#1;
+      #404#12 = #1#2;
+      #404#0  = #1#3;
+      |LEE 101#404=;
+      |SI FSalida = 0;
+          #404#9 = #1#5;
+          |GRABA 020#404a;
+      |FINSI;
+      |CIERRA #404;
+|FPRC;
+
+|PROCESO haycambio;
+  |SI antdoc = 0;
+       swmalo = 1;
+       antapu = 9999;
+       men = "NUMERO DOCUMENTO IGUAL A CERO";
+       |PRINT;
+  |FINSI;
+  |SI antapu > 9999;
+      swmalo = 1;
+      men = "ASIENTO CON MAS DE 9999 APUNTES ";
+      antapu = 9999;
+      |PRINT;
+  |FINSI;
+  |SI antdia = 0; |Y antfec ! fec1;
+      swmalo = 1;
+      men     = "ASTO EN DIARIO 00 CON FECHA DIFERENTE A APERTURA "
+      antapu = 9999;
+      |PRINT;
+  |FINSI;
+
+  #2#0 = antdia;
+  #2#1 = antfec;
+  #2#2 = antdoc;
+  |LEE 011#2=;
+  |SI FSalida = 0;
+      nNume1 = #camaasic#4 - debe_p;
+      aAlfa1 = nNume1; |QBF aAlfa1;
+      |SI aAlfa1 = "0"; |O aAlfa1 = "-0";
+           nNume1 = 0;
+      |FINSI;
+      nNume2 = #camaasic#5 - haber_p;
+      aAlfa1 = nNume2; |QBF aAlfa1;
+      |SI aAlfa1 = "0"; |O aAlfa1 = "-0";
+           nNume2 = 0;
+      |FINSI;
+      |SI nNume1 ! 0; |O nNume2 ! 0;
+          swmalo = 1;
+          antapu = 9999;
+          men = "SALDOS ASIENTO Y APUNTES DISTINTOS.";
+          |PRINT;
+      |SINO;
+         nNume1 = debe_p - haber_p;
+         aAlfa1 = nNume1; |QBF aAlfa1;
+         |SI aAlfa1 = "0"; |O aAlfa1 = "-0";
+             nNume1 = 0;
+         |FINSI;
+         |SI nNume1 ! 0;
+              swmalo = 1;
+              antapu = 9999;
+              men = "ASIENTO DESCUADRADO.";
+              |PRINT;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  antdia  = #1#0;
+  antfec  = #1#1;
+  antdoc  = #1#2;
+  antapu  = #1#3;
+  debe_p  = 0;
+  haber_p = 0;
+|FPRC;
+
+|PROCESO informa;
+  nGrabo = 0;
+  swmalo = 0;
+  |SI sw = 0;
+      sw = 1;
+      antdia  = #1#0;
+      antfec  = #1#1;
+      antdoc  = #1#2;
+      debe_p  = 0;
+      haber_p = 0;
+  |FINSI;
+
+  |SI #1#0 ! antdia;  |O #1#1 ! antfec;  |O #1#2 ! antdoc;
+      |HAZ haycambio;
+  |FINSI;
+
+  antapu = #1#3;
+|| ......... Testeo
+  #2#0 = #1#0;
+  #2#1 = #1#1;
+  #2#2 = #1#2;
+  |LEE 001#2=;                    || Lectura Cabecera
+  |SI FSalida ! 0;
+      swmalo = 1;
+      men = "NO EXISTE CABECERA";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#1 < fec1;                              || Fecha
+      swmalo = 1;
+      men = "FECHA ASIENTO INFERIOR AL EJERCICIO CONTABLE";
+      |PRINT;
+  |FINSI;
+  |SI #1#1 > fec2;
+      swmalo = 1;
+      men = "FECHA ASIENTO SUPERIOR AL EJERCICIO CONTABLE";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#3 = 0; |Y #1#2 ! 0;
+      swmalo = 1;
+      men = "APUNTE IGUAL A CERO";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#8 = "D"; |O #1#8 = "d"; |O #1#8 = "0";
+     cta = #1#16; |QBF cta;
+     |SI cta = "";
+        men = "CUENTA CONTABLE DEBE EN BLANCO";
+        |PRINT;
+     |FINSI;
+  |FINSI;
+  |SI #1#8 = "H"; |O #1#8 = "h"; |O #1#8 = "1";
+     cta = #1#10; |QBF cta;
+     |SI cta = "";
+        men = "CUENTA CONTABLE HABER EN BLANCO";
+        |PRINT;
+     |FINSI;
+  |FINSI;
+
+  cta = #1#4; |QBF cta;           || Cuenta Contable
+  |SI cta = "";
+      swmalo = 1;
+      men = "CUENTA CONTABLE EN BLANCO";
+      |PRINT;
+  |SINO;
+      nivel = 0;
+      long  = cta % 0;
+      nume1 = long;
+      |SI nume1 = dig4; nivel = 1; |FINSI;
+      |SI nume1 = dig5; nivel = 2; |FINSI;
+      |SI nume1 = dig6; nivel = 3; |FINSI;
+      |SI nume1 = dig7; nivel = 4; |FINSI;
+      |SI nume1 = dig8; nivel = 5; |FINSI;
+      |SI nume1 = dig9; nivel = 6; |FINSI;
+      |SI nivel = 0;
+          swmalo = 1;
+          men = "CUENTA CONTABLE FUERA DE NIVEL";
+          |PRINT;
+      |SINO;
+          #1#5 = nivel;
+          |SI #1#8 = "H"; #1#11 = nivel; |FINSI;
+          |SI #1#8 = "D"; #1#17 = nivel; |FINSI;
+          nGrabo = 1;
+          |SI #1#0 = 0;
+              |HAZ Ver8m004;
+          |FINSI;
+       ||   |SI nivel ! #1#5;
+       ||       swmalo = 1;
+       ||       men = "CUENTA CONTABLE CON NIVEL ERRONEO";
+       ||       |PRINT;
+       ||   |FINSI;
+      |FINSI;
+  |FINSI;
+  #5#0 = #1#4;
+  #5#1 = #1#5;
+  |LEE 001#5=;
+  |SI FSalida ! 0;
+      swmalo = 1;
+      men = "NO EXISTE CUENTA CONTABLE";
+      |PRINT;
+  |SINO;
+      |SI #5#3 = "N";
+          swmalo = 1;
+          men = "CUENTA CONTABLE SIN ASIENTO DIRECTO";
+          |PRINT;
+      |FINSI;
+  |FINSI;
+
+  |SI #1#9 = 0;                   || Importe Cero
+      swmalo = 1;
+      men = "IMPORTE IGUAL A CERO";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#6 = 0;                   || Concepto
+      swmalo = 1;
+      men = "CONCEPTO AUTOMATICO IGUAL A CERO";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#12 = "S"; |O #1#12 = "R";
+      |SI #1#19 ! " ";
+         |SI atip ! #1#12; |O alib ! #1#13; |O afac ! #1#14; |O aser ! #1#15;
+             |SI #1#12 = "S";  || SOPORTADO
+                 |ABRE #4;
+                 #4#0  = #1#13;
+                 #4#2  = #1#14;
+                 #4#27 = #1#15;
+                 |LEE 001#4=;
+                 |SI FSalida ! 0;
+                     swmalo = 1;
+                     alfa1 = #1#13; |QBF alfa1; alfa1 = ("00" + alfa1) % -102;
+                     alfa2 = #1#14; |QBF alfa2; alfa2 = ("000000" + alfa2) % -106;
+                     alfa3 = #1#15; |QBF alfa3; alfa3 = ("  " + alfa3) % -102;
+                     alfa4 = alfa1 + "/" + alfa3 + "/" + alfa2;
+                     men = "ASTO FRA. SOPORTADO " + alfa4 + " INEXISTENTE";
+                     |PRINT;
+                 |FINSI;
+                 |CIERRA #4;
+             |FINSI;
+             |SI #1#12 = "R";       || REPERCUTIDO
+                 |ABRE #3;
+                 #3#0  = #1#13;
+                 #3#2  = #1#14;
+                 #3#27 = #1#15;
+                 |LEE 001#3=;
+                 |SI FSalida ! 0;
+                     swmalo = 1;
+                     alfa1 = #1#13; |QBF alfa1; alfa1 = ("00" + alfa1) % -102;
+                     alfa2 = #1#14; |QBF alfa2; alfa2 = ("000000" + alfa2) % -106;
+                     alfa3 = #1#15; |QBF alfa3; alfa3 = ("  " + alfa3) % -102;
+                     alfa4 = alfa1 + "/" + alfa3 + "/" + alfa2;
+                     men = "ASTO FRA. REPERCUTIDO " + alfa4 + " INEXISTENTE";
+                     |PRINT;
+                 |FINSI;
+                 |CIERRA #3;
+             |FINSI;
+         |FINSI;
+         atip = #1#12; alib = #1#13; afac = #1#14; aser = #1#15;
+      |FINSI;
+   |FINSI;
+
+  |SI #1#8 = "D";
+      debe_p = debe_p + #1#9;
+  |SINO;
+      haber_p = haber_p + #1#9;
+  |FINSI;
+  |SI swmalo = 1;
+      lerror = lerror + 1;
+  |FINSI;
+
+  |SI #1#8 = "D";
+      |SI #1#16 ! #1#4; #1#16 = #1#4; nGrabo = 1; |FINSI;
+  |SINO;
+      |SI #1#16 ! "            "; #1#16 = ""; nGrabo = 1; |FINSI;
+  |FINSI;
+
+  |SI nGrabo = 1;
+      |GRABA 020#1a;
+  |FINSI;
+  |LIBERA #1;
+|FPRC;
+
+
+|DEFBUCLE lee_asientos;
+ #1#1;
+ ;
+ 00, fech1, 000000, 000000;
+ 99, fech2, 999999, 999999;
+ be;
+ NULL, informa;
+|FIN;
+
+
+|PROCESO chequeo; |TIPO 3;
+
+  |SI #0#0 = "N";  |ACABA;  |FINSI;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+  fech1 = "00.00.0000";
+  fech2 = "31.12.9999";
+  sw    = 0;
+  |ABRE #2;
+  |ABRE #5;
+  |BUCLE lee_asientos;
+  |HAZ haycambio; |SI swmalo = 1; lerror = lerror + 1; |FINSI;
+  |CIERRA #2;
+  |CIERRA #5;
+
+  |SI lerror ! 0;
+     |PIEINF;
+  |SINO;
+     |MENAV "    DIARIO CORRECTO, NO HAY ERRORES ...";
+  |FINSI;
+
+  |FININF;
+  |FINIMP;
+|FPRC;

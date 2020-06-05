@@ -1,0 +1,882 @@
+|FICHEROS;
+    camaasip #00;   || def introduccion cobros/pagos
+    camaasiq #01;   || def agrupacion de impagados
+    camaasic #02;   || apuntes cabs.
+    camaasil #03;   || apuntes lins.
+    cacuenta #04;   || cuentas
+    caconcep #06;   || concepto
+    camancob #07;   || cobros
+    camaasir #09;   || busqueda impagados
+|FIN;
+
+|| canales ocupados: 5, 8, 10, 30, 69, 70, 20
+
+|VARIABLES;
+    &entrada = 1;
+    men2  = "     Longitud de Cuenta Fuera de Nivel !";
+    men3  = "      Esta Cuenta NO tiene Pase directo";
+    cont = 0;
+    long = "  ";
+    cta  = 0;
+    num   = 0;
+    sw = 0;
+    traba1 = "";
+    traba2 = "";
+    trasum = 0;
+    juan = 0;
+    jose = 0;
+    pepe = 0;
+    rafa = 0;
+    anter = 0;
+    antnum = 0;
+    seran = "";
+
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    modo = 0;
+    digi = 0;
+    desc = 0;
+    &clau = "";
+    &ext1 = "";
+    &ext2 = "";
+    &ext3 = "";
+    &sw_ivamerr = 0;
+    doce = "            ";
+    ult_apunt = 0;
+    signe = "";
+    impor = 0;
+    conte = "";
+    digcu = 0;
+    conce = 0;
+    descr = "";
+    departam = "";
+    tip_acum = "";
+    num_acum = "";
+    tipos = "";
+    libro = 0;
+    orden = 0;
+    serie = "";
+    recib = 0;
+    FEstado = 0;
+    sw_defdes = 0;
+    sw_defdes2 = 0;
+    sw_defdes14 = 0;
+    sw_defdes23 = 0;
+    sw_defdep = 0;
+    sw_auto = 0;
+    ant_con = 0;
+    ant_con2 = 0;
+    ant_con14 = 0;
+    ant_con23 = 0;
+    sw_continua = 0;
+    guia = 0;
+    guia2 = 0;
+    po = 0;
+    mas = 0;
+    p_linea = 0;
+    cual = 0;
+    no_hagas = 0;
+    sw_alguno = 0;
+    sw_docum = 0;
+    docum = 0;
+    descu = 0;
+    desno = 0;
+    g_impor = 0;
+    feini = @;
+    fefin = @;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE actcta_i;
+|INCLUYE actudi_i;
+|INCLUYE puntos_i;
+|INCLUYE tempo_i;
+|INCLUYE conasi_i;
+
+|PROGRAMA;
+|HAZ inicio;
+|HAZ nom_usu;
+    alfa1 = "7" + nom_tmp;
+|NOME_DAT #1 alfa1;
+|DELINDEX #1;
+|DDEFECTO #0;
+|BLIN 4;
+|PINPA #0#0;
+|PINDA #0#0;
+    sw_continua = 0;
+    sw_ivamerr = 1;
+|PARA; |SI sw_continua = 0; |HACIENDO;
+        sw_continua = 1;
+    |ENDATOS #1#0;
+    |SI FSalida = 0;
+        |SI no_hagas = 0;  |HAZ capando;  |FINSI;
+        |SI sw_auto = 0;   |HAZ agrupa;   |FINSI;
+            sw_auto = 0;      || para saber si viene de un marcaje
+            E_inf = "SNsn";
+            E_sup = 1;
+            alfa1 = "N";
+            alfa1 = 1373 ? 0;
+        |SI alfa1 = "N";|O alfa1 = "n";
+                sw_continua = 0;
+        |SINO;
+                mas = (p_linea - 1) * -100;
+            |HAZ correte;
+            |ENTLINEAL #1#1, 1, 2, 20, 1, min1, max1;
+            |CONFI "    SConforme con la contabilizacion (S/N): ";
+            |SI FSalida = 0;
+                |HAZ asiento;     || graba el asiento
+            |FINSI;
+        |FINSI;
+    |FINSI;
+|SIGUE;
+|DELINDEX #1;
+|FPRO;
+
+|PROCESO capando;
+|CAMPO_MODIFICA #0#00, 1, "N";        || cuenta
+|CAMPO_MODIFICA #0#02, 1, "N";        || concepto descarga
+|CAMPO_MODIFICA #0#03, 1, "N";        || descripcion descarga
+|CAMPO_MODIFICA #0#13, 1, "N";        || departamento
+|CAMPO_MODIFICA #0#14, 1, "N";        || concepto cobro/pago
+|CAMPO_MODIFICA #0#15, 1, "N";        || descripcion cobro/pago
+|CAMPO_MODIFICA #0#16, 1, "N";        || fra.
+|CAMPO_MODIFICA #0#17, 1, "N";        || recibo
+|CAMPO_MODIFICA #0#18, 1, "N";        || fecha
+|CAMPO_MODIFICA #0#19, 1, "N";        || tipo asiento
+|CAMPO_MODIFICA #0#21, 1, "N";        || cuenta dto.
+|CAMPO_MODIFICA #0#23, 1, "N";        || concepto dto.
+|CAMPO_MODIFICA #0#24, 1, "N";        || descripcion dto.
+    no_hagas = 1;
+|FPRC;
+
+|PROCESO agrupa;                   || desde 'PROGRAMA'
+|HAZ cobro;
+|SI FEstado ! 0;    |ACABA;   |FINSI;   || cuando salimos con ESCAPE o CTRL-C
+                                        ||/de la seleccion, hace falta
+|ABRE #1;
+|DDEFECTO #1;
+    guia = guia + 1;
+    #1#00 = guia;        || la guia de consulta
+    #1#01 = #7#0;        || libro
+    #1#02 = #7#1;        || factura
+    #1#03 = #7#2;        || ~serie
+    #1#04 = #7#3;        || nro. recibo
+    #1#05 = #7#7;        || vencimiento original
+    #1#06 = #7#26;       || importe original
+    #1#07 = 0;           || gtos. impagado
+    #1#08 = #7#8;        || importe impagado
+    #1#09 = "S";         || gtos. cgo. cliente S/N
+    #1#10 = #7#4;        || cuenta
+    #1#11 = #7#5;        || digito
+    #1#12 = #7#6;        || fecha emision
+    #1#13 = 0;           || (inhibido)
+    #1#14 = #1#5;        || vencimiento nuevo
+
+    #0#10 = #0#10 + #1#6;     || importe original (T)
+    #0#11 = #0#11 + #1#8;     || importe impagado (T)
+    #0#12 = #0#12 + #1#7;     || gtos. impagado (T)
+|GRABA 020#1n;
+
+    p_linea = p_linea + 1;
+|SI p_linea = 6;
+        mas = -400;
+    |HAZ correte;
+        p_linea = 1;
+    |PINPA #0#1;
+|SINO;
+        mas = 100;
+|FINSI;
+|SI p_linea ! 1;
+    |HAZ correte;
+|FINSI;
+|PINDA #0#1;
+|CIERRA #1;
+|PINDA #0#0;
+|FPRC;
+
+|PROCESO correte;
+|CAMPO_POSICION #1#00,0,po; po=po+mas; |CAMPO_POSICION #1#00,1,po;
+|CAMPO_POSICION #1#01,0,po; po=po+mas; |CAMPO_POSICION #1#01,1,po;
+|CAMPO_POSICION #1#02,0,po; po=po+mas; |CAMPO_POSICION #1#02,1,po;
+|CAMPO_POSICION #1#04,0,po; po=po+mas; |CAMPO_POSICION #1#04,1,po;
+|CAMPO_POSICION #1#05,0,po; po=po+mas; |CAMPO_POSICION #1#05,1,po;
+|CAMPO_POSICION #1#06,0,po; po=po+mas; |CAMPO_POSICION #1#06,1,po;
+|CAMPO_POSICION #1#07,0,po; po=po+mas; |CAMPO_POSICION #1#07,1,po;
+|CAMPO_POSICION #1#08,0,po; po=po+mas; |CAMPO_POSICION #1#08,1,po;
+|CAMPO_POSICION #1#09,0,po; po=po+mas; |CAMPO_POSICION #1#09,1,po;
+|CAMPO_POSICION #1#14,0,po; po=po+mas; |CAMPO_POSICION #1#14,1,po;
+|FPRC;
+
+|PROCESO min1;
+    #1#0 = 1;
+|FPRC;
+
+|PROCESO max1;
+    #1#0 = guia;
+|FPRC;
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO cuenta; |TIPO 6;
+|SI no_hagas = 1;|Y Campo ! 8; |ACABA; |FINSI;
+    p_alfa1 = #0Campo;
+    salidas = FSalida;
+|HAZ punto;
+|SI p_error ! 0;  |ERROR;  |ACABA;  |FINSI;
+    digi = Campo + 1;
+    cta  = #0Campo;
+    long = cta % A0;
+    cont = 0;
+    sw = 0;
+    |SI cta = 0;  |Y Campo = 21;
+        sw = 1;
+        #0digi = 1;
+        |ACABA;
+    |FINSI;
+    |SI cta = 0;  |Y Campo = 8;
+        sw = 1;
+        #0digi = 1;
+    |FINSI;
+|SI long = dig4; sw = 1; #0digi = 1; |FINSI;
+|SI long = dig5; sw = 1; #0digi = 2; |FINSI;
+|SI long = dig6; sw = 1; #0digi = 3; |FINSI;
+|SI long = dig7; sw = 1; #0digi = 4; |FINSI;
+|SI long = dig8; sw = 1; #0digi = 5; |FINSI;
+|SI long = dig9; sw = 1; #0digi = 6; |FINSI;
+|SI sw = 0;
+    |MENAV men2;
+    |ERROR;
+    |ACABA;
+|FINSI;
+|SI #0Campo = doce; |Y Campo ! 8; |Y Campo ! 21;
+    |MENAV "    ATENCION!!! Error de Entrada ...";
+    |ERROR;
+    |ACABA;
+|FINSI;
+|FPRC;
+
+|PROCESO cuefin; |TIPO 0;          || desde campo 'cuenta'
+|SI no_hagas = 1;|Y Campo ! 8; |ACABA; |FINSI;
+    digi = Campo + 1;
+|ABRE #4;
+|SELECT #1#4;
+    #4#0 = #0Campo;
+    #4#1 = #0digi;
+|LEE 000#4=;
+|SI FSalida = 0;
+    |SI #4#3 = "S";
+        |SI Campo ! 8;
+                alfa1 = #4#2 % 112;
+            |SI Campo =  0;   |PINTA 0638, alfa1; |FINSI;
+            |SI Campo = 21;   |PINTA 0738, alfa1; |FINSI;
+        |FINSI;
+    |SINO;
+        |MENAV men3;
+        |ERROR;
+    |FINSI;
+|SINO;
+    |ERROR;
+|FINSI;
+|CIERRA #4;
+|FPRC;
+
+|PROCESO final; |TIPO 7;           || desde campo 'descripcion'
+|SI no_hagas = 1;  |ACABA;  |FINSI;
+
+|CAMPO_MODIFICA #0#24, 0, alfa1;
+|SI alfa1 = "N";|Y Campo = 24;     |ACABA;   |FINSI;
+
+|PTEC 816;
+|FPRC;
+
+|PROCESO conten; |TIPO 7;          || desde campo 'concepto'
+|SI no_hagas = 1;  |ACABA;  |FINSI;
+
+    cual = Campo;
+
+|SI cual = 23;
+    |CAMPO_MODIFICA #0#23, 1, "S";      || cuando la cta. de dto. es blanco
+    |CAMPO_MODIFICA #0#24, 1, "S";      ||/no entra en el concepto
+    |SI #0#21 = doce;
+        |CAMPO_MODIFICA #0#23, 1, "N";  #0#23 = 1;     |PINTA #0#23;
+        |CAMPO_MODIFICA #0#24, 1, "N";  #0#24 = "";    |PINTA #0#24;
+    |FINSI;
+|FINSI;
+
+|SI cual =  2;  ant_con2  = #0cual;  |FINSI;
+|SI cual = 14;  ant_con14 = #0cual;  |FINSI;
+|SI cual = 23;  ant_con23 = #0cual;  |FINSI;
+|FPRC;
+
+|PROCESO descrip; |TIPO 0;         || desde campo 'concepto'
+|SI no_hagas = 1;  |ACABA;  |FINSI;
+
+|CAMPO_MODIFICA #0#23, 0, alfa1;
+|SI alfa1 = "N";|Y Campo = 23;     |ACABA;   |FINSI;
+
+    cual = Campo;
+|SI cual =  2;  sw_defdes = sw_defdes2;   ant_con = ant_con2;   |FINSI;
+|SI cual = 14;  sw_defdes = sw_defdes14;  ant_con = ant_con14;  |FINSI;
+|SI cual = 23;  sw_defdes = sw_defdes23;  ant_con = ant_con23;  |FINSI;
+|SI sw_defdes = 0;|O ant_con ! #0cual;
+    |ABRE #6;
+    |DDEFECTO #6;
+        #6#0 = #0cual;
+    |LEE 000#6=;
+    |CIERRA #6;
+        desc = cual + 1;
+        #0desc = #6#1;
+    |PINTA #0desc;
+        sw_defdes = 1;
+|FINSI;
+|SI cual =  2;   sw_defdes2  = sw_defdes;  |FINSI;
+|SI cual = 14;   sw_defdes14 = sw_defdes;  |FINSI;
+|SI cual = 23;   sw_defdes23 = sw_defdes;  |FINSI;
+|FPRC;
+
+|PROCESO mayus; |TIPO 0;
+    #0Campo = #0Campo > #0Campo;
+|PINTA #0Campo;
+|FPRC;
+
+|PROCESO mayus1; |TIPO 0;
+    #1Campo = #1Campo > #1Campo;
+|PINTA #1Campo;
+|FPRC;
+
+|PROCESO si_esta; |TIPO 0;
+|SI FSalida = 0; |Y sw_auto = 0;
+    |PINTA 1314, "<F1>";
+    |HAZ cobro;
+    |SI FEstado > 0;
+        |MENAV "    ATENCION!!! Ficha inexistente ...";
+        |ERROR;
+    |SINO;
+        |SI FEstado = -1;
+            |MENAV "    ATENCION!!! Ficha NO liquidada ...";
+            |ERROR;
+        |SINO;
+            |ABRE #1;
+            |SELECT #2#1;
+            |LEE 001#1=;
+            |SI FSalida = 0;
+                |MENAV "    ATENCION!!! Recibo YA preparado ...";
+                |ERROR;
+            |FINSI;
+            |CIERRA #1;
+        |FINSI;
+    |FINSI;
+|SINO;
+    |HAZ buscar;
+|FINSI;
+|FPRC;
+
+|PROCESO cobro;
+|DDEFECTO #7;
+|ABRE #7;
+    #7#0 = #0#4;    || libro
+    #7#1 = #0#5;    || factura
+    #7#2 = #0#6;    || serie
+    #7#3 = #0#7;    || recibo
+|LEE 001#7=;
+    FEstado = FSalida;
+|SI FEstado = 0;|Y #7#23 = "N";
+        FEstado = -1;
+|FINSI;
+    #1#01 = #7#0;         || libro
+    #1#02 = #7#1;         || factura
+    #1#03 = #7#2;         || ~serie
+    #1#04 = #7#3;         || nro. recibo
+|CIERRA #7;
+|FPRC;
+
+|PROCESO buscar; |TIPO 0;
+|SI FSalida = 9;
+    |CAMPO_MODIFICA #0#8, 1, "S";
+        sw_alguno = 0;
+    |PARA; |SI sw_alguno = 0; |HACIENDO;
+        |ENCAMPO #8#0;
+        |SI FSalida = 0;
+            |HAZ buscar1;
+            |SI sw_alguno = 1;
+                |PINTA 1314, "<F1>";
+                |PTEC 806;
+                |PTEC 802;
+                |PTEC 802;
+                |PTEC 802;
+                    sw_auto = 1;  || para no entrar a 'agrupa' con los ptec
+            |FINSI;
+        |SINO;
+                sw_alguno = 1;
+        |FINSI;
+    |SIGUE;
+    |CAMPO_MODIFICA #0#8, 1, "N";
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO primero; |TIPO 7;
+|ATRI P;
+|PINTA 1314, "<F1>";
+|ATRI 0;
+
+|ABRE #1;
+|SELECT #2#1;
+|HAZ primero_c;
+|CIERRA #1;
+|PINDA #0#0;
+|FPRC;
+
+|PROCESO primero_c;
+|DDEFECTO #7;
+|ABRE #7;
+    #7#0 = #0#4;    || libro
+    #7#1 = #0#5;    || factura
+    #7#2 = #0#6;    || serie
+    #7#3 = #0#7;    || recibo
+|LEE 001#7];
+    FEstado = FSalida;
+|HAZ bu_pri_c;
+|PARA; |SI FEstado = 0;|Y #7#23 = "N"; |HACIENDO;
+    |LEE 001#7s;
+        FEstado = FSalida;
+    |HAZ bu_pri_c;
+|SIGUE;
+|CIERRA #7;
+|FPRC;
+
+|PROCESO bu_pri_c;
+|SI FEstado = 0;
+        #1#1 = #7#0;
+        #1#2 = #7#1;
+        #1#3 = #7#2;         || variables de temporal agrupacion
+        #1#4 = #7#3;
+    |LEE 001#1=;
+    |SI FSalida = 0;
+            #7#23 = "N";
+    |FINSI;
+|FINSI;
+    #0#4 = #7#0;
+    #0#5 = #7#1;          || variables de entrada manual
+    #0#6 = #7#2;
+    #0#7 = #7#3;
+|PINDA #0#0;
+|FPRC;
+
+|PROCESO nodepar; |TIPO 7;
+|SI sw_defdep = 0;
+        alfa1 = #30#24;
+    |CAMPO_MODIFICA #0#13, 1, alfa1;
+        sw_defdep = 1;
+|FINSI;
+|FPRC;
+____________________________________/ BUSQUEDA DE COBROS/PAGOS
+|PROCESO marcados1;
+    #0#4 = #9#1;    || libro
+    #0#5 = #9#2;    || factura
+    #0#6 = #9#3;    || serie
+    #0#7 = #9#4;    || recibo
+|PINDA #0#0;
+|HAZ cobro;
+|SI FEstado = 0;
+    |HAZ agrupa;
+        sw_alguno = 1;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE marcados;
+ #9#1;
+ 12;
+    1, "*";
+ 9999, "*";
+ e;
+ NULL, marcados1;
+|FIN;
+
+|PROCESO marcando; |TIPO 0;
+|SI FSalida = 0;                   || en [INTRO]
+    |LEE 121#9=;
+    |SI #9#12 = "*";
+            #9#12 = "";
+    |SINO;
+            #9#12 = "*";
+    |FINSI;
+    |PINTA #9#12;
+    |GRABA 020#9a;
+    |LIBERA #9;
+|FINSI;
+|FPRC;
+
+|PROCESO buscar1;
+    guia2 = 0;
+|HAZ nom_usu;
+    alfa1 = "8" + nom_tmp;
+|NOME_DAT #9 alfa1;
+|DELINDEX #9;
+|MENSA "    Cargando Opcion ...";
+|HAZ carga;
+|BLIN 4;
+|SI guia2 ! 0;
+    |PUSHV 05012380;
+    |ATRI P;
+    |PINTA 0932, #0#8;
+    |ATRI 0;
+    |ENTLINEAL #1#9, 1, 4, 17, 1, min, max;
+    |POPV;
+    |BUCLE marcados;
+|SINO;
+    |MENAV "    No se encontraron recibos LIQUIDADOS con esta cuenta contable ...";
+|FINSI;
+|DELINDEX #9;
+|FPRC;
+
+|PROCESO min;
+    #9#0 = 1;
+|FPRC;
+
+|PROCESO max;
+    #9#0 = 9999;
+|FPRC;
+
+|PROCESO carga2;
+    guia2 = guia2 + 1;
+    #9#00 = guia2;       || la guia de consulta
+    #9#01 = #7#0;        || libro
+    #9#02 = #7#1;        || factura
+    #9#03 = #7#2;        || ~serie
+    #9#04 = #7#3;        || nro. recibo
+    #9#05 = #7#7;        || fecha vencimiento
+    #9#06 = #7#8;        || importe
+    #9#07 = #7#24;       || cobrado
+    #9#08 = #9#6 - #9#7; || pendiente
+    #9#09 = #9#9 + #9#6;      || total importe
+    #9#10 = #9#10 + #9#7;     || total cobrado
+    #9#11 = #9#11 + #9#8;     || total pendiente
+    #9#12 = "";               || marcado
+    #9#13 = #0#8;             || cuenta consultada
+
+|ABRE #1;
+|SELECT #2#1;
+    #1#01 = #9#1;         || libro
+    #1#02 = #9#2;         || factura
+    #1#03 = #9#3;         || ~serie
+    #1#04 = #9#4;         || nro. recibo
+|LEE 001#1=;
+|SI FSalida ! 0;         || comprueba si ya esta agrupada
+    |GRABA 020#9n;
+|SINO;
+        guia2 = guia2 - 1;
+|FINSI;
+|CIERRA #1;
+|FPRC;
+
+|DEFBUCLE carga_c;
+ #7#2;
+ 23;
+ #0#8, #0#9, feini, "S";
+ #0#8, #0#9, fefin, "S";
+ e;
+ NULL, carga2;
+|FIN;
+
+|PROCESO carga;
+  |ABRE #9;
+  feini = "01.01.0001";
+  fefin = "31.12.9999";
+  |BUCLE carga_c;
+  |CIERRA #9;
+|FPRC;
+____________________________________/ GESTION DE LINEAS
+|PROCESO totales; |TIPO 2;
+    #0#10 = #0#10 +. #1#6;    || importe original (T)
+    #0#11 = #0#11 +. #1#8;    || importe impagado (T)
+    #0#12 = #0#12 +. #1#7;    || gtos. impagado (T)
+|PINTA #0#10;
+|PINTA #0#11;
+|PINTA #0#12;
+
+|SI #1#9 = "S";
+    descu = descu +. #1#7;     || gastos a cgo. cliente
+|SINO;
+    desno = desno +. #1#7;     || gastos a nuestro cargo
+|FINSI;
+|FPRC;
+
+|PROCESO modo; |TIPO 0;
+    modo = (FEntrada / 100) ! 0;
+|SI modo = 1;
+    |MENAV "    Alta no Permitida ...";
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO no_cuenta; |TIPO 0;
+|SI #1#9 = "N";|Y #0#21 = doce;
+    |ATRI P;   |PINTA 0708, "Cta.Gastos ....:";   |ATRI 0;
+    |MENAV "    ATENCION!!! Cuenta de Gastos NO definida ...";
+               |PINTA 0708, "Cta.Gastos ....:";
+        #1#9 = "S"; |PINTA #1#9;
+    |ERROR;
+|FINSI;
+|FPRC;
+____________________________________/ GRABACION DEL ASIENTO
+|PROCESO asiento;
+    sw_docum = 0;
+|ABRET #2;
+|ABRET #3;
+    ult_apunt = 1;
+|SI #0#19 = 1;
+    |HAZ asiento1;       || apunte de descarga
+    |HAZ asiento3;       || apunte de descuento
+|FINSI;
+|HAZ asiento2;                               || apunte de cobros/pagos
+|CIERRAT #2;
+|CIERRAT #3;
+|FPRC;
+
+|PROCESO asiento1;            || apunte descarga
+    signe = "H";         || signo
+    impor = #0#11 + #0#12;    || importe+gastos a cgo. cliente y los otros
+    conte = #0#0;        || cuenta
+    digcu = #0#1;        || digito
+    conce = #0#2;        || concepto
+    descr = #0#3;        || descripcion
+    docum = ext3;        || asiento (en el 1 lo coge solo aqui)
+    tip_acum = "";       || tipo acumulador
+    num_acum = 0;        || nro. acumulador
+    departam = #0#13;    || departamento
+    tipos = "";          || cobro/pago
+    libro = 0;           || libro
+    orden = 0;           || orden
+    serie = "";          || serie
+    recib = 0;           || nro. recibo
+|HAZ apuntes;
+|FPRC;
+
+|PROCESO asiento3;            || apunte descuento
+    signe = "D";
+    impor = desno;       || importe gastos a n/cgo.
+    conte = #0#21;       || cuenta
+    digcu = #0#22;       || digito
+    conce = #0#23;       || concepto
+    descr = #0#24;       || descripcion
+    docum = ext3;        || asiento (en el 1 lo coge solo aqui)
+    tip_acum = "";       || tipo acumulador
+    num_acum = 0;        || numero acumulador
+    departam = #0#13;    || departamento
+    tipos = "";          || cobro/pago
+    libro = 0;           || libro
+    orden = 0;           || orden
+    serie = "";          || serie
+    recib = 0;           || nro. recibo
+|HAZ apuntes;
+|FPRC;
+
+|PROCESO actua_c;        || actualiza cobros
+|ABRE #7;
+    #7#0 = #1#1;    || libro
+    #7#1 = #1#2;    || factura
+    #7#2 = #1#3;    || serie
+    #7#3 = #1#4;    || recibo
+|LEE 121#7=;
+    #7#23 = "N";              || liquidada
+    #7#24 = #7#24 - #1#8;     || acum. ptas. liquidadas
+    #7#7  = #1#14;            || nuevo vencimiento
+    #7#27 = #7#27 + 1;        || nro. impagados
+    #7#10 = #7#10 + #1#7;     || gtos. impagados
+    |SI #1#9 = "S";
+    #7#8  = #7#8 + #1#7;      || nuevo importe
+    |FINSI;
+    #7#12 = 0;                || nro. remesa
+|GRABA 020#7a;
+|LIBERA #7;
+|CIERRA #7;
+|FPRC;
+
+|PROCESO contrap1;
+|SI #0#19 ! 1;
+    |HAZ suma;
+    |HAZ contrap2;       || apunte descarga individual por cliente
+    |HAZ contrap3;       || apunte descuento individual por cliente
+|FINSI;
+
+    signe = "D";
+
+|SI #1#9 = "S";
+        impor = #1#8 + #1#7;  || importe+gastos
+|SINO;
+        impor = #1#8;         || importe
+|FINSI;
+    conte = #1#10;       || cuenta cliente/proveedor
+    digcu = #1#11;       || digito
+    conce = #0#14;       || concepto
+    descr = #0#15;       || descrip.
+    tip_acum = "";       || tipo acumulador
+    num_acum = 0;        || nro. acumulador
+    departam = #0#13;    || departamento
+    tipos = clau;        || impagado
+    libro = #1#1;        || libro
+    orden = #1#2;        || orden
+    serie = #1#3;        || serie
+    recib = #1#4;        || nro. recibo
+    g_impor = impor;          || para actualizarlo en cobros/pagos
+|HAZ descripcion;
+|HAZ apuntes;
+|HAZ actua_c;
+|FPRC;
+
+|PROCESO contrap2;
+    signe = "H";
+    impor = #1#8 + #1#7; || importe
+    conte = #0#0;        || cuenta descarga
+    digcu = #0#1;        || digito
+    conce = #0#2;        || concepto
+    descr = #0#3;        || descrip.
+    tip_acum = "";       || tipo acumulador
+    num_acum = 0;        || nro. acumulador
+    departam = #0#13;    || departamento
+    tipos = "";          || cobro/pago
+    libro = 0;           || libro
+    orden = 0;           || orden
+    serie = "";          || serie
+    recib = 0;           || nro. recibo
+|HAZ descripcion;
+|HAZ apuntes;
+|FPRC;
+
+|PROCESO contrap3;
+|SI #1#9 = "N";
+        signe = "D";
+        impor = #1#7;         || importe
+        conte = #0#21;        || cuenta descuento
+        digcu = #0#22;        || digito
+        conce = #0#23;        || concepto
+        descr = #0#24;        || descrip.
+        tip_acum = "";        || tipo acumulador
+        num_acum = 0;         || nro. acumulador
+        departam = #0#13;     || departamento
+        tipos = "";           || cobro/pago
+        libro = 0;            || libro
+        orden = 0;            || orden
+        serie = "";           || serie
+        recib = 0;            || nro. recibo
+    |HAZ descripcion;
+    |HAZ apuntes;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE contrap;
+ #1#1;
+ ;
+    1;
+ 9999;
+ e;
+ NULL, contrap1;
+|FIN;
+
+|PROCESO asiento2;       || apunte cobro/pago
+|BUCLE contrap;
+|FPRC;
+
+|PROCESO suma;
+|SI #0#19 = 2;
+    |SI sw_docum = 0;
+            sw_docum = 1;
+            docum = ext3;         || coge el que viene del 'camaasic'
+    |SINO;
+        |HAZ contador;
+            docum = #20#1;        || suma un asiento
+    |FINSI;
+        ult_apunt = 1;
+|SINO;
+        docum = ext3;
+|FINSI;
+|FPRC;
+
+|PROCESO descripcion;
+|QBF descr;
+|SI #0#16 = "S";                        || añade nro.fra. a la descripcion
+        alfa1 = #1#2;   alfa1 = "000000" + alfa1;   alfa1 = alfa1 % -106;
+        descr = descr + " " + alfa1;
+|FINSI;
+|SI #0#17 = "S";                        || añade nro.recibo a la descripcion
+        alfa1 = #1#4;   alfa1 = "000"    + alfa1;   alfa1 = alfa1 % -103;
+        descr = descr + " " + alfa1;
+|FINSI;
+|SI #0#18 = "S";                        || añade fecha a la descripcion
+        alfa1 = #1#12;
+        descr = descr + " " + alfa1;
+|FINSI;
+|FPRC;
+
+|PROCESO apuntes;
+|SI impor ! 0;|Y conte ! doce;|Y digcu ! 0;
+        sw_ivamerr = 0;
+
+    |DDEFECTO #3;
+        #3#00 = ext1;       || diario
+        #3#01 = ext2;       || fecha
+        #3#02 = docum;      || documento
+        #3#03 = ult_apunt;  || apunte
+        #3#04 = conte;      || cuenta
+        #3#05 = digcu;      || digito cuenta
+        #3#06 = conce;      || concepto
+        #3#07 = descr;      || descripcion
+        #3#08 = signe;      || signo
+        #3#09 = impor;      || importe
+    |SI #3#08 = "D";
+            #3#16 = #3#4;
+            #3#17 = #3#5;
+    |SINO;
+            #3#10 = #3#4;
+            #3#11 = #3#5;
+    |FINSI;
+        #3#12 = tipos;        || cobros/pagos
+        #3#13 = libro;        || libro
+        #3#14 = orden;        || orden
+        #3#15 = serie;        || serie
+        #3#22 = recib;        || nro.recibo
+        #3#19 = tip_acum;     || tipo acumulador
+        #3#20 = num_acum;     || numero acumulador
+        #3#21 = departam;     || departamento
+    |GRABA 020#3n;
+    |HAZ cabecera;
+        ressum = #3#9;
+    |HAZ actualiz1;     || actualiza cuentas
+        opera = "A";
+    |HAZ altatra;       || actualiza niveles inferiores
+        d_diari = #3#0;
+        d_opera = #3#8;
+        d_impor = #3#9;
+    |HAZ actu_diari;    || actualiza diario
+        ult_apunt = ult_apunt + 10;
+|FINSI;
+|FPRC;
+
+|PROCESO cabecera;
+|DDEFECTO #2;
+    #2#0 = #3#0;
+    #2#1 = #3#1;
+    #2#2 = #3#2;
+|LEE 101#2=;
+    FEstado = FSalida;
+    #2#0 = #3#0;         || diario
+    #2#1 = #3#1;         || fecha
+    #2#2 = #3#2;         || documento
+    #2#3 = #2#2;         || asiento
+|SI #3#8 = "D";
+        #2#4 = #2#4 + #3#9;
+    |SI #2#09 = 0; #2#08 = #3#4; #2#09 = #3#5; |FINSI;      || contrp.HABER
+|FINSI;
+|SI #3#8 = "H";
+        #2#5 = #2#5 + #3#9;
+    |SI #2#11 = 0; #2#10 = #3#4; #2#11 = #3#5; |FINSI;      || contrp.DEBE
+|FINSI;
+|SI FEstado = 0;  |GRABA 020#2a;  |FINSI;
+|SI FEstado ! 0;  |GRABA 020#2n;  |FINSI;
+|LIBERA #2;
+|FPRC;

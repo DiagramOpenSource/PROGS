@@ -1,0 +1,238 @@
+|FICHEROS;
+     dsmoz022;
+
+     dsmo7201;
+     dsmo7202;
+     dsmow145;
+
+     :/basica/def/agifigen;
+     :/basica/def/agitab99;
+|FIN;
+
+|VARIABLES;
+     &eaNomOrigen = "";
+     aFichero  = "";
+     aAlfa     = "";
+     aAlfa1    = "";
+     aAlfa2    = "";
+
+     nDEmpresa = 0;
+     nHEmpresa = 0;
+     nDEjer    = 0;
+     nHEjer    = 0;
+     nSalir    = 0;
+     nCampo    = 0;
+     nGraba    = 0;
+
+     fFecha    = @;
+     fDFecha   = @;
+     fHFecha   = @;
+
+     &enDesde  = 0;
+     &enHasta  = 0;
+|FIN;
+
+|INCLUYE i_variar;
+
+|| /////////////////////// PROCESOS ENTRADA POR PANTALLA \\\\\\\\\\\\\\\\\\\\
+|PROCESO SelLineal;
+     |SI #dsmoz022#19 = 1;
+         |C_M #dsmoz022#0, 1, "S";
+         |C_M #dsmoz022#1, 1, "N"; #dsmoz022#1 = 1; |PINTA #dsmoz022#1;
+     |SINO;
+         |C_M #dsmoz022#1, 1, "S";
+         |C_M #dsmoz022#0, 1, "N";
+     |FINSI;
+|FPRC;
+
+|PROCESO SacaAnyo;  |TIPO 7;
+     fFecha = ~;
+     aAlfa  = fFecha % -104;
+     #dsmoz022#0   = aAlfa;
+     |PINTA #dsmoz022#0;
+|FPRC;
+
+|| /////////////////////// PROCESOS DE TRABAJO \\\\\\\\\\\\\\\\\\\\
+|PROCESO GrabaTempo;
+    enEmpresaPINET = #dsmo7201#0;
+    |HAZ RestriccionPINET;
+    |SI enErrorPINET = 1;  |ACABA;  |FINSI;
+
+    #agifigen#0 = #dsmo7201#0;
+    |LEE 040#agifigen.=;
+    |SI FSalida ! 0;  |DDEFECTO #agifigen;  |FINSI;
+
+    #dsmow145#0 = #dsmo7201#0;
+    #dsmow145#1 = #dsmo7201#1;
+    |LEE 101#dsmow145.=;
+    |SI FSalida ! 0;
+        |DDEFECTO #dsmow145;
+        #dsmow145#0 = #dsmo7201#0;
+        #dsmow145#1 = #dsmo7201#1;
+        #dsmow145#2 = #agifigen#1;
+        |GRABA 020#dsmow145.n;
+
+        |SI #dsmoz022#19 = 1; |Y #dsmow145#1 = #dsmoz022#0;
+            nGraba = 1;
+        |FINSI;
+        |SI #dsmoz022#19 = 2; |Y #dsmow145#0 = #dsmoz022#1;
+            nGraba = 1;
+        |FINSI;
+    |FINSI;
+    |LIBERA #dsmow145;
+|FPRC;
+
+|DEFBUCLE dsmo7201;
+     #dsmo7201#1;
+     ;
+     00001, 2000, enPeriodo, enModelo, 00, 00;
+     99999, 2099, enPeriodo, enModelo, 99, 99;
+     ;
+     NULL, GrabaTempo;
+|FIN;
+
+|| *************************************************************
+|PROCESO PedirOtraVez;
+
+    nSalir = 1;
+    |C_P #dsmoz022#1, 1, 0714;
+    |C_P #dsmoz022#0, 1, 0814;
+
+    |SI #dsmoz022#19 = 1;
+        |ENCAMPO #0#dsmoz022;
+        |SI FSalida = 7; |O FSalida = 1; nSalir = 0; |ACABA; |FINSI;
+    |SINO;
+        eaElProm = "dsmoz022";
+        |ENCAMPO #1#dsmoz022;
+        |SI FSalida = 7; |O FSalida = 1;
+            eaElProm = "";
+            nSalir   = 0;
+            |ACABA;
+        |FINSI;
+        eaElProm = "";
+    |FINSI;
+
+    |ABRE #dsmow145;
+    #dsmow145#0 = #dsmoz022#1;
+    #dsmow145#1 = #dsmoz022#0;
+    |LEE 040#dsmow145.=;
+    |SI FSalida ! 0;
+        #dsmo7201#0 = #dsmow145#0;
+        #dsmo7201#1 = #dsmow145#1;
+        |ABRE #agifigen;
+        |HAZ GrabaTempo;
+        |CIERRA #agifigen;
+     |FINSI;
+     |CIERRA #dsmow145;
+|FPRC;
+|| *************************************************************
+|RUTINA ClaveBaja999;
+     #dsmow145#0 = nDEmpresa;
+     #dsmow145#1 = nDEjer;
+     |SI FSalida = "POSICION";
+         |SI enEmpresa ! 0; |Y enEjer ! 0;
+             #dsmow145#0 = enEmpresa;
+             #dsmow145#1 = enEjer;
+         |FINSI;
+     |FINSI;
+|FRUT;
+
+|RUTINA ClaveAlta999;
+     #dsmow145#0 = nHEmpresa;
+     #dsmow145#1 = nHEjer;
+|FRUT;
+
+|PROCESO Tipo3;  |TIPO 3;
+
+     aFichero = ("3z" + Usuario) % 108;
+     |NOME_DAT #dsmow145#aFichero#;
+     |DELINDEX #dsmow145;
+
+     aAlfa1 = #dsmoz022#0;
+     aAlfa2 = "01.01." + aAlfa1; fDFecha = aAlfa2;
+     aAlfa2 = "31.12." + aAlfa1; fHFecha = aAlfa2;
+
+     enPeriodo = 99;
+     enModelo  = #dsmoz022#15;
+     enEjer    = #dsmoz022#0;
+     enEmpresa = #dsmoz022#1;
+
+     |ABRE #dsmow145;
+     |ABRE #agifigen;
+     |BUCLE dsmo7201;
+     |SI nGraba = 0;
+         #dsmo7201#0 = enEmpresa;
+         #dsmo7201#1 = enEjer;
+         |HAZ GrabaTempo;
+     |FINSI;
+     |CIERRA #agifigen;
+     |CIERRA #dsmow145;
+
+     nDEjer    = 2000; nHEjer    = 2099;
+     nDEmpresa = 1;    nHEmpresa = 99999;
+
+     |SI #dsmoz022#19 = 1;
+
+  |ET PorEjercicio;
+         nDEjer = #dsmoz022#0;       || A¤o + Empresas
+         nHEjer = #dsmoz022#0;
+         |PINPA #0#dsmow145;
+         |ENTLINEAL #2#dsmow145, -2, 4, 22, 0, ClaveBaja999, ClaveAlta999;
+         |HAZ PedirOtraVez;
+         |SI nSalir = 1;  |VETE PorEjercicio; |FINSI;
+
+     |SINO;
+         |C_M #dsmow145#0,1,"N"; |C_V #dsmow145#0,1,"N";
+         |C_M #dsmow145#1,1,"S";
+         |C_P #dsmow145#1,1,1204; |C_L #dsmow145#1,1,"S";
+
+  |ET PorEmpresa;
+         nDEmpresa = #dsmoz022#1;    || Empresa + A¤os
+         nHEmpresa = #dsmoz022#1;
+         |PINPA #0#dsmow145;
+         |BLANCO 1002 2313;
+         |CUADRO 1002 2309;
+         |ATRI R; |PINTA 1103, "Ejerc.";|ATRI 0;
+
+         |ENTLINEAL #1#dsmow145, -2, 4, 22, 0, ClaveBaja999, ClaveAlta999;
+         |HAZ PedirOtraVez;
+         |SI nSalir = 1; |VETE PorEmpresa; |FINSI;
+     |FINSI;
+
+     |DELINDEX #dsmow145;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #agitab99;
+     #agitab99#0 = 720;
+     |LEE 040#agitab99.=;
+     |SI FSalida ! 0;  |DDEFECTO #agitab99;  |FINSI;
+     |CIERRA #agitab99;
+     |SI #agitab99#4 ! "S";
+         enDesde = 720;
+         enHasta = 720;
+         eaExtension = "bas";
+         eaPrograma  = "agitab99";
+         |SUB_EJECUTA_NP ":basica/dspatron";
+         |SUB_EJECUTA_NP "dsmom005";
+         |ABRE #agitab99;
+         #agitab99#0 = 720;
+         |LEE 040#agitab99.=;
+         |SI FSalida ! 0;  |DDEFECTO #agitab99;  |FINSI;
+         |CIERRA #agitab99;
+     |FINSI;
+
+     |DDEFECTO #dsmoz022;
+     #dsmoz022#15 = 720;
+     #dsmoz022#16 = #agitab99#1;
+     #dsmoz022#17 = #agitab99#2;
+     #dsmoz022#18 = #agitab99#3;
+
+     |CLS;
+     |CABEZA "Entrada Modelo 720";
+     |PINPA #0#dsmoz022;
+     |PINDA #0#dsmoz022;
+     |ENDATOS #1#dsmoz022;
+
+     |HAZ FinalizaEnX;
+|FPRO;

@@ -1,0 +1,928 @@
+|FICHEROS;
+   dscaz025 #0;
+
+   dscam021 #1;
+   dscam022 #2;
+
+   dscam008 #3;
+   dscam014 #4;
+   dscam051 #5;
+
+   dscaw101 #99,MANTE;
+   RefCabe@ #100;
+   RefLine@ #101;
+   Referen@ #1000;
+|FIN;
+
+|VARIABLES;
+   &eaFichClas = "";  &eaTipoClas = ""; &enSwClas = 0;
+   &Divisa = ""; &NombreDiv = "";
+   &nDeci_Base = 0; &nDeci_Div = 0;
+   &CambioDivCm = 0;
+   &eaCodigo    = ""; &eaCuenta    = ""; &enSwErr     = 0; &eaSesion = "";
+   &eaTOperacion = "";
+   &eaTipoRecibo = "";
+   &enNumDocum   = 0;
+   &enNumDocumento = 0;
+   &enEmpGestion = 0; &enSwVisado = 0;
+   &eaCliente    = "";
+   &efFechaVto   = @;
+   &enDocumento  = 0;
+
+   Conta = "S"; Gest = "N";
+   Cont = 0;
+   nSwVtoRec = 0; aAlfa = ""; aSwMarca = "";
+
+   nSwErr = -1;
+
+   Parte1 = 0; Parte2 = 0; Parte = 0;
+   Part1 = ""; Part2 = "";
+
+   LongAlfa = ""; Long = 0;
+   Comodin = "";
+   FEstado = 0;
+
+   &MaxDigit = 0; &UltNivel = 0; &TipoCliente = ""; &CodCliente = "";
+   &DCampoC = 0; &HCampoC = 0; &CodProveedor = "";
+
+   NumPag = 0; Linea = 0;
+   aCuenta = "";
+
+   nCont  = 0;
+   nCalc  = 0;
+   nSwHay = 0;
+   aAlfa1 = "";
+   aAlfa2 = "";
+
+   DCtaProv = ""; HCtaProv = "";
+   DCodProv = ""; HCodProv = "";
+
+   FechAnt  = @;  ProvAnt = "";
+   FechMax  = @;  ProvCod  = "";
+   nSwCorte = 0;
+   FechAct = @;
+   FechaVto = @;
+|FIN;
+
+|PROCESO Puntos;
+   |QBF aAlfa;
+   aAlfa = aAlfa - ".";
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      nCalc = ((FSalida / 100) ! 0) + 99; aAlfa1 = aAlfa % nCalc;
+      nCalc = FSalida + 98;               aAlfa2 = aAlfa % nCalc;
+      aAlfa = aAlfa1 + aAlfa2; |QBF aAlfa;
+      aAlfa = aAlfa % 0; nCalc = aAlfa;
+      nCalc = MaxDigit - nCalc; |SI nCalc < 0; nCalc = 0; |FINSI;
+      aAlfa = "0" * nCalc;
+      aAlfa = aAlfa1 + aAlfa + aAlfa2;
+
+      aAlfa = aAlfa - ".";
+   |SIGUE;
+
+   |QBF aAlfa;
+|FPRC;
+
+|PROCESO ConsultaCodigo;
+   |SI Campo = 12; |O Campo = 19; |ACABA; |FINSI;
+
+   aAlfa = #48#17; |QBF aAlfa;
+   aAlfa = aAlfa + "def/agifa112.mas";
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      aAlfa = #48#17; |QBF aAlfa;
+      aAlfa = aAlfa + "fich/" + (("00000" + #48#15) % -105) + "/";
+      |PATH_DAT #Referen@#aAlfa#; |ABRE #Referen@;
+
+      #Referen@#0 = #dscaz025#Campo#;
+      |LEE 000#Referen@.];
+      |CONSULTA_CLAVE #1#Referen@;
+      |SI FSalida = 0;
+         #dscaz025#Campo# = #Referen@#0; |PINTA #dscaz025#Campo#;
+      |FINSI;
+
+      |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+   |FINSI;
+|FPRC;
+
+|PROCESO ConsultaCuenta;
+   |SI Campo = 13; |O Campo = 20; |ACABA; |FINSI;
+
+   aAlfa = #48#16; |QBF aAlfa;
+   aAlfa = aAlfa + "def/cacuenta.mas";
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      aAlfa = #48#16; |QBF aAlfa;
+      aAlfa = aAlfa + "fich/" + (("00000" + #48#14) % -105) + #48#19 + "/";
+      |PATH_DAT #Referen@#aAlfa#; |ABRE #Referen@;
+
+      aAlfa = #dscaz025#Campo#; |HAZ Puntos;
+
+      #Referen@#0 = #dscaz025#Campo#;
+      |LEE 000#Referen@.];
+      |CONSULTA_CLAVE #1#Referen@;
+      |SI FSalida = 0;
+         #dscaz025#Campo# = #Referen@#0; |PINTA #dscaz025#Campo#;
+      |FINSI;
+
+      |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+   |FINSI;
+|FPRC;
+
+|PROCESO ConsultaF2;
+   |SI FSalida ! 10; |ACABA; |FINSI;
+
+   |SI Campo = 12; |O Campo = 19;
+      TipoCliente = #dscaz025#48; CodProveedor  = #dscaz025#Campo#;
+      DCampoC = Campo; HCampoC = Campo;
+
+      |HAZ ExisteProveedor;
+      |SI TipoCliente = "ERROR";
+         |ERROR;
+      |SINO;
+         #dscaz025#Campo# = CodProveedor;
+         |PINTA #dscaz025#Campo#;
+      |FINSI;
+   |SINO;
+      |HAZ ConsultaCodigo;
+   |FINSI;
+|FPRC;
+
+|PROCESO Cta; |TIPO 6;
+   FEstado = FSalida;
+   Comodin = #dscaz025#Campo#;
+   Comodin = Comodin - ".";
+   |SI FSalida ! 0;
+      Parte = FSalida;
+      Parte1 = 100 + (((Parte / 100) ! 0) - 1);
+      Parte2 = ((((Parte / 100) ! 0) + 1) * 100) + 99;
+      Part1 = #dscaz025#Campo# % Parte1;
+      Part2 = #dscaz025#Campo# % Parte2;
+      |QBF Part2;
+      Comodin = Part1 + Part2;
+      LongAlfa = Comodin % 0;
+      Long = MaxDigit - LongAlfa;
+      LongAlfa = "0" * Long;
+      Comodin = Part1 + LongAlfa + Part2;
+      #dscaz025#Campo# = Comodin;
+      |PINTA #dscaz025#Campo#;
+   |FINSI;
+   FSalida = FEstado;
+|FPRC;
+
+|PROCESO ExistClient3;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |SI #dscaz025#21 = "N"; |ACABA; |FINSI;
+
+   TipoCliente = #dscaz025#48; CodProveedor  = #dscaz025#Campo#;
+   DCampoC = Campo; HCampoC = Campo;
+
+   |HAZ ExisteProveedor;
+   |SI TipoCliente = "ERROR";
+      |ERROR;
+   |SINO;
+      #dscaz025#Campo# = CodProveedor;
+      |PINTA #dscaz025#Campo#;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraParrilla;
+   |SI #dscaz025#21 = "S";
+      |SI #dscaz025#48 = "G";
+         #dscaz025#13 = ""; #dscaz025#20 = "zzzzzzzzzzzz";
+         |PINTA #dscaz025#13; |PINTA #dscaz025#20;
+         |C_M #dscaz025#13,1,"N"; |C_M #dscaz025#20,1,"N";
+         |PARA Cont = 34; |SI Cont [ 45; |HACIENDO Cont = Cont + 1;
+            |C_M #dscaz025#Cont#,1,"S";
+         |SIGUE;
+      |SINO;
+         #dscaz025#12 = ""; #dscaz025#19 = "zzzzzzzzzzzz";
+         |PINTA #dscaz025#12; |PINTA #dscaz025#19;
+         |C_M #dscaz025#12,1,"N"; |C_M #dscaz025#19,1,"N";
+         |PARA Cont = 22; |SI Cont [ 33; |HACIENDO Cont = Cont + 1;
+            |C_M #dscaz025#Cont#,1,"S";
+         |SIGUE;
+      |FINSI;
+   |SINO;
+      |SI #dscaz025#48 = "G";
+         |C_M #dscaz025#13,1,"S"; |C_M #dscaz025#20,1,"S";
+         |PARA Cont = 34; |SI Cont [ 45; |HACIENDO Cont = Cont + 1;
+            #dscaz025#Cont# = ""; |PINTA #dscaz025#Cont#;
+            |C_M #dscaz025#Cont#,1,"N";
+         |SIGUE;
+      |SINO;
+         |C_M #dscaz025#12,1,"S"; |C_M #dscaz025#19,1,"S";
+         |PARA Cont = 22; |SI Cont [ 33; |HACIENDO Cont = Cont + 1;
+            #dscaz025#Cont# = ""; |PINTA #dscaz025#Cont#;
+            |C_M #dscaz025#Cont#,1,"N";
+         |SIGUE;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraCodif;
+   |SI #dscaz025#48 = "G";
+      Conta = "N"; Gest = "S";
+   |SINO;
+      Conta = "S"; Gest = "N";
+   |FINSI;
+
+   |C_M #dscaz025#12,1,Conta; |C_V #dscaz025#12,1,Conta;
+   |C_M #dscaz025#19,1,Conta; |C_V #dscaz025#19,1,Conta;
+   |PARA Cont = 22; |SI Cont [ 33; |HACIENDO Cont = Cont + 1;
+      |C_M #dscaz025#Cont#,1,Conta; |C_V #dscaz025#Cont#,1,Conta;
+   |SIGUE;
+   |C_M #dscaz025#13,1,Gest; |C_V #dscaz025#13,1,Gest;
+   |C_M #dscaz025#20,1,Gest; |C_V #dscaz025#20,1,Gest;
+   |PARA Cont = 34; |SI Cont [ 45; |HACIENDO Cont = Cont + 1;
+      |C_M #dscaz025#Cont#,1,Gest; |C_V #dscaz025#Cont#,1,Gest;
+   |SIGUE;
+
+   |PINPA #0#dscaz025;
+
+   |SI #dscaz025#48 = "G";
+      |PINTA 1205, "       [      ] [      ] [      ] [      ] [      ] [      ]      ";
+      |PINTA 1305, "       [      ] [      ] [      ] [      ] [      ] [      ]      ";
+      |PINTA 1405, "                                                                  ";
+   |SINO;
+      |PINTA 1205, "  [            ]  [            ]  [            ]  [            ]  ";
+      |PINTA 1305, "  [            ]  [            ]  [            ]  [            ]  ";
+      |PINTA 1405, "  [            ]  [            ]  [            ]  [            ]  ";
+   |FINSI;
+
+   |PINDA #0#dscaz025;
+|FPRC;
+
+|PROCESO CompruebaCont;
+   |ABRE #dscam021;
+   #dscam021#0 = #dscaz025#0;
+   |LEE 010#dscam021.=;
+   |SI FSalida = 0;
+      |MENAV "    Ya existe este codigo de pagare, Debera indicar uno inexistente";
+      |ERROR;
+   |FINSI;
+   |CIERRA #dscam021;
+|FPRC;
+
+|PROCESO MiraCont; |TIPO 7;
+   |SI #dscaz025#55 = "U"; |ACABA; |FINSI;
+   |SI #dscaz025#0 ! 0; |ACABA; |FINSI;
+
+   |ABRE #dscam021;
+   |LEE 010#dscam021.u;
+   |SI FSalida = 0;
+      #dscaz025#0 = #dscam021#0 + 1;
+   |SINO;
+      #dscaz025#0 = 1;
+   |FINSI;
+   |PINTA #dscaz025#0;
+   |CIERRA #dscam021;
+|FPRC;
+
+|PROCESO Recibos1;
+   enSwClas   = 1; eaFichClas = "dscaz025"; eaTipoClas = #dscam008#12;
+   |HAZ CompruebaClas;
+   |SI eaFichClas = "ERROR"; |ACABA; |FINSI;
+
+   |SI #dscam008#14 ! "C"; |Y #dscam008#14 ! "P"; |ACABA; |FINSI;
+
+   eaCodigo = #dscam008#32; eaCuenta = #dscam008#5; |HAZ MiraSiBloq;
+   |SI enSwErr ! 0; |ACABA; |FINSI;
+
+   enNumDocumento = #dscam008#40;
+   enEmpGestion = #dscam008#46; |HAZ MiraSiVisado;
+   |SI enSwVisado < 0; |ACABA; |FINSI;
+
+   eaTOperacion = "A"; eaTipoRecibo = "C"; enNumDocum = #dscam008#40; |HAZ ProcesaTempo;
+
+   |SI #dscaz025#6 = "M"; efFechaVto = #dscaz025#1; |FINSI;
+   |SI #dscaz025#6 = "A"; |O #dscaz025#6 = "U";
+      |SI nSwVtoRec = 1;
+         efFechaVto = #dscam008#3;
+      |SINO;
+         efFechaVto = #dscaz025#1;
+      |FINSI;
+   |FINSI;
+
+   eaCliente = #dscam008#32;
+   enDocumento = #dscam008#40; |HAZ MiraCertContr;
+   |SI enSwErr = 1; |ACABA; |FINSI;
+
+   #dscam014#0 = #dscaz025#4;
+   |LEE 010#dscam014.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam014;
+   |FINSI;
+
+   |SI #dscaz025#48 = "C";    ProvCod = #dscam008#5;  |FINSI;
+   |SI #dscaz025#48 = "G";    ProvCod = #dscam008#32; |FINSI;
+   |SI FechMax [ #dscam008#3; FechMax = #dscam008#3;  |FINSI;
+   FechAct = #dscam008#3; nSwCorte = 0;
+
+   |SI #dscaz025#6 = "U"; nSwCorte = 1; |FINSI;
+
+   |SI ProvAnt ! ProvCod;
+      nSwCorte = 1;
+   |SINO;
+      |SI #dscaz025#6 = "A";
+         |SI FechAct ! FechAnt; nSwCorte = 1; |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI #dscaz025#6 = "M"; FechaVto = #dscaz025#1; |FINSI;
+   |SI #dscaz025#6 = "A"; |O #dscaz025#6 = "U";
+      |SI nSwVtoRec = 1;
+         FechaVto = FechAct;
+      |SINO;
+         FechaVto = #dscaz025#1;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwCorte = 1;
+      Linea = 1;
+      |LEE 000#RefCabe@.u;
+      |SI FSalida = 0;
+         NumPag = #RefCabe@#0 + 1;
+      |SINO;
+         NumPag = 1;
+      |FINSI;
+   |FINSI;
+   FechAnt = #dscam008#3;
+   |SI #dscaz025#48 = "C"; ProvAnt = #dscam008#5;  |FINSI;
+   |SI #dscaz025#48 = "G"; ProvAnt = #dscam008#32; |FINSI;
+
+   #RefCabe@#0 = NumPag;
+   |LEE 010#RefCabe@.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #RefCabe@;
+      #RefCabe@#0  = NumPag;       || Codigo Pagare
+      #RefCabe@#1  = #dscaz025#2;  || Fecha emision
+      |SI #dscaz025#6 = "M";
+         #RefCabe@#2  = #dscaz025#1;  || Fecha vencimiento manual
+      |SINO;
+         #RefCabe@#2  = FechAnt;   || Fecha vencimiento automatica
+      |FINSI;
+      #RefCabe@#2  = FechaVto;     || Fecha vencimiento manual
+      #RefCabe@#3  = #dscaz025#4;  || Codigo de banco
+      #RefCabe@#4  = #dscaz025#3;  || Nombre de banco
+      #RefCabe@#5  = 0;            || Numero de efectos
+      #RefCabe@#6  = #dscaz025#47; || Tipo de Pagare
+      #RefCabe@#9  = 0;            || Total Pagare
+      #RefCabe@#10 = #dscam014#10; || Cuenta Banco
+      #RefCabe@#12 = #dscam014#34; || Codigo Entidad
+      #RefCabe@#13 = #dscam014#35; || Codigo Sucursal
+      #RefCabe@#14 = #dscam014#37; || Codigo Cuenta
+      #RefCabe@#15 = #dscam014#36; || Digito control
+      #RefCabe@#18 = #dscaz025#53; || Divisa
+      #RefCabe@#19 = #dscaz025#54; || Nombre Divisa
+      #RefCabe@#20 = CambioDivCm;  || Cambio Actual Divisa
+      |GRABA 020#RefCabe@.c;
+   |FINSI;
+
+   #dscaw101#0 = #RefCabe@#0;
+   |LEE 000#dscaw101.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscaw101;
+      #dscaw101#0 = #RefCabe@#0;
+      #dscaw101#1 = #RefCabe@#1;
+      #dscaw101#2 = #RefCabe@#2;
+      #dscaw101#3 = #RefCabe@#18;
+      #dscaw101#4 = 0;
+      #dscaw101#5 = #dscam008#5;
+      #dscaw101#6 = #dscam008#6;
+      #dscaw101#7 = #RefCabe@#3;
+      #dscaw101#8 = #RefCabe@#4;
+      #dscaw101#10 = #dscam008#63;
+      |GRABA 020#dscaw101.c;
+   |FINSI;
+
+   |DDEFECTO #RefLine@;
+   #RefLine@#0 = NumPag;           || Codigo pagare
+   #RefLine@#1 = Linea;
+   Linea = Linea + 1;
+   #RefLine@#2  = #dscam008#27;     || Libro
+   #RefLine@#3  = #dscam008#1;      || N§ factura
+   #RefLine@#4  = #dscam008#0;      || Serie
+   #RefLine@#5  = #dscam008#2;      || N§ recibo
+   #RefLine@#6  = #dscam008#3;      || Fecha Vencimiento
+   #RefLine@#7  = #dscam008#31;     || Importe (DIVISA)
+   #RefLine@#8  = #dscam008#5;      || Cuenta Proveedor
+   #RefLine@#10 = #dscam008#6;      || Nombre Proveedor
+   #RefLine@#13 = #dscam008#40;     || N§ documento
+   #RefLine@#19 = #dscam008#58;     || Importe (MONEDA BASE)
+   #RefLine@#37 = #dscam008#63;     || Referencia proveedor (PRIEGO-08.08.06)
+                                    ||                      (TIQUET-2537-148)
+   #RefCabe@#5 = #RefCabe@#5 + 1;
+   #RefCabe@#9  = #RefCabe@#9  + #RefLine@#7;
+   #RefCabe@#17 = #RefCabe@#17 + #RefLine@#19;
+   |GRABA 020#RefCabe@.a;
+
+   #dscaw101#4 = #dscaw101#4 + #RefLine@#7;
+   |GRABA 020#dscaw101.a;
+
+   |SI #dscam008#3 [ #RefCabe@#1;
+      #RefLine@#9 = "S";           || Recibo Vencido
+   |SINO;
+      #RefLine@#9 = "N";
+   |FINSI;
+   |GRABA 020#RefLine@.n;
+|FPRC;
+
+|| Cuenta prov., Codigo prov.,Fecha Vto., Libro, serie, Factura, Fec.Emision, Tipo Recibo, Divisa, Banco Rec.
+|DEFBUCLE Recibos1;
+#dscam008#6;
+27,0,1,4,12,59,16;
+DCtaProv,DCodProv,#0#10,#0#7 ,#0#51,#0#8 ,#0#9 ,#0#11,#0#53,#0#49;
+HCtaProv,HCodProv,#0#17,#0#14,#0#52,#0#15,#0#16,#0#18,#0#53,#0#50;
+;
+NULL,Recibos1;
+|FIN;
+
+|PROCESO Recibos;
+   enSwClas   = 1; eaFichClas = "dscaz025"; eaTipoClas = #dscam008#12;
+   |HAZ CompruebaClas;
+   |SI eaFichClas = "ERROR"; |ACABA; |FINSI;
+
+   |SI #dscam008#14 ! "C"; |Y #dscam008#14 ! "P"; |ACABA; |FINSI;
+
+   eaCodigo = #dscam008#32; eaCuenta = #dscam008#5; |HAZ MiraSiBloq;
+   |SI enSwErr ! 0; |ACABA; |FINSI;
+
+   enNumDocumento = #dscam008#40;
+   enEmpGestion = #dscam008#46; |HAZ MiraSiVisado;
+   |SI enSwVisado < 0; |ACABA; |FINSI;
+
+   |SI #dscaz025#6 = "M"; FechaVto = #dscaz025#1; |FINSI;
+   |SI #dscaz025#6 = "A"; |O #dscaz025#6 = "U";
+      |SI nSwVtoRec = 1;
+         efFechaVto = #dscam008#3;
+      |SINO;
+         efFechaVto = #dscaz025#1;
+      |FINSI;
+   |FINSI;
+   eaCliente = #dscam008#32; enSwErr = 0;
+   enDocumento = #dscam008#40; |HAZ MiraCertContr;
+   |SI enSwErr = 1; |ACABA; |FINSI;
+
+   #dscam014#0 = #dscaz025#4;
+   |LEE 010#dscam014.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam014;
+   |FINSI;
+
+   |SI #dscaz025#48 = "C";    ProvCod = #dscam008#5;  |FINSI;
+   |SI #dscaz025#48 = "G";    ProvCod = #dscam008#32; |FINSI;
+   |SI FechMax [ #dscam008#3; FechMax = #dscam008#3;  |FINSI;
+   FechAct = #dscam008#3; nSwCorte = 0;
+
+   |SI #dscaz025#6 = "U"; nSwCorte = 1; |FINSI;
+
+   |SI ProvAnt ! ProvCod;
+      nSwCorte = 1;
+   |SINO;
+      |SI #dscaz025#6 = "A";
+         |SI FechAct ! FechAnt; nSwCorte = 1; |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI #dscaz025#6 = "M"; FechaVto = #dscaz025#1; |FINSI;
+   |SI #dscaz025#6 = "A"; |O #dscaz025#6 = "U";
+      |SI nSwVtoRec = 1;
+         FechaVto = FechAct;
+      |SINO;
+         FechaVto = #dscaz025#1;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwCorte = 1;
+      Linea = 1;
+      |LEE 000#dscam021.u;
+      NumPag = #dscam021#0 + 1;
+   |FINSI;
+   FechAnt = #dscam008#3;
+   |SI #dscaz025#48 = "C"; ProvAnt = #dscam008#5;  |FINSI;
+   |SI #dscaz025#48 = "G"; ProvAnt = #dscam008#32; |FINSI;
+
+   #dscam021#0 = NumPag;
+   |LEE 010#dscam021.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam021;
+      #dscam021#0  = NumPag;       || Codigo Pagare
+      #dscam021#1  = #dscaz025#2;  || Fecha emision
+      |SI #dscaz025#6 = "M";
+         #dscam021#2  = #dscaz025#1;  || Fecha vencimiento manual
+      |SINO;
+         #dscam021#2  = FechAnt;   || Fecha vencimiento automatica
+      |FINSI;
+      #dscam021#2  = FechaVto;     || Fecha vencimiento manual
+      #dscam021#3  = #dscaz025#4;  || Codigo de banco
+      #dscam021#4  = #dscaz025#3;  || Nombre de banco
+      #dscam021#5  = 0;            || Numero de efectos
+      #dscam021#6  = #dscaz025#47; || Tipo de Pagare
+      #dscam021#9  = 0;            || Total Pagare
+      #dscam021#10 = #dscam014#10; || Cuenta Banco
+      #dscam021#12 = #dscam014#34; || Codigo Entidad
+      #dscam021#13 = #dscam014#35; || Codigo Sucursal
+      #dscam021#14 = #dscam014#37; || Codigo Cuenta
+      #dscam021#15 = #dscam014#36; || Digito control
+      #dscam021#18 = #dscaz025#53; || Divisa
+      #dscam021#19 = #dscaz025#54; || Nombre Divisa
+      #dscam021#20 = CambioDivCm;  || Cambio Actual Divisa
+      |GRABA 020#dscam021.n;
+      |LEE 010#dscam021.=;
+   |FINSI;
+
+   |DDEFECTO #dscam022;
+   #dscam022#0 = NumPag;           || Codigo pagare
+   #dscam022#1 = Linea;
+   Linea = Linea + 1;
+   #dscam022#2  = #dscam008#27;     || Libro
+   #dscam022#3  = #dscam008#1;      || N§ factura
+   #dscam022#4  = #dscam008#0;      || Serie
+   #dscam022#5  = #dscam008#2;      || N§ recibo
+   |SI #dscam051#108 = "S";
+      #dscam022#6  = #dscam021#2;      || Fecha Vencimiento
+   |SINO;
+      #dscam022#6  = #dscam008#3;      || Fecha Vencimiento
+   |FINSI;
+   #dscam022#7  = #dscam008#31;     || Importe (DIVISA)
+   #dscam022#8  = #dscam008#5;      || Cuenta Proveedor
+   #dscam022#10 = #dscam008#6;      || Nombre Proveedor
+   #dscam022#13 = #dscam008#40;     || N§ documento
+   #dscam022#19 = #dscam008#58;     || Importe (MONEDA BASE)
+   #dscam022#37 = #dscam008#63;     || Referencia proveedor (PRIEGO-08.08.06)
+                                    ||                      (TIQUET-2537-148)
+
+   #dscam021#5 = #dscam021#5 + 1;
+   #dscam021#9  = #dscam021#9  + #dscam022#7;
+   #dscam021#17 = #dscam021#17 + #dscam022#19;
+   |GRABA 020#dscam021.a;
+
+   |SI #dscam008#3 [ #dscam021#1;
+      #dscam022#9 = "S";           || Recibo Vencido
+   |SINO;
+      #dscam022#9 = "N";
+   |FINSI;
+   |GRABA 020#dscam022.n;
+
+   #dscam008#17 = #dscam022#0;
+   #dscam008#37 = #dscam022#1;
+   #dscam008#39 = "P";
+   #dscam008#47 = "Pagare";
+   #dscam008#7  = #dscam014#1;
+   #dscam008#8  = #dscam014#34;
+   #dscam008#9  = #dscam014#35;
+   #dscam008#10 = #dscam014#36;
+   #dscam008#11 = #dscam014#37;
+   #dscam008#26 = #dscam021#1;
+   #dscam008#14 = "E";
+   #dscam008#15 = "Englobado en pagare";
+   #dscam008#73 = #dscam021#2;
+   |GRABA 020#dscam008.a;
+
+|FPRC;
+
+|| Cuenta prov., Codigo prov.,Fecha Vto., Libro, serie, Factura, Fec.Emision, Tipo Recibo, Divisa, Banco Rec.
+|DEFBUCLE Recibos;
+#dscam008#6;
+27,0,1,4,12,59,16;
+DCtaProv,DCodProv,#0#10,#0#7 ,#0#51,#0#8 ,#0#9 ,#0#11,#0#53,#0#49;
+HCtaProv,HCodProv,#0#17,#0#14,#0#52,#0#15,#0#16,#0#18,#0#53,#0#50;
+;
+NULL,Recibos;
+|FIN;
+
+|RUTINA Inf;
+   #dscaw101#0 = 1;
+|FRUT;
+
+|RUTINA Sup;
+   #dscaw101#0 = 99999;
+|FRUT;
+
+|PROCESO VuelcaLin;
+   |DDEFECTO #dscam022
+   #dscam022#0 = NumPag;
+   #dscam022#1 = #RefLine@#1;
+   |GRABA 020#dscam022.b;
+
+   aAlfa = "|NC"; aAlfa = #RefLine@#aAlfa#; nCalc = aAlfa; nCalc = nCalc - 1;
+   |PARA nCont = 2; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+       #dscam022#nCont# = #RefLine@#nCont#;
+   |SIGUE;
+   |SI #dscam051#108 = "S";
+      #dscam022#6  = #dscam021#2;      || Fecha Vencimiento
+   |FINSI;
+   |GRABA 020#dscam022.a; |LIBERA #dscam022;
+
+   #dscam008#40 = #dscam022#13;
+   |LEE 101#dscam008.=;
+   |SI FSalida = 0;
+      #dscam008#17 = #dscam022#0;
+      #dscam008#37 = #dscam022#1;
+      #dscam008#39 = "P";
+      #dscam008#47 = "Pagare";
+      #dscam008#7  = #dscam014#1;
+      #dscam008#8  = #dscam014#34;
+      #dscam008#9  = #dscam014#35;
+      #dscam008#10 = #dscam014#36;
+      #dscam008#11 = #dscam014#37;
+      #dscam008#26 = #dscam021#1;
+      #dscam008#14 = "E";
+      #dscam008#15 = "Englobado en pagare";
+      #dscam008#73 = #dscam021#2;
+      |GRABA 020#dscam008.a; |LIBERA #dscam008;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE VuelcaLin;
+#RefLine@#1002;
+;
+#RefCabe@#0, 001;
+#RefCabe@#0, 999;
+;
+NULL,VuelcaLin;
+|FIN;
+
+|PROCESO Volcado;
+   |SI #dscaw101#9 = " "; |ACABA; |FINSI;
+
+   |SI #dscaz025#55 = "U";
+      |LEE 000#dscam021.u;
+      |SI FSalida = 0;
+         NumPag = #dscam021#0 + 1;
+      |SINO;
+         NumPag = 1;
+      |FINSI;
+   |SINO;
+      #dscam021#0 = #dscaz025#0;
+      |LEE 000#dscam021.=;
+      |SI FSalida = 0;
+         aAlfa = "    SEl codigo de pagare [" + #dscaz025#0 + "] ya ha sido ocupado. " + &191 + " Continuar con el ultimo + 1 ?"
+         |CONFI aAlfa;
+         |SI FSalida ! 0;
+            |ERROR10; |ACABA;
+         |SINO;
+            |LEE 000#dscam021.u;
+            |SI FSalida = 0;
+               NumPag = #dscam021#0 + 1; #dscaz025#0 = NumPag + 1;
+            |FINSI;
+         |FINSI;
+      |SINO;
+         NumPag = #dscaz025#0; #dscaz025#0 = NumPag + 1;
+      |FINSI;
+   |FINSI;
+
+   #RefCabe@#0 = #dscaw101#0;
+   |LEE 000#RefCabe@.=;
+   |SI FSalida = 0;
+      |DDEFECTO #dscam021;
+      #dscam021#0 = NumPag;
+      |GRABA 020#dscam021.b;
+
+      aAlfa = "|NC"; aAlfa = #RefCabe@#aAlfa#; nCalc = aAlfa; nCalc = nCalc - 1;
+      |PARA nCont = 1; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+          #dscam021#nCont# = #RefCabe@#nCont#;
+      |SIGUE;
+      |GRABA 020#dscam021.a; |LIBERA #dscam021;
+
+      |BUCLE VuelcaLin;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Volcado;
+#dscaw101#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Volcado;
+|FIN;
+
+|PROCESO Todos;
+   |SI aSwMarca = "*";
+      nSwHay = nSwHay + 1;
+   |SINO;
+      nSwHay = nSwHay - 1;
+   |FINSI;
+   #dscaw101#9 = aSwMarca;
+   |GRABA 020#dscaw101.a;
+|FPRC;
+
+|DEFBUCLE Todos;
+#dscaw101#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Todos;
+|FIN;
+
+|PROCESO EntregasPdtes;
+   nSwErr = 1; |ERROR10;
+|FPRC;
+
+|DEFBUCLE EntregasPdtes;
+#dscam008#5;
+14;
+aCuenta, 000000001, "e";
+aCuenta, 999999999, "e";
+;
+NULL, EntregasPdtes;
+|FIN;
+
+|PROCESO MiraSiEntregas;
+   aCuenta = #dscaw101#5;
+   nSwErr = 0;
+   |BUCLE EntregasPdtes;
+   |SI nSwErr = 1;
+      aAlfa = "    NEste proveedor tiene entregas a cuenta pendientes de saldar. " + &191 + " Continuar ?";
+      |CONFI aAlfa;
+      |SI FSalida = 0;
+         nSwErr = 0;
+      |SINO;
+         nSwErr = -1;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Marca; |TIPO 11;
+   |SI FSalida = 10;
+      |SI #dscaw101#9 = " ";
+         |HAZ MiraSiEntregas;
+         |SI nSwErr = 0;
+            #dscaw101#9 = "*";
+            nSwHay = nSwHay + 1;
+         |FINSI;
+      |SINO;
+         #dscaw101#9 = " ";
+         nSwHay = nSwHay - 1;
+      |FINSI;
+      |GRABA 020#dscaw101.a;
+      |PONCONTROL 23, "si";
+   |FINSI;
+   |SI FSalida = 11;
+      aSwMarca = "*"; |BUCLE Todos;
+      |PONCONTROL 23, "si";
+   |FINSI;
+   |SI FSalida = 12;
+      aSwMarca = " "; |BUCLE Todos;
+      |PONCONTROL 23, "si";
+   |FINSI;
+|FPRC;
+
+|PROCESO Creacion; |TIPO 3;
+   |ABRE #dscam051;
+   |LEE 000#dscam051.p;
+   |SI FSalida ! 0; |DDEFECTO #dscam051; |FINSI;
+   |CIERRA #dscam051;
+
+   aAlfa = "tm" + Usuario; |NOME_DAT #dscaw101#aAlfa#;
+   |DELINDEX #dscaw101; |ABRE #dscaw101;
+
+   |ABRE #dscaw101;
+   |DDEF aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscam021.mas";
+   |CARGA_DEF aAlfa, RefCabe@;
+   |SI FSalida = 0;
+      |DDEF aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscam022.mas";
+      |CARGA_DEF aAlfa, RefLine@;
+      |SI FSalida = 0;
+         aAlfa = "pc" + Usuario; |NOME_DAT #RefCabe@#aAlfa#;
+         aAlfa = "pl" + Usuario; |NOME_DAT #RefLine@#aAlfa#;
+         |DELINDEX #RefCabe@; |ABRE #RefCabe@;
+         |DELINDEX #RefLine@; |ABRE #RefLine@;
+         |ABRE #dscam014;
+         Divisa = #dscaz025#53; |HAZ TomaDecim;
+
+         |SI #dscaz025#21 = "N";
+            |SI #dscaz025#48 = "C";
+               DCtaProv = #dscaz025#12;   HCtaProv = #dscaz025#19;
+               DCodProv = "    ";         HCodProv = "zzzz";
+            |SINO;
+               DCodProv = #dscaz025#13;   HCodProv = #dscaz025#20;
+               DCtaProv = "            "; HCtaProv = "zzzzzzzzzzzz";
+            |FINSI;
+            |BUCLE Recibos1;
+         |SINO;
+            |SI #dscaz025#48 = "C";
+               |PARA Cont = 22; |SI Cont [ 33; |HACIENDO Cont = Cont + 1;
+                  DCtaProv = #dscaz025#Cont#;   HCtaProv = #dscaz025#Cont#;
+                  DCodProv = "    ";            HCodProv = "zzzz";
+                  |BUCLE Recibos1;
+               |SIGUE;
+            |SINO;
+               |PARA Cont = 34; |SI Cont [ 45; |HACIENDO Cont = Cont + 1;
+                  DCodProv = #dscaz025#Cont#;   HCodProv = #dscaz025#Cont#;
+                  DCtaProv = "            ";    HCtaProv = "zzzzzzzzzzzz";
+                  |BUCLE Recibos1;
+               |SIGUE;
+            |FINSI;
+         |FINSI;
+
+         |PUSHV 0501 2380;
+         nSwHay = 0;
+         |ENTLINEAL #1#dscaw101, -1, 1, 19, 1, Inf, Sup;
+         |POPV;
+
+         |SI nSwHay > 0;
+            aAlfa = "    N" + &191 + " Conforme con los datos editados ? ";
+            |CONFI aAlfa;
+            |SI FSalida = 0;
+               |ABRE #dscam021;   |ABRE #dscam022;   |ABRE #dscam008;
+               |BUCLE Volcado;
+               |CIERRA #dscam021; |CIERRA #dscam022; |CIERRA #dscam008;
+            |FINSI;
+         |FINSI;
+
+         eaSesion   = Usuario; |HAZ LimpiaTempo;
+
+         |CIERRA #dscam014;
+         |CIERRA #RefCabe@; |DELINDEX #RefCabe@;
+         |CIERRA #RefLine@; |DELINDEX #RefLine@;
+         |DESCARGA_DEF #RefLine@;
+      |FINSI;
+      |DESCARGA_DEF #RefCabe@;
+   |FINSI;
+   |CIERRA #dscaw101; |DELINDEX #dscaw101;
+
+   |ACABA;
+   NumPag = #dscaz025#0 - 1; Linea = 1; FechAnt = "01.01.0000";
+
+   |ABRE #dscam021; |ABRE #dscam022; |ABRE #dscam014;
+
+   Divisa = #dscaz025#53; |HAZ TomaDecim;
+
+   |SI #dscaz025#21 = "N";
+      |SI #dscaz025#48 = "C";
+         DCtaProv = #dscaz025#12;   HCtaProv = #dscaz025#19;
+         DCodProv = "    ";         HCodProv = "zzzz";
+      |SINO;
+         DCodProv = #dscaz025#13;   HCodProv = #dscaz025#20;
+         DCtaProv = "            "; HCtaProv = "zzzzzzzzzzzz";
+      |FINSI;
+      |BUCLE Recibos;
+   |SINO;
+      |SI #dscaz025#48 = "C";
+         |PARA Cont = 22; |SI Cont [ 33; |HACIENDO Cont = Cont + 1;
+            DCtaProv = #dscaz025#Cont#;   HCtaProv = #dscaz025#Cont#;
+            DCodProv = "    ";            HCodProv = "zzzz";
+            |BUCLE Recibos;
+         |SIGUE;
+      |SINO;
+         |PARA Cont = 34; |SI Cont [ 45; |HACIENDO Cont = Cont + 1;
+            DCodProv = #dscaz025#Cont#;   HCodProv = #dscaz025#Cont#;
+            DCtaProv = "            ";    HCtaProv = "zzzzzzzzzzzz";
+            |BUCLE Recibos;
+         |SIGUE;
+      |FINSI;
+   |FINSI;
+
+   |CIERRA #dscam014; |CIERRA #dscam022; |CIERRA #dscam021;
+|FPRC;
+
+|PROCESO MiraDivisa;
+   Divisa = #dscaz025#53; |HAZ TomaDecim;
+   |SI NombreDiv = "ERROR";
+      |MENAV "    Divisa inexistente";
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   #dscaz025#54 = NombreDiv; |PINTA #dscaz025#54;
+|FPRC;
+
+|PROCESO VtoRecMan;
+   |SI #dscaz025#6 = "U"; |O #dscaz025#6 = "A";
+      aAlfa = "    N" + &191 + " Tomar la fecha de vencimiento de los recibos ?";
+      |CONFI aAlfa;
+      |SI FSalida = 0;
+         nSwVtoRec = 1;
+      |SINO;
+         nSwVtoRec = 0;
+      |FINSI;
+   |FINSI;
+   |C_M #dscaz025#1, 1, "N";
+   |SI #dscaz025#6 = "M";                   |C_M #dscaz025#1, 1, "S"; |FINSI;
+   |SI #dscaz025#6 = "U"; |Y nSwVtoRec = 0; |C_M #dscaz025#1, 1, "S"; |FINSI;
+   |SI #dscaz025#6 = "A"; |Y nSwVtoRec = 0; |C_M #dscaz025#1, 1, "S"; |FINSI;
+|FPRC;
+
+|PROCESO MiraTipo;
+   |SI #dscaz025#55 = "U";
+      #dscaz025#0 = 0; |PINTA #dscaz025#0; |C_M #dscaz025#0, 1, "N";
+   |SINO;
+      |C_M #dscaz025#0, 1, "S";
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraFecha;
+   |SI #dscaz025#1 < #dscaz025#2;
+      |MENAV "    La fecha de emision del pagare no puede ser mayor que la fecha de vencimiento";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO CogeTipo;
+   |ABRE #dscam014;
+   #dscam014#0 = #dscaz025#4;
+   |LEE 010#dscam014.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam014; |FINSI;
+   #dscaz025#47 = #dscam014#73; |PINTA #dscaz025#47;
+   |CIERRA #dscam014;
+|FPRC;

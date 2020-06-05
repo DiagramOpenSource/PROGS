@@ -1,0 +1,298 @@
+|FICHEROS;
+    camaniva #10;
+    caivalin #11;
+
+    camaasil #1;    || apuntes lins.
+    camaasic #2;    || apuntes cabs.
+    cacuenta #3;
+    calibros #7;    || libros
+
+    caivaasi #200;
+|FIN;
+
+|VARIABLES;
+  nSwIntra = 0;
+  nSwOp    = 0;
+  nBase1   = 0;
+  nBase2   = 0;
+  nCuotI1  = 0;
+  nCuotI2  = 0;
+  nCuotR1  = 0;
+  nCuotR2  = 0;
+  nDto1    = 0;
+  nDto2    = 0;
+  nIRPF1   = 0;
+  nIRPF2   = 0;
+  nTotal1  = 0;
+  nTotal2  = 0;
+
+  nNume1  = 0;
+  nNume2  = 0;
+  aAlfa1  = "";
+  aAlfa2  = "";
+  nSeguir = 0;
+  aMensa  = "";
+
+   &enDnDIARIO   = 0;
+   &enHnDIARIO   = 0;
+   &efDFechas    = @;
+   &efHFechas    = @;
+   &enDDocume    = 0;
+   &enHDocume    = 0;
+   &enBorraAu    = 0;
+   &swVarios     = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|PROCESO LeoLineaIVA;
+  |SI #11#25 = "S"; nSwIntra = 1; |FINSI;
+
+  |SI nSwOp = 0;
+      nBase2  = (nBase2  + #11#6)  ! EURODB;
+      nCuotI2 = (nCuotI2 + #11#8 + #11#10)  ! EURODB;
+      nDto2   = (nDto2   + #11#11) ! EURODB;
+      nIRPF2  = (nIRPF2  + #11#22) ! EURODB;
+  |FINSI;
+  |SI nSwOp = 1;
+      nNume1 = (#11#6  % #11#7)  ! EURODB;
+      nNume2 = nNume1 - #11#8; |SI nNume2 < -0.05; |O nNume2 > 0.05;  enRSCheq = 1; |FINSI;
+      nNume1 = (#11#6  % #11#9)  ! EURODB;
+      nNume2 = nNume1 - #11#10; |SI nNume2 < -0.05; |O nNume2 > 0.05;  enRSCheq = 1; |FINSI;
+      nNume1 = (#11#20 % #11#21) ! EURODB;
+      nNume2 = nNume1 - #11#22; |SI nNume2 < -0.05; |O nNume2 > 0.05;  enRSCheq = 1; |FINSI;
+      |SI enRSCheq = 1;
+          aMensa = "    SBases y Cuotas IVA/REC No corresponden con tipo a aplicar. Continuar ";
+      |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoLineaIVA;
+ #11#1;
+ ;
+ #10#0, #10#1, 01;
+ #10#0, #10#1, 99;
+ ;
+ NULL, LeoLineaIVA;
+|FIN;
+
+|PROCESO LeoLineaApu;
+
+      aAlfa1 = #1#19;
+      aAlfa2 = #1#19 > "";
+      nNume1 = 1; |SI aAlfa1 ! aAlfa2; nNume1 = -1; |FINSI;
+
+      |SI aAlfa2 = "X"; |O aAlfa2 = "Y"; |ACABA; |FINSI;
+
+      |SI aAlfa2 = "B";
+          nBase1 = (nBase1 + (nNume1 * #1#9)) ! EURODB;
+      |FINSI;
+
+      |SI aAlfa2 = "I"; |O aAlfa2 = "R";
+          nCuotI1 = (nCuotI1 + (nNume1 * #1#9)) ! EURODB;
+      |FINSI;
+
+      |SI aAlfa2 = "P";
+          nIRPF1 = (nIRPF1 + (nNume1 * #1#9)) ! EURODB;
+      |FINSI;
+
+      |SI aAlfa2 = "D";
+          nDto1 = (nDto1 + (nNume1 * #1#9)) ! EURODB;
+      |FINSI;
+
+      |SI aAlfa2 = "F";
+          nTotal1 = (nTotal1 + (nNume1 * #1#9)) ! EURODB;
+      |FINSI;
+
+      |SI aAlfa2 = " ";
+          aAlfa1 = #1#4; aAlfa1 = aAlfa1 % 103;
+          |SI aAlfa1 = "472"; |O aAlfa1 = "477";
+              nCuotI1 = (nCuotI1 + (nNume1 * #1#9)) ! EURODB;
+          |SINO;
+              |SI aAlfa1 = "765"; |O aAlfa1 = "665";
+                  nDto1 = (nDto1 + (nNume1 * #1#9)) ! EURODB;
+              |SINO;
+                  aAlfa1 = aAlfa1 % 101;
+                  |SI aAlfa1 = "6"; |O aAlfa1 = "7";
+                      nBase1 = (nBase1 + (nNume1 * #1#9)) ! EURODB;
+                  |SINO;
+                      nTotal1 = (nTotal1 + (nNume1 * #1#9)) ! EURODB;
+                  |FINSI;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoLineaApu;
+ #1#1;
+ ;
+ #10#7, #10#8, #10#9, 0001;
+ #10#7, #10#8, #10#9, 9999;
+ ;
+ NULL, LeoLineaApu;
+|FIN;
+
+
+|PROCESO eRSChequeo;
+   nSeguir  = 0;
+
+   |ABRE #200;
+   |DDEFECTO #200;
+   |LEE 000#200p;
+   |CIERRA #200;
+
+   |SI #200#127 = "N";  |ACABA;  |FINSI;
+   ||   |ACABA; || Lo quito por lo complicado tique varios
+
+   |SI enSwAgr > 1; |ACABA; |FINSI;
+   |ABRE #10;
+   #10#0 = enLibro;
+   #10#1 = enRegistro;
+   |LEE 001#10=;
+   |SI FSalida ! 0;
+       |CIERRA #10;
+       |ACABA;
+   |FINSI;
+   |CIERRA #10;
+
+   nBase1  = 0;
+   nBase2  = 0;
+   nCuotI1 = 0;
+   nCuotI2 = 0;
+   nCuotR1 = 0;
+   nCuotR2 = 0;
+   nIRPF1  = 0;
+   nIRPF2  = 0;
+   nDto1   = 0;
+   nDto2   = 0;
+   nTotal1 = 0;
+   nTotal2 = 0;
+   nSwIntra = 0;
+
+   nSwOp = 0;
+   |BUCLE LeoLineaApu;
+   |BUCLE LeoLineaIVA;
+   nBase1 = (nBase1 - nDto1) ! EURODB;
+
+   enRSCheq = 0;
+   nNume2   = nBase1 - nBase2;
+   |SI nNume2 < -0.05; |O nNume2 > 0.05;
+       aMensa = "    SBases de IVA y apuntes descuadrado. Continuar "; enRSCheq = 1;
+   |FINSI;
+
+   nNume2   = nBase2 - #10#19;
+   |SI nNume2 < -0.05; |O nNume2 > 0.05;
+       aMensa = "    SBases de IVA descuadrado. Continuar "; enRSCheq = 1;
+   |FINSI;
+
+   |SI enRSCheq = 1;
+       nSeguir = 0;
+       |CONFI aMensa;
+       |SI FSalida ! 0;
+           nSeguir = 1;
+           |VETE Elfinal;
+       |FINSI;
+   |FINSI;
+
+   enRSCheq = 0;
+   |SI nSwIntra = 0; |Y #10#42 ! "I";
+       nNume2   = nCuotI1 - nCuotI2;
+       |SI nNume2 < -0.05; |O nNume2 > 0.05;
+           aMensa = "    SCuotas IVA/REC y apuntes descuadrado. Continuar "; enRSCheq = 1;
+       |FINSI;
+   |FINSI;
+
+   nNume2   = nCuotI2 - #10#23;
+   |SI nNume2 < -0.05; |O nNume2 > 0.05;
+       aMensa = "    SCuotas IVA/REC descuadrado. Continuar "; enRSCheq = 1;
+   |FINSI;
+
+   |SI enRSCheq = 1;
+       nSeguir = 0;
+       |CONFI aMensa;
+       |SI FSalida ! 0;
+           nSeguir = 1;
+           |VETE Elfinal;
+       |FINSI;
+   |FINSI;
+
+   nTotal2 = (nBase2 + nCuotI2 - nIRPF2) ! EURODB;
+   |SI nTotal1 < 0; nTotal1 = -nTotal1; |FINSI;
+   |SI nTotal2 < 0; nTotal2 = -nTotal2; |FINSI;
+
+   enRSCheq = 0;
+   |SI nSwIntra = 0; |Y #10#42 ! "I";
+       nNume2   = nTotal1 - nTotal2;
+       |SI nNume2 < -0.05; |O nNume2 > 0.05;
+           aMensa = "    STotal Factura y apuntes descuadrado. Continuar "; enRSCheq = 1;
+       |FINSI;
+   |FINSI;
+
+   nTotal2 = (nBase2 + nCuotI2 - nIRPF2) ! EURODB;
+   nNume2   = nTotal2 - #10#21;
+   |SI nNume2 < -0.05; |O nNume2 > 0.05;
+       aMensa = "    STotal Factura descuadrado. Continuar "; enRSCheq = 1;
+   |FINSI;
+
+   |SI enRSCheq = 1;
+       nSeguir = 0;
+       |CONFI aMensa;
+       |SI FSalida ! 0;
+           nSeguir = 1;
+           |VETE Elfinal;
+       |FINSI;
+   |FINSI;
+
+   enRSCheq = 0;
+   nNume2   = nIRPF1 - nIRPF2;
+   |SI nNume2 < -0.05; |O nNume2 > 0.05;
+       aMensa = "    SCuotas IRPF y apuntes descuadrado. Continuar "; enRSCheq = 1;
+   |FINSI;
+
+   nNume2 = nIRPF2 - #10#20;
+   |SI nNume2 < -0.05; |O nNume2 > 0.05;
+       aMensa = "    SCuotas IRPF descuadrado. Continuar "; enRSCheq = 1;
+   |FINSI;
+
+   |SI enRSCheq = 1;
+       nSeguir = 0;
+       |CONFI aMensa;
+       |SI FSalida ! 0;
+           nSeguir = 1;
+           |VETE Elfinal;
+       |FINSI;
+   |FINSI;
+
+   enRSCheq = 0;
+   nSwOp    = 1;
+   |BUCLE LeoLineaIVA;
+   |SI enRSCheq = 1;
+       nSeguir = 0;
+       |CONFI aMensa;
+       |SI FSalida ! 0;
+           nSeguir = 1;
+       |FINSI;
+   |FINSI;
+
+   |ET Elfinal;
+   |SI nSeguir = 1;
+       |HAZ BajaTodo;
+   |FINSI;
+|FPRC;
+
+|PROCESO BajaTodo;
+
+     |CONFI "    NDesea Borrar el Registro de IVA/IRPF";
+     |SI FSalida = 0;
+         swVarios = 0;
+         enDnDIARIO = #10#7;         || diario
+         enHnDIARIO = #10#7;
+         efDFechas  = #10#8;
+         efHFechas  = #10#8;
+         enDDocume  = #10#9;
+         enHDocume  = #10#9;
+         enBorraAu  = 2;
+
+         |SUB_EJECUTA_NP "caborasi;NOMEQUITESQUETECORTOLOSGUEVOS";
+   |FINSI;
+|FPRC;

@@ -1,0 +1,162 @@
+|FICHEROS;
+     maempr23;
+     maempr22;
+
+     :/agicli/def/agim0016;
+     :/agicli/def/agim0003;
+     :/agicli/def/agicontr;
+|FIN;
+
+|VARIABLES;
+     &empresa   = 0;
+     &anyo      = 0;
+     &modo      = 0;
+
+     aPath      = "";
+     SwError    = 0;
+     nSalir     = 0;
+     aAlfa      = "";
+     aAlfa1     = "";
+     nModo      = 0;
+     nCampo     = 0;
+     nNume1     = 0;
+     fHoy       = @;
+
+     &enCalcCif = 0;
+     &eaVarDni  = "";
+     &eaCodPais = "";
+     &eaCodNif  = "";
+     &eswNif    = 0;
+|FIN;
+
+|PROCESO LetraNif;  |TIPO 6;
+     |SI FSalida = 10;
+         enCalcCif = 1;
+         eaVarDni  =  #maempr23#Campo#;
+         |HAZ CalculoDNI;
+         #maempr23#Campo# = eaVarDni;
+         |PINTA #maempr23#Campo#;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #maempr23#Campo#;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "            ") % 112;
+     |SI #maempr23#Campo# ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #maempr23#Campo# = eaVarDni;  |PINTA #maempr23#Campo#;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeePaism23; |TIPO 6;
+     |ABRE #agim0016;
+     #agim0016#0 = #maempr23#Campo#;
+     |LEE 041#agim0016.=;
+     |SI FSalida = 0;
+         nCampo = Campo + 1;
+         #maempr23#nCampo# = #agim0016#1; |PINTA #maempr23#nCampo#;
+     |FINSI;
+     |CIERRA #agim0016;
+|FPRC;
+
+|PROCESO PonDatos;
+     aAlfa1 = Contenido;
+     nModo  = (FEntrada / 100) ! 0;
+     aAlfa  = #maempr23#5; |QBF aAlfa;
+
+     |SI nModo = 1; |O aAlfa = ""; |O aAlfa1 ! #maempr23#3;
+
+         |ABRE #agim0003;
+         #agim0003#0  = #maempr23#3;
+         |LEE 040#agim0003.=;
+         |SI FSalida = 0;
+             #maempr23#5 = #agim0003#1; |PINTA #maempr23#5;
+         |FINSI;
+         |CIERRA #agim0003;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo0FecNac; |TIPO 0;
+     fHoy = ~;
+     |SI #maempr23#10 > fHoy;    || nacimientos futuros como que no
+          |HAZ PonSiglo20;       ||/se cambia sin preguntar
+     |FINSI;
+
+     |SI #maempr23#10 ] "01.01.2001"; |Y #maempr23#10 [ fHoy;  || presuntos ni¤os,
+                                                                       ||/se pregunta
+         aAlfa = "0000SLa fecha puede ser incorrecta. Ha introducido una persona  menor de edad. Corregir siglo?";
+         |CONFI aAlfa;
+         |SI FSalida = 0;
+              |HAZ PonSiglo20;
+         |FINSI;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO PonSiglo20;
+     aAlfa1    = (#maempr23#10 % 106) + "19" + (#maempr23#10 % -102);
+     #maempr23#10 = aAlfa1;
+     |PINTA #maempr23#10;
+|FPRC;
+
+|PROCESO inferior;
+     #maempr23#0 = empresa;
+     #maempr23#1 = anyo;
+     #maempr23#2 = 01;
+|FPRC;
+
+|PROCESO superior;
+     #maempr23#0 = empresa;
+     #maempr23#1 = anyo;
+     #maempr23#2 = 99;
+|FPRC;
+
+|PROCESO  ComprobarOtro;
+    SwError = 0;
+    |ABRE #maempr22;
+    #maempr22#0 = empresa;
+    #maempr22#1 = anyo;
+    #maempr22#2 = 001;
+    |LEE 041#maempr22.];
+    |SI FSalida = 0; |Y #maempr22#0 = empresa; |Y #maempr22#1 = anyo;
+        SwError = 1;
+    |FINSI;
+    |CIERRA #maempr22;
+    |SI SwError = 1;
+        |MENAV "0000Existen datos en Personas Fisicas con participacion ] 25%";
+        |MENAV "0000No puede informar datos en este cuadro";
+    |FINSI;
+|FPRC;
+
+|PROGRAMA;
+
+     |DBASS aPath; |QBF aPath;
+     |PATH_DAT #agicontr#aAlfa#;
+
+     |ABRE #agicontr;
+     |DDEFECTO #agicontr;
+     |LEE 040#agicontr.p;
+     |CIERRA #agicontr;
+     aAlfa = #agicontr#8;  |QBF aAlfa;
+     |SI aAlfa = ""; |O aAlfa = "*";
+         aAlfa = aPath + "agicli/fich/";
+     |FINSI;
+     aPath = aAlfa;
+     |PATH_DAT #agim0016#aPath#;
+     |PATH_DAT #agim0003#aPath#;
+
+     |HAZ ComprobarOtro;
+     |SI SwError = 1; |ACABA; |FINSI;
+
+     |PINPA #0#maempr23;
+     |SI modo = 4;
+         |ENTLINEAL #1#maempr23, -3, 4, 21, 0, inferior, superior;
+     |SINO;
+         |ENTLINEAL #1#maempr23, -3, 2, 21, 0, inferior, superior;
+     |FINSI;
+|FPRO;

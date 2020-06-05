@@ -1,0 +1,588 @@
+     || SFTP  windows  (psftp.exe)
+
+|| QUE_SISTEMA aSistema = "ESDOS";
+|| 213.192.251.171
+|| congecar
+|| c122334c
+
+
+|FICHEROS;
+     cong0001 #1;
+|FIN;
+
+|VARIABLES;
+     &enError = 0;
+     &eaFichero = "";
+     &eaPath = "";
+     &eaHost = "";
+     &eaUsu = "";
+     &eaPwd = "";
+     aPath = "";
+     aBat = "";
+     aTxt = "";
+     aErr = "";
+     aAlfa = "";
+     nHandle = 0;
+     aMensa = "";
+     aExe = "";
+     aLon = "";
+     i = 0;
+     nPos = 0;
+     aCar = "";
+     aShell = "";
+     aSh = "";
+     aSistema = "";
+     aComillas = "";
+     aFin = "";
+|FIN;
+
+|PROCESO RmDir;
+     |SI enError ! 0; |ACABA; |FINSI;
+     aAlfa = ""; |DIRECTORIO aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + "bin/agirm -r " + eaPath;
+     |SYSTEM aAlfa;
+|FPRC;
+
+|PROCESO CambiaBarra;
+     aAlfa = "";
+     aLon = aPath % A0;
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = i * 100 + 1;
+          aCar = aPath % nPos;
+          |SI aCar = "/"; aCar = "\"; |FINSI;
+          aAlfa = aAlfa + aCar;
+     |SIGUE;
+     aPath = aAlfa;
+|FPRC;
+
+|PROCESO Path;
+     |QUE_SISTEMA aSistema;
+     |DFICE aPath;
+     |SI aSistema = "DOS";
+          |HAZ CambiaBarra;
+          eaPath = aPath + "tmp" + Usuario + "\";
+     |SINO;
+          aPath = "/tmp/";
+          eaPath = aPath + "tmp" + Usuario + "/";
+     |FINSI;
+     |HAZ RmDir;
+     |MKDIR eaPath;
+|FPRC;
+
+|PROCESO Bat;
+     enError = 0;
+
+     |DBASE aPath;
+     |HAZ CambiaBarra;
+     aExe = aPath + "plugins\psftp.exe";
+     |XABRE "E", aExe, 0;
+     |SI FSalida < 0;
+          aMensa = "0000Falta fichero 'psftp.exe'...";
+          enError = 1; |ACABA;
+     |FINSI;
+
+     aBat = eaPath + "sftp.bat";
+     aTxt = eaPath + "sftp.txt";
+     aErr = eaPath + "sftp.err";
+     |XABRE "W", aBat, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "@echo off";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "cd " + eaPath;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = aExe + " -be -bc -b " + aTxt + " -pw " + eaPwd + " " + eaUsu + "@" + eaHost;
+          aAlfa = aAlfa + " > " + aErr;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "find /I /C " + &34 + "no hostname specified" + &34 + " " + aErr;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "IF NOT ERRORLEVEL 1 GOTO ERROR";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "find /I /C " + &34 + "not connected" + &34 + " " + aErr;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "IF NOT ERRORLEVEL 1 GOTO ERROR";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "find /I /C " + &34 + "unable to" + &34 + " " + aErr;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "IF NOT ERRORLEVEL 1 GOTO ERROR";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "find /I /C " + &34 + "permission denied" + &34 + " " + aErr;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "IF NOT ERRORLEVEL 1 GOTO ERROR";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "find /I /C " + &34 + "no such file or directory" + &34 + " " + aErr;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "IF NOT ERRORLEVEL 1 GOTO ERROR";
+          |XGRABA nHandle, aAlfa;
+
+          ||*** para dar por bueno se espera 'quit' ***
+
+          aAlfa = "find /I /C " + &34 + "quit" + &34 + " " + aErr;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "IF NOT ERRORLEVEL 1 GOTO FIN";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = ":ERROR";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "del /F /Q " + aErr;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = ":FIN";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "exit";
+          |XGRABA nHandle, aAlfa;
+
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero bat...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO EjecutaBat;
+     aBat  = "cmd " + &34 + "/c START /MIN /WAIT " + aBat + &34;
+     |SYSTEM aBat;
+     |XABRE "E", aErr, 0;
+     |SI FSalida ] 0;
+          enError = 0;
+          |FBORRA aErr;
+     |SINO;
+          aMensa = "0000Error en comunicaci¢n...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO TxtChequeo;
+     |XABRE "W", aTxt, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "ls";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "quit";
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero comandos sftp...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO TxtEnviaE;
+     |XABRE "W", aTxt, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "put " + eaFichero;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "quit";
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero comandos sftp...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO TxtRecibe;
+     |XABRE "W", aTxt, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "cd PEDIDOS";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "mget *";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "quit";
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero comandos sftp...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO TxtEnviaS;
+     |XABRE "W", aTxt, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "cd SEGUIMIENTO";
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "put " + eaFichero;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "quit";
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero comandos sftp...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Chequea;   || llamdo desde cong0001
+     |HAZ Path;
+     enError = 0;
+     |SI aSistema = "DOS";
+          |HAZ Bat;
+          |SI enError = 0; |HAZ TxtChequeo; |FINSI;
+          |SI enError = 0; |HAZ EjecutaBat; |FINSI;
+          |SI enError = 0;
+               |MENAV "0000Comunicaci¢n correcta...";
+          |SINO;
+               |MENAV aMensa;
+          |FINSI;
+     |SINO;
+          |HAZ ShellChequeo;
+          |SI enError = 0; |HAZ EjecutaShell; |FINSI;
+          |SI enError = 0;
+               |MENAV "0000Comunicaci¢n correcta...";
+          |SINO;
+               |MENAV aMensa;
+          |FINSI;
+     |FINSI;
+     |HAZ RmDir;
+|FPRC;
+
+|PROCESO EnviaFicheroE;
+     enError = 0;
+     eaHost = #1#13; |QBF eaHost;
+     eaUsu = #1#14; |QBF eaUsu;
+     eaPwd = #1#15; |QBF eaPwd;
+     |QUE_SISTEMA aSistema;
+     |SI aSistema = "DOS";
+          |HAZ Bat;
+          |SI enError = 0; |HAZ TxtEnviaE; |FINSI;
+          |SI enError = 0; |HAZ EjecutaBat; |FINSI;
+     |SINO;
+          |SI enError = 0; |HAZ ShellEnviaE; |FINSI;
+          |SI enError = 0; |HAZ EjecutaShell; |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ReciveFicheros;
+     enError = 0;
+     eaHost = #1#13; |QBF eaHost;
+     eaUsu = #1#14; |QBF eaUsu;
+     eaPwd = #1#15; |QBF eaPwd;
+     |QUE_SISTEMA aSistema;
+     |SI aSistema = "DOS";
+          |HAZ Bat;
+          |SI enError = 0; |HAZ TxtRecibe; |FINSI;
+          |SI enError = 0; |HAZ EjecutaBat; |FINSI;
+     |SINO;
+          |SI enError = 0; |HAZ ShellRecibe; |FINSI;
+          |SI enError = 0; |HAZ EjecutaShell; |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO EnviaFicheroS;
+     enError = 0;
+     eaHost = #1#13; |QBF eaHost;
+     eaUsu = #1#14; |QBF eaUsu;
+     eaPwd = #1#15; |QBF eaPwd;
+     |QUE_SISTEMA aSistema;
+     |SI aSistema = "DOS";
+          |HAZ Bat;
+          |SI enError = 0; |HAZ TxtEnviaS; |FINSI;
+          |SI enError = 0; |HAZ EjecutaBat; |FINSI;
+     |SINO;
+          |SI enError = 0; |HAZ ShellEnviaS; |FINSI;
+          |SI enError = 0; |HAZ EjecutaShell; |FINSI;
+     |FINSI;
+|FPRC;
+===========================================================
+|PROCESO ShellChequeo;
+     aFin = &10;
+     aComillas = &34;
+     aSh = eaPath + "sftp.ssh";
+     aErr = eaPath + "sftp.err";
+     |XABRE "BW", aSh, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "#!/usr/bin/expect" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "set timeout 10" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "spawn   sftp " + eaUsu + "@" + eaHost + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "expect  password:" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "send " + eaPwd + "\n" +  aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send_error OK" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send bye\n" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "password: {exit}" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero bat...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO ShellEnviaE;
+     aFin = &10;
+     aComillas = &34;
+     aSh = eaPath + "sftp.ssh";
+     aErr = eaPath + "sftp.err";
+     |XABRE "BW", aSh, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "#!/usr/bin/expect" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "cd " + eaPath + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "set timeout 20" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "spawn   sftp " + eaUsu + "@" + eaHost + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "expect  password:" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "send " + eaPwd + "\n" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send " + aComillas + "put " + eaFichero + "\n" + aComillas + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = aComillas + "No such file or directory" + aComillas + " {exit}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send_error OK" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send  bye\n" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "password: {exit}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero bat...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO ShellEnviaS;
+     aFin = &10;
+     aComillas = &34;
+     aSh = eaPath + "sftp.ssh";
+     aErr = eaPath + "sftp.err";
+     |XABRE "BW", aSh, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "#!/usr/bin/expect" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "cd " + eaPath + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "set timeout 20" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "spawn   sftp " + eaUsu + "@" + eaHost + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "expect  password:" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "send " + eaPwd + "\n" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send " + aComillas + "cd SEGUIMIENTO\n" + aComillas + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = aComillas + "No such file or directory" + aComillas + " {exit}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send " + aComillas + "put " + eaFichero + "\n" + aComillas + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send_error OK" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send  bye\n" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "password: {exit}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero bat...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO ShellRecibe;
+     aFin = &10;
+     aComillas = &34;
+     aSh = eaPath + "sftp.ssh";
+     aErr = eaPath + "sftp.err";
+     |XABRE "BW", aSh, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "#!/usr/bin/expect" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "cd " + eaPath + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "set timeout 20" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "spawn   sftp " + eaUsu + "@" + eaHost + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "expect  password:" + aFin;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = "send " + eaPwd + "\n" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send " + aComillas + "cd PEDIDOS\n" + aComillas + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = aComillas + "No such file or directory" + aComillas + " {exit}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send " + aComillas + "mget *\n" + aComillas + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "expect {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "sftp> {" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send_error OK" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "send  bye\n" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "password: {exit}" + aFin;
+          |XGRABA nHandle, aAlfa;
+
+          aAlfa = "}" + aFin;
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error al grabar fichero bat...";
+          enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO EjecutaShell;
+     aShell = "chmod +x " + aSh;
+     |SYSTEM aShell;
+     aShell = aSh + " 2>" + aErr;
+     |SYSTEM aShell;
+     |XABRE "", aErr, nHandle;
+     |SI FSalida ] 0;
+          |XLEE nHandle, 250, aAlfa;
+          |QBF aAlfa;
+          |SI aAlfa = "OK";
+               enError = 0;
+          |SINO;
+               enError = 1;
+          |FINSI;
+          |XCIERRA nHandle;
+     |SINO;
+          aMensa = "0000Error en comunicaci¢n...";
+          enError = 1;
+     |FINSI;
+|FPRC;

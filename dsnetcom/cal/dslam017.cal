@@ -1,0 +1,171 @@
+|FICHEROS;
+     dslam017 #0;
+     dslam018 #1,MANTE;
+     dsnetm02 #2;
+     dsnetm00 #10;
+
+|FIN;
+
+|VARIABLES;
+     aSystem = "";
+     nIndx = 0;
+     aTodos = "";
+     aAlfa = "";
+     aOrigen = "";
+     aLon = "";
+     aDestino = "";
+     aArchivo = "";
+     nPos = 0;
+     aLetra = "";
+     aIPRemoto = "";
+     i = 0;
+|FIN;
+
+|PROCESO dslam018;
+     |SI FSalida = 13;
+          |SI #1#2 = "S";
+               #1#2 = "N";
+               |GRABA 020#1a;
+          |SINO;
+               #1#2 = "S";
+               |GRABA 020#1a;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO dsnetm02;
+     nIndx =  nIndx + 1;
+     #1#0 = nIndx;
+     #1#1 = #2#0;
+     |SI aTodos = "S";
+          #1#2 = "S";
+     |SINO;
+          #1#2 = "N";
+     |FINSI;
+     #1#3 = #2#1;
+     |GRABA 020#1n;
+|FPRC;
+
+|DEFBUCLE dsnetm02;
+     #2#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, dsnetm02;
+|FIN;
+
+|PROCESO Inferior18;
+     #1#1 = "";
+|FPRC;
+
+|PROCESO Superior18;
+     #1#1 = "zzzzzzzzzz";
+|FPRC;
+
+|PROCESO Carga_Usuarios;
+     |DELINDEX #1;
+     |ABRE #1;
+     aAlfa = "0000S"+ &191 +"Quiere marcar todos los usuarios?";
+     |CONFI aAlfa;
+
+     |SI FSalida = 0; ||Si dice que si
+          aTodos = "S";
+     |FINSI;
+
+     |BUCLE dsnetm02;
+     |CIERRA #1;
+     |PINPA #0#1;
+
+     |MENSA "0000 <F5>Selecciona / Deselecciona Usuario";
+     |ABRET #1;
+     |ENTLINEAL #2#1, 1, 4, 21, 1, Inferior18, Superior18;
+     |CIERRAT #1;
+|FPRC;
+
+|PROCESO Trae_Fichero;
+     |SI #1#2 = "S";
+          |ABRE #10;
+          |LEE 000#10p;
+          aAlfa = #10#7; |QBF aAlfa;
+          |CIERRA #10;
+          aDestino = aAlfa + #1#1; |QBF aDestino;
+          aDestino = aDestino + "/ASE_OTROS/" + aArchivo;
+          aIPRemoto = "";
+          |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+          |SI aIPRemoto ! "";
+               |XABRE "E", aDestino, 0;
+               |SI FSalida ] 0;
+                    |CONFI "0000NReemplazar fichero";
+               |SINO;
+                    FSalida = 0;
+               |FINSI;
+               |SI FSalida = 0;
+                    |BLIN 24; |PINTA 2401, "Copiando...";
+                    |RECIBE_FICHERO aOrigen, aDestino;
+                    |QUE_SISTEMA aSystem;
+                    |SI aSystem = "ESBSD";
+                         aSystem = "chmod 777 " + aDestino;
+                         |SYSTEM aSystem;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               |XABRE "E", aDestino, 0;
+               |SI FSalida ] 0;
+                    |CONFI "0000NReemplazar fichero";
+               |SINO;
+                    FSalida = 0;
+               |FINSI;
+               |SI FSalida = 0;
+                    |BLIN 24; |PINTA 2401, "Copiando...";
+                    |COPIA_FICHERO aOrigen, aDestino;
+                    |QUE_SISTEMA aSystem;
+                    |SI aSystem = "ESBSD";
+                         aSystem = "chmod 777 " + aDestino;
+                         |SYSTEM aSystem;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dslam018;
+     #1#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Trae_Fichero;
+|FIN;
+
+|PROCESO CogeFichero;
+          aAlfa = "F*.*";
+          |BROWSE aAlfa;
+          |SI aAlfa = "F";
+               |ERROR;
+          |SINO;
+               aOrigen = aAlfa % 2;
+               aLon = aAlfa % A0;
+               aDestino = "";
+               |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+                    nPos = -(i * 100 + 1);
+                    aLetra = (aOrigen % nPos);
+                    |SI aLetra = "/"; |O aLetra = "\"; |SAL; |FINSI;
+                    aDestino = aLetra + aDestino;
+               |SIGUE;
+               aArchivo = aDestino;
+               |BUCLE dslam018;
+          |FINSI;
+     |BLIN 24;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |CABEZA "Gestion Buzon Otros";
+     |ABRE #0;
+
+     |HAZ Carga_Usuarios;
+     |CIERRA #0;
+
+     |HAZ CogeFichero;
+|FPRO;

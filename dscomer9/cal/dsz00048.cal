@@ -1,0 +1,382 @@
+|FICHEROS;
+     dsz00048 #0;
+     dsw00048 #1,MANTE;
+     agifa501 #501;
+     agifa571 #571;
+     agifa572 #572;
+     agifa573 #573;
+     dsw00049 #49,MANTE;
+     agifa509 #7;  ||  Resumen parcial.
+     agifa515 #8;  ||  Tarjetas de credito.
+     agifa516 #9;  ||  Diario de tarjetas de credito.
+     agifa027 #4;
+     agifa513 #3;
+     agifa505 #5;
+     agifa024 #24;
+|FIN;
+
+|VARIABLES;
+     &enImporte = 0;
+     &Tempo    = "";
+     nNumCob   = 0;
+     i         = 0;
+     nEntrega  = 0;
+     aEmp      = "";
+     aMensa    = "";
+     nLin      = 0;
+|FIN;
+
+|PROCESO Sal; |TIPO 6;
+     |SI FSalida = 1;
+          |ERROR;
+          |PTEC 807;
+     |FINSI;
+|FPRC;
+
+|PROCESO CompruCaja; |TIPO 0;
+     aMensa = "";
+     |ABRE #7;
+     |DDEFECTO #7;
+     #7#63 = aEmp;
+     #7#0 = #49#0;  ||  Caja;
+     #7#1 = #49#2;  ||  Fecha;
+     |LEE 001#7=;
+     |SI FSalida ! 0; |O #7#56 = "N";
+          aMensa = "0000No Existe Resumen o Caja Cerrada";
+          |MENAV aMensa;
+          |ERROR;
+     |FINSI;
+     |CIERRA #7;
+|FPRC;
+
+|PROCESO Cobro;
+     |ABRE #3;
+     |ABRE #4;
+ |ET Otra;
+     #4#0 = "contcobr";
+     #4#2 = #5#22;   ||   Serie de cobro de creditos.
+     |LEE 101#4=;
+     |SI FSalida = 0;
+         nNumCob = #4#1;
+         #4#1 = #4#1 + 1;
+         |GRABA 101#4a;
+     |SINO;
+         nNumCob = 1;
+         #4#1 = #4#1 + 1;
+         |GRABA 101#4b;
+     |FINSI;
+     |CIERRA #4;
+     #3#0 = nNumCob;
+     #3#14 = #5#22;
+     |LEE 000#3=;
+     |SI FSalida = 0; |VETE Otra;  |FINSI;
+
+     |DDEFECTO #3;
+     #3#14 = #5#22;
+     #3#0  = nNumCob;
+     #3#1  = #0#0;    ||  Codigo cliente.
+     #3#2  = #24#16;  ||  Codigo contable.
+     #3#3  = "Credito " + #573#0 + "-" + #572#1 + "/" + #572#2;
+     #3#4  = #573#6;  ||  Importe.
+     #3#5  = #573#4;  ||  Caja.
+     #3#6  = #573#5;  ||  Operario.
+     #3#11 = #573#3;  ||  Fecha de cobro.
+     #3#12 = #573#7;  ||  Tipo de cobro.
+     #3#13 = #573#8;  ||  Codigo tarjeta.
+
+     |ABRE #501;
+     #501#36 = #1#13;
+     #501#0 = #1#3;
+     |LEE 020#501=;
+     |CIERRA #501;
+
+     #3#19 = #501#35;
+     #3#20 = #501#57;
+     #3#21 = #501#58;
+     |GRABA 020#3n;
+     |CIERRA #3;
+|FPRC;
+
+|PROCESO ActCredito;
+     |HAZ ActResumen;
+
+     #571#0 = #1#0;
+     |LEE 121#571=;
+
+     #572#0 = #1#0;
+     #572#1 = #1#1;
+     |LEE 121#572=;
+     ||컴컴컴컴컴컴컴
+     #573#0 = #1#0;
+     #573#1 = #1#1;
+     #573#2 = 9999;
+     |LEE 000#573];
+     |SI FSalida = 0;
+          |LEE 000#573a;
+     |SINO;
+          |LEE 000#573u;
+     |FINSI;
+     |SI FSalida = 0; |Y #573#0 = #1#0; |Y #573#1 = #1#1;
+          nLin = #573#2 + 1;
+     |SINO;
+          nLin = 1;
+     |FINSI;
+     |DDEFECTO #573;
+     #573#0 = #1#0;
+     #573#1 = #1#1;
+     #573#2 = nLin;
+     #573#3 = #49#2;      ||Fecha
+     #573#4 = #49#0;      ||Caja
+     #573#5 = #49#1;      ||Ope
+     #573#6 = #1#14;      ||Impo
+     #573#7 = #49#3;      ||Tipo
+     #573#8 = #49#4;      ||Tarje
+     |HAZ Cobro;
+     #573#9 = nNumCob;
+     |GRABA 020#573n;
+
+     #572#9 = #1#9;
+     |GRABA 020#572a;
+     |LIBERA #572;
+
+     #571#3 = #571#3 + #1#14; || Pagado
+     #571#4 = #571#4 - #1#14; || Pend
+     |GRABA 020#571a;
+     |LIBERA #571;
+|FPRC;
+
+|DEFBUCLE ActCredito;
+     #1#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, ActCredito;
+|FIN;
+
+|PROCESO ActTarjeta;
+     |ABRE #8;
+     |DDEFECTO #8;
+     #8#0 = #49#4;         ||  Codigo de tarjeta;
+     |LEE 101#8=;
+     #8#3 = #49#2;         ||  Fecha ultima operacion.
+     #8#4 = #0#1;          ||  Importe ultima operacion.
+     #8#2 = #8#2 +. #0#1;  ||  Total pts. cargadas.
+     |SI FSalida = 0;
+          |GRABA 020#8a;
+     |SINO;
+          |GRABA 020#8b;
+     |FINSI;
+     |CIERRA #8;
+
+     |ABRE #9;
+     |DDEFECTO #9;
+     #9#0 = #49#4;
+     #9#1 = #49#2;
+     |LEE 101#9=;
+     #9#2 = #9#2 + #0#1;
+     |SI FSalida = 0;
+         |GRABA 020#9a;
+     |SINO;
+         |GRABA 020#9b;
+     |FINSI;
+     |CIERRA #9;
+|FPRC;
+
+|PROCESO ActResumen;
+     |ABRE #7;
+     |DDEFECTO #7;
+     #7#63 = aEmp;
+     #7#0 = #49#0;  ||  Caja;
+     #7#1 = #49#2;  ||  Fecha;
+     |LEE 101#7=;
+     |SI FSalida = 0; |Y #7#56 = "S";
+          #7#4 = #7#4 + #1#14;     ||  Total cobros.
+          |SI #49#3 = "E"; #7#52 = #7#52 + #1#14; |FINSI;
+          |SI #49#3 = "T"; #7#53 = #7#53 + #1#14; |FINSI;
+          |SI #49#3 = "C"; #7#54 = #7#54 + #1#14; |FINSI;
+          |SI #49#3 = "D"; #7#57 = #7#57 + #1#14; |FINSI;
+          |SI #49#2 = #1#5;
+               #7#58 = #7#58 - #1#14;
+          |FINSI;
+          #7#55 = #7#55 + #1#14;
+
+         |GRABA 020#7a;
+     |FINSI;
+     |CIERRA #7;
+|FPRC;
+
+|PROCESO Entrega;
+     |PUSHV 0501 2380;
+     |BLANCO 1023 1953;
+     |PINPA #0#49;
+     |PINDA #0#49;
+     |ENDATOS #2#49;
+     |SI FSalida = 0;
+          |ABRE #5;
+          #5#0 = #49#0;
+          |LEE 020#5=;
+          |SI FSalida = 0;
+               |ABRE #571;
+               |ABRE #572;
+               |ABRE #573;
+               |BUCLE ActCredito;
+               |CIERRA #571;
+               |CIERRA #572;
+               |CIERRA #573;
+               |SI #49#3 = "T";
+                    |HAZ ActTarjeta;
+               |FINSI;
+          |FINSI;
+          |CIERRA #5;
+
+          |ABRE #24;
+          #24#0 = #0#0;
+          |LEE 000#24=;
+          |CIERRA #24;
+          enImporte = #0#1;
+
+          |HAZ Imprime;
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO Tipo12; |TIPO 12;
+     || no quitar
+|FPRC;
+
+|PROCESO ModiPaga; |TIPO 0;
+     |SI FSalida = 0; |Y #1#1 = Contenido;
+          #0#1 = #0#1 - #1#14;
+          #0#2 = #0#2 + #1#14;
+          #1#9 = #1#9 + #1#14;
+          |ENCAMPO #14#1;
+          |SI FSalida = 0;
+               #0#1 = #0#1 + #1#14;
+               #0#2 = #0#2 - #1#14;
+               #1#9 = #1#9 - #1#14;
+               |GRABA 020#1a;
+          |SINO;
+               #0#1 = #0#1 + #1#14;
+               #0#2 = #0#1 - #1#14;
+          |FINSI;
+          |PINTA #0#1;
+          |PINTA #0#2;
+     |FINSI;
+|FPRC;
+
+|PROCESO Reparte;
+     |SI #1#9 ] nEntrega;
+          #1#9 = #1#9 - nEntrega;
+          #1#14 = nEntrega;
+          nEntrega = 0;
+     |SINO;
+          nEntrega = nEntrega - #1#9;
+          #1#14 = #1#9;
+          #1#9 = 0;
+     |FINSI;
+
+     |GRABA 020#1a;
+     |LIBERA #1;
+
+     |SI nEntrega = 0;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Reparte;
+     #1#1;
+     ;
+     INICIO;
+     FINAL;
+     be;
+     NULL, Reparte;
+|FIN;
+
+|PROCESO Total; |TIPO 0;
+     nEntrega = #0#1;
+     |BUCLE Reparte;
+     #0#2 = #0#2 - #0#1;
+     |PINTA #0#2;
+     |ENTLINEAL #1#1, -2, 4, 22, 0, Min, Max;
+     |HAZ Entrega;
+|FPRC;
+
+|PROCESO agifa572;
+     |SI #572#9 > 0;
+          |PARA i = 0; |SI i [ 13; |HACIENDO i = i + 1;
+               #1i = #572i;
+          |SIGUE;
+          |GRABA 020#1n ;
+          #0#2 = #0#2 + #1#9;
+          |PINTA #0#2;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa572;
+     #572#1;
+     ;
+     #0#0, 0001;
+     #0#0, 9999;
+     ;
+     NULL, agifa572;
+|FIN;
+
+|PROCESO Carga; |TIPO 0;
+     |ABRE #24;
+     #24#0 = #0#0;
+     |LEE 020#24=;
+     |CIERRA #24;
+
+     #0#2 = 0;
+     |DELINDEX #1;
+     |ABRE #1;
+     |BUCLE agifa572;
+     |CIERRA #1;
+     |SI #0#2 ! 0;
+          |ENTLINEAL #1#1, -2, 7, 22, 0, Min, Max;
+     |SINO;
+          |MENAV "0000Cliente sin creditos pendientes...";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min;
+     #1#0 = #0#0;
+     #1#1 = 1;
+|FPRC;
+
+|PROCESO Max;
+     #1#0 = #0#0;
+     #1#1 = 9999;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ CreaTempo; |NOME_DAT #1 Tempo; |DELINDEX #1;
+
+     |DFICE aEmp;  |QBF aEmp;
+     aEmp = aEmp % -205;
+     |CLS;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENTLINEAL #1#1, -2, 7, 22, 0, Min, Max;
+     |ENDATOS #2#0
+     |SI FSalida = 0;
+     |FINSI;
+     |DELINDEX #1; |HAZ BoraTempo;
+|FPRO;
+
+|PROCESO Imprime;
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR "dsz00048";
+          |SI FSalida = 0;
+               |PRINT;
+               |PIEINF;
+               |FININF;
+          |SINO;
+               |MENAV "0000ERROR en informe 'dsz00048'";
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+|FPRC;

@@ -1,0 +1,435 @@
+|FICHEROS;
+
+   cmpaauto #0;           || aspasecc #0;
+
+   cmsocios #1;
+   asclient #2;           ||asconcli #2;
+   ascabmin #3;
+   aslinmin #4;
+                          ||asconmen #5;
+
+   ascontro #6;     ||PARA CALCULAR SALDO ANTERIOR
+
+   asconcep #7;     ||DEF CONCEPTOS
+
+   asfpagos #8;     || forma pago (para el tipo)
+
+   asbancli #9;     ||Busca Direccion Banco
+
+                           ||asenlcon #9;
+                           ||asempcon #10;
+
+   asm00001 #11;    ||CONCEPTOS FIJOS
+
+   cmfamica #12;    ||DEF FAMILIA SOCIO CABECERA
+
+   cmfamili #13;    ||DEF FAMILIA SOCIO LINEA
+
+                          ||asconmul #12;
+                          ||asw00001 #99;
+|FIN;
+
+|VARIABLES;
+ aDireccionBanco ="";                ||DIRECCION BANCO
+ aNombreBanco    ="";                ||NOMBREE
+ aCCC            ="";                ||CCC
+
+ aCta            ="";                ||CUENTA
+
+ aNombreApellidos="";                ||NOMBRE Y APELLIDOS DE SOCIO
+
+ aTipo           ="";                ||TIPO H,S,A,N
+
+ aSeccion        ="";                ||SECCION ASCONCEP
+ aConcepto       ="";                ||CONCEPTO
+
+ nTotal          =0;                 ||VAR CALCULA EL TOTAL FACTURA
+ LineaFija = 0;
+ c_clie  = "";
+ fijo    = "";
+ sw_pase = 0;
+ i = 0;
+ linea = 0;
+ iva = 0;
+ x   = 0;
+ d_c = "  ";
+ h_c = "zz";
+ xxxxfiac = 0;
+   sw1 = 0;
+   nada = "  ";
+   men1 = "ATENCION **** Cliente ";
+   men2 = " inexistente en fichero !!";
+   hache = "H";
+   ese = "S";
+   aaa = "A";
+   ene = "N";
+   lin = 0;
+   xxxfiac = "  ";
+   xxaponer = "  ";
+   xrelleno = "                              ";
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+   alfa4 = "";
+   el_tipo = 0;
+
+   conver    = "";
+   conver1   = "";
+   conver2   = "";
+
+   nSwHay    = 0;
+   aAlfa1 = "";
+|FIN;
+
+||INCLUYE agicon_i;
+
+
+|PROCESO BuscarDatosBancos;
+     |DDEFECTO #9;
+     #9#0=#1#18;
+     |LEE 040#9=;
+     aDireccionBanco=#9#2;
+     aNombreBanco=#9#1;
+     aCCC=#9#3;
+|FPRC;
+
+
+
+|PROCESO GrabarClienteSocio;
+  |DDEFECTO #2;                ||DEF CLIENTES
+  #2#0=#1#0;
+  |LEE 101#2=;                 ||LEER REGISTRO CLIENTES
+  |SI FSalida!0;               ||NO EXISTE CLIENTE CON ID_SOCIO
+       |GRABA 020#2b;          ||GRABA EL CODIGO Y NOS RESITUAMOS ALLI
+  |FINSI;
+  #2#1=#1#3;                   ||RAZON SOCIAL
+  aNombreApellidos=#1#3;       ||NOMBRE SOCIO
+  |QBF aNombreApellidos;
+  aNombreApellidos = aNombreApellidos + "," +  #1#4;
+  |QBF aNombreApellidos;
+  #2#2=aNombreApellidos;       ||NOMBRE Y APELLIDOS SOCIO
+  #2#3=#1#5;                   ||DOMICILIO
+  #2#4=#1#25;                  ||COD PROV
+  #2#5=#1#28;                  ||COD POBLA
+  #2#6=#1#6;                   ||POBLACION
+  #2#7=#1#7;                   ||PROVINCIA
+  #2#8=#1#11;                  ||DNI
+  #2#9=#1#10;                  ||TELEFONO
+  #2#53=#1#18;                 ||BANCO SOCIO
+||_________________________________________/ DATOS BANCARIOS
+ |HAZ BuscarDatosBancos;
+  #2#11=aDireccionBanco;
+  #2#12=aNombreBanco;
+  #2#13=aCCC;
+  #2#16=#1#30;                 ||BANCO A REMESAR
+||__________________________________________/ CONCATENACION CTA
+  aCta=#1#19;
+  |QBF aCta;
+  aCta=aCta + #1#20;
+  |QBF aCta;
+  aCta=aCta + #1#21;
+  |QBF aCta;
+  #2#14=aCta;                  ||CTA SOCIO
+  ||____________________/
+  #2#15=#1#27;                 ||FORMAS DE PAGO
+  #2#17="N";                   ||I.R.P.F.          -NO POR DEFECTO-
+  #2#22=#0#4;                  ||TIPO DE FACTURACION SEGUN ASPASSECC
+  #2#23=0;                     ||DESCUENTO         -0 POR DEFECTO-
+  ||____________________________________________/DATOS BANCARIOS
+
+  #2#52=#1#15;                 ||CUENTA CONTABLE
+  |GRABA 020#2a;
+  |LIBERA #2;
+|FPRC;
+
+
+|PROCESO ColocarTipo;
+       |DDEFECTO #7;  ||DEF CONCEPTOS
+       #7#0=#1#26;   ||CLAVE SECCION SOCIO
+       #7#1=#1#1;    ||CLAVE ID CONCEPTO
+       |LEE 000#7=;              ||LEER REGISTRO CONCEPTOS
+       |SI FSalida=0;
+          aTipo = #7#3;
+       |FINSI;
+|FPRC;
+
+
+|PROCESO DescripcionTarifaAsconcep;
+        #7#0 = aSeccion;            ||SECCION
+        #7#1 = aConcepto;           ||CONCEPTO
+        |LEE 000#7=;
+        |SI FSalida = 0;            ||VER SI ENTRA AQUI
+                 #4#7  = #7#16;     ||DESCRIPCION 1
+                 #4#8  = #7#17;
+                 #4#9  = #7#18;
+                 #4#10 = #7#3;      ||TIPO ENTRE H, S, A,
+                 #4#12 = #7#4;      ||TARIFA 1 DE asconcep
+                 |SI #7#5="U"; |O #7#5="u";
+                       #4#14="U";   ||UNITARIO O GLOBAL
+                 |SINO;
+                       #4#14="G";
+                 |FINSI;
+
+                 #4#15 = #0#2;      ||FECHA DE LA PANTALLA INCIAL
+        |FINSI;
+|FPRC;
+
+
+
+|PROCESO CalculosCabecera;
+   |SI #4#10 = "H"; #3#17 = #3#17 + #4#13; |FINSI;
+   |SI #4#10 = "S"; #3#18 = #3#18 + #4#13; |FINSI;
+   |SI #4#10 = "A"; #3#19 = #3#19 + #4#13; |FINSI;
+   |SI #4#10 = "N"; #3#12 = "N";           |FINSI;
+
+   #3#20=#2#23;             ||DESCUENTO DEL CLIENTE
+   #3#21 = #3#17 % #3#20;
+   #3#22 = #3#17 - #3#21;
+   |HAZ iva;
+   #3#23 = #3#22 % iva;
+   #3#24 = #3#22 + #3#23 + #3#18;
+   |SI #3#12 = "S"; #3#25 =  #3#22 % #6#31; |SINO; #3#25 = 0; |FINSI;
+
+
+   #3#26 = #3#24 - #3#19 - #3#25;
+|FPRC;
+
+
+
+|PROCESO LineaFamilia;
+
+       #4#0=el_tipo;                 ||TIPO DE FACTURA
+       #4#1=#3#1;                 ||CLIENTE
+       #4#2=999;                  ||LINEA DEFECTO 999
+       |LEE 000#4];               ||SITUAMOS EN EL ULTIMO
+     |SI FSalida=0;               ||NO EXISTE CLIENTE CON ID_SOCIO
+          |LEE 000#4a;            ||LEEMOS EL ANTERIOR REG
+     |SINO;
+          |LEE 000#4u;
+     |FINSI;
+     |SI FSalida=0; |Y #4#0 = #3#0; |Y #4#1 = #3#1;
+         linea = #4#2 + 1;
+     |SINO;
+         linea = 1;
+     |FINSI;
+   #4#0  = el_tipo;          ||TIPO FACTURA SEGUN SELECCION
+   #4#1  = #3#1;             ||CODIGO CLIENTE ACTUAL
+   #4#2  = linea;            ||LINEA
+   #4#3  = conver;           ||FECHA DD/MM
+   #4#4  = #13#17;           ||SECCION FAMILIAR
+   #4#5  = #13#13;           ||CONCEPTO  "
+   #4#6  = #13#16;           ||DESCRIPCION CONCEPTO
+   aSeccion =#4#4;
+   aConcepto=#4#5;
+
+
+   |HAZ DescripcionTarifaAsconcep;
+
+   ||CALCULOS CUANTO SON A CUENTA SE COLOCA NEGATIVO
+   ||SI #4#10="A";               ||CUANDO ES A CTA.
+        ||#4#12=#4#12* -1;
+   ||FINSI;
+
+    #4#11 = 1;                  ||UNIDADES 1
+    #4#13 = #4#11 * #4#12;      ||IMPORTE
+
+
+    ||HAZ ColocarTipo;        ||TIPO DE LINEAS H,S,A,N
+    ||#4#10=aTipo;
+
+    aTipo=#4#10;
+
+||ABREMOS CABECERA PARA COLOCAR LOS CALCULOS
+
+    ||DEBUG;    ||VISUALIZAR SI CARGA EL CLIENTE CORRECTO
+    #3#0=el_tipo;            ||TIPO SELECCION FACTURA
+    #3#1=#2#0;               ||CODIGO CLIENTE
+    |LEE 101#3=;
+
+    ||DEBUG;   ||DISTINGUIR EL TIPO DE CALCULO POR LINEAS
+
+    |GRABA 020#4n;          ||GRABAMOS LINEA
+
+    |HAZ CalculosCabecera;      ||Recalculamos los Calculos Cabecera
+
+    |GRABA 020#3a;          ||GRABAMOS CABECERA
+    |LIBERA #3;
+|FPRC;
+
+
+|DEFBUCLE LeerFamilia;
+    #12#1;                    ||BUCLE FAMILIAS
+    ;
+    #3#1;                     ||CLAVE ID CLIENTE DE CABECERA  ASCABMIN
+    #3#1;
+    ;
+    NULL,NULL,LineaFamilia;
+|FIN;
+
+
+|PROCESO GrabarCabecera;                       ||CREAMOS FACTURA DEL
+
+   el_tipo = #0#4;                             ||COLOCAMOS EL TIPO FACTURA
+
+   |HAZ GrabarClienteSocio;
+
+
+
+   |DDEFECTO #2;             ||DEF CLIENTES
+   #2#0=#1#0;                ||SELECCIONAMOS EL CLIENTE
+   |LEE 020#2=;              ||LEER REGISTRO CLIENTES
+   |SI FSalida=0;
+        |DDEFECTO #3;            ||DEF CABECERA
+        #3#0=el_tipo;            ||TIPO SELECCION FACTURA
+        #3#1=#2#0;               ||CODIGO CLIENTE
+        |LEE 101#3=;
+        |SI FSalida!0;           ||NO EXISTE ID DE CLIENTE EN CABECERAS
+             |GRABA 020#3b;      ||GRABA EL CODIGO Y NOS RESITUAMOS ALLI
+                                 ||COLOCAR ACUMULADORES
+             ||MENAV "NO EXISTE CABECERA CON EL ID DEL CLIENTE BUSCADO";
+        |FINSI;
+        #3#2 = #2#2;       ||RAZON SOCIAL = NOMBRE CLIENTE-SOCIO
+        #3#3 = #2#2;       ||NOMBRE APELLIDOS CLIENTE-SOCIO
+        #3#4 = #1#5;       ||DIRECCION
+        #3#5 = #1#25;      ||CODIGO PROVINCIA
+        #3#6 = #1#28;      ||CODIGO POBLACION
+        #3#7 = #1#6;       ||POBLACION
+        #3#8 = #1#7;       ||PROVINCIA
+        #3#9 = #1#11;      ||CIF
+        #3#10= 00;         ||FORMA DE PAGO QUE PONER ?
+        #3#11= #1#30;      ||BANCO A REMESAR
+        #3#12="N";         ||RETENCION I.R.P.F
+        #3#13=#1#18;       ||BANCO SOCIO
+        #3#14=#2#12;
+        #3#13=#2#13;
+        #3#16=#2#14;
+        #3#29=#0#2;        ||FECHA FACTURA DEL ORIGEN
+
+        |DDEFECTO #4;              ||DEF LINEAS
+        #4#0=#3#0;                 ||TIPO DE FACTURA
+        #4#1=#3#1;                 ||CLIENTE
+        #4#2=999;                  ||LINEA DEFECTO 999
+        |LEE 000#4];               ||SITUAMOS EN EL ULTIMO
+        |SI FSalida=0;               ||NO EXISTE CLIENTE CON ID_SOCIO
+             |LEE 000#4a;            ||LEEMOS EL ANTERIOR REG
+        |SINO;
+             |LEE 000#4u;
+        |FINSI;
+        |SI FSalida=0; |Y #4#0 = #3#0; |Y #4#1 = #3#1;
+             linea = #4#2 + 1;
+        |SINO;
+             linea = 1;
+        |FINSI;
+
+
+ ||________________________________________________/
+ ||GRABAMOS LA LINEA
+    #4#0  = #3#0;             ||TIPO FACTURA
+    #4#1  = #3#1;             ||CODIGO CLIENTE ACTUAL
+    #4#2  = linea;            ||LINEA
+    |HAZ conver_fecha;
+    #4#3  = conver;           ||FECHA DD/MM         |AQUI
+    #4#4  = #1#26;            ||SECCION SOCIO
+    #4#5  = #1#1;             ||CONCEPTO SOCIO
+    #4#6  = #1#2;             ||DESCRIPCION CONCEPTO
+    ||BUSCAR OTRAS DESCRIPCIONES DESDE ASCONCEP
+
+    aSeccion = #4#4;
+    aConcepto= #4#5;
+
+    |HAZ DescripcionTarifaAsconcep;
+
+   ||CALCULOS CUANTO SON A CUENTA SE COLOCA NEGATIVO
+   ||SI #4#10="A";               ||CUANDO ES A CTA.
+        ||#4#12=#4#12* -1;
+   ||FINSI;
+
+    #4#11 = 1;                  ||UNIDADES 1
+    #4#13 = #4#11 * #4#12;      ||IMPORTE
+
+    aTipo=#4#10;         ||ASIGNAMOS EL TIPO
+
+
+  |GRABA 020#4n;                ||GRABAMOS LAS LINEAS
+
+||______________________________________________________/ CALCULOS
+
+    |HAZ CalculosCabecera;
+
+    |GRABA 020#3a;
+    |LIBERA #3;
+
+||______________________________________________________/FAMILIARES SOCIO
+
+    |BUCLE LeerFamilia;
+
+||______________________________________________________/
+
+|SINO;
+     aAlfa1 = "    Cliente [" + #2#0 + "] no encontrado ...";
+     |MENAV aAlfa1;
+|FINSI;
+|FPRC;
+
+
+|PROCESO conver_fecha;        ||CONVERSION DE FECHA
+conver1 = #0#2 % 0102;
+conver2 = #0#2 % 0402;
+conver  = conver1 + conver2;
+|FPRC;
+
+
+|PROCESO iva;
+
+|ABRE #6;
+|LEE 040#6p;
+|SI FSalida ! 0; |DDEFECTO #6; |FINSI;
+|CIERRA #6;
+iva = 0;
+|SI #3#0 = 0; iva = #6#21; |FINSI;
+|SI #3#0 = 1; iva = #6#22; |FINSI;
+|SI #3#0 = 2; iva = #6#23; |FINSI;
+|SI #3#0 = 3; iva = #6#24; |FINSI;
+|SI #3#0 = 4; iva = #6#25; |FINSI;
+|SI #3#0 = 5; iva = #6#26; |FINSI;
+|SI #3#0 = 6; iva = #6#27; |FINSI;
+|SI #3#0 = 7; iva = #6#28; |FINSI;
+|SI #3#0 = 8; iva = #6#29; |FINSI;
+|SI #3#0 = 9; iva = #6#30; |FINSI;
+|FPRC;
+
+|DEFBUCLE RangoSocios;      ||BUCLE DE CONCEPTOS
+#1#1;
+26;
+#0#0, #0#6;              ||BUCLE BUSCA POR SOCIO Y POR SECCION
+#0#1, #0#7;              ||PARA LEER CONCEPTO
+;
+NULL,GrabarCabecera;
+|FIN;
+
+
+|PROCESO impre; |TIPO 3;
+|SI #0#5 = "SI";
+    |ABRE #1;                 ||DEF SOCIOS
+    |ABRE #2;
+    |ABRE #3;
+    |ABRE #4;
+    |ABRE #7;
+    |ABRE #9;
+         |BUCLE RangoSocios;
+    |CIERRA #1;
+    |CIERRA #2;
+    |CIERRA #3;
+    |CIERRA #4;
+    |CIERRA #7;
+    |CIERRA #9;
+|FINSI;
+|FPRC;
+
+
+
+
+|PROCESO mayus; |TIPO 0;
+    #0Campo = #0Campo > #0Campo;
+|PINTA #0Campo;
+|FPRC;

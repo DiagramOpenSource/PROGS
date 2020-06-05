@@ -1,0 +1,423 @@
+|FICHEROS;
+   caexistc #0;
+   caexistl #1;
+   cacuenta #2;
+   caivaasi #200;
+
+   cafantas #10;
+   espejo@  #901;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+
+   modoEntrada = 0;
+   nModo       = 0;
+   alfa1       = "";
+
+   aAlfa1      = "";
+   aAlfa2      = "";
+   nNume1      = 0;
+   nNume2      = 0;
+
+   &r_emp      = 0;
+   &r_per      = 0;
+   &r_eje      = 0;
+   &r_nom      = "";
+   &estru      = 0;
+   &swUno      = 0;
+
+   aDirInicio  = "";
+   aDef901     = "";
+
+   c_err       = 0;
+   nLinea      = 0;
+   nInkey      = 0;
+   &snFiltr = "";
+   &snFilAc = "";
+   &snFilBa = "";
+   nDesde   = 0;
+    nSw    = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|CALCULO elTipo8; |TIPO 8;
+   |HAZ inicio;
+   |DFICE fich_alta;
+   |HAZ DirAplicSt;
+
+   |DBASE aDirInicio;
+   aDef901  = aDirInicio + "def/caexistl";
+   |CARGA_DEF aDef901, espejo@;
+   |SI FSalida ! 0;
+       aDef901 = "";
+       |MENAV "    Error Cargado Fichero de Existencias. Proceso Interrumpido";
+       |ACABA;
+   |FINSI;
+
+   |ABRE #200;
+   |DDEFECTO #200;
+   |LEE 001#200p;
+   |CIERRA #200;
+   snFilBa = #200#119;
+|FCAL;
+
+|CALCULO alSalir; |TIPO 9;
+  |SI aDef901 ! ""; |DESCARGA_DEF #901; aDef901 = ""; |FINSI;
+
+  r_emp = enEmpresa;
+  r_per = enPeriodo;
+  |HAZ ExisGeneral;
+|FCAL;
+
+|| -------------------------------------------------------------------------
+|| ---- CALCULOS DE LA CABECERA --------------------------------------------
+|| -------------------------------------------------------------------------
+|CALCULO AntesEst; |TIPO 7;
+   |SI eaDepar = "S";
+      |SI Haybasica = 1;
+          |MENSA "0000F2-Consultar Actividades. F3-Copiar Estructura, F4-Crear Est.por Actividades";
+      |SINO;
+          |MENSA "    <F2> Consultar Departamentos. <F3> Copiar Estructura";
+      |FINSI;
+   |SINO;
+      |MENSA "    <F3> Copiar Estructura";
+   |FINSI;
+|FCAL;
+
+|PROCESO PintaTexto;
+   aAlfa1 = "                                                  ";
+   |HAZ LeoPrimeraLinea;
+   |SI c_err = 1;
+       aAlfa1 = "Estructura sin Cuentas. Toma acumulados del Diario";
+   |FINSI;
+   |ATRI S; |PINTA 2302, aAlfa1; |ATRI 0;
+|FPRC;
+
+|PROCESO PintaTexto1;
+   |ATRI S;
+   |PINTA 2302, "Estructura sin Cuentas. Toma acumulados del Diario";
+   |ATRI 0;
+|FPRC;
+
+|PROCESO PintaTexto2;
+   |PINTA 2302, "                                                  ";
+|FPRC;
+
+|CALCULO TrasEst; |TIPO 0;
+
+ |SI FSalida = 11; |HAZ Copiar;       |ACABA; |FINSI;
+ |SI FSalida = 12; |HAZ RecActividad; |ACABA; |FINSI;
+
+ modoEntrada = (FEntrada / 100) ! 0;
+ |SI #0Campo =  0;
+     |SI modoEntrada = 1; |O modoEntrada = 2;
+         |MENAV "    Esta Estructura no podemos Modificarla ";
+         |ERROR;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+  |SI eaDepar = "N"; |ACABA; |FINSI;
+
+  eOpDep = 0; || 1 = Consulta pantalla
+  |SI FSalida = 10; eOpDep = 1;  |FINSI;
+  enActividad = #0#0;
+  eaCodDep    = #0#0; |QBF eaCodDep;
+  eaCodDep    = ("00" + eaCodDep) % -102;
+  |HAZ Actividad;
+  |SI eswLect = 1;
+      |MENAV "    Error.! No Existe Actividad / Departamento";
+      |SI modoEntrada = 1;
+          |ERROR;
+      |FINSI;
+  |SINO;
+      #0#0 = eaCodDep;    |PINTA #0#0;
+      #0#1 = eaNombreAct; |PINTA #0#1;
+      |HAZ PintaFecha;
+      |SI efActFin > "01.01.1900"; |Y snFilBa = "S";
+          aAlfa1 = "    NAtencion!!!. Actividad con Fecha de BAJA " + efActFin + ", Desea introducir Facturas ? ";
+          |CONFI aAlfa1;
+          |SI FSalida ! 0;
+              |ERROR;
+              |ACABA;
+          |FINSI;
+      |FINSI;
+      |SI eaEsCom = "S";
+          |CONFI "    NAtencion!!!. Actividad Comunera, ¨ Desea introducir Movimientos ? ";
+          |SI FSalida ! 0;
+              |ERROR;
+              |ACABA;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FCAL;
+
+|PROCESO PintaFecha;
+
+    |SI Haybasica = 0; |ACABA; |FINSI;
+
+    alfa1 = &205; alfa1 = alfa1 * 44;
+    |PINTA 0636, alfa1;
+    #cafantas#10 = efActIni;
+    #cafantas#11 = efActFin;
+    |SI efActIni > "01.01.1900";
+        |ATRI S; |PINTA 0636, "F.Inicio: "; |ATRI 0;
+        |PINTA 0645, #cafantas#10;
+    |FINSI;
+    |SI efActFin > "01.01.1900";
+        |ATRI S; |PINTA 0657, "F.Fin: "; |ATRI 0;
+                 |PINTA 0663, #cafantas#11;
+    |FINSI;
+|FPRC;
+
+|PROCESO inf1;
+ #1#0 = #0#0;
+ #1#0 = 1;
+|FPRC;
+
+|PROCESO sup1;
+ #1#0 = #0#0;
+ #1#0 = 99;
+|FPRC;
+
+|CALCULO El13; |TIPO 13;
+    alfa1 = &205; alfa1 = alfa1 * 44;
+    |PINTA 0636, alfa1;
+    modoEntrada = (FEntrada / 100) ! 0;
+    |SI modoEntrada  [ 1; |ACABA; |FINSI;
+    |SI eaDepar = "S";
+        eOpDep = 0;
+        enActividad = #0#0;
+        eaCodDep    = #0#0;
+        |HAZ Actividad;
+        |HAZ PintaFecha;
+   |FINSI;
+
+   |ENTLINEAL #1#1, -2, 7, 21, 0, inf1, sup1;
+   |HAZ PintaTexto;
+|FCAL;
+
+|CALCULO TrasDescrip; |TIPO 0;
+ nInkey = FSalida;
+ modoEntrada = (FEntrada / 100) ! 0;
+ |SI #0#0 =  0;
+     |SI modoEntrada = 1; |O modoEntrada = 2;
+         |MENAV "    Esta Estructura no podemos Modificarla ";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+ |FINSI;
+|FCAL;
+
+|CALCULO cuenta1; |TIPO 6;
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta;
+     |PINTA #0Campo;
+     |HAZ SacaNivel;
+|FCAL;
+
+|CALCULO cuefin1; |TIPO 0;
+   emCta = 1;        || Dar mensajes de error
+   eaCuenta = #0#2;
+   |HAZ LeeCuenta;
+|FCAL;
+
+|PROCESO Copiar;
+  |ERROR;
+  swUno  = 1;
+  r_emp = enEmpresa;
+  r_per = enPeriodo;
+  estru = #0#0;
+  |SUB_EJECUTA_NP "caduplex";
+  #0#0 = estru;
+  |PINTA #0#0;
+  |PINDA #0#0;
+|FPRC;
+
+|PROCESO RecActividad;
+  |CONFI "0000SCrear Est. Existencias por cada una de las Actividades de la Empresa";
+  |SI FSalida ! 0; |ACABA; |FINSI;
+  |ERROR;
+  swUno  = 1;
+  r_emp = enEmpresa;
+  r_per = enPeriodo;
+  estru = #0#0;
+  |SUB_EJECUTA_NP "caz00006";
+  #0#0 = estru;
+  |PINTA #0#0;
+  |PINDA #0#0;
+|FPRC;
+|| -------------------------------------------------------------------------
+|| ---- CALCULOS DE LAS LINEAS ---------------------------------------------
+|| -------------------------------------------------------------------------
+
+|CALCULO cuenta2; |TIPO 6;
+     eaCuenta = #1Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #1Campo = eaCuenta;
+     |PINTA #1Campo;
+
+     nNume1 = Campo + 1;
+     |HAZ SacaNivel;
+     #1nNume1 = enNivel;
+|FCAL;
+
+|PROCESO Vaciar;
+    |SI #espejo@#1 = 1;
+        |PDEFECTO #espejo@, 2, 25;
+        |GRABA 020#espejo@.a;
+    |SINO;
+        |BORRA 020#espejo@.a;
+    |FINSI;
+    |LIBERA #espejo@;
+    nSw = 1;
+|FPRC;
+
+|DEFBUCLE Vacio;
+    #espejo@#1002;
+    ;
+    #0#0, nDesde;
+    #0#0, 99;
+    e;
+    NULL, Vaciar;
+|FIN;
+
+|CALCULO cuefin2; |TIPO 0;
+
+   emCta = 1;        || Dar mensajes de error
+   eaCuenta = #1Campo;
+   |HAZ LeeCuenta;
+   |SI eswCta ! 0; |ACABA;  |FINSI;
+
+   nNume1   = Campo + 2;
+   #1nNume1 = #cacuenta#2;
+   |PINTA #1nNume1;
+
+   aAlfa1 = #1Campo; aAlfa1 = aAlfa1 % 101;
+   nNume1 = aAlfa1;
+   |SI Campo = 2;
+       |SI aAlfa1 = " "; |Y #1#1 = 1;
+           |CONFI "0000NDescarga de Existencias sin Cuentas. Continuar";
+           |SI FSalida = 0;
+               |HAZ PintaTexto1;
+               nDesde = 2;
+               |BUCLE Vacio;
+               |PONCONTROL 23, "SI";
+
+               |PDEFECTO #1, 2, 25;
+               |PTEC 806;
+               |PTEC 806;
+           |SINO;
+                |ERROR;
+           |FINSI;
+           |ACABA;
+       |SINO;
+           |HAZ PintaTexto2;
+       |FINSI;
+       |SI nNume1 ! 3;
+           |MENAV "    La cuenta debe ser del grupo 3";
+           |ERROR;
+       |SINO;
+           |HAZ ComprExist;
+           |SI c_err = 1;
+               |MENAV "     La Cuenta YA ha sido introducida.";
+               |ERROR;
+           |FINSI;
+       |FINSI;
+
+   |SINO;
+
+      |SI nNume1 ! 6; |Y nNume1 ! 7;
+         |MENAV "    La cuenta debe ser de los grupos 6 o 7";
+         |ERROR;
+      |FINSI;
+
+   |FINSI;
+|FCAL;
+
+|PROCESO LeoPrimeraLinea;
+     c_err = 0;
+     |ABRE #901;
+     #901#0 = #0#0;
+     #901#1 = 1;
+     |LEE 001#901=;
+     |SI FSalida = 0; |Y #901#2 = doce;
+         c_err = 1;
+     |FINSI;
+     |CIERRA #901;
+|FPRC;
+
+|PROCESO ComprExist;
+   c_err  = 0;
+   nLinea = #1#1;
+   |ABRE #901;
+   |SELECT #2#901;
+   #901#0 = #1#0;
+   #901#2 = #1#2;
+   #901#3 = #1#3;
+   |LEE 001#901=;
+   |SI FSalida = 0; |Y nLinea ! #901#1;
+       c_err = 1;
+   |FINSI;
+   |SELECT #1#901;
+   |CIERRA #901;
+|FPRC;
+
+|PROCESO LaLinea; |TIPO 0;
+  nModo = (FEntrada / 100) ! 0;
+  |SI nModo ! 1; |ACABA; |FINSI;
+
+  |SI #1#1 ] 2;
+      |HAZ LeoPrimeraLinea;
+      |SI c_err = 1;
+          |MENAV "0000Estructura sin Cuentas de Existencias. Alta no permitida";
+          |ERROR;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|CALCULO efeuno; |TIPO 0;
+   nInkey = FSalida;
+
+   |SI nInkey = 10;
+       |ABRE #2;
+       |DDEFECTO #2;
+       #2#0 = #1#2;
+       |LEE 001#2=;
+       |CIERRA #2;
+
+       #1#11 = #2#9;   |PINTA #1#11;
+       #1#12 = #2#12;  |PINTA #1#12;
+       #1#13 = #2#15;  |PINTA #1#13;
+       #1#14 = #2#18;  |PINTA #1#14;
+       #1#15 = #2#21;  |PINTA #1#15;
+       #1#16 = #2#24;  |PINTA #1#16;
+       #1#17 = #2#27;  |PINTA #1#17;
+       #1#18 = #2#30;  |PINTA #1#18;
+       #1#19 = #2#33;  |PINTA #1#19;
+       #1#20 = #2#36;  |PINTA #1#20;
+       #1#21 = #2#39;  |PINTA #1#21;
+       #1#22 = #2#42;  |PINTA #1#22;
+       #1#23 = #2#45;  |PINTA #1#23;
+       #1#24 = #2#48;  |PINTA #1#24;
+   |FINSI;
+   |SI nInkey = 10; |O nInkey = 11;
+       |PTEC 802; |PTEC 802; |PTEC 802;
+       |PTEC 802; |PTEC 802; |PTEC 802;
+       |PTEC 802; |PTEC 802; |PTEC 802;
+       |PTEC 802; |PTEC 802; |PTEC 802;
+       |PTEC 802;
+  |FINSI;
+|FCAL;
+
+|CALCULO ImpNegativo; |TIPO 0;
+  |SI #1Campo < 0;
+      |MENAV "    Error. Importe de Existencias en Negativo";
+      |ERROR;
+  |FINSI;
+|FCAL;

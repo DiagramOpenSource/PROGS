@@ -1,0 +1,226 @@
+|FICHEROS;
+     asy00001 #0;   || Este def.
+     ascabrem #1;   || Remesas.
+     asw00009 #2;   || Temporal total importe.
+     asw00010 #3,MANTE;   || Temporal resumen remesas.
+     ashisrec #4;   || Recibos
+     aslinrem #5;
+|FIN;
+
+|VARIABLES;
+     fichero   = "";
+     sw        = 0;
+
+ {-1}Menu         = "";
+     Menu1        = "2400";
+     Menu2        = "1";
+     Menu3        = "Elija Impresion : ";
+     Menu4        = "PI";
+     Menu5        = "  Pantalla  ";
+     Menu6        = "  Impresora  ";
+
+     fFech = @;
+     qFech = "";
+     dFech = "";
+     hFech = "";
+|FIN;
+
+|PROCESO Mayor;
+#0Campo = #0Campo > #0Campo;
+|PINTA #0Campo;
+|FPRC;
+
+||---------------------------------------------------------------------------
+|| RELLENA EL TEMPORAL DE CONSULTA DEL RESUMEN DE REMESAS.
+||---------------------------------------------------------------------------
+|PROCESO graba;
+     #3#0 = #1#3;             || FECHA.
+     #3#1 = #1#0;             || REMESA.
+     #3#2 = #1#1;             || BANCO.
+     |LEE 141#3=;
+     |SI FSalida = 0;
+          #3#3 = #3#3 + #1#4;
+          |GRABA 021#3a;
+     |SINO;
+          #3#3 = #1#4;
+          #3#4 = #1#2;
+          |GRABA 021#3n;
+     |FINSI;
+     |LIBERA #3;
+
+     || ACTUALIZA EL IMPORTE TOTAL DEL RESUMEN...............................
+     #2#0 = 00000;
+     |LEE 141#2=;
+     |SI FSalida = 0;
+          #2#1 = #2#1 + #1#4;
+          |GRABA 021#2a;
+     |SINO;
+          #2#1 = #1#4;
+          |GRABA 021#2n;
+     |FINSI;
+     |LIBERA #2;
+
+     sw = 1;
+|FPRC;
+
+|DEFBUCLE ascabrem;
+     #1#3;
+     ;
+     #0#2,#0#4,#0#0;          || N§.REMESA, BANCO, FECHAS.
+     #0#3,#0#5,#0#1;
+     ;
+     NULL,graba;
+|FIN;
+
+|PROCESO Caja;
+#5#2 = #4#0;
+#5#3 = #4#1;
+|LEE 040#5=;
+|SI FSalida = 0; |ACABA; |FINSI;
+
+#3#0 = #0#1;             || FECHA.
+#3#1 = 0;                || REMESA.
+#3#2 = 0;                || BANCO.
+|LEE 141#3=;
+|SI FSalida = 0;
+    #3#3 = #3#3 + #4#6;
+    |GRABA 021#3a;
+|SINO;
+    #3#3 = #4#6;
+    #3#4 = "CAJA";
+    |GRABA 021#3n;
+|FINSI;
+|LIBERA #3;
+
+|| ACTUALIZA EL IMPORTE TOTAL DEL RESUMEN...............................
+#2#0 = 00000;
+|LEE 141#2=;
+|SI FSalida = 0;
+    #2#1 = #2#1 + #4#6;
+    |GRABA 021#2a;
+|SINO;
+    #2#1 = #4#6;
+    |GRABA 021#2n;
+|FINSI;
+|LIBERA #2;
+
+sw = 1;
+|FPRC;
+
+|DEFBUCLE ashisrec;
+#4#2;
+;
+#0#0, "  ", 000000;
+#0#1, "zz", 999999;
+;
+NULL, Caja;
+|FIN;
+
+|PROCESO Imprimir;
+|PRINT;
+|FPRC;
+
+|DEFBUCLE asw00010;
+#3#1;
+;
+#0#0, #0#2, #0#4;
+#0#1, #0#3, #0#5;
+;
+NULL, Imprimir;
+|FIN;
+
+||---------------------------------------------------------------------------
+|| PRINCIPIO.
+||---------------------------------------------------------------------------
+|PROCESO minimo;
+     #3#0 = #0#0;
+     #3#1 = #0#2;
+     #3#2 = #0#4;
+|FPRC;
+
+|PROCESO maximo;
+     #3#0 = #0#1;
+     #3#1 = #0#3;
+     #3#2 = #0#5;
+|FPRC;
+
+|PROCESO inicio; |TIPO 3;
+     |MENU Menu;
+     Menu2 = FSalida;
+     |SI Menu2 = 2;
+         |IMPRE 0;
+         |SI FSalida ! 0; |ACABA; |FINSI;
+
+         |INFOR "asy00001";
+         |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+     |FINSI;
+
+     sw = 0;
+     |HAZ temporal;
+     |ABRE #2;
+     |ABRE #3;
+     |BUCLE ascabrem;
+     |SI #0#6 = "S";
+         |ABRE #5;
+         |SELECT #2#5;
+         |BUCLE ashisrec;
+         |CIERRA #5;
+     |FINSI;
+     |CIERRA #2;
+     |CIERRA #3;
+
+     |SI sw = 1;
+         |SI Menu2 = 1;
+             |ENTLINEAL #1#3,1,4,19,1,minimo,maximo;
+         |SINO;
+             |BUCLE asw00010;
+             |PIEINF;
+             |FININF;
+             |FINIMP;
+         |FINSI;
+     |FINSI;
+     |DELINDEX #2;
+     |DELINDEX #3;
+|FPRC;
+
+||---------------------------------------------------------------------------
+|| CREA EL FICHERO TEMPORAL.
+||---------------------------------------------------------------------------
+|PROCESO temporal;
+     fichero = Usuario % 810;
+     |QBF fichero;
+     fichero = (fichero + "zzzzzzzz") % 105;
+     fichero = "TM2" + fichero;
+     |NOME_DAT #2 fichero;
+     |ABRE #2;  |CIERRA #2;  |DELINDEX #2;
+
+     fichero = Usuario % 810;
+     |QBF fichero;
+     fichero = (fichero + "zzzzzzzz") % 105;
+     fichero = "TM3" + fichero;
+     |NOME_DAT #3 fichero;
+     |ABRE #3;  |CIERRA #3;  |DELINDEX #3;
+|FPRC;
+
+||---------------------------------------------------------------------------
+|| PINTA EL IMPORTE TOTAL DEL RESUMEN.
+||---------------------------------------------------------------------------
+
+|PROCESO pinta; |TIPO 13;
+     |SI sw = 1;
+          |ATRI I;
+          |PINTA 2167, #2#1;
+          |ATRI i;
+     |FINSI;
+|FPRC;
+
+|PROCESO sacaano; |TIPO 7;
+     fFech = ~;
+     qFech = fFech % -104;
+     dFech = "01.01." + qFech;
+     hFech = "31.12." + qFech;
+     #0#0  = dFech;
+     #0#1  = hFech;
+     |PINTA #0#0;
+     |PINTA #0#1;
+|FPRC;

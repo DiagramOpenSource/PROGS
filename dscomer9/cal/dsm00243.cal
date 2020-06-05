@@ -1,0 +1,176 @@
+|FICHEROS;
+     dsm00243 #0;
+     agifa112 #112;
+     agifa019 #19;
+     agifa017 #17;
+     agifa065 #20;
+     tempo226 #226; ||Se carga cuando llama el agifa226
+|FIN;
+
+|VARIABLES;
+     nReg = 0;
+     aParam = "";
+     &eaDLoca = "";
+     &eaHLoca = "";
+     &eaFichero = "";
+     &eaDArti = "";
+     &eaHArti = "";
+     &eaDFami = "";
+     &eaHFami = "";
+     &eaDSubf = "";
+     &eaHSubf = "";
+     &eaDProv = "";
+     &eaHProv = "";
+     &enDAlma = 0;
+     &enHAlma = 99999;
+
+     &eaArticulo = "";
+     P    = 0; || Tiempo Prepara           #agifa112#91;
+     B    = 0; || Plazo aprovisionamiento  #agifa019#203;
+     C    = 0; || Consumo hasta la fecha
+     D    = 0; || Meses desde 1 Enero hasta hoy
+     E    = 0; || Consumo medio = C/D
+     F    = 0; || Stock seguridad (minimo) #agifa017#6
+     PP   = 0; || Punto Pedido  = (F+E/30)*(P+B)
+     nMes   = 0;
+     aFecha = "";
+     nCampo = 0;
+     i      = 0;
+     nNume1 = 0;
+     nNume2 = 0;
+|FIN;
+
+|PROCESO LlenaArt; |TIPO 6;
+     eaArticulo = #0Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #0Campo = eaArticulo;
+          |PINTA #0Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO acumula;
+     |SI #20#2 ! "AV"; |Y #20#2 ! "FC"; |Y #20#2 ! "SS"; |Y #20#2 ! "TI"; |Y #20#2 ! "MS"; |Y #20#2 ! "SF";
+          |ACABA;
+     |FINSI;
+     C = C + (#20#6 * -1);
+|FPRC;
+
+|DEFBUCLE acumula;
+     #20#4;
+     ;
+     #0#4,#17#1,#17#0;
+     #0#5,#17#1,#17#0;
+     ;
+     NULL,acumula;
+|FIN;
+
+|PROCESO agifa017;
+     |DDEFECTO #19;
+     #19#0 = #17#0;
+     |LEE 000#19=;
+
+     |SI #19#2 < #0#6; |O #19#2 > #0#7; |ACABA; |FINSI;
+     |SI #19#3 < #0#8; |O #19#3 > #0#9; |ACABA; |FINSI;
+
+     |SI #19#27 < eaDProv; |O #19#27 > eaHProv; |ACABA; |FINSI;
+
+     |DDEFECTO #112;
+     #112#0 =  #19#27;
+     |LEE 000#112=;
+
+     P = #112#91;
+     B = #19#203;
+
+     C = 0;
+     |BUCLE acumula;          || unidades
+
+     nNume1 = #0#4;
+     nNume2 = #0#5;
+     D = nNume2 - nNume1;     || dias periodo
+     D = D + 1;               || (ambos inclusive)
+
+     E = C/D;                 || media diaria
+
+     PP = E * (P + B);
+
+     F = #17#6;               || stock minimo
+     PP = PP + F;
+
+     |SI PP < F;
+          PP = F;             || NUNCA inferior al stock minimo!!
+     |FINSI;
+
+     #17#49 = PP;
+
+     |GRABA 020#17a;
+     |LIBERA #17;
+
+     |SI aParam = "auto";
+          |DDEFECTO #226;
+          #226#0 = #19#0;
+          #226#1 = #19#1;
+          #226#2 = #19#6;
+          #226#3 = PP;
+          #226#4 = #19#27;
+          #226#5 = #19#28;
+          #226#6 = #19#29;
+          #226#7 = #19#129;
+          #226#8 = #19#15;
+          #226#9 = #17#1;
+          #226#11 = #19#209;
+          |SI #226#3 > 0;
+               nReg = nReg + 1;
+               #226#10 = nReg;
+               |GRABA 020#226n;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa017;
+     #17#1;
+     2;
+     #0#0, #0#2, eaDLoca
+     #0#1, #0#3, eaHLoca;
+     be;
+     NULL, agifa017;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     aFecha = #0#4;
+     nMes = (A\(aFecha % 402));
+
+     |ABRE #19;
+     |ABRE #112;
+     |BUCLE agifa017;
+     |CIERRA #112;
+     |CIERRA #19;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     |SI aParam = "auto";
+          #0#0 = eaDArti;
+          #0#1 = eaHArti;
+          #0#2 = enDAlma;
+          #0#3 = enHAlma;
+          #0#6 = eaDFami;
+          #0#7 = eaHFami;
+          #0#8 = eaDSubf;
+          #0#9 = eaHSubf;
+          #0#4 = "01.01.0000";
+          #0#5 = "31.12.9999";
+          |NOME_DAT #226 eaFichero;
+          |ABRE #226;
+          |HAZ Tipo3;
+          |CIERRA #226;
+     |SINO;
+          eaDProv = "      ";
+          eaHProv = "zzzzzz";
+          eaDLoca = "                              ";
+          eaHLoca = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
+          |MANTE #0;
+     |FINSI;
+|FPRO;

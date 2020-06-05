@@ -1,0 +1,650 @@
+|FICHEROS;
+     palm0004 #0;  || Pantalla de pase.
+     palm0005 #1;  || Temporal pase Facturas Proforma.
+     agifa104 #4;  || Cabec. Pedidos Clientes.
+     agifa073 #5;  || Lineas Pedidos Clientes.
+
+     agifa007 #6;  || Series.
+     agifa024 #7;  || Clientes.
+     agifa019 #8;  || Articulos.
+     agifa017 #9;  || Almacenes
+
+     porconrp #17; || cabecera control representante
+
+     agifa023 #30; || Precios Clientes / Articulos.
+     agifa321 #35; || Parametros de Divisas
+     agifa328 #36; || Clientes/Divisas
+     agifa329 #37; || Lineas de Clientes/Divisas
+     agifa324 #38; || Divisas
+
+     marhu361 #44; ||
+     marhu362 #55; ||
+     marhu363 #56; ||
+
+     marhup07 #107;         || grupos de descuento
+     marhup08 #108;         || configuracion articulo-grupo descuento
+     marhup09 #109;         || maximo descuento por cliente
+     agifa129 #129;         || tablas descuento-comision
+     agifa025 #123;        || representantes
+
+     dsm00050 #950;
+     dsm00046 #946;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     aAutonomo = "";
+     nDescuento=0;
+     nComision=0;
+     nMaxDto=0;
+     nLineaMaxDto=0;
+     nLineaMaxDtoC=0;
+     nMaxComision=0;
+     &ser_ped   = "";
+     &num_ped   = 0;
+     cli_divisa = "";
+     divisa    = "";
+     nfecha    = 0;
+     div_act   = 0;
+     nMult     = 0;
+     nImpo     = 0;
+     nPal      = 0;
+     nPed      = 0;
+     aAlfa     = "";
+     aSerPed   = "";
+     exCliente = "";
+     exArticul = "";
+     exPrecios  = 0;
+     exPreuros  = 0;
+     exDescuen  = 0;
+     exComisio  = 0;
+     ||---------------
+     fFecha = @;
+     swPri           = 0;
+     nLinea          = 0;
+     aCli            = "";
+     &eaTag          = "";
+     &enSwMenu       = 0;
+     aFichero        = "";
+     &nDeci_Base     = 0;   || Decimales en Totales de la moneda base
+     &nDeci_PreBase  = 0;   || Decimales en el Precio en moneda base
+     &nDeci_BaseMx   = 0;   || Decimales en Totales de la moneda base (Maxima precision)
+     &nDeci_PreBasMx = 0;   || Decimales en el Precio en moneda base (Maxima precision)
+     &nDeci_Div      = 0;   || Decimales en Totales de la divisa
+     &nDeci_PreDiv   = 0;   || Decimales en el Precio en divisa
+     &nDeci_TotVis   = 0;   || Decimales en Totales visibles (el de la moneda de trabajo)
+     &nDeci_TotNoVis = 0;   || Decimales en Totales no visibles (el de la otra moneda)
+     &nDeci_PreVis   = 0;   || Decimales en el Precio visual. (lineas)
+     &nDeci_ImpVis   = 0;   || Decimales en el Importe visual. (lineas)
+     &nDeci_BaseMxP  = 0;   || Decimales en Totales de la moneda base (Maxima precision)
+     &nDeci_PreBasMxP= 0;   || Decimales en el Precio en moneda base (Maxima precision)
+     &nDeci_DivP     = 0;   || Decimales en Totales de la divisa
+     &nDeci_PreDivP  = 0;   || Decimales en el Precio en divisa
+     &nDeci_TotVisP  = 0;   || Decimales en Totales visibles (el de la moneda de trabajo)
+     &nDeci_TotNoVisP = 0;  || Decimales en Totales no visibles (el de la otra moneda)
+     &nDeci_PreVisP  = 0;   || Decimales en el Precio visual. (lineas)
+     &nDeci_ImpVisP  = 0;   || Decimales en el Importe visual. (lineas)
+     &decim_divisa = 0;  || Decimales de la divisa
+     &precio_divisa = 0; || Decimales del precio en divisa
+     &decim_base = 0;    || Decimales de la moneda base
+     &precio_base = 0;   || Decimales del precio en moneda base
+    asto = 0;
+    contador = "";
+    fmes = "";
+    mes  = 0;
+|FIN;
+
+|INCLUYE i_varart;
+
+|PROCESO graba_cabped;
+     |HAZ visual_totales;
+     |GRABA 020#4n;
+     ser_ped = #4#25;
+     num_ped = #4#0;
+     |SUB_EJECUTA_NP "agifa105.run;marhv104";
+|FPRC;
+
+|PROCESO graba_linped;
+         nLinea = nLinea + 1;
+         |DDEFECTO #5;
+         #5#28 = #4#25;     ||  Serie.
+         #5#0  = #4#0;
+         #5#1  = nLinea;   ||  Numero de linea.
+
+         ||---Lectura Articulo.
+         #8#0 = #1#4;
+         |LEE 000#8=;
+
+         #5#2  = #8#0;     ||  Codigo articulo.
+         #5#4  = #8#1;     ||  Descripcion articulo.
+         #5#3  = 1;
+         #5#5  = #1#5;     ||  Unidades.
+         #5#6  = #8#18;    ||  Precio.
+
+         exCliente = #7#0; ||Cod.Cli.
+         exArticul = #1#4; ||Cod.Art.
+
+         |HAZ DamePrecio;
+         |SI exPrecios ! 0;
+              #5#6  = exPrecios;    ||  Precio.
+              #5#38 = exPrecios;    ||  PRECIO EN DIVISA
+         |FINSI;
+
+         #5#8 = exDescuen;  || Dto
+         #5#10 = exComisio; || Comision
+
+
+         #5#14 = #8#30;    ||  Tipo de IVA.
+         #5#16 = #7#25;    ||  Representante 1.
+         #5#18 = #8#2;     ||  Familia.
+         #5#19 = #7#4;     ||  Tipo cliente.
+         #5#20 = #7#0;     ||  Cliente.
+         #5#23 = #7#37;    ||  Dto.
+         #5#24 = #7#38;    ||  Dto.P.P.
+         #5#25 = #7#156;   ||  Dto.Acumulado.
+         #5#26 = #7#20;    ||  Forma de pago.
+         #5#42 = #5#5;     ||  Unidades Pedidas.
+
+         |HAZ prec;
+
+         #4#11 = #4#11 + #5#9;
+         #4#12 = #4#12 + #5#9;
+         #4#13 = #4#11 - #4#12;
+         |GRABA 020#5n;
+         |HAZ visual_totales;
+
+         enForma = 1;
+         |HAZ AcumulaPV;
+|FPRC;
+
+|PROCESO palm0005;
+     |SI swPri = 0;
+          nPal = #1#0;
+          nPed = #1#1;
+          aAlfa = #1#0;
+          |QBF aAlfa;
+          aSerPed = "P" + aAlfa;
+          |HAZ LeeContador;
+          |DDEFECTO #4;
+          #4#25 = aSerPed;   ||Serie
+          #4#0  = contador;
+          |HAZ CargaCab;
+          nLinea = 0;
+          swPri = 1;
+     |FINSI;
+     |SI nPed ! #1#1; |O nPal ! #1#0;
+          |HAZ graba_cabped;
+          |HAZ actua_cliente;
+          |BUCLELIN 2ActuaCli#4;
+          nPal = #1#0;
+          nPed = #1#1;
+          aAlfa = #1#0;
+          |QBF aAlfa;
+          aSerPed = "P" + aAlfa;
+          |HAZ LeeContador;
+          |DDEFECTO #4;
+          #4#25 = aSerPed;       ||Serie
+          #4#0  = contador;
+          |HAZ CargaCab;
+          nLinea = 0;
+     |FINSI;
+     |HAZ graba_linped;
+|FPRC;
+
+|DEFBUCLE palm0005;
+     #1#1;
+     ;
+     1 ,     1,  1;
+     99,999999,999;
+     ;
+     NULL,palm0005;
+|FIN;
+
+|PROGRAMA;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     |HAZ LeeRepre;
+     |ABRE #4;
+     |ABRE #5;
+     |ABRE #7;
+     |ABRE #8;
+     |ABRE #9;
+     |ABRE #1;
+     |BUCLE palm0005;
+     |CIERRA #1;
+     |SI swPri = 1;
+           |HAZ graba_cabped;
+           |HAZ actua_cliente;
+           |BUCLELIN 2ActuaCli#4;
+     |FINSI;
+     |CIERRA #4;
+     |CIERRA #5;
+     |CIERRA #7;
+     |CIERRA #8;
+     |CIERRA #9;
+|FPRO;
+
+|| ------------------------ PROCESOS DE ACTUALIZACION -----------------------
+|PROCESO ActuaCli;
+     |ABRE #8;
+     #8#0 = #5#2;
+     |LEE 000#8=;
+     |CIERRA #8;
+
+     |SI #8#194 = 2;
+          nImpo = ((((#5#44 * #5#6) < #5#8) < #5#29) < #4#5) < #4#17;
+     |SINO;
+          nImpo = ((((#5#5 * #5#6) < #5#8) < #5#29) < #4#5) < #4#17;
+     |FINSI;
+     |SI #agifa142#115 = "S"; nImpo = nImpo < #4#6; |FINSI;
+
+     eaCliente = #agifa104#4;
+     efFecha = #agifa104#1;
+     enImpCliPed = nImpo;
+     |HAZ AcumulaCli;
+|FPRC;
+
+|PROCESO actua_cliente;
+         |DDEFECTO #7;
+         #7#0 = #4#4;
+         |LEE 121#7=;
+         |SI FSalida = 0;
+             fmes = #4#1 % A402;
+             mes = fmes - 1;
+             mes = mes * 3;
+             mes = mes + 114;
+             #7mes  = #7mes  + #4#11;
+             #7#150 = #7#150 + #4#11;
+             |GRABA 020#7a;
+         |FINSI;
+         |LIBERA #7;
+|FPRC;
+
+|PROCESO LeeMonBase; ||Lee los parametros de la moneda base
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 010#agifa321.p;   ||Leo parametros de divisa
+     #agifa104#40 = #agifa321#9;  ||Cojo la Moneda Base de parametros
+     #agifa324#0 = #agifa321#9;
+     |LEE 010#agifa324.=;         ||Leo la ficha de la moneda base en Divisas
+     #agifa104#41 = #agifa324#2;  ||Asigno el cambio de la moneda base con el euro
+     decim_base = #agifa324#7;    ||Asigno los decimales de la moneda base
+     precio_base = #agifa324#9;   ||Asigno los decimales del precio en la mon. base
+     |CIERRA #agifa324;
+     |CIERRA #agifa321;
+|FPRC;
+
+|PROCESO Param_Divisas; |TIPO 0;
+     |ABRE #agifa324;
+     #agifa324#0 = #agifa104#35;
+     |LEE 001#agifa324.=;   || Leo la divisa
+     |CIERRA #agifa324;
+
+     decim_divisa = #agifa324#7;  || Decimales de la divisa
+     precio_divisa = #agifa324#9;  || Decimales en el precio de la divisa
+     nDeci_Div = decim_divisa;   || Decimales de la divisa
+     nDeci_PreDiv = precio_divisa;  || Decimales en el precio de la divisa
+     nDeci_DivP = decim_divisa;   || Decimales de la divisa
+     nDeci_PreDivP = precio_divisa;  || Decimales en el precio de la divisa
+     |SI #agifa104#37 = "B";   ||Si trabajo con la moneda base ...
+          nDeci_Base     = decim_base;
+          nDeci_PreBase  = precio_base;
+          nDeci_PreVis   = precio_divisa;
+          nDeci_ImpVis   = decim_divisa;
+          nDeci_BaseMx   = decim_base;
+          nDeci_PreBasMx = precio_base;
+          nDeci_TotVis   = decim_base;
+          nDeci_TotNoVis = decim_divisa;
+          nDeci_PreVisP   = precio_divisa;
+          nDeci_ImpVisP   = decim_divisa;
+          nDeci_BaseMxP  = decim_base;
+          nDeci_PreBasMxP = precio_base;
+          nDeci_TotVisP   = decim_base;
+          nDeci_TotNoVisP = decim_divisa;
+     |SINO;     ||Si trabajo con la divisa ...
+          nDeci_Base     = decim_base; || Max. precision en los decimales de la moneda base
+          nDeci_PreBase  = precio_base;  || Max. precision en los dec. del precio de la moneda base
+          nDeci_PreVis   = precio_base;
+          nDeci_ImpVis   = decim_base;
+         |SI #agifa104#36 = 1;
+              nDeci_BaseMx    = decim_base;    || sin triangulacion
+              nDeci_PreBasMx  = precio_base;
+         |SINO;
+              nDeci_BaseMx    = #agifa321#10;  || con triangulacion
+              nDeci_PreBasMx  = #agifa321#11;
+         |FINSI;
+          nDeci_TotVis   = decim_divisa;
+          nDeci_TotNoVis = decim_base;
+          nDeci_PreVisP  = precio_base;
+          nDeci_ImpVisP  = decim_base;
+         |SI #agifa104#36 = 1;
+              nDeci_BaseMxP   = decim_base;    || sin triangulacion
+              nDeci_PreBasMxP = precio_base;
+         |SINO;
+              nDeci_BaseMxP   = #agifa321#10;  || con triangulacion
+              nDeci_PreBasMxP = #agifa321#11;
+         |FINSI;
+          nDeci_TotVisP   = decim_divisa;
+          nDeci_TotNoVisP = decim_base;
+     |FINSI;
+|FPRC;
+
+|PROCESO prec;
+
+     |SI #4#37 = "D";                    || Si la moneda de trabajo es la divisa ...
+          #5#6 = #5#38 / #4#36 * #4#41;  || ... recalculo precio en funcion de la divisa
+          #5#40 = #5#6;                  || ... el campo visualiz. es el precio en moneda base
+     |SINO;
+          #5#38 = #5#6 / #4#41 * #4#36;  || .. recalculo precio en funcion de la moneda base
+          #5#40 = #5#38;                 || ... el campo visual. es el precio en divisa
+     |FINSI;
+     |SI #8#194 = 2;                     || Unidades de facturacion
+          nImpo = #5#44 * #5#6;
+     |SINO;
+          nImpo = #5#5 * #5#6;
+     |FINSI;
+
+     || nMult corrige el error del redondeo para negativos
+     |SI nImpo < 0; nMult = -1; |SINO; nMult = 1; |FINSI;
+
+     |SI #8#194 = 2;                     || Unidades de facturacion
+          #5#7 = (#5#44 * #5#6) * nMult;
+          #5#11 = (#5#44 - #5#49) * #5#6 * nMult;
+     |SINO;
+          #5#7 = (#5#5 * #5#6) * nMult;
+          #5#11 = (#5#5 - #5#43) * #5#6 * nMult;
+     |FINSI;
+     #5#9 = ((((#5#7 < #5#8) < #5#29) < #4#5) < #4#17) < #4#6;
+     #5#39 = #5#9 / #4#41 * #4#36;
+     #5#11 = ((((#5#11 < #5#8) < #5#29) < #4#5) < #4#17) < #4#6;
+
+     #5#7 = #5#7 * nMult;
+     #5#11 = #5#11 * nMult;
+     #5#9 = #5#9 * nMult;
+     #5#39 = #5#39 * nMult;
+     ||컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+     |SI #4#37 = "D";     || Si la moneda de trabajo es la divisa ...
+          #5#41 = #5#9;   || el campo visualiz. es el importe en moneda base
+     |SINO;               || Si la moneda de trabajo es la moneda base ...
+          #5#41 = #5#39;  || el campo visualiz. es el importe en divisa
+     |FINSI;
+|FPRC;
+
+|PROCESO visual_totales;
+ #4#42 = #4#11 / #4#41 * #4#36;
+ #4#43 = #4#12 / #4#41 * #4#36;
+ #4#44 = #4#13 / #4#41 * #4#36;
+   |SI #4#37 = "D";
+     #4#45 = #4#42;
+     #4#46 = #4#43;
+     #4#47 = #4#44;
+     #4#48 = #4#11;
+     #4#49 = #4#12;
+     #4#50 = #4#13;
+   |SINO;
+     #4#45 = #4#11;
+     #4#46 = #4#12;
+     #4#47 = #4#13;
+     #4#48 = #4#42;
+     #4#49 = #4#43;
+     #4#50 = #4#44;
+   |FINSI;
+|FPRC;
+
+||--------------Precios Clientes/Articulos.
+|PROCESO DamePrecio;
+     fFecha = ~;
+     exPrecios = 0;
+     exDescuen = 0;
+     exComisio = 0;
+     |ABRE #30;
+     |DDEFECTO #30;
+     #30#0 = exCliente; ||Cod.Cli.
+     #30#1 = exArticul; ||Cod.Art.
+     |LEE 000#30=;
+     |SI FSalida = 0;
+          |SI #30#28 [ fFecha; |Y #30#29 ] fFecha;
+                    || |SI nEsPedido = 1;
+               exPrecios = #30#2;
+                    || |SINO;
+                    ||     #3#17 = #14#2 + #14#2 % nRcoe;
+                    || |FINSI;
+                    || |SI aClienteSuper ! "";
+               exDescuen = #30#32; || Dto
+               exComisio = #30#34; || Comision
+                    || |FINSI;
+          |SINO;
+               |HAZ RestoDtos;
+          |FINSI;
+     |SINO;
+          |HAZ RestoDtos;
+     |FINSI;
+     |CIERRA #30;
+|FPRC;
+
+|PROCESO RestoDtos;
+     exPrecios = 0;
+     || LEER TARIFAS NORMAL Y OFERTA
+     |ABRE #44;
+     #44#0 = exCliente;
+     |LEE 000#44=;
+     |SI FSalida = 0;
+          |ABRE #55;
+          #55#0 = #44#2;
+          |LEE 000#55=;
+          |SI FSalida = 0;
+               fFecha = ~;
+               |SI fFecha ] #55#4; |Y fFecha [ #55#5;
+                    |ABRE #56;
+                    #56#0 = #55#0;
+                    #56#1 = exArticul;
+                    |LEE 000#56=;
+                    |SI FSalida = 0;
+                         exPrecios = #56#3;
+                    |FINSI;
+                    |CIERRA #56;
+               |FINSI;
+          |FINSI;
+          |CIERRA #55;
+     |FINSI;
+     |CIERRA #44;
+     |HAZ BuscaDto;
+     |SI nDescuento ! 0;
+          exDescuen = nDescuento; || Dto
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaDto;
+     nLineaMaxDtoC = -1;  ||Linea de descuento del cliente inicial
+     nLineaMaxDto  = 0;   ||Linea maximo de dto de la tabla
+     nMaxDto       = 0;
+     nDescuento    = 0;
+     nComision     = 0;
+
+     |ABRE #108;               ||Buscar el grupo de descuento del articulo
+     #108#0 = exArticul;
+     |LEE 000#108=;
+     |SI FSalida = 0;
+          |ABRE #109;          ||Buscar el grupo de descuento del cliente
+          #109#0 = exCliente;
+          #109#3 = #108#1;
+          |LEE 000#109=;
+          |SI FSalida = 0;
+               nLineaMaxDtoC = #109#2;
+          |FINSI;
+          |ABRE #107;          ||Abrir el grupo de descuento para ver la tabla
+          #107#0 = #108#1;
+          |LEE 000#107=;
+          |SI FSalida = 0;
+               |ABRE #129;   ||Abrir la tabla descuento-comision
+               |SI aAutonomo = "S";
+                    #129#0 = #107#3;
+               |SINO;
+                    #129#0 = #107#2;
+               |FINSI;
+               |LEE 000#129=;
+               |SI FSalida = 0;
+                    |SI #129#1  ! 0; nLineaMaxDto = 1; |FINSI;
+                    |SI #129#3  ! 0; nLineaMaxDto = 2; |FINSI;
+                    |SI #129#5  ! 0; nLineaMaxDto = 3; |FINSI;
+                    |SI #129#7  ! 0; nLineaMaxDto = 4; |FINSI;
+                    |SI #129#9  ! 0; nLineaMaxDto = 5; |FINSI;
+                    |SI #129#11 ! 0; nLineaMaxDto = 6; |FINSI;
+                    |SI #129#13 ! 0; nLineaMaxDto = 7; |FINSI;
+                    ||_________Maximo descuento aplicable...
+                    |SI nLineaMaxDto = 1; nMaxDto = #129#1;  |FINSI;
+                    |SI nLineaMaxDto = 2; nMaxDto = #129#3;  |FINSI;
+                    |SI nLineaMaxDto = 3; nMaxDto = #129#5;  |FINSI;
+                    |SI nLineaMaxDto = 4; nMaxDto = #129#7;  |FINSI;
+                    |SI nLineaMaxDto = 5; nMaxDto = #129#9;  |FINSI;
+                    |SI nLineaMaxDto = 6; nMaxDto = #129#11; |FINSI;
+                    |SI nLineaMaxDto = 7; nMaxDto = #129#13; |FINSI;
+                    ||_________No tiene configurado el cliente el maximo Limite
+                    |SI nLineaMaxDtoC = -1;
+                         nLineaMaxDtoC = nLineaMaxDto;
+                    |FINSI;
+                    ||_________Descuento inicial para el cliente...
+                    |SI nLineaMaxDtoC = 1; nDescuento = #129#1;  |FINSI;
+                    |SI nLineaMaxDtoC = 2; nDescuento = #129#3;  |FINSI;
+                    |SI nLineaMaxDtoC = 3; nDescuento = #129#5;  |FINSI;
+                    |SI nLineaMaxDtoC = 4; nDescuento = #129#7;  |FINSI;
+                    |SI nLineaMaxDtoC = 5; nDescuento = #129#9;  |FINSI;
+                    |SI nLineaMaxDtoC = 6; nDescuento = #129#11; |FINSI;
+                    |SI nLineaMaxDtoC = 7; nDescuento = #129#13; |FINSI;
+               |FINSI;
+                    |CIERRA #129;
+          |FINSI;
+          |CIERRA #107;
+          |CIERRA #109;
+     |FINSI;
+     |CIERRA #108;
+|FPRC;
+
+|PROCESO LeeContador;
+     #4#25 = aSerPed;
+     enSwMenu = 1;
+     |HAZ ContaPV7;
+     enSwMenu = 0;
+     contador = #4#0;
+|FPRC;
+
+|PROCESO LeeRepre;
+     |ABRE #17;
+     |LEE 000#17p;
+     |SI FSalida ! 0;
+          #17#0 = 0;
+          #17#1 = 1;
+          #17#2 = "3";
+          #17#3 = "  ";
+          #17#4 = "  ";
+          #17#5 = "  ";
+          #17#6 = 0;
+          #17#7 = "  ";
+          #17#8 = 1;
+          #17#9 = "";
+     |FINSI;
+     aSerPed = #17#7;
+     |CIERRA #17;
+|FPRC;
+
+|PROCESO NuevoRep;
+     aAutonomo = "N";
+     |ABRE #123;
+     #123#0 = #4#7;
+     |LEE 000#123=;
+     |SI FSalida = 0;
+          aAutonomo = #123#57;
+     |FINSI;
+     |CIERRA #123;
+|FPRC;
+
+|PROCESO CargaCab;
+     #7#0  = #1#3;
+     |LEE 000#7=;
+     #4#4  = #7#0;
+     #4#5  = #7#37;
+     #4#6  = #7#38;
+     #4#7  = #7#25;
+     #4#8  = #7#2;
+     #4#9  = #7#20;
+     #4#14 = #7#5;
+     #4#17 = #7#156;
+     #4#19 = #7#2;
+     #4#20 = #7#6;
+     #4#21 = #7#7;
+     #4#22 = #7#47;
+     #4#23 = #7#41;
+     |HAZ LeeMonBase;
+     |HAZ CambioDivisa;
+     |HAZ Param_Divisas;
+     |HAZ NuevoRep;
+|FPRC;
+
+|PROCESO CambioDivisa; |TIPO 0;
+     #4#35 = #agifa024#192; || Asigno la divisa por defecto del cliente
+     #4#37 = #agifa024#193; || Asigno la moneda de trabajo del cliente
+
+     |ABRE #6;
+     #6#26 = #4#25;
+     |LEE 001#6=;  || Leo la serie
+     |SI #6#39 = "S"; |Y #agifa321#1 = "S";
+          |SI #agifa024#191 = "S"; || Si el cliente es de divisa pactada
+               |ABRE #agifa328;
+               |ABRE #agifa329;
+               #agifa329#0 = #agifa104#4;
+               #agifa329#2 = #agifa104#35;
+               #agifa329#7 = "N";
+               |SELECT #2#agifa329;  || Con esta clave ...
+               |LEE 011#agifa329.=;  || ... busco periodos no finalizados de esa divisa
+               |SI FSalida = 0;  || Si existe un periodo no finalizado
+                    |PARA div_act = 0; |SI div_act = 0; |HACIENDO;
+                         #agifa104#35 = #agifa329#2;        || Cargo la divisa ...
+                         #agifa104#36 = #agifa329#3;        || ...y el cambio
+                         |LEE 001#agifa329.=;   || Leo las lineas de Clientes/Divisas
+                         nfecha = #agifa104#1 - #agifa329#6;  || Resto la fecha de fin de periodo a la actual
+                         |SI nfecha > 0;  || Si la fecha actual supera a la del periodo asignado ...
+                              |MENAV "0000ATENCION deberia Actualizar primero la divisa en Clientes/Divisas";
+                              cli_divisa = #agifa104#4;  || Le envio el cod. de cliente a "agifa328"
+                              |SUB_EJECUTA_NP "agifa328.tab";  || Ejecuto Clientes/Divisas
+                              |ERROR;
+                         |SINO;
+                              div_act = 1;  || Para salir del PARA
+                         |FINSI;
+                    |SIGUE;
+               |SINO;  || Si no existe un periodo no finalizado para esa divisa
+                    |MENAV "0000No existe un periodo activo para la divisa en Clientes / Divisas";
+                    cli_divisa = #agifa104#4;  || Le paso a "agifa328" el cliente
+                    |SUB_EJECUTA_NP "agifa328.tab";  || Ejecuto Clientes / Divisas
+               |FINSI;
+               |SELECT #1#agifa329;
+               |CIERRA #agifa329;
+               |CIERRA #agifa328;
+          |SINO; || Si el cliente no es de Divisa pactada ...
+               |ABRE #agifa324; || ...miro directamente en divisas
+               #agifa324#0 = #agifa104#35;
+               |LEE 001#agifa324.=;
+               |SI FSalida = 0; ||Si existe la divisa...
+                    #agifa104#36 = #agifa324#2; || la recojo
+                    |SI #agifa324#6 ! -1; || Si los dias de margen de actualizacion no
+                                  || son = -1 (indefinidos)
+                         |PARA div_act = 0; |SI div_act = 0; |HACIENDO;
+                              #agifa104#35 = #agifa324#0;        ||Cargo el valor de la divisa
+                              #agifa104#36 = #agifa324#2;        ||Cargo el valor del cambio
+                              |LEE 001#agifa324.=;  || Leo la divisa
+                              nfecha = #agifa104#1 - #agifa324#4;
+                              |SI nfecha > #agifa324#6; |Y #agifa324#6 ! -1;  || Si la fecha actual
+                                   |MENAV "0000ATENCION deberia Actualizar primero la divisa";
+                                   divisa = #agifa104#35;
+                                   |SUB_EJECUTA_NP "agifa326.tab";
+                              |SINO;
+                                   div_act = 1;
+                              |FINSI;
+                         |SIGUE;
+                    |FINSI;
+               |FINSI;
+               |CIERRA #agifa324;
+          |FINSI;
+     |SINO;
+          #agifa104#35 = #agifa104#40;
+          #agifa104#36 = #agifa104#41;
+     |FINSI;
+|FPRC;

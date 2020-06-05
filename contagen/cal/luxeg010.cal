@@ -1,0 +1,467 @@
+|FICHEROS;
+     luxeg010 #0;
+     luxeg007 #1;   || Histo
+     luxeg012 #2;   || Contador
+
+     luxeg002 #12;  || Cuentas por defecto
+     luxeg004 #14;  || Cuentas por defecto
+     luxeg016 #16;  || Historico enlaces
+
+     cacuenta #50;
+
+     caenlace #100;
+     caconasi #101; || Contador de asientos
+     canempre #102; || Empresas
+     cajainca #103; || Apuntes caja efectivo CAB
+     cajainli #104; || Apuntes caja efectivo LIN
+     cajasald #105; || Defectos apuntes caja efectivo
+     :/modelos/def/dsmom030 #106;
+|FIN;
+
+|VARIABLES;
+     &Numero   = 0;
+     &eaCuenta = "";
+     &enNivel  = 0;
+
+     conta     = 0;
+     i         = 0;
+     alfa      = "";
+     aAlfa     = "";
+     aAlfa1    = "";
+     aAlfa2    = "";
+     aCtaSelec = "";
+     aEmpresa = "";
+     nEmpresa = 0;
+     nPeriodo = 0;
+     nCalc    = 0;
+     nCont    = 0;
+     nApunte  = 0;
+     nTotal   = 0;
+     fFecha   = @;
+
+     fFechaCont = @;
+     Documento  = 0;
+     nNivel     = 0;
+
+     nParte1    = 0;
+     nParte2    = 0;
+     aParte1    = "";
+     aParte2    = "";
+     nMaxDig = 0;
+|FIN;
+
+|PROCESO sal; |TIPO 0;
+     |SI FSalida = 1;
+          |ERROR;
+          |PTEC 807;
+     |FINSI;
+|FPRC;
+
+|PROCESO compru; |TIPO 0;
+     |ABRE #1;
+     #1#0 = #0#0;
+     |LEE 000#1=;
+     |SI FSalida = 0;
+          |PARA i = 0; |SI i [ 6; |HACIENDO i = i + 1;
+               #0i = #1i;
+          |SIGUE;
+          |PINDA #0#0;
+          |BLIN 24;
+          |SI #1#2 = "01.01.0000";
+               |MENAV "0000Parte Existente...";
+          |SINO;
+               |MENAV "0000Parte Liquidado...";
+          |FINSI;
+          |ERROR;
+     |SINO;
+          |C_M #0#0, 1, "N";
+          |C_M #0#1, 1, "N";
+     |FINSI;
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO conta; |TIPO 7;
+     |C_M #0#0, 0, alfa;
+     |SI alfa = "N"; |ACABA; |FINSI;
+
+     |ABRE #2;
+     #2#0 = "partes";
+     |LEE 101#2=;
+     |SI FSalida = 0;
+          conta = #2#1 + 1;
+     |SINO;
+          |GRABA 021#2b;
+          conta = 1;
+     |FINSI;
+     #2#1 = conta;
+     |GRABA 021#2a;
+     |CIERRA #2;
+
+     #0#0 = conta; |PINTA #0#0;
+|FPRC;
+
+|PROCESO MiraNivel;
+   nNivel = 0;
+   aAlfa = #caenlace#4; |QBF aAlfa;
+   aAlfa = aAlfa % 0; nCalc = aAlfa;
+
+   |PARA nCont = 14; |SI nCont [ 19; |HACIENDO nCont = nCont + 1;
+      |SI #48nCont = nCalc; nNivel = nCont - 13; |SAL; |FINSI;
+   |SIGUE;
+|FPRC;
+
+|PROCESO Contabiliza;
+   aAlfa = "pu" + Usuario; |NOME_DAT #caenlace#aAlfa#; |DELINDEX #caenlace;
+   |ABRE #caenlace;
+
+   |ABRE #luxeg016;
+   #luxeg016#0 = #luxeg010#0;
+   |LEE 000#luxeg016.=;
+   |SI FSalida ! 0;
+      fFechaCont = #luxeg010#1;
+      |ABRE #caconasi;
+      |LEE 101#caconasi.p;
+      |SI FSalida = 0;
+         #caconasi#2 = #caconasi#2 + 1;
+         Documento = #caconasi#2;
+         |GRABA 020#caconasi.a;
+      |SINO;
+         |MENAV "    No encuentro el contador de asientos. No se contabilizara la liquidacion.";
+         |CIERRA #luxeg016;
+         |CIERRA #caenlace; |CIERRA #caconasi;
+         |ACABA;
+      |FINSI;
+      |LIBERA #caconasi; |CIERRA #caconasi;
+
+      |DDEFECTO #luxeg016;
+      #luxeg016#0 = #luxeg010#0;
+      #luxeg016#1 = #luxeg002#2;
+      #luxeg016#2 = fFechaCont;
+      #luxeg016#3 = Documento;
+      |GRABA 020#luxeg016.n;
+   |SINO;
+      |DDEFECTO #caenlace;
+      #caenlace#0 = #luxeg016#1;
+      #caenlace#1 = #luxeg016#2;
+      #caenlace#2 = #luxeg016#3;
+      #caenlace#3 = 0;
+      #caenlace#25 = "S";
+      |GRABA 020#caenlace.n;
+
+      fFechaCont = #luxeg016#2;
+      Documento  = #luxeg016#3;
+   |FINSI;
+   |CIERRA #luxeg016;
+
+   |ABRE #luxeg004;
+   #luxeg004#0 = #luxeg010#4;
+   |LEE 000#luxeg004.=;
+   |SI FSalida ! 0; |DDEFECTO #luxeg004; |FINSI;
+   |CIERRA #luxeg004;
+
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = 10;
+   #caenlace#4 = #luxeg004#8;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#7;
+   aAlfa1 = #luxeg002#8; |QBF aAlfa1;
+   aAlfa2 = #luxeg010#0; |QBF aAlfa2; aAlfa2 = ("000000" + aAlfa2) % -106;
+   aAlfa1 = aAlfa1 + "Ant.parte n§ " + aAlfa2;
+   #caenlace#7 = aAlfa1;
+   #caenlace#8 = "D";
+   #caenlace#9 = #luxeg010#6;
+   |GRABA 020#caenlace.n;
+
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = 20;
+   #caenlace#4 = aCtaSelec;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#7;
+   aAlfa1 = #luxeg002#8; |QBF aAlfa1;
+   aAlfa2 = #luxeg010#0; |QBF aAlfa2; aAlfa2 = ("000000" + aAlfa2) % -106;
+   aAlfa1 = aAlfa1 + "Ant.parte n§ " + aAlfa2;
+   #caenlace#7 = aAlfa1;
+   #caenlace#8 = "H";
+   #caenlace#9 = #luxeg010#6;
+   |GRABA 020#caenlace.n;
+
+   |CIERRA #caenlace;
+
+   |DFICE aAlfa; |QBF aAlfa;
+   aAlfa = "dsapunte.tab;" + aAlfa + ",pu" + Usuario;
+   |SUB_EJECUTA aAlfa;
+|FPRC;
+
+|PROCESO LeeDocum;
+   |ABRE #caconasi;
+   |DDEFECTO #caconasi;
+   |LEE 101#caconasi.p;
+   |SI FSalida = 0;
+      #cajainca#4 = #caconasi#1 + 1;
+   |FINSI;
+   |LIBERA #caconasi;
+   |CIERRA #caconasi;
+|FPRC;
+
+|PROCESO ApunteCaja;
+   |SI #luxeg010#6 = 0; |ACABA; |FINSI;
+
+   |ABRE #cajasald;
+   |LEE 000#cajasald.p;
+   |SI FSalida ! 0; |DDEFECTO #cajasald; |FINSI;
+   |CIERRA #cajasald;
+
+   |ABRE #luxeg004;
+   #luxeg004#0 = #luxeg010#4;
+   |LEE 000#luxeg004.=;
+   |SI FSalida ! 0; |DDEFECTO #luxeg004; |FINSI;
+   |CIERRA #luxeg004;
+
+   |ABRE #cajainca; |ABRE #cajainli; |ABRE #dsmom030;
+   #cajainca#1 = #luxeg010#1;
+   |LEE 101#cajainca.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #cajainca;
+      #cajainca#0 = #luxeg002#2;
+      #cajainca#1 = #luxeg010#1;
+      |HAZ LeeDocum;
+      |GRABA 020#cajainca.b;
+   |FINSI;
+
+   nApunte = 1;
+   #cajainli#1 = #cajainca#1;
+   #cajainli#3 = 1;
+   |LEE 000#cajainli.];
+   |PARA; |SI FSalida = 0; |Y #cajainli#1 = #cajainca#1; |HACIENDO;
+      nApunte = #cajainli#3 + 1;
+      |LEE 000#cajainli.s;
+   |SIGUE;
+
+   |DDEFECTO #cajainli;
+   #cajainli#0 = #cajainca#0;
+   #cajainli#1 = #cajainca#1;
+   #cajainli#2 = #cajainca#4;
+   #cajainli#3 = nApunte;
+   #cajainli#4 = #luxeg004#8;
+   eaCuenta = #cajainli#4; |HAZ SacaNivel;
+   #cajainli#5 = enNivel;
+
+   #dsmom030#0 = #cajasald#5;
+   |LEE 000#dsmom030.=;
+   |SI FSalida ! 0; |DDEFECTO #dsmom030; |FINSI;
+   aAlfa = #dsmom030#1; |QBF aAlfa;
+   aAlfa = aAlfa + "Anticipo parte n§ " + (("000000" + #luxeg010#0) % -106);
+   #cajainli#6 = #cajasald#5;
+   #cajainli#7 = aAlfa;
+
+   #cajainli#8 = "P";
+   #cajainli#9 = #luxeg010#6;
+   #cajainli#12 = #cajasald#6;
+   #cajainli#13 = #cajainli#8;
+   #cajainli#18 = #cajasald#8;
+   |GRABA 020#cajainli.n;
+
+   #cajainca#2 = #cajainca#2 + #luxeg010#6;
+   |GRABA 020#cajainca.a; |LIBERA #cajainca;
+
+   |CIERRA #cajainca; |CIERRA #cajainli; |CIERRA #dsmom030;
+
+   |ABRE #luxeg007;
+   #luxeg007#0 = #0#0;
+   |LEE 101#luxeg007.=;
+   |SI FSalida = 0;
+      #luxeg007#19 = "S";
+      |GRABA 020#luxeg007.a; |LIBERA #luxeg007;
+   |FINSI;
+   |CIERRA #luxeg007;
+|FPRC;
+
+|PROCESO CalcCaja;
+   nTotal = nTotal + (#cajainca#3 - #cajainca#2);
+   nTotal = nTotal ! 2;
+|FPRC;
+
+|DEFBUCLE CalcCaja;
+#cajainca#1;
+;
+"01.01.0000";
+fFecha;
+;
+NULL, CalcCaja;
+|FIN;
+
+|PROCESO CalculaSaldoCaja;
+   nTotal = 0; fFecha = #cajainca#1;
+
+   |LEE 000#cajasald.p;
+   |SI FSalida ! 0; |DDEFECTO #cajasald; |FINSI;
+
+   nTotal = #cajasald#1;
+   |SALVA_FICHA #cajainca;
+   |BUCLE CalcCaja;
+   |REPON_FICHA #cajainca;
+|FPRC;
+
+|PROCESO tipo3; |TIPO 3;
+     |ABRE #luxeg002;
+     |LEE 000#luxeg002.p;
+     |SI FSalida ! 0; |DDEFECTO #luxeg002; |FINSI;
+     |CIERRA #luxeg002;
+
+     |SI aCtaSelec = #luxeg002#16;
+        || Comprobamos si hay suficiente efectivo en la caja.
+        |ABRE #cajainca; |ABRE #cajasald;
+        #cajainca#1 = #luxeg010#1;
+        |LEE 101#cajainca.=;
+        |SI FSalida = 0;
+           |HAZ CalculaSaldoCaja;
+           |SI nTotal < #luxeg010#6;
+              |CIERRA #cajainca; |CIERRA #cajasald;
+              |MENAV "    Atencion, caja sin fondos suficientes. No se puede realizar el anticipo. Revise el importe a pagar.";
+              |ERROR; |ACABA;
+           |FINSI;
+        |FINSI;
+        |CIERRA #cajainca; |CIERRA #cajasald;
+     |FINSI;
+
+     |ABRE #1;
+     |DDEFECTO #1;
+     |PARA i = 0; |SI i [ 6; |HACIENDO i = i + 1;
+          #1i = #0i;
+     |SIGUE;
+     |GRABA 021#1n;
+     |CIERRA #1;
+     |CONFI "2400SImprimir S/N.: ";
+     |SI FSalida = 0;
+          Numero = #0#0;
+          |SUB_EJECUTA "luxeg015";
+     |FINSI;
+
+     |SI aCtaSelec ! #luxeg002#16;
+        |SI #luxeg010#6 ! 0;
+           |HAZ Contabiliza;
+        |SINO;
+           |MENAV "    La salida no contiene anticipo. No se reflejará en contabilidad";
+        |FINSI;
+     |SINO;
+        |HAZ ApunteCaja;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |CABEZA "Salida";
+     |PARA FSalida = 0; |SI FSalida = 0; |HACIENDO;
+          |C_M #0#0, 1, "S";
+          |C_M #0#1, 1, "S";
+          |DDEFECTO #0;
+          |PINPA #0#0;
+          |ENDATOS #1#0;
+     |SIGUE;
+|FPRO;
+
+|PROCESO PintaEmpresa; |TIPO 7;
+     nEmpresa = #48#2; nPeriodo = #48#3;
+
+     |DFICB aAlfa; |QBF aAlfa;
+     |PATH_DAT #canempre#aAlfa#;
+     |ABRE #canempre;
+     #canempre#2 = nEmpresa;
+     #canempre#3 = nPeriodo;
+     |LEE 000#canempre.=;
+     |SI FSalida = 0;
+        #luxeg010#3 = #canempre#8; |PINTA #luxeg010#3;
+        |PINTA 1031, #canempre#1;
+        |PINTA 1116, #canempre#5;
+     |FINSI;
+     |CIERRA #canempre;
+|FPRC;
+
+|PROCESO Tipo12g010; |TIPO 12;
+   |SI FSalida = 7; |Y #luxeg010#6 ! 0;
+      |MENAV "    Proceso cancelado"; |ACABA;
+   |FINSI;
+
+   aAlfa = "    " + &191 + " Es correcto ? ";
+   |CONFI aAlfa;
+   |SI FSalida = 0;
+      nMaxDig = 0;
+      |SI #48#14 ] nMaxDig; nMaxDig = #48#14; |FINSI;
+      |SI #48#15 ] nMaxDig; nMaxDig = #48#15; |FINSI;
+      |SI #48#16 ] nMaxDig; nMaxDig = #48#16; |FINSI;
+      |SI #48#17 ] nMaxDig; nMaxDig = #48#17; |FINSI;
+      |SI #48#18 ] nMaxDig; nMaxDig = #48#18; |FINSI;
+      |SI #48#19 ] nMaxDig; nMaxDig = #48#19; |FINSI;
+
+      |ABRE #cacuenta;
+
+      |PUSHV 0501 2380;
+      |BLANCO 1919 2261;
+      |CUADRO 2020 2260;
+      |ATRI R; |PINTA 2021, " Indique la cuenta del parte           "; |ATRI N;
+      |ATRI I; |PINTA 2121, " Cuenta contable "; |ATRI N;
+
+      |ABRE #luxeg002;
+      |LEE 000#luxeg002.p;
+      |SI FSalida ! 0; |DDEFECTO #luxeg002; |FINSI;
+      |CIERRA #luxeg002;
+
+      aAlfa = #luxeg002#16;
+|ET PintaOtra;
+      E_sup = 12; E_inf = "";
+      aAlfa = 2138 ? 1;
+      |SI FSalida = 10;
+         #cacuenta#0 = aAlfa;
+         |LEE 000#cacuenta.];
+
+         |CONSULTA_CLAVE #1#cacuenta;
+         aAlfa = #cacuenta#0;
+         |VETE PintaOtra;
+      |FINSI;
+      |QBF aAlfa;
+
+      aAlfa = aAlfa - ".";
+      |PARA; |SI FSalida ! 0; |HACIENDO;
+         nParte1 = ((FSalida / 100) ! 0) + 99; aParte1 = aAlfa % nParte1;
+         nParte2 = FSalida + 98;               aParte2 = aAlfa % nParte2;
+         aAlfa = aParte1 % 0; nCalc = aAlfa;
+         aAlfa = aParte2 % 0; nCalc = nCalc + aAlfa;
+         nCalc = nMaxDig - nCalc;
+         aAlfa = aParte1 + ("0" * nCalc) + aParte2;
+         aAlfa = aAlfa - ".";
+      |SIGUE;
+
+      #cacuenta#0 = aAlfa; aAlfa = #cacuenta#0;
+      |LEE 000#cacuenta.=;
+      |SI FSalida = 0;
+         |SI #cacuenta#3 ! "S";
+            |MENAV "    Cuenta sin pase directo";
+            |VETE PintaOtra;
+         |FINSI;
+      |FINSI;
+
+      |POPV;
+
+      |CIERRA #cacuenta;
+      aCtaSelec = aAlfa;
+
+      |SI aCtaSelec = #luxeg002#16;
+         |ABRE #cajasald;
+         |HAZ CalculaSaldoCaja;
+         |SI #luxeg010#6 > nTotal;
+            |MENAV "    Saldo insuficiente"; |ERROR; |ACABA;
+         |FINSI;
+         |CIERRA #cajasald;
+      |FINSI;
+
+      |HAZ tipo3;
+   |FINSI;
+|FPRC;

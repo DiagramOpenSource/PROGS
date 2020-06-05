@@ -1,0 +1,756 @@
+|FICHEROS;
+     alby0004 #0;
+
+     agifa104 #104;      ||Pedidos Ventas Cabs.
+     agifa073 #73;       ||Pedidos Ventas Lins.
+     agifa067 #67;       ||Pedidos Compra Lins
+
+     agifa048 #1;        || cabecera de escandallo
+     agifa049 #401;      || Escandallo lineas
+     albm0030 #430;      || Mezclada Formulas
+
+     agifa019 #3;        || fichero de articulos
+     albm0046 #46;       || partidas
+     albm0047 #47;       || partidas LIN
+     agifa112 #112;      || Proveedores
+
+     agifa142 #142;      ||Parametros generales
+
+     albw0023 #23;       ||Aux. PrevisionPrePed
+     albw0024 #24;       ||Aux2 PrevisionPrePed
+     albw0038 #38;       ||Tmp impresion duplicados
+
+     albw0045 #45;       ||Aux. AgrupInf.y4.-1-
+     albw0046 #546;       ||Aux. AgrupInf.y4.-2-
+
+     albw0025 #499;  || Usado como temporal de comprobacion
+     agifa053 #400;  || Usado como temporal de comprobacion
+|FIN;
+
+|VARIABLES;
+     aLinea = "";
+     nStock = 0;
+     &enLin = 0;         ||Tipo Linea
+     aAlfa = "";
+     nPrimeDes = 0;
+     nSal = 0;
+     aArti = "";
+     nPen = 0;
+     aAux = "";
+
+     aMadre = "";
+     aTempo023 = "";
+     aTempo024 = "";
+     aTempo038 = "";
+     aTempo045 = "";
+     aTempo546 = "";
+
+     &Tempo    = "";
+     nExiste = 0;
+     aMensaje = "";
+     aRespuesta = "";
+     aInforme = "";
+     nSwPie = 0;
+
+
+     aTempo499 = "";
+     ||------------------------Variables de Comunicacion
+     aResto         = "";   || Escandallo
+     nCantiResto    = 0;    || Cantidad
+     ||--------------------------------------------
+
+ {100}ER            = "";
+ {100}LR            = 0;
+ {100}CR            = 0;
+ {100}SR            = 0;
+     nNivelResto    = 0;
+     nLinResto      = 0;
+     aAlfaResto     = "";
+
+
+     aTempo400 = "";
+     ||------------------------Variables de Comunicacion
+     nMaxNivel      = 100;  || Nivel maximo que desglosa
+     aEscan         = "";   || Escandallo
+     nCantiEscan    = 0;    || Cantidad
+     nAlmaEscan     = 0;    || Almacen
+     ||--------------------------------------------
+
+ {100}E             = "";
+ {100}L             = 0;
+ {100}C             = 0;
+ {100}S             = 0;
+     nNivelEscan    = 0;
+     nLinEscan      = 0;
+     aFicheroTMP    = "";
+     aAlfaEscan     = "";
+|FIN;
+
+|PROCESO DesglosaEscan;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |HAZ CreaTempo; aTempo400 = Tempo;
+     |NOME_DAT #400 aTempo400; |DELINDEX #400;
+     |ABRE #400;
+     |ABRE #401;
+
+
+     #400#0 = aEscan;
+     |GRABA 020#400n;
+     IE = E1<-;
+     IL = L1<-;
+     IC = C1<-;
+     IS = S1<-;
+     nNivelEscan = 0;
+     nLinEscan = 1;
+ |ET OtroEscan;
+
+     #401#0 = aEscan;
+     #401#1 = nLinEscan;
+     |LEE 000#401];
+     |SI FSalida = 0; |Y #401#0 = aEscan; |Y nNivelEscan < nMaxNivel;
+          E = #401#0;
+          L = #401#1;
+          C = #401#4;
+          |SI #142#165 = "S";
+               |SI #401#16 = "D";
+                    C = #401#4 > #401#13;
+               |SINO;
+                    C = #401#4 / ((100 - #401#13) / 100) ;
+               |FINSI;
+          |FINSI;
+
+          |DDEFECTO #agifa019;
+          #agifa019#0 = aEscan;
+          |LEE 000#agifa019.=;
+          S = #agifa019#104;
+ ||         nCantiEscan = nCantiEscan - S;
+
+          nCantiEscan = nCantiEscan * C;
+          nLinEscan = 1;
+          aEscan = #401#2;
+          nAlmaEscan = #401#9;
+          nNivelEscan = nNivelEscan + 1;
+          IE = IE + 1;
+          IL = IL + 1;
+          IC = IC + 1;
+          IS = IS + 1;
+          ||---------------------------------
+          |HAZ LinEscan;
+          ||---------------------------------
+          #400#0 = #401#2;
+          |GRABA 000#400n;
+          |SI FSalida = 100;
+               aAlfaEscan = "0000ESCANDALLO INCORRECTO...";
+               aAlfaEscan = aAlfaEscan + &13 + "Escandallo:" + #401#0;
+               aAlfaEscan = aAlfaEscan + &13 + "Componente:" + #401#2;
+               |MENAV aAlfaEscan;
+          |SINO;
+               |VETE OtroEscan;
+          |FINSI;
+     |SINO;
+          #400#0 = aEscan;
+          |BORRA 020#400c;
+          |SI nNivelEscan > 0;
+               IE = IE - 1;
+               IL = IL - 1;
+               IC = IC - 1;
+               IS = IS - 1;
+               nCantiEscan = nCantiEscan / C;
+ ||              nCantiEscan = nCantiEscan + S;
+               nNivelEscan = nNivelEscan - 1;
+               nLinEscan = L + 1;                || Siguiente Linea
+               aEscan = E;
+               |VETE OtroEscan;
+          |FINSI;
+     |FINSI;
+     |CIERRA #401;
+||--------------------------- Borra Tmp;
+     |CIERRA #400;
+     |DELINDEX #400; Tempo = aTempo400; |HAZ BoraTempo;
+|FPRC;
+
+|PROCESO DesglosaResto;
+     |HAZ CreaTempo; aTempo499 = Tempo;
+     |NOME_DAT #499 aTempo499; |DELINDEX #499;
+     |ABRE #499;
+     |ABRE #430;
+
+     #499#0 = aResto;
+     |GRABA 020#499n;
+     IER = ER1<-;
+     ILR = LR1<-;
+     ICR = CR1<-;
+     ISR = SR1<-;
+     nNivelResto = 0;
+     nLinResto = 1;
+ |ET OtroResto;
+     #430#0 = aResto;
+     #430#1 = nLinResto;
+     |LEE 000#430];
+     |SI FSalida = 0; |Y #430#0 = aResto;
+          ER = #430#0;
+          LR = #430#1;
+          CR = #430#4;
+          |DDEFECTO #agifa019;
+
+          #agifa019#0 = aResto;
+          |LEE 000#agifa019.=;
+          SR = #agifa019#104;
+||          nCantiResto = nCantiResto - SR;
+
+          nCantiResto = nCantiResto % CR;
+          nLinResto = 1;
+          aResto = #430#2;
+          nNivelResto = nNivelResto + 1;
+          IER = IER + 1;
+          ILR = ILR + 1;
+          ICR = ICR + 1;
+          ISR = ISR + 1;
+          ||---------------------------------
+          |HAZ LinResto;
+          ||---------------------------------
+          #499#0 = #430#2;
+          |GRABA 000#499n;
+          |SI FSalida = 100;
+               aAlfaResto = "0000FORMULA MEZCLADA INCORRECTA...";
+               aAlfaResto = aAlfaResto + &13 + "Mezclada:" + #430#0;
+               aAlfaResto = aAlfaResto + &13 + "Componente:" + #430#2;
+               |MENAV aAlfaResto;
+          |SINO;
+               |VETE OtroResto;
+          |FINSI;
+     |SINO;
+          #499#0 = aResto;
+          |BORRA 020#499c;
+          |SI nNivelResto > 0;
+               IER = IER - 1;
+               ILR = ILR - 1;
+               ICR = ICR - 1;
+               ISR = ISR - 1;
+               nCantiResto = (nCantiResto * 100) / CR;
+      ||         nCantiResto = nCantiResto + SR;
+
+               nNivelResto = nNivelResto - 1;
+               nLinResto = LR + 1;                || Siguiente Linea
+               aResto = ER;
+               |VETE OtroResto;
+          |FINSI;
+     |FINSI;
+     |CIERRA #430;
+||--------------------------- Borra Tmp;
+     |CIERRA #499;
+     |DELINDEX #499; Tempo = aTempo499; |HAZ BoraTempo;
+|FPRC;
+
+/*
+|PROCESO albm0004;
+     |DDEFECTO #albw0023;
+     #albw0023#0 = #albm0004#3;
+     |LEE 101#albw0023.=;
+     |SI FSalida ! 0; |GRABA 020#albw0023.b; |FINSI;
+     #albw0023#1 = #albw0023#1 + #albm0004#6;
+     |GRABA 020#albw0023.a;
+     |LIBERA #albw0023;
+|FPRC;
+
+|DEFBUCLE albm0004;
+ #albm0004#1;
+ 2, 3;
+ #alby0004#1, #alby0004#3, #alby0004#7, #alby0004#5;
+ #alby0004#2, #alby0004#4, #alby0004#8, #alby0004#6;
+ ;
+ NULL, albm0004;
+|FIN;
+*/
+
+|PROCESO EsImpre;
+     nSal = 0;
+     |SI #0#14 = "N";
+          #401#0 = aArti;
+          #401#1 = 0;
+          |LEE 000#401];
+          |SI FSalida = 0; |Y #401#0 = aArti;
+               nSal = 1;
+          |FINSI;
+          #430#0 = aArti;
+          #430#1 = 0;
+          |LEE 000#430];
+          |SI FSalida = 0; |Y #430#0 = aArti;
+               nSal = 1;
+          |FINSI;
+
+          #38#0 = aArti;
+          |LEE 000#38=;       || No imprime repetidos
+          |SI FSalida = 0;
+               nSal = 1;
+          |SINO;
+               |GRABA 020#38n;
+          |FINSI;
+     |FINSI;
+     FSalida = nSal;
+|FPRC;
+
+|PROCESO albw0024;
+     aArti = #24#1;
+     |HAZ EsImpre
+     |SI FSalida = 0;
+          |SI nPrimeDes = 0;
+               nPrimeDes = 1;
+               enLin = 5; |PRINT;
+          |FINSI;
+          enLin = 1;
+          |SI #0#14 = "N"; enLin = 2; |FINSI;
+          |PRINT; nSwPie = 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albw0024;
+ #albw0024#1;
+ ;
+ #albw0023#0, "                    ";
+ #albw0023#0, "zzzzzzzzzzzzzzzzzzzz";
+ ;
+ NULL, albw0024;
+|FIN;
+
+|PROCESO albw0023_imp;
+     aArti = #23#0;
+     |HAZ EsImpre;
+     |SI FSalida = 0;
+          enLin = 0;
+          |SI #0#14 = "N"; enLin = 2; |FINSI;
+          |PRINT; nSwPie = 1;
+     |FINSI;
+     nPrimeDes = 0;
+     |BUCLE albw0024;
+|FPRC;
+
+|DEFBUCLE albw0023_imp;
+ #albw0023#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, albw0023_imp;
+|FIN;
+
+|PROCESO albw0024_agrupa;
+     |DDEFECTO #45;
+     #45#0 = #albw0024#1;
+     |LEE 101#45=;
+     |SI FSalida ! 0; |GRABA 020#45b; |FINSI;
+
+     |ABRE #agifa019;
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #45#0;
+     |LEE 000#agifa019.=;
+     |CIERRA #agifa019;
+
+     ||ARA
+     aLinea = #agifa019#125;
+     |QBF aLinea;
+     |SI aLinea = "C";
+
+          #45#1 = #agifa019#1;
+          #45#2 = #45#2 + #albw0024#3;
+          #45#3 = #45#3 + #albw0024#5;
+          #45#4 = #45#4 + #albw0024#7;
+          #45#5 = #45#5 + #albw0024#8;
+          #45#6 = #albw0024#9;
+          |GRABA 020#45a;
+          |LIBERA #45;
+
+          |DDEFECTO #546;
+          #546#0 = #albw0024#1;
+          #546#1 = #albw0024#0;
+          |LEE 101#546=;
+          |SI FSalida ! 0; |GRABA 020#546b; |FINSI;
+          |ABRE #agifa019;
+          |DDEFECTO #agifa019;
+          #agifa019#0 = #546#1;
+          |LEE 000#agifa019.=;
+          |CIERRA #agifa019;
+          #546#2 = #agifa019#1;
+
+          |ABRE #albw0023;
+          |DDEFECTO #albw0023;
+          #albw0023#0 = #546#1;
+          |LEE 000#albw0023.=;
+          |CIERRA #albw0023;
+          #546#3 = #546#3 + #albw0023#1;
+
+          |GRABA 020#546a;
+          |LIBERA #546;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albw0024_agrupa;
+ #albw0024#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, albw0024_agrupa;
+|FIN;
+
+
+|PROCESO PenServir;
+     nPen =  #73#5 - #73#43;
+     |SI nPen [ 0; |ACABA; |FINSI;
+
+     |SELECT #2#24;
+     #24#1 = #73#2;
+     |LEE 101#24=;
+     |PARA; |SI FSalida = 0; |Y #24#1 = #73#2; |HACIENDO;
+          #24#6 = #24#6 + nPen;
+          |GRABA 020#24a;
+          |LIBERA #24;
+          |LEE 101#24s;
+     |SIGUE;
+     |LIBERA #24;
+|FPRC;
+
+|DEFBUCLE PenServir;
+     #73#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, PenServir;
+|FIN;
+
+|PROCESO PenRecibir;
+     ||Tiquet. 3026/736
+
+     |SI #67#3 = 1;
+
+          nPen = #67#5 - #67#38;
+          |SI nPen [ 0; |ACABA; |FINSI;
+
+          |SELECT #2#24;
+          #24#1 = #67#2;
+          |LEE 101#24=;
+          |SI #alby0004#14 = "A";
+               |SI FSalida = 0;
+                    #24#5 = #24#5 + nPen;
+                    |GRABA 020#24a;
+                    |LIBERA #24;
+               |FINSI;
+          |SINO;
+               |PARA; |SI FSalida = 0; |Y #24#1 = #67#2; |HACIENDO;
+                    #24#5 = #24#5 + nPen;
+                    |GRABA 020#24a;
+                    |LIBERA #24;
+                    |LEE 101#24s;
+               |SIGUE;
+          |FINSI;
+          |LIBERA #24;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE PenRecibir;
+     #67#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, PenRecibir;
+|FIN;
+
+|PROCESO PartidasResto;
+     #albw0024#3 = #albw0024#3 + #46#31;  || Dispo
+     #albw0024#4 = #albw0024#4 + #46#22;  || Total
+||     #albw0024#5 = #agifa019#16;   || P.Recibir
+||     #albw0024#6 = #agifa019#15;   || P.Servir
+|FPRC;
+
+|DEFBUCLE PartidasResto;
+     #46#2;
+     ;
+     "01.01.0000", #430#2, 00001;
+     "31.12.9999", #430#2, 99999;
+     ;
+     NULL, PartidasResto;
+|FIN;
+
+|PROCESO LinResto;
+     |DDEFECTO #3;
+     #3#0 = #430#2;
+     |LEE 001#3=;
+
+     |DDEFECTO #agifa112;
+     #agifa112#0 = #3#27;
+     |LEE 000#agifa112.=;
+
+     |DDEFECTO #albw0024;
+     #albw0024#0 = aMadre;
+     #albw0024#1 = #430#2;
+     |LEE 101#albw0024.=;
+     |SI FSalida ! 0; |GRABA 020#albw0024.b; |FINSI;
+     #albw0024#3 = 0;
+     #albw0024#4 = 0;
+     #albw0024#5 = 0;
+     #albw0024#6 = 0;
+     |BUCLE PartidasResto;
+     #albw0024#7 = nCantiResto;
+     #albw0024#8 = #agifa112#91;
+     #albw0024#9 = #agifa019#27;
+     |GRABA 020#albw0024.a;
+     |LIBERA #albw0024;
+|FPRC;
+
+|PROCESO Partidas;
+     #albw0024#3 = #albw0024#3 + #46#31;  || Dispo
+     #albw0024#4 = #albw0024#4 + #46#22;  || Total
+||     #albw0024#5 = #agifa019#16;   || P.Recibir
+||     #albw0024#6 = #agifa019#15;   || P.Servir
+|FPRC;
+
+|DEFBUCLE Partidas;
+     #46#2;
+     ;
+     "01.01.0000", #401#2, 00001;
+     "31.12.9999", #401#2, 99999;
+     ;
+     NULL, Partidas;
+|FIN;
+
+|PROCESO LinEscan;
+     |DDEFECTO #3;
+     #3#0 = #401#2;
+     |LEE 001#3=;
+
+     |DDEFECTO #agifa112;
+     #agifa112#0 = #3#27;
+     |LEE 000#agifa112.=;
+
+     |DDEFECTO #albw0024;
+     #albw0024#0 = aMadre;
+     #albw0024#1 = #401#2;
+     |LEE 101#albw0024.=;
+     |SI FSalida ! 0; |GRABA 020#albw0024.b; |FINSI;
+     #albw0024#3 = 0;
+     #albw0024#4 = 0;
+     #albw0024#5 = 0;
+     #albw0024#6 = 0;
+     |BUCLE Partidas;
+     #albw0024#7 = nCantiEscan;
+     #albw0024#8 = #agifa112#91;
+     #albw0024#9 = #agifa019#27;
+     |GRABA 020#albw0024.a;
+     |LIBERA #albw0024;
+
+     ||Articulos y Cantidades para la mezclada y el tinte ...
+     aResto = #albw0024#1;
+     nCantiResto = #albw0024#7;
+     |HAZ DesglosaResto;
+|FPRC;
+
+|PROCESO albw0023;
+     |ABRE #3;
+     aMadre = #albw0023#0;
+     aEscan = #albw0023#0;
+
+aAlfa=#albw0023#0;
+|QBF aAlfa;
+
+     nCantiEscan = #albw0023#1;
+     |HAZ DesglosaEscan;
+     |CIERRA #3;
+|FPRC;
+
+|DEFBUCLE albw0023;
+ #albw0023#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, albw0023;
+|FIN;
+
+|PROCESO agifa073;
+     ||Tiquet. 3026/736
+     |SI #agifa073#3 = 00001;
+          |SI #agifa073#2 ] #0#5; |Y #agifa073#2 [ #0#6;
+               |DDEFECTO #albw0023;
+               #albw0023#0 = #agifa073#2;
+               |LEE 101#albw0023.=;
+               |SI FSalida ! 0; |GRABA 020#albw0023.b; |FINSI;
+               ||ARA
+               #albw0023#1 = #albw0023#1 + (#agifa073#5 - #agifa073#43);
+               |GRABA 020#albw0023.a;
+               |LIBERA #albw0023;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa104;
+ #agifa104#1;
+ 1, 4;
+ #alby0004#10, #alby0004#12, #alby0004#1, #alby0004#7;
+ #alby0004#11, #alby0004#13, #alby0004#2, #alby0004#8;
+ ;
+ NULL, NULL, agifa073;
+|FIN;
+
+|PROCESO albw0046;
+     ||Tiquet. 3026/736
+     |SI #albw0046#3 ! 0;
+          enLin = 2;
+          |PRINT;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albw0046;
+ #albw0046#1;
+ ;
+ #albw0045#0, "                    ";
+ #albw0045#0, "zzzzzzzzzzzzzzzzzzzz";
+ ;
+ NULL, albw0046;
+|FIN;
+
+|PROCESO Stock;
+     nStock = nStock + #46#31;
+|FPRC;
+
+|DEFBUCLE Stock;
+     #46#2;
+     ;
+     "01.01.0000", #albw0045#0, 00001;
+     "31.12.9999", #albw0045#0, 00001;
+     ;
+     NULL, Stock;
+|FIN;
+
+|PROCESO albw0045;
+     ||SI #albw0045#3 > 0; |O #albw0045#4 > 0;
+     |SI #albw0045#4 > 0;
+          |SI #alby0004#14 = "A";
+               ||Calculo el stock, a partir del albm0046
+               nStock = 0;
+               |BUCLE Stock
+               #albw0045#2 = nStock;
+          |FINSI;
+          enLin = 1;
+          |PRINT;
+          nSwPie = 1;
+          |BUCLE albw0046;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albw0045;
+ #albw0045#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, albw0045;
+|FIN;
+
+|PROCESO Principal;
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |SI #alby0004#14 = "A";
+               aInforme = "alby1004";
+          |SINO;
+               aInforme = "alby0004";
+          |FINSI;
+          |INFOR aInforme;
+          |SI FSalida = 0;
+               |ABRE #agifa112;
+               |ABRE #142; |LEE 000#142p; |CIERRA #142;
+               |SI #142#159 = "N";
+                    nMaxNivel = 1;
+               |FINSI;
+               |HAZ CreaTempo; aTempo023 = Tempo; |NOME_DAT #23 aTempo023;
+               |DELINDEX #23;
+
+               |HAZ CreaTempo; aTempo024 = Tempo; |NOME_DAT #24 aTempo024;
+               |DELINDEX #24;
+
+               |HAZ CreaTempo; aTempo038 = Tempo; |NOME_DAT #38 aTempo038;
+               |DELINDEX #38;
+
+               |SI #alby0004#14 = "A";
+                    |HAZ CreaTempo; aTempo045 = Tempo; |NOME_DAT #45 aTempo045;
+                    |DELINDEX #45;
+
+                    |HAZ CreaTempo; aTempo546 = Tempo; |NOME_DAT #546 aTempo546;
+                    |DELINDEX #546;
+               |FINSI;
+
+               |ABRE #23;
+||               |BUCLE albm0004;
+               |BUCLE agifa104;
+               |CIERRA #23;
+
+               |ABRE #24;
+               |BUCLE albw0023;
+               |BUCLE PenServir;
+               |BUCLE PenRecibir;
+               |ABRE #401;
+               |ABRE #430;
+               |ABRE #38;
+               |SI #alby0004#14 = "A";
+                    |ABRE #45;
+                    |ABRE #546;
+                    |BUCLE albw0024_agrupa;
+                    |CIERRA #546;
+                    |CIERRA #45;
+
+                    |BUCLE albw0045;
+               |SINO;
+                    |BUCLE albw0023_imp;
+               |FINSI;
+               |CIERRA #38;
+               |CIERRA #430;
+               |CIERRA #401;
+               |SI nSwPie = 1;
+                    |PIEINF;
+               |FINSI;
+               |FININF;
+
+               |DELINDEX #23; Tempo = aTempo023; |HAZ BoraTempo;
+               |DELINDEX #24; Tempo = aTempo024; |HAZ BoraTempo;
+               |DELINDEX #38; Tempo = aTempo038; |HAZ BoraTempo;
+               |SI #alby0004#14 = "A";
+                    |DELINDEX #45; Tempo = aTempo045; |HAZ BoraTempo;
+                    |DELINDEX #546; Tempo = aTempo546; |HAZ BoraTempo;
+               |FINSI;
+               |CIERRA #agifa112;
+          |SINO;
+               aMensaje = "0000Informe " + aInforme + " inaccesible.";
+               |MENAV aMensaje;
+          |FINSI;
+          |FINIMP;
+     |SINO;
+          |MENAV "0000Proceso cancelado.";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |ABRE #0;
+     |DDEFECTO #0;
+     |LEE 101#0p;
+     nExiste = FSalida;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          aRespuesta = #alby0004#9;
+          ||#alby0004#9 = "NO";
+          |SI nExiste = 0;
+               |GRABA 020#0a;
+          |SINO;
+               |GRABA 020#0n;
+          |FINSI;
+          |SI aRespuesta = "SI";
+               |HAZ Principal;
+          |FINSI;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+|FPRO;

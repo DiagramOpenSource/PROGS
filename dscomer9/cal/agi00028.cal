@@ -1,0 +1,758 @@
+|FICHEROS;
+     agi00028 #0;        || Este def.
+     agi00027 #6;        ||
+     agi00029 #1,MANTE;        || Temporal de consulta de compras.
+     agifa067 #2;        || Pedidos de compras(L).
+     agifa112 #3;        || Proveedores.
+     agifa081 #4;        || Pedidos de compras(C).
+     agifa019 #5;        || Articulos;
+     agifa080 #13;       || Alba Compras (L)
+     agifa077 #14;       || Alba Compras (C)
+     agifa142 #142;
+     agifa324 #15;
+     agifa321 #16;
+     dsm00010 #910;
+     agifa017 #17;
+     referen@;
+     agifa029 #29;
+|FIN;
+
+|VARIABLES;
+     nSalida = 0;
+     aPro = "";
+     nPre = 0;
+     nDto = 0;
+     aPtec = "";
+     nPtec = 0;
+     nLin = 0;
+     aAlfa = "";
+     aDart = "";
+     aHart = "";
+     &eaModulo = "";
+
+     &nDeci_Base     = 0;   || Decimales en Totales de la moneda base
+     &nDeci_PreBase  = 0;   || Decimales en el Precio en moneda base
+     &nDeci_BaseMxP  = 0;   || Decimales en Totales de la moneda base (Maxima precision)
+     &nDeci_PreBasMxP = 0;   || Decimales en el Precio en moneda base (Maxima precision)
+     &nDeci_DivP      = 0;   || Decimales en Totales de la divisa
+     &nDeci_PreDivP   = 0;  || Decimales en el Precio en divisa
+     &nDeci_TotVisP   = 0;  || Decimales en Totales visibles (el de la moneda de trabajo)
+     &nDeci_TotNoVisP = 0;  || Decimales en Totales no visibles (el de la otra moneda)
+     &nDeci_PreVisP   = 0;  || Decimales en el Precio visual. (lineas)
+     &nDeci_ImpVisP   = 0;  || Decimales en el Importe visual. (lineas)
+     nfecha    = 0;
+     &ac_divisa = "N";   || Vale "S" cuando las divisas en compras estan
+                         || activadas y la serie es de divisas
+     &decim_divisa = 0;  || Decimales de la divisa
+     &precio_divisa = 0; || Decimales del precio en divisa
+     &decim_base = 0;    || Decimales de la moneda base
+     &precio_base = 0;   || Decimales del precio en moneda base
+     div_act = 0;        || Divisa actualizada. Me sirve en un PARA para que
+                         || no salga hasta que este actualizada (div_act=1)
+     &prov_divisa = "";  || Codigo de Proveedor. Se pasa a PROVEED/DIVISAS
+
+     &Tempo     = "";
+     aTempo1    = "";
+     nResto     = 0;
+     nModo      = 0;
+     &Envase    = "";
+     &Unidades1 = 0;
+     &Unidades2 = 0;
+     &VArticulo = "";
+     nPrecio   = 0;
+     modo      = 0;
+     forma     = 0;
+     fichero   = "";
+     linea     = 0;
+     articulo  = "";
+     nalmacen = 0;
+     descu     = 0;
+     precio    = 0;
+     dto1      = 0;
+     dto2      = 0;
+     alfa      = "";
+     divisa    = "";
+     cambio_base = 0;
+     cambio_div = 0;
+     &nDeci_Div = 0;
+     &nDeci_PreDiv = 0;
+     dant      = "";
+
+     &eaCodigo      = "";
+     &eaTipoCodigo  = "PR";
+|FIN;
+
+|INCLUYE i_varart;
+
+
+|PROCESO Tipo28_3; |TIPO 3;
+     |SI #agifa142#205 = "S";
+          aTipoDA = "X"; |HAZ AltaDAC;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo7; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+     eaDocu = "agi00028";
+     |HAZ PintaUniMediC;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+     |SI nModo = 1;
+          #0#1 = #0#1 + #agifa142#236 - 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO cuentas; |TIPO 0;
+     |ABRE #5;
+     #5#0 = #0#2;
+     |LEE 020#5=;
+     |CIERRA #2;
+
+     |SI #5#196 = 2;
+          #0#8 = ((#0#14 * #0#6) ! nDeci_Div) < #0#7;  || UND * P.COMPRA - DTO.
+     |SINO;
+          #0#8 = ((#0#5 * #0#6) ! nDeci_Div) < #0#7;  || UND * P.COMPRA - DTO.
+     |FINSI;
+     |PINTA #0#8;
+|FPRC;
+____________________________/ CONSULTA LAS COMPRAS ANTERIORES DE UN ARTICULO.
+|PROCESO GrabaAlba;
+     linea = linea + 1;
+     #1#0 = #3#0;                  || PROVEEDOR.
+     |LEE 101#1=;
+     |SI FSalida ! 0;
+          #1#1 = #3#1;              || NOMBRE.
+          #1#2 = #13#6;             || PRECIO.
+          #1#3 = #13#5;             || CANTIDAD.
+          #1#4 = #14#1;             || FECHA
+          #1#5 = #13#8;             || % DTO.
+          #1#6 = #1#2 < #1#5;       || PRECIO NETO.
+          |GRABA 020#1n;
+     |SINO;
+          |SI #13#8 > #1#5;
+               #1#1 = #3#1;              || NOMBRE.
+               #1#2 = #13#6;             || PRECIO.
+               #1#3 = #13#5;             || CANTIDAD.
+               #1#4 = #14#1;             || FECHA
+               #1#5 = #13#8;             || % DTO.
+               #1#6 = #1#2 < #1#5;       || PRECIO NETO.
+               |GRABA 020#1a;
+          |FINSI;
+     |FINSI;
+     |LIBERA #1;
+|FPRC;
+
+|PROCESO BuscaAlba;
+     |MENSA "2403Buscando....";
+     |LEE 000#13p;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          |SI #0#2 = #13#2;
+               #14#50 = #13#27;
+               #14#0 = #13#0;
+               |LEE 000#14=;
+               |SI FSalida = 0;
+                    #3#0 = #14#3;
+                    |LEE 000#3=;
+                    |SI FSalida ! 0; |DDEFECTO #3; |FINSI;
+                    |HAZ GrabaAlba;
+               |FINSI;
+          |FINSI;
+          |LEE 000#13s;
+     |SIGUE;
+     |BLIN 24;
+|FPRC;
+
+|PROCESO mini;
+     #1#0 = "      ";
+     #1#6 = 0;
+|FPRC;
+
+|PROCESO maxi;
+     #1#0 = "zzzzzz";
+     #1#6 = 99999999;
+|FPRC;
+
+|PROCESO TeclaEnter; |TIPO 0;
+     |SI #1Campo = Contenido; |Y FSalida = 0;
+          aPro = #1#0;
+          nPre = #1#2;
+          nDto = #1#5;
+          |ERROR;
+          |PTEC 806;
+     |FINSI;
+|FPRC;
+
+|PROCESO consulta; |TIPO 0;
+     eaProParti = #0#4;
+     |SI FSalida = 9;
+          |HAZ CreaTempo; aTempo1 = Tempo;
+          |NOME_DAT #1 aTempo1; |DELINDEX #1;
+          |ABRE #1; |ABRE #3; |ABRE #13; |ABRE #14;
+          linea = 1;
+          |HAZ BuscaAlba;
+          |SI linea ! 1;
+               aPro = "";
+               |PUSHV 0501 2380;
+               ||ENTLINEAL #1#1,1,4,22,1,mini,maxi;     || por proveedor
+               |ENTLINEAL #2#1,1,4,22,1,mini,maxi;     || por precio neto
+               |POPV;
+               |SI aPro ! "";
+                    #0#4 = aPro;             || PROVEEDOR.
+                    #0#6 = nPre;             || PRECIO.
+                    #0#7 = nDto;             || % DTO.
+                    |PINTA #0#4;
+                    |PINTA #0#6;
+                    |PINTA #0#7;
+               |FINSI;
+          |SINO;
+               |MENAV "0000No se encontraron compras anteriores.";
+          |FINSI;
+          |CIERRA #1; |CIERRA #3; |CIERRA #13; |CIERRA #14;
+          |DELINDEX #1;
+          Tempo = aTempo1; |HAZ BoraTempo;
+          |ERROR;
+          |ACABA;
+     |FINSI;
+
+     |SI FSalida = 11; |O #142#102 = "S"; |O #142#102 = "X";
+          eaFuerza = "N";
+          |SI FSalida = 11; eaFuerza = "S"; |FINSI;
+          eaCodigo = #0#4;
+          |SUB_EJECUTA_NP "dsz99994";
+          |SI #142#102 = "N";  |ERROR;  |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO mirapre; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1; |O articulo ! #0#2; |O nalmacen ! #0#21;
+          articulo = #0#2;
+          nalmacen = #0#21;
+          ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+          eaDocu   = "agi00028";
+          |HAZ LeePreDtoCom;
+          #0#7  = enDto1;
+          #0#6  = enPreDiv;
+          #0#11 = eaDivisa;
+          ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+          |PINTA #0#6;
+          |PINTA #0#7;
+          |PINTA #0#11;
+     |FINSI;
+|FPRC;
+
+|PROCESO Mensaje;
+     |PUSHV 0501 2380;
+     |AVISO;
+     |COLOR 0, 0; |ATRI 0;
+     |BLANCO 0815 1265;
+     |COLOR 14, 0; |ATRI 0;
+     |D_CUADRO 0815,1265;
+     |PINTA 1017, alfa;
+     |ATRI 0;
+     |PAUSA;
+     |POPV;
+|FPRC;
+
+|PROCESO cambipre; |TIPO 0;
+     |SI #142#75 ! "S"; |ACABA; |FINSI;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+     eaDocu = "agi00028";
+     |HAZ LeePreDtoCom;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+     |SI enPreDiv ! #0#6;
+          alfa = "­ ATENCION ! POSIBLE CAMBIO DE PRECIO COSTE...";
+          |HAZ Mensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO cambidto;
+     |SI #142#75 ! "S"; |ACABA; |FINSI;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+     eaDocu = "agi00028";
+     |HAZ LeePreDtoCom;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+     |SI enDto1 ! #0#7;
+          alfa = "­ ATENCION ! POSIBLE CAMBIO DE DESCUENTO  ...";
+          |HAZ Mensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo2; |TIPO 2;
+     modo  = (FEntrada / 100) ! 0;
+     forma = 0 +.1;
+     |SI forma = 1;
+          |HAZ decdivpp; ||Recoge variables de divisa de nuevo por si se sale con control c
+          ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+          enForma = 0 +. 1;
+          eaDocu = "agi00028";
+          |HAZ StockEntra;
+          ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+     |FINSI;
+
+     |SI modo = 3;
+          eaTipo      = "W2";
+          eaSerie     = "";
+          enCodigo    = #0#0;
+          enLinea     = #0#1;
+          eaAbono     = "N";
+          eaReservado = "N";
+          enTarifa    = 0;
+          eaArticulo  = #0#2;
+          enAlmacen   = 1;
+
+          |SUB_EJECUTA_NP "dsz00002;BAJA";
+
+          |HAZ BorraKit;
+
+          |SI #agifa142#205 = "S";
+               aTipoDA = "X"; |HAZ BajaDAC;
+          |FINSI;
+     |FINSI;
+
+     enTipEnvase = 2;
+     |HAZ Envase28;
+|FPRC;
+
+|CALCULO divant;|TIPO 7;
+   dant = #0#11;
+|FCAL;
+
+|CALCULO decdivpp; |TIPO 0;
+     |ABRE #agifa324;
+     #agifa324#0 = #0#11;
+     |LEE 001#agifa324.=;
+     nDeci_PreDiv = #agifa324#9;
+     cambio_div   = #agifa324#3;
+     nDeci_Div    = #agifa324#7;
+
+     |ABRE #agifa321;
+     |LEE 001#agifa321.p;
+     #agifa324#0 = #agifa321#9; ||Igualo a moneda base
+     |LEE 001#agifa324.=;
+     cambio_base = #agifa324#3;
+
+     |SI #0Campo ! dant;
+         |SI Campo = 11;  ||Estoy en campo divisa
+             #agifa324#0 = dant;
+             |LEE 001#agifa324.=; ||Leo valores de la divisa que habia antes de cambiarla
+             #0#6 = #0#6 / #agifa324#3 * cambio_div; ||Precio en nueva divisa
+             #0#6 = #0#6 ! nDeci_PreDiv;
+             |HAZ cuentas;
+             #0#8 = #0#8 ! nDeci_Div;
+          |FINSI;
+          |PINTA #0#6;
+          |PINTA #0#8;
+      |FINSI;
+      |CIERRA #agifa321;
+      |CIERRA #agifa324;
+|FCAL;
+
+|CALCULO redondiv;|TIPO 0;
+     #0#6 = #0#6 ! nDeci_PreDiv;
+     #0#8 = #0#8 ! nDeci_Div;
+     |PINTA #0#6;
+     |PINTA #0#8;
+|FCAL;
+
+|CALCULO redonuni;|TIPO 6;
+     nSalida = FSalida;
+     |SI FSalida = 13;
+          enTipEnvase = 1;
+          |HAZ Envase28;
+     |FINSI;
+
+     #0Campo = #0Campo ! #142#8;
+
+     |ABRE #5;
+     #5#0 = #0#2;
+     |LEE 000#5=;
+     |CIERRA #5;
+     |SI #0#5 < #5#212; |Y #0#5 > 0;
+          aAlfa = "0000Unidades Minimas Compra " + #5#212;
+          |MENAV aAlfa;
+          |ERROR; |ACABA;
+     |FINSI;
+
+     |SI #0#5 > 0;
+          nResto = #0#5 $ #5#202;
+          |SI nResto ! 0;
+               #0#5 = #0#5 - nResto + #5#202;
+          |FINSI;
+     |SINO;
+          nResto = -#0#5 $ #5#202;
+          |SI nResto ! 0;
+               #0#5 = #0#5 + nResto - #5#202;
+          |FINSI;
+     |FINSI;
+     |PINTA #0Campo;
+
+     |HAZ EsDesanch;
+     |SI FSalida = 0;
+          eaDocu = "agi00028";
+          |SI nSalida = 10;
+               |HAZ DesanOfeCon;
+               |ERROR; |ACABA;
+          |SINO;
+               |SI #0Campo = Contenido; |ACABA; |FINSI;
+               enDto1 = #0#7;
+               enPreDiv = #0#6;
+               eaDivisa = #0#11;
+               |HAZ DesanOferta;
+          |FINSI;
+          #0#7  = enDto1;
+          #0#6  = enPreDiv;
+          #0#11 = eaDivisa;
+          |PINTA #0#6;
+          |PINTA #0#7;
+          |PINTA #0#11;
+     |FINSI;
+|FCAL;
+
+|CALCULO divisasno; |TIPO 7; ||Mira si divisas esta activado en compras
+  |ABRE #agifa321;
+  |LEE 001#agifa321.p;
+  |SI #agifa321#2 = "N";
+    |CAMPO_MODIFICA #0#11,1,"N";
+  |FINSI;
+  |CIERRA #agifa321;
+|FCAL;
+
+|PROCESO CogeValores28;  |TIPO 7;
+     aAlfa = "0000Unidades";
+     |HAZ EsDesanch;
+     |SI FSalida = 0;
+          aAlfa = "0000<F2> Ofertas";
+     |FINSI;
+     |MENSA aAlfa;
+
+
+     |SI #5#176 = "N";  |ACABA;  |FINSI;
+
+     |SI Campo = 5;
+         |SI enUnidades ! 0;
+             |SI #0#5 ! enUnidades;  Contenido = #0#5;  |FINSI;
+             #0#5 = enUnidades;  |PINTA #0#5;
+         |FINSI;
+     |FINSI;
+
+     |SI Campo = 6;
+         |SI nPrecio ! 0;
+             #0#6 = nPrecio;  |PINTA #0#6;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO PideArt28;  |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI #142#140 = "S"; |Y nModo = 1; #0#2 = eaArtAnt; |FINSI;
+
+     |C_M #0#2, 1, "S";
+
+     |SI #0#2 ! "                    ";
+         |ABRE #5;
+         #5#0 = #0#2;
+         |LEE 000#5=;
+         |SI FSalida ! 0;  |DDEFECTO #5;  |FINSI;
+         |CIERRA #5;
+         |SI #5#176 = "S";
+             |C_M #0#2, 1, "N";
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     |ABRE #910;
+     |LEE 040#910p;
+     |SI FSalida ! 0;  |DDEFECTO #910;  |FINSI;
+     |CIERRA #910;
+
+     |SI #910#2 [ 2;    |ACABA;  |FINSI;
+
+     eAlfa = #0Campo;
+     |SUB_EJECUTA_NP "dsz99990";                 || Por Pantalla
+
+     |SI eAlfa = "-1";  |PTEC 807;  |ACABA;  |FINSI;
+     |SI eAlfa = "-2";              |ACABA;  |FINSI;
+
+     eaArticulo= eAlfa;  || 700000-4215
+
+     #0Campo = eAlfa;
+     |PINTA #0Campo;
+     |PTEC 802;
+|FPRC;
+
+|PROCESO tipo11; |TIPO 11;
+     |SI FSalida = 13;
+          |HAZ VerKit;
+          eaDocu = "agi00028"; ||?
+          ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+          |HAZ VerDobleUni;
+          |ERROR; |ACABA;
+          ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+     |FINSI;
+     |SI FSalida = 16; |Y #agifa142#205 = "S";
+          aTipoDA = "X"; |HAZ VerDAC;
+     |FINSI;
+|FPRC;
+
+|PROCESO DefProv; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1; |O #0Campo ! Contenido;
+          |ABRE #5;
+          #5#0 = #0#2;
+          |LEE 000#5=;
+          |CIERRA #5;
+          #0#4 = #5#27;  |PINTA #0#4;
+     |FINSI;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+     eaDocu = "agi00028";
+     |HAZ PintaUniMediC;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+     |SI #agifa142#205 = "S";
+          aTipoDA = "X"; |HAZ DescriDAC;
+     |FINSI;
+|FPRC;
+
+|PROCESO Calc628;  |TIPO 6;
+     eaArtAnt = #0#2;
+
+     |C_M #0#5, 1, "S";
+     |C_M #0#6, 1, "S";
+
+     |SI #0Campo ! Contenido; |Y Campo = 2;
+          eaArticulo = #0#2;
+          |HAZ DefectoMediC;
+          #0#17 = enMedida1;
+          #0#18 = enMedida2;
+          #0#19 = enMedida3;
+     |FINSI;
+     enAlta = 1;
+     eaArticulo = #0Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #0Campo = eaArticulo;
+          |PINTA #0Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+
+     |HAZ SacaKit;
+|FPRC;
+
+|PROCESO ElElemento; |TIPO 0;
+     |ABRE #5;
+     #5#0 = #0#2;
+     |LEE 000#5=;
+     |SI FSalida ! 0;  |DDEFECTO #5;  |FINSI;
+     |CIERRA #5;
+     |SI #5#176 = "S";
+          eaTipo      = "W2";
+          eaSerie     = "";
+          enCodigo    = #0#0;
+          enLinea     = #0#1;
+          eaArticulo  = #0#2;
+          enAlmacen   = 1;
+          enUnidades  = #0#5;
+          enTBruto    = #0#5 * #0#6;
+          eaAbono     = "N";
+          eaReservado = "N";
+          enTarifa    = 0;
+          eaProve     = #0#4;
+          |SI #0#11 = #16#9;
+               eaMoneda = "B";
+          |SINO;
+               eaMoneda = "D";
+          |FINSI;
+          enCamBas = cambio_div;
+          enCamDiv = cambio_base;
+
+         |SUB_EJECUTA_NP "dsz00002";
+
+         nPrecio = enTBruto / enUnidades;
+
+         |PTEC 802;
+         |C_M #0#5, 1, "N";
+         |C_M #0#6, 1, "N";
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo11028;  |TIPO 11;
+     |SI FSalida = 7;  |Y #5#176 = "S";
+         |MENAV "      Imposible abortar;  Termine de introducir la linea y efectue una Baja.";
+         |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Envase28;
+     Envase    = #0#12;
+     Unidades1 = #0#13;
+     Unidades2 = #0#5;
+     VArticulo = #0#2;
+     enAlmacen = #0#3;
+     eaTipo = "C";
+     eaProgEnv = "prepedido";
+     |HAZ EntraEnvase;
+     #0#12 = Envase;
+     #0#13 = Unidades1;
+     #0#5  = Unidades2;  |PINTA #0#5;
+|FPRC;
+
+|PROCESO Conversion;  |TIPO 7;
+     eaDocu = "agi00028";||?
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+     |HAZ DobleUni;
+     |SI eaSw2Stock = "S";
+          |C_M #0#5, 1, "N";
+     |FINSI;
+     |SI #agifa142#72 = "S";
+          |HAZ Envase28;
+          |C_M #0#5, 1, "S";
+          |SI enEntraEnvase ! 0;  |C_M #0#5, 1, "N";  |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Multi28; |TIPO 66;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄ Doble/MultiÄ
+     eaDocu = "agi00028";
+     |HAZ CambiaUniMulti;
+     |HAZ LeePreDtoCom;
+     #0#6 = enPreDiv; |PINTA #0#6;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+|FPRC;
+
+|PROCESO CtaArt1; |TIPO 0;
+     eaModulo = "agi00027"; |HAZ CtaArt;
+
+     |HAZ EsDesanch;
+     |SI FSalida = 0;
+          |ABRE #5;
+          #5#0 = #0#2;
+          |LEE 020#5=;
+          |CIERRA #5;
+          |SI #5#135 = "N";
+               |MENAV "0000El articulo no es de entrada...";
+               |ERROR; |ACABA;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO DefAlma7; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1; |O #0#21 = 0;
+          |ABRE #17;
+          #17#0 = #0#2;
+          #17#1 = 0;
+          |LEE 000#17];
+          |SI FSalida = 0; |Y #17#0 = #0#2;
+               #0#21 = #17#1;
+          |FINSI;
+          |CIERRA #17;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min17;
+     #17#0 = aDart;
+     #17#1 = 1;
+|FPRC;
+
+|PROCESO Max17;
+     #17#0 = aHart;
+     #17#1 = 99999;
+|FPRC;
+
+|PROCESO Alma0; |TIPO 0;
+     aDart = #0#2;
+     aHart = #0#2;
+     |ABRE #17;
+     #17#0 = #0#2;
+     #17#1 = #0#21;
+     |LEE 000#17];
+     |CONSULTA_F_CLAVE #1#17 , Min17, Max17;
+     |SI FSalida = 0;
+          #0#21 = #17#1;
+          |PINTA #0#21;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #17;
+|FPRC;
+
+|PROCESO AltaAlma6; |TIPO 6;
+     |ABRE #17;
+     #17#0 = #0#2;
+     #17#1 = #0#21;
+     |LEE 000#17=;
+     |SI FSalida ! 0;
+          |SI #142#217 = "N";
+               |MENAV "0000No existe Articulo/Almacen...";
+               |ERROR;
+          |SINO;
+               |PUSHV 0501 2380;
+               |CLS;
+               |PINPA #0#17;
+               |PINDA #0#17;
+               |CONFI "0000Confirma alta (S/N)...";
+               |SI FSalida = 0;
+                    |ENDATOS #1#17;
+                    |SI FSalida = 0;
+                         |GRABA 020#17n;
+                    |SINO;
+                         |ERROR;
+                    |FINSI;
+               |SINO;
+                    |ERROR;
+               |FINSI;
+               |POPV;
+          |FINSI;
+     |FINSI;
+     |CIERRA #17;
+|FPRC;
+
+|PROCESO Min0028;
+     #referen@#0 = #6#0;
+     #referen@#1 = 001;
+|FPRC;
+
+|PROCESO Max0028;
+     #referen@#0 = #6#0;
+     #referen@#1 = 999;
+|FPRC;
+
+|PROCESO Consulta028; |TIPO 66;
+     nLin = 0;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "agi00028";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          |CONSULTA_F_CLAVE #1#referen@, Min0028, Max0028;
+          |SI FSalida = 0; nLin = #referen@#1; |FINSI;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+     |SI nLin ! 0;
+          |PTEC 802;
+          aAlfa = ("000" + nLin) % -103;
+          aPtec = aAlfa % 301; nPtec = &aPtec;
+          |PTEC nPtec;
+          aPtec = aAlfa % 201; nPtec = &aPtec;
+          |PTEC nPtec;
+          aPtec = aAlfa % 101; nPtec = &aPtec;
+          |PTEC nPtec;
+     |FINSI;
+|FPRC;
+
+|PROCESO Alma66; |TIPO 66;
+     |ABRE #29;
+     #29#0 = #0#21;
+     |LEE 000#29];
+     |CONSULTA_CLAVE #1#29;
+     |SI FSalida = 0;
+          #0#21 = #29#0;
+          |PINTA #0#21;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #29;
+|FPRC;

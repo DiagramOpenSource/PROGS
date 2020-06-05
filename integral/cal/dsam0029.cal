@@ -1,0 +1,211 @@
+|FICHEROS;
+     :/integral/def/dsam0029;
+     :/integral/def/dsam0030,MANTE;
+
+     :/integral/def/dsam0026;
+
+     dsaw0044;
+
+     dsam029@;
+|FIN;
+
+|VARIABLES;
+     aAlfa       = "";
+     nPara1      = 0;
+     nCampo      = 0;
+     aBase       = "";
+     aDef        = "";
+     aPassword   = "";
+     nInkey      = 0;
+     nEstado     = 0;
+|FIN;
+
+|INCLUYE i_varfun;
+
+|PROCESO ClaveBaja30;
+  #dsam0030#0 = #dsam0029#0;
+  #dsam0030#1 = #dsam0029#1;
+  #dsam0030#2 = "          ";
+|FPRC;
+
+|PROCESO ClaveAlta30;
+  #dsam0030#0 = #dsam0029#0;
+  #dsam0030#1 = #dsam0029#1;
+  #dsam0030#2 = "zzzzzzzzzz";
+|FPRC;
+
+|PROCESO Tipo7C1; |TIPO 7;
+   |ENTLINEAL #1#dsam0030, -3, 7, 22, 0, ClaveBaja30, ClaveAlta30;
+|FPRC;
+
+|CALCULO Tipo0C1; |TIPO 0;
+   |ENTLINEAL #1#dsam0030, -3, 4, 22, 0, ClaveBaja30, ClaveAlta30;
+|FCAL;
+
+|PROCESO PaseaMante;
+   |LIBERA #dsam0029;
+   |CONFI "0000NDesea pasarlo al Mantenimiento para poder modificarlo";
+   |SI FSalida = 0;
+       eaFun07       = "A";
+       enNExpediente = #dsam0029#1;
+       |SUB_EJECUTA "dsaz0041;HA";
+   |FINSI;
+|FPRC;
+
+|PROCESO dsam0030B;
+   |BORRA 020#dsam0030.a;
+   |LIBERA #dsam0030;
+|FPRC;
+
+|DEFBUCLE dsam0030B;
+   #dsam0030#1;
+   ;
+   #dsam0029#0, #dsam0029#1, "          ";
+   #dsam0029#0, #dsam0029#1, "zzzzzzzzzz";
+   be;
+   NULL, dsam0030B;
+|FIN;
+
+|PROCESO Baja;
+
+   |LEE 041#dsam0029.=;
+   |CONFI "0000NDesea borrar permanentemente este Expediente";
+   |SI FSalida = 0;
+       aPassword = "";
+       |PUSHV  1219 1564;
+       |BLANCO 1219 1564;
+       |CUADRO 1219 1564;
+       |ATRI I; |PINTA 1320, "Introduzca Password : "; |ATRI 0;
+       E_inf = "";
+       E_sup = "20";
+       aPassword = 1342 ? -1;
+       |SI aPassword ! "<MYPASWD>     ";
+           |MENAV "     Permiso denegado.";
+           |POPV;
+           |ACABA;
+       |FINSI;
+       |POPV;
+       |BUCLE dsam0030B;
+       |BORRA 020#dsam0029.a;
+   |FINSI;
+   |LIBERA #dsam0029;
+|FPRC;
+
+|PROCESO Consulta;
+   |DBASE aBase;
+   aDef = aBase + "def/dsam0029";
+   |CARGA_DEF aDef, dsam029@;
+   |SI FSalida = 0;
+       |ABRE #dsam029@;
+       #dsam029@#0 = #dsam0029#0;
+       #dsam029@#1 = #dsam0029#1;
+       |CONSULTA_CLAVE #2#dsam029@;
+       #dsam0029#0 = #dsam029@#0;
+       #dsam0029#1 = #dsam029@#1;
+   |FINSI;
+   |DESCARGA_DEF #dsam029@;
+
+   |LEE 041#dsam0029.=;
+|FPRC;
+
+|PROCESO ImpExpediente;
+   eaFun07 = "A";
+   enNExpediente = #dsam0029#1;
+   |SUB_EJECUTA "dsay0027;AUTO";
+|FPRC;
+
+|CALCULO Tipo11m029; |TIPO 11;
+  nInkey = FSalida;
+
+  |SI nInkey = 10;
+      |HAZ Consulta;
+      |PONCONTROL 23, "SI";
+  |FINSI;
+
+  |SI nInkey = 13;
+      |HAZ ImpExpediente;
+      |ERROR;
+  |FINSI;
+
+  |SI nInkey = 17;
+      |HAZ PaseaMante;
+      |PONCONTROL 23, "SI";
+  |FINSI;
+
+  |SI nInkey = 16;
+      |HAZ Baja;
+      |PONCONTROL 23, "SI";
+  |FINSI;
+|FCAL;
+
+|| ///////////////////////////////////////////////////////////////////
+|PROCESO LeeTransporte;
+   |ABRE #dsam0026;
+   |DDEFECTO #dsam0026;
+   #dsam0026#0 = enEmpresa;
+   #dsam0026#1 = eaMatricula;
+   |LEE 041#dsam0026.=;
+   nEstado = FSalida;
+   |CIERRA #dsam0026;
+|FPRC;
+
+|PROCESO VerLinea;
+   |LEE 041#dsam0030.=;
+
+   eaFun07        = "A";
+   enEmpresa      = #dsam0029#5;
+   eaMatricula    = #dsam0030#2;
+
+   |HAZ LeeTransporte;
+   |SI nEstado ! 0;
+       |MENAV "0000Atencion este transporte ya no existe en el Cliente";
+       |ACABA;
+   |FINSI;
+
+   |PUSHV 1319 2380;
+   |DDEFECTO #dsaw0044;
+   #dsaw0044#0 = #dsam0026#0;
+   #dsaw0044#1 = #dsam0026#1;
+   |PARA nPara1 = 2; |SI nPara1 [ 11; |HACIENDO nPara1 = nPara1 + 1;
+         #dsaw0044#nPara1# = #dsam0026#nPara1#;
+   |SIGUE;
+
+   |PINPA #0#dsaw0044;
+   |PINDA #0#dsaw0044;
+
+   |PAUSA;
+   |POPV;
+|FPRC;
+
+|PROCESO Tipo7m030; |TIPO 7;
+   enEmpresa  = #dsam0029#5;
+   eaMatricula = #dsam0030#2;
+|FPRC;
+
+|PROCESO Tipo11m030; |TIPO 11;
+   nInkey = FSalida;
+
+   |SI nInkey = 10;
+       |HAZ VerLinea;
+   |FINSI;
+|FPRC;
+
+|PROCESO ClaveBaja29
+  #dsam0029#0 = eaFun07;
+  #dsam0029#1 = 00000001;
+|FPRC;
+
+|PROCESO ClaveAlta29;
+  #dsam0029#0 = eaFun07;
+  #dsam0029#1 = 99999999;
+|FPRC;
+
+|PROGRAMA;
+   eaFun07  = "A";
+
+   |CLS;
+   |CABEZA "Historico Expedientes";
+   |PINPA #0#dsam0029;
+
+   |ENTLINEAL #1#dsam0029, -2, 4, 16, 0, ClaveBaja29, ClaveAlta29;
+|FPRO;

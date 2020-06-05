@@ -1,0 +1,323 @@
+|FICHEROS;
+    dsmoz039 #0;
+    dsmom041 #41;
+    dsmom042 #42;
+
+    dsmow035 #995,MANTE;
+    dsmow034 #997,MANTE;
+    dsmow041 #998,MANTE;
+    dsmow043 #999;
+
+|FIN;
+
+|VARIABLES;
+  aAlfa1 = "";
+  aAlfa2 = "";
+  nInkey = 0;
+  nRegis = 0;
+  nLibro = 0;
+  aSerie = "";
+  nDocum = 0;
+  nElModo = 0;
+  nSwEste = 0;
+  nLinea  = 0;
+  nExiste = 0;
+  nModifica = 0;
+  nRecoge = 0;
+
+  &aRepSop = "";
+  &aComVen = "";
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+|PROCESO Tipo7C1; |TIPO 7;
+  nElModo = (FEntrada / 100) ! 0;
+  |SI nElModo > 1;
+      |HAZ LecturaW035;
+      |SI nExiste = 1;
+          |SI #997#10 = 0;
+              aAlfa1 = "Factura pendiente de asignar";
+          |SINO;
+              aAlfa1 = "No existe Factura informada ";
+          |FINSI;
+      |SINO;
+           aAlfa1    = "                            ";
+      |FINSI;
+      |PINTA 1649, aAlfa1;
+  |FINSI;
+|FPRC;
+
+|PROCESO Tipo11w34; |TIPO 11;
+ nInkey = FSalida;
+ |SI nInkey = 10; |O nInkey = 0;
+     |PTEC 802;
+ |FINSI;
+ |SI nInkey = 11;
+     |PTEC 825;
+     |PTEC 802;
+ |FINSI;
+|FPRC;
+
+|CALCULO Tipo0C1; |TIPO 0;
+ nElModo = (FEntrada / 100) ! 0;
+ |SI nElModo ! 2;
+     |ERROR;
+     |ACABA;
+ |FINSI;
+
+ nLibro =  #997#10;
+ aSerie =  #997#11;
+ nDocum =  #997#12;
+ nRegis =  #997#32;
+ nLinea =  #997#15;
+|FCAL;
+
+|CALCULO Tipo1w34; |TIPO 1;
+  nElModo = (FEntrada / 100) ! 0;
+  |SI nElModo ! 2; |Y nElModo ! 3;
+     |ERROR;
+  |FINSI;
+|FCAL;
+
+|| ******************** Proceso de Facturas
+
+|RUTINA ClaveBaja995;
+ #995#0 = enEmpresa;
+ #995#1 = 01;
+ #995#2 = 00000000001;
+ #995#6 = 01;
+ |SI FSalida = "POSICION";
+     #995#0 = enEmpresa;
+     #995#1 = #997#10;
+     #995#2 = #997#32;
+ |FINSI;
+|FRUT;
+
+|RUTINA ClaveAlta995;
+ #995#0 = enEmpresa;
+ #995#1 = 99;
+ #995#2 = 99999999999;
+ #995#6 = 99;
+|FRUT;
+
+|PROCESO Igualdad;
+
+ #997#10 = #995#1; || Libro
+ #997#11 = #995#3; || Serie
+ #997#12 = #995#4; || Factura
+ #997#15 = #995#6; || Linea
+ #997#32 = #995#2; || Registro
+
+ #997#7  = #995#26; || Importe
+ #997#8  = #995#15; || Concepto
+ #997#9  = #995#16; || Descripcion
+
+ #997#26 = #995#15; || Concepto
+ #997#27 = #995#16; || Descripcion
+ #997#28 = #995#24; || Deducible
+ #997#30 = #995#27; || Subdepartamento
+ #997#31 = #995#28; || nombre subd.
+
+ #997#35 = #995#14; || Referencia
+ |SI aComVen = "C";
+     #997#18 = #995#12;
+     #997#21 = #995#19;
+     #997#33 = #995#10; || nombre
+     #997#34 = #995#20; ||Nif
+  |FINSI;
+  |SI aComVen = "V";
+      #997#36 = #995#19;
+      #997#37 = #995#12;
+  |FINSI;
+|FPRC;
+
+|CALCULO Tipo0C10;
+ nInkey = FSalida;
+
+ |SI nInkey = 11;
+     |HAZ BuscaEste;
+ |FINSI;
+
+ |SI nInkey = 10;
+     nRecoge = 0;
+     |PUSHV 1401 2380;
+     |PINPA #0#995;
+     |C_V #995#24,1, "S";
+     |SI aRepSop ! "S";
+         |PINTA 1663, "                 ";
+         |C_V #995#24,1, "N";
+     |FINSI;
+     |ENTLINEAL #1#995, -4, 5, 22, 0, ClaveBaja995, ClaveAlta995;
+     |SI nRecoge = 1;
+         |HAZ Igualdad;
+         |PTEC 802;
+     |FINSI;
+
+     |POPV;
+     |PINTA #997#10;
+     |PINTA #997#11;
+     |PINTA #997#12;
+     |PINTA #997#15;
+     |PINTA #997#3;
+     |PINTA #997#9;
+     |PINTA #997#7;
+ |FINSI;
+
+|FCAL;
+
+|PROCESO LecturaW035;
+ nExiste = 0;
+ |ABRE #995;
+ |DDEFECTO #995;
+ |SELECT #2#995;
+ #995#0 = #997#0;  || Empresa
+ #995#1 = #997#10; || Libro
+ #995#3 = #997#11; || Serie
+ #995#4 = #997#12; || Factura
+ #995#6 = #997#15; || linea
+ |LEE 001#995=;
+ |SI FSalida ! 0;
+     nExiste = 1;
+ |FINSI;
+ |SELECT #1#995;
+ |CIERRA #995;
+|FPRC;
+
+|PROCESO Comprobar;
+     nModifica = 0;
+     nRecoge   = 0;
+     |SI #995#7 ! #997#13;
+         |MENAV "    Error. La Actividad NO es la del Elemento de Amortizacion";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+     |SI #995#17 ! #997#6;
+         |MENAV "    La Factura no tiene la misma fecha.";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+     |SI #995#26 ! #997#7;
+         |CONFI "    NLa Factura no tiene el mismo IMPORTE. Continuar ";
+         |SI FSalida ! 0;
+             |ERROR;
+             |ACABA;
+         |SINO;
+             nModifica = 1;
+         |FINSI;
+     |FINSI;
+     |SI aRepSop = "S"; |Y #995#20 ! #997#34;
+         |CONFI "    NLa factura es de otro Proveedor. Continuar ";
+         |SI FSalida ! 0;
+             |ERROR;
+             |ACABA;
+         |SINO;
+             nModifica = 1;
+         |FINSI;
+     |FINSI;
+     nRecoge = 1;
+|FPRC;
+
+|CALCULO loleo; |TIPO 0;
+ |SI #997#10 ! 0;
+     |HAZ LecturaW035;
+     |SI nExiste ! 0;
+         |MENAV "    Error, No existe Factura";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |HAZ Comprobar;
+     |SI nRecoge = 0;
+         #997#10 = nLibro; |PINTA #997#10;
+         #997#32 = nRegis;
+         #997#11 = aSerie; |PINTA #997#11;
+         #997#12 = nDocum;
+         #997#15 = nLinea;
+     |FINSI;
+ |FINSI;
+|FCAL;
+
+|CALCULO LaRecoge;
+ |SI FSalida = 0;
+     |HAZ Comprobar;
+     |SI nRecoge = 1;
+         |SI nModifica = 1;
+             |CONFI "0000SCambiar datos en elemento de Amortizaciones";
+             |SI FSalida = 0;
+                 #997#29 = "S";
+             |FINSI;
+         |FINSI;
+         nLibro = #995#1;
+         nRegis = #995#2;
+         aSerie = #995#3;
+         nDocum = #995#4;
+         nLinea = #995#6;
+         |PTEC 806;
+     |FINSI;
+ |FINSI;
+|FCAL;
+
+|| *********************************************************************
+|PROCESO Busca1;
+ |SI nSwEste = 0;
+     nLibro =  #995#1;
+     nRegis =  #995#2;
+     aSerie =  #995#3;
+     nDocum =  #995#4;
+     nLinea =  #995#6;
+ |FINSI;
+ nSwEste = 1;
+ |SI #997#7 = #995#26; |Y #997#6 = #995#17;
+     nLibro =  #995#1;
+     nRegis =  #995#2;
+     aSerie =  #995#3;
+     nDocum =  #995#4;
+     nLinea =  #995#6;
+     nSwEste = 2;
+ |FINSI;
+ |SI aComVen = "C";
+     |SI #997#7 = #995#26; |Y #997#6 = #995#17; |Y #997#34 = #995#20;
+         nLibro =  #995#1;
+         nRegis =  #995#2;
+         aSerie =  #995#3;
+         nDocum =  #995#4;
+         nLinea =  #995#6;
+         nSwEste = 3;
+         |ERROR10;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE Busca1;
+ #995#1;
+ 17,7, 26;
+ #997#0, 00, 0000000001, 01, #997#6, #997#13, #997#7;
+ #997#0, 99, 9999999999, 99, #997#6, #997#13, #997#7;
+ ;
+ NULL, Busca1;
+|FIN;
+
+|PROCESO BuscaEste;
+ |HAZ LecturaW035;
+ |SI nExiste = 1;
+     nLibro =  #997#10;
+     aSerie =  #997#11;
+     nDocum =  #997#12;
+     nLinea =  #997#15;
+     nRegis =  #997#32;
+     nSwEste = 0;
+     |BUCLE Busca1;
+     |SI nSwEste ! 0;
+         #997#10 = nLibro; |PINTA #997#10;
+         #997#11 = aSerie; |PINTA #997#11;
+         #997#12 = nDocum; |PINTA #997#12;
+         #997#15 = nLinea; |PINTA #997#15;
+         #997#32 = nRegis;
+     |SINO;
+         |MENAV "    No encontrada factura correspondiente ";
+     |FINSI;
+  |FINSI;
+  nInkey = 10;
+|FPRC;

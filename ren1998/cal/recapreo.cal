@@ -1,0 +1,1489 @@
+|FICHEROS;
+    recapreo #00;   || captura
+    rem00010 #01;   || profesionales en Modalidad Normal        (PC)
+    rem00011 #02;   || profesionales en Modalidad Simplificada  (PB)
+    rem00012 #03;   || Empresarios   en Modalidad Normal        (EC)
+    rem00013 #04;   || Empresarios   en Modalidad Simplificada  (EB)
+    reempmod #05;   || empresarios por modulos         (EA)
+    repagret #25;   || Pagos Fraccionados y Retenciones
+
+    eosclien #06;   || clientes REO
+    eosactiv #07;   || actividades REO
+    eosm2130 #09;   || 130 REO
+    retmpreo #10;   || temporal para lectura por nif
+    redatcon #11;   || datos contribuyentes
+    eoscomul #14;   || Lineas Comuneros
+    agicontr #20;
+    eosm3130 #24;   || 130 REO Emision
+    reparame #26;
+
+    eosm0017 #108;  || modulos REO 1
+    eosm0018 #109;  || modulos REO 2
+    eosm0020 #113;  || 131 REO
+    reeleact #112;  || elementos por epigrafe 98
+    reelea97 #114;  || elementos por epigrafe 97
+    eosm0023 #115;  || Bienes amortizables Modulos
+    reincreg #116;
+    reincire #117;
+|FIN;
+
+|VARIABLES;
+     nLinea      = 0;
+     nVentas     = 0;
+     nCompras    = 0;
+     nCoefi      = 0;
+     nIncroDismi = 0;
+     nFecha      = 0;
+     nIncremento = 0;
+     nFechaCal   = 0;
+     nAnyo1      = 0;
+     nAnyo2      = 0;
+     nDiferen    = 0;
+     nIncre      = 0;
+     nDismi      = 0;
+
+     fHastaFec   = @;
+
+     aAnyo1      = "";
+     aAnyo2      = "";
+     aClaBaj     = "";
+
+    FEstado = 0;
+    linea_p = 0;
+
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+
+    d_empre  = 0;
+    d_activ  = 0;
+    rendi    = 0;
+    sw_estar = 0;
+    Coefi    = 0;
+    nombre   = "";
+    agieos   = "";
+    Nombre   = "";
+
+    Ventas   = 0;
+    EFinal   = 0;
+    EInicio  = 0;
+    Compras  = 0;
+
+    ultima = 0;
+    tipo = "";
+    perc = "";
+    seleccio = 0;
+    grabalo = 0;
+    encuentra = 0;
+    buscanif = "";
+    empresa = 0;
+    campo_e  = 0;
+    campo_a  = 0;
+    LoHago   = 0;
+
+     nPorce       = 0;
+     nPorce1      = 0;
+     nPorce2      = 0;
+     nPorceL1     = 0;
+     nPorceL2     = 0;
+     nResto       = 0;
+     nDife        = 0;
+     nDifer       = 0;
+     nCanti       = 0;
+     nSwAsala2    = 0;
+     nCampoRdto   = 0;
+     aAlfa        = "";
+
+    &dni = "";
+    &codigo = 0;
+    &error = "";
+    &empre_e = 0;
+    &empre_r = 0;
+    &activ_e = 0;
+    &tipo_e  = "";
+|FIN;
+
+|INCLUYE i_husuar;
+|INCLUYE i_activo;
+|INCLUYE i_cambio;
+
+|PROCESO path;
+|DBASS alfa1;  |QBF alfa1;
+|PATH_DAT #20 alfa1;
+|ABRE #20;
+|LEE 040#20p;
+|SI FSalida ! 0; |DDEFECTO #20; |FINSI;
+|CIERRA #20;
+
+agieos = #20#3; |QBF agieos;
+|PATH_DAT #06 agieos;  || empresas
+|PATH_DAT #07 agieos;  || empresas/actividades
+|PATH_DAT #09 agieos;  || 130
+|PATH_DAT #14 agieos;  || Comuneros
+|PATH_DAT #24 agieos;  || Comuneros
+|PATH_DAT #108 agieos;  || elementos por epigrafes
+|PATH_DAT #109 agieos;  || elementos por epigrafes
+|PATH_DAT #113 agieos;  || 131
+|PATH_DAT #115 agieos;  || 131
+|FPRC;
+
+|PROCESO lee_eos1; |TIPO 0;        || lee empresa en R.E.O.
+|ABRE #6;
+    #6#0 = #0#1;
+|LEE 001#6=;
+|SI FSalida ! 0;
+    |DDEFECTO #6;
+    |MENAV "    ATENCION!!! Empresa inexistente en R.E.O. ...";
+    |ERROR;
+|FINSI;
+|ATRI I;
+|PINTA 1419, #6#2;
+|ATRI 0;
+|CIERRA #6;
+|FPRC;
+
+|PROCESO lee_eos2; |TIPO 0;   || lee actividad en R.E.O.
+|ABRE #7;
+    #7#0 = #0#1;
+    #7#1 = #0#2;
+    #7#2 = 98;
+|LEE 001#7=;
+
+|SI FSalida ! 0;
+    |DDEFECTO #7;
+    |MENAV "    ATENCION!!! Actividad inexistente en R.E.O. ...";
+    |ERROR;
+    |ACABA;
+|FINSI;
+
+|SI #7#14 = "S";
+    |MENAV "    ATENCION!!! Actividad Comunero, introduzca la Comunidad.";
+    |ERROR;
+    |ACABA;
+|FINSI;
+
+|SI #7#46 = "S";
+    |CAMPO_MODIFICA #0#5, 1, "S";
+    |CAMPO_MODIFICA #0#6, 1, "S";
+|SINO;
+    |CAMPO_MODIFICA #0#5, 1, "N";
+    |CAMPO_MODIFICA #0#6, 1, "N";
+    #0#5 = 0;  |PINTA #0#5;
+    #0#6 = 0;  |PINTA #0#6;
+    |PINTA 1719, "                                       ";
+|FINSI;
+
+|ATRI I;
+|PINTA 1519, #7#6;
+|ATRI 0;
+|CIERRA #7;
+|FPRC;
+
+|PROCESO es_comuner;
+|SI #14#0 = #0#1; |Y #14#1 = #0#2;
+    sw_estar = 1;
+    Coefi    = #14#6;
+    nombre   = #14#4;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE eoscomul;
+#14#2;
+;
+#0#5, #0#6, 98;
+#0#5, #0#6, 98;
+e;
+NULL, es_comuner;
+|FIN;
+
+|PROCESO mira_comu; |TIPO 0;
+|SI #7#46 = "N"; |ACABA; |FINSI;
+sw_estar = 0;
+|BUCLE eoscomul;
+|SI sw_estar = 0;
+    |MENAV "    La empresa comunero no pertenece a la Comunidad de Bienes";
+    |ERROR;
+    |ACABA;
+|SINO;
+    |PINTA 1719, nombre;
+|FINSI;
+|FPRC;
+
+|PROCESO lee_renta1; |TIPO 0;
+|ABRE #11;
+#11#0 = #0#3;
+|LEE 001#11=;
+|SI FSalida ! 0;
+    |DDEFECTO #11;
+    |MENAV "    ATENCION!!! Contribuyente inexistente en RENTA ...";
+    |ERROR;
+|FINSI;
+|CIERRA #11;
+
+Nombre = #11#1;
+|FPRC;
+
+|PROCESO lee_renta2; |TIPO 0;
+|ATRI I;
+|SI #0#4 = "T";  |PINTA 1919, #11#01;  |FINSI;
+|SI #0#4 = "C";  |PINTA 1919, #11#28;  |FINSI;
+|ATRI 0;
+|FPRC;
+
+     *********************************************************************
+     LECTURA DE ACTIVIDADES
+     *********************************************************************
+
+|PROCESO captura1;
+tipo = #0#4;
+|SI tipo = "T";  perc = "TITULAR";  |FINSI;
+|SI tipo = "C";  perc = "CONYUGE";  |FINSI;
+
+|SI #7#46 = "S";
+    |ABRE #7;
+    #7#0 = #0#5;
+    #7#1 = #0#6;
+    #7#2 = 98;
+    |LEE 040#7=;
+    |SI FSalida ! 0; |DDEFECTO #7; |FINSI;
+    |CIERRA #7;
+|SINO;
+    Coefi = 100;
+|FINSI;
+
+|SI #7#23 = "V";
+    alfa1    = #7#4 + #7#22;
+|SINO;
+    alfa1    = #7#23 + #7#22;
+|FINSI;
+
+|SI alfa1 = "PC";   |HAZ ProfNormal1; |FINSI;
+|SI alfa1 = "PB";   |HAZ ProfSimpli1; |FINSI;
+|SI alfa1 = "EC";   |HAZ EmpreNormal1; |FINSI;
+|SI alfa1 = "EB";   |HAZ emprcoef1; |FINSI;
+|SI alfa1 = "EA";   |HAZ emprmodu1; |FINSI;
+
+|HAZ pagos;
+|FPRC;
+
+*********************************************************************
+LECTURA DEL 131 Y MODULOS
+*********************************************************************
+
+|PROCESO lee_131b;
+  |SI #113#3 = "01.01.0000"; |ACABA; |FINSI;
+
+  #25#0 = #0#3;
+  #25#1 = linea_p;
+  |LIBERA #25;
+  |LEE 140#25=;
+  FEstado = FSalida;
+  |SI FEstado ! 0; |DDEFECTO #25; |FINSI;
+
+  #25#0 = #0#3;
+  #25#1 = linea_p;
+  #25#2 = #0#4;
+  #25#3 = perc;
+  #25#4 = 0;
+
+  |SI #113#47 > 0;
+      |SI #113#2 = 1;  #25#5 = #113#47;  |FINSI;
+      |SI #113#2 = 2;  #25#6 = #113#47;  |FINSI;
+      |SI #113#2 = 3;  #25#7 = #113#47;  |FINSI;
+      |SI #113#2 = 4;  #25#8 = #113#47;  |FINSI;
+  |FINSI;
+
+  #25#9 = #25#9 + #113#41 + #113#45;
+
+  |SI #25#5 ! 0; |O #25#6 ! 0; |O #25#7 ! 0; |O #25#8 ! 0; |O #25#9 ! 0;
+      |SI FEstado = 0; |GRABA 140#25a; |SINO; |GRABA 140#25n; |FINSI;
+      npro = 51;  empresa = #0#3;  |HAZ sigrabo;
+
+      HContribu  = #25#0;
+      HNombre    = Nombre;
+      HPrograma  = "(repagret) RETENCIONES Y PAGOS A CUENTA";
+      HLinea     = #25#1;
+      HPerceptor = #25#3;
+      HRdto      = #25#5 + #25#6 + #25#7 + #25#8;
+      HTipo      = "ALTA FICHA DESDE PASE REO";
+      |HAZ AltaHistorico;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_131;
+ #113#1;
+ ;
+ #7#0, 98, 1;
+ #7#0, 98, 4;
+ e;
+ NULL, lee_131b;
+|FIN;
+
+|PROCESO lee_m3130b;
+  |SI #24#4 = "          "; |ACABA; |FINSI;
+
+  #25#0 = #0#3;
+  #25#1 = linea_p;
+  |LIBERA #25;
+  |LEE 140#25=;
+  FEstado = FSalida;
+  |SI FEstado ! 0; |DDEFECTO #25; |FINSI;
+
+  #25#0 = #0#3;
+  #25#1 = linea_p;
+  #25#2 = #0#4;
+  #25#3 = perc;
+  #25#4 = 0;
+
+  |SI #24#29 > 0;
+      |SI #24#2 = 1;  #25#5 = #24#29;  |FINSI;
+      |SI #24#2 = 2;  #25#6 = #24#29;  |FINSI;
+      |SI #24#2 = 3;  #25#7 = #24#29;  |FINSI;
+      |SI #24#2 = 4;  #25#8 = #24#29;  |FINSI;
+  |FINSI;
+
+  #25#9 = #24#23 + #24#36;
+
+  |SI #25#5 ! 0; |O #25#6 ! 0; |O #25#7 ! 0; |O #25#8 ! 0; |O #25#9 ! 0;
+      |SI FEstado = 0; |GRABA 140#25a; |SINO; |GRABA 140#25n; |FINSI;
+      npro = 51;  empresa = #0#3;  |HAZ sigrabo;
+
+      HContribu  = #25#0;
+      HNombre    = Nombre;
+      HPrograma  = "(repagret) RETENCIONES Y PAGOS A CUENTA";
+      HLinea     = #25#1;
+      HPerceptor = #25#3;
+      HRdto      = #25#5 + #25#6 + #25#7 + #25#8;
+      HTipo      = "ALTA FICHA DESDE PASE REO";
+      |HAZ AltaHistorico;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_m3130;
+#24#1;
+;
+#7#0, 0, 1, 98;
+#7#0, 9, 4, 98;
+e;
+NULL, lee_m3130b;
+|FIN;
+
+|PROCESO ChequeaPagos;
+|SI #25#2 = #0#4; LoHago = 1; |ERROR10; |ACABA; |FINSI;
+linea_p = #25#1;
+|FPRC;
+
+|DEFBUCLE repagret;
+#25#1;
+;
+#0#3,  1;
+#0#3, 99;
+;
+NULL, ChequeaPagos;
+|FIN;
+
+|PROCESO pagos;
+linea_p = 0;
+LoHago  = 0; |BUCLE repagret;
+|SI LoHago = 1; |ACABA; |FINSI;
+
+|ABRE #25;
+linea_p = linea_p + 1;  |BUCLE lee_131;
+linea_p = linea_p + 1;  |BUCLE lee_m3130;
+|CIERRA #25;
+|FPRC;
+
+|PROCESO tipo_3; |TIPO 3;
+|SI #0#0 = "SI";
+    |HAZ captura1;
+    |SI grabalo = 0;
+        |MENAV "    ATENCION!!! Empresa/Actividad sin 130, 131 o modulos ...";
+    |FINSI;
+|FINSI;
+|FPRC;
+
+*********************************************************************
+LECTURA DEL 130
+*********************************************************************
+
+|PROCESO lee_130b;
+     grabalo = 1;
+
+     Ventas   = (#9#8 + #9#30)  % Coefi;
+     EFinal   = #9#11 % Coefi;
+     Compras  = #9#14 % Coefi;
+     EInicio  = #9#17 % Coefi;
+     |SI #9#33 > 0;  nIncre = #9#33 % Coefi;  |FINSI;
+     |SI #9#33 < 0;  nDismi = #9#33 % Coefi;  |FINSI;
+|FPRC;
+
+|PROCESO lee_130a;
+    Ventas  = 0;
+    EFinal  = 0;
+    EInicio = 0;
+    Compras = 0;
+    nIncre  = 0;
+    nDismi  = 0;
+|FPRC;
+
+|DEFBUCLE lee_130;
+#9#1;
+;
+#0#1, #0#2, 1, 98;
+#0#1, #0#2, 4, 98;
+e;
+lee_130a, lee_130b;
+|FIN;
+
+
+     *********************************************************************
+     GRABACION DE PROFESIONALES EN ESTIMACION DIRECTA
+     *********************************************************************
+
+|PROCESO Ultimo1;
+     #1#0 = #0#3;
+     #1#1 = 99;
+     |LEE 001#1];
+     |SI FSalida = 0;
+         |LEE 001#1a;
+     |SINO;
+         |LEE 001#1u;
+     |FINSI;
+     |SI FSalida = 0; |Y #1#0 = #0#3;
+         ultima = #1#1 + 1;
+     |SINO;
+         ultima = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProfNormal2;
+     |ABRE #1;
+     |HAZ Ultimo1;
+     |DDEFECTO #1;
+
+     #1#00 = #0#3;                          || codigo
+     #1#01 = ultima;                        || linea
+     #1#02 = tipo;                          || tipo
+     #1#03 = perc;                          || perceptor
+     #1#12 = #7#4;                          || epigrafe -1-
+     #1#13 = #7#5;                          || epigrafe -2-
+     #1#14 = #7#6;                          || nombre actividad
+     #1#16 = #7#11;                         || Codigo Provincia
+     #1#17 = #7#12;                         || Codigo Poblacion
+     #1#15 = #7#9;                          || Domicilio
+     #1#19 = Ventas;                        || ingresos integros
+     #1#28 = Compras + EInicio - EFinal;    || Otros Gastos
+     #1#31 = nIncre;
+     #1#32 = nDismi;
+     #1#29 = #1#20 + #1#21 + #1#22 + #1#23 + #1#24 + #1#25 + #1#26 + #1#27 + #1#28;
+     #1#30 = #1#19 - #1#29;
+     #1#33 = #1#31 - #1#32;
+     #1#34 = #1#30 + #1#33;
+
+     |GRABA 020#1n;
+     |SI FSalida=0;  npro=7;  empresa=#0#3;  |HAZ sigrabo;  |FINSI;
+     |CIERRA #1;
+
+     HContribu  = #1#0;
+     HNombre    = Nombre;
+     HPrograma  = "(rem00011) PROFESIONALES MOD.NORMAL";
+     HLinea     = #1#1;
+     HPerceptor = #1#3;
+     HRdto      = #1#34;
+     HTipo      = "ALTA FICHA DESDE PASE REO";
+     |HAZ AltaHistorico;
+|FPRC;
+
+
+|PROCESO ProfNormal1;
+     grabalo = 0;
+     |BUCLE lee_130;
+     |SI grabalo ! 0; |HAZ ProfNormal2; |FINSI;
+|FPRC;
+
+*********************************************************************
+GRABACION DE PROFESIONALES EN COEFICIENTES
+*********************************************************************
+
+|PROCESO Ultimo2;
+     #2#0 = #0#3;
+     #2#1 = 99;
+     |LEE 001#2];
+     |SI FSalida = 0;
+         |LEE 001#2a;
+     |SINO;
+         |LEE 001#2u;
+     |FINSI;
+     |SI FSalida = 0; |Y #2#0 = #0#3;
+         ultima = #2#1 + 1;
+     |SINO;
+         ultima = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProfSimpli2;
+     |ABRE #2;
+     |HAZ Ultimo2;
+     |DDEFECTO #2;
+
+     #2#00 = #0#3;                          || codigo
+     #2#01 = ultima;                        || linea
+     #2#02 = tipo;                          || tipo
+     #2#03 = perc;                          || perceptor
+     #2#12 = #7#4;                          || epigrafe -1-
+     #2#13 = #7#5;                          || epigrafe -2-
+     #2#14 = #7#6;                          || nombre actividad
+     #2#16 = #7#11;                         || Codigo Provincia
+     #2#17 = #7#12;                         || Codigo Poblacion
+     #2#15 = #7#9;                          || Domicilio
+     #2#19 = Ventas;                        || ingresos integros
+     #2#22 = Compras;                       || Compras
+     #2#20 = EFinal;                        || Existencias finales
+     #2#21 = EInicio;                       || Existencias inicio
+     #2#34 = nIncre;
+     #2#35 = nDismi;
+
+     #2#30 = #2#21 + #2#22 + #2#23 + #2#24 + #2#25 + #2#26 + #2#27 + #2#28 + #2#29 - #2#20;
+     #2#31 = #2#19 - #2#30;
+     #2#32 = #2#31 % 5;      |SI #2#32 < 0;  #2#32 = 0;  |FINSI;
+     #2#33 = #2#31 - #2#32;
+     #2#36 = #2#34 - #2#35;
+     #2#37 = #2#33 + #2#36;
+
+     |GRABA 020#2n;
+     |SI FSalida=0;  npro=8;  empresa=#0#3;  |HAZ sigrabo;  |FINSI;
+     |CIERRA #2;
+
+     HContribu  = #2#0;
+     HNombre    = Nombre;
+     HPrograma  = "(rem00011) PROFESIONALES MOD.SIMPLIFICADA";
+     HLinea     = #2#1;
+     HPerceptor = #2#3;
+     HRdto      = #2#37;
+     HTipo      = "ALTA FICHA DESDE PASE REO";
+     |HAZ AltaHistorico;
+|FPRC;
+
+|PROCESO ProfSimpli1;
+     grabalo = 0;
+     |BUCLE lee_130;
+     |SI grabalo ! 0;
+         |HAZ ProfSimpli2;
+     |FINSI;
+|FPRC;
+
+     *********************************************************************
+     GRABACION DE EMPRESARIALES EN ESTIMACION DIRECTA
+     *********************************************************************
+
+|PROCESO Ultimo3;
+     #3#0 = #0#3;
+     #3#1 = 99;
+     |LEE 001#3];
+     |SI FSalida = 0;
+         |LEE 001#3a;
+     |SINO;
+         |LEE 001#3u;
+     |FINSI;
+     |SI FSalida = 0; |Y #3#0 = #0#3;
+         ultima = #3#1 + 1;
+     |SINO;
+         ultima = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO EmpreNormal2;
+     |ABRE #3;
+     |HAZ Ultimo3;
+     |DDEFECTO #3;
+
+     #3#00 = #0#3;                          || codigo
+     #3#01 = ultima;                        || linea
+     #3#02 = tipo;                          || tipo
+     #3#03 = perc;                          || perceptor
+     #3#12 = #7#4;                          || epigrafe -1-
+     #3#13 = #7#5;                          || epigrafe -2-
+     #3#14 = #7#6;                          || nombre actividad
+     #3#16 = #7#11;                         || Codigo Provincia
+     #3#17 = #7#12;                         || Codigo Poblacion
+     #3#15 = #7#9;                          || Domicilio
+     #3#19 = Ventas;                        || ingresos ordinarios por ventas
+     #3#39 = Compras + EInicio - EFinal;    || Otros Gastos
+     #3#42 = nIncre;
+     #3#43 = nDismi;
+     #3#23 = #3#19 + #3#20 + #3#21 + #3#22;
+     #3#40 = #3#24 + #3#25 + #3#26 + #3#27 + #3#28 + #3#29 + #3#30 + #3#31;
+     #3#40 = #3#40 + #3#32 + #3#33 + #3#34 + #3#35 + #3#36 + #3#37 + #3#38 + #3#39;
+     #3#41 = #3#23 - #3#40;
+     #3#44 = #3#42 - #3#43;
+     #3#45 = #3#41 + #3#44;
+
+     |GRABA 020#3n;
+     |SI FSalida=0;  npro=9;  empresa=#0#3;  |HAZ sigrabo;  |FINSI;
+     |CIERRA #3;
+
+     HContribu  = #3#0;
+     HNombre    = Nombre;
+     HPrograma  = "(rem00012) EMPRESARIALES MOD.NORMAL";
+     HLinea     = #3#1;
+     HPerceptor = #3#3;
+     HRdto      = #3#45;
+     HTipo      = "ALTA FICHA DESDE PASE REO";
+     |HAZ AltaHistorico;
+|FPRC;
+
+|PROCESO EmpreNormal1;
+     grabalo = 0;
+     |BUCLE lee_130;
+     |SI grabalo ! 0;
+         |HAZ EmpreNormal2;
+     |FINSI;
+|FPRC;
+
+     *********************************************************************
+     GRABACION DE EMPRESARIALES EN COEFICIENTES
+     *********************************************************************
+
+|PROCESO Ultimo4;
+     #4#0 = #0#3;
+     #4#1 = 99;
+     |LEE 001#4];
+     |SI FSalida = 0;
+         |LEE 001#4a;
+     |SINO;
+         |LEE 001#4u;
+     |FINSI;
+     |SI FSalida = 0; |Y #4#0 = #0#3;
+         ultima = #4#1 + 1;
+     |SINO;
+         ultima = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO emprcoef2;
+     |ABRE #4;
+     |HAZ Ultimo4;
+     |DDEFECTO #4;
+
+     #4#00 = #0#3;                          || codigo
+     #4#01 = ultima;                        || linea
+     #4#02 = tipo;                          || tipo
+     #4#03 = perc;                          || perceptor
+     #4#12 = #7#4;                          || epigrafe -1-
+     #4#13 = #7#5;                          || epigrafe -2-
+     #4#14 = #7#6;                          || nombre actividad
+     #4#16 = #7#11;                         || Codigo Provincia
+     #4#17 = #7#12;                         || Codigo Poblacion
+     #4#15 = #7#9;                          || Domicilio
+     #4#19 = Ventas;                        || ingresos integros
+     #4#26 = Compras;                       || Compras
+     #4#24 = EFinal;                        || Existencias finales
+     #4#25 = EInicio;                       || Existencias inicio
+     #4#43 = nIncre;
+     #4#44 = nDismi;
+     #4#23 = #4#19 + #4#20 + #4#21 + #4#22;
+     #4#39 = #4#25 + #4#26 + #4#27 + #4#28 + #4#29 + #4#30 + #4#31 + #4#32;
+     #4#39 = #4#39 + #4#33 + #4#34 + #4#35 + #4#36 + #4#37 + #4#38 - #4#24;
+     #4#40 = #4#23 - #4#39;
+     #4#41 = #4#40 % 5;      |SI #4#41 < 0;  #4#41 = 0;  |FINSI;
+     #4#42 = #4#40 - #4#41;
+     #4#45 = #4#43 - #4#44;
+     #4#46 = #4#42 + #4#45;
+
+     |GRABA 020#4n;
+     |SI FSalida=0;  npro=10;  empresa=#0#3;  |HAZ sigrabo;  |FINSI;
+     |CIERRA #4;
+
+     HContribu  = #4#0;
+     HNombre    = Nombre;
+     HPrograma  = "(rem00013) EMPRESARIALES MOD.SIMPLIFICADA";
+     HLinea     = #4#1;
+     HPerceptor = #4#3;
+     HRdto      = #4#46;
+     HTipo      = "ALTA FICHA DESDE PASE REO";
+     |HAZ AltaHistorico;
+|FPRC;
+
+|PROCESO emprcoef1;
+     grabalo = 0;
+     |BUCLE lee_130;
+     |SI grabalo ! 0;
+         |HAZ emprcoef2;
+     |FINSI;
+|FPRC;
+
+*********************************************************************
+                GRABACION DE EMPRESARIALES EN MODULOS
+*********************************************************************
+
+|PROCESO Ultimo5;
+     #5#0 = #0#3;
+     #5#1 = 99;
+     |LEE 001#5];
+     |SI FSalida = 0;
+         |LEE 001#5a;
+     |SINO;
+         |LEE 001#5u;
+     |FINSI;
+     |SI FSalida = 0; |Y #5#0 = #0#3;
+         ultima = #5#1 + 1;
+     |SINO;
+         ultima = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO emprmodu2;      || lee el modulo
+     |ABRE #108;
+     #108#0 = #0#1;
+     #108#1 = #0#2;
+     #108#5 = 98;
+     |LEE 001#108=;
+     |SI FSalida ! 0; |CIERRA #108; |ACABA; |FINSI;
+     |CIERRA #108;
+
+     |ABRE #109;
+     #109#0 = #108#0;
+     #109#1 = #108#1;
+     #109#2 = #108#5;
+     |LEE 040#109=;
+     |SI FSalida ! 0;  |DDEFECTO #109;  |FINSI;
+     |CIERRA #109;
+
+     grabalo = 1;
+|FPRC;
+
+|PROCESO Incentivo97;
+     nPorce1 = 0;
+     |SI nDifer > 0;  nPorce1 = nDifer * .60;  |FINSI;
+
+     nPorce2 = 0;
+     |SI #5#48 = "I";
+         |SI nResto > 8;
+             nPorce  = nResto - 8;
+             nPorce2 = nPorce2 + (nPorce * 0.70);
+             nResto  = 8;
+         |FINSI;
+
+         |SI nResto > 5;
+             nPorce  = nResto - 5;
+             nPorce2 = nPorce2 + (nPorce * 0.75);
+             nResto  = 5;
+         |FINSI;
+
+         |SI nResto > 3;
+             nPorce  = nResto - 3;
+             nPorce2 = nPorce2 + (nPorce * 0.80);
+             nResto  = 3;
+         |FINSI;
+
+         |SI nResto > 1;
+             nPorce  = nResto - 1;
+             nPorce2 = nPorce2 + (nPorce * 0.85);
+             nResto  = 1;
+         |FINSI;
+
+         |SI nResto > 0;
+             nPorce2 = nPorce2 + (nResto * 0.90);
+         |FINSI;
+     |FINSI;
+
+     |SI #5#48 = "P";
+         |SI nResto > 0;    |Y nResto [ 1;  nPorce2 = 0.90;  |FINSI;
+         |SI nResto ] 1.01; |Y nResto [ 3;  nPorce2 = 0.85;  |FINSI;
+         |SI nResto ] 3.01; |Y nResto [ 5;  nPorce2 = 0.80;  |FINSI;
+         |SI nResto ] 5.01; |Y nResto [ 8;  nPorce2 = 0.75;  |FINSI;
+         |SI nResto > 8;                    nPorce2 = 0.70;  |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Incentivo98;
+     nPorce1 = 0;
+     |SI nDifer > 0;  nPorce1 = nDifer * .40;  |FINSI;
+
+     nPorce2 = 0;
+     |SI #5#48 = "I";
+         |SI nResto > 8;
+             nPorce  = nResto - 8;
+             nPorce2 = nPorce2 + (nPorce * 0.30);
+             nResto  = 8;
+         |FINSI;
+
+         |SI nResto > 5;
+             nPorce  = nResto - 5;
+             nPorce2 = nPorce2 + (nPorce * 0.25);
+             nResto  = 5;
+         |FINSI;
+
+         |SI nResto > 3;
+             nPorce  = nResto - 3;
+             nPorce2 = nPorce2 + (nPorce * 0.20);
+             nResto  = 3;
+         |FINSI;
+
+         |SI nResto > 1;
+             nPorce  = nResto - 1;
+             nPorce2 = nPorce2 + (nPorce * 0.15);
+             nResto  = 1;
+         |FINSI;
+
+         |SI nResto > 0;
+             nPorce2 = nPorce2 + (nResto * 0.10);
+         |FINSI;
+     |FINSI;
+
+     |SI #5#48 = "P";
+         |SI nResto > 0;    |Y nResto [ 1;  nPorce2 = 0.10;  |FINSI;
+         |SI nResto ] 1.01; |Y nResto [ 3;  nPorce2 = 0.15;  |FINSI;
+         |SI nResto ] 3.01; |Y nResto [ 5;  nPorce2 = 0.20;  |FINSI;
+         |SI nResto ] 5.01; |Y nResto [ 8;  nPorce2 = 0.25;  |FINSI;
+         |SI nResto > 8;                    nPorce2 = 0.30;  |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO TotalMod98;
+     |ABRE #114;
+     #114#0 = #5#16;
+     #114#1 = #5#17;
+     #114#2 = #5#18;
+     |LEE 040#114=;
+     |SI FSalida ! 0;  |DDEFECTO #114;  |FINSI;
+     |CIERRA #114;
+
+     nResto  = #5#49;
+     nPorce1 = 0;
+     nPorce2 = 0;
+     nDifer  = #5#50 - #5#49;
+     |SI nDifer < 0;  nResto = #5#50;  |FINSI;
+     |HAZ Incentivo97;
+     nPorceL1 = nPorce1 + nPorce2;
+
+     nResto   = #5#54;
+     nPorce1 = 0;
+     nPorce2 = 0;
+     nDifer  = #5#55 - #5#54;
+     |SI nDifer < 0;  nResto = #5#55;  |FINSI;
+     |HAZ Incentivo97;
+     nPorceL2 = nPorce1 + nPorce2;
+
+     |SI #5#54 = 0;  |Y #5#55 =  0;
+         #5#97 = nPorceL1 * #114#6;
+         #5#97 = #5#97 + (#5#30  * #114#9);
+     |SINO;
+         #5#97 = nPorceL1 * #114#6;
+         #5#97 = #5#97 + (nPorceL2 * #114#9);
+     |FINSI;
+     #5#97 = #5#97 + (#5#31  * #114#12);
+     #5#97 = #5#97 + (#5#32  * #114#15);
+     #5#97 = #5#97 + (#5#33  * #114#18);
+     #5#97 = #5#97 + (#5#34  * #114#21);
+     #5#97 = #5#97 + (#5#35  * #114#24);
+
+     #5#113 = #114#25 % #5#116;
+
+     #5#105 = #5#97;
+     |SI #5#98  ! 0;  #5#105 = #5#105 * #5#98;   |FINSI;
+     |SI #5#100 ! 0;  #5#105 = #5#105 * #5#100;  |FINSI;
+
+     #5#102 = 0;
+     nDife  = #5#105 - #5#113;
+     nCanti = #5#113 + (nDife * 1.30);
+     |SI nDife < 0;  nCanti = 0;  |FINSI;
+     |SI #114#25 = 0; nCanti = 0;  |FINSI;
+     |SI nCanti ! 0; #5#105 = nCanti;  #5#102 = 1.30;  |FINSI;
+
+     #5#115 = #5#105 * 1.10;
+
+     || CALCULO DEL RENDIMIENTO EN 1998
+
+     |ABRE #112;
+     #112#0 = #5#16;
+     #112#1 = #5#17;
+     #112#2 = #5#18;
+     |LEE 040#112=;
+     |SI FSalida ! 0;  |DDEFECTO #112;  |FINSI;
+     |CIERRA #112;
+
+     nSwAsala2 = 0;
+     aAlfa     = #112#1 % 103;
+     |SI aAlfa = "644";  nSwAsala2 = 1;  |FINSI;
+
+     #5#47 =         (#5#29 * #5#38);
+     #5#47 = #5#47 + (#5#30 * #5#39);
+     #5#47 = #5#47 + (#5#31 * #5#40);
+     #5#47 = #5#47 + (#5#32 * #5#41);
+     #5#47 = #5#47 + (#5#33 * #5#42);
+     #5#47 = #5#47 + (#5#34 * #5#43);
+     #5#47 = #5#47 + (#5#35 * #5#44);
+     #5#47 = #5#47 + (#5#36 * #5#45);
+     #5#47 = #5#47 + (#5#37 * #5#46);
+
+     #5#50 = #5#29;
+     #5#52 = #5#38;
+     #5#55 = 0;
+     #5#57 = 0;
+     |SI nSwAsala2 = 1;  #5#55 = #5#30;  #5#57 = #5#39;  |FINSI;
+
+     || Minoracion de Empleo
+
+     nResto  = #5#49;
+     #5#51   = 0;
+     #5#53   = 0;
+     nPorce1 = 0;
+     nPorce2 = 0;
+     nDifer  = #5#50 - #5#49;
+     |SI nDifer < 0;  nResto = #5#50;  |FINSI;
+     |HAZ Incentivo98;
+     #5#51   = nPorce1 + nPorce2;
+     #5#53   = #5#52 * #5#51;
+
+     nResto   = #5#54;
+     #5#56   = 0;
+     #5#58   = 0;
+     nPorce1 = 0;
+     nPorce2 = 0;
+     nDifer  = #5#55 - #5#54;
+     |SI nDifer < 0;  nResto = #5#55;  |FINSI;
+     |HAZ Incentivo98;
+     #5#56  = nPorce1 + nPorce2;
+     #5#58  = #5#57 * #5#56;
+     #5#59  = #5#53 + #5#58;
+
+     || Minoracion Inversion
+
+     #5#73 = #5#60 + #5#63 + #5#66 + #5#69 + #5#72;
+
+     ||  Rdto Neto Minorado
+
+     #5#74 = #5#47 - #5#59 - #5#73;
+     |SI #5#74 < 0;  #5#74 = 0;  |FINSI;
+
+     ||  Quioscos
+
+     #5#76 = #5#74 * #5#75;
+     |SI #112#32 = "N";  #5#76 = 0;  |FINSI;
+     |SI #5#76 < 0;    #5#76 = 0;  |FINSI;
+
+     ||  Taxis
+
+     #5#78 = #5#74 * #5#77;
+     |SI #112#33 = "N";  #5#78 = 0;  |FINSI;
+     |SI #5#78 < 0;    #5#78 = 0;  |FINSI;
+
+     ||  Urbanos
+
+     #5#80 = #5#74 * #5#79;
+     |SI #112#35 = "N";  #5#80 = 0;  |FINSI;
+     |SI #5#80 < 0;    #5#80 = 0;  |FINSI;
+
+     ||  Mercancias
+
+     #5#82 = #5#74 * #5#81;
+     |SI #112#34 = "N";  #5#82 = 0;  |FINSI;
+     |SI #5#50 ! 0;     #5#82 = 0;  |FINSI;
+     |SI #5#55 ! 0;     #5#82 = 0;  |FINSI;
+     |SI #5#82 < 0;     #5#82 = 0;  |FINSI;
+
+     ||  Empresas Peque¤as dimensiones
+
+     nCampoRdto = 74;
+     |SI #5#76 ! 0;  nCampoRdto = 76;  |FINSI;
+
+     #5#84 = #5nCampoRdto * #5#83;
+     |SI #5#78 ! 0; |O #5#80 ! 0; |O #5#82 ! 0;
+         #5#84 = 0;
+     |FINSI;
+     |SI #5#84 < 0;  #5#84 = 0;  |FINSI;
+
+     ||  Temporada
+
+     nCampoRdto = 74;
+     |SI #5#76 ! 0;  nCampoRdto = 76;  |FINSI;
+     |SI #5#78 ! 0;  nCampoRdto = 78;  |FINSI;
+     |SI #5#80 ! 0;  nCampoRdto = 80;  |FINSI;
+     |SI #5#82 ! 0;  nCampoRdto = 82;  |FINSI;
+     |SI #5#84 ! 0;  nCampoRdto = 84;  |FINSI;
+
+     #5#87 = #5nCampoRdto * #5#86;
+     |SI #5#87 < 0;  #5#87 = 0;  |FINSI;
+
+     || Exceso
+
+     nCampoRdto = 74;
+     |SI #5#76 ! 0;  nCampoRdto = 76;  |FINSI;
+     |SI #5#78 ! 0;  nCampoRdto = 78;  |FINSI;
+     |SI #5#80 ! 0;  nCampoRdto = 80;  |FINSI;
+     |SI #5#82 ! 0;  nCampoRdto = 80;  |FINSI;
+     |SI #5#84 ! 0;  nCampoRdto = 84;  |FINSI;
+     |SI #5#87 ! 0;  nCampoRdto = 87;  |FINSI;
+
+     #5#114 = #112#31 % #5#116;
+     #5#88  = #5nCampoRdto - #5#114;
+     #5#89  = #5#114 + (#5#88 * 1.30);
+     |SI #5#88 < 0;  #5#89 = 0;  |FINSI;
+     |SI #112#31 = 0;  #5#89 = 0;  |FINSI;
+     |SI #5#84 ! 0;  #5#89 = 0;  |FINSI;
+
+     || Nueva Actividad
+
+     nCampoRdto = 74;
+     |SI #5#76 ! 0;  nCampoRdto = 76;  |FINSI;
+     |SI #5#78 ! 0;  nCampoRdto = 78;  |FINSI;
+     |SI #5#80 ! 0;  nCampoRdto = 80;  |FINSI;
+     |SI #5#82 ! 0;  nCampoRdto = 82;  |FINSI;
+     |SI #5#84 ! 0;  nCampoRdto = 84;  |FINSI;
+     |SI #5#87 ! 0;  nCampoRdto = 87;  |FINSI;
+     |SI #5#89 ! 0;  nCampoRdto = 89;  |FINSI;
+
+     #5#91 = #5nCampoRdto * #5#90;
+     |SI #5#87 ! 0;  #5#91 = 0;  |FINSI;
+     |SI #5#91 < 0;  #5#91 = 0;  |FINSI;
+
+     || Rendimiento Neto Modulos Ajustado
+
+     nCampoRdto = 74;
+     |SI #5#76 ! 0;  nCampoRdto = 76;  |FINSI;
+     |SI #5#78 ! 0;  nCampoRdto = 78;  |FINSI;
+     |SI #5#80 ! 0;  nCampoRdto = 80;  |FINSI;
+     |SI #5#82 ! 0;  nCampoRdto = 82;  |FINSI;
+     |SI #5#84 ! 0;  nCampoRdto = 84;  |FINSI;
+     |SI #5#87 ! 0;  nCampoRdto = 87;  |FINSI;
+     |SI #5#89 ! 0;  nCampoRdto = 89;  |FINSI;
+     |SI #5#91 ! 0;  nCampoRdto = 91;  |FINSI;
+
+     #5#106 = #5nCampoRdto;
+
+     #5#108 = #5#106;
+     |SI #5#115 < #5#108;  |Y #5#115 ! 0;
+         #5#108 = #5#115;
+     |FINSI;
+
+     #5#107 = #5#106 - #5#108;
+
+     || Rendimiento Neto Calculado
+
+     #5#111 = #5#108 + #5#109 - #5#110;
+
+     || Reduccion Ley 66/97
+
+     #5#93 = #5#111;
+     |SI #5#92 ! 0;
+         #5#93 = #5#93 < #5#92;
+         |SI #5#93 < 0;  #5#93 = 0;  |FINSI;
+     |FINSI;
+
+     || Rdto Neto
+
+     #5#96 = #5#93 + #5#95 - #5#104 + #5#94;
+|FPRC;
+
+|PROCESO emprmodu4;
+     rendi = 0;
+     |ABRE #5;
+
+     |HAZ Ultimo5;
+
+     |DDEFECTO #5;
+     #5#00 = #0#3;        || codigo
+     #5#01 = ultima;      || linea
+     #5#02 = tipo;        || tipo
+     #5#03 = perc;        || perceptor
+     #5#13 = #7#11;
+     #5#14 = #7#12;
+     #5#15 = #7#9;
+     #5#16 = #108#2;       || epigrafe -1-
+     #5#17 = #108#3;       || epigrafe -2-
+     #5#18 = #108#4;       || epigrafe -2-
+     #5#19 = #7#6;         || nombre actividad
+
+                           || Definiciones
+     #5#20 = #108#11;  |SI #5#20 = "0                   ";  #5#20 = "";  |FINSI;
+     #5#21 = #108#22;  |SI #5#21 = "0                   ";  #5#21 = "";  |FINSI;
+     #5#22 = #108#33;  |SI #5#22 = "0                   ";  #5#22 = "";  |FINSI;
+     #5#23 = #108#44;  |SI #5#23 = "0                   ";  #5#23 = "";  |FINSI;
+     #5#24 = #108#55;  |SI #5#24 = "0                   ";  #5#24 = "";  |FINSI;
+     #5#25 = #108#66;  |SI #5#25 = "0                   ";  #5#25 = "";  |FINSI;
+     #5#26 = #108#77;  |SI #5#26 = "0                   ";  #5#26 = "";  |FINSI;
+     #5#27 = #108#88;  |SI #5#27 = "0                   ";  #5#27 = "";  |FINSI;
+     #5#28 = #108#99;  |SI #5#28 = "0                   ";  #5#28 = "";  |FINSI;
+
+                              || Numeros
+     #5#29 = #108#15  % Coefi;
+     #5#30 = #108#26  % Coefi;
+     #5#31 = #108#37  % Coefi;
+     #5#32 = #108#48  % Coefi;
+     #5#33 = #108#59  % Coefi;
+     #5#34 = #108#70  % Coefi;
+     #5#35 = #108#81  % Coefi;
+     #5#36 = #108#92  % Coefi;
+     #5#37 = #108#103 % Coefi;
+
+                              || Ptas Epigrafe
+
+     #5#38 = #108#12;
+     #5#39 = #108#23;
+     #5#40 = #108#34;
+     #5#41 = #108#45;
+     #5#42 = #108#56;
+     #5#43 = #108#67;
+     #5#44 = #108#78;
+     #5#45 = #108#89;
+     #5#46 = #108#100;
+
+     #5#48 = #109#3;
+
+     #5#49 = #109#4 % Coefi;
+     #5#50 = #109#6 % Coefi;
+     #5#51 = #109#8;
+     #5#52 = #109#9;
+     #5#53 = #109#89;
+
+     #5#54 = #109#83 % Coefi;
+     #5#55 = #109#85 % Coefi;
+     #5#56 = #109#87;
+     #5#57 = #109#88;
+     #5#58 = #109#90;
+
+     #5#60 = #109#26 % Coefi;
+     #5#61 = #109#27 % Coefi;
+     #5#62 = #109#28;
+     #5#63 = #109#29 % Coefi;
+     #5#64 = #109#30 % Coefi;
+     #5#65 = #109#31;
+     #5#66 = #109#32 % Coefi;
+     #5#67 = #109#33 % Coefi;
+     #5#68 = #109#34;
+     #5#69 = #109#35 % Coefi;
+     #5#70 = #109#36 % Coefi;
+     #5#71 = #109#37;
+     #5#72 = #109#38 % Coefi;
+
+     #5#75  = #109#44;
+     #5#77  = #109#48;
+     #5#79  = #109#52;
+     #5#81  = #109#56;
+     #5#83  = #109#60;
+     #5#85  = #109#65;
+     #5#86  = #109#66;
+     #5#86  = #109#66;
+     #5#114 = #109#68 % Coefi;
+     #5#88  = #109#71;
+     #5#90  = #109#75;
+     #5#92  = #109#95;
+     #5#94  = #109#78 % Coefi;
+     |SI #109#80 > 0;
+         #5#95  = #109#80 % Coefi;
+     |SINO;
+         #5#104 = -(#109#80 % Coefi);
+     |FINSI;
+
+     #5#98  = #109#99;
+     #5#100 = #109#101;
+     #5#102 = #109#103;
+     #5#113 = #109#114;
+
+     |HAZ TotalMod98;
+
+     |GRABA 020#5n;
+     |SI FSalida=0;  npro=11;  empresa=#0#3;  |HAZ sigrabo;  |FINSI;
+     |CIERRA #5;
+
+     HContribu  = #5#0;
+     HNombre    = Nombre;
+     HPrograma  = "(reempmod) EMPRESARIALES MODULOS";
+     HLinea     = #5#1;
+     HPerceptor = #5#3;
+     HRdto      = #5#49;
+     HTipo      = "ALTA FICHA DESDE PASE REO";
+     |HAZ AltaHistorico;
+|FPRC;
+
+|PROCESO GrabaFic116;
+     |ABRE #116;
+     #116#0 = #0#3;
+     #116#1 = 99;
+     |LEE 001#116];
+     |SI FSalida = 0;
+         |LEE 001#116a;
+     |SINO;
+         |LEE 001#116u;
+     |FINSI;
+     |SI FSalida = 0; |Y #116#0 = #0#3;
+         nLinea = #116#1 + 1;
+     |SINO;
+         nLinea = 1;
+     |FINSI;
+
+     |DDEFECTO #116;
+     #116#0  = #0#3;
+     #116#1  = nLinea;
+     #116#2  = tipo;
+     #116#3  = perc;
+     #116#13 = #115#3;
+     #116#14 = nVentas;
+     #116#15 = nCompras * nCoefi;
+     |SI nIncroDismi < 0;
+         #116#16 = nIncroDismi * -1;
+         #116#17 = nIncroDismi * -1;
+     |SINO;
+         #116#18 = nIncroDismi;
+         #116#19 = 0;
+         #116#20 = #116#18;
+         #116#21 = #116#18;
+    |FINSI;
+    #116#23 = #115#12;
+    #116#24 = #115#17;
+
+    |GRABA 020#116n;
+
+    npro = 15;
+    |HAZ sigrabo;
+    |LIBERA #116;
+    |CIERRA #116;
+
+    HContribu  = #116#0;
+    HNombre    = Nombre;
+    HPrograma  = "(reincreg) INCREMENTOS Y DISMINUCIONES REGULARES";
+    HLinea     = #116#1;
+    HPerceptor = #116#3;
+    HTipo      = "ALTA DESDE PASE R.E.O.";
+
+    |SI #116#21 ! 0; HRdto = #116#21; |FINSI;
+    |SI #116#17 ! 0; HRdto = #116#17; |FINSI;
+
+    |HAZ AltaHistorico;
+|FPRC;
+
+|PROCESO GrabaFic117;
+     |ABRE #117;
+     #117#0 = #0#3;
+     #117#1 = 99;
+     |LEE 001#117];
+     |SI FSalida = 0;
+         |LEE 001#117a;
+     |SINO;
+         |LEE 001#117u;
+     |FINSI;
+     |SI FSalida = 0; |Y #117#0 = #0#3;
+         nLinea = #117#1 + 1;
+     |SINO;
+         nLinea = 1;
+     |FINSI;
+
+     |DDEFECTO #117;
+     #117#0  = #0#3;
+     #117#1  = nLinea;
+     #117#2  = tipo;
+     #117#3  = perc;
+     #117#13 = #115#3;
+     #117#14 = nVentas;
+     #117#15 = nCompras;
+     #117#31 = nCompras * nCoefi;
+     #117#26 = "R";
+     #117#28 = #115#12;
+     #117#29 = #115#17;
+     #117#30 = nCoefi;
+     |SI nIncroDismi < 0;
+         #117#17 = nIncroDismi * -1;
+         #117#19 = nFecha;
+         #117#25 = #117#17;
+     |SINO;
+         #117#16 = nIncroDismi;
+         #117#18 = nFecha;
+         #117#20 = nIncremento;
+         #117#22 = 0;
+         #117#23 = nIncremento;
+         #117#24  = #117#23;
+     |FINSI;
+     |GRABA 020#117n;
+
+     npro = 16;   |HAZ sigrabo;
+     |LIBERA #117;
+     |CIERRA #117;
+
+     HContribu  = #117#0;
+     HNombre    = Nombre;
+     HPrograma  = "(reincire) INCREMENTOS Y DISMINUCIONES IRREGULARES";
+     HLinea     = #117#1;
+     HPerceptor = #117#3;
+     HTipo      = "ALTA DESDE PASE DE R.E.O.";
+
+    |SI #117#24 ! 0; HRdto = #117#24; |FINSI;
+    |SI #117#25 ! 0; HRdto = #117#25; |FINSI;
+
+    |HAZ AltaHistorico;
+|FPRC;
+
+|PROCESO Resultado;
+  |SI aClaBaj = "R";  nCoefi = 1;  |FINSI;
+
+  nIncroDismi = nVentas - (nCompras * nCoefi);
+  nFechaCal   =  nFecha - 2;
+  |SI nFechaCal  < 0;  nFechaCal = 0;  |FINSI;
+  nPorce = nFechaCal * 25;
+  |SI nPorce > 100;  nPorce = 100;  |FINSI;
+
+  nIncremento = (nIncroDismi - ((nIncroDismi * nPorce) / 100)) ! 0;
+
+  |SI aClaBaj = "R";
+      |HAZ GrabaFic116;
+  |SINO;
+      |HAZ GrabaFic117;
+  |FINSI;
+|FPRC;
+
+|PROCESO Tiempo;
+     aAnyo1 = "96";
+     aAnyo2 = #115#12 % -102;
+     nAnyo1 = aAnyo1;
+     nAnyo2 = aAnyo2;
+     nFecha = nAnyo1 - nAnyo2;
+     aAnyo1 = fHastaFec % 402;
+     aAnyo2 = #115#12 % 402;
+     |SI aAnyo1 > aAnyo2;  nFecha = nFecha + 1;  |FINSI;
+     |SI aAnyo1 = aAnyo2;
+         aAnyo1 = fHastaFec % 102;
+         aAnyo2 = #115#12 % 102;
+         |SI aAnyo1 ] aAnyo2;  nFecha = nFecha + 1;  |FINSI;
+     |FINSI;
+
+     aAnyo2   = #115#12 % -102;
+                                  nCoefi = 1.020;
+     |SI #115#12 = "31.12.1994";  nCoefi = 1.083;  |FINSI;
+     |SI aAnyo2 = "95";           nCoefi = 1.083;  |FINSI;
+     |SI aAnyo2 = "96";           nCoefi = 1.042;  |FINSI;
+     |SI aAnyo2 = "97";           nCoefi = 1.020;  |FINSI;
+     |SI aAnyo2 = "98";           nCoefi = 1;      |FINSI;
+     |SI aAnyo2 = "99";           nCoefi = 1;      |FINSI;
+|FPRC;
+
+|PROCESO GrabaIncremento;
+      fHastaFec = "31.12.1996";
+      |HAZ Tiempo;
+
+      nVentas  = #115#18;
+      |SI #115#6 = "F";  nVentas = #115#20;  |FINSI;
+
+      nCompras = #115#14;
+      |SI #115#6 = "F";  nCompras = #115#16;  |FINSI;
+
+      aClaBaj  = "I";
+      nDiferen = #115#17 - #115#12;
+      |SI nDiferen [ 365;  aClaBaj = "R";  |FINSI;
+      |HAZ  Resultado;
+|FPRC;
+
+|DEFBUCLE eosm0023;
+     #115#1;
+     17;
+     #108#0, #108#1, 00001, "01.01.1998";
+     #108#0, #108#1, 99999, "31.12.1998";
+     ;
+     NULL, GrabaIncremento;
+|FIN;
+
+|PROCESO emprmodu1;
+     grabalo = 0;
+     |HAZ emprmodu2;
+     |SI grabalo = 0; |ACABA; |FINSI;
+
+     |HAZ emprmodu4;
+     |BUCLE eosm0023;
+|FPRC;
+
+     *********************************************************************
+     LLAMADAS DESDE CAMPOS
+     *********************************************************************
+
+|PROCESO que_matriz;
+campo_e  = #14#0;
+campo_a  = #14#1;
+|FPRC;
+
+|DEFBUCLE eoscomul_2;
+#14#2;
+;
+#0#5, #0#6, 98;
+#0#5, #0#6, 98;
+e;
+NULL, que_matriz;
+|FIN;
+
+|PROGRAMA;
+|HAZ que_version;
+
+|HAZ path;
+
+|SI empre_r = 0;
+    |CLS;
+    |CABEZA "Captura R.E.O.";
+    |DDEFECTO #0;
+    |PINPA #0#0;
+    |PINDA #0#0;
+    |ENDATOS #1#0;
+    |SI FSalida = 0; |HAZ tipo_3; |FINSI;
+|SINO;
+    |ABRE #7;
+    #7#0 = empre_e;
+    #7#1 = activ_e;
+    #7#2 = 98;
+    |LEE 001#7=;
+    |SI FSalida ! 0; |CIERRA #7; |ACABA; |FINSI;
+    |CIERRA #7;
+
+    #0#0 = "SI";
+    #0#1 = empre_e;
+    #0#2 = activ_e;
+    #0#3 = empre_r;
+    #0#4 = tipo_e;
+    #0#5 = 0;
+    #0#6 = 0;
+    |PINPA #0#0;
+    |PINDA #0#0;
+
+    |ABRE #11;
+    #11#0 = #0#3;
+    |LEE 040#11=;
+    |SI FSalida ! 0; |DDEFECTO #11; |FINSI;
+    |CIERRA #11;
+    Nombre = #11#1;
+
+    |SI #7#46 = "S";
+        |PUSHV 2017  2366;
+        |CUADRO 2017 2366;
+        |ATRI R;
+        |PINTA 2118, "  La Actividad es una Comunidad de Bienes intro-";
+        |PINTA 2218, "duzca en la ficha general el codigo del comunero";
+        |ATRI 0;
+        |PAUSA;
+        |POPV;
+        |ACABA;
+    |FINSI;
+
+    |SI #7#14 = "S";
+        #0#5    = #7#0;
+        #0#6    = #7#1;
+        campo_e = 0;
+        campo_a = 0;
+        |BUCLE eoscomul_2;
+        #0#1    = campo_e;
+        #0#2    = campo_a;
+    |FINSI;
+
+    |HAZ lee_eos1;
+    |HAZ lee_eos2;
+    |HAZ lee_renta1;
+    |HAZ lee_renta2;
+    |HAZ mira_comu;
+    |PINDA #0#0;
+    |HAZ tipo_3;
+|FINSI;
+|FPRO;

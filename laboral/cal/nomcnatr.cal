@@ -1,0 +1,406 @@
+|FICHEROS;
+     nomcnatr #0;
+     nomcnahi;
+     nomcnatm,MANTE;
+     nomcnaec;
+     labempre;
+     labcentr;
+|FIN;
+
+|VARIABLES;
+     FEstado = 0;
+    {-1}menu = "";
+     menu1 = "2400";
+     menu2 = "1";
+     menu3 = "Elegir Opcion:";
+     menu4 = "RAS";
+     menu5 = "Revisar Seleccion";
+     menu6 = "Actualizar Seleccion";
+     menu7 = "Salir";
+     nOpcion = 0;
+     aAlfa = "";
+     fFecha = @;
+     &nElAny = 0;
+     &nElMes = 0;
+     nModo = 0;
+     nEmpAct = 0;
+     nCenAct = 0;
+     aAlfa1 = 0;
+     nEmpresa = 0;
+     aAntCNAE = "";
+     aDesCNAE = "";
+     aAnt2009 = "";
+     swModif = 0;
+     nDesdeEmp = 0;
+     nHastaEmp = 0;
+|FIN;
+
+|PROCESO Bloquea;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 2;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO ITIMSemp;
+     fFecha = ~;
+     aAlfa = fFecha; aAlfa = aAlfa % -104;
+     nElAny = aAlfa;
+     aAlfa = fFecha; aAlfa = aAlfa % 402;
+     nElMes = aAlfa;
+     |HAZ ValoresITIMS;
+|FPRC;
+
+|PROCESO nomcnatm;
+     aAlfa = #nomcnatm#3;
+     |QBF aAlfa;
+     |SI aAlfa ! "";
+          |SI #nomcnatm#4 = 00;         || empresa
+               #labempre#0 = #nomcnatm#0;
+               |LEE 101#labempre.=
+
+               |SI #nomcnatm#3 ! #labempre#128;
+                    nEmpAct = nEmpAct + 1;
+               |FINSI;
+
+               #labempre#128 = aAlfa;
+
+               #nomcnaec#0 = aAlfa;
+               |LEE 000#nomcnaec.=;
+               #labempre#129 = #nomcnaec#1;
+
+               |GRABA 020#labempre.a;
+               |LIBERA #labempre;
+          |SINO;
+               #labcentr#0 = #nomcnatm#0;
+               #labcentr#1 = #nomcnatm#4;
+               |LEE 101#labcentr.=
+
+               |SI #nomcnatm#3 ! #labcentr#22;
+                    nCenAct = nCenAct + 1;
+               |FINSI;
+
+               #labcentr#22 = aAlfa;
+
+               #nomcnaec#0 = aAlfa;
+               |LEE 000#nomcnaec.=;
+               #labcentr#23 = #nomcnaec#1;
+
+               |GRABA 020#labcentr.a;
+               |LIBERA #labcentr;
+          |FINSI;
+
+          #nomcnahi#0 = #nomcnatm#0;
+          #nomcnahi#4 = #nomcnatm#4;
+          #nomcnahi#2 = 2009;
+          |LEE 101#nomcnahi.=;
+          |SI FSalida = 0;
+               #nomcnahi#3 = aAlfa;
+               |GRABA 020#nomcnahi.a;
+          |FINSI;
+          |LIBERA #nomcnahi;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE nomcnatm;
+     #nomcnatm#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, nomcnatm;
+|FIN;
+
+|PROCESO Actualiza;
+     |ABRE #labempre;
+     |ABRE #labcentr;
+     |ABRE #nomcnaec;
+     |ABRE #nomcnahi;
+     nEmpAct = 0;
+     nCenAct = 0;
+     |BUCLE nomcnatm;
+     |CIERRA #labcentr;
+     |CIERRA #nomcnahi;
+     |CIERRA #nomcnaec;
+     |CIERRA #labempre;
+
+     |SI nEmpAct = 0; |Y nCenAct = 0;
+          aAlfa = "    No se ha actualizado el CNAE en ninguna empresa ni centro";
+          |MENAV aAlfa;
+     |SINO;
+          aAlfa = "    Actualizado el CNAE en ";
+          aAlfa1 = nEmpAct;
+          aAlfa = aAlfa + aAlfa1 + " empresas";
+          |SI nCenAct > 0;
+               aAlfa1 = nCenAct;
+               aAlfa = aAlfa + " y " + aAlfa1 + " centros.";
+          |FINSI;
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaCentros;
+     aAlfa = #nomcnatm#2;
+     |QBF aAlfa;
+     |SI aAlfa = aAntCNAE;
+          #nomcnatm#3 = aDesCNAE;
+          |PINTA #nomcnatm#3;
+          |GRABA 020#nomcnatm.a;
+          |LIBERA #nomcnatm;
+          |PONCONTROL 23, "si";
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaCentros;
+     #nomcnatm#1;
+     ;
+     nEmpresa, 01;
+     nEmpresa, 99;
+     be;
+     NULL, BuscaCentros;
+|FIN;
+
+|PROCESO Centros;
+     nEmpresa = #nomcnatm#0;
+     aDesCNAE = #nomcnatm#3;
+     |SALVA_FICHA #nomcnatm;
+     |BUCLE BuscaCentros;
+     |REPON_FICHA #nomcnatm;
+|FPRC;
+
+|PROCESO Comprueba;
+     |ABRE #nomcnaec;
+     #nomcnaec#0 = #nomcnatm#3;
+     |LEE 000#nomcnaec.=;
+     |SI FSalida ! 0;
+          aAlfa = #nomcnatm#3;
+          |QBF aAlfa;
+          aAlfa = "    El CNAE " + aAlfa + " no se encuentra vigente en 2009. ";
+          aAlfa = aAlfa + "Pulse F11 para consultar la lista.";
+          |MENAV aAlfa;
+          #nomcnatm#3 = "";
+          |PINTA #nomcnatm#3;
+     |SINO;
+          aAlfa = #nomcnatm#3;
+          |QBF aAlfa;
+          |SI aAnt2009 ! aAlfa;
+               swModif = 1;
+          |FINSI;
+     |FINSI;
+     |CIERRA #nomcnaec;
+|FPRC;
+
+|PROCESO Consulta; |TIPO 7;
+     aAntCNAE = #nomcnatm#2;
+     |QBF aAntCNAE;
+
+     aAnt2009 = #nomcnatm#3;
+     |QBF aAnt2009;
+
+     |ABRE #nomcnaec;
+     #nomcnaec#0 = #nomcnatm#2;
+     |LEE 000#nomcnaec.=;
+     |CONSULTA_CLAVE #1#nomcnaec;
+     |SI FSalida = 0;
+          #nomcnatm#3 = #nomcnaec#0;
+          |PINTA #nomcnatm#3;
+     |FINSI;
+     |CIERRA #nomcnaec;
+|FPRC;
+
+|PROCESO Presenta;
+     |PARA; |SI; |HACIENDO;
+          |ENTLINEAL #1#nomcnatm, 1, 2, 22, 1, inferior, superior;
+          |MENU menu;
+          nOpcion = FSalida;
+          |SI FSalida = 1;
+          |FINSI;
+          |SI FSalida = 2;
+               |HAZ Actualiza;
+               |SAL;
+          |FINSI;
+          |SI FSalida = 3;
+               |SI swModif = 1;
+                    aAlfa = "    NATENCION: va a salir sin actualizar las modificaciones "
+                    aAlfa = aAlfa + "realizadas. ¿Está seguro?";
+                    |CONFI aAlfa;
+                    |SI FSalida = 0;
+                         |SAL;
+                    |FINSI;
+               |SINO;
+                    |SAL;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO nomcnahi;
+     #nomcnatm#0 = #nomcnahi#0;
+     #nomcnatm#4 = #nomcnahi#4;
+     |LEE 101#nomcnatm.=;
+     FEstado = FSalida;
+
+     #nomcnatm#0 = #nomcnahi#0;
+     #nomcnatm#1 = #nomcnahi#1;
+     #nomcnatm#4 = #nomcnahi#4;
+     #nomcnatm#5 = #nomcnahi#5;
+     |SI #nomcnahi#2 = 2008;
+          #nomcnatm#2 = #nomcnahi#3;
+     |SINO;
+          #nomcnatm#3 = #nomcnahi#3;
+     |FINSI;
+
+     |SI FEstado = 0;
+          |GRABA 020#nomcnatm.a;
+     |SINO;
+          |GRABA 020#nomcnatm.n;
+     |FINSI;
+
+     |SI #nomcnahi#2 = 2009; |Y #nomcnahi#3 ! "          "; |Y #0#2 = 2;
+          |BORRA 020#nomcnatm.a;
+     |FINSI;
+
+     |LIBERA #nomcnatm;
+|FPRC;
+
+|DEFBUCLE nomcnahi;
+     #nomcnahi#1;
+     ;
+     2008, #0#0, 00;
+     2009, #0#1, 99;
+     ;
+     NULL, nomcnahi;
+|FIN;
+
+|PROCESO labcentr;
+     aAlfa = #labcentr#22;
+     |QBF aAlfa;
+     |SI aAlfa = "";
+          |ACABA;
+     |FINSI;
+
+     #nomcnahi#0 = #labempre#0;
+     #nomcnahi#2 = 2008;
+     #nomcnahi#4 = #labcentr#1;
+     |LEE 101#nomcnahi.=;
+     |SI FSalida ! 0;
+          #nomcnahi#0 = #labempre#0;
+          #nomcnahi#1 = #labempre#2;
+          #nomcnahi#2 = 2008;
+          #nomcnahi#3 = #labcentr#22;
+          #nomcnahi#4 = #labcentr#1;
+          #nomcnahi#5 = #labcentr#2;
+          |GRABA 020#nomcnahi.n;
+     |FINSI;
+     |LIBERA #nomcnahi;
+
+     #nomcnahi#0 = #labempre#0;
+     #nomcnahi#2 = 2009;
+     #nomcnahi#4 = #labcentr#1;
+     |LEE 101#nomcnahi.=;
+     |SI FSalida ! 0;
+          #nomcnahi#0 = #labempre#0;
+          #nomcnahi#1 = #labempre#2;
+          #nomcnahi#2 = 2009;
+          #nomcnahi#3 = "";
+          #nomcnahi#4 = #labcentr#1;
+          #nomcnahi#5 = #labcentr#2;
+          |GRABA 020#nomcnahi.n;
+     |FINSI;
+     |LIBERA #nomcnahi;
+|FPRC;
+
+|DEFBUCLE labcentr;
+     #labcentr#1;
+     ;
+     #labempre#0, 001;
+     #labempre#0, 999;
+     ;
+     NULL, labcentr;
+|FIN;
+
+|PROCESO labempre;
+     #nomcnahi#0 = #labempre#0;
+     #nomcnahi#4 = 00;
+     #nomcnahi#2 = 2008;
+     |LEE 101#nomcnahi.=;
+     |SI FSalida ! 0;
+          #nomcnahi#0 = #labempre#0;
+          #nomcnahi#1 = #labempre#2;
+          #nomcnahi#2 = 2008;
+          #nomcnahi#3 = #labempre#128;
+          #nomcnahi#4 = 00;
+          #nomcnahi#5 = "";
+          |GRABA 020#nomcnahi.n;
+     |FINSI;
+     |LIBERA #nomcnahi;
+
+     #nomcnahi#0 = #labempre#0;
+     #nomcnahi#4 = 00;
+     #nomcnahi#2 = 2009;
+     |LEE 101#nomcnahi.=;
+     |SI FSalida ! 0;
+          #nomcnahi#0 = #labempre#0;
+          #nomcnahi#1 = #labempre#2;
+          #nomcnahi#2 = 2009;
+          #nomcnahi#3 = "";
+          #nomcnahi#4 = 00;
+          #nomcnahi#5 = "";
+          |GRABA 020#nomcnahi.n;
+     |FINSI;
+     |LIBERA #nomcnahi;
+
+     |BUCLE labcentr;
+|FPRC;
+
+|DEFBUCLE labempre;
+     #labempre#1;
+     ;
+     nDesdeEmp;
+     nHastaEmp;
+     ;
+     NULL, labempre;
+|FIN;
+
+|PROCESO CargaPrevia;
+     |LEE 000#nomcnahi.p;
+     |SI FSalida ! 0;
+          nDesdeEmp = 00001;
+          nHastaEmp = 99999;
+     |SINO;
+          nDesdeEmp = #0#0;
+          nHastaEmp = #0#1;
+     |FINSI;
+     |BUCLE labempre;
+     |BUCLE nomcnahi;
+|FPRC;
+
+|PROCESO inferior;
+     #nomcnatm#0 = 00001;
+     #nomcnatm#4 = 00;
+|FPRC;
+
+|PROCESO superior;
+     #nomcnatm#0 = 99999;
+     #nomcnatm#4 = 99;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |ABRE #nomcnahi;
+          |DELINDEX #nomcnatm;
+          |ABRE #nomcnatm;
+
+          swModif = 0;
+          |HAZ ITIMSemp;
+          |HAZ CargaPrevia;
+          |HAZ Presenta;
+
+          |CIERRA #nomcnatm;
+          |CIERRA #nomcnahi;
+     |FINSI;
+|FPRO;

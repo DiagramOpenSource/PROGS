@@ -1,0 +1,449 @@
+|FICHEROS;
+     malpt007 #0;   || Este
+     malpe004 #1;   || Orden Carga (C)
+     agifa019 #2;   || Articulos
+     malpe087 #11;  || Pedidos (C)
+     malpe088 #12;  ||         (L)
+     agifa017 #17;
+     malpe104 #21;  || Fecha de Servicios
+     malpt004 #23;  || Pantalla Aviso Peso Max.
+     dsm00024 #50; || stock por lotes
+     malpe085 #85;
+|FIN;
+
+|VARIABLES;
+     aSerie = "";
+     aNumero = "";
+     nLin = 0;
+     axLote = "";
+     axLoteRese = "";
+     nUni = 0;
+     aAlfa = "";
+     &aDivisa  = "";
+     &aMoneda  = "";
+     &EURODB   = 0;
+     nModo     = 0;
+     nForma     = 0;
+     &n_dec    = 0;
+     &n_pre    = 0;
+     uni       = 0;
+     impo      = 0;
+     pend      = 0;
+|FIN;
+
+|PROCESO lote_correcto7;
+     |SI #0#38 ! "               "; |Y #0#38 ! #0#31;
+          |MENAV "0000El lote entregado no coincide con el Reservado.!!!!";
+          |ERROR; |ACABA;
+     |FINSI;
+
+     |HAZ arti7;
+     #0#5 = #0#30 * #85#4;
+     |PINTA #0#5;
+|FPRC;
+
+
+|PROCESO arti7;
+     |ABRE #2;
+     #2#0 = #0#2;
+     |LEE 000#2=;
+     |SI FSalida ! 0; |DDEFECTO #2; |FINSI;
+     |CIERRA #2;
+
+     |ABRE #50;
+     #50#0 = #0#2;
+     #50#1 = #0#3;
+     #50#2 = #0#31;
+     |LEE 000#50=;
+     |SI FSalida ! 0 ; |DDEFECTO #50; |FINSI;
+     |CIERRA #50;
+
+     |ABRE #85;
+     #85#0 = #0#2;
+     #85#1 = #0#3;
+     #85#2 = #0#31;
+     |LEE 000#85=;
+     |SI FSalida ! 0 ; |DDEFECTO #85; |FINSI;
+     |CIERRA #85;
+|FPRC;
+
+|PROCESO unidades7; |TIPO 0;
+     |HAZ arti7;
+     #0#5 = #0#5 ! n_dec;
+
+     #0#30 = #0#5 / #85#4;    || Palet
+     |PINTA #0#5;
+     |PINTA #0#30;
+|FPRC;
+
+|PROCESO Confirmada;
+     nUni = #50#22 - #0#5;
+     |SI nUni < 0; |Y #0#36 = "S";
+          aAlfa =  "0000Falta stock: " + #50#22;
+          |MENAV aAlfa;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO palet7; |TIPO 0;
+     |HAZ arti7;
+
+     #0#5 = #0#30 * #85#4;    || Unidades
+     |HAZ unidades7;
+|FPRC;
+
+|PROCESO prec; |TIPO 0;
+     #0#6 = #0#6 ! 5;
+ ||    |PINTA #0#6;
+|FPRC;
+
+|PROCESO total7; |TIPO 0;
+     #0#7 = #0#5 * #0#6;
+     #0#9 = #0#7 < #0#8;
+     #0#9 = #0#9 < #0#29;
+     #0#9 = #0#9 < #0#23;  || Dto
+     #0#9 = #0#9 < #0#25; || Acumu
+     #0#9 = #0#9 < #0#24;  || P.P.
+     #0#9 = #0#9 ! EURODB;
+||     |PINTA #0#7;
+|FPRC;
+
+|PROCESO tipo1; |TIPO 1;
+     nModo = (FEntrada/100) ! 0;
+     |SI nModo = 3;
+          |MENAV "0000No se puede dar de baja. Ponga 0 en unidades";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Correcto; |TIPO 0;
+     aAlfa = #0#31; |QBF aAlfa;
+     |SI aAlfa = ""; |Y #0#36 = "S";
+          #0#36 = "N"; |PINTA #0#36;
+          |MENAV "0000Introuzca lote...";
+     |FINSI;
+|FPRC;
+
+|PROCESO Aviso7;
+     |PUSHV 0501 2380;
+     #23#0 = #1#13;                    || Peso Max
+     #23#1 = (#1#10 - #1#11) / #2#102; || Uni
+     #23#1 = #23#1 ! n_dec;
+
+     #23#2 = #23#1 / #85#4;             || Palet
+     |BLANCO 1019 1661;
+     |PINPA #0#23;
+     |PINDA #0#23;
+     |AVISO;
+     |PAUSA;
+     |POPV;
+|FPRC;
+
+|PROCESO Stock7;
+     axLote = #21#10;
+     axLoteRese = #21#12;
+     |HAZ ActLote7;
+     |HAZ ActArtiAlma7;
+|FPRC;
+
+|PROCESO ActLoteServi;
+     |SI #21#7 ! 0; |ACABA; |FINSI; ||Tiene Servidas
+     aAlfa = #21#12; |QBF aAlfa;
+     |SI aAlfa ! ""; |ACABA; |FINSI; ||Esta Reservado
+
+     #50#0 = #0#2;
+     #50#1 = #0#3;
+     #50#2 = #21#10;
+     |LEE 121#50=;
+     |SI FSalida = 0;
+          #50#16 = #50#16 - #21#5;
+          |GRABA 020#50a;
+          |LIBERA #50;
+     |FINSI;
+
+     #21#10 = #0#31;
+     |GRABA 020#21a;
+     |LIBERA #21;
+
+     #50#2 = #21#10;
+     |LEE 121#50=;
+     |SI FSalida = 0;
+          #50#16 = #50#16 + #21#5;
+          |GRABA 020#50a;
+          |LIBERA #50;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE ActLoteServi;
+     #21#1;
+     ;
+     #0#32, #0#33, #0#34, 001;
+     #0#32, #0#33, #0#34, 999;
+     be;
+     NULL, ActLoteServi;
+|FIN;
+
+|PROCESO tipo7_2; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     nForma = 0 +. 1;
+
+     |HAZ arti7;
+
+     #1#18 = #1#18 +. ((#0#5 * #85#3) ! 0); || Peso actual
+     #1#14 = #1#14 +. #0#9;
+
+     |SI #1#18 > #1#13; |Y nForma = 1;
+          |HAZ Aviso7;
+     |FINSI;
+     |ABRE #21;
+     |ABRE #12;
+     |ABRE #11;
+     |HAZ Lee7;
+     |SI FSalida = 0;
+          |SI nForma = -1;          ||Modi/Baja
+               |SI #0#5 > #21#7;
+                    uni = #0#5 - #21#7;
+                    nUni = #21#7; |HAZ Stock7;
+                    #21#7 = 0;
+                    |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+                    |GRABA 021#21a;
+                    |LIBERA #21;
+                    |LEE 101#21>;
+                    |PARA; |SI FSalida = 0; |Y #21#0 = #0#32;
+                         |Y #21#1 = #0#33; |Y #21#2 = #0#34; |Y uni > 0;
+                         |HACIENDO;
+                         |SI uni ] #21#7;
+                              nUni = #21#7; |HAZ Stock7;
+                              uni = uni - #21#7;
+                              #21#7 = 0;
+                         |SINO;
+                              nUni = uni; |HAZ Stock7;
+                              #21#7 = #21#7 - uni;
+                              uni = 0;
+                         |FINSI;
+                         |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+                         |GRABA 021#21a;
+                         |LIBERA #21;
+                         |LEE 101#21>;
+                    |SIGUE;
+               |SINO;
+                    nUni = #0#5; |HAZ Stock7;
+                    #21#7 = #21#7 - #0#5;    || Servidas
+                    |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+                    |GRABA 021#21a;
+               |FINSI;
+          |SINO;
+               pend = #21#5 - #21#7;
+               |SI #0#5 > pend;
+                    uni = #0#5 - pend;
+                    nUni = pend; |HAZ Stock7;
+                    #21#7 = #21#7 + pend;
+                    |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+                    |GRABA 021#21a;
+                    |LIBERA #21;
+                    |LEE 101#21>;
+                    |PARA; |SI FSalida = 0; |Y #21#0 = #0#32;
+                         |Y #21#1 = #0#33; |Y #21#2 = #0#34; |Y uni > 0;
+                         |HACIENDO;
+                         pend = #21#5 - #21#7;
+                         |SI uni ] pend;
+                              nUni = pend; |HAZ Stock7;
+                              uni = uni - pend;
+                              #21#7 = #21#5;
+                         |SINO;
+                              nUni = uni; |HAZ Stock7;
+                              #21#7 = #21#7 + uni;
+                              uni = 0;
+                         |FINSI;
+                         |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+                         |GRABA 021#21a;
+                         |LIBERA #21;
+                         |LEE 101#21>;
+                    |SIGUE;
+               |SINO;
+                    nUni = #0#5; |HAZ Stock7;
+                    #21#7 = #21#7 + #0#5;    || Servidas
+                    |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+                    |GRABA 021#21a;
+               |FINSI;
+          |FINSI;
+          |HAZ ActPedido7;
+          |SI nForma = 1;
+               |ABRE #12;
+               #12#28 = #0#32;
+               #12#0 = #0#33;
+               #12#1 = #0#34;
+               |LEE 121#12=;
+               |SI FSalida = 0;
+                    #12#45 = #0#31;
+                    |GRABA 020#12a;
+                    |ABRE #50;
+                    |BUCLE ActLoteServi;
+                    |CIERRA #50;
+               |FINSI;
+               |CIERRA #12;
+          |FINSI;
+     |FINSI;
+     |CIERRA #21;
+     |CIERRA #11;
+     |CIERRA #12;
+|FPRC;
+
+|PROCESO ActLote7;
+     |ABRE #85;
+     |ABRE #50;
+
+     #50#0 = #0#2;
+     #50#1 = #0#3;
+     #50#2 = axLote;
+     |LEE 101#50=;
+     |SI FSalida = 0;
+          |DDEFECTO #85;
+          #85#0 = #50#0;
+          #85#1 = #50#1;
+          #85#2 = #50#2;
+          |LEE 101#85=;
+          |SI FSalida ! 0; |GRABA 020#85b; |FINSI;
+          aAlfa = axLoteRese; |QBF aAlfa;
+          |SI aAlfa ! "";
+               #85#9 = #85#9 - (nUni * nForma);
+          |FINSI;
+          #50#16 = #50#16 - (nUni * nForma);
+
+          #50#31 = #50#22 - #85#9; ||| parche Dispo
+          |GRABA 021#85a;
+          |LIBERA #85;
+          |GRABA 021#50a;
+     |FINSI;
+     |CIERRA #50;
+     |CIERRA #85;
+|FPRC;
+
+|PROCESO ActArtiAlma7;
+     |ABRE #17;
+     |ABRE #2;
+     #2#0 = #0#2;
+     |LEE 101#2=;
+     |SI FSalida = 0;
+          #17#0 = #0#2;
+          #17#1 = #0#3;
+          |LEE 101#17=;
+          |SI FSalida = 0;
+               aAlfa = axLoteRese; |QBF aAlfa;
+               |SI aAlfa ! "";
+                    #2#12 = #2#12 - (nUni * nForma);
+                    #17#8 = #17#8 - (nUni * nForma);
+                    #17#39 = #17#39 - (nUni * nForma); ||||Ultimo
+               |FINSI;
+               #2#15 = #2#15 - (nUni * nForma);
+               #17#42 = #17#42 - (nUni * nForma);
+
+               #17#39 = #17#5 - #17#8; ||| parche Dispo
+
+               |HAZ ValoraStock;
+               |GRABA 021#2a;
+               |GRABA 021#17a;
+          |FINSI;
+     |FINSI;
+     |CIERRA #2;
+     |CIERRA #17;
+|FPRC;
+
+|PROCESO CreaLinServi7;
+     #21#0 = #12#28;
+     #21#1 = #12#0;
+     #21#2 = #12#1;
+     #21#3 = 999;
+     |LEE 000#21];
+     |SI FSalida = 0;
+          |LEE 000#21a;
+     |SINO;
+          |LEE 000#21u;
+     |FINSI;
+     |SI FSalida = 0; |Y #21#0 = #12#28; |Y #21#1 = #12#0; |Y #21#2 = #12#1;
+          nLin = #21#3 + 1;
+     |SINO;
+          nLin = 1;
+     |FINSI;
+     |DDEFECTO #21;
+     #21#0 = #12#28;
+     #21#1 = #12#0;
+     #21#2 = #12#1;
+     #21#3 = nLin;
+     #21#4 = #12#64;
+     #21#5 = uni;
+     #21#6 = "S";
+     #21#7 = uni;
+     #21#8 = #0#2;
+     #21#9 = #0#3;
+     #21#10 = #0#31;
+     #21#11 = "N";
+     #21#12 = #0#38;
+     |GRABA 020#21n;
+|FPRC;
+
+|PROCESO ActPedido7;
+     uni = #0#5;
+     #12#43 = #12#43 + (uni * nForma);
+
+     |SI nForma = 1;
+          uni = #12#5 - #12#43;
+           |SI uni < 0;             ||Si se adj. mas de las pedidas
+               uni = -uni;
+               #12#5 = #12#5 + uni; ||se ajusta el pedido
+               #12#42 = #12#42 + uni;
+               |HAZ CreaLinServi7;  ||crea linea servicio
+          |FINSI;
+     |FINSI;
+
+     |GRABA 020#12a;
+
+     aDivisa = #11#35;
+     aMoneda = #11#37;
+     |HAZ Divisas104;
+     |HAZ CalCabMalpe087;
+     #11#24 = #11#24 + nForma;
+     |GRABA 020#11a;
+|FPRC;
+
+|PROCESO Lee7;
+     #21#0  = #0#32; #21#1 = #0#33; #21#2 = #0#34; #21#3 = #0#35;
+     #12#28 = #0#32; #12#0 = #0#33; #12#1 = #0#34;
+     #11#25 = #0#32; #11#0 = #0#33;
+     |LEE 101#21=;
+     |SI FSalida = 0;
+          |LEE 101#11=;
+          |SI FSalida = 0;
+               |LEE 101#12=;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo1; |TIPO 1;
+     nModo = (FEntrada/100) ! 0;
+     |SI nModo = 3;
+          |MENAV "0000No se puede dar de baja. Ponga 0 en unidades";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO NoAlta;
+     nModo = (FEntrada/100) ! 0;
+     |SI nModo = 1;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO ExisteLote; |TIPO 6;
+     |ABRE #50;
+     #50#0 = #0#2;
+     #50#1 = #0#3;
+     #50#2 = #0#31;
+     |LEE 000#50=;
+     |SI FSalida ! 0;
+          |MENAV "0000No existe lote...";
+          |ERROR;
+     |FINSI;
+     |CIERRA #50;
+|FPRC;

@@ -1,0 +1,469 @@
+|FICHEROS;
+     labpainc #0;
+     labregis #1;
+     labtraba #2;
+     labcatip #3;
+     lablitip #4;
+     labempre #5;
+     labdesli #6;
+     nomir003;
+     nomequiv;
+     nomconca;
+|FIN;
+
+|VARIABLES;
+    fecsys = @;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    linea = 0;
+    antempre = 0;
+    fecalt = @;
+    fecbaj = @;
+    fecini = @;
+    fecfin = @;
+    numini = 0;
+    numfin = 0;
+    numano = 0;
+    fecalf1 = @;
+    fecalf2 = @;
+    d_tot = 0;
+    d_per = 0;
+    d_jor = 0;
+    swt_graba = 0;
+
+    aAlfa = "";
+    &enAnyo          = 0;
+    &enEmpresa       = 0;
+    &eaTipo          = "";
+    &enDiasBisiesto  = 0;
+    swSinSexo = 0;
+    nEmpAnt = 0;
+     nContrato = 0;
+     nAny = 0;
+     aAny = "";
+     feclim = @;
+     aContrato = "";
+     fecultdia = @;
+     &enSwMensajes = 0;
+
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aAlfa3 = "";
+     aMensa = "";
+     aManual = "";
+     swAvisado = "";
+     swExistePlanilla = 0;
+     nNume = 0;
+|FIN;
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO defecto; |TIPO 7; ||calcula el a¤o por defecto segun fecha sistema
+    fecsys = ~;
+    alfa1 = fecsys;
+    alfa1 = alfa1 % -102;
+    #0Campo = alfa1;
+    #0Campo = #0Campo - 1;
+    |SI #0Campo < 0;
+         #0Campo = 0;
+    |FINSI;
+    |SI PARAMETRO = "";
+         |PINTA #0Campo;
+    |FINSI;
+|FPRC;
+
+|PROCESO limites; |TIPO 0;
+     alfa2 = #0#0;    alfa2 = ("00" + alfa2) % -102;
+     |SI #0#0 > 80;
+          alfa1 = "01.01.19" + alfa2;   fecini = alfa1;    numini = fecini;
+          alfa1 = "31.12.19" + alfa2;   fecfin = alfa1;    numfin = fecfin;
+     |SINO;
+          alfa1 = "01.01.20" + alfa2;   fecini = alfa1;    numini = fecini;
+          alfa1 = "31.12.20" + alfa2;   fecfin = alfa1;    numfin = fecfin;
+     |FINSI;
+|FPRC;
+
+|PROCESO numano;
+    numano = numfin - numini + 1;
+|SI numano = 366;
+        numano = #0#7;
+|FINSI;
+|FPRC;
+
+|PROCESO CodigosAntiguos;
+     |QBF aContrato;
+     aContrato = ("000" + aContrato) % -103;
+     |ABRE #nomequiv;
+     #nomequiv#0 = aContrato;
+     |LEE 000#nomequiv.=;
+     |SI FSalida = 0;
+          |SI #labtraba#42 = "X";|O #labtraba#42 = "T";|O #labtraba#42 = "P";
+               aContrato = #nomequiv#2;      || tiempo parcial
+          |SINO;
+               aContrato = #nomequiv#1;      || tiempo completo
+          |FINSI;
+     |FINSI;
+     |CIERRA #nomequiv;
+|FPRC;
+
+____________________________________/ LECTURA Y GRABACION
+|PROCESO grabalin;
+     |DDEFECTO #4;
+     #4#00 = #2#0;   || empresa
+     #4#01 = #0#0;   || anyo
+     #4#02 = linea;  || linea
+     #4#03 = #2#33;  || grupo de tarifa
+     |SI #0#6 = "C";
+          #4#04 = #1#4;   || contrato
+     |SINO;
+          #4#04 = #2#45;   || contrato
+     |FINSI;
+     #4#05 = #2#1;   || codigo trabajador
+     #4#06 = fecalt; || fecha alta
+     #4#07 = fecbaj; || fecha baja
+     #4#08 = d_tot;  || dias totales
+     #4#09 = d_per;  || dias ejercicio
+     d_jor = d_jor ! 2;
+     #4#10 = d_jor;  || (%) jornada
+     #4#11 = "";      || observaciones
+     |SI #2#42 = "X";|O #2#42 = "T";
+          |SI #2#234 ! 0;|Y #2#234 ! 40;
+               |ABRE #nomconca;
+               #nomconca#0 = #labtraba#87;
+               |LEE 000#nomconca.=;
+               |CIERRA #nomconca;
+
+               nNume = #nomconca#162;
+               aAlfa = nNume;
+               |QBF aAlfa;
+               |SI aAlfa = "40.00"; |O aAlfa = "40,00";
+                    aAlfa = "40";
+               |FINSI;
+
+               #4#11 = "T.parc.: proporcion " + #2#234 + "/" + aAlfa;
+               #4#10 = d_jor * (#2#234 / nNume);
+          |FINSI;
+     |FINSI;
+     #4#13 = #labempre#2;
+
+     swExistePlanilla = 0;
+     aAlfa = ("000" + #4#4) % -103;
+     #6#2  = aAlfa;
+     #6#0  = 0;
+     |LEE 000#6];
+     |SI FSalida = 0;  |Y #6#2 = aAlfa;
+          #4#12 = #6#9;
+          swExistePlanilla = 1;    || en iplabor2 no uso esta variable
+     |FINSI;
+     aAlfa = #4#12; |QBF aAlfa;
+     aManual = "";
+     |SI aAlfa = "";
+          nContrato = #4#4;
+          |SI nContrato = 000; |O nContrato = 999;
+/*
+               || DE MOMENTO NO DOY AVISO NINGUNO
+
+               || si son contratos 000 o 999 y NO estan en las planillas
+               aAlfa1 = #2#0; |QBF aAlfa1; aAlfa1 = ("00000" + aAlfa1) % -105;
+               aAlfa2 = #2#1; |QBF aAlfa2; aAlfa2 = ("00000" + aAlfa2) % -105;
+               aAlfa3 = nContrato; aAlfa3 = ("000" + aAlfa3) % -103;
+               aMensa = "    ATENCION. El trabajador " + aAlfa1 + "." + aAlfa2;
+               aMensa = aMensa + " tiene contrato " + aAlfa3;
+               |MENAV aMensa;
+               aMensa = "    SPulse SI si se trata de un contrato fijo o NO ";
+               aMensa = aMensa + "en caso contrario";
+               |CONFI aMensa;
+               |SI FSalida = 0;
+                    aManual = "S";
+               |SINO;
+                    aManual = "N";
+               |FINSI;
+
+               |SI swAvisado = 0;
+                    aAlfa1 = "    Para evitar este mensaje indique si el contrato ";
+                    aAlfa1 = aAlfa1 + aAlfa3 + " es fijo o no fijo, en la planilla de desgloses.";
+                    |MENAV aAlfa1;
+                    swAvisado = 1;
+               |FINSI;
+*/
+               || autonomos sin tener el codigo 000 o 999 en ninguna planilla
+
+               linea = linea - 1;
+               |ACABA;
+          |FINSI;
+          ||SI aManual ! ""; |Y nContrato ! 000; |Y nContrato ! 999;
+               aContrato = nContrato;
+               |HAZ CodigosAntiguos;
+               nContrato = aContrato;
+               |SI nContrato < 400;
+                    #4#12 = "S";
+               |SINO;
+                    #4#12 = "N";
+               |FINSI;
+          ||FINSI;
+     |FINSI;
+
+     aAlfa = #labtraba#252;
+     |QBF aAlfa;
+     |SI aAlfa = "V";
+          #4#14 = "H";
+     |FINSI;
+     |SI aAlfa = "M";
+          #4#14 = "M";
+     |FINSI;
+     |SI aAlfa = "";
+          swSinSexo = 1;
+     |FINSI;
+
+     || discapacitado S/N
+
+     #nomir003#0 = #labtraba#7;
+     #nomir003#40 = #0#0 + 2000;
+     #nomir003#41 = #labtraba#0;
+     |LEE 000#nomir003.=;
+     |SI FSalida = 0;
+          |SI #nomir003#6 = "S";
+               #4#15 = "S";
+          |FINSI;
+     |FINSI;
+     #4#16 = #labtraba#2;
+
+     |GRABA 020#4n;
+|FPRC;
+
+|PROCESO situate;   || se situa en la linea a grabar
+|SI antempre ! #2#0;|O antempre = 0;
+         #3#0 = #2#0;
+         #3#1 = #0#0;
+    |LEE 101#3=;
+    |SI FSalida ! 0;
+            #3#3 = numano;    || dias ejercicio
+        |GRABA 020#3b;
+    |SINO;
+        |BUCLELIN 1NULL#3;
+            #3#3 = numano;    || dias ejercicio
+        |GRABA 020#3a;
+    |FINSI;
+    |LIBERA #3;
+        antempre = #2#0;
+        linea = 1;
+|SINO;
+        linea = linea + 1;
+|FINSI;
+|FPRC;
+
+|PROCESO cal_dias;
+     nume1 = fecalt;
+     nAny = #0#0 + 2000;
+     aAny = nAny;
+     |SI fecbaj = "31.12.2999";
+          aAlfa = "31.12." + aAny;
+          feclim = aAlfa;
+     |SINO;
+          aAlfa = "31.12." + aAny;
+          fecultdia = aAlfa;
+          |SI fecbaj > fecultdia;
+               feclim = fecultdia;
+          |SINO;
+               feclim = fecbaj;
+          |FINSI;
+     |FINSI;
+
+     nume2 = feclim;
+
+     d_tot = (nume2 - nume1) + 1;   || dias totales
+     nume1 = fecalf1;
+     nume2 = fecalf2;
+     d_per = (nume2 - nume1) + 1;   || dias ejercicio
+ |SI fecalf1 = fecini;|Y fecalf2 = fecfin;|Y d_per = 366;
+         d_per = #0#7;              || si es bisiesto y esta todo el a¤o
+ |FINSI;                            ||/coge los 'dias a¤os bisiestos'
+
+     d_jor = d_per / numano;        || jornada
+|FPRC;
+
+|PROCESO cal_fech;
+     swt_graba = 0;
+     nume1 = fecalt;
+     nume2 = fecbaj;
+     |SI nume1 [ 0; nume1 = numini; fecalt = fecini; |FINSI;
+     |SI nume2 [ 0; nume2 = numfin; fecbaj = fecfin; |FINSI;
+
+     |SI nume1 > numfin;|O nume2 < numini;
+          swt_graba = 1;
+     |FINSI;
+     |SI #2#36 = "          "; |O #2#36 = "..........";
+          |SI #2#37 = "          "; |O #2#37 = "..........";
+               |SI #2#44 = "B";
+                    swt_graba = 1;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI swt_graba = 0;
+          |SI nume1 < numini;
+               fecalf1 = fecini;   || fecha alta tope periodo
+          |SINO;
+               fecalf1 = fecalt;   || fecha alta fuente
+          |FINSI;
+          |SI nume2 > numfin;|O nume2 = 0;
+               fecalf2 = fecfin;   || fecha baja tope periodo
+          |SINO;
+               fecalf2 = fecbaj;   || fecha baja fuente
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO labregis;            || datos del registro de contratos
+     fecalt = #1#7;       || fecha alta (1er.contrato)
+     |SI #1#15 = 0;
+          aAlfa = #1#8;
+          |QBF aAlfa;
+          |SI aAlfa = ""; |O aAlfa = "..........";
+               fecbaj = "31.12.2999";
+          |SINO;
+               fecbaj = #1#8;   || fecha baja contrato
+          |FINSI;
+     |SINO;
+          aAlfa = #1#20;
+          |QBF aAlfa;
+          |SI aAlfa = ""; |O aAlfa = "..........";
+               fecbaj = "31.12.2999";
+          |SINO;
+               fecbaj = #1#20;   || fecha baja contrato
+          |FINSI;
+     |FINSI;
+
+     #4#4 = #1#4;         || tipo contrato
+|FPRC;
+
+|PROCESO labtraba;            || datos del trabajador
+     fecalt = #2#36;      || fecha alta
+     aAlfa = #2#37;
+     |QBF aAlfa;
+     |SI aAlfa = ""; |O aAlfa = "..........";
+          fecbaj = "31.12.2999";
+     |SINO;
+          fecbaj = #2#37;      || fecha baja
+     |FINSI;
+     #4#04 = #2#45;       || tipo contrato
+|FPRC;
+
+|PROCESO labempre;
+|DDEFECTO #5;
+    #5#0 = #2#0;
+|LEE 000#5=;
+|FPRC;
+
+|PROCESO AvisoSinSexo;
+     |SI enSwMensajes = 0;
+          |ACABA;
+     |FINSI;
+     aAlfa = nEmpAnt;
+     |QBF aAlfa;
+     aAlfa = ("00000" + aAlfa) % -105;
+     aAlfa = "    ATENCION. Empresa " + aAlfa + ". Se han detectado trabajadores ";
+     aAlfa = aAlfa + " con el campo 'Sexo' en blanco.";
+     |MENAV aAlfa;
+
+     aAlfa = "    Puede modificarlo desde el Mantenimiento de Trab. ";
+     aAlfa = aAlfa + "IAE. Se actualizarán en la ficha del trabajador";
+     |MENAV aAlfa;
+|FPRC;
+
+|PROCESO lee_traba1;
+     |SI #2#0 ! nEmpAnt;
+          |SI swSinSexo = 1;
+               |HAZ AvisoSinSexo;
+          |FINSI;
+          swSinSexo = 0;
+     |FINSI;
+
+     #0#3 = #2#0;
+     #0#4 = #2#1;
+     |SI PARAMETRO = "";
+          |PINDA #0#0;
+     |FINSI;
+     |HAZ labempre;                || lee empresa
+     |SI #0#6 = "C";
+          #1#1 = #2#0;
+          #1#2 = #2#1;
+          |LEE 000#1=;
+          |SI FSalida = 0;
+               |HAZ labregis;
+          |SINO;
+               |HAZ labtraba;
+          |FINSI;
+     |SINO;
+          |HAZ labtraba;
+     |FINSI;
+     |HAZ cal_fech;
+     |SI swt_graba = 0;
+          |HAZ cal_dias;
+          |HAZ situate;
+          |HAZ grabalin;
+          #0#5 = #0#5 + 1;
+     |FINSI;
+
+     nEmpAnt = #2#0;
+|FPRC;
+
+|DEFBUCLE lee_traba;
+ #2#1;
+ ;
+ #0#1,     1;
+ #0#2, 99999;
+ ;
+ NULL, lee_traba1;
+|FIN;
+
+|PROCESO tipo3; |TIPO 3;
+     |ABRE #1;
+     |ABRE #3;
+     |ABRET #4;
+     |ABRE #5;
+     |ABRE #6;
+     |ABRE #nomir003;
+     |SELECT #2#1;
+     |SELECT #3#6;
+
+     |HAZ numano;
+     |BUCLE lee_traba;
+     |SI swSinSexo = 1;
+          |HAZ AvisoSinSexo;
+     |FINSI;
+     |SI #0#5 = 0;  |Y PARAMETRO = "";
+          |MENAV "    Seleccion vacia ...";
+     |FINSI;
+     |SI PARAMETRO = "";
+          |PINDA #0#0;
+     |FINSI;
+     |CIERRA #1;
+     |CIERRA #3;
+     |CIERRAT #4;
+     |CIERRA #5;
+     |CIERRA #6;
+     |CIERRA #nomir003;
+|FPRC;
+
+|PROGRAMA;
+     |SI PARAMETRO ! "";
+         ||CLS;
+         ||PINPA #0#0;
+         #0#0 = enAnyo;
+         #0#1 = enEmpresa;
+         #0#2 = enEmpresa;
+         #0#6 = eaTipo;
+         #0#7 = enDiasBisiesto;
+         |HAZ limites;
+         |HAZ numano;
+         ||PINDA #0#0;
+         |HAZ tipo3;
+     |SINO;
+         enSwMensajes = 1;
+         |MANTE #0;
+     |FINSI;
+|FPRO;

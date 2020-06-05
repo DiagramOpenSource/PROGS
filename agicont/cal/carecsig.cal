@@ -1,0 +1,258 @@
+|FICHEROS;
+    cacuenta #0;
+    cacuesig #1;
+    caexistl #2; || existencias para calcular el saldo Real de Estas cuentas
+|FIN;
+
+|VARIABLES;
+  &eaFicbal = "";
+  &enSwOper = 0;
+  &eldesde = 0;
+  &elhasta = 0;
+  &r_emp = 0;
+  &r_per = 0;
+  &d_mes = 0;
+  &h_mes = 0;
+  &estru = 0;
+  &aparam = "";
+   dir_fich = "";
+   dirfich0 = "";
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+   alfa4 = "";
+   alfa5 = "";
+   uno = "";
+   dos = " ";
+   tres = "";
+   saldo = 0;
+   x = 0;
+   y = 0;
+   mes_fin = 0;
+   sw_algun = 0;
+   descn = 0;
+   descar = 0;
+   act_cuent = "";
+   act_nivel = 0;
+   traraf = 0;
+|FIN;
+
+|PROCESO antesque;
+  |SI aparam = "fech";
+      |SI eaFicbal = "";
+          |NOME_DAT #0 "cabalano";
+      |SINO;
+          |NOME_DAT #0 eaFicbal;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO dirfich0; || calcular el directorio base de los ficheros
+
+  |DBASE dir_fich;
+  dirfich0 = dir_fich + "fich/";
+  alfa1 = r_emp;
+  alfa2 = r_per;
+  alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+  alfa2 = "0"   + alfa2;   alfa2 = alfa2 % -101;
+  dirfich0 = dirfich0 + alfa1 + alfa2 + "/";
+
+  |PATH_DAT #0 dirfich0;
+  |PATH_DAT #1 dirfich0;
+  |PATH_DAT #2 dirfich0;
+|FPRC;
+|| ********************************************************************
+
+|PROCESO LaClave30;
+
+    alfa1 = #0#0;
+    |QBF alfa1;
+    alfa1 = alfa1 + "zzzzzzzzzzzz";
+    alfa1 = alfa1 % 112;
+    #0#54 = alfa1;  || cuenta tercera clave
+    #0#55 = #0#1;   || digito tercera clave
+
+    |GRABA 020#0a;
+    |LIBERA #0;
+|FPRC;
+
+
+|DEFBUCLE LaClave3;
+ #0#1;
+ ;
+ "            ", 0;
+ "zzzzzzzzzzzz", 9;
+ be;
+ NULL, LaClave30;
+|FIN;
+
+|| --------------------------------------------------------------------
+|PROCESO actua; || calcula el saldo y coloca en balance segun este
+  saldo = 0;
+
+  tres = #0#0 % A101;
+  |SI tres = "3"; || si es existencias, calcula saldo segun descarga exist.
+      |HAZ exist1;
+  |SINO;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            saldo = saldo + #0x;
+      |SIGUE;
+  |FINSI;
+
+  |SI tres = "6"; |O tres = "7";
+      |HAZ exist2;
+  |FINSI;
+
+  |SI saldo = 0; |ACABA; |FINSI;
+
+  |SI saldo ] 0;
+      #0#4 = #1#1;    || bloque
+      #0#5 = #1#2;    || tipo
+      #0#6 = #1#3;    || agrupacion
+      #0#7 = #1#4;    || epigrafe
+      #0#8 = #1#5;    || partida
+  |SINO;
+      #0#4 = #1#6;    || bloque
+      #0#5 = #1#7;    || tipo
+      #0#6 = #1#8;    || agrupacion
+      #0#7 = #1#9;    || epigrafe
+      #0#8 = #1#10;   || partida
+  |FINSI;
+
+ |GRABA 020#0a;
+ |LIBERA #0;
+|FPRC;
+
+|DEFBUCLE lee_ctas;
+ #0#1;
+ ;
+ #1#0, 0;
+ dos,  9;
+ be;
+ NULL, actua;
+|FIN;
+
+|PROCESO cuenta;
+  uno = #1#0;
+  |QBF uno;
+  |SI uno = ""; |ACABA; |FINSI;
+  dos = uno + "999999999999";
+  dos = dos % 112;
+  |BUCLE lee_ctas;
+|FPRC;
+
+|DEFBUCLE cambia;
+ #1#1;
+ ;
+ "            ";
+ "zzzzzzzzzzzz";
+ e;
+ NULL, cuenta;
+|FIN;
+
+|PROGRAMA;
+
+  |HAZ antesque;
+  |HAZ dirfich0;
+
+  |SI enSwOper = 0;
+
+     |BUCLE cambia;
+
+  |SINO;
+
+     |BUCLE LaClave3;
+
+  |FINSI;
+
+|FPRO;
+
+
+|| calculos de existencias y variacion de las mismas
+|| saldos reales en las cuentas 3, y las de variacion
+
+|| ...................................... Calcula las cuentas 3 EXISTENCIAS.
+|PROCESO ver_exis;
+  mes_fin = h_mes + 11; || mes finales
+  saldo = saldo + #2mes_fin; || exist. finales
+  sw_algun = 1;
+|FPRC;
+
+|DEFBUCLE exis3;
+ #2#2;
+ ;
+ estru,  #0#0, 0;
+ estru, alfa4, 9;
+ be;
+ NULL, ver_exis;
+|FIN;
+
+|PROCESO exist1;
+  sw_algun = 0;
+  alfa3 = #0#0;
+  |QBF alfa3;
+  alfa4 = alfa3 + "999999999999";
+  alfa4 = alfa4 % 112;
+  |BUCLE exis3;
+  |SI sw_algun = 0;
+      saldo = 0;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            saldo = saldo + #0x;
+      |SIGUE;
+  |FINSI;
+|FPRC;
+
+|| ----------------------------------------------- Fin c lculo existencias
+
+|| ................................... Calcula las cuentas 6 y 7 VARIACION
+
+|PROCESO ver_desc;
+  mes_fin = d_mes + 11;  || mes iniciales
+  descar = #2mes_fin;
+  mes_fin = h_mes + 11;  || mes finales
+  descar = descar - #2mes_fin; || iniciales - finales
+
+  |SI descar ] 0;
+      act_cuent = #2#5;     || cuenta descarga D
+      act_nivel = #2#6;     || digito descarga D
+  |SINO;
+      act_cuent = #2#8;     || cuenta descarga H
+      act_nivel = #2#9;     || digito descarga H
+  |FINSI;
+
+  |SI descar = 0; |ACABA; |FINSI;
+
+  || .. acortar cuenta
+  traraf    = 100 + y;
+  act_cuent = act_cuent % traraf;
+  act_cuent = act_cuent + "              ";
+  act_cuent = act_cuent % 112
+
+  |SI act_cuent = #0#0;
+     sw_algun = 1;
+     descn = descn + descar;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE exis4;
+ #2#1;
+ ;
+ estru, 00;
+ estru, 99;
+ be;
+ NULL, ver_desc;
+|FIN;
+
+|PROCESO exist2;
+  alfa3 = #0#0;
+  |QBF alfa3;
+  alfa5 = alfa3 % 0;
+  y = alfa5;
+  |SI y = 1; |ACABA; |FINSI;
+  sw_algun = 0;
+  descn = 0;
+  |BUCLE exis4;
+  |SI sw_algun = 1;
+      saldo = descn;
+  |FINSI;
+|FPRC;

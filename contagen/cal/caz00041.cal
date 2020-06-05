@@ -1,0 +1,266 @@
+|FICHEROS;
+   caz00041 #0;
+
+   camaniva #1;
+   caivalin #2;
+   caivaasi #200;
+
+   caenlace #500;
+   caw00063 #501,MANTE;
+
+   canempre #30;
+   caselem1 #998;
+|FIN;
+
+|VARIABLES;
+   &PRMNT_enLuxeRec = 0;
+   &eaParam = "";
+   nNume1   = 0;
+   nCalc    = 0;
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   nLibro   = 0;
+   aSerie   = "";
+   nFactura = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ************************************* Calculos Pantalla
+|CALCULO Fechas; |TIPO 7;
+   #0#7 = fec1; |PINTA #0#7;
+   #0#8 = fec2; |PINTA #0#8;
+|FCAL;
+
+|CALCULO TrasTipoIVA; |TIPO 0;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   aTipoIVA = #0#0;
+
+   |SI FSalida = 10;
+      efFechaIVA = #0#7; |HAZ SelecTipoIVA;
+      #0#9 = enLineaIVA; |PINTA #0#9;
+      |ERROR;
+   |SINO;
+      efFechaIVA = #0#7; enLineaIVA = #0#9;
+      |HAZ SacaIVA;
+   |FINSI;
+
+   |SI enLineaIVA < 0;
+      |MENAV "    Control de cuentas no definido";
+      #0#9 = 1; |PINTA #0#9;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+
+   #0#10 = enPorcIVA;  |PINTA #0#10;
+   #0#11 = enPorcREC;  |PINTA #0#11;
+|FCAL;
+
+||********************************************************
+||********************************************************
+|PROCESO LasLineas;
+  |SI #2#3 ] #0#14; |Y #2#3 [ #0#15;
+      |SI #2#7 = 0; |Y #2#8 = 0; |Y #2#9 = 0; |Y #2#10 = 0; |Y #2#6 ! 0;
+
+          #2#16 = #0#9;
+          #2#7  = #0#10;
+          #2#9  = #0#11;
+          #2#8  = (#2#6 % #2#7) ! EURODB;
+          #2#10 = (#2#6 % #2#9) ! EURODB;
+
+          |GRABA 020#2a;
+          #0#13 = #2#2;
+      |FINSI;
+  |FINSI;
+  #0#12 = #0#12 + #2#8 + #2#10;
+|FPRC;
+
+|DEFBUCLE LasLineas;
+  #2#1;
+  ;
+  #1#0, #1#1, 01;
+  #1#0, #1#1, 99;
+  be;
+  NULL, LasLineas;
+|FIN;
+
+|PROCESO Facturas;
+
+||   |SI #1#23 = 0; |ACABA; |FINSI; || si no hay cuotas de iva, sale
+
+   efFechaIVA = #1#4;
+
+   #0#12 = 0;
+   #0#13 = 0;
+   |BUCLE LasLineas;
+
+   |SI #0#12 ! #1#23; |Y #0#13 ! 0;
+       |SI #1#23 ! 0;
+           |ABRE #2;
+           #2#0 = #1#0;
+           #2#1 = #1#1;
+           #2#2 = #0#13;
+           |LEE 141#2=;
+           |SI FSalida = 0;
+               |SI #2#10 > 0;
+                   nNume1 = #2#10;
+                   #2#10 = #2#10 + (#1#23 - #0#12);
+                   |SI #2#10 < 0; #2#10 = 0; |FINSI;
+                   #0#12 = #0#12 + #2#10 - nNume1;
+               |FINSI;
+               |SI #0#12 ! #1#23;
+                   #2#8 = #2#8 + (#1#23 - #0#12);
+               |FINSI;
+               |GRABA 020#2a;
+           |FINSI;
+           |LIBERA #2;
+       |SINO;
+           #1#23 = #0#12;
+           |GRABA 020#1a;
+       |FINSI;
+   |FINSI;
+   |LIBERA #1;
+|FPRC;
+
+
+|DEFBUCLE Facturas;
+   #1#1;
+   2,3,4,36;
+   #0#1, 0000000001, #0#5, #0#3, #0#7, #0#0;
+   #0#2, 9999999999, #0#6, #0#4, #0#8, #0#0;
+   be;
+   NULL,Facturas;
+|FIN;
+
+
+|| ************************************************************************
+|PROCESO HazTodo;
+
+   |ABRE #200;
+   |LEE 000#200p;
+   |CIERRA #200;
+
+   |BUCLE Facturas;
+|FPRC;
+
+|CALCULO Tipo3; |TIPO 3;
+   |SI #48#27 = "S";
+      |HAZ MultiEmpresa;
+   |SINO;
+      |DFICE dirfich0; |QBF dirfich0;
+      |HAZ HazTodo;
+   |FINSI;
+|FCAL;
+
+|PROCESO Enlace;
+   |SI nLibro ! #caenlace#11; |O aSerie ! #caenlace#12; |O nFactura ! #caenlace#13;
+      aAlfa = dirfich0; |QBF aAlfa;
+      aAlfa = aAlfa - "fich/";
+      |SI FSalida ! 0;
+         nCalc = ((FSalida / 100) ! 0) + 104;
+         aAlfa = dirfich0 % nCalc;
+         aAlfa = aAlfa + (("00000" + #caenlace#37) % -105) + #caenlace#38 + "/";
+
+         |PATH_DAT #1 aAlfa;
+         |PATH_DAT #2 aAlfa;
+         |PATH_DAT #200 aAlfa;
+
+         |ABRE #200; |LEE 000#200p; |CIERRA #200;
+
+         |ABRE #1; |SELECT #3#1;
+         #1#0 = #caenlace#11;
+         #1#2 = #caenlace#12;
+         #1#3 = #caenlace#13;
+         |LEE 000#1=;
+         |SI FSalida = 0;
+            |SELECT #1#1;
+            |LEE 101#1=;
+            |SI FSalida = 0;
+               |HAZ Facturas;
+               |LIBERA #1;
+            |FINSI;
+         |FINSI;
+         |CIERRA #1;
+      |FINSI;
+
+      nLibro = #caenlace#11; aSerie = #caenlace#12; nFactura = #caenlace#13;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Enlace;
+#caenlace#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Enlace;
+|FIN;
+
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   |SI enSwSelFc = 0;
+       |SI fec1 > #0#8; |O fec2 < #0#7; |ACABA; |FINSI;
+   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #200 dirfich0;
+
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+
+|PROGRAMA;
+   |HAZ inicio;
+   |HAZ eParaModelos;
+
+   |SI PRMNT_enLuxeRec ! 0;
+      aAlfa = eaParam; |QBF aAlfa;
+      aAlfa = aAlfa - ",";
+      nCalc = FSalida + 98; aAlfa1 = aAlfa % nCalc;
+      nCalc = ((FSalida / 100) ! 0) + 99; aAlfa2 = aAlfa % nCalc;
+      |NOME_DAT #caenlace#aAlfa1#; |PATH_DAT #caenlace#aAlfa2#;
+
+      |PUSHV 0501 2380;
+      |PINPA #0#caw00063; |PINDA #0#caw00063;
+      |ENDATOS #1#caw00063;
+      |SI FSalida ! 0; |POPV; |ACABA; |FINSI;
+      |POPV;
+
+      #0#9  = #caw00063#0;  #0#10 = #caw00063#1;  #0#11 = #caw00063#2;
+      nLibro = -1; aSerie = ""; nFactura = -1;
+      |ABRE #caenlace; |BUCLE Enlace; |CIERRA #caenlace;
+   |SINO;
+      |CLS;
+      |CABEZA "Recalculo de Tipo de IVA en las Lineas de los Registros";
+      |PINPA #0#0; |PINDA #0#0;
+      |ENDATOS #1#0;
+      |SI FSalida = 0;
+         |HAZ Tipo3;
+      |FINSI;
+   |FINSI;
+|FPRO;

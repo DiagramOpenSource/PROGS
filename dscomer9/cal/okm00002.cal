@@ -1,0 +1,213 @@
+|FICHEROS;
+     okm00002 #0;
+     okm00001 #1;
+     agifa067 #67;
+     agifa081 #81;
+     agifa112 #112;
+|FIN;
+
+|VARIABLES;
+     &eaSerie = "";
+     &enDocu = 0;
+     aFic = "";
+     aAlfa = "";
+     nHandle = 0;
+     nNume = 0;
+     aOrigen = "";
+     aHost = "";
+     aUsu = "";
+     aPass = "";
+     aOrg = "";
+     aDes = "";
+     aBat = "";
+     aPathDes = "";
+     aPathErr = "";
+     aIP = "";
+     aServidor = "";
+     aFrom = "";
+     aTo = "";
+     aSubject = "";
+     aMensaje = "";
+     aDjunto = "";
+     aPedido = "";
+     aError = "";
+     aFicLog = "";
+|FIN;
+
+|PROCESO EnviaMail;
+     |SI aError = "";
+          aMensaje = "Pedido " + aPedido + " enviado";
+     |SINO;
+          aMensaje = "Pedido " + aPedido + ". " + aError;
+     |FINSI;
+
+     aIP = "xdscorreo.dv.diagram.net";
+     aServidor = "asmtp.diagram.es";
+     aFrom = #1#1; |QBF aFrom;
+     aTo = aFrom;
+     aSubject = aMensaje;
+     aDjunto = aFicLog;
+     |DSCORREO_ENVIA aIP, aServidor, aFrom, aTo, aSubject, aMensaje, aDjunto;
+|FPRC;
+
+|PROCESO EnviaFtp;
+     aFicLog = "";
+     aError = "";
+     aHost = #1#3; |QBF aHost;
+     aUsu = #1#4; |QBF aUsu;
+     aPass = #1#5; |QBF aPass;
+     aDes = aPedido + ".txt";
+
+     aPathDes = #1#6; |QBF aPathDes;
+     aAlfa = aPathDes % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPathDes = aPathDes + "\"; |FINSI;
+
+     aPathErr = aPathDes + "Erroneos\";
+     aPathDes = aPathDes + "Enviados\";
+     |RMKDIR aPathDes;
+     aDes = aPathDes + aPedido + ".txt";
+
+     |ENVIA_FICHERO aOrg, aDes;
+     |SI FSalida = 0;
+          aFic = aPathDes + Usuario + ".txt";
+          |XABRE "CW", aFic, nHandle;
+          |SI FSalida ] 0;
+               aAlfa = "open " + aHost;
+               |XGRABA nHandle, aAlfa;
+               |XGRABA nHandle, aUsu;
+               |XGRABA nHandle, aPass;
+               aAlfa = "put " + aPedido + ".txt";
+               |XGRABA nHandle, aAlfa;
+               |XGRABA nHandle, "bye";
+               |XCIERRA nHandle;
+
+               aBat = aPathDes + Usuario + ".bat";
+               |XABRE "CW", aBat, nHandle;
+               |SI FSalida ] 0;
+                    aAlfa = "cd " + aPathDes;
+                    |XGRABA nHandle, aAlfa;
+
+                    aAlfa = "ftp -v -i -d -s:" + Usuario + ".txt > " + Usuario + ".log";
+                    |XGRABA nHandle, aAlfa;
+
+                    aAlfa = "find /I /C " + &34 + "Transfer OK" + &34 + " " + Usuario + ".log";
+                    |XGRABA nHandle, aAlfa;
+                    aAlfa = "IF NOT ERRORLEVEL 1 GOTO FIN";
+                    |XGRABA nHandle, aAlfa;
+
+                    aAlfa = "find /I /C " + &34 + "STOR" + &34 + " " + Usuario + ".log";
+                    |XGRABA nHandle, aAlfa;
+                    aAlfa = "IF NOT ERRORLEVEL 1 GOTO FIN";
+                    |XGRABA nHandle, aAlfa;
+
+                    aAlfa = ":ERROR";
+                    |XGRABA nHandle, aAlfa;
+
+                    aAlfa = "echo 1 > " + Usuario + ".err";
+                    |XGRABA nHandle, aAlfa;
+
+                    aAlfa = ":FIN";
+                    |XGRABA nHandle, aAlfa;
+                    aAlfa = "exit";
+                    |XGRABA nHandle, aAlfa;
+
+                    |XCIERRA nHandle;
+
+                    aAlfa  = "cmd " + &34 + "/c START /MIN /WAIT " + aBat + &34;
+                    |RSYSTEM aAlfa;
+                    |RFBORRA aBat;
+                    |RFBORRA aFic;
+
+                    aFic = aPathDes + Usuario + ".err";
+                    |XABRE "CE", aFic, 0;
+                    |SI FSalida ] 0;
+                         |RFBORRA aFic;
+                         |MENAV "0000Error al enviar archivo por ftp";
+                         aError = "Error al enviar archivo por ftp";
+                    |FINSI;
+
+                    |DBASE aAlfa;
+                    aFicLog = aAlfa + Usuario + ".log";
+                    aOrg = aPathDes + Usuario + ".log";
+                    |RECIBE_FICHERO aOrg, aFicLog;
+                    |RFBORRA aOrg;
+               |SINO;
+                    |MENAV "0000Error al crear fichero bat";
+                    aError = "Error al crear fichero bat";
+               |FINSI;
+          |SINO;
+               |MENAV "0000Error al crear fichero envio ftp en el puesto";
+               aError = "Error al crear fichero envio ftp";
+          |FINSI;
+
+          |SI aError ! "";
+               aOrg = aDes;
+
+               |RMKDIR aPathErr;
+               aDes = aPathErr + aPedido + ".txt";
+
+               |RCOPIA_FICHERO aOrg, aDes;
+               |RFBORRA aOrg;
+          |FINSI;
+     |SINO;
+          |MENAV "0000Error al enviar fichero al puesto";
+          aError = "Error al enviar fichero al puesto";
+     |FINSI;
+|FPRC;
+
+|PROCESO LinPed;
+     aAlfa = #67#2; |QBF aAlfa;
+     nNume = #67#5 ! 0;
+     aAlfa = aAlfa + ";" + nNume;
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|PROCESO CabPed;
+     aAlfa = #1#1; |QBF aAlfa;
+     aAlfa = aAlfa + ";" + (("000000" + #81#0) % -106);
+     aAlfa = aAlfa + ";" + #81#15; |QBF aAlfa;
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |ABRE #1; |LEE 000#1p; |CIERRA #1;
+     |ABRE #81;
+     #81#25 = #0#0;
+     #81#0 = #0#1;
+     |LEE 020#81=;
+     |SI FSalida = 0;
+          |ABRE #112;
+          #112#0 = #81#4;
+          |LEE 020#112=;
+          |CIERRA #112;
+
+          aPedido = #1#2; |QBF aPedido;
+          aPedido = aPedido + (("000000" + #81#0) % -106);
+
+          |DFICE aAlfa;
+          aOrg = aAlfa + Usuario + ".txt";
+
+          |XABRE "W", aOrg, nHandle;
+          |SI FSalida ] 0;
+               |HAZ CabPed;
+               |BUCLELIN 2 LinPed #81;
+               |XCIERRA nHandle;
+               |HAZ EnviaFtp;
+               |HAZ EnviaMail;
+               |FBORRA aOrg;
+          |SINO;
+               |MENAV "0000Error al crear fichero origen...";
+          |FINSI;
+     |FINSI;
+     |CIERRA #81;
+|FPRC;
+
+|PROGRAMA;
+     |SI eaSerie ! "";
+          #0#0 = eaSerie;
+          #0#1 = enDocu;
+          |HAZ Tipo3;
+     |SINO;
+          |MANTE #0;
+     |FINSI;
+|FPRO;

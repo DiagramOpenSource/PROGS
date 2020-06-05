@@ -1,0 +1,316 @@
+|FICHEROS;
+    ettemtb2 #0;    || emision contrato laboral
+    ettpedi1 #1;    || pedidos cabs.
+    ettpedi2 #2;    || pedidos lins.
+    labcentr #4;    || centros de trabajo
+    nomcenes #5;    || centros de trabajo especiales
+
+    labempre #10;   || empresas AGINOM
+    labtraba #12;   || trabajadores AGINOM
+    ettcontr #13;   || control AGIETT
+    ettclien #14;   || clientes AGIETT
+    ettprovi #15;   || provincias AGIETT
+    ettperso #16;   || personal AGIETT
+    ettpuest #17;   || puestos AGIETT
+    etttarca #18;   || tarifas cabs. AGIETT
+    labparta #19;   || partes TA2/2 AGINOM (no fichero)
+    labregis #20;   || registro contratos AGINOM
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    para1 = 0;
+    para2 = 0;
+    para3 = 0;
+    para4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    elsw1 = 0;
+    elsw2 = 0;
+    elsw3 = 0;
+    elsw4 = 0;
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+
+    &hpedido = 0;
+    &hperson = 0;
+    &hcopias = 0;
+    &hfirmas = @;
+    &hfallos = 0;
+    informe = "";
+
+    &tp = 0;
+    &fecha1 = "";
+    &fecha2 = "";
+    &fecha3 = "";
+    &nombre = "";
+    &apell1 = "";
+    &apell2 = "";
+    &ctacot = "";
+    &entida = "";
+|FIN;
+____________________________________/
+|PROCESO informes;
+|SI hfallos = 0;         || si da error algun informe no continua
+    |INFOR informe;
+    |SI FSalida = 0;
+        |PRINT;
+        |PIEINF;
+            #2#32 = "S"; || impreso SI
+        |GRABA 020#2a;
+    |SINO;
+            alfa1 = "    AVISO: Problemas con el informe [" + informe + "] ...";
+        |MENAV alfa1;
+            hfallos = 1;
+    |FINSI;
+    |FININF;
+|FINSI;
+|FPRC;
+
+|PROCESO lee_centr;
+|DDEFECTO #4;
+|ABRE #4;
+    #4#0 = #12#0;
+    #4#1 = #12#77;
+|LEE 000#4=;
+|SI FSalida ! 0;|Y #12#45 ! "64";|Y #12#45 ! "87";|Y #12#45 ! "97";|Y #12#45 ! "85";
+    |MENAV "    AVISO! Centro de trabajo INEXISTENTE ...";
+|FINSI;
+|CIERRA #4;
+|FPRC;
+
+|PROCESO lee_cenes;
+|DDEFECTO #5;
+|ABRE #5;
+    #5#0  = #12#0;  || empresa
+    #5#13 = #12#77; || centro
+|SI #12#45 = "97";|O #12#45 = "85";
+        #5#1 = "87";
+|SINO;
+        #5#1  = #12#45;
+|FINSI;
+|LEE 000#5=;
+|SI FSalida ! 0;
+    |SI #12#45 = "64";|O #12#45 = "87";|O #12#45 = "97";|O #12#45 = "85";
+        |MENAV "    AVISO! Centro Especial de trabajo INEXISTENTE ...";
+    |FINSI;
+|FINSI;
+|CIERRA #5;
+|FPRC;
+
+|PROCESO chorradas;
+    alfa1 = #19#16;
+    alfa2 = (alfa1 % 102) + (alfa1 % 402) + (alfa1 % -102); || fecha limpia
+    fecha1 = "------";
+    fecha2 = "------";
+    fecha3 = "------";
+|SI #19#2 = "A";    fecha1 = alfa2;     |FINSI;
+|SI #19#2 = "B";    fecha2 = alfa2;     |FINSI;
+|SI #19#2 = "V";    fecha3 = alfa2;     |FINSI;
+
+    alfa1 = #12#2;   |QBF alfa1;
+    alfa2 = alfa1 % 0;   para2 = alfa2;
+    elsw4 = 0;
+    apell1 = "";
+    apell2 = "";
+    nombre = "";
+|PARA para1 = 1; |SI para1 [ para2; |HACIENDO para1 = para1 + 1;
+        nume2 = (para1 * 100) + 1;
+        alfa3 = alfa1 % nume2;
+    |SI alfa3 = " ";|O alfa3 = ",";
+        |SI apell1 ! "";
+                elsw4 = elsw4 + 1;
+        |FINSI;
+        |SI elsw4 ] 2;|Y nombre ! "";
+                nombre = nombre + alfa3;
+        |FINSI;
+    |SINO;
+        |SI elsw4 = 0;  apell1 = apell1 + alfa3; |FINSI;
+        |SI elsw4 = 1;  apell2 = apell2 + alfa3; |FINSI;
+        |SI elsw4 ] 2;  nombre = nombre + alfa3; |FINSI;
+    |FINSI;
+|SIGUE;
+
+|SI #12#45 = "64";|O #12#45 = "87";|O #12#45 = "97";|O #12#45 = "85";
+        ctacot = #5#10;
+        entida = #5#15;
+|SINO;
+        ctacot = #4#10;
+        entida = #4#14;
+|FINSI;
+|FPRC;
+
+|PROCESO carga_labparta;
+|DDEFECTO #19;
+    #19#0 = #12#0;       || empresa
+    #19#1 = #12#1;       || trabajador
+    #19#2 = "B";         || alta/baja/variacion
+    #19#3 = "";          || docum.identificativo
+    #19#4 = "";          || tipo via publica
+    #19#5 = "";          || causa alta/baja/variacion
+    #19#6 = "GENERAL";   || regimen seg.social
+    #19#15= #20#14;      || nro.registro INEM
+    #19#16= #12#37;      || fecha alta/baja/variacion
+|SI tp = 0;    #19#21 = "N";  |FINSI;        || tiempo parcial NO
+|SI tp = 1;    #19#21 = "S";  |FINSI;        || tiempo parcial SI
+|SI #19#21 = "S";
+        nume1 = 0;
+    |PARA para1 = 63; |SI para1 [ 69; |HACIENDO para1 = para1 + 1;
+        |SI #1para1 = "S";    nume1 = nume1 + 1;  |FINSI;
+    |SIGUE;
+        #19#8 = nume1;        || dias semana TP
+        #19#10= #2#26;        || horas dia A (semana, contrato)
+        #19#11= 40;           || horas dia C (semana, habitual)
+        #19#12= nume1;        || total dias B (semana, contrato)
+        #19#13= 5;            || total dias D (semana, habitual)
+        #19#14 = (#19#10 * #19#12) / (#19#11 * #19#13);     || coeficiente
+|FINSI;
+|HAZ lee_centr;
+|HAZ lee_cenes;
+|HAZ chorradas;
+|FPRC;
+
+|PROCESO pedidos_lins;
+|HAZ carga_labparta;
+    hfallos = 0;
+|PARA para1 = 1; |SI para1 [ 2; |HACIENDO para1 = para1 + 1;
+        informe = "ett01ta2"; |HAZ informes;
+|SIGUE;
+|FPRC;
+
+|PROCESO lectura_varios;
+|DDEFECTO #10;
+|ABRE #10;
+    #10#0 = #13#4;
+|LEE 000#10=;            || lee empresas AGINOM
+|CIERRA #10;
+
+|DDEFECTO #12;
+|ABRE #12;
+    #12#0 = #13#4;
+    #12#1 = #2#24;
+|LEE 000#12=;            || lee trabajadores AGINOM
+|CIERRA #12;
+|SI #12#45 = "24";|O #12#45 = "64";
+    tp = 1;
+|FINSI;
+
+|DDEFECTO #14;
+|ABRE #14;
+    #14#0 = #1#2;
+|LEE 000#14=;            || lee cliente AGIETT
+|CIERRA #14;
+
+|DDEFECTO #15;
+|ABRE #15;
+    #15#0 = #14#5;
+|LEE 000#15=;            || lee provincia AGIETT
+|CIERRA #15;
+
+|DDEFECTO #16;
+|ABRE #16;
+    #16#0 = #2#2;
+|LEE 000#16=;            || lee personal AGIETT
+|CIERRA #16;
+
+|DDEFECTO #17;
+|ABRE #17;
+    #17#0 = #1#59;
+|LEE 000#17=;            || lee puestos AGIETT
+|CIERRA #17;
+
+|DDEFECTO #18;
+|ABRE #18;
+    #18#0 = #2#16;
+    #18#1 = #2#17;
+|LEE 000#18=;            || lee tarifa cabs. AGIETT
+|CIERRA #18;
+
+|DDEFECTO #20;
+|ABRE #20;
+|SELECT #2#20;
+    #20#1 = #13#4;
+    #20#2 = #2#24;
+|LEE 000#20=;            || lee registro contratos AGINOM
+|SELECT #1#20;
+|CIERRA #20;
+|FPRC;
+
+|PROCESO tipo8;
+|ABRE #13;
+|LEE 000#13p;
+|SI FSalida = 0;
+        alfa1 = #13#3;    |QBF alfa1;
+        alfa1 = alfa1 + "/fich/";
+    |PATH_DAT #4 alfa1;
+    |PATH_DAT #5 alfa1;
+    |PATH_DAT #10 alfa1;
+    |PATH_DAT #12 alfa1;
+    |PATH_DAT #20 alfa1;
+|SINO;
+    |MENAV "    Control AGIETT sin definir ...";
+|FINSI;
+|CIERRA #13;
+|FPRC;
+
+|PROGRAMA;
+    hfallos = 1;
+|ABRE #1;
+|ABRE #2;
+    #1#0 = hpedido;
+|LEE 020#1=;
+|SI FSalida = 0;
+        #2#0 = hpedido;
+        #2#1 = hperson;
+    |LEE 121#2=;
+    |SI FSalida = 0;
+        |HAZ tipo8;
+        |HAZ lectura_varios;
+        |DDEFECTO #0;
+            #0#0 = #1#0;      || codigo pedido
+            #0#1 = #1#1;      || fecha pedido
+            #0#2 = #16#0;     || codigo trabajador
+            #0#3 = #16#2;     || nombre trabajador
+            #0#4 = #14#0;     || codigo cliente
+            #0#5 = #14#1;     || nombre cliente
+            #0#6 = #1#5;      || desde contrato
+            #0#7 = #1#6;      || hasta contrato
+            #0#8 = #17#0;     || codigo puesto
+            #0#9 = #17#1;     || nombre puesto
+            #0#10= #12#45;    || tipo contrato
+        |PUSHV 0501 2380;
+        |PINPA #0#0;
+        |PINDA #0#0;
+        |CONFI "    SConfirme la impresion (S/N): ";
+        |PARA; |SI FSalida = 0; |HACIENDO;
+            |IMPRE 0;
+            |SI FSalida = 0;
+                |ATRI P;
+                |PINTA 2402, "Imprimiendo ...";
+                |ATRI 0;
+                |HAZ pedidos_lins;
+            |SINO;
+                |MENAV "    Proceso abortado ...";
+            |FINSI;
+            |FINIMP;
+            |BLIN 24;
+            |CONFI "    NRepetir la impresion (S/N): ";
+        |SIGUE;
+        |POPV;
+    |FINSI;
+    |LIBERA #2;
+|FINSI;
+|CIERRA #1;
+|CIERRA #2;
+|FPRO;

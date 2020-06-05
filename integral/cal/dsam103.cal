@@ -1,0 +1,335 @@
+|FICHEROS;
+     :integral/dsam0103,MANTE;
+     :integral/nifm0001;
+
+     dsarz010@;
+|FIN;
+
+|VARIABLES;
+      aPrograma   = "";
+      aBase       = "";
+      aAlfa       = "";
+      aLong       = "";
+      aMas        = "";
+      aPathGAD    = "";
+
+      nCambioAlgo = 0;
+      nModo       = 0;
+      nCanal      = 0;
+      aAlfa1      = "";
+      nBoton      = -1;
+      nDSArchi    = 0;
+      nPaso       = 0;
+      nHandle     = 0;
+      nOpcion     = 0;
+      nGad        = 0;
+      aVengoDe    = "";
+      aNifAET     = "";
+
+     {10}aPopup   = "";
+
+
+     &eaPathLaboral   = "";
+     &eaVarDni    = "";
+     &enCalcCif   = 0;
+     &enModoDef   = 0;
+     &eaProgram   = "";
+     &eaCodig1    = "";
+     &enCodProv   = 0;
+     &enCodPobl   = 0;
+     &eaPoblacion = "";
+     &enModoPob   = 1;
+     &enModoNif   = 0;
+     &eaNif       = "";
+     &eaProcedencia = "";
+     &eaVengoDe   = "";
+
+     &eaDi0_n   = "";
+     &eaDi1_n   = "";
+     &eaDi2_n   = "";
+     &eaNom_n   = "";
+     &enCP1_n   = 0;
+     &enCP2_n   = 0;
+     &eaPob_n   = "";
+     &eaPro_n   = "";
+     &eaTel_n   = "";
+     &eaCodPais = "";
+     &eaNomPais = "";
+|FIN;
+
+
+|PROCESO LetraDnim103;
+     |SI FSalida = 10;
+         eaVarDni  = #dsam0103#Campo#;
+         enCalcCif = 1;
+         |HAZ CalculoDNI;
+         #dsam0103#Campo# = eaVarDni;
+         |PINTA #dsam0103#Campo#;
+         FSalida = 0;
+         |ACABA;
+     |FINSI;
+
+     |SI FSalida = 11; |Y eaVengoDe ! "agidanif";
+         aVengoDe = eaVengoDe;
+         |HAZ BusApliLab;
+         enModoNif = 4;
+         eaNif     = #dsam0103#0;
+         |SUB_EJECUTA ":basica/agidanif";
+         eaVengoDe = aVengoDe;
+         |ACABA;
+     |FINSI;
+
+     |MODULO aPrograma;
+     |SI aPrograma ! "dsam0103";  |ACABA;  |FINSI;
+
+     eaVarDni  = #dsam0103#Campo#;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "             ") % 112;
+     |SI #dsam0103#Campo# ! eaVarDni;
+         |CONFI "0000SNif sin Letra Calculada. Desea Calcularla.";
+         |SI FSalida = 0;
+             #dsam0103#Campo# = eaVarDni;  |PINTA #dsam0103#Campo#;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeePoblam0103;
+     enCodProv   = #dsam0103#4;
+     enCodPobl   = #dsam0103#5;
+     eaPoblacion = #dsam0103#6;
+     enModoPob   = 1;
+     |SUB_EJECUTA_NP ":integral/dsaw9996";
+     #dsam0103#6 = eaPoblacion;
+     |PINTA #dsam0103#6;
+     |PINTA #dsam0103#7;
+|FPRC;
+
+|PROCESO CambioAlgo;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;  |ACABA;  |FINSI;
+
+     |SI #dsam0103#Campo# ! Contenido;
+         nCambioAlgo = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO ValidaNIF;
+     aAlfa = #dsam0103#0;  |QBF aAlfa;
+     aLong = aAlfa % 0;
+     |SI aLong ! "9";
+         |ACABA;
+     |FINSI;
+
+     |ABRE #nifm0001;
+     #nifm0001#0 = #dsam0103#0;
+     |LEE 000#nifm0001.=;
+     |SI FSalida ! 0;  |DDEFECTO #nifm0001;  |FINSI;
+     |CIERRA #nifm0001;
+
+     |CONFI "0000SDesea contrastar el NIF/CIF con los datos de la AEAT";
+     |SI FSalida ! 0;
+         |ACABA;
+     |FINSI;
+
+     |LIBERA #dsam0103;
+     aAlfa = "|:integral/nifz0001;" + #dsam0103#0;
+     |SUB_EJECUTA aAlfa;
+
+     |HAZ Tipo13F103;
+|FPRC;
+
+|PROCESO T12m103;  |TIPO 12;
+     |SI FSalida = 7;  |ACABA;  |FINSI;
+
+     aAlfa = #dsam0103#0;  |QBF aAlfa;
+     |SI aAlfa = ""; |ACABA; |FINSI;
+
+     aAlfa = #dsam0103#1;  |QBF aAlfa;
+     |SI aAlfa = "";
+         |MENAV "0000El nombre debe tener contenido";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |SI #dsam0103#4 = 0;
+         |MENAV "0000La provincia debe tener contenido";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |SI #dsam0103#12 = "   ";
+         |MENAV "0000El pais debe tener contenido";
+         |ERROR;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO Tipo3m103;  |TIPO 30;
+     |QBF aNifAET;
+     |SI aNifAET = ""; |O aNifAET = "       NO CONSULTADO AEAT";
+         |HAZ ValidaNIF;
+     |FINSI;
+
+     |HAZ BusApliLab;
+     |SI eaVengoDe ! "agidanif";
+         |CONFI "0000NDesea entrar datos personales ";
+         |SI FSalida = 0;
+             aVengoDe = eaVengoDe;
+             enModoNif = 1;
+             eaNif     = #dsam0103#0;
+             |SUB_EJECUTA ":basica/agidanif";
+             eaVengoDe = aVengoDe;
+         |FINSI;
+     |FINSI;
+
+     aAlfa = #dsam0103#0;  |QBF aAlfa;
+     |SI aAlfa = "";
+         nCambioAlgo = 0;
+
+         |ACABA;
+     |FINSI;
+
+     |SI nCambioAlgo = 1;
+         |CONFI "0000NHemos cambiado el Registro del NIF, lo cambiamos en el resto de mantenimientos afectados";
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+         eaNif = #dsam0103#0;
+         |SUB_EJECUTA ":integral/dsaz0012";
+     |FINSI;
+
+     nCambioAlgo = 0;
+|FPRC;
+
+|PROCESO BusApliLab;
+     eaPathLaboral   = "";
+     |DBASS aBase;   |QBF aBase;
+     aAlfa1 = aBase + "laboral/def/labempre.mas";
+     |XABRE "E", aAlfa1, nCanal;
+     |SI FSalida ] 0;
+         eaPathLaboral = aBase + "laboral/";
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo7C0F103;  |TIPO 7;
+     |MODULO aPrograma;
+
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 2;  |Y aPrograma ! "dsam0103";
+         |MENAV "0000 Opcion no permitida, entre directamente por el Mantenimiento Registros de NIF";
+
+         |PTEC 807;
+     |FINSI;
+
+     |SI nModo = 1;
+         |SI aPrograma = "cacugene"; |O aPrograma = "caclipro";
+             |O aPrograma = "caclipr1"; |O aPrograma = "caclipr2";
+             #dsam0103#1 = eaNom_n; |PINTA #dsam0103#1;
+             #dsam0103#2 = eaDi1_n; |PINTA #dsam0103#2;
+             #dsam0103#3 = eaDi2_n; |PINTA #dsam0103#3;
+             #dsam0103#4 = enCP1_n; |PINTA #dsam0103#4;
+             #dsam0103#5 = enCP2_n; |PINTA #dsam0103#5;
+             #dsam0103#6 = eaPob_n; |PINTA #dsam0103#6;
+             #dsam0103#7 = eaPro_n; |PINTA #dsam0103#7;
+             #dsam0103#8 = eaTel_n; |PINTA #dsam0103#8;
+             #dsam0103#9 = eaDi0_n; |PINTA #dsam0103#9;
+             #dsam0103#12 =eaCodPais; |PINTA #dsam0103#12;
+             #dsam0103#13 =eaNomPais; |PINTA #dsam0103#13;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo13F103; |TIPO 13;
+     aAlfa = #dsam0103#0;  |QBF aAlfa;
+     aLong = aAlfa % 0;
+     nModo = (FEntrada / 100) ! 0;
+
+     aNifAET = "                         ";
+     |SI nModo ] 1; |Y aLong = "9";
+         |SI nModo ! 4; aNifAET = "       NO CONSULTADO AEAT"; |FINSI;
+         |DDEFECTO #nifm0001;
+         |ABRE #nifm0001;
+         #nifm0001#0 = #dsam0103#0;
+         |LEE 000#nifm0001.=;
+         |SI FSalida = 0;
+             aNifAET = (#nifm0001#3 % 120); |QBF aNifAET;
+             aNifAET = aNifAET + " AEAT";
+             aNifAET = ("                         " + aNifAET) % -120;
+         |FINSI;
+         |CIERRA #nifm0001;
+
+     |FINSI;
+     |ATRI S; |PINTA 1149, aNifAET; |ATRI 0;
+|FPRC;
+
+|PROCESO Tipo20Fm103;  |TIPO 20;
+     nGad     = 1;
+     aAlfa    = FSalida;
+     aBase    = "";
+     nDSArchi = 0;
+     |DBASS aBase;  |QBT aBase;
+     aMas = aBase + "dsarchi/def/dsarz010.mas";
+     |XABRE "E", aMas, nHandle;
+     |SI FSalida < 0;
+         nGad = 0;
+     |FINSI;
+
+     |SI nGad = 1;
+         nGad = 0;
+
+         |CARGA_DEF aMas, dsarz010@;
+         aPathGAD = aBase + "dsarchi/fich/";
+         |PATH_DAT #dsarz010@#aPathGAD#;
+
+         |ABRE #dsarz010@;
+         #dsarz010@#0 = Usuario % 810;
+         |LEE 000#dsarz010@.=;
+         |SI FSalida = 0;  |Y #dsarz010@#16 = "S";
+             nGad = 1;
+         |FINSI;
+         |CIERRA #dsarz010@;
+     |FINSI;
+
+     |SI aAlfa = "OPCION";
+         |PULSATECLA;
+         |SI nGad = 1;
+             FSalida = " Opciones ";
+         |SINO;
+             FSalida = " Verif.NIF ";
+         |FINSI;
+
+         |ACABA;
+     |FINSI;
+
+     aAlfa = #dsam0103#0;  |QBF aAlfa;
+     |SI aAlfa = "";  |ACABA;  |FINSI;
+
+     |SI nGad = 0;
+         |HAZ ValidaNIF;
+
+         |PULSATECLA;
+         |ACABA;
+     |FINSI;
+
+     aPopup1  = -1;  || Si fuera -1 en la posicion
+
+     aPopup2  = 2;
+     aPopup3  = "Documentos GAD";
+     aPopup4  = "Verificacion AEAT";
+
+     IaPopup  = aPopup1  <-;
+     |ESPECIFICA "TRACKPOPUP", aPopup;
+     nOpcion =  FSalida;
+
+     |SI nOpcion = 1;
+         aAlfa = "|:dsarchi/dsarm005;" + aAlfa + "laboral";
+         |SUB_EJECUTA_NP aAlfa;
+     |FINSI;
+
+     |SI nOpcion = 2;
+         |HAZ ValidaNIF;
+     |FINSI;
+
+     |PULSATECLA;
+|FPRC;

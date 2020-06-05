@@ -1,0 +1,695 @@
+|| Proceso de Conceptos Automanticos Filtros.
+|| ...  Departamento, Subdepartamentos ( Arrendamientos y Cultivos)
+
+|FICHEROS;
+ cafantas #98;
+ :/modelos/def/dsmom030  #130;
+ :/modelos/def/dsmom033  #133;
+ caw00030 #945;                    ||Auxiliar de Conceptos
+ activid@ #960;
+ :/basica/def/agicen17  #961;
+ camansde #962;
+|FIN;
+
+|VARIABLES;
+   aAlfa1     = "";
+   nNume1     = 0;
+   sifiltro   = 0;
+   aBlancs    = "";
+   aQueQuiero = "";
+   aNumCampos = "";
+   nNumCampos = 0;
+   nSwBueno   = 0;
+   &enLinInm  = 0;
+
+   p_nume1    = 0;
+   p_nume2    = 0;
+   p_alfa1     = "";
+   p_alfa2     = "";
+   p_alfa3     = "";
+   nFiltro     = 0;
+   &enContrato    = 0;
+   &eaActContra   = "";
+   &eaSubContra   = "";
+   &enDesBasica   = 0;
+   &enDesContrato = 0;
+   &enDesModelo   = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+
+|| **************************** Procesos para Departamento y Subdepartamento
+|RUTINA inferior2;
+   #activid@#0 = enEmpresa;
+   |SI Haybasica = 1;
+       #activid@#1 = 01;
+   |SINO;
+       #activid@#1 = "  ";
+   |FINSI;
+|FRUT;
+
+|RUTINA superior2;
+   #activid@#0 = enEmpresa;
+   |SI Haybasica = 1;
+       #activid@#1 = 99;
+   |SINO;
+       #activid@#1 = "zz";
+   |FINSI;
+|FRUT;
+
+|PROCESO Actividad;
+   eaNombreAct  = "";
+   efActIni     = "01.01.0000";
+   efActFin     = "01.01.0000";
+   eswLect = 0;
+   |SI Haybasica = 1;
+       aAlfa1 = ":/basica/def/agicen14.mas";
+   |SINO;
+       aAlfa1 = "camandep.mas";
+   |FINSI;
+   |CARGA_DEF aAlfa1, activid@;
+   |SI FSalida = 0;
+       |ABRE #activid@;
+       |SI eOpDep = 1;
+           |CONSULTA_F_CLAVE #1#activid@,inferior2,superior2;
+           enActividad = #activid@#1;
+           eaCodDep    = #activid@#1;
+       |FINSI;
+
+ |ET LaLecturaDep;
+       |DDEFECTO #activid@;
+       eaEsCom = "N";
+       #activid@#0 = enEmpresa;
+       #activid@#1 = enActividad;
+       |SI Haybasica = 0; #activid@#1 = eaCodDep; |FINSI;
+       |LEE 001#activid@.=;
+       |SI FSalida ! 0; |Y eOpDep ! 2;
+           eswLect = 1;
+           |SI Haybasica = 0; |Y eSwNoalta  = 0;
+               |CONFI  "    SNo Existe Departamento, Desea dar de Alta ";
+               |SI FSalida = 0;
+                    |SUB_EJECUTA_NP ":contagen/camandep.tab";
+                    eswLect = 0;
+                    |VETE LaLecturaDep;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+
+       enActividad = #activid@#1;
+       eaCodDep    = #activid@#1;
+       |SI Haybasica = 1;
+           eaCodDep     = enActividad; |QBF eaCodDep;
+           eaCodDep     = ("00" + eaCodDep) % -102;
+           eaNombreAct  = #activid@#4;
+           enTipoIva    = #activid@#7;
+           enTipoTribut = #activid@#9;
+           enTipoSector = #activid@#11;
+           efActIni     = #activid@#5;
+           efActFin     = #activid@#6;
+           eaEsCom      = #activid@#14;
+       |SINO;
+           eaNombreAct = #activid@#2;
+           enTipoIva    = 0;
+           enTipoTribut = 0;
+           enTipoSector = 0;
+       |FINSI;
+       |CIERRA #activid@;
+   |FINSI;
+   |DESCARGA_DEF #activid@;
+|FPRC;
+
+|RUTINA inferior1;
+   #agicen17#0 = enEmpresa;
+   #agicen17#1 = enActividad;
+   #agicen17#2 = 001;
+|FRUT;
+
+|RUTINA superior1;
+   #agicen17#0 = enEmpresa;
+   #agicen17#1 = enActividad;
+   #agicen17#2 = 999;
+|FRUT;
+
+|RUTINA inferior11;
+   #camansde#0 = enEmpresa;
+   #camansde#1 = eaCodDep;
+   #camansde#2 = "";
+|FRUT;
+
+|RUTINA superior11;
+   #camansde#0 = enEmpresa;
+   #camansde#1 = eaCodDep;
+   #camansde#2 = "zzz";
+|FRUT;
+
+|PROCESO SubActividad;
+
+   eswLect = 0;
+   eaNomSubdep = "";
+   eaNo1Subdep = "";
+
+   |SI eaCodSubdep = "   ";  |Y eOpSub = 0;  |Y enQue = 1;
+       |CONFI "    NError, No ha introducido Subdepartamento. Continuar ?";
+       |SI FSalida ! 0;
+           |ERROR;
+       |FINSI;
+       |ACABA;
+   |FINSI;
+
+   |SI enSubde = 1; |HAZ SubOtros; |ACABA; |FINSI;
+
+   |ABRE #dsmom030;
+   #dsmom030#0 = enConcepto;
+   |LEE 000#dsmom030.=;
+   |SI FSalida ! 0;
+       eswLect = 2;
+       |CIERRA #dsmom030;
+       |ACABA;
+   |FINSI;
+
+   |SI enTipoTribut = 6;  |O enTipoTribut = 7;
+    |O enTipoTribut = 11; |O enTipoTribut = 12;
+    |O enTipoTribut = 16; |O enTipoTribut = 17;
+       enCultivo = eaCodSubdep;
+       eaTipoCultivo = #dsmom030#11;   ||por ahora todos agricolas
+       |SI eaTipoCultivo = "N"; eaTipoCultivo = ""; |FINSI;
+            sifiltro = 0;
+       |SI #dsmom030#0 ] 600; |Y #dsmom030#0 [ 799;
+            sifiltro = 1;
+       |FINSI;
+       |SI #dsmom030#11 ! "N"; |O sifiltro = 0;
+           |SI eOpSub = 1;
+               |SUB_EJECUTA_NP ":modelos/dsmom033";
+           |FINSI;
+
+           |ABRE #dsmom033;
+           #dsmom033#0 = enCultivo;
+           |LEE 001#dsmom033.=;
+           |SI FSalida ! 0;
+               eswLect = 1;
+               |MENAV  "       No Existe Subdepartamento ";
+           |SINO;
+               |SI #dsmom030#11 ! "T";
+                   |SI #dsmom033#8 ! #dsmom030#11; |Y sifiltro = 1;
+                       |SI snFiltr = "S"; eswLect = 1; |FINSI;
+                       |SI snFiltr ! "X";
+                           |MENAV  "       Tipo de Registro distinto al Tipo del Concepto";
+                       |FINSI;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+           |CIERRA #dsmom033;
+           eaCodSubdep = ("000" + enCultivo) % -103;
+           eaNomSubdep = #dsmom033#1 % 140;
+           eaNo1Subdep = #dsmom033#9;
+       |FINSI;
+   |SINO;
+
+|| .... .... .... ... Filtro suprimido de acuerdo con Paco Hellin 11.11.2002
+     || |SI #dsmom030#10 = "N"; |CIERRA #dsmom030;|ACABA; |FINSI;  || NO a subarrendamientos
+        |SI Haybasica = 0;
+            |CIERRA #dsmom030;
+            |ACABA;
+       |FINSI; || No hay basica
+
+       |ABRE #agicen17;
+       |SI eOpSub = 1;
+           |CONSULTA_F_CLAVE #1#agicen17,inferior1,superior1;
+           eaCodSubdep = #agicen17#2; |QBF eaCodSubdep;
+           eaCodSubdep = ("000" + eaCodSubdep) % -103;
+       |FINSI;
+
+ |ET LaLectura;
+       |DDEFECTO #agicen17;
+       #agicen17#0 = enEmpresa;
+       #agicen17#1 = enActividad;
+       #agicen17#2 = eaCodSubdep;
+       |LEE 040#agicen17.=;
+       |SI FSalida ! 0; |Y eaCodSubdep ! "   ";
+           eswLect = 1;
+           |SI enQue ! 2;
+               |CONFI  "    SNo Existe Referencia, Desea dar de Alta ";
+               |SI FSalida = 0;
+                   enLinInm = 0;
+                   enDesModelo = 1;
+                   |SUB_EJECUTA_NP ":basica/agicen17";
+                   enDesModelo = 0;
+                   eswLect = 0;
+                   |VETE LaLectura;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+       eaNomSubdep = #agicen17#3;
+       eaNo1Subdep = #agicen17#5;
+       eaCodSubdep = #agicen17#2; |QBF eaCodSubdep;
+       eaCodSubdep = ("000" + eaCodSubdep) % -103;
+       |CIERRA #agicen17;
+       |SI eOpSub = 2;
+           enLinInm = eaCodSubdep;
+           enDesModelo = 1;
+           |SUB_EJECUTA_NP ":basica/agicen17";
+           enDesModelo = 0;
+           |SI eaCodSubdep = "000"; |O eaCodSubdep = "   ";
+               eaCodSubdep = enLinInm; |QBF eaCodSubdep;
+               eaCodSubdep = ("000" + eaCodSubdep) % -103;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+   |CIERRA #dsmom030;
+|FPRC;
+
+|PROCESO SubOtros;
+   |ABRE #camansde;
+   |SI eOpSub = 1;
+       |CONSULTA_F_CLAVE #1#camansde,inferior11,superior11;
+       eaCodSubdep = #camansde#2; |QBF eaCodSubdep;
+   |FINSI;
+   |ET LecturaOtroS;
+       |DDEFECTO #camansde;
+       #camansde#0 = enEmpresa;
+       #camansde#1 = eaCodDep;
+       #camansde#2 = eaCodSubdep;
+       |LEE 040#camansde.=;
+       |SI FSalida ! 0; |Y eaCodSubdep ! "   ";
+           eswLect = 1;
+           |SI enQue ! 2;
+               |CONFI  "    SNo Existe Subdepartamento, Desea dar de Alta ";
+               |SI FSalida = 0;
+                   enLinInm = 0;
+                   |SUB_EJECUTA_NP ":contagen/camansde";
+                   eswLect = 0;
+                   |VETE LecturaOtroS;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+       eaNomSubdep = #camansde#3;
+       eaNo1Subdep = #camansde#4;
+       eaCodSubdep = #camansde#2;
+   |CIERRA #camansde;
+       |SI eOpSub = 2;
+           enLinInm = eaCodSubdep;
+           |SUB_EJECUTA_NP ":contagen/camansde";
+       |FINSI;
+|FPRC;
+
+|PROCESO pDepartamento;
+  aBlancs = " " * 78
+  |PINTA 2202, aBlancs;
+  #cafantas#8 = eaNombreAct;
+  #cafantas#10 = efActIni;
+  #cafantas#11 = efActFin;
+  |SI eaNombreAct ! "";
+      |ATRI P; |PINTA 2202, "Depar.: "; |ATRI 0;
+               |PINTA 2210, #cafantas#8;
+      |SI efActIni > "01.01.1900";
+          |ATRI S; |PINTA 2242, "F.Inicio: "; |ATRI 0;
+                   |PINTA 2251, #cafantas#10;
+      |FINSI;
+      |SI efActFin > "01.01.1900";
+          |ATRI S; |PINTA 2263, "F.Fin: "; |ATRI 0;
+                   |PINTA 2269, #cafantas#11;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO pSubdepar;
+  aBlancs = " " * 78
+  |PINTA 2302, aBlancs;
+  #cafantas#8 = eaNomSubdep;
+  #cafantas#9 = eaNo1Subdep;
+  |SI eaNomSubdep ! "";
+      |ATRI P; |PINTA 2302, "Subde.: "; |ATRI 0;
+               |PINTA 2310, #cafantas#8;
+               |PINTA 2342, #cafantas#9;
+  |FINSI;
+|FPRC;
+
+
+|PROCESO FiltroConcepto; |TIPO 6;
+  nFiltro = 0;
+  |SI enFilConc > 10;
+      nFiltro = 1;
+      enFilConc = enFilConc - 10;
+  |FINSI;
+
+  enArrend = 0;
+  eswLect  = 0;
+  |ABRE #dsmom030;
+  #dsmom030#0 = enConcepto;
+  |LEE 000#dsmom030.=;
+  |SI FSalida ! 0;
+      eswLect = 2;  || No existe Concepto
+      |MENAV "     No existe Concepto Automatico ";
+      |CIERRA #dsmom030;
+      |SI nFiltro = 0;  |ERROR; |FINSI; ||solo filtro de cuentas
+      |ACABA;
+  |FINSI;
+  aQueQuiero = "|NC";
+  aNumCampos = #dsmom030#aQueQuiero#;
+  nNumCampos = aNumCampos;
+  nNumCampos = nNumCampos - 1;
+  |SI nNumCampos ] 90;
+      |SI #dsmom030#4 = "S";  eaReperc = #dsmom030#90;  |FINSI;
+  |FINSI;
+  |CIERRA #dsmom030;
+
+|| ... solo sale en pantalla
+
+   |SI enFilConc = 1;    ||Tipo no IVA
+      |SI #dsmom030#4 = "S";
+          |SI snFiltr ! "X";
+              |MENAV "    El concepto no corresponde al Tipo de Apunte";
+          |FINSI;
+          |SI snFiltr = "S";
+              eswLect = 3;
+              |SI nFiltro = 0;  |ERROR; |FINSI; ||solo filtro de cuentas
+              |ACABA;
+          |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI enFilConc [ 1; |Y enFilNO = 0;
+       |SI snFiltrA ! "X"; |Y eaCuenta ! ""; |Y eaCuenta ! doce;
+           |HAZ FiltraCtaAsto;
+           |SI eswLect ! 0; |ACABA; |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SI #dsmom030#10 = "S"; enArrend = 1; |FINSI;
+   |SI #dsmom030#11 = "A"; enArrend = 2; |FINSI;
+   |SI #dsmom030#11 = "G"; enArrend = 2; |FINSI;
+   |SI #dsmom030#11 = "F"; enArrend = 2; |FINSI;
+   |SI #dsmom030#11 = "T"; enArrend = 2; |FINSI;
+   enTIVACon = #dsmom030#24;
+   enTVolOpe = #dsmom030#34;
+
+   |SI enFilConc = 2;    ||Tipo IVA
+      |SI #dsmom030#4 = "N";
+          |SI snFiltr ! "X";
+              |MENAV "    El concepto no es de IVA";
+          |FINSI;
+          |SI snFiltr = "S";
+              eswLect = 3;
+              |SI nFiltro = 0;  |ERROR; |FINSI; ||solo filtro de cuentas
+          |FINSI;
+          |ACABA;
+      |FINSI;
+   |FINSI;
+
+   |SI enFilConc = 3;    ||Tipo I.R.P.F.
+      |SI #dsmom030#5 = "N";
+          |SI snFiltr ! "X";
+              |MENAV "    El concepto no es de I.R.P.F.";
+          |FINSI;
+          |SI snFiltr = "S";
+              eswLect = 3;
+              |SI nFiltro = 0;  |ERROR; |FINSI; ||solo filtro de cuentas
+          |FINSI;
+          |ACABA;
+      |FINSI;
+   |FINSI;
+
+   |SI enFilConc = 2; |O enFilConc = 3;    ||Tipo I.R.P.F.
+      |SI aTipoIVA = "R";
+          eaCtaIVA = #dsmom030#20;
+          |SI #dsmom030#12 ! enLibIVA;
+              |SI snFiltr ! "X";
+                  |MENAV "    El concepto no corresponde a este Libro de IVA";
+              |FINSI;
+              |SI snFiltr = "S";
+                  eswLect = 3;
+                  |SI nFiltro = 0;  |ERROR; |FINSI; ||solo filtro de cuentas
+              |FINSI;
+              |ACABA;
+          |FINSI;
+      |FINSI;
+      |SI aTipoIVA = "S";
+          eaCtaIVA = #dsmom030#22;
+          |SI #dsmom030#14 ! enLibIVA;
+              |SI snFiltr ! "X";
+                  |MENAV "    El concepto no corresponde a este Libro de IVA";
+              |FINSI;
+              |SI snFiltr = "S";
+                  eswLect = 3;
+                  |SI nFiltro = 0;  |ERROR; |FINSI; ||solo filtro de cuentas
+              |FINSI;
+              |ACABA;
+          |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO FiltraCtaAsto;
+  eswLect = 1;
+  |SI #dsmom030#16 = "N"; |Y #dsmom030#17 = "N";
+    |Y #dsmom030#18 = "N"; |Y #dsmom030#19 = "N"; || No hay seleccion cuentas
+      eswLect = 0;
+      |ACABA;
+  |FINSI;
+
+  eswLect = 4;
+  |PARA p_nume1 = 52; |SI p_nume1 [ 71; |HACIENDO p_nume1 = p_nume1 + 1;
+        p_alfa2 = #dsmom030#p_nume1#; |QBT p_alfa2;
+        |SI p_alfa2 ! "";
+            p_alfa3 = p_alfa2 % 0;
+            p_nume2 = p_alfa3; p_nume2 = 100 + p_nume2;
+            p_alfa3 = p_nume2;
+            p_alfa1 = eaCuenta % p_alfa3;
+            |SI p_alfa1 = p_alfa2;
+                eswLect = 0;
+                |SAL;
+            |FINSI;
+        |FINSI;
+  |SIGUE;
+
+  |SI eswLect ! 0;
+      p_alfa1 = "    ERROR. NO ESTA INTRODUCIENDO UN CONCEPTO PARA ESTA CUENTA ";
+      |SI snFiltrA ! "X";
+          |MENAV p_alfa1;
+      |FINSI;
+      |SI snFiltrA = "S";
+          |SI nFiltro = 0;  |ERROR; |FINSI; ||solo filtro de cuentas
+      |SINO;
+          eswLect = 0;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|| ***********************************************************************
+|PROCESO VTemporal1;
+ |SI enFilConc = 1;    ||Tipo no IVA
+     |SI #dsmom030#4 = "S";  |ACABA;  |FINSI;
+ |FINSI;
+ |SI enFilConc = 2;    ||Tipo IVA
+     |SI #dsmom030#4 = "N";  |ACABA;  |FINSI;
+ |FINSI;
+ |SI enFilConc = 3;    ||Tipo I.R.P.F.
+     |SI #dsmom030#5 = "N";  |ACABA;  |FINSI;
+ |FINSI;
+ |SI enFilConc = 2; |O enFilConc = 3;    ||Tipo I.R.P.F.
+     |SI aTipoIVA = "R";
+         |SI #dsmom030#12 ! enLibIVA;  |ACABA;  |FINSI;
+     |FINSI;
+     |SI aTipoIVA = "S";
+         |SI #dsmom030#14 ! enLibIVA;   |ACABA;  |FINSI;
+     |FINSI;
+ |FINSI;
+
+  nNumCampos = 11;  ||solo la pantalla principal
+
+  #caw00030#0 = #dsmom030#0;
+  |LEE 041#caw00030.=;
+  |SI FSalida ! 0;
+      |DDEFECTO #caw00030;
+      #caw00030#0  = #dsmom030#0;
+      #caw00030#01 = #dsmom030#01;
+      #caw00030#02 = #dsmom030#02;
+      #caw00030#03 = #dsmom030#03;
+      #caw00030#04 = #dsmom030#04;
+      #caw00030#05 = #dsmom030#05;
+      #caw00030#06 = #dsmom030#06;
+      #caw00030#07 = #dsmom030#07;
+      #caw00030#08 = #dsmom030#08;
+      #caw00030#09 = #dsmom030#09;
+      #caw00030#10 = #dsmom030#10;
+      #caw00030#11 = #dsmom030#11;
+      #caw00030#96 = #dsmom030#96;
+      #caw00030#97 = #dsmom030#97;
+      #caw00030#98 = #dsmom030#98;
+      #caw00030#99 = #dsmom030#99;
+      |GRABA 020#caw00030.n;
+  |FINSI;
+  |LIBERA #caw00030;
+|FPRC;
+
+|DEFBUCLE VTemporal;
+  #dsmom030#1;
+  ;
+  001;
+  999;
+  ;
+  NULL, VTemporal1;
+|FIN;
+
+|PROCESO CreaConcepto;
+  aAlfa1 = enFilConc; |QBF aAlfa1;
+  aAlfa1 = aTipoIVA + aAlfa1;
+  eaFiCon = (aAlfa1 + Usuario) % 108;
+
+  |NOME_DAT #945 eaFiCon;
+  |DELINDEX #945;
+
+  |ABRE #945;
+  |BUCLE VTemporal;
+  |CIERRA #945;
+|FPRC;
+
+|| *************************************************************
+|RUTINA c_inf2;
+ |SI FSalida = "POSICION";
+     #caw00030#0 = enConcepto;
+ |SINO;
+     #caw00030#0 = 1;
+ |FINSI;
+|FRUT;
+
+|RUTINA c_sup2;
+ #caw00030#0 = 999;
+|FRUT;
+
+|PROCESO VerConcepto;
+  |NOME_DAT #945 eaFiCon;
+
+  |ABRE #945;
+  #caw00030#0 = 1;
+  |CONSULTA_F_CLAVE #1#caw00030,c_inf2,c_sup2;
+  enConcepto = #caw00030#0;
+  |CIERRA #945;
+|FPRC;
+
+|RUTINA c_inf30;
+ |SI FSalida = "POSICION";
+     #dsmom030#0 = enConcepto;
+ |SINO;
+     #dsmom030#0 = 1;
+ |FINSI;
+|FRUT;
+
+|RUTINA c_sup30;
+  #dsmom030#0 = 999;
+|FRUT;
+
+|PROCESO VerConcepto30;
+  |ABRE #130;
+  |SI enConcepto =0 ; #dsmom030#0 = 1; |FINSI;
+  |CONSULTA_F_CLAVE #1#dsmom030,c_inf30,c_sup30;
+  enConcepto = #dsmom030#0;
+  |CIERRA #130;
+|FPRC;
+
+|PROCESO OtroSubActividad;
+   eswLect = 0;
+   eaNomSubdep = "";
+   eaNo1Subdep = "";
+
+   |SI eaCodSubdep = "   ";    |ACABA;   |FINSI;
+
+
+|SI enSubde ! 1;
+    |SI enTipoTribut = 6;  |O enTipoTribut = 7;
+     |O enTipoTribut = 11; |O enTipoTribut = 12;
+     |O enTipoTribut = 16; |O enTipoTribut = 17;
+        enCultivo = eaCodSubdep;
+
+        |ABRE #dsmom033;
+        #dsmom033#0 = enCultivo;
+        |LEE 001#dsmom033.=;
+        |SI FSalida ! 0;
+            eswLect = 1;
+        |SINO;
+            eaCodSubdep = ("000" + enCultivo) % -103;
+            eaNomSubdep = #dsmom033#1 % 140;
+            eaNo1Subdep = #dsmom033#9;
+        |FINSI;
+        |CIERRA #dsmom033;
+    |SINO;
+        |ABRE #agicen17;
+        #agicen17#0 = enEmpresa;
+        #agicen17#1 = enActividad;
+        #agicen17#2 = eaCodSubdep;
+        |LEE 040#agicen17.=;
+        |SI FSalida ! 0;
+            eswLect = 1;
+        |FINSI;
+        eaNomSubdep = #agicen17#3;
+        eaNo1Subdep = #agicen17#5;
+        eaCodSubdep = #agicen17#2; |QBF eaCodSubdep;
+        eaCodSubdep = ("000" + eaCodSubdep) % -103;
+        |CIERRA #agicen17;
+   |FINSI;
+|SINO;
+        |ABRE #camansde;
+        #camansde#0 = enEmpresa;
+        #camansde#1 = eaCodDep;
+        #camansde#2 = eaCodSubdep;
+        |LEE 040#camansde.=;
+        |SI FSalida ! 0;
+            eswLect = 1;
+        |FINSI;
+        eaNomSubdep = #camansde#3;
+        eaNo1Subdep = #camansde#4;
+        eaCodSubdep = #camansde#2;
+        |CIERRA #camansde;
+|FINSI;
+|FPRC;
+
+|| ... ... ... FiltroRegimenIVA.
+|PROCESO FilRegimenIVA;
+   eswLect = 0;
+   |SI snFilAc = "N"; |ACABA; |FINSI;
+
+   |SI enFilRegIVA = 0;  || no tiene la actividad aun.
+       eOpDep     = 0;
+       eSwNoalta  = 1;
+       |HAZ Actividad;
+   |FINSI;
+
+   |SI enTipoIva = 0; |ACABA; |FINSI;  || no tengo tipo iva
+
+   eswLect = 0;
+   |ABRE #dsmom030;
+   #dsmom030#0 = enConcepto;
+   |LEE 000#dsmom030.=;
+   |SI FSalida ! 0;
+      eswLect = 2;  || No existe Concepto
+      |MENAV "     No existe Concepto Automatico ";
+      |CIERRA #dsmom030;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   enTIVACon = #dsmom030#24;  || es el principal
+   |CIERRA #dsmom030;
+
+   nSwBueno = 1;
+   |SI enTipoIva = enTIVACon;
+       nSwBueno = 0;
+   |SINO;
+       |PARA nNume1 = 78; |SI nNume1 [ 101; |HACIENDO nNume1 = nNume1 + 1;
+             |SI #dsmom030#nNume1# ! 0; |Y enTipoIva = #dsmom030#nNume1#;
+                 nSwBueno = 0;
+             |FINSI;
+             |SI nNume1 = 89; nNume1 = 93; |FINSI;
+             |SI nNume1 = 95; nNume1 = 99; |FINSI;
+       |SIGUE;
+   |FINSI;
+   |SI nSwBueno = 1;
+      |SI snFiltr ! "X";
+          |MENAV "    Atencion! No puede utilizar el Concepto para esta Actividad, no corresponde Tipo de IVA";
+      |FINSI;
+      |SI snFiltr = "S";
+          eswLect = 3;
+          |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;

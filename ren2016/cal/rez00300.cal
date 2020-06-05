@@ -1,0 +1,351 @@
+|FICHEROS;
+     rez00300  #0;
+
+     origen@   #100;
+     destino@  #200;
+|FIN;
+
+|VARIABLES;
+     aCarga          = "";
+     aMas            = "";
+     aBase           = "";
+     aDirBase        = "";
+     aDirDestino     = "";
+     aDirRenta       = "";
+     aFichSQL        = "";
+     aAlfa           = "";
+     aFichero        = "";
+     aQueQuiero      = "";
+     aNumCampos      = "";
+     aOrigen         = "";
+     aDestino        = "";
+     aIPRemoto       = "";
+     aIP             = "";
+     aSalida         = "";
+     aFrom           = "";
+     aTo             = "";
+     aAsunto         = "";
+     aMensaje        = "";
+
+     nHandle         = 0;
+     nNuevo          = 0;
+     nNumCampos      = 0;
+     nCampos         = 0;
+     nVentana        = 0;
+
+ {-1}aVent           = "";
+     aVent1          = 0;
+     aVent2          = 0;
+     aVent3          = 0;
+     aVent4          = 0;
+     aVent5          = "";
+
+     &enEmpresa      = 0;
+     &eaNombre       = "";
+     &eaUnidadBasico = "";
+|FIN;
+
+|PROCESO CargaRegistro;
+     |SI nNuevo = 0;
+         aAlfa = "[FICHERO]" + aMas + &13 + &10;
+         |XGRABA nHandle, aAlfa;
+         nNuevo = 1;
+     |FINSI;
+
+     aAlfa = "[INICIOREGISTRO]" + &13 + &10;
+     |XGRABA nHandle, aAlfa;
+
+     |PARA nCampos = 0;  |SI nCampos [ nNumCampos;  |HACIENDO nCampos = nCampos + 1;
+           aAlfa = #200nCampos;  |QBF aAlfa;
+           aAlfa = aAlfa + &13 + &10;
+           |XGRABA nHandle, aAlfa;
+     |SIGUE;
+
+     aAlfa = "[FINREGISTRO]" + &13 + &10;
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|PROCESO ProcesaFichero;
+     aCarga = aDirRenta + aMas + ".mas";
+     |CARGA_DEF aCarga, origen@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |CARGA_DEF aCarga, destino@;
+     |SI FSalida ! 0;
+         |DESCARGA_DEF #origen@;
+         |ACABA;
+     |FINSI;
+
+     aFichSQL = ("EX" + Usuario) % 108;
+
+     aAlfa  = "SELECT * FROM " + aMas + " INTO " + aFichSQL + " WHERE ";
+     aAlfa  = aAlfa + "0 == " + enEmpresa;
+     |SQL aAlfa;
+
+     nNuevo     = 0;
+     aQueQuiero = "|NC";
+     aNumCampos = #200#aQueQuiero#;
+     nNumCampos = aNumCampos;
+     nNumCampos = nNumCampos - 1;
+
+     |NOME_DAT #200 aFichSQL;
+     |ABRE #200;
+     |LEE 000#200p;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+             |HAZ CargaRegistro;
+             |LEE 000#200s;
+     |SIGUE;
+     |CIERRA #200;
+     |DELINDEX #200;
+
+     |DESCARGA_DEF #destino@;
+     |DESCARGA_DEF #origen@;
+|FPRC;
+
+|PROCESO ComprimeFichero;
+     aAlfa = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".TAR " + "REN" + (("00000" + enEmpresa) % -105) + ".TXT"
+     |ATAR aAlfa, aDirBase;
+
+     aAlfa = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".TAR";
+     |COMPRIME aAlfa;
+
+     aAlfa = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".TXT";
+     |FBORRA aAlfa;
+
+     aAlfa = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".TAR";
+     |FBORRA aAlfa;
+
+     aOrigen  = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".gz";
+     aDestino = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".TGZ";
+     |RENOMBRA_FICHERO aOrigen, aDestino;
+
+     aFichero = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".TGZ";
+|FPRC;
+
+|PROCESO Tipo12;  |TIPO 12;
+     |SI FSalida = 7;  |ACABA;  |FINSI;
+
+     |CONFI "0000SRealizamos la exportaci¢n";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |HAZ LeeUnidadBasico;
+
+     |SI #0#1 = "F";
+         aDirDestino = eaUnidadBasico + "\MODELOS";                       |RMKDIR aDirDestino;
+         aDirDestino = eaUnidadBasico + "\MODELOS\RENTA";                 |RMKDIR aDirDestino;
+         aDirDestino = eaUnidadBasico + "\MODELOS\RENTA\EXPORTACIONES";   |RMKDIR aDirDestino;
+         aDirDestino = eaUnidadBasico + "\MODELOS\RENTA\EXPORTACIONES\2016"; |RMKDIR aDirDestino;
+         aDirDestino = eaUnidadBasico + "\MODELOS\RENTA\EXPORTACIONES\2016\";
+
+         aOrigen     = aFichero;
+         aDestino    = aDirDestino + "REN" + (("00000" + enEmpresa) % -105) + ".TGZ";
+
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+
+         |MENAV "0000Fichero ubicado en \MODELOS\RENTA\EXPORTACIONES\2016 de su PC";
+     |FINSI;
+
+     |SI #0#1 = "E";
+         aIP      = "217.13.81.114";
+         aSalida  = "asmtp.diagram.es";  |QBF aSalida;
+         aFrom    = "hotline@diagram.es";
+         aTo      = #0#3;  |QBF aTo;
+         aAsunto  = "Exportacion Renta: " + (("00000" + enEmpresa) % -105) + " DE " + #0#2;
+         aMensaje = "REMITE: " + #0#2;  |QBF aMensaje;
+         aMensaje = aMensaje + " RENTA: " + (("00000" + enEmpresa) % -105) + " " + eaNombre;
+
+         |QBF aAsunto;
+         |QBF aMensaje;
+
+         |DSCORREO_ENVIA aIP, aSalida, aFrom, aTo, aAsunto, aMensaje, aFichero;
+         |SI FSalida < 0;
+             |MENAV "0000 Ha habido un error durante el envio.":
+         |SINO;
+             |MENAV "0000 El correo se ha enviado correctamente.";
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo0C2;  |TIPO 0;
+     |C_M #0#2, 1, "S";
+     |C_M #0#3, 1, "S";
+
+     |SI #0#1 = "F";
+         |C_M #0#2, 1, "N";
+         |C_M #0#3, 1, "N";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |VENTANA 0501, 3499, -1, 16, "Exportando la renta";
+     nVentana = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PTEC 802;  |PAUSA;
+
+     |CONTROL_SIMPLE 0, "LABEL,{{15}}EXPORTANDO LA RENTA", 1935, 1998, NULL;
+
+     |DBASE aBase;  |QBF aBase;
+     aDirRenta = aBase + "def/";
+     aDirBase  = aBase + "exportacion";  |MKDIR aDirBase;
+     aDirBase  = aBase + "exportacion/";
+
+     aFichero = aDirBase + "REN" + (("00000" + enEmpresa) % -105) + ".TXT";
+     |XABRE "WB", aFichero, nHandle;
+
+     aAlfa = "[RENTA]" + (("00000" + enEmpresa) % -105) + eaNombre; |QBF aAlfa;
+     aAlfa = aAlfa + &13 + &10;
+     |XGRABA nHandle, aAlfa;
+
+     aMas = "reacceso";  |HAZ ProcesaFichero;
+     aMas = "rem00100";  |HAZ ProcesaFichero;
+     aMas = "rem00101";  |HAZ ProcesaFichero;
+     aMas = "rem00102";  |HAZ ProcesaFichero;
+     aMas = "rem01005";  |HAZ ProcesaFichero;
+     aMas = "rem00016";  |HAZ ProcesaFichero;
+     aMas = "rem00017";  |HAZ ProcesaFichero;
+     aMas = "rem00018";  |HAZ ProcesaFichero;
+     aMas = "rem00020";  |HAZ ProcesaFichero;
+     aMas = "rem00021";  |HAZ ProcesaFichero;
+     aMas = "rem00022";  |HAZ ProcesaFichero;
+     aMas = "rem00023";  |HAZ ProcesaFichero;
+     aMas = "rem00024";  |HAZ ProcesaFichero;
+     aMas = "rem00025";  |HAZ ProcesaFichero;
+     aMas = "rem00026";  |HAZ ProcesaFichero;
+     aMas = "rem00027";  |HAZ ProcesaFichero;
+     aMas = "rem00028";  |HAZ ProcesaFichero;
+     aMas = "rem00029";  |HAZ ProcesaFichero;
+     aMas = "rem00030";  |HAZ ProcesaFichero;
+     aMas = "rem00031";  |HAZ ProcesaFichero;
+     aMas = "rem00032";  |HAZ ProcesaFichero;
+     aMas = "rem00033";  |HAZ ProcesaFichero;
+     aMas = "rem00034";  |HAZ ProcesaFichero;
+     aMas = "rem00035";  |HAZ ProcesaFichero;
+     aMas = "rem00036";  |HAZ ProcesaFichero;
+     aMas = "rem00037";  |HAZ ProcesaFichero;
+     aMas = "rem00040";  |HAZ ProcesaFichero;
+     aMas = "rem00041";  |HAZ ProcesaFichero;
+     aMas = "rem00042";  |HAZ ProcesaFichero;
+     aMas = "rem00043";  |HAZ ProcesaFichero;
+     aMas = "rem00044";  |HAZ ProcesaFichero;
+     aMas = "rem00045";  |HAZ ProcesaFichero;
+     aMas = "rem00046";  |HAZ ProcesaFichero;
+     aMas = "rem00047";  |HAZ ProcesaFichero;
+     aMas = "rem00048";  |HAZ ProcesaFichero;
+     aMas = "rem00050";  |HAZ ProcesaFichero;
+     aMas = "rem00051";  |HAZ ProcesaFichero;
+     aMas = "rem00052";  |HAZ ProcesaFichero;
+     aMas = "rem00053";  |HAZ ProcesaFichero;
+     aMas = "rem00054";  |HAZ ProcesaFichero;
+     aMas = "rem00055";  |HAZ ProcesaFichero;
+     aMas = "rem00056";  |HAZ ProcesaFichero;
+     aMas = "rem00057";  |HAZ ProcesaFichero;
+     aMas = "rem00058";  |HAZ ProcesaFichero;
+     aMas = "rem00059";  |HAZ ProcesaFichero;
+     aMas = "rem00060";  |HAZ ProcesaFichero;
+     aMas = "rem00061";  |HAZ ProcesaFichero;
+     aMas = "rem00062";  |HAZ ProcesaFichero;
+     aMas = "rem00063";  |HAZ ProcesaFichero;
+     aMas = "rem00064";  |HAZ ProcesaFichero;
+     aMas = "rem00065";  |HAZ ProcesaFichero;
+     aMas = "rem00099";  |HAZ ProcesaFichero;
+     aMas = "rem05000";  |HAZ ProcesaFichero;
+     aMas = "rem05001";  |HAZ ProcesaFichero;
+     aMas = "rem05002";  |HAZ ProcesaFichero;
+     aMas = "rem05003";  |HAZ ProcesaFichero;
+     aMas = "rem05004";  |HAZ ProcesaFichero;
+     aMas = "rem05005";  |HAZ ProcesaFichero;
+     aMas = "rem05006";  |HAZ ProcesaFichero;
+     aMas = "rem05007";  |HAZ ProcesaFichero;
+     aMas = "rem05008";  |HAZ ProcesaFichero;
+     aMas = "rem05009";  |HAZ ProcesaFichero;
+     aMas = "rem05010";  |HAZ ProcesaFichero;
+     aMas = "rem05011";  |HAZ ProcesaFichero;
+     aMas = "rem05012";  |HAZ ProcesaFichero;
+     aMas = "rem05013";  |HAZ ProcesaFichero;
+     aMas = "rem05014";  |HAZ ProcesaFichero;
+     aMas = "rem05015";  |HAZ ProcesaFichero;
+     aMas = "rem05016";  |HAZ ProcesaFichero;
+     aMas = "rem05017";  |HAZ ProcesaFichero;
+     aMas = "rem05018";  |HAZ ProcesaFichero;
+     aMas = "rem05019";  |HAZ ProcesaFichero;
+     aMas = "rem05020";  |HAZ ProcesaFichero;
+     aMas = "rem05021";  |HAZ ProcesaFichero;
+     aMas = "rem05022";  |HAZ ProcesaFichero;
+     aMas = "rem05023";  |HAZ ProcesaFichero;
+     aMas = "rem05024";  |HAZ ProcesaFichero;
+     aMas = "rem05025";  |HAZ ProcesaFichero;
+     aMas = "rem05026";  |HAZ ProcesaFichero;
+     aMas = "rem05027";  |HAZ ProcesaFichero;
+     aMas = "rem05028";  |HAZ ProcesaFichero;
+     aMas = "rem05029";  |HAZ ProcesaFichero;
+     aMas = "rem05030";  |HAZ ProcesaFichero;
+     aMas = "rem05031";  |HAZ ProcesaFichero;
+     aMas = "rem05032";  |HAZ ProcesaFichero;
+     aMas = "rem05033";  |HAZ ProcesaFichero;
+
+     |XCIERRA nHandle;
+
+     |HAZ ComprimeFichero;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nVentana;
+
+     |VENTANA 0501, 3499, -1, 16, "";
+     nVentana = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PTEC 802;  |PAUSA;
+
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0;
+         |DDEFECTO #0;
+         |GRABA 020#0b;
+     |FINSI;
+
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+         |GRABA 020#0a;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+
+     |FBORRA aFichero;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nVentana;
+|FPRO;

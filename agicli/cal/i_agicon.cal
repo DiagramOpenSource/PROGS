@@ -1,0 +1,502 @@
+      -------------------------------------------------------------
+      ___________________..ENLACE CON AGICONT..____________________
+      _____________________________________________________________
+
+|FICHEROS;
+     camandia #80;  || diarios (agicont)
+     cacuenta #85;  || cuentas (agicont)
+     catradia #88;  || trabajo act. cuentas (facges)
+     caconasi #90;  || contador documentos (agicont)
+     camaasic #91;  || apuntes cabs. (agicont)
+     camaasil #92;  || apuntes lins. (agicont)
+     asnompat #93;  || control directorios (facges)
+     asempcon #94;  || empresas contables (facges)
+     canempre #95;  || empresas contables (agicont)
+     asw00001 #99;  || trabajo de enlace (facges)
+|FIN;
+
+|VARIABLES;
+     enlace_fich = "";
+     enlace_empr = "";
+     sw_enlace = 0;
+     Fenlaza = 0;
+     enfa1 = "";
+     enfa2 = "";
+     enfa3 = "";
+     enfa4 = "";
+     nume1 = 0;
+     nume2 = 0;
+     nume3 = 0;
+     nume4 = 0;
+     ult_apunt = 0;
+     c_fecha = "";
+     digcu = 0;
+     conte = "";
+     signe = "";
+     digcu1 = 0;
+     digcu2 = 0;
+     &path = "";
+     &path1 = "";
+     &dig1 = 0;
+     &dig3 = 0;
+     &dig4 = 0;
+     &dig5 = 0;
+     &dig6 = 0;
+     &dig7 = 0;
+     &dig8 = 0;
+     &dig9 = 0;
+     &fecalf = "";
+     &ini = 0;
+     &mes = "";
+     &mesfec = 0;
+     &mesac = 0;
+     &a = 0;
+     &b = 0;
+     &c = 0;
+     &modcon = 0;
+     &codcon = 0;
+     &importe = 0;
+     &ressum = 0;
+     &opera = "";
+     d_diari = 0;
+     d_opera = "";
+     d_impor = 0;
+     sw_rup = 0;
+     fec_ant = 0;
+     con_ant = "";
+     impor_a = 0;
+     impor_cli = 0;
+|FIN;
+____________________________________/ rutinas de grabacion de asientos
+|PROCESO apuntes;
+|SI impor_a ! 0;|Y conte ! "            ";|Y digcu ! 0;
+    |DDEFECTO #92;
+        #92#00 = #99#12;      || diario
+        #92#01 = c_fecha;     || fecha
+        #92#02 = #90#1;       || documento
+        #92#03 = ult_apunt;   || apunte
+        #92#04 = conte;       || cuenta
+        #92#05 = digcu;       || digito cuenta
+        #92#06 = #99#9;       || concepto
+        #92#07 = #99#10;      || descripcion
+        #92#08 = signe;       || signo
+        #92#09 = impor_a;     || importe
+
+    |SI #92#9 < 0;  #92#9 = -#92#9;     |FINSI;   || cambia signo al importe
+
+    |SI #92#08 = "D";
+            #92#16 = #92#4;
+            #92#17 = #92#5;
+    |SINO;
+            #92#10 = #92#4;
+            #92#11 = #92#5;
+    |FINSI;
+        #92#12 = "";          || soport./reperc.
+        #92#13 = 0;           || libro
+        #92#14 = 0;           || orden
+        #92#15 = "";          || serie
+        #92#19 = "";          || tipo acumulador
+        #92#20 = 0;           || numero acumulador
+        #92#21 = "";          || departamento
+
+    |GRABA 020#92n;
+    |SI FSalida = 0;
+        |HAZ cabecera;
+            ressum = #92#9;
+        |HAZ actualiz1;     || actualiza cuentas
+            opera = "A";
+        |HAZ altatra;       || actualiza niveles inferiores
+            d_diari = #92#0;
+            d_opera = #92#8;
+            d_impor = #92#9;
+        |HAZ actu_diari;    || actualiza diario
+            ult_apunt = ult_apunt + 10;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO cabecera;
+|DDEFECTO #91;
+    #91#0 = #92#0;
+    #91#1 = #92#1;
+    #91#2 = #92#2;
+|LEE 101#91=;
+    Fenlaza = FSalida;
+    #91#0 = #92#0;         || diario
+    #91#1 = #92#1;         || fecha
+    #91#2 = #92#2;         || documento
+    #91#3 = #91#2;         || asiento
+|SI #92#8 = "D";
+        #91#4 = #91#4 + #92#9;
+    |SI #91#09 = 0; #91#08 = #92#4; #91#09 = #92#5; |FINSI; || contrp.HABER
+|FINSI;
+|SI #92#8 = "H";
+        #91#5 = #91#5 + #92#9;
+    |SI #91#11 = 0; #91#10 = #92#4; #91#11 = #92#5; |FINSI; || contrp.DEBE
+|FINSI;
+|SI Fenlaza = 0;  |GRABA 020#91a;  |FINSI;
+|SI Fenlaza ! 0;  |GRABA 020#91n;  |FINSI;
+|LIBERA #91;
+|FPRC;
+____________________________________/ rutinas de control de grabacion
+|PROCESO la_fecha;
+    enfa1 = #99#5 % 102;      || dia
+    enfa2 = #99#5 % 302;      || mes
+
+    enfa3 = #95#26;
+    enfa3 = "00" + enfa3;
+    enfa3 = enfa3 % -102;     || año
+|SI enfa3 < "80";  enfa3="20"+enfa3;  |SINO;  enfa3="19"+enfa3;  |FINSI;
+
+    c_fecha = enfa1 + "." + enfa2 + "." + enfa3;
+|FPRC;
+
+|PROCESO el_digito;
+    digcu = 0;
+
+    enfa1 = conte;  |QBF enfa1;
+    enfa2 = enfa1 % 0;
+    nume1 = enfa2;
+
+|SI #95#14 = nume1; digcu = 1;     |FINSI;
+|SI #95#15 = nume1; digcu = 2;     |FINSI;
+|SI #95#16 = nume1; digcu = 3;     |FINSI;
+|SI #95#17 = nume1; digcu = 4;     |FINSI;
+|SI #95#18 = nume1; digcu = 5;     |FINSI;
+|SI #95#19 = nume1; digcu = 6;     |FINSI;
+|FPRC;
+
+|PROCESO asiento;
+|SI fec_ant ! #99#5;|O con_ant ! #99#7;|O sw_rup = 0;
+    |SI sw_rup ! 0;
+        |HAZ asiento2;   || apunte de la contrapartida
+    |FINSI;
+
+        impor_cli = 0;        || acumulador del importe
+        ult_apunt = 1;        || lineas de apuntes
+    |HAZ contador;            || nro. de documento
+
+        sw_rup = 1;           || primera ruptura y primer asiento
+        fec_ant = #99#5;
+        con_ant = #99#7;
+|FINSI;
+
+    conte = #99#6;  |HAZ el_digito;     digcu1 = digcu;
+    conte = #99#7;  |HAZ el_digito;     digcu2 = digcu;
+
+|SI digcu1 = 0;|O digcu2 = 0;
+    |SI digcu1 = 0;
+        |MENAV "    ERROR! NIVEL de CUENTA CLIENTE desconocido; ASIENTO ANULADO ...";
+    |FINSI;
+    |SI digcu2 = 0;
+        |MENAV "    ERROR! NIVEL de CUENTA CONTRAPARTIDA desconocido; ASIENTO ANULADO ...";
+    |FINSI;
+|SINO;
+    |HAZ la_fecha;
+    |HAZ asiento1;       || apunte del cliente
+
+        #99#13 = #90#1;       || marca numero de asiento
+        #99#14 = "*";         || marca como contabilizado
+    |GRABA 020#99a;
+|FINSI;
+
+|LIBERA #99;
+|FPRC;
+
+|PROCESO asiento1;            || apunte del cliente
+|SI #99#8 = "D";    signe = "H";   |FINSI;
+|SI #99#8 = "H";    signe = "D";   |FINSI;   || signo
+    conte = #99#6;                           || cuenta cliente
+    digcu = digcu1;                          || digito
+    impor_a = #99#11;                        || importe linea
+|HAZ apuntes;
+
+|SI signe = "D";
+        impor_cli = impor_cli + #92#9;      || acumula para la contrapartida
+|SINO;
+        impor_cli = impor_cli - #92#9;      || acumula para la contrapartida
+|FINSI;
+|FPRC;
+
+|PROCESO asiento2;            || apunte de la linea
+    signe = #99#8;                           || signo
+    conte = #99#7;                           || cuenta contrapartida
+    digcu = digcu2;                          || digito
+
+|SI impor_cli < 0;
+        impor_cli = -impor_cli;
+        signe = "D";
+|SINO;
+        signe = "H";
+|FINSI;
+
+    impor_a = impor_cli;                     || importe total
+|HAZ apuntes;
+|FPRC;
+
+|PROCESO lee_conta1;
+|SI sw_enlace = 0;
+        sw_enlace = 1;
+    |ERROR10;            || para saber si hay alguno para contabilizar
+|SINO;
+    |HAZ asiento;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE lee_conta;
+ #99#1;
+ 14;
+ 0,     0,   0, " ";
+ 9, 99999, 999, " ";
+ be;
+ NULL, NULL, NULL, NULL, NULL, lee_conta1;
+ #99#5, #99#7, #99#0, #99#1, #99#2;
+|FIN;
+
+|PROCESO enlazando;
+    dig1 = #95#11;       || desde mes
+    dig3 = #95#13;       || nro. niveles
+    dig4 = #95#14;       || 1 nivel
+    dig5 = #95#15;       || 2 nivel
+    dig6 = #95#16;       || 3 nivel
+    dig7 = #95#17;       || 4 nivel
+    dig8 = #95#18;       || 5 nivel
+    dig9 = #95#19;       || 6 nivel
+
+|HAZ inicio_mayor;
+
+|ABRE #91;
+|ABRE #92;
+|BUCLE lee_conta;
+|SI sw_rup ! 0;
+    |HAZ asiento2;
+|FINSI;
+|CIERRA #91;
+|CIERRA #92;
+
+|HAZ actua_mayor;
+|FPRC;
+____________________________________/ rutinas de inicio del enlace
+|PROCESO enlaza_path;
+    enlace_fich = #93#2;    |QBF enlace_fich;          || direc. empresa
+
+|PATH_DAT #95 enlace_fich;         || empresas contables
+
+    enfa1 = #94#1; enfa1 = "00000" + enfa1; enfa1 = enfa1 % -105;  || empresa
+    enfa2 = #94#2;                                               || ejercicio
+    enlace_empr = enlace_fich + enfa1 + enfa2 + "/";   || direc. ficheros
+
+|PATH_DAT #80 enlace_empr;         || diarios
+|PATH_DAT #85 enlace_empr;         || cuentas
+|PATH_DAT #90 enlace_empr;         || contador
+|PATH_DAT #91 enlace_empr;         || apuntes cabs.
+|PATH_DAT #92 enlace_empr;         || apuntes lins.
+
+    path  = enlace_empr;
+    path1 = (enlace_fich - "fich/") + "pan/";     || para el 'camaapua'
+|FPRC;
+
+|PROCESO enlaza_inicio;
+|ABRE #93;
+|LEE 000#93p;                 || lee control directorios
+    Fenlaza = FSalida;
+|CIERRA #93;
+|SI Fenlaza = 0;
+    |ABRE #94;
+    |LEE 000#94p;             || lee empresas contables
+        Fenlaza = FSalida;
+    |CIERRA #94;
+    |SI Fenlaza = 0;
+        |HAZ enlaza_path;     || construye los path's
+        |ABRE #95;
+            #95#2 = #94#1;
+            #95#3 = #94#2;
+        |LEE 000#95=;
+            Fenlaza = FSalida;
+        |CIERRA #95;
+        |SI Fenlaza = 0;
+            |HAZ enlazando;        || lectura y contabilizacion
+        |SINO;
+            |MENAV "    ATENCION!!! No existe Empresa en AGICONT ...";
+        |FINSI;
+    |SINO;
+        |MENAV "    ATENCION!!! Empresa Contable INDEFINIDA ...";
+    |FINSI;
+|SINO;
+    |MENAV "    ATENCION!!! Control de Directorios INDEFINIDO ...";
+|FINSI;
+|FPRC;
+
+|PROCESO enlaza_agicont; |TIPO 9;
+    sw_enlace = 0;
+|BUCLE lee_conta;        || comprueba que haya algo
+
+|SI sw_enlace = 1;
+    |CONFI "2400NAsientos Pendientes; actualizar en AGICONT (S/N): ";
+    |SI FSalida = 0;
+        |HAZ enlaza_inicio;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+
+____________________________________/ CONTADOR DE ASIENTOS
+|CALCULO contador;
+|ABRE #90;
+|LEE 101#90p;
+|SI FSalida ! 0;
+    |DDEFECTO #90;
+    |GRABA 020#90n;
+    |LEE 101#90p;
+|FINSI;
+    #90#1 = #90#1 + 1;
+|GRABA 020#90a;
+|LIBERA #90;
+|CIERRA #90;
+|FCAL;
+
+____________________________________/ ACTUALIZA DIARIO
+|CALCULO actu_diari;
+|ABRE #80;
+    #80#0 = d_diari;
+|LEE 101#80=;
+|SI FSalida ! 0;
+    |DDEFECTO #80;
+        #80#0 = d_diari;
+        #80#1 = "<DIARIO SIN DEFINIR>";
+    |GRABA 020#80n;
+    |LEE 121#80=;
+|FINSI;
+|SI d_opera = "D";
+        #80#2 = #80#2 + d_impor;        || debe
+|SINO;
+        #80#3 = #80#3 + d_impor;        || haber
+|FINSI;
+|GRABA 020#80a;
+|LIBERA #80;
+|CIERRA #80;
+|FCAL;
+
+____________________________________/ ACTUALIZACION DEL MAYOR
+|CALCULO actualiz1;
+|ABRE #85;
+    #85#0 = #92#4;
+    #85#1 = #92#5;
+|LEE 101#85=;
+|SI #92#0 = 0;
+    |SI #92#8 = "D";
+            #85#9 = #85#9 + ressum;
+            #85#51 = #85#51 + ressum;
+    |SINO;
+            #85#10 = #85#10 + ressum;
+            #85#52 = #85#52 + ressum;
+    |FINSI;
+        #85#11 = #85#9 - #85#10;
+        #85#53 = #85#51 - #85#52;
+|SINO;
+    |SI #92#0 = 99;
+        |SI #92#8 = "D";
+                #85#48 = #85#48 + ressum;
+                #85#51 = #85#51 + ressum;
+        |SINO;
+                #85#49 = #85#49 + ressum;
+                #85#52 = #85#52 + ressum;
+        |FINSI;
+            #85#50 = #85#48 - #85#49;
+            #85#53 = #85#51 - #85#52;
+    |SINO;
+        |HAZ actualiz2;
+    |FINSI;
+|FINSI;
+|SI #85#58 < #92#1;
+        #85#58 = #92#1;
+|FINSI;
+|GRABA 020#85a;
+|LIBERA #85;
+|CIERRA #85;
+|FCAL;
+
+|CALCULO actualiz2;
+    ini = dig1;
+    fecalf = #92#1;
+    mes = fecalf % 402;
+    mesfec = mes;
+|SI ini = 1;
+        mesac = mesfec;
+|SINO;
+        mesac = (mesfec - ini) + 1;
+    |SI mesac [ 0;
+            mesac = (13 - ini) + mesfec;
+    |FINSI;
+|FINSI;
+    a = (mesac * 3) + 9;
+    b = a + 1;
+    c = a + 2;
+|SI #92#8 = "D";
+        #85a = #85a + ressum;
+        #85#51 = #85#51 + ressum;
+|SINO;
+        #85b = #85b + ressum;
+        #85#52 = #85#52 + ressum;
+|FINSI;
+    #85c = #85a - #85b;
+    #85#53 = #85#51 - #85#52;
+|FCAL;
+
+|CALCULO altatra;
+    modcon = 1;
+|ABRE #88;
+    #88#0 = codcon;
+    #88#1 = #92#4;
+    #88#2 = #92#5;
+    #88#3 = #92#1;
+    #88#4 = #92#8;
+    #88#6 = #92#0;
+|LEE 101#88=;
+|SI FSalida ! 0;
+    |DDEFECTO #88;
+        #88#0 = codcon;
+        #88#1 = #92#4;
+        #88#2 = #92#5;
+        #88#3 = #92#1;
+        #88#4 = #92#8;
+        #88#6 = #92#0;
+    |GRABA 101#88b;
+|FINSI;
+    importe = #92#9;
+|SI opera = "B";
+        importe = -importe;
+|FINSI;
+    #88#5 = #88#5 + importe;
+|GRABA 101#88a;
+|LIBERA #88;
+|CIERRA #88;
+|FCAL;
+
+|PROCESO inicio_mayor;
+|DDEFECTO #88;
+|ABRE #88;
+|LEE 101#88u;
+|SI FSalida ! 0;
+        #88#0 = 1;
+|SINO;
+        #88#0 = #88#0 + 1;
+|FINSI;
+|GRABA 000#88n;
+    codcon = #88#0;
+|LIBERA #88;
+|CIERRA #88;
+|FPRC;
+
+|PROCESO actua_mayor;
+|SI modcon = 0;
+    |ABRE #88;
+    |DDEFECTO #88;
+        #88#0 = codcon;
+    |LEE 000#88=;
+    |SI FSalida = 0;     |BORRA 020#88a;     |FINSI;
+    |CIERRA #88;
+|SINO;
+    |CORRE "agiaapua.run"
+|FINSI;
+|FPRC;

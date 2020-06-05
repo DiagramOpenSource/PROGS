@@ -1,0 +1,928 @@
+|| -----------------------------------------------------------------------||
+|| dsedmenu.cal                                                [dstool]   ||
+||                                                                        ||
+|| Utilidad para editar menus usando el control TREE. Muy util para       ||
+|| retocar o a¤adir alguna opcion puntual. Desaconsejable para editar     ||
+|| gordos.                                                                ||
+||                                                                        ||
+|| Ini: 21jun2006                                                         ||
+|| Ult: 21jun2006                                           dsPRODUCCION  ||
+|| -----------------------------------------------------------------------||
+/*
+    MEJORAS.
+    1. pantalla 1 --> si no le damos aplicacion,
+       que pueda editar el principal (eso es delicado)
+
+*/
+
+
+
+|FICHEROS;
+     dsedmenu                     #000;
+     dsw00015                     #010;  || tmp estructura de nodos
+
+     dsw00016                     #101,MANTE;  || pantalla.1
+     dsw00017                     #102,MANTE;  || pantalla.2
+
+     refer@                       #200;
+|FIN;
+
+|VARIABLES;
+
+     aAlfa     = "";
+     aAlfa2    = "";
+     asw       = "";
+     naux      = 0;
+     naux2     = 0;
+
+     aDBASS    = "";
+     swNuevoMenu = 0;              || es un menu nuevo a crear
+     afmen     = "";               || el fichero del menu
+     nFich     = 0;
+     aLinea    = "";
+     nLon      = 0;
+
+     aDescMenu = "";               || descriptor del menu
+     aDescNodo = "";               || desc del item del menu
+     aBin      = "";               || el bin (si lo llevara)
+     swBin     = 0;                || indica si lleva bin o no
+     nNodo     = 0;
+
+     nProfIndice = 0               || Indica por cada entrada de menu ...
+
+     swError   = 0;
+
+     _aCad     = "";
+     _aCad2    = "";
+     _nPos     = 0;
+     _nComas   = 0;
+
+|FIN;
+
+
+|PROGRAMA;
+     || Pantalla inicial (1)
+     |PINPA #0#101;
+     |PINDA #0#101;
+     |ENDATOS #1#101;
+
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     || Hemos validado la entrada -> COMENZAMOS.
+
+     || Borrando el TMP
+||   aAlfa = "ed" + Usuario; |NOME_DAT #010#aAlfa#;
+     |ABRE     #010;
+     |CIERRA   #010;
+     |DELINDEX #010;
+
+
+     || Si hay que traerse el menu .. nos lo traemos.
+     || si hay errores, pasamos.
+     |SI swNuevoMenu = 0;
+          swError = 0;
+          |HAZ men_tmp;
+          |SI swError = 1;
+               |MENAV "0000ERROR: Problemas en la importacion del menu.";
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |PAUSA;
+
+     || en este punto ya tenemos el menu en la estructura
+     || es hora de comenzar a pintar la pantallica.
+
+
+
+
+
+
+     || Borrando el TMP
+||     |ABRE     #010;
+||     |CIERRA   #010;
+||     |DELINDEX #010;
+
+
+|FPRO;
+
+
+
+|| -------------------------------------------------------------------
+|| Proceso encargado de inportar el .men y cargarlo en la estructura
+|| para poder visualizarlo en el arbol oportunamente.
+
+|PROCESO men_tmp;
+
+     nNodo = 1;
+     |HAZ IniIndiceNodo;
+
+     |ABRE     #010;
+     |XABRE "", afmen, nFich;
+
+     |XLEE nFich, 255, aLinea;
+     |PARA; |SI FSalida ] 0; |HACIENDO;
+
+          |QBF aLinea;
+
+          _aCad = aLinea;
+          |HAZ QBP;
+          aLinea = _aCad;
+          nLon   = (A\ aLinea % 0 );
+
+          || si es una linea vacia ... pasa
+          |SI nLon [ 0
+               |VETE FinBucle;
+          |FINSI;
+
+          aAlfa = aLinea % 101;
+
+          || si es un comentario ....
+          |SI aAlfa = ";";
+               |VETE FinBucle;
+          |FINSI;
+
+          || si es la linea del descriptor del menu ...
+          |SI aAlfa = "#";
+               aDescMenu = aLinea - "#";
+               |VETE FinBucle;
+          |FINSI;
+
+          || vamos a buscar el caracter ":" y contamos las comas
+          || cual es la profundidad del menu.
+          || es obligatorio que lo lleve
+          _nPos = 1;
+          _aCad = aLinea;
+          |HAZ CuentaComas;
+          |SI _nComas = 0;          || pasando de esta linea pues.
+               |VETE FinBucle;
+          |FINSI;
+          nProfIndice = _nComas + 1;
+
+
+          || vamos a buscar el caracter "{" y devolvemos el descriptor
+          || es obligatorio que lo lleve
+          _nPos = _nPos + 1;        || posicion del proximo caracter valido
+          _aCad = aLinea;
+          |HAZ DameDescMenu;
+          aDescNodo = _aCad2;
+
+          |QBF aDescNodo;
+          naux = (A\ aDescNodo % 0 );
+          |SI naux = 0;
+               |VETE FinBucle;
+          |FINSI;
+
+
+          || y por ultimo, buscamos el caracter "}" y sacamos el bin
+          || que puede que lo lleve o no.
+          _nPos = _nPos + 2;        || posicion del proximo caracter valido
+          _aCad = aLinea;
+          |HAZ DameBinMenu;
+          aBin = _aCad2;
+
+          |QBF aBin;
+          naux = (A\ aBin % 0 );
+          swBin = 1;
+          |SI naux = 0;
+               swBin = 0;
+          |FINSI;
+
+          || -------------------------------------------------
+          || ya hemos analizado la linea del menu
+          |HAZ CreaIndiceNodo;
+
+          |DDEFECTO #010;
+          #010#00 = nNodo;
+          #010#01 = aDescNodo;
+          #010#02 = swBin;
+          #010#03 = aBin;
+          #010#04 = 0;
+          #010#05 = _idPadre
+          #010#06 = _indice;
+          #010#07 = "";
+          #010#08 = 0;
+          |GRABA 040#010.n;
+
+       |ET FinBucle;
+          || leemos la siguiente linea.
+          |XLEE nFich, 255, aLinea;
+
+     |SIGUE;
+
+     |XCIERRA nFich;
+     |CIERRA   #010;
+
+|FPRC;
+
+
+
+
+
+
+
+
+
+|| ------------------------------------------------------------------
+|| estos dos procedures sirven para numerar los indices del tree
+|| a numeritos seguidos y sin saltos, transformando los indices de los
+|| menus a estos numeros secuenciales.
+
+**** VERIFICA QUE EL SISTEMA DE INDICES ES CORRECTO TAL Y COMO ME LO
+**** HE DISE¤ADO,
+
+
+|VARIABLES;
+     MAX = 100;
+     {100}nItems = 0;
+|FIN;
+
+|PROCESO IniIndiceNodo;
+|FPRC;
+
+|PROCESO CreaIndiceNodo;
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------------
+|| procesos relativos a la pantalla (1)
+|| en la pantalla uno preguntamos si es un menu nuevo o una carga
+|| de un fichero.men
+|| los controles oportunos si existe el ficehro y tal...
+|| -----------------------------------------------------------------
+|PROCESO ModoEdicion;
+     |SI #101#00 = "S";
+          swNuevoMenu = 1;
+          |C_M #101#01, 1, "S";
+          |C_M #101#02, 1, "N";
+          |C_M #101#03, 1, "N";
+     |SINO;
+          swNuevoMenu = 0;
+          |C_M #101#01, 1, "N";
+          |C_M #101#02, 1, "S";
+          |C_M #101#03, 1, "S";
+     |FINSI;
+|FPRC;
+
+|PROCESO menExiste;
+     |SI swNuevoMenu = 1; |ACABA; |FINSI;
+
+     |DBASS aDBASS;   |QBT aDBASS;
+     aAlfa = #101#02; |QBT aAlfa;
+     aAlfa2= #101#03; |QBT aAlfa2;
+
+     afmen = aDBASS + aAlfa + "/" + aAlfa2 + ".men";
+     |XABRE "E", afmen, 0;
+     |SI FSalida < 0;
+          |MENAV "0000ERROR: Fichero de menu no existe.";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------
+|| UTILIDADES CON CADENAS (una vez mas)
+|| -----------------------------------------------------------
+|VARIABLES;
+     _xx    = 0;
+     _naux  = 0;
+     _nLon  = 0;
+     _aChar = "";
+     _aAlfa = "";
+     _sw    = 0;
+|FIN;
+
+
+|| --------------------------------------------
+|| Quita blancos principio.
+|| entrada :: _aCad
+|| salida  :: _aCad
+|PROCESO QBP;
+     _sw    = 1;              || vale uno hasta que encontremos un NO-BLANCO
+     _aAlfa = "";
+
+     _nLon = (A\ _aCad % 0 );
+     |PARA _xx = 1; |SI _xx [ _nLon; |HACIENDO _xx = _xx + 1;
+
+          _naux = (100 * _xx) + 1;
+          _aChar = (_aCad % _naux);
+
+          |SI _sw = 1; |Y _aChar = " ";
+               _sw = 1;
+          |SINO;
+               _sw = 0;
+               _aAlfa = _aAlfa + _aChar;
+          |FINSI;
+
+     |SIGUE;
+     _aCad = _aAlfa;
+
+|FPRC;
+
+
+
+|| --------------------------------------------
+|| Buscamos hasta el caracter ":" y contamos el numero de comas
+|| entrada :: _nPos      || a partir de donde contamos
+|| entrada :: _aCad
+|| salida  :: _nComas
+|PROCESO CuentaComas;
+
+     _nComas = 0;
+     _sw     = 0;
+     _nLon   = (A\ _aCad % 0 );
+     |PARA _xx = _nPos; |SI _xx [ _nLon; |Y _sw = 0; |HACIENDO _xx = _xx + 1;
+
+          _naux = (100 * _xx) + 1;
+          _aChar = (_aCad % _naux);
+
+          |SI _aChar = ",";
+               _nComas = _nComas + 1;
+          |FINSI;
+          |SI _aChar = ":";
+               _sw = 1;
+          |FINSI;
+
+     |SIGUE;
+
+|FPRC;
+
+
+
+
+
+|| --------------------------------------------
+|| Buscamos hasta el caracter "{" y devolvemos el desc.nodo
+|| entrada :: _nPos      || a partir de donde contamos
+|| entrada :: _aCad
+|| salida  :: _aCad2
+|PROCESO DameDescMenu;
+     _aCad2  = "";
+     _sw     = 0;
+     _nLon   = (A\ _aCad % 0 );
+     |PARA _xx = _nPos; |SI _xx [ _nLon; |Y _sw = 0; |HACIENDO _xx = _xx + 1;
+
+          _naux = (100 * _xx) + 1;
+          _aChar = (_aCad % _naux);
+
+          |SI _aChar = "{";
+               _sw = 1;
+          |SINO;
+               _aCad2 = _aCad2 + _aChar;
+          |FINSI;
+
+     |SIGUE;
+|FPRC;
+
+
+
+
+
+
+|| --------------------------------------------
+|| Buscamos hasta el caracter "}" y devolvemos el bin
+|| entrada :: _nPos      || a partir de donde contamos
+|| entrada :: _aCad
+|| salida  :: _aCad2
+|PROCESO DameBinMenu;
+     _aCad2  = "";
+     _sw     = 0;
+     _nLon   = (A\ _aCad % 0 );
+     |PARA _xx = _nPos; |SI _xx [ _nLon; |Y _sw = 0; |HACIENDO _xx = _xx + 1;
+
+          _naux = (100 * _xx) + 1;
+          _aChar = (_aCad % _naux);
+
+          |SI _aChar = "}";
+               _sw = 1;
+          |SINO;
+               _aCad2 = _aCad2 + _aChar;
+          |FINSI;
+
+     |SIGUE;
+|FPRC;
+
+
+
+
+/*
+|PROCESO ExisteSubCadena;
+     _alfa = aCad - aSub;
+     nPos = FSalida;
+|FPRC;
+
+
+
+|PROCESO Cadena2Vector;
+     nItVector = 0;
+     IvCad     = vCad1 <-;
+     vCad     = "";
+
+     _alfa = aCad % 0; _nLon = _alfa;  || long. de la cadena
+     _alfa = aCad;
+     _sw = 0;
+     |PARA _xx = 1; |SI _xx [ _nLon; |HACIENDO _xx = _xx + 1;
+
+          _naux = (100 * _xx) + 1; _aChar = (_alfa % _naux);
+          |SI _aChar = aDelim;
+               _sw = 1;
+               |SI vCad ! "";
+                    nItVector = nItVector + 1;
+                    IvCad     = IvCad + 1;
+                    vCad      = "";
+               |FINSI;
+          |SINO;
+              _sw = 0;
+          |FINSI;
+
+          |SI _sw = 0; vCad = vCad + _aChar; |FINSI;
+
+     |SIGUE;
+
+|FPRC;
+
+|FPRC;
+
+
+
+
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+|| ----------------------------------------------------------------
+|| Arranques/finalizaciones y tipos raros
+|| ----------------------------------------------------------------
+|PROCESO Tipo80; |TIPO 80;
+     FSalida = 2999;
+|FPRC;
+
+
+
+|| -----------------------------------------------------------------
+|| El programa.
+|| -----------------------------------------------------------------
+|PROGRAMA;
+     |HAZ InicioClasico;
+
+     |ABRET #100;
+     |HAZ InicioX;
+
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+          FSalida = "::{{001}}Salir," + nGridFAV;
+          |LEETECLA aTecla;
+          |SI aTecla = aRetu; |SAL;  |FINSI;
+          |SI aTecla = aEsc1; |SAL;  |FINSI;
+          |SI aTecla = aEsc2; |SAL;  |FINSI;
+     |SIGUE;
+
+     |CIERRAT #100;
+
+     |SI swNew = 1;
+          |HAZ VuelcaTMP_FAV;
+     |FINSI;
+     |ABRE #100; |CIERRA #100; |DELINDEX #100;
+
+|FPRO;
+
+
+
+
+
+
+|| -----------------------------------------------------------------
+|| Procesos de eventos
+|| -----------------------------------------------------------------
+|PROCESO evBtnNew;
+     |HAZ NuevaVista;                   || ES EL ASISTENTE !!
+     |REFRESCACONTROL nGridFAV;
+|FPRC;
+
+|PROCESO evBtnBorra;
+     |SI nRegActual = 0; |ACABA; |FINSI;
+
+     |HAZ BorraVista;
+     |REFRESCACONTROL nGridFAV;
+|FPRC;
+
+|PROCESO evBtnVer;
+     |SI #100#00 > 0;
+          |HAZ MostrarVista;
+     |FINSI;
+|FPRC;
+
+
+
+|PROCESO evGridFAV;
+     |SI FSalida = 1; |O FSalida = 4;
+          nRegActual = #100#00;
+     |FINSI;
+
+     |SI FSalida = 4; |Y #100#00 > 0;
+          |HAZ MostrarVista;
+     |FINSI;
+
+     FSalida = "SKIPDEFAULT";
+|FPRC;
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------------
+|| Programacion GRAFICA.
+|| -----------------------------------------------------------------
+
+|PROCESO InicioX;
+
+     |PINPA #0#00;
+     nPanta0 = FSalida;
+
+     nRango  = 2 + 4 + 8 + 16 + 32;
+     |LINEAL_SIMPLE #2#100, nRango, 1205, 2480, NULL, NULL, evGridFAV;
+     nGridFAV = FSalida;
+
+     |CONTROL_SIMPLE nPanta0, "BOTON,{{193}} Nueva ", 2605, 2620, evBtnNew;
+     |CONTROL_SIMPLE nPanta0, "BOTON,{{207}} Borra ", 2625, 2640, evBtnBorra;
+     |CONTROL_SIMPLE nPanta0, "BOTON,{{155}} Ver ",   2645, 2660, evBtnVer;
+
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------------
+|| Programacion CLASICA
+|| -----------------------------------------------------------------
+
+|PROCESO InicioClasico;
+
+
+     |DBASS aDBASS; |QBT aDBASS;
+
+     || Comporbamos desde donde hemos llamado a la apl ...
+     |DFICE aAlfa;
+     aAlfa2 = aAlfa - "tool";
+     swDesdeTool = FSalida;
+
+     aAquiApl = "";
+     aAquiEmp = "";
+     |SI swDesdeTool = 0;
+     || desde que empresa y desde que apicacion ....
+          |DBASE aAlfa; |QBT aAlfa;
+          aAquiApl = aAlfa - aDBASS;
+          aAquiApl = aAquiApl - "/";
+
+          |DFICB aAlfa;  |QBT aAlfa;
+          |DFICE aAlfa2; |QBT aAlfa2;
+          aAquiEmp = aAlfa2 - aAlfa;
+          aAquiEmp = aAquiEmp - "/";
+     |FINSI;
+
+     || con que usuario ...
+     aUsr = Usuario % 0810;
+     aUsr = (aUsr + (" " * 10)) % 0110;
+
+     |HAZ VuelcaFAV_TMP;
+|FPRC;
+
+
+
+
+|| -----------------------------------------------------------------------
+|| Volcado FAVORITOS -> TEMPORAL
+|| se vuelca lo propio y lo comun.
+|| otra cosa es que solamente visualizamos lo que interesa.
+
+|PROCESO InsertaFAV_TMP;
+     |HAZ GrabaFichaT;
+     nu = #001#00;
+|FPRC;
+
+|DEFBUCLE _InsertaFAV_TMP;
+  #001#1;
+  1,2;
+  0000000, dUsr, asw;
+  9999999, hUsr, asw;
+  e;
+  NULL, InsertaFAV_TMP;
+|FIN;
+
+
+|PROCESO VuelcaFAV_TMP;
+
+     aAlfa = "f1" + Usuario; |NOME_DAT #100#aAlfa#;
+     |ABRE #100; |CIERRA #100; |DELINDEX #100;
+
+     || comenzamos el volcado ....
+     |ABRE     #100;
+
+     nu    = 0;
+     asw   = "N";
+     dUsr  = aUsr;
+     hUsr  = aUsr;
+     |BUCLE _InsertaFAV_TMP;
+     nlin  = nu;
+
+     nu    = 0;
+     asw   = "S";
+     dUsr  = "          ";
+     hUsr  = "zzzzzzzzzz";
+     |BUCLE _InsertaFAV_TMP;
+
+     |SI nu > nlin; nlin = nu; |FINSI;
+     nlin = nlin + 1;
+
+     |CIERRA   #100;
+
+|FPRC;
+
+
+
+
+
+
+|| -----------------------------------------------------------------------
+|| Volcado TEMPORAL -> FAVORITOS (primero borramos)
+
+|PROCESO BorraFAV;
+     |BORRA 040#001.a;
+|FPRC;
+
+|DEFBUCLE _BorraFAV;
+  #001#1;
+  1;
+  0000000, aUsr;
+  9999999, aUsr;
+  be;
+  NULL, BorraFAV;
+|FIN;
+|| ---
+
+|PROCESO InsertaTMP_FAV;
+     |HAZ GrabaFichaF;
+|FPRC;
+
+|DEFBUCLE _InsertaTMP_FAV;
+  #100#1;
+  1;
+  0000000, aUsr;
+  9999999, aUsr;
+  ;
+  NULL, InsertaTMP_FAV;
+|FIN;
+
+
+|PROCESO VuelcaTMP_FAV;
+
+     || primero borramos todo lo relativo a ese usuario
+     |BUCLE _BorraFAV;
+
+     || despues volcamos el contenido del tmp (integro)
+     |ABRE   #001;
+     |BUCLE _InsertaTMP_FAV;
+     |CIERRA #001;
+
+|FPRC;
+
+
+|| copiando la ficha en si FAV --> TMP
+|PROCESO GrabaFichaT;
+     |DDEFECTO #100;
+     aAlfa  = "|NC";
+     aAlfa2 = #001#aAlfa#; xx = aAlfa2;
+     |PARA x=0; |SI x < xx; |HACIENDO x=x+1;
+          #100#x# = #001#x#;
+     |SIGUE;
+     |GRABA 040#100.n;
+|FPRC;
+
+|| ----
+|| copiando la ficha en si TMP --> FAV
+|| si esa vista YA existe, le damos el ultimo numero+1 a la vista.
+|PROCESO GrabaFichaF;
+     |DDEFECTO #001;
+     #001#00 = #100#00;
+     |LEE 040#001.=;
+     naux = #001#00;
+     |SI FSalida = 0;
+          |LEE 040#001.u;
+          naux = #001#00 + 1;
+     |FINSI;
+
+     aAlfa  = "|NC";
+     aAlfa2 = #001#aAlfa#; xx = aAlfa2;
+     |PARA x=1; |SI x < xx; |HACIENDO x=x+1;
+          #001#x# = #100#x#;
+     |SIGUE;
+
+     #001#00 = naux;
+     |GRABA 040#001.n;
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------
+|| alta/baja/consulta de vistas
+
+|VARIABLES;
+     &_swDesdeTool = 0;
+
+     &_swMulti = "";
+     &_aCodApl = "";
+     &_aNomApl = "";
+     &_aCodEmp = "";
+     &_aNomEmp = "";
+     &_aDef    = "";
+     &_aDesDef = "";
+     &_aTabla  = "";
+     &_error   = 0;
+|FIN;
+
+|PROCESO NuevaVista;
+
+     _swMulti = "";
+     _aCodApl = "";
+     _aNomApl = "";
+     _aCodEmp = "";
+     _aNomEmp = "";
+     _aDef    = "";
+     _aDesDef = "";
+     _aTabla  = "";
+     _error   = 0;
+
+     _swDesdeTool = swDesdeTool;
+
+     || si swDesdeTool = 0 --> parametros de ENTRADA.
+     |SI swDesdeTool = 0;          || si llamamos desde cualquier sitio ..
+          _aCodApl = aAquiApl;
+          _aCodEmp = aAquiEmp;
+     |FINSI;
+
+     |VENTANA 0501, 2999, -1, -1, "";
+     nVent0 = FSalida;
+
+     || ---------------------------------------
+     |HAZ _AsistenteX;
+     || ---------------------------------------
+
+     |FINVENTANA nVent0;
+
+     |SI _error = 0;
+
+          swNew = 1;               || registro nuevo.
+          |DDEFECTO #100;
+          #100#00 = nlin;
+          #100#01 = aUsr;
+          #100#02 = _swMulti;
+          #100#03 = _aCodApl;
+          #100#04 = _aNomApl;
+          #100#05 = _aCodEmp;
+          #100#06 = _aNomEmp;
+          #100#07 = _aDef;
+          #100#08 = _aDesDef;
+          #100#09 = _aTabla;
+          |GRABA 040#100.n;
+
+          nlin = nlin + 1;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO BorraVista;
+
+     aAlfa2 = #100#09; |QBF aAlfa2;
+     aAlfa = "0000NBorrando <<" + aAlfa2 + ">>";
+     |CONFI aAlfa;
+     |SI FSalida = 0;
+          #100#00 = nRegActual;
+          |BORRA 040#100.c;
+          swNew = 1;
+          nRegActual = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO MostrarVista;
+
+     || el fichero de def y de apl lo pillamos siempre de favoritos.
+     aApl  = #100#03; |QBT aApl;
+     afDef = #100#07; |QBT afDef;
+
+     || si llamamos al visor desde fuera y la aplicacion es la misma
+     || que la vista, lanzamos la vista con este empresa
+     |SI swDesdeTool = 0; |Y aApl = aAquiApl;
+          apData = aAquiEmp;
+     |SINO;
+          apData = #100#05;
+     |FINSI;
+     |QBT apData;
+
+      aAlfa = aDBASS + aApl + "/def/" + afDef;
+     |CARGA_DEF aAlfa, refer@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aAlfa = aDBASS + aApl + "/fich/";
+     |SI apData ! "NULL";
+          aAlfa = aAlfa + apData + "/";
+     |FINSI;
+     |PATH_DAT #refer@#aAlfa#;
+
+     |ABRE     #refer@
+     |CONSULTA_CLAVE #1#refer@;
+     |CIERRA   #refer@;
+
+     |DESCARGA_DEF #refer@;
+|FPRC;
+
+
+
+|| -------------------------- F I N.
+*/

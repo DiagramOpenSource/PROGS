@@ -1,0 +1,185 @@
+|FICHEROS;
+   caari106 #0;
+   dscaw082 #10;
+   dscam003 #11;
+|FIN;
+
+|VARIABLES;
+   &nSw = 0;
+   &nContLin = 0;
+   nInc = 0;
+   nCalc = 0;
+   nNumPag = 0;
+   nTotal  = 0;
+   nSwError = 0;
+   aDNombre = "";
+   aHNombre = "";
+
+   aRepAnt  = "";
+   aCliAnt  = "";
+   aAlfa    = "";
+   aSerie   = "";
+   aFactura = "";
+   aRecibo  = "";
+|FIN;
+
+|PROCESO BuscaOrigen;
+   |SI #dscam003#83 ! 0;
+      |SALVA_FICHA #dscam003;
+      |SELECT #1#dscam003;
+      #dscam003#40 = #dscam003#83;
+      |LEE 000#dscam003.=;
+      |SI FSalida = 0;
+         |HAZ BuscaOrigen;
+      |FINSI;
+      |SELECT #10#dscam003;
+      |REPON_FICHA #dscam003;
+   |SINO;
+      aSerie   = #dscam003#0;
+      aFactura = ("000000" + #dscam003#1) % -106;
+      aRecibo  = ("000"    + #dscam003#2) % -103;
+      nTotal   = #dscam003#30;
+   |FINSI;
+|FPRC;
+
+|PROCESO Recibos;
+   |SI #dscam003#14 ! "P"; |Y #dscam003#14 ! "C"; |Y #dscam003#14 ! "I"; |ACABA; |FINSI;
+   |SI #dscam003#31 = 0;   |ACABA; |FINSI;
+
+   nSwError = 1;
+   |SI #caari106#4 = #dscam003#12; nSwError = 0; |FINSI;
+   |SI #caari106#5 = #dscam003#12; nSwError = 0; |FINSI;
+   |SI #caari106#6 = #dscam003#12; nSwError = 0; |FINSI;
+   |SI #caari106#7 = #dscam003#12; nSwError = 0; |FINSI;
+   |SI #caari106#8 = #dscam003#12; nSwError = 0; |FINSI;
+   |SI #caari106#9 = #dscam003#12; nSwError = 0; |FINSI;
+   |SI nSwError = 1; |ACABA; |FINSI;
+
+   aSerie   = #dscam003#0;
+   aFactura = ("000000" + #dscam003#1) % -106;
+   aRecibo  = ("000"    + #dscam003#2) % -103;
+   nTotal   = #dscam003#30;
+   |SI #dscam003#83 ! 0;
+      |SALVA_FICHA #dscam003;
+      |HAZ BuscaOrigen;
+      |REPON_FICHA #dscam003;
+   |FINSI;
+
+   |DDEFECTO #dscaw082;
+   #dscaw082#0  = #dscam003#40;
+   #dscaw082#1  = aSerie;
+   #dscaw082#2  = aFactura;
+   #dscaw082#3  = aRecibo;
+   #dscaw082#4  = #dscam003#4;
+   #dscaw082#5  = #dscam003#33;
+   #dscaw082#6  = #dscam003#32;
+   #dscaw082#7  = #dscam003#6;
+   #dscaw082#8  = nTotal;
+   #dscaw082#9  = #dscam003#31;
+   #dscaw082#10 = #dscam003#80;
+   #dscaw082#11 = #dscam003#81;
+   #dscaw082#12 = #dscam003#34;
+   |GRABA 020#dscaw082.n;
+   nSw = 1;
+|FPRC;
+
+|DEFBUCLE Recibos;
+#dscam003#10;
+;
+" ", 000000001, 00000, #caari106#0, "01.01.0000";
+"z", 999999999, 99999, #caari106#2, "31.12.9999";
+;
+NULL,Recibos;
+|FIN;
+
+|PROCESO Imprime;
+   nCalc = nContLin + nInc;
+   ||SI nSw = 1; nCalc = nCalc + 11; |FINSI;
+   ||SI nSw = 2; nCalc = nCalc + 9; |FINSI;
+   |SI nSw = 1; nCalc = nCalc + 9; |FINSI;
+   |SI nSw = 2; nCalc = nCalc + 7; |FINSI;
+   |SI nSw = 3; nCalc = nCalc + 6; |FINSI;
+   |SI nSw = 4; nCalc = nCalc + 3; |FINSI;
+
+   |SI nCalc ] nNumPag;
+      nCalc = nSw;
+      |PARA; |SI nContLin < nNumPag; |HACIENDO nContLin = nContLin + 1;
+         nSw = 6; |PRINT;
+      |SIGUE;
+      |PIEINF;
+      nContLin = 5;
+      |SI nCalc = 3;
+         nSw = 1; nContLin = nContLin + 2; |PRINT;
+         ||nSw = 2; nContLin = nContLin + 4; |PRINT;
+         nSw = 2; nContLin = nContLin + 2; |PRINT;
+      |FINSI;
+      |SI nCalc = 2; nSw = 1; nContLin = nContLin + 2; |PRINT; |FINSI;
+      nSw = nCalc;
+   |FINSI;
+   |PRINT;
+   nContLin = nContLin + nInc;
+|FPRC;
+
+|PROCESO Impresion;
+   |SI aRepAnt ! #dscaw082#5;
+      aAlfa = &34 + &34;
+      |SI aRepAnt ! aAlfa;
+         nSw = 4; nInc = 3; |HAZ Imprime;  || SubTotal Cliente
+         nSw = 5; nInc = 3; |HAZ Imprime;  || SubTotal Representante
+      |FINSI;
+      nSw = 1; nInc = 2; |HAZ Imprime;  || Subcabecera Representante
+      ||nSw = 2; nInc = 4; |HAZ Imprime;  || Subcabecera Cliente
+      nSw = 2; nInc = 2; |HAZ Imprime;  || Subcabecera Cliente
+      aRepAnt = #dscaw082#5;
+      aCliAnt = #dscaw082#6;
+   |SINO;
+      |SI aCliAnt ! #dscaw082#6;
+         aAlfa = &34; aAlfa = aAlfa * 6;
+         |SI aCliAnt ! aAlfa;
+            nSw = 4; nInc = 3; |HAZ Imprime;  || SubTotal Cliente
+         |FINSI;
+         ||nSw = 2; nInc = 4; |HAZ Imprime;  || Subcabecera Cliente
+         nSw = 2; nInc = 2; |HAZ Imprime;  || Subcabecera Cliente
+         aCliAnt = #dscaw082#6;
+      |FINSI;
+   |FINSI;
+   nSw = 3; nInc = 1; |HAZ Imprime;
+|FPRC;
+
+|DEFBUCLE Impresion;
+#dscaw082#2;
+1;
+"  ",aDNombre,000000001, #caari106#1;
+"zz",aHNombre,999999999, #caari106#3;
+;
+NULL,Impresion;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+   aAlfa = "tm" + Usuario; |NOME_DAT #10 aAlfa;
+   |DELINDEX #dscaw082; |ABRE #dscaw082;
+   |ABRE #dscam003;
+   |BUCLE Recibos;
+   |CIERRA #dscam003;
+
+   |SI nSw = 1;
+      |IMPRE 0;
+      |SI FSalida = 0;
+         |CIMPR 11; nNumPag = FSalida;
+         |INFOR "caari106";
+         |SI FSalida = 0;
+            nContLin = 5; aDNombre = " " * 40; aHNombre = "z" * 40;
+            aAlfa = &34; aRepAnt = aAlfa * 2; aCliAnt = aAlfa * 6;
+            |BUCLE Impresion;
+            |SI nSw [ 3; nSw = 4; nInc = 3; |HAZ Imprime; |FINSI;
+            |SI nSw [ 4; nSw = 5; nInc = 3; |HAZ Imprime; |FINSI;
+            |PIEINF; |FININF;
+         |FINSI;
+         |FINIMP;
+      |FINSI;
+   |SINO;
+      |MENAV "    Seleccion vacia";
+   |FINSI;
+
+   |CIERRA #dscaw082;   |DELINDEX #dscaw082;
+|FPRC;

@@ -1,0 +1,423 @@
+|FICHEROS;
+  ca8m0011 #0,MANTE;
+  ca8m0012 #12,MANTE;
+  cacuenta #1;
+  ca8cumay #2;
+
+  ca8z0011 #10;
+  canempre #30;
+
+  ca8ctrle #400;  ||Control Empresa
+  ca8comay #401;  ||Control Cuentas de mayor
+  ca8m0010 #430;  ||Tabla de Conf.Cierre
+
+  cacuent@ #3;
+|FIN;
+
+|VARIABLES;
+ &nSwQueO    = 0;
+ nPara1    = 0;
+ nInkey    = 0;
+ aAlfa1    = "";
+ aAlfa2    = "";
+ nNumero   = 0;
+ nNume1    = 0;
+ nNume2    = 0;
+ aPath     = "";
+
+ &eaExtension = "";
+
+ nError      = 0;
+ &enErrorW17 = 0;
+ aParam      = "";
+
+ aCuenta     = "";
+ nSwOp       = 0;
+ nOper       = 0;
+ aMas        = "";
+ aDef        = "";
+ nHay        = 0;
+ nSeguir     = 0;
+ aCtaPos     = "";
+
+ eldesde     = 0;
+ elhasta     = 0;
+ x           = 0;
+ &d_mes      = 0;
+ &h_mes      = 0;
+|FIN;
+
+|INCLUYE varnue_i;
+|INCLUYE acceso_i;
+|INCLUYE vardep_i;
+
+|| /////////////////////// PROCESOS DE TRABAJO \\\\\\\\\\\\\\\\\\\\
+|PROCESO LeoEspejo;
+  |QBF aCuenta;
+  |SI aCuenta = "";
+      nError = 1;
+  |SINO;
+      #3#0 = aCuenta;
+      #3#1 = enNivel;
+      |LEE 041#3=;
+      |SI FSalida ! 0;
+          nError = 1;
+      |SINO;
+          |SI #3#3 = "N"; nError = 1;  |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO LasLineas;
+ aCuenta = #12#2;
+ enNivel  = #12#5;
+ |HAZ LeoEspejo;
+ #0#4 = #0#4 + #12#4;
+|FPRC;
+
+|DEFBUCLE LasLineas;
+ #12#1;
+ ;
+ #0#0,01;
+ #0#0,99;
+ ;
+ NULL, LasLineas;
+|FIN;
+
+
+|| ///////////////////////
+|PROCESO BorroLineas_11;
+ |SI nOper = 0;
+     |BORRA 020#12a;
+ |SINO;
+     #0#4  = #0#4 - #12#4;
+     #12#4 = 0;
+     |GRABA 020#12a;
+ |FINSI;
+ |LIBERA #12;
+|FPRC;
+
+|DEFBUCLE BorroLineas_11;
+ #12#1;
+ ;
+ #0#0,01;
+ #0#0,99;
+ be;
+ NULL, BorroLineas_11;
+|FIN;
+|| ///////////////////////////
+|PROCESO CalSaldo;
+      #1#53 = 0;
+      eldesde = (d_mes * 3) + 11;
+      elhasta = (h_mes * 3) + 11;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            #1#53 = #1#53 + #1x;
+      |SIGUE;
+|FPRC;
+
+|PROCESO PrimeraPasada;
+
+  |SI nHay = -1; nHay = 0; |FINSI;  || para ver si existen ctas 8 y 9
+
+  |SI #1#3 ! "S"; |ACABA; |FINSI;
+
+  || |SI aParam = "BALANCES"; |O aParam = "BALANCEN"; |HAZ CalSaldo; |FINSI;
+  |HAZ CalSaldo;
+
+  #0#0 = #1#0;
+  |LEE 101#0=;
+  |SI FSalida ! 0;
+      |SI #1#53 = 0;
+          |ACABA;
+      |SINO;
+          |SI nSwOp = 0;
+              |DDEFECTO #0;
+              #0#0 = #1#0;
+              #0#1 = #1#2;
+              #0#5 = #1#1; ||Nivel
+              eaCuenta = #0#0;
+              |HAZ aContra8y9;
+              #0#2 = eaCon8y9;
+              #0#3 = eaTit8y9;
+              #0#6 = enNivel;
+              |GRABA 020#0b;
+              nHay = 1;
+         |SINO;
+              nError = 3;
+              |ERROR10;
+              |ACABA;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwOp = 0;
+      |SI #1#53 ] 0;
+          #0#7 = #1#53;
+          #0#8 = "D";
+      |SINO;
+          #0#7 = -#1#53;
+          #0#8 = "H";
+      |FINSI;
+
+      aCuenta = #0#2; |QBF aCuenta;
+      |SI aCuenta ! "";
+          #0#4 = #0#7;  || Todo Repartido
+          nOper = 0;
+          |BUCLE BorroLineas_11;
+      |SINO;
+          |SI #1#53 = 0;
+              nOper = 1;
+              |BUCLE BorroLineas_11;
+          |FINSI;
+      |FINSI;
+      |GRABA 020#0a;
+      |LIBERA #0;
+      nHay = 1;
+   |FINSI;
+
+   |SI nSwOp = 1;
+       aCuenta = #0#2; |QBF aCuenta;
+       enNivel = #0#5;
+       |SI aCuenta ! "";
+           |HAZ LeoEspejo;
+       |SINO;
+           #0#4 = 0;
+           |BUCLE LasLineas;
+           |SI #0#4 ! #0#7; nError = 2; |FINSI;
+       |FINSI;
+       |SI nError ! 0; aCtaPos = #0#0; |ERROR10; |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE PrimeraPasada;
+ #1#1;
+ ;
+ "8           ",0;
+ "999999999999",9;
+ e;
+ NULL, PrimeraPasada;
+|FIN;
+
+|PROCESO SegundaPasada;
+  #3#0 = #0#0;
+  #3#1 = #0#5;
+  |LEE 001#3=;
+  |SI FSalida ! 0;
+      |BORRA 020#0a;
+      nOper = 0;
+      |BUCLE BorroLineas_11;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE SegundaPasada;
+ #0#1;
+ ;
+ "8           ";
+ "999999999999";
+ e;
+ NULL, SegundaPasada;
+|FIN;
+
+|PROCESO CreoTabla;
+  nSwOp  = 0;
+  |ABRE #0;
+  |BUCLE PrimeraPasada;
+  |CIERRA #0;
+
+  |ABRE #3;
+  |BUCLE SegundaPasada;
+  |CIERRA #3;
+|FPRC;
+
+|PROCESO MiroError;
+  aCtaPos = "";
+  nError = 0;
+  nSwOp  = 1;
+  |ABRE #3;
+  |ABRE #0;
+  |BUCLE PrimeraPasada;
+  |CIERRA #0;
+
+  |BUCLE SegundaPasada;
+  |CIERRA #3;
+|FPRC;
+
+|RUTINA min;
+  |SI FSalida = "POSICION";
+      #0#0  = aCtaPos;
+  |SINO;
+      #0#0  = "           ";
+  |FINSI;
+|FRUT;
+
+|RUTINA max;
+  #0#0 = "zzzzzzzzzzzz";
+|FRUT;
+
+|PROCESO MiroSiHay;
+  |SI nHay = -1; nHay = 0; |FINSI;
+  nNume1 = 0;
+  |PARA nPara1 = 9; |SI nPara1 [ 47; |HACIENDO nPara1 = nPara1 + 1;
+        |SI #1nPara1 ! 0; nNume1 = 1; |SAL; |FINSI;
+  |SIGUE;
+  |SI nNume1 ! 0; nHay = 1; |ERROR10; |FINSI;
+|FPRC;
+
+|DEFBUCLE MiroSiHay;
+   #1#1;
+   3;
+   "8           ", 0, "S";
+   "999999999999", 9, "S";
+   ;
+   NULL, MiroSiHay;
+|FIN;
+
+|PROGRAMA;
+   aParam = PARAMETRO; |QBF aParam;
+   |SI aParam = "";
+       |HAZ inicio;
+       |HAZ eVarEmpresa;
+       |SI enEjercicio < 2008;
+           aAlfa1 = "    Proceso para el Nuevo Plan Contable 2008. ";
+           |MENAV aAlfa1;
+           |ACABA;
+       |FINSI;
+   |FINSI;
+   |SI aParam ! "BALANCEN"; |Y aParam ! "BALANCES"; |Y aParam ! "CHEQUEO";
+       d_mes = 0;
+       h_mes = 12;
+   |FINSI;
+
+   |SI aParam ! "";
+       nHay = -1;
+      |BUCLE MiroSiHay;
+      |SI nHay < 0; |ACABA; |FINSI;
+   |FINSI;
+
+   |ABRE #2;
+   |LEE 040#2p;
+   |SI FSalida ! 0;
+       |CIERRA #2;
+       |MENAV "   No existe fichero de Cuenta de Mayor. Instale Patrones";
+       |ACABA;
+   |SINO;
+       |CIERRA #2;
+   |FINSI;
+
+   |ABRE #430;
+   |LEE 040#430p;
+   |SI FSalida ! 0;
+       |CIERRA #430;
+       |MENAV "   No existe fichero de Conf.Cierre P.Neto. Instale Patrones";
+       |ACABA;
+   |SINO;
+       |CIERRA #430;
+   |FINSI;
+
+   |DFICB aPath;
+   |ABRE #400;
+   |DDEFECTO #400;
+   #400#0 = enEmpresa;
+   #400#1 = enPeriodo;
+   |LEE 000#400=;
+   |CIERRA #400;
+
+   eNum2008 = #400#2;
+   enErrorW17 = 0;
+
+   |ABRE #401;
+   #401#0 = #400#2;
+   |LEE 001#401=;
+   |SI FSalida ! 0;
+       |MENAV "    Error, no existe Codigo de Cuentas de Mayor";
+       |CIERRA #401;
+       |ACABA;
+   |FINSI;
+   |CIERRA #401;
+
+   |ABRE #430;
+   #430#5 = enEjerBal;
+   #430#0 = #400#2;
+   #430#1 = "     ";
+   |LEE 001#430];
+   |SI FSalida ! 0; |O #430#0 ! #400#2; |O #430#5 ! enEjerBal;
+       FSalida = 0;
+       |SI aParam = "";
+           |CONFI "    NError, Empresa acogida al Plan Pyme no oligada hacer este proceso. Continuar";
+       |FINSI;
+       |SI FSalida = 0;
+           #430#0 = 0;
+           #400#2 = 0;
+           eNum2008 = #400#2;
+       |SINO;
+           |CIERRA #430;
+           |ACABA;
+       |FINSI;
+   |FINSI;
+   |CIERRA #430;
+
+   #10#0 = enEmpresa;
+   #10#1 = enPeriodo;
+   #10#2 = eaNombreEmp;
+   #10#3 = enEjercicio;
+   #10#4 = #400#2;
+   #10#5 = #401#1;
+
+   |DBASE aMas;
+   aDef = aMas + "def/cacuenta";
+   |CARGA_DEF aDef, cacuent@;
+   |SI FSalida ! 0;
+       |MENAV "    Error al Carga fichero de Cuentas";
+       |ACABA;
+   |FINSI;
+
+   |SI eaDepar = "N"; |C_M #12#6,1,"N"; |FINSI;
+
+   nHay = -1;
+   |HAZ CreoTabla;
+   |SI nHay ! 1;
+       nSeguir = 0;
+       |SI aParam = "";
+           |SI nHay = -1;
+               |MENAV "    No existe Cuentas del Grupo 8 y 9";
+           |SINO;
+               |CONFI "    NLas Cuentas del Grupo 8 y 9 no tienen Saldo. Continuar ";
+               |SI FSalida = 0; nSeguir = 1; |FINSI;
+           |FINSI;
+       |FINSI;
+       |SI nSeguir = 0; |ACABA; |FINSI;
+   |FINSI;
+
+   nError = 0;
+   |SI aParam = "BALANCEN"; |O aParam = "CIERRE"; |O aParam = "CHEQUEO";
+       |HAZ MiroError;
+       |SI nError = 0; |ACABA; |FINSI;
+       |SI aParam = "CHEQUEO"; enErrorW17 = 1; |ACABA; |FINSI;
+   |FINSI;
+
+   |CLS;
+   |CABEZA "Intr.Conf.Cierre Gastos/Ingresos a PN";
+
+   |PINPA #0#10;
+   |PINDA #0#10;
+
+   nError = 1;
+   |PARA; |SI nError ! 0; |HACIENDO;
+          |ENTLINEAL #1#0, -1, 2, 22, 0, min, max;
+          |HAZ MiroError;
+          |SI nError ! 0;
+              aAlfa1 = "    NExiste contrapartidas y/o reparto mal informados. Salir S/N";
+              |SI aParam ! "";
+                  aAlfa1 = "    NExiste contrapartidas y/o reparto mal informados. Interrumpir Proceso";
+              |FINSI;
+              |CONFI aAlfa1;
+              |SI FSalida = 0;
+                  nError = 0;
+                  enErrorW17 = 1;
+              |FINSI;
+          |FINSI;
+   |SIGUE;
+
+   |DESCARGA_DEF #cacuent@;
+
+|FPRO;

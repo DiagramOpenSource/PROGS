@@ -1,0 +1,325 @@
+|FICHEROS;
+
+   carbuy02 #0;
+   camaniva #1;
+   caivalin #2;
+   carbum01 #304;
+
+   canempre #30;
+   caselem1 #998;
+   caselem0 #997;
+   cawdatos #900;
+|FIN;
+
+|VARIABLES;
+  aAlfa1     = "";
+  aAlfa2     = "";
+  informe    = "carbuy02";
+  SwHayDatos = 0;
+  aPeriodo   = "";
+  nLibro     = 0;
+  nDocumento = 0;
+  fFecha     = @;
+  aPath      = "";
+  nDdepar    = 0;
+  nHdepar    = 0;
+  nEjer      = 0;
+  aTexto     = "";
+  &SwLinea   = 0;
+  SwError    = 0;
+  aError1    = "";
+  aError2    = "";
+  aError3    = "";
+  aError4    = "";
+
+  &eSwMul   = 0;
+  &espe15   = "";
+  &espe16   = 0;
+
+  nErrorConta  = 0;
+  nError       = 0;
+  nErrorVenta  = 0;
+  nErrorCompra = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *****************************************************************
+|CALCULO nodepar; |TIPO 7;
+   |C_M #0#2, 1, eaDepar;
+   |C_M #0#3, 1, eaDepar;
+|FCAL;
+
+|| ******************************************************************
+|PROCESO ElPath;
+      |DFICB aPath;
+      aAlfa1 = enEmpresa; aAlfa1 = ("00000" + aAlfa1) % -105;
+      aAlfa2 = aPeriodo;  aAlfa2 = ("0"     + aAlfa2) % -101;
+      aPath  = aPath + aAlfa1 + aAlfa2 + "/";
+      |PATH_DAT #1 aPath;
+      |PATH_DAT #2 aPath;
+|FPRC;
+
+|PROCESO SituaConta;
+  nErrorConta = 0;
+  |SI aPeriodo = " "; |Y fFecha ! "01.01.0000";
+      aAlfa1 = fFecha;
+      aAlfa1 = aAlfa1 % -102;
+      nEjer  = aAlfa1;
+      |ABRE #30;
+      |SELECT #4#30;
+      #30#2  = enEmpresa;
+      #30#26 = nEjer;
+      |LEE 001#30=;
+      |SI FSalida = 0;
+          aPeriodo = #30#3;
+          |SI aTipoIVA = "S"; #304#20 = aPeriodo; |FINSI;
+          |SI aTipoIVA = "R"; #304#21 = aPeriodo; |FINSI;
+      |FINSI;
+      |SELECT #1#30;
+      |CIERRA #30;
+  |FINSI;
+
+  |SI aPeriodo ! " ";
+      |HAZ ElPath;
+  |SINO;
+      nErrorConta = 2;
+  |FINSI;
+|FPRC;
+
+|PROCESO IgualaCampos;
+  aError1 = "";
+  aError2 = "";
+  aError3 = "";
+  aError4 = "";
+  SwError = 0;
+  |SI aTipoIVA = "S";
+      |SI #304#8  ! #1#4;  SwError = 1; aError1 = "Fecha ";     |FINSI;
+      |SI #304#9  ! #1#22; SwError = 1; aError2 = "Referencia ";|FINSI;
+      |SI #304#10 ! #1#21; SwError = 1; aError3 = "Importe ";   |FINSI;
+  |SINO;
+      |SI #304#15 ! #1#4;  SwError = 1; aError1 = "Fecha ";      |FINSI;
+      |SI #304#16 ! #1#22; SwError = 1; aError2 = "Referencia "; |FINSI;
+      |SI #304#17 ! #1#21; SwError = 1; aError3 = "Importe ";    |FINSI;
+      |SI #304#19 ! #1#23; SwError = 1; aError4 = "Cuotas IVA "; |FINSI;
+  |FINSI;
+  |SI SwError ! 0;
+      nError = 4;
+      aAlfa1 = "Error en Fra " + aTexto + ": " + aAlfa2;
+      aAlfa1 = aAlfa1 + ". Diferencias en: " + aError1 + aError2 + aError3 + aError4;
+      #0#8 = aAlfa1;
+  |FINSI;
+|FPRC;
+
+|PROCESO ConsultaFra;
+  nErrorConta = 0;
+  |HAZ SituaConta;
+  |SI nErrorConta = 0;
+      aAlfa2 = (( "00" + nLibro) % -102) + "/" + (("0000000000" + nDocumento) % -110);
+      |ABRE #1;
+      #1#0 = nLibro;
+      #1#1 = nDocumento;
+      |LEE 001#1=;
+      |SI FSalida ! 0;
+          nError = 3;
+          aAlfa1 = "No existe Registro de la Factura de " + aTexto + ": ";
+          #0#8 = aAlfa1 + aAlfa2;
+      |SINO;
+          |HAZ IgualaCampos;
+      |FINSI;
+      |CIERRA #1;
+  |SINO;
+      nError = 2;
+      #0#8 = "No existe Ejercicio Contable de la " + aTexto;
+  |FINSI;
+|FPRC;
+
+|| ******************************************************************
+|PROCESO Facturas;
+   |SI Haybasica = 1;
+       nDepar  = #304#3; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+       nDdepar = #0#2;
+       nHdepar = #0#3;
+       |SI nDepar < nDdepar; |O nDepar > nHdepar; |ACABA; |FINSI;
+   |SINO;
+       |SI #304#3 < #0#2;  |O #304#3 > #0#3;  |ACABA;  |FINSI;
+   |FINSI;
+
+   SwLinea = 0;
+   nErrorCompra = 0;
+   nErrorVenta  = 0;
+   |PDEFECTO #0, 5, 12;
+   #0#5 = #304#1;
+   #0#6 = #304#2;
+   #0#7 = #304#3;
+
+|| ...  Chequeo Compra.
+   nError  = 0;
+   aTipoIVA   = "S";
+   aPeriodo   = #304#20;
+   fFecha     = #304#8;
+   nLibro     = #304#4;
+   nDocumento = #304#5;
+   aTexto     = "Compra";
+
+   |SI #304#8 = "01.01.0000";
+       #0#8   = "No estan informados los datos de la compra";
+       nError = 1;
+   |SINO;
+       |SI #304#4 ! 0; |Y #304#5 ! 0;
+           |HAZ ConsultaFra;
+       |FINSI;
+   |FINSI;
+
+   |SI nError ! 0;
+       |PRINT; SwLinea = 1; SwHayDatos = 1;
+       |SI nError = 2; |O nError = 3; nErrorCompra = 1; |FINSI;
+   |FINSI;
+
+|| ...  Chequeo Venta
+   nError  = 0;
+   aTipoIVA   = "R";
+   aPeriodo   = #304#21;
+   fFecha     = #304#15;
+   nLibro     = #304#11;
+   nDocumento = #304#12;
+   aTexto     = "Venta";
+
+   |SI #304#8 ! "01.01.0000";
+       |SI #304#11 ! 0; |Y #304#12 ! 0;
+           |HAZ ConsultaFra;
+       |FINSI;
+   |FINSI;
+
+   |SI nError ! 0;
+       |PRINT; SwLinea = 1; SwHayDatos = 1;
+       |SI nError = 2; |O nError = 3; nErrorVenta = 1; |FINSI;
+   |FINSI;
+
+   |SI #304#8 ! "01.01.0000";
+       |SI nErrorCompra = 1; |O nErrorVenta = 1;
+           aAlfa1 = "La Cuota de IVA no ha podido ser verificada al no constar los datos de ";
+           |SI nErrorCompra = 1; |Y nErrorVenta = 0;
+              aAlfa1 = aAlfa1 + "la compra";
+           |FINSI;
+           |SI nErrorVenta = 1; |Y nErrorCompra = 0;
+              aAlfa1 = aAlfa1 + "la venta";
+           |FINSI;
+           |SI nErrorVenta = 1; |Y nErrorCompra = 1;
+               aAlfa1 = "La Cuota de IVA no ha podido ser verificada, no hay datos de compra ni de la venta";
+           |FINSI;
+           #0#8 = aAlfa1;
+           |PRINT; SwLinea = 1; SwHayDatos = 1;
+       |SINO;
+           #0#9  = #304#17 - #304#10;
+           #0#10 = (#0#9 * 100) / (100 + #304#18);
+           #0#11 = #0#10 % #304#18;
+
+           |SI #0#11 ! #304#19;
+               #0#8 = "Cuota de IVA de Venta no corresponde al calculo";
+               |PRINT; SwLinea = 1; SwHayDatos = 1;
+           |FINSI;
+
+
+       |FINSI;
+   |FINSI;
+
+|FPRC;
+
+|DEFBUCLE Facturas1;
+   #304#1;
+   ;
+   enEmpresa, #0#0;
+   enEmpresa, #0#1;
+   ;
+   NULL, Facturas;
+|FIN;
+
+|PROCESO HazTodo;
+
+     enM1 = 1;
+     enM2 = 12;
+     eaIa = #30#21;
+     |HAZ LeeDatosEmpresa;
+
+     SwHayDatos = 0;
+     |BUCLE Facturas1;
+     |SI SwHayDatos = 1;
+         |PIEINF;
+     |FINSI;
+|FPRC;
+
+|CALCULO ElTipo3; |TIPO 3;
+
+   |HAZ DirAplicSt;
+   |SI Haybasica = 1; |Y #0#3 = "zz"; #0#3 = "99"; |FINSI;
+
+   |IMPRE 0;
+   |SI FSalida < 0; |ACABA; |FINSI;
+
+   |INFOR informe;
+   |SI FSalida ! 0;
+       |MENAV "    No existe informe";
+       |FINIMP;
+       |ACABA;
+   |FINSI;
+
+   |SI #48#27 = "S";
+       eSwMul = 2;
+       |HAZ MultiEjercicio;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+
+   |FININF;
+   |FINIMP;
+|FCAL;
+
+|| ////////////////////////////////////
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |HAZ HazTodo;
+|FPRC;
+
+|PROCESO MultiEjer1;
+  #caselem1#1 = #caselem0#0;
+  #caselem1#2 = #caselem0#5;
+  |LEE 041#caselem1.=;
+  |SI FSalida = 0;
+      |HAZ MultiEmp1;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE MultiEjer0;
+   #caselem0#1;
+   ;
+   00001;
+   99999;
+   ;
+   NULL,MultiEjer1;
+|FIN;
+
+|PROCESO MultiEjercicio;
+   espe15 = "S";
+   |SUB_EJECUTA "caselemp";
+   |NOME_DAT #998 eaFichsel;
+   |NOME_DAT #997 eaFichres;
+
+   |ABRE #998;
+   |SELECT #3#998;
+   |BUCLE MultiEjer0;
+   |SELECT #1#998;
+   |CIERRA #998;
+
+   |DELINDEX #998;
+   |DELINDEX #997;
+|FPRC;

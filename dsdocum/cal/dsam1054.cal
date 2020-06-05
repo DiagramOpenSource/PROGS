@@ -1,0 +1,488 @@
+|FICHEROS;
+     dsam0054 #54;
+     dsaw0021 #99;
+     dsaw0022 #98,MANTE;
+|FIN;
+
+|VARIABLES;
+     aHora           = "";
+     aAlfa           = "";
+     aEjecuta        = "";
+     aFicheroOrigen  = "";
+     aFicheroDestino = "";
+     aOrigen         = "";
+     aDestino        = "";
+     aCodCli         = "";
+     aCodLin         = "";
+     aNombreFich     = "";
+     aCadena         = "";
+     aCadena1        = "";
+     aCadena2        = "";
+     aFichero        = "";
+     aTipoScaneo     = "";
+     aTipoScaneoT    = "";
+     aFicheroActu    = "";
+     aPathPlan       = "";
+
+     nSwGraba        = 0;
+     nSwAborto       = 0;
+     nSwVal          = 0;
+     nCanal          = 0;
+     nTecla          = 0;
+     nTipo           = 0;
+     nModo           = 0;
+     nPregunta       = 0;
+     nSwEdita        = 0;
+
+     &eaFicheroRecog = "";
+
+     &enFSalida        = 0;
+     &enCodUbica       = 0;
+     &enTipoDocumento  = 0;
+     &eaRutaDocumento  = "";
+     &eaNombrePrograma = "";
+     &eaNombreRuta     = "";
+     &eaRutaPlanilla   = "";
+     &eaExtension      = "";
+     &eaFicheroEdita   = "";
+     &enSwPlanilla     = 0;
+|FIN;
+
+|PROCESO PonFechaAlta;
+     |HORA aHora;
+     aAlfa = aHora % 102;  #54#5 = aAlfa;
+     aAlfa = aHora % 402;  #54#6 = aAlfa;
+                           #54#4 = ~;
+|FPRC;
+
+|PROCESO GrabaTemporal;
+     #98#0 = #54#3;
+     #98#1 = #54#2;
+     |GRABA 020#98n;
+     |LIBERA #98;
+     nSwGraba = 1;
+|FPRC;
+
+|PROCESO LeeDocumento;
+     nSwVal  = 0;
+     aCodCli = aNombreFich % 405;
+     aCodLin = aNombreFich % 904;
+     |SALVA_FICHA #54;
+
+     #54#0 = aCodCli;
+     #54#1 = aCodLin;
+     |LEE 040#54=;
+     |SI FSalida = 0;
+         |SI #99#2 = 1;
+             nSwVal = 1;
+         |SINO;
+             aCadena = #99#3;  |QBF aCadena;
+             |SI aCadena = "";
+                 |HAZ GrabaTemporal;
+             |SINO;
+                 aCadena1 = #54#2 > " ";  |QBF aCadena1;
+                 aCadena2 = #99#3 > " ";  |QBF aCadena2;
+
+                 aCadena = aCadena1 - aCadena2;
+                 |SI aCadena ! aCadena1;
+                     |HAZ GrabaTemporal;
+                 |FINSI;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |REPON_FICHA #54;
+|FPRC;
+
+|RUTINA ClaveBaja98;
+     #98#0 = " " * 30;
+|FRUT;
+
+|RUTINA ClaveAlta98;
+     #98#0 = "z" * 30;
+|FRUT;
+
+|PROCESO RecogeDeOtro;
+     enCodUbica = #99#4;  |HAZ LeeUbicaciones;
+     nSwGraba   = 0;
+
+     aFichero = ("98" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #98 aFichero;
+     |ABRE #98;  |CIERRA #98;  |DELINDEX #98;
+
+     |ABRE #98;
+
+     aOrigen = eaRutaDocumento; |QBF aOrigen;
+     aOrigen = aOrigen + "\";   |QBF aOrigen;
+
+     |R_PDIR aOrigen;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+            aCadena1 = aOrigen     > " ";
+            aCadena2 = eaExtension > " ";
+            aCadena2 = "." + aCadena2;
+            aDestino = aCadena1 - aCadena2;
+            |SI aDestino ! aCadena1;
+                aCadena1    = aOrigen    > " ";
+                aCadena2    = eaRutaDocumento > " ";  |QBF aCadena2
+                aNombreFich = (aCadena1 - aCadena2) % 230;
+
+                |HAZ LeeDocumento;
+            |FINSI;
+
+            |R_SDIR aOrigen;
+     |SIGUE;
+     |CIERRA #98;
+
+     nSwAborto = 1;
+     |SI nSwGraba = 1;
+         |PUSHV 0501 2380;
+         eaFicheroRecog = "";
+         enSwPlanilla   = 0;
+         |ENTLINEAL #1#98, -1, 4, 22, 1, ClaveBaja98, ClaveAlta98;
+         |POPV;
+
+         |SI eaFicheroRecog ! "";
+             enCodUbica      = #99#4;  |HAZ LeeUbicaciones;
+             aFicheroOrigen  = eaRutaDocumento + "\" + eaFicheroRecog;
+             aFicheroDestino = aFicheroActu;
+             |RCOPIA_FICHERO aFicheroOrigen, aFicheroDestino;
+             |SI FSalida ! 0;
+                 |MENAV "         Ha habido un error al copiar el Documento.";
+             |SINO;
+                 nSwAborto = 0;
+                 |HAZ PonFechaAlta;
+             |FINSI;
+         |FINSI;
+     |SINO;
+         |MENAV "      Seleccion Vacia.";
+     |FINSI;
+
+     |DELINDEX #98;
+|FPRC;
+
+|PROCESO MiraDocu0;
+     aCadena = #99#3;  |QBF aCadena;
+     |SI aCadena = "";
+         |HAZ GrabaTemporal;
+     |SINO;
+         aCadena1 = #54#2 > " ";  |QBF aCadena1;
+         aCadena2 = #99#3 > " ";  |QBF aCadena2;
+
+         aCadena = aCadena1 - aCadena2;
+         |SI aCadena ! aCadena1;
+             |HAZ GrabaTemporal;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsam0054;
+     #54#1;
+     10;
+     00000, 0000, nTipo;
+     00000, 9999, nTipo;
+     ;
+     NULL, MiraDocu0;
+|FIN;
+
+|PROCESO RecogeDocuGeneral;
+     aFichero = ("98" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #98 aFichero;
+     |ABRE #98;  |CIERRA #98;  |DELINDEX #98;
+
+     |SALVA_FICHA #54;
+
+     |ABRE #98;
+     nTipo    = #99#0;
+     nSwGraba = 0;
+     |BUCLE dsam0054;
+     |REPON_FICHA #54;
+
+     nSwAborto = 1;
+     |SI nSwGraba = 1;
+         |PUSHV 0501 2380;
+         eaFicheroRecog = "";
+         enSwPlanilla   = 0;
+         |ENTLINEAL #1#98, -1, 4, 22, 1, ClaveBaja98, ClaveAlta98;
+         |POPV;
+
+         |SI eaFicheroRecog ! "";
+             enCodUbica      = #99#0;   |HAZ LeeUbicaciones;
+             aFicheroOrigen  = eaRutaDocumento + "\" + eaFicheroRecog;
+             aFicheroDestino = aFicheroActu;
+             |RCOPIA_FICHERO aFicheroOrigen, aFicheroDestino;
+             |SI FSalida ! 0;
+                 |MENAV "         Ha habido un error al copiar el Documento.";
+             |SINO;
+                 nSwAborto = 0;
+                 |HAZ PonFechaAlta;
+             |FINSI;
+         |FINSI;
+     |SINO;
+         |MENAV "      Seleccion Vacia.";
+     |FINSI;
+
+     |DELINDEX #98;
+
+     |SI nSwAborto = 0;
+         |CONFI "2400SBorro el Documento de la Entrada General : ";
+         |SI FSalida = 0;
+             |SALVA_FICHA #54;
+             aCodCli = eaFicheroRecog % 405;
+             aCodLin = eaFicheroRecog % 904;
+             #54#0 = aCodCli;
+             #54#1 = aCodLin;
+             |LEE 101#54=;
+             |SI FSalida = 0;
+                 |BORRA 020#54a;
+                 |LIBERA #54;
+                 aFicheroOrigen  = eaRutaDocumento + "\" + eaFicheroRecog;
+                 |RFBORRA aFicheroOrigen;
+             |FINSI;
+             |REPON_FICHA #54;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecogePlanillas;
+     nSwGraba = 0;
+
+     aFichero = ("98" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #98 aFichero;
+     |ABRE #98;  |CIERRA #98;  |DELINDEX #98;
+
+     |ABRE #98;
+
+     aPathPlan = #99#6;   |QBF aPathPlan;
+     |SI #99#4 = 0;
+         aPathPlan = aPathPlan - "\*" + "/";
+     |SINO;
+         aPathPlan = aPathPlan + "/";
+     |FINSI;
+     aOrigen   = aPathPlan;
+
+     |R_PDIR aOrigen;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+            aCadena1 = aOrigen    > " ";
+            aCadena2 = eaExtension > " ";
+            aCadena2 = "." + aCadena2;
+            aDestino = aCadena1 - aCadena2;
+            |SI aDestino ! aCadena1;
+                aCadena1    = aOrigen    > " ";
+                aCadena2    = aPathPlan  > " ";  |QBF aCadena2
+                aNombreFich = aCadena1 - aCadena2;
+                |HAZ LeeDocumento;
+                |SI nSwVal = 0;
+                    #98#0 = aNombreFich;
+                    #98#1 = aNombreFich;
+                    |GRABA 020#98n;
+                    |LIBERA #98;
+                    nSwGraba = 1;
+                |FINSI;
+            |FINSI;
+
+            |R_SDIR aOrigen;
+     |SIGUE;
+     |CIERRA #98;
+
+     nSwAborto = 1;
+     |SI nSwGraba = 1;
+         |PUSHV 0501 2380;
+         eaFicheroRecog = "";
+         enSwPlanilla   = 1;
+         |ENTLINEAL #1#98, 1, 4, 22, 1, ClaveBaja98, ClaveAlta98;
+         |POPV;
+
+         |SI eaFicheroRecog ! "";
+             aFicheroOrigen  = aPathPlan + eaFicheroRecog;
+             aFicheroDestino = aFicheroActu;
+             |RCOPIA_FICHERO aFicheroOrigen, aFicheroDestino;
+             |SI FSalida ! 0;
+                 |MENAV "         Ha habido un error al copiar el Documento.";
+             |SINO;
+                 nSwAborto = 0;
+                 |HAZ PonFechaAlta;
+             |FINSI;
+         |FINSI;
+     |SINO;
+         |MENAV "      Seleccion Vacia.";
+     |FINSI;
+
+     |DELINDEX #98;
+|FPRC;
+
+|PROCESO TrataDocumentos;
+     |SI #99#2 = 1;
+         |SI #99#4 = 0;
+             aFicheroOrigen  = #99#6;  |QBF aFicheroOrigen;
+             aAlfa = aFicheroOrigen % -101;
+             |SI aAlfa ! "*";
+                 |SI aFicheroOrigen ! "";
+                     aFicheroDestino = aFicheroActu;
+                     |RCOPIA_FICHERO aFicheroOrigen, aFicheroDestino;
+                     |SI FSalida ! 0;
+                         |MENAV "         Ha habido un error al copiar la Plantilla.";
+                         nSwAborto = 1;
+                         |ACABA;
+                     |FINSI;
+                 |FINSI;
+                 |HAZ PonFechaAlta;
+             |SINO;
+                 |HAZ RecogePlanillas;
+             |FINSI;
+         |SINO;
+             aFicheroOrigen  = #99#6;  |QBF aFicheroOrigen;
+             |HAZ RecogePlanillas;
+         |FINSI;
+     |FINSI;
+
+     |SI #99#2 = 2;   |HAZ RecogeDeOtro;        |FINSI;
+     |SI #99#2 = 3;   |HAZ RecogeDocuGeneral;   |FINSI;
+|FPRC;
+
+|PROCESO Imagenes;
+     nPregunta = 0;
+     aTipoScaneo = "[SCANUI]";
+     |CONFI "2400SDesea Configurar el Documento.";
+     |SI FSalida ! 0;  nPregunta = 1;  aTipoScaneo = "[SCAN]";  |FINSI;
+
+     |ET ArribaE;
+         aTipoScaneoT = aTipoScaneo;
+         nSwAborto = 1;
+         |CARGADLL "dstwain.dll";
+         |SI FSalida < 0;
+             |MENAV "     No encuentro el driver : dstwain.dll";
+             |ACABA;
+         |FINSI;
+
+         |ALFACALLDLL "dstwain.dll","DsTwainEntry", aTipoScaneoT;
+         |SI FSalida < 0;
+             |MENAV "     No encuentro el SCANNER";
+             |ACABA;
+         |FINSI;
+
+         |SI aTipoScaneoT = "OK";
+             aAlfa = "[SAVE:" + aFicheroActu; |QBF aAlfa;
+             |ALFACALLDLL "dstwain.dll", "DsTwainEntry", aAlfa;
+             nSwAborto = 0;
+         |FINSI;
+
+         |DESCARGADLL "dstwain.dll";
+
+         |CONFI "2400SDesea otra hoja : ";
+         |SI FSalida = 0;  |VETE ArribaE;  |FINSI;
+
+         |SI nSwAborto = 1;  |ACABA;  |FINSI;
+
+         |HAZ PonFechaAlta;
+
+         |SI nPregunta = 0;
+             |CONFI "2400SDesea editar el Documento ";
+             |SI FSalida ! 0;  nSwEdita = 1;  |ACABA;  |FINSI;
+         |FINSI;
+|FPRC;
+
+|PROCESO EditaDocumento;  |TIPO 11;
+     aAlfa     = #54#3;  |QBF aAlfa;
+     |SI aAlfa = "";    |ACABA;   |FINSI;
+
+     nTecla = FSalida;
+     |SI nTecla ! 10; |Y nTecla ! 11;  |ACABA;  |FINSI;
+
+     |LIBERA #54;
+     |LEE 140#54=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     enCodUbica     = #54#10;  |HAZ LeeUbicaciones;
+     eaFicheroEdita = #54#3;   |QBF eaFicheroEdita;
+     aFicheroActu   = eaRutaDocumento + "/" + eaFicheroEdita;
+
+     nSwAborto = 0;
+     nSwEdita  = 0;
+     Pos       = -1;
+     |XABRE "EC", aFicheroActu, nCanal;
+     |SI FSalida [ 0;
+         Pos = -1;
+         |SI enTipoDocumento = 4;  |Y #99#2 = 1;
+             |HAZ Imagenes;
+         |SINO;
+             |HAZ TrataDocumentos;
+         |FINSI;
+
+         |SI nSwAborto = 1;  |ACABA;  |FINSI;
+     |FINSI;
+
+     |SI nSwEdita = 0;
+         enCodUbica     = #54#10;  |HAZ LeeUbicaciones;
+         eaFicheroEdita = #54#3;   |QBF aFicheroActu;
+         |HAZ AbreDocumento;
+     |FINSI;
+
+     |HORA aHora;
+     aAlfa = aHora % 102;  #54#8 = aAlfa;   |PINTA #54#8;
+     aAlfa = aHora % 402;  #54#9 = aAlfa;   |PINTA #54#9;
+                           #54#7 = ~;       |PINTA #54#7;
+     |GRABA 120#54a;
+
+     |SI nTecla = 10;  |ERROR;   |FINSI;
+|FPRC;
+
+|PROCESO Tipo2m0054;  |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 3;   |ACABA;  |FINSI;
+
+     enCodUbica   = #54#10;  |HAZ LeeUbicaciones;
+     aFicheroActu = eaRutaDocumento + "\" + #54#3;  |QBF aFicheroActu;
+
+     |RFBORRA aFicheroActu;
+|FPRC;
+
+|PROCESO PonFichero;
+     enCodUbica = #99#0;   |HAZ LeeUbicaciones;
+
+     #54#3 = ((eaExtension + "zzz") % 103) + (("00000" + #54#0) % -105) + (("0000" + #54#1) % -104) + "." + eaExtension;
+
+     |PINTA #54#3;
+
+     #54#10 = #99#0;
+     |GRABA 120#54a;
+     |LIBERA #54;
+
+     FSalida     = 11;
+     |HAZ EditaDocumento;
+|FPRC;
+
+|PROCESO EligeDocumento;
+     aAlfa = #54#3;  |QBF aAlfa;
+     |SI aAlfa ! "";  |ACABA;  |FINSI;
+
+     |DDEFECTO #99;
+
+     |PUSHV 0501 2380;
+     |DDEFECTO #99;
+     |PINPA #0#99;
+     |PINDA #0#99;
+     |SI #54#0 ! 0;
+         |ATRI R;
+         |PINTA 1827, "-3- De la Entrada General de Documentos              ";
+         |ATRI r;
+     |FINSI;
+     |ENDATOS #1#99;
+     |SI FSalida ! 0;
+         |POPV;
+         |MENAV "2300 Proceso Abortado.";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |POPV;
+
+     nSwAborto = 0;
+     |HAZ PonFichero;
+
+     |SI nSwAborto = 1;
+         |MENAV "2300 Proceso Abortado.";
+         #54#3  = "";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+|FPRC;

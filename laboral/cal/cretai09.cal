@@ -1,0 +1,690 @@
+|FICHEROS;
+     cretai09 #0;
+
+     cretam3a;
+     cretam3b;
+
+     cretam02;
+     cretam04;
+
+     cretat10;
+
+     nomcalca;
+     nomhicca;
+     nomcalac;
+
+     nomcot02;
+     nomcot03;
+     labtraba;
+|FIN;
+
+|VARIABLES;
+     &nError = 0;
+     nCampo = 0;
+     nCampo1 = 0;
+     nCampo2 = 0;
+     FEstado = 0;
+     aAlfa = "";
+
+     fFecha = @;
+     aFecha = "";
+     nMes = 0;
+     nAny = 0;
+     aReferencia = "";
+     nNume = 0;
+     nTramos = 0;
+     nImpresion = 0;
+
+     nAnyHis = 0;
+     nSSEmp = 0;
+     nSSTra = 0;
+
+     nAntEmp = 0;
+     nAntTra = 0;
+     nAntTipo = 0;
+
+     aFuente = "";
+     nDesdeMes = 0;
+     nHastaMes = 0;
+
+     &aImpresion = "";
+     &nMargen = 0;
+
+     nDiferencia1 = 0;
+     nDiferencia2 = 0;
+     nMargenNeg = 0;
+     swDiferencias = 0;
+     nCodTra = 0;
+     swHayAtrasos = 0;
+     swBuscaTra = 0;
+
+     aNaf = "";
+     nTrab = 0;
+     nTotalNAFEmp = 0;
+     nTotalNAFTra = 0;
+
+     nDesdeMesBusca = 0;
+     nHastaMesBusca = 0;
+     nMesBusca = 0;
+     nMesSuceso = 0;
+     aCodTra = "";
+     nPos = 0;
+
+     nCuotaERTE = 0;
+     nEmp = 0;
+     nTra = 0;
+     nLin = 0;
+     nPorExo = 0;
+|FIN;
+
+|PROCESO Defectos;
+     fFecha = ~;
+     aFecha = fFecha;
+     aAlfa = aFecha % -104;
+     nAny = aAlfa;
+
+     aAlfa = aFecha % 402;
+     nMes = aAlfa;
+     nMes = nMes - 1;
+     |SI nMes = 0;
+          nMes = 12;
+          nAny = nAny - 1;
+     |FINSI;
+
+     #0#2 = nAny;
+     #0#3 = nMes;
+     |PINTA #0#2;
+     |PINTA #0#3;
+|FPRC;
+
+|PROCESO ValidaAny;
+     |SI #0#2 < 2017;
+          |DBASE aAlfa;
+          aAlfa = aAlfa % 111;
+          |SI aAlfa ! "/u/ccasesor"; |Y aAlfa ! "/u/ccprofes";
+          |Y aAlfa ! "/u/dsprofes"; |Y aAlfa ! "/u/dsasesor";
+               |MENAV "    El informe sólo puede acceder a los datos disponibles a partir de 2017";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO AvisoTipos;
+     |SI #0Campo = 01;
+          aAlfa = "    ATENCION: con la selección 'Desde tipo 01'";
+          aAlfa = aAlfa + " no se incluyen las liquidaciones L00";
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO AyudaTipos; |TIPO 7;
+     |PUSHV 08622380;
+     |ATRI R;
+     ||            6         7
+     ||            34567890123456789
+     |PINTA 0863, "  - Opciones -   ";
+     |PINTA 0963, " 00 :Normal      ";
+     |PINTA 1063, " 02 :Finiquitos  ";
+     |PINTA 1163, "5-20:Atrasos     ";
+     |PINTA 1263, " 90 :Complement. ";
+     |PINTA 1363, "                 ";
+     |PINTA 1463, "                 ";
+     |ATRI 0;
+|FPRC;
+
+|PROCESO Restaura;
+     |POPV;
+|FPRC;
+
+|PROCESO ElIMPRE;
+     Impresora = "CrystalReport";
+     |IMPRE -1;
+     |SI FSalida = 0;
+          |INFOR "cretai09";
+     |FINSI;
+|FPRC;
+
+|PROCESO ElFINIMP;
+     |FININF;
+
+     |FINIMP;
+|FPRC;
+
+|PROCESO cretam3b_previo;
+     |SI nTrab ! #cretam3b#10;
+          || solo dentro del mismo codigo de trabajador
+          |ACABA;
+     |FINSI;
+     |PARA nCampo = 15; |SI nCampo [ 129; |HACIENDO nCampo = nCampo + 6;
+          |SI #cretam3b#nCampo# = 998;
+               nCampo1 = nCampo + 3;
+               nCampo2 = nCampo + 4;
+               nTotalNAFTra = nTotalNAFTra + #cretam3b#nCampo1#;
+               nTotalNAFEmp = nTotalNAFEmp + #cretam3b#nCampo2#;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|DEFBUCLE cretam3b_previo;
+     #cretam3b#3;
+     ;
+     #cretam3a#0, #cretam3a#1, #cretam3a#2, #cretam3a#3, #cretam3a#4, aNaf, 2000, 01, 01;
+     #cretam3a#0, #cretam3a#1, #cretam3a#2, #cretam3a#3, #cretam3a#4, aNaf, 2099, 12, 31;
+     ;
+     NULL, cretam3b_previo;
+|FIN;
+
+|PROCESO Diferencias;
+     /*
+     #cretam3b#135 = SS Tra SIL;
+     #cretam3b#136 = SS Emp SIL;
+     #cretam3b#141 = SS Tra NOM;
+     #cretam3b#142 = SS Emp NOM;
+     */
+
+     || migue
+     || nDiferencia1 = #cretam3b#135 - #cretam3b#141;
+     || nDiferencia2 = #cretam3b#136 - #cretam3b#142;
+
+     nDiferencia1 = nTotalNAFTra - nSSTra;
+     nDiferencia2 = nTotalNAFEmp - nSSEmp;
+
+     nMargenNeg = nMargen * (-1);
+
+     nDiferencia1 = nDiferencia1 ! 2;
+     nDiferencia2 = nDiferencia2 ! 2;
+     nMargenNeg = nMargenNeg ! 2;
+
+     |SI nMargenNeg [ nDiferencia1; |Y nDiferencia1 [ nMargen;
+          || no hay diferencia
+     |SINO;
+          swDiferencias = 1;
+     |FINSI;
+     |SI nMargenNeg [ nDiferencia2; |Y nDiferencia2 [ nMargen;
+          || no hay diferencia
+     |SINO;
+          swDiferencias = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO nomcot03;
+     nNume = 0;
+     |SI #nomcot02#27 = "ERE";
+          |SI #nomcot03#10 = 509; |O #nomcot03#10 = 594;
+          |O #nomcot03#10 = 603; |O #nomcot03#10 = 613;
+          |O #nomcot03#10 = 705; |O #nomcot03#10 = 706; |O #nomcot03#10 = 707;
+          |O #nomcot03#10 = 760;
+/*
+               nNume = (#nomcot03#12 % #nomcot03#15) ! 2;
+               nNume = (nNume % nPorExo) ! 2;
+*/
+               || lo calculo asi: al 100% y luego le quito lo que exoner‚
+               || para no tener problemas de redondeos
+
+               nNume = (#nomcot03#12 % #nomcot03#15) ! 2;
+               nNume = nNume - #nomcot03#16;
+
+               |SI #nomcot03#10 = 760;
+                    |SI nPorExo = 100;
+                    || si no es al 100% ya viene descontada en la SS empresa
+                    || del mantenimiento de calculos
+                    || no hay que hacerlo otra vez
+                         nNume = #nomcot03#16 * (-1);
+                    |SINO;
+                         nNume = #nomcot03#16 * (nPorExo / 100) * (-1);
+                         || me he quedado aqui, pero esta solucion rompe
+                         || otros casos, ver bien
+                    |FINSI;
+               |FINSI;
+               nCuotaERTE = nCuotaERTE + nNume;
+          |FINSI;
+     |FINSI;
+     |SI #nomcot02#27 = "ETP";
+          |SI #nomcot03#10 = 536; |O #nomcot03#10 = 596;
+          |O #nomcot03#10 = 636; |O #nomcot03#10 = 637;
+          |O #nomcot03#10 = 711; |O #nomcot03#10 = 712; |O #nomcot03#10 = 713;
+               nNume = (#nomcot03#12 % #nomcot03#15) ! 2;
+               nNume = (nNume % nPorExo) ! 2;
+               |SI #nomcot03#10 = 596;       || para arreglar cagada
+               |Y nNume < 0;                 || quitalo en julio/2020
+                    nNume = 0;
+               |FINSI;
+               nCuotaERTE = nCuotaERTE + nNume;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE nomcot03;
+     #nomcot03#1;
+     ;
+     nEmp, #nomcot02#1, #nomcot02#2, #nomcot02#3, #nomcot02#4, #nomcot02#5, nLin, nCodTra, 500;
+     nEmp, #nomcot02#1, #nomcot02#2, #nomcot02#3, #nomcot02#4, #nomcot02#5, nLin, nCodTra, 799;
+     ;
+     NULL, nomcot03;
+|FIN;
+
+|PROCESO nomcot02;
+     |SI #nomcot02#27 = "ERE"; |O #nomcot02#27 = "ETP";
+          nPorExo = #nomcot02#99;
+          nLin = #nomcot02#6;
+          |SI #labtraba#188 = "S"; |Y nPorExo = 0;
+               || esto es de cuando no se grababa el % de exoneracion en
+               || el campo, antes de ampliar los valores a S, 1, 2, A
+               nPorExo = #labtraba#219;
+          |FINSI;
+
+          |BUCLE nomcot03;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE nomcot02;
+     #nomcot02#1;
+     ;
+     nEmp, #cretam3b#1, #cretam3b#2, #cretam3b#3, #cretam3b#4, #cretam3b#5, 01, nCodTra;
+     nEmp, #cretam3b#1, #cretam3b#2, #cretam3b#3, #cretam3b#4, #cretam3b#5, 31, nCodTra;
+     ;
+     NULL, nomcot02;
+|FIN;
+
+|PROCESO CuotasERTEExo;
+     nCuotaERTE = 0;
+     nEmp = #cretam3b#0;
+     nTra = nCodTra;
+     |BUCLE nomcot02;
+|FPRC;
+
+|PROCESO mantenimiento;
+     |ABRE #labtraba;
+     #labtraba#0 = #cretam3b#0;
+     #labtraba#1 = nCodTra;
+     |LEE 000#labtraba.=;
+     |SI aFuente = "M";
+          nSSEmp = nSSEmp + #nomcalca#45 - #nomcalca#57 - #nomcalca#58;
+          nSSTra = nSSTra + #nomcalca#48 + #nomcalca#49 + #nomcalca#50 + #nomcalca#51;
+          nSSTra = nSSTra + #nomcalca#165;
+          |SI #cretam3b#3 = 00;
+               |SI #labtraba#188 = "S";
+               |O #labtraba#188 = "1";
+               |O #labtraba#188 = "2";
+               |O #labtraba#188 = "A";
+|SI #labtraba#1 = 567; |DEBUG; |FINSI;
+                   |HAZ CuotasERTEExo;
+                   nSSEmp = nSSEmp + nCuotaERTE;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI aFuente = "H";
+          nSSEmp = nSSEmp + #nomhicca#45 - #nomhicca#57 - #nomhicca#58;
+          nSSTra = nSSTra + #nomhicca#48 + #nomhicca#49 + #nomhicca#50 + #nomhicca#51;
+          nSSTra = nSSTra + #nomhicca#207;
+          |SI #cretam3b#3 ] 06;
+               swHayAtrasos = 1;
+          |FINSI;
+          |SI #cretam3b#3 = 00;
+               |SI #labtraba#188 = "S";
+               |O #labtraba#188 = "1";
+               |O #labtraba#188 = "2";
+               |O #labtraba#188 = "A";
+                    |HAZ CuotasERTEExo;
+                    nSSEmp = nSSEmp + nCuotaERTE;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI aFuente = "A";
+          nSSEmp = nSSEmp + #nomcalac#45 - #nomcalac#57 - #nomcalac#58;
+          nSSTra = nSSTra + #nomcalac#48 + #nomcalac#49 + #nomcalac#50 + #nomcalac#51;
+          nSSTra = nSSTra + #nomcalac#165;
+     |FINSI;
+
+     |CIERRA #labtraba;
+|FPRC;
+
+|DEFBUCLE nomcalac;
+     #nomcalac#1;
+     ;
+     #cretam3b#0, nCodTra, nDesdeMes, #cretam3b#3;
+     #cretam3b#0, nCodTra, nHastaMes, #cretam3b#3;
+     ;
+     NULL, mantenimiento;
+|FIN;
+
+|DEFBUCLE nomhicca;
+     #nomhicca#1;
+     ;
+     #cretam3b#0, nCodTra, nAnyHis, nDesdeMes, #cretam3b#3;
+     #cretam3b#0, nCodTra, nAnyHis, nHastaMes, #cretam3b#3;
+     ;
+     NULL, mantenimiento;
+|FIN;
+
+|DEFBUCLE nomcalca;
+     #nomcalca#1;
+     ;
+     #cretam3b#0, nCodTra, #cretam3b#2, #cretam3b#3;
+     #cretam3b#0, nCodTra, #cretam3b#2, #cretam3b#3;
+     ;
+     NULL, mantenimiento;
+|FIN;
+
+|PROCESO cretam04;
+     || antes leia solo una vez, en la ficha del mes, para buscar si habia
+     || algun otro trabajador en donde buscar
+
+     || pero en atrasos hay que leer no en la ficha del mes (cogeria siempre
+     || el ultimo) sino en todos los meses en que se hayan calculado los
+     || atrasos, por si en alguno hubiera ocurrido eso de que un trabajador
+     || hubiera cambiado de ficha sin tener que crear tramo
+
+     |SI swBuscaTra = 2; |Y #cretam3b#3 ] 5;
+          nDesdeMesBusca = #cretam3b#137;
+          nHastaMesBusca = #cretam3b#138;
+     |SINO;
+          nDesdeMesBusca = #cretam3b#2;
+          nHastaMesBusca = #cretam3b#2;
+     |FINSI;
+
+     #cretam04#0 = #cretam3b#0;
+     #cretam04#1 = #cretam3b#1;
+     #cretam04#2 = #cretam3b#2;
+     #cretam04#3 = #cretam3b#3;
+     #cretam04#4 = #cretam3b#4;
+     #cretam04#5 = #cretam3b#5;
+     #cretam04#6 = #cretam3b#6;
+     |SI #cretam3b#3 ] 5;
+          #cretam04#1 = #cretam3b#139;
+          #cretam04#2 = #cretam3b#140;
+     |FINSI;
+     |LEE 000#cretam04.=;
+     |SI FSalida = 0;
+          |SI swBuscaTra = 1;
+               nCodTra = #cretam04#7;
+               #cretam3b#10 = nCodTra;
+               #cretam3b#11 = #cretam04#29;
+               |GRABA 000#cretam3b.a;
+          |FINSI;
+          aCodTra = "";
+          |SI swBuscaTra = 2;
+               aCodTra = #cretam04#85;
+               |QBF aCodTra;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuclesMant;
+     |SI #cretam3b#3 = 00; |O #cretam3b#3 = 02;
+          aFuente = "M";
+          |BUCLE nomcalca;
+
+          aFuente = "H";
+          |BUCLE nomhicca;
+     |FINSI;
+     |SI #cretam3b#3 = 05;
+          aFuente = "A";
+          |BUCLE nomcalac;
+     |FINSI;
+     |SI #cretam3b#3 ] 06;
+          aFuente = "H";
+          swHayAtrasos = 0;
+          |BUCLE nomhicca;
+          |SI swHayAtrasos = 0;
+               nAnyHis = #cretam02#21 - 2000;
+               |BUCLE nomhicca;
+               |SI swHayAtrasos = 0;
+                    nAnyHis = #cretam3b#139 - 2000;
+                    |BUCLE nomhicca;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaMant;
+     nSSEmp = 0;
+     nSSTra = 0;
+/*
+     || asigno aqui las variables, porque si entra en lo de nMesSuceso
+     || me cambia los valores
+
+     |SI #cretam3a#3 = 00; |O #cretam3a#3 = 02;
+          nDesdeMes = #cretam3a#2;
+          nHastaMes = #cretam3a#2;
+     |FINSI;
+     |SI #cretam3a#3 ] 05;
+          nDesdeMes = #cretam3a#15;
+          nHastaMes = #cretam3a#17;
+     |FINSI;
+*/
+     || migue
+     swBuscaTra = 1;
+
+     || primero para que si el trabajador me viene a cero porque al recoger
+     || los calculos por lo que sea estaba asi, me traiga el codigo (en
+     || atrasos me ha pasado), deberia arreglarse al recoger los calculos
+     nCodTra = #cretam3b#10;
+
+     |SI nCodTra = 0;
+          |HAZ cretam04;
+     |FINSI;
+     |HAZ BuclesMant;
+
+     swBuscaTra = 2;
+     || segundo, para que si es un trabajador que tiene mas de un codigo a
+     || la vez, lo pille tambien
+     nCodTra = 0;
+     |HAZ cretam04;
+
+     |SI aCodTra ! "";
+     |Y #cretam3b#3 < 05;     || en atrasos no
+          nCodTra = -1
+          |PARA nPos = 105; |SI nCodTra ! 0; |HACIENDO nPos = nPos + 500;
+               aAlfa = aCodTra % nPos;
+               |QBF aAlfa;
+               nCodTra = aAlfa;
+               |SI nCodTra ! 0; |Y nCodTra ! #cretam3b#10;
+                    |HAZ BuclesMant;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO cretam3b;
+     || migue
+     |SALVA_FICHA #cretam3b;
+     nTrab = #cretam3b#10;
+     aNaf = #cretam3b#5;
+     nTotalNAFTra = 0;
+     nTotalNAFEmp = 0;
+     |BUCLE cretam3b_previo;
+     |REPON_FICHA #cretam3b;
+
+     |SI nImpresion = -1;
+          nImpresion = 0;     || se han encontrado datos de calculos
+     |FINSI;
+
+     swBuscaTra = 1;
+     || primero para que si el trabajador me viene a cero porque
+     || al recoger los calculos por lo que sea estaba asi, me
+     || traiga el codigo (en atrasos me ha pasado), deberia
+     || arreglarse al recoger los calculos
+     nCodTra = #cretam3b#10;
+
+     |SI nCodTra = 0;
+          |HAZ cretam04;
+     |FINSI;
+
+     |PARA nCampo = 15; |SI nCampo [ 129; |HACIENDO nCampo = nCampo + 6;
+          |SI #cretam3b#nCampo# = 998;
+               nCampo1 = nCampo + 3;
+               nCampo2 = nCampo + 4;
+               #cretam3b#135 = #cretam3b#nCampo1#;
+               #cretam3b#136 = #cretam3b#nCampo2#;
+               |SI nAntEmp ! #cretam3b#0; |O nAntTra ! #cretam3b#10;
+               |O nAntTipo ! #cretam3b#3;
+                    |HAZ BuscaMant;
+                    #cretam3b#141 = nSSTra;
+                    #cretam3b#142 = nSSEmp;
+               |FINSI;
+          |FINSI;
+          |SI #cretam3b#nCampo# = 000;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+
+     nAntEmp = #cretam3b#0;
+     nAntTra = #cretam3b#10;
+     nAntTipo = #cretam3b#3;
+
+     swDiferencias = 0;
+     |SI #0#4 = "D";
+          |HAZ Diferencias;
+     |SINO;
+          swDiferencias = 1;
+     |FINSI;
+
+     |SI swDiferencias = 1;
+          |SI nImpresion = 0;
+               |HAZ ElIMPRE;
+          |FINSI;
+          |PRINT;
+
+          nImpresion = nImpresion + 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE cretam3b;
+     #cretam3b#3;
+     ;
+     #cretam3a#0, #cretam3a#1, #cretam3a#2, #cretam3a#3, #cretam3a#4, "            ", 2000, 01, 01;
+     #cretam3a#0, #cretam3a#1, #cretam3a#2, #cretam3a#3, #cretam3a#4, "zzzzzzzzzzzz", 2099, 12, 31;
+     ;
+     NULL, cretam3b;
+|FIN;
+
+|PROCESO cretam02;
+     nDesdeMes = #cretam02#17;
+     nHastaMes = #cretam02#18;
+     nAnyHis = #cretam02#19;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE cretam02;
+     #cretam02#3;
+     ;
+     #cretam3a#0, #cretam3a#1, #cretam3a#2, #cretam3a#3, #cretam3a#4;
+     #cretam3a#0, #cretam3a#1, #cretam3a#2, #cretam3a#3, #cretam3a#4;
+     ;
+     NULL, cretam02;
+|FIN;
+
+|PROCESO cretam3a;
+     |PARA nCampo = 31; |SI nCampo [ 126; |HACIENDO nCampo = nCampo + 5;
+          |SI #cretam3a#nCampo# = 998;
+               nCampo1 = nCampo + 2;
+               nCampo2 = nCampo + 3;
+               #cretam3a#131 = #cretam3a#nCampo1#;
+               #cretam3a#132 = #cretam3a#nCampo2#;
+          |FINSI;
+          |SI #cretam3a#nCampo# = 000;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+
+     |SI #cretam3a#3 = 00; |O #cretam3a#3 = 02;
+          nDesdeMes = #cretam3a#2;
+          nHastaMes = #cretam3a#2;
+          nAnyHis = #0#2 - 2000;
+     |FINSI;
+     |SI #cretam3a#3 ] 05;
+          nDesdeMes = #cretam3a#2;
+          nHastaMes = #cretam3a#2;
+          nAnyHis = #0#2 - 2000;
+          |BUCLE cretam02;
+     |FINSI;
+
+     |BUCLE cretam3b;
+
+     |PIEINF;
+|FPRC;
+
+|DEFBUCLE cretam3a_L90;
+     #cretam3a#3;
+     ;
+     #0#0, #0#2, #0#3, #0#6, "               ";
+     #0#1, #0#2, #0#3, #0#7, "zzzzzzzzzzzzzzz";
+     ;
+     NULL, cretam3a;
+|FIN;
+
+|DEFBUCLE cretam3a;
+     #cretam3a#1;
+     ;
+     #0#0, #0#2, #0#3, #0#6, "               ", 0000;
+     #0#1, #0#2, #0#3, #0#7, "zzzzzzzzzzzzzzz", 2999;
+     ;
+     NULL, cretam3a;
+|FIN;
+
+|PROCESO Seleccion;
+     |BUCLE cretam3a;
+     |BUCLE cretam3a_L90;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |PINPA #0#0;
+
+     |ABRE #0;
+     |DDEFECTO #0;
+     |LEE 000#0p;
+     |SI FSalida = 0;
+          |BORRA 020#0a;
+     |SINO;
+          |HAZ Defectos;
+     |FINSI;
+
+     |PINDA #0#0;
+
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          aAlfa = Usuario; |QBT aAlfa; aAlfa = "tm_cretat10_" + aAlfa;
+          |NOME_DAT #cretat10#aAlfa#;
+          |DELINDEX #cretat10;
+          |ABRE #cretat10;
+
+          nImpresion = -1;
+          aImpresion = #0#4;
+          nMargen = #0#8;
+
+          |ABRE #cretam02;
+          |ABRE #cretam04;
+          |ABRE #cretam3a;
+          |ABRE #cretam3b;
+
+          nAnyHis = #0#2 - 2000;
+          |HAZ Seleccion;
+
+          |CIERRA #cretam3b;
+          |CIERRA #cretam3a;
+          |CIERRA #cretam04;
+          |CIERRA #cretam02;
+
+          |CIERRA #cretat10;
+          |DELINDEX #cretat10;
+
+
+          |SI nImpresion ! -1; |Y nImpresion ! 0;
+               |HAZ ElFINIMP;
+          |SINO;
+               |SI nImpresion = -1;
+                    aAlfa = "    No se han encontrado datos de Cálculos para imprimir ";
+                    aAlfa = aAlfa + "con la selección realizada.";
+               |FINSI;
+               |SI nImpresion = 0;
+                    aAlfa = "    No se han encontrado diferencias";
+               |FINSI;
+               |MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+
+     |GRABA 000#0n;
+     |CIERRA #0;
+|FPRO;

@@ -1,0 +1,313 @@
+|FICHEROS;
+   cainfres #0;
+   :/modelos/def/dsmom041 #1;
+   :/modelos/def/dsmom042 #2;
+   canempre #30;
+   caselem1 #998;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   informe = "";
+   &lintot = 0;
+   &linnor = 0;
+   &linant = 0;
+   &totval = 0;
+   &totamo = 0;
+   &totano = 0;
+   &totres = 0;
+   &linanyo = 0;
+   &linacum = 0;
+   &linresi = 0;
+   &pagina = 0;
+   sw_pagina = 0;
+   ulti = "";
+   bueno = 0;
+   alfa1 = "";
+   fecsys = @;
+   {-1}form  = "";           || Variables menu formato <1> o <2>
+   form1 = "2400";
+   form2 = "1";
+   form3 = "Elija formato: ";
+   form4 = "12";
+   form5 = " < 1 > ";
+   form6 = " < 2 > ";
+   swinv = 0;
+   op_form = 0;
+
+   Comodin  = "";
+   Comodin1 = "";
+
+   Empresa = 0;
+   Periodo = 0;
+   Empres1 = 0;
+   Period1 = 0;
+
+   aFichero = "";
+   nCanal   = 0;
+   aVariable = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ******************************************************************
+|CALCULO Elinicio; |TIPO 8;
+ |HAZ inicio;
+ |HAZ DirAplicSt;
+
+ |SI Haymodelo = 0;
+     |MENAV "    Error.! No Existe Aplicacion MODELOS.";
+     |PTEC 807;
+ |SINO;
+     Comodin = aPModelo + "fich/";
+     |PATH_DAT #dsmom041 #Comodin#;
+     |PATH_DAT #dsmom042 #Comodin#;
+
+     aFichero = aPContag + "def/amorcabe.ref";
+     |XABRE "W", aFichero, nCanal;
+      aVariable = ":/modelos/def/dsmom041" + &13 + &10;
+     |XGRABA nCanal, aVariable;
+     |XCIERRA nCanal;
+
+     aFichero = aPContag + "def/amorline.ref";
+     |XABRE "W", aFichero, nCanal;
+      aVariable = ":/modelos/def/dsmom042" + &13 + &10;
+     |XGRABA nCanal, aVariable;
+     |XCIERRA nCanal;
+ |FINSI;
+|FCAL;
+
+|CALCULO &c_pagina;
+   |SI sw_pagina = 0;
+      pagina = #cainfres#7 + 1;
+      sw_pagina = 1;
+   |SINO;
+      pagina = pagina + 1;
+   |FINSI;
+|FCAL;
+
+|PROCESO cuenta; |TIPO 0;
+     eaCuenta = #cainfres#Campo#;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #cainfres#Campo# = eaCuenta;
+     |PINTA #cainfres#Campo#;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7;
+   fecsys = fec2; || fecsys = ~;
+   alfa1 = fecsys;
+   alfa1 = alfa1 % -104;
+   #cainfres#Campo# = alfa1;
+   |PINTA #cainfres#Campo#;
+|FPRC;
+
+|PROCESO acumano;
+   |SI enConverModelo ! 0;
+       #dsmom042#07 = (#dsmom042#07 * enConverModelo ) ! enRedonModelo;
+       #dsmom042#11 = (#dsmom042#11 * enConverModelo ) ! enRedonModelo;
+       #dsmom042#13 = (#dsmom042#13 * enConverModelo ) ! enRedonModelo;
+   |FINSI;
+
+   |SI #dsmom042#6 = "A";
+      |SI #dsmom042#5 [ #cainfres#5;
+         linacum = linacum + #dsmom042#11;
+         |SI #dsmom042#5 = #cainfres#5; linanyo = linanyo + #dsmom042#11; |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Lineas;
+ #2#1;
+ ;
+ #dsmom041#0,#dsmom041#2,#dsmom041#3,000;
+ #dsmom041#0,#dsmom041#2,#dsmom041#3,999;
+ ;
+ NULL, acumano;
+|FIN;
+
+|PROCESO fechafac;
+
+   |SI #cainfres#6 = "N";
+      |SI #dsmom041#25 = "N"; |ACABA; |FINSI;
+   |FINSI;
+
+   |SI enConverModelo ! 0;
+       #dsmom041#10 = (#dsmom041#10 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#15 = (#dsmom041#15 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#16 = (#dsmom041#16 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#21 = (#dsmom041#21 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#22 = (#dsmom041#22 * enConverModelo ) ! enRedonModelo;
+   |FINSI;
+
+   linanyo = 0;
+   linacum = 0;
+
+   |BUCLE Lineas;
+
+||...    |SI linanyo = 0; |Y linacum = 0; |ACABA; |FINSI;
+   |SI linanyo = 0; |Y #cainfres#8 = "N";  |ACABA; |FINSI;
+   linresi = #dsmom041#10 - linacum;
+
+   |SI bueno ! 0;          || si es primera vez imprime cabeceras solo;
+      |SI #dsmom041#5 ! ulti;
+         lintot = 1;     || imprime linea de totales;
+         |PRINT;
+         totval = 0;
+         totamo = 0;
+         totano = 0;
+         totres = 0;
+         lintot = 0;
+         linant = 0;
+         linnor = 1;     || imprime primera linea de cuenta;
+      |SINO;
+         lintot = 0;
+         linnor = 0;
+         linant = 1;     || imprime siguientes lineas de misma cuenta;
+      |FINSI;
+   |SINO;
+      lintot = 0;
+      linnor = 1;
+      linant = 0;
+   |FINSI;
+
+   bueno = 1;
+   ulti = #dsmom041#5;
+   |PRINT;
+   totval = totval + #dsmom041#10;    || acumula valor inicial;
+   totamo = totamo + linacum; || acumula amortizacion;
+   totano = totano + linanyo; || acumula amortizacion en a¤o;
+   totres = totres + linresi; || acumula valor residual;
+   lintot = 0;
+   linnor = 0;
+   linant = 0;
+|FPRC;
+
+|DEFBUCLE cainfres0;
+   #1#4;
+   2,3,12;
+   Empresa,#0#0, #0#2, #0#12,#0#9;
+   Empresa,#0#1, #0#3, #0#13,#0#10;
+   e;
+   NULL,NULL,NULL,NULL,NULL,fechafac;
+   #1#5,#1#2,#1#4;
+|FIN;
+
+|PROCESO fechafac1;
+   |SI #cainfres#6 = "N";
+      |SI #dsmom041#25 = "N"; |ACABA; |FINSI;
+   |FINSI;
+
+   |SI enConverModelo ! 0;
+       #dsmom041#10 = (#dsmom041#10 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#15 = (#dsmom041#15 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#16 = (#dsmom041#16 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#21 = (#dsmom041#21 * enConverModelo ) ! enRedonModelo;
+       #dsmom041#22 = (#dsmom041#22 * enConverModelo ) ! enRedonModelo;
+   |FINSI;
+
+   linanyo = 0;
+   linacum = 0;
+   |BUCLE Lineas;
+|| ...    |SI linanyo = 0; |Y linacum = 0; |ACABA; |FINSI;
+   |SI linanyo = 0; |Y #cainfres#8 = "N";  |ACABA; |FINSI;
+   linresi = #dsmom041#10 - linacum;
+   |PRINT;
+   bueno = 1;
+   swinv = 1;
+   totval = totval + #dsmom041#10;    || acumula valor inicial;
+   totamo = totamo + linacum; || acumula amortizacion;
+   totano = totano + linanyo; || acumula amortizacion en a¤o;
+   totres = totres + linresi; || acumula valor residual;
+|FPRC;
+
+|DEFBUCLE cainfres1;
+   #1#1;
+   5,12;
+   Empresa,#0#2, #0#12, #0#0, #0#9;
+   Empresa,#0#3, #0#13, #0#1, #0#10;
+   e;
+   NULL, fechafac1;
+|FIN;
+
+|PROCESO impre; |TIPO 3;
+   |MENU form;
+   op_form = FSalida;
+   |SI op_form > 0;
+      |HAZ los_informes;
+      |SI op_form = 1;
+         informe = que_i1;
+      |SINO;
+         informe = que_i2;
+      |FINSI;
+   |SINO;
+      |ACABA;
+   |FINSI;
+
+   |SI #cainfres#11 = "S";
+      |SI informe = "cainfres"; informe = "cainfre2"; |FINSI;
+      |SI informe = "cainfre1"; informe = "cainfre3"; |FINSI;
+      |SI informe = "crinfre1"; informe = "crinfre3"; |FINSI;
+   |FINSI;
+
+   |IMPRE 0;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   |INFOR informe;
+   |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+
+   |SI #48#27 = "S";
+      |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+   |FININF;
+   |FINIMP;
+|FPRC;
+
+|PROCESO HazTodo;
+    |HAZ LeeConversor;
+    Empresa = cod1;
+    Periodo = cod2;
+    bueno = 0;
+    |SI op_form = 1;
+        |BUCLE cainfres0;
+        |SI bueno ! 0;
+            lintot = 1;
+            |PRINT;
+         |FINSI;
+    |SINO;
+         |BUCLE cainfres1;
+    |FINSI;
+
+    |SI bueno ! 0; |PIEINF; |FINSI;
+|FPRC;
+
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3; |QBF dirfich0;
+
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 001;
+ 999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

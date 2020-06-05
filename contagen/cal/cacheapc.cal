@@ -1,0 +1,374 @@
+|FICHEROS;
+   cacheapc #0;
+
+   camaasic;
+   camaasil;
+   caivaasi;
+   caw00052;
+
+   dscam042@ #142;     || Control C
+   dscam043@ #143;     || Control L
+   dscam067@ #167;     || Historico Enlaces
+|FIN;
+
+
+|VARIABLES;
+  nErr         = 0;
+  nError       = 0;
+  aAlfa1       = "";
+  aPathCartera = "";
+  aPathDef     = "";
+  aPathFic     = "";
+  aPathFicE    = "";
+  aDef43       = "";
+  aDef42       = "";
+  aDef67       = "";
+  aFichero     = "";
+  aDescripcion = "";
+  nEmpresa     = 0;
+
+  nLinea       = 0;
+  nLineaA      = 0;
+  nSwAlgun     = 0;
+  fDFecha      = @;
+  fHFecha      = @;
+  informe      = "";
+
+  aBlancs      = "";
+  aZetas       = "";
+  &eaError     = "";
+  &nSwError    = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *****************************************************************
+|PROCESO CargaDef;
+     nErr = 1;
+
+     aPathDef = aPathCartera + "def/";
+     aPathFic = aPathCartera + "fich/";
+
+     aDef42 = aPathDef + "dscam042";
+     |CARGA_DEF aDef42, dscam042@;
+     |SI FSalida ! 0;
+          aDef42 = ""; |HAZ DescargaDef;
+          |ACABA;
+     |FINSI;
+
+     aDef43 = aPathDef + "dscam043";
+     |CARGA_DEF aDef43, dscam043@;
+     |SI FSalida ! 0;
+          aDef43 = ""; |HAZ DescargaDef;
+          |ACABA;
+     |FINSI;
+
+     aDef67 = aPathDef + "dscam067";
+     |CARGA_DEF aDef67, dscam067@;
+     |SI FSalida ! 0;
+          aDef67 = ""; |HAZ DescargaDef;
+          |ACABA;
+     |FINSI;
+
+     |PATH_DAT #dscam042@#aPathFic#;
+     |PATH_DAT #dscam043@#aPathFic#;
+
+     nErr = 0;
+|FPRC;
+
+|PROCESO DescargaDef; |TIPO 9;
+     |SI aDef67 ! ""; |DESCARGA_DEF #dscam067@; aDef67 = ""; |FINSI;
+     |SI aDef43 ! ""; |DESCARGA_DEF #dscam043@; aDef43 = ""; |FINSI;
+     |SI aDef42 ! ""; |DESCARGA_DEF #dscam042@; aDef42 = ""; |FINSI;
+|FPRC;
+
+|CALCULO ElTipo8; |TIPO 8;
+
+ |HAZ inicio;
+
+ |ABRE #caivaasi;
+ |LEE 001#caivaasi.p;
+ |SI FSalida ! 0;
+     |DDEFECTO #caivaasi;
+ |FINSI;
+ |CIERRA #caivaasi;
+
+ aAlfa1 = #caivaasi#44;
+ |C_M #cacheapc#6, 1,aAlfa1;
+ |C_M #cacheapc#7, 1,aAlfa1;
+
+ nErr = 0;
+ aPathCartera = #caivaasi#56; |QBF aPathCartera;
+ |SI aPathCartera = "";
+     |MENAV "    Error. No tiene informado el Path de la Cartera ";
+     |PTEC 807;
+ |SINO;
+     |HAZ CargaDef;
+     |SI nErr ! 0;
+         |MENAV "    Error al Cargar ficheros de Cartera ";
+         |PTEC 807;
+     |FINSI;
+ |FINSI;
+
+ |HAZ eParaModelos;
+|FCAL;
+|| *****************************************************************
+
+|CALCULO defectos; |TIPO 7;
+  #cacheapc#2 = fec1;    |PINTA #cacheapc#2;
+  #cacheapc#3 = fec2;    |PINTA #cacheapc#3;
+|FCAL;
+
+|CALCULO fechad; |TIPO 0;
+  fDFecha = fec1;
+  |SI enSwSelFc = 1; fDFecha = "01.01.0000"; |FINSI;
+  |SI #cacheapc#2 < fDFecha; |O #cacheapc#2 > fec2;
+      |MENAV "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+      |ERROR;
+  |FINSI;
+|FCAL;
+
+|CALCULO fechah; |TIPO 0;
+  fDFecha = fec1;
+  |SI enSwSelFc = 1; fDFecha = "01.01.0000"; |FINSI;
+  |SI #cacheapc#3 < fDFecha; |O #cacheapc#3 > fec2; |O #cacheapc#3 < #cacheapc#1;
+      |MENAV "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+      |ERROR;
+   |FINSI;
+|FCAL;
+
+|PROCESO nodepar; |TIPO 7;
+   |C_M #cacheapc#6, 1, eaDepar;
+   |C_M #cacheapc#7, 1, eaDepar;
+|FPRC;
+
+|| ******************************************************************
+|PROCESO LeeAuxiliar;
+   nSwError = 0;
+   eaError  = "ASIENTO CORRECTO             ";
+   eaError  = "";
+   |SI #caw00052#7 = " ";
+       eaError = "NO EXISTE ASIENTO CONTABLE   ";
+       nSwError = 1;
+   |FINSI;
+   |SI #caw00052#8 = " ";
+       |SI nError = 0;
+           eaError = "NO EXISTE MOVIMIENTO EN CARTERA";
+       |SINO;
+           eaError = "NO EXISTE EMP.CONTABLE EN CARTERA";
+       |FINSI;
+       nSwError = 2;
+   |FINSI;
+   |SI nSwError ! 0; |O #cacheapc#10 = "T";
+       |PRINT;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE LeeAuxiliar;
+   #caw00052#2;
+   ;
+   00, "01.01.0000", 000001;
+   99, "31.12.2999", 999999;
+   ;
+   NULL, LeeAuxiliar;
+|FIN;
+
+|PROCESO Imprimir;
+
+     |IMPRE 0;
+     |SI FSalida ! 0;
+         |MENAV "0000Error en la Impresora. Proceso interrumpido";
+         |ACABA;
+     |FINSI;
+
+     informe = "cacheapc";
+
+     |INFOR informe;
+     |SI FSalida ! 0;
+         |MENAV "0000No existe Informe. Proceso interrumpido";
+         |ACABA;
+     |FINSI;
+
+     |BUCLE LeeAuxiliar;
+
+     |PIEINF;
+     |FININF;
+     |FINIMP;
+|FPRC;
+|| ******************************************************************
+|PROCESO dscam067;
+    |SI #dscam067@#5 < fDFecha; |O #dscam067@#5 > fHFecha;
+        |ACABA;
+    |FINSI;
+
+    |SELECT #2#caw00052;
+    #caw00052#1 = #dscam067@#4;
+    #caw00052#2 = #dscam067@#5;
+    #caw00052#3 = #dscam067@#6;
+    |LEE 041#caw00052.=;
+    |SI FSalida = 0;
+        nLineaA = #caw00052#0;
+    |SINO;
+        nLinea  = nLinea + 1;
+        nLineaA = nLinea;
+    |FINSI;
+    |SELECT #1#caw00052;
+
+    |DDEFECTO #caw00052;
+    #caw00052#0 = nLineaA;
+    |LEE 141#caw00052.=;
+    |SI FSalida ! 0;
+        |DDEFECTO #caw00052;
+        #caw00052#0 = nLineaA;
+        #caw00052#1 = #dscam067@#4;
+        #caw00052#2 = #dscam067@#5;
+        #caw00052#3 = #dscam067@#6;
+        |GRABA 020#caw00052.b;
+    |FINSI;
+
+    #caw00052#8  = "X";
+    #caw00052#9  = #dscam043@#9;
+    #caw00052#10 = #dscam067@#0;
+    |SI #caw00052#10 = "CB"; #caw00052#11 = "COBROS    "; |FINSI;
+    |SI #caw00052#10 = "PG"; #caw00052#11 = "PAGOS     "; |FINSI;
+    |SI #caw00052#10 = "RM"; #caw00052#11 = "REMESAS   "; |FINSI;
+    |SI #caw00052#10 = "TA"; #caw00052#11 = "TALONES   "; |FINSI;
+    |SI #caw00052#10 = "PA"; #caw00052#11 = "PAGARES   "; |FINSI;
+    |SI #caw00052#10 = "CF"; #caw00052#11 = "CONFIRMES "; |FINSI;
+    |SI #caw00052#10 = "PD"; #caw00052#11 = "PAGOS DOM."; |FINSI;
+    #caw00052#12 = #dscam067@#1;
+
+    |GRABA 020#caw00052.a;
+    |LIBERA #caw00052;
+    nSwAlgun = 1;
+|FPRC;
+
+|DEFBUCLE dscam067;
+     #dscam067@#1007;
+     ;
+     "  ", aBlancs, aBlancs, aBlancs, 000000, enEmpresa, enPeriodo;
+     "zz", aZetas,  aZetas,  aZetas,  999999, enEmpresa, enPeriodo;
+     ;
+     NULL, dscam067;
+|FIN;
+
+|PROCESO dscam043;
+  |SI nEmpresa = 0; |O nEmpresa ! #dscam043@#9;
+
+      aAlfa1    = #dscam043@#9;
+      aAlfa1    = ("00000" + aAlfa1) % -105;
+      aPathFicE = aPathFic + aAlfa1 + "/";
+
+      |PATH_DAT #dscam067@#aPathFicE#;
+
+      |BUCLE dscam067;
+  |FINSI;
+  nEmpresa = #dscam043@#9;
+|FPRC;
+
+|DEFBUCLE dscam043;
+   #dscam043@#2001;
+   0,1;
+   00001, enEmpresa, enPeriodo;
+   99999, enEmpresa, enPeriodo;
+   ;
+   NULL, dscam043;
+|FIN;
+
+|PROCESO LeeCartera;
+  nError = 0;
+  |ABRE #dscam042@;
+  #dscam042@#0 = enEmpresa;
+  #dscam042@#1 = enPeriodo;
+  |LEE 041#dscam042@.=;
+  |SI FSalida ! 0;
+      |CIERRA #dscam042@;
+      nError = 1;
+      |ACABA;
+      || ... No existe la empresa en la Cartera
+  |FINSI;
+  |CIERRA #dscam042@;
+
+  nEmpresa = 0;
+  |BUCLE dscam043;
+|FPRC;
+
+|| /////////////////////////
+|PROCESO LeeCamaasil;
+  aDescripcion = #camaasil#7;
+  |ERROR10;
+|FPRC;
+
+|DEFBUCLE LeeCamaasil;
+  #camaasil#1;
+  ;
+  #camaasic#0, #camaasic#1, #camaasic#2, 001;
+  #camaasic#0, #camaasic#1, #camaasic#2, 999;
+  ;
+  NULL, LeeCamaasil;
+|FIN;
+
+|PROCESO LeeAsientos;
+  aDescripcion = "";
+  |BUCLE LeeCamaasil;
+  nLinea = nLinea + 1;
+  #caw00052#0 = nLinea;
+  #caw00052#1 = #camaasic#0;
+  #caw00052#2 = #camaasic#1;
+  #caw00052#3 = #camaasic#2;
+  #caw00052#4 = #camaasic#4;
+  #caw00052#5 = #camaasic#5;
+  #caw00052#6 = aDescripcion;
+  #caw00052#7 = "X";
+  |GRABA 020#caw00052.n;
+  |LIBERA #caw00052;
+  nSwAlgun = 1;
+|FPRC;
+
+|DEFBUCLE LeeAsientos;
+   #camaasic#1;
+   13;
+   #cacheapc#0, fDFecha, #cacheapc#4, 150;
+   #cacheapc#1, fHFecha, #cacheapc#5, 150;
+   ;
+   NULL, LeeAsientos;
+|FIN;
+
+|CALCULO ElTipo3; |TIPO 3;
+
+    aBlancs = " " * 50;
+    aZetas  = "z" * 50;
+
+    aFichero = ("1z" + Usuario) % 108;
+    |NOME_DAT #caw00052#aFichero#;
+    |DELINDEX #caw00052;
+
+    fDFecha = #cacheapc#2;  || Principio o desde pantalla ???
+    fHFecha = #cacheapc#3;
+
+    nLinea = 0;
+    |ABRE #caw00052;
+    |BUCLE LeeAsientos;
+    |SI nLinea = 0;
+        |MENAV "0000No existen Asientos desde Cartera en la seleccion";
+        |CIERRA #caw00052;
+        |DELINDEX #caw00052;
+        |ACABA;
+    |FINSI;
+
+    |HAZ LeeCartera;
+    |SI nError = 1;
+        |MENAV "0000No existe Empresa Contable en Control de Cartera";
+        |CONFI "0000NDesea continuar y obtener una relacion de asientos de Cartera";
+        |SI FSalida ! 0;
+            |CIERRA #caw00052;
+            |DELINDEX #caw00052;
+            |ACABA;
+        |FINSI;
+    |FINSI;
+    |CIERRA #caw00052;
+
+    |SI nSwAlgun = 1;
+        |HAZ Imprimir;
+    |FINSI;
+|FCAL;

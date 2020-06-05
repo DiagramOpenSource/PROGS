@@ -1,0 +1,249 @@
+|FICHEROS;
+   vigz0104 #0;
+
+   agifa104 #10;
+   agifa073 #11;
+
+   agifa077 #20;
+   agifa080 #21;
+
+   vigm0001 #50;
+   vigw0033 #51,MANTE;
+|FIN;
+
+|VARIABLES;
+   nLinea   = 1;
+
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   aIP      = "";
+   aFicheroLCK = "";
+   aOrigen  = "";
+   aDestino = "";
+   aUnidadDS = "";
+   aDirRemoto = "";
+   aBaseDatos = "";
+{1}aContiene  = "";
+
+   nHandle = 0;
+   nPausa  = 0;
+|FIN;
+
+|PROCESO Descomprime
+   |SI aIP ! "";
+      |RDESCOMPRIME aDestino;
+      |RDETAR aDestino, aDirRemoto;
+      |RFBORRA aDestino; aDestino = aDestino - ".tgz";
+      aDestino = aDestino + ".tar"; |RFBORRA aDestino;
+   |SINO;
+      |DESCOMPRIME aDestino;
+      |DETAR aDestino, aDirRemoto;
+      |FBORRA aDestino; aDestino = aDestino - ".tgz";
+      aDestino = aDestino + ".tar"; |FBORRA aDestino;
+   |FINSI;
+|FPRC;
+
+|PROCESO Marca; |TIPO 11;
+   |SI FSalida = 10;
+      |SI #vigw0033#5 = " ";
+         #vigw0033#5 = "*";
+      |SINO;
+         #vigw0033#5 = " ";
+      |FINSI;
+      |GRABA 020#vigw0033.a;
+   |FINSI;
+|FPRC;
+
+|PROCESO CopiaConMD5;
+   aContiene1 = aOrigen;
+   |ESPECIFICA "MD5", aContiene;
+   aAlfa = FSalida; |QBF aAlfa;
+
+   aContiene1 = aDestino;
+   |SI aIP = "";
+      |ESPECIFICA "MD5", aContiene;
+   |SINO;
+      |ESPECIFICA "REMOTOMD5", aContiene;
+   |FINSI;
+   aAlfa1 = FSalida; |QBF aAlfa1;
+
+   |SI aAlfa ! aAlfa1;
+      |SI aIP = "";
+         |COPIA_FICHERO aOrigen, aDestino;
+      |SINO;
+         |ENVIA_FICHERO aOrigen, aDestino;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO PedidosVtaLins;
+   |DDEFECTO #vigw0033;
+
+   #vigw0033#0 = nLinea; nLinea = nLinea + 1;
+   #vigw0033#1 = #agifa073#1;
+   #vigw0033#2 = #agifa073#2;
+   #vigw0033#3 = #agifa073#4;
+   #vigw0033#4 = #agifa073#5;
+   #vigw0033#5 = "*";
+   |GRABA 020#vigw0033.n;
+|FPRC;
+
+|DEFBUCLE PedidosVtaLins;
+#agifa073#1;
+;
+#agifa104#25, #agifa104#0, 001;
+#agifa104#25, #agifa104#0, 999;
+;
+NULL, PedidosVtaLins;
+|FIN;
+
+|RUTINA inf;
+   #vigw0033#0 = 00001;
+|FRUT;
+
+|RUTINA sup;
+   #vigw0033#0 = 99999;
+|FRUT;
+
+|PROCESO PedidosVta;
+   aAlfa = "tm" + Usuario; |NOME_DAT #vigw0033#aAlfa#;
+   |DELINDEX #vigw0033; |ABRE #vigw0033;
+   |BUCLE PedidosVtaLins;
+   |ENTLINEAL #1#vigw0033, 1, -4, 18, 1, inf, sup;
+|FPRC;
+
+|PROCESO Access;
+   aFicheroLCK  = aDirRemoto + "fin" + Usuario + ".txt";
+   |RFBORRA aFicheroLCK;
+
+   aAlfa  = "START " + aDirRemoto + "dsabreextension.exe " + aDirRemoto + aBaseDatos + " " + aFicheroLCK;
+   |RSYSTEM aAlfa;
+
+   |PARA; |SI; |HACIENDO;
+      |PARA nPausa = 1; |SI nPausa [ 10000; |HACIENDO nPausa = nPausa + 1;
+      |SIGUE;
+
+      |XABRE "EC", aFicheroLCK, nHandle;
+      |SI FSalida ] 0; |SAL; |FINSI;
+
+      |PULSATECLA;
+   |SIGUE;
+
+   |RFBORRA aFicheroLCK;
+   |PULSATECLA;
+|FPRC;
+
+|PROCESO GrabaTxt;
+   |SI #vigw0033#5 = " "; |ACABA; |FINSI;
+
+   #vigm0001#0 = #vigw0033#2;
+   |LEE 000#vigm0001.=;
+   |SI FSalida ! 0; |DDEFECTO #vigm0001; |FINSI;
+
+   aAlfa = #agifa104#1; |QBF aAlfa;
+   aAlfa = (aAlfa % 0102) + "/" + (aAlfa % 0402) + "/" + (aAlfa % 0704) + &9;
+   |XGRABA nHandle, aAlfa;
+
+   aAlfa = #vigm0001#10; |QBF aAlfa; aAlfa = aAlfa + &9;
+   |XGRABA nHandle, aAlfa;
+   aAlfa = #vigw0033#4; |QBF aAlfa; aAlfa = aAlfa + &9;
+   |XGRABA nHandle, aAlfa;
+   aAlfa = #agifa104#4; |QBF aAlfa; aAlfa = aAlfa + &9;
+   |XGRABA nHandle, aAlfa;
+   aAlfa = (("000000" + #agifa104#0) % -106) + "/" + (("000" + #vigw0033#1) % -103); |QBF aAlfa; aAlfa = aAlfa + &9;
+   |XGRABA nHandle, aAlfa;
+   aAlfa = #agifa104#53; |QBF aAlfa;
+   aAlfa = aAlfa + " " + #agifa104#54; |QBF aAlfa;
+   aAlfa = aAlfa + " " + #agifa104#55; |QBF aAlfa; aAlfa = aAlfa + &13 + &10;
+   |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|DEFBUCLE GrabaTxt;
+#vigw0033#1;
+;
+INICIO;
+FINAL;
+;
+NULL, GrabaTxt;
+|FIN;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Importacion access pedidos venta";
+   |PINPA #0#0; |PINDA #0#0;
+
+   |MENSA "    Esperando acceder a la base de datos ....";
+
+   |ABRE #vigz0104;
+   |LEE 101#vigz0104.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #vigz0104;
+      |GRABA 000#vigz0104.b;
+   |FINSI;
+
+   |BLIN 4;
+   |PINPA #0#0; |PINDA #0#0;
+   aIP = ""; |IP_REMOTO aIP;
+
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      aAlfa = #vigz0104#2; |QBF aAlfa;
+      aAlfa1 = aAlfa % -101;
+      |SI aAlfa1 ! "/"; |Y aAlfa1 ! "\";
+         aAlfa = aAlfa + "/"; #vigz0104#2 = aAlfa;
+      |FINSI;
+
+      |GRABA 000#vigz0104.a;
+      aDirRemoto = #vigz0104#2; |QBF aDirRemoto;
+
+      aAlfa = "tm" + Usuario; |NOME_DAT #vigw0033#aAlfa#;
+      |DELINDEX #vigw0033; |ABRE #vigw0033;
+      |ABRE #agifa104; |ABRE #vigm0001;
+      #agifa104#25 = #vigz0104#0;
+      #agifa104#0  = #vigz0104#1;
+      |LEE 000#agifa104.=;
+      |SI FSalida = 0;
+         |HAZ PedidosVta;
+
+         aAlfa = "    S" + &191 + " Exportar los datos editados ?";
+         |CONFI aAlfa;
+         |SI FSalida = 0;
+            |DBASE aAlfa; |QBF aAlfa;
+            aAlfa1 = aAlfa + "tmp/"; |MKDIR aAlfa1;
+            aAlfa1 = aAlfa1 + "pedido.txt";
+            |XABRE "BW", aAlfa1, nHandle;
+            |SI FSalida = 0;
+               |BUCLE GrabaTxt;
+            |FINSI;
+            |XCIERRA nHandle;
+
+            aAlfa = aDirRemoto; |QBF aAlfa;
+            aAlfa = aAlfa + "consumos.mdb";
+            |XABRE "CE", aAlfa, nHandle;
+            |SI FSalida < 0;
+               |DBASE aOrigen;  |QBF aOrigen;  aOrigen  = aOrigen  + "patrones/access/consumos.tgz";
+               aDestino = aDirRemoto + "consumos.tgz";
+               |HAZ CopiaConMD5;
+               |HAZ Descomprime;
+            |FINSI;
+
+            |DBASE aOrigen;  |QBF aOrigen;  aOrigen  = aOrigen  + "tmp/pedido.txt";
+            aDestino = aDirRemoto + "pedido.txt";
+            |HAZ CopiaConMD5;
+
+            |DBASE aOrigen;  |QBF aOrigen;  aOrigen  = aOrigen  + "plugins/dsabreextension.exe";
+            aDestino = aDirRemoto + "dsabreextension.exe";
+            |HAZ CopiaConMD5;
+
+            aBaseDatos = "consumos.mdb"; |HAZ Access;
+         |SINO;
+            |MENAV "    Exportacion cancelada";
+         |FINSI;
+      |FINSI;
+      |CIERRA #agifa104; |CIERRA #vigm0001;
+      |CIERRA #vigw0033;   |DELINDEX #vigw0033;
+   |FINSI;
+
+   |LIBERA #vigz0104; |CIERRA #vigz0104;
+|FPRO;

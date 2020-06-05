@@ -1,0 +1,464 @@
+|FICHEROS;
+   cacieex1 #00;   || def de proceso
+   cacuenta #01;   || cuentas
+   camaasic #02;   || apuntes cabs.
+   camaasil #03;   || apuntes lins.
+   cabaexp1 #04;   || temporal existencias
+   caexistc #06;   || cabs. descarga exist.
+   caexistl #07;   || lins. descarga exist.
+
+   :/modelos/def/dsmom030 #09;   || conceptos automaticos
+   camandia #10;   || diarios
+   canempre #30;
+   caconasi #20;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   fecalf = "";
+   ini = 0;
+   mes = "";
+   mesfec = 0;
+   mesac = 0;
+   a = 0;
+   b = 0;
+   c = 0;
+   importe = 0;
+   opera = "";
+   &modcon = 0;
+
+   FEstado = 0;
+   nume1 = 0;
+   nume2 = 0;
+   nume3 = 0;
+   nume4 = 0;
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+   alfa4 = "";
+
+   posici = 0;
+   linea = 0;
+   asie = 0;
+   asie_exis = 0;
+   line = 0;
+   line_exis = 0;
+   impo = 0;
+   nada = " ";
+   zeta = "z";
+   abre = 0;
+   antes = 0;
+   desbloquea = 0;
+   letrames = "";
+   mes_letra = 0;
+   mes_fin = 0;
+   descar = 0;
+   &d_mes = 0;
+   &h_mes = 0;
+   &estru = 0;
+   &r_emp = 0;
+   &r_per = 0;
+   &r_eje = 0;
+   &r_nom = "";
+   nCDescar   = 0;
+   aCDescar   = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+========================================================================
+CALCULOS PANTALLA
+========================================================================
+
+|PROCESO defecto; |TIPO 7;
+   |HAZ eLeeParametro;
+   #0Campo = fec2;
+   |PINTA #0Campo;
+|FPRC;
+
+|PROCESO topes; |TIPO 0;
+
+   |SI #0Campo < fec1; |O #0Campo > fec2;
+      |MENAV "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+      |ERROR;
+   |SINO;
+      |SI #0Campo [ fec3;
+          |MENAV "    ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+          |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO concepto; |TIPO 0;
+   nume1 = Campo - 5;
+   |ABRE #9;
+   #dsmom030#0 = #0Campo;
+   |LEE 021#9=;
+   |SI FSalida ! 0;
+      |DDEFECTO #9;
+   |FINSI;
+   |SI #dsmom030#8 ! "S";
+       |MENAV "    El concepto no corresponde al Tipo de Apunte";
+       |ERROR;
+   |FINSI;
+   #cacieex1#nume1# = #dsmom030#1;
+   |PINTA #cacieex1#nume1#;
+   |CIERRA #9;
+|FPRC;
+
+|PROCESO alFinal; |TIPO 7;
+   |SI eaSobreEs ! "S";
+       |PTEC 816;
+   |FINSI;
+|FPRC;
+
+|PROCESO diario_exis; |TIPO 0;
+   |ABRE #10;
+   #camandia#0 = #cacieex1#1;
+   |LEE 021#10=;
+   |SI FSalida ! 0;
+      |DDEFECTO #10;
+   |FINSI;
+   #cacieex1#12 = #camandia#1;
+   |PINTA #cacieex1#12;
+   |CIERRA #10;
+|FPRC;
+
+|PROCESO pintames2; |TIPO 0;
+  |SI #0Campo ! 0; |Y #0Campo ! 13;
+      NumMes = dig1 + (#0Campo - 1);   || Operacion para saber que mes es
+      |SI NumMes > 12; NumMes = NumMes - 12; |FINSI;
+  |SINO;
+      NumMes = #0Campo;
+  |FINSI;
+  |HAZ NombreMes;
+   |SI Campo = 14;  |PINTA 1840, NombreMes;  |FINSI;
+   |SI Campo = 15;  |PINTA 1940, NombreMes;  |FINSI;
+|FPRC;
+
+========================================================================
+PROCESO PADRE
+========================================================================
+
+|PROCESO conexi;
+   enTExi = 0;
+   d_mes = #cacieex1#14;
+   h_mes = #cacieex1#15;
+   estru = nCDescar;
+   r_emp = #canempre#2;
+   r_per = #canempre#3;
+   r_eje = #canempre#26;
+   r_nom = #canempre#1;
+   |SUB_EJECUTA "caexicon.run";
+|FPRC;
+
+|PROCESO proceso; |TIPO 3;
+ |HAZ eLeeParametro;
+ line = 1;
+ |PARA nCDescar = #0#6; |SI nCDescar [ #0#16; |HACIENDO nCDescar = nCDescar + 1;
+
+       |ABRE #6;
+       #6#0 = nCDescar;
+       |LEE 001#6=;
+       |SI FSalida =  0;
+           aCDescar = nCDescar; |QBF aCDescar;
+           aCDescar = ("00" + aCDescar) % -102;
+           |SI #0#17 = "S";  |HAZ conexi; |FINSI;
+           |DELINDEX #4;
+           |ABRE #2;
+           |ABRE #3;
+           |HAZ pidepan;   || prepara temporal existencias
+           |HAZ exis0;     || graba iniciales y finales
+           |HAZ expl0;     || asiento explotacion y variaciones de existencias
+           |BLIN 4;
+           |CIERRA #2;
+           |CIERRA #3;
+    |FINSI;
+    |CIERRA #6;
+ |SIGUE;
+|FPRC;
+
+|PROCESO carga;
+   |SI #camaasil#08 = "H";
+      #camaasil#10 = #camaasil#4;
+      #camaasil#11 = #camaasil#5;
+      #camaasil#16 = "";
+      #camaasil#17 = 0;
+   |SINO;
+      #camaasil#10 = "";
+      #camaasil#11 = 0;
+      #camaasil#16 = #camaasil#4;
+      #camaasil#17 = #camaasil#5;
+   |FINSI;
+|FPRC;
+
+========================================================================
+GRABA EXISTENCIAS INICIALES Y FINALES
+========================================================================
+
+|PROCESO exis1;
+   |PINTA 0436, #cabaexp1#1;
+   |PARA nume1 = 1; |SI nume1 [ 2; |HACIENDO nume1 = nume1 + 1;
+      |SI nume1 = 1;  impo = #cabaexp1#4;  |FINSI;
+      |SI nume1 = 2;  impo = #cabaexp1#5;  |FINSI;
+      |SI impo ! 0;
+         |SI line = 1;
+            |HAZ contador;
+            asie = nDOCUMENTO;
+         |FINSI;
+         |DDEFECTO #3;
+         #camaasil#00 = #cacieex1#1;  ||  diario
+         #camaasil#01 = #cacieex1#0;  ||  fecha
+         #camaasil#02 = asie;  ||  documento
+         #camaasil#03 = line;  ||  linea
+         |LEE 101#3=;
+         FEstado = FSalida;
+         #camaasil#04 = #cabaexp1#1;  ||  cuenta
+         #camaasil#05 = #cabaexp1#2;  ||  digito
+         |SI nume1 = 1;
+            #camaasil#06 = #cacieex1#7;  ||  concepto (iniciales)
+            #camaasil#07 = #cacieex1#2;  ||  descripcion (iniciales)
+         |SINO;
+            #camaasil#06 = #cacieex1#8;  ||  concepto (finales)
+            #camaasil#07 = #cacieex1#3;  ||  descripcion (finales)
+         |FINSI;
+         |SI nume1 = 1;|Y impo < 0;  #camaasil#08 = "D";  impo = impo * -1;  |FINSI;
+         |SI nume1 = 1;|Y impo > 0;  #camaasil#08 = "H";                     |FINSI;
+         |SI nume1 = 2;|Y impo < 0;  #camaasil#08 = "H";  impo = impo * -1;  |FINSI;
+         |SI nume1 = 2;|Y impo > 0;  #camaasil#08 = "D";                     |FINSI;
+         |HAZ carga;
+         #camaasil#09 = impo;  ||  importe
+         #camaasil#21 = aCDescar;  ||Departamento
+         #camaasil#24 = nREGISTRO; || Registro
+         |SI FEstado = 0;
+            |GRABA 020#3a;
+         |SINO;
+            |GRABA 020#3n;
+         |FINSI;
+         |LIBERA #3;
+         |HAZ cabecera;
+
+          MasMenos     = #camaasil#9;
+          DebeHaber    = #camaasil#8;
+          aCUENTA      = #camaasil#4;
+          nREGISTRO    = #camaasil#24;
+          nDIARIO      = #camaasil#0;
+          aFECHA       = #camaasil#1;
+          nDOCUMENTO   = #camaasil#2;
+          nNIVELCUENTA = #camaasil#5;
+          |HAZ ActDiario;          || diario
+          |HAZ ActCuenta;          || cuenta
+          |HAZ ActTesteo;          || cuenta
+
+         opera = "A";
+         |HAZ altatra;     || actualiza niveles
+         line = line + 10;
+      |FINSI;
+   |SIGUE;
+|FPRC;
+
+|DEFBUCLE cacieexp1;
+   #4#1;
+   ;
+   nCDescar,  1;
+   nCDescar,999;
+   e;
+   NULL, exis1;
+|FIN;
+
+|PROCESO exis0;
+   abre = 1;
+   |SI #0#5 = "S"; line = 1; |FINSI;
+   |BUCLE cacieexp1;
+   asie_exis = asie;  || lo guarda para a¤adir luego las variaciones
+   line_exis = line - 10;
+|FPRC;
+
+========================================================================
+ASIENTO VARIACIONES DE EXISTENCIAS
+========================================================================
+
+
+|PROCESO expl3;   || apuntes de variaciones (descarga)
+   desbloquea = 1;
+   line_exis = line_exis + 10;
+   |DDEFECTO #3;
+   #camaasil#00 = #cacieex1#1;       ||  diario
+   #camaasil#01 = #cacieex1#0;       ||  fecha
+   #camaasil#02 = asie_exis;  ||  documento
+   #camaasil#03 = line_exis;  ||  linea
+   |LEE 101#3=;
+   FEstado = FSalida;
+   #camaasil#04 = #cacuenta#0;  ||  cuenta
+   #camaasil#05 = #cacuenta#1;  ||  digito
+   #camaasil#06 = #cacieex1#9;  ||  concepto (descarga)
+   #camaasil#07 = #cacieex1#4;  ||  descripcion (descarga)
+   #camaasil#08 = "H";   ||  signo (no lo cambia)
+   |SI impo > 0;  #camaasil#08 = "H";  |FINSI;
+   |SI impo < 0;  #camaasil#08 = "D";  impo = impo * -1;  |FINSI;
+   |HAZ carga;
+   #camaasil#09 = impo;  ||  importe
+   #camaasil#21 = aCDescar;
+   #camaasil#24 = nREGISTRO;  ||  Registro
+   |SI FEstado = 0;
+      |GRABA 020#3a;
+   |SINO;
+      |GRABA 020#3n;
+   |FINSI;
+   |LIBERA #3;
+   |HAZ cabecera;
+
+   MasMenos     = #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+   nNIVELCUENTA = #camaasil#5;
+   |HAZ ActDiario;          || diario
+   |HAZ ActCuenta;          || cuenta
+   |HAZ ActTesteo;          || cuenta
+
+   opera = "A";
+   |HAZ altatra;     || actualiza niveles
+   desbloquea = 0;
+|FPRC;
+
+|PROCESO expl2;
+   |SI #cabaexp1#6 = #cacuenta#0;
+      impo = impo + (#cabaexp1#5 - #cabaexp1#4);
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE cacieexp3;
+   #4#1;
+   ;
+   nCDescar,   1;
+   nCDescar, 999;
+   e;
+   NULL, expl2;
+|FIN;
+
+|PROCESO expl1;
+   |SI #cacuenta#3 ! "S";  |ACABA;  |FINSI;
+   impo = 0;
+   |BUCLE cacieexp3; || busca si es de variaciones
+   |SI impo ! 0;     ||  si es una cuenta de variaciones graba un
+      |HAZ expl3;   || /nuevo apunte en el asiento de existencias
+      |PINTA 0436, #cacuenta#0;
+   |FINSI;
+   impo = #cacuenta#53;
+|FPRC;
+
+|DEFBUCLE cacieexp2;
+   #1#4;
+   ;
+   nada, 1,  1,  0,  0;
+   zeta, 4, 99, 99, 99;
+   be;
+   NULL, expl1;
+|FIN;
+
+|PROCESO expl0;
+   abre = 0;
+   |SI #0#5 = "S"; line = 1; |FINSI;
+   |BUCLE cacieexp2;
+   abre = 1;
+   asie = asie_exis;
+   line = line_exis + 10;
+|FPRC;
+
+========================================================================
+PIDE EXISTENCIAS INICIALES Y FINALES
+========================================================================
+
+|PROCESO descarg;
+   linea = linea + 1;
+   #cabaexp1#0 = linea;
+   #cabaexp1#8 = nCDescar;
+   |LEE 101#4=;
+   FEstado = FSalida;
+   |DDEFECTO #4;
+   #cabaexp1#0 = linea;
+   #cabaexp1#8 = nCDescar;
+   #cabaexp1#1 = #cacuenta#0;
+   #cabaexp1#2 = #cacuenta#1;
+   #cabaexp1#3 = #cacuenta#2;
+   mes_fin = #cacieex1#14 + 11;   || mes iniciales
+   #cabaexp1#4 = #caexistl#mes_fin#;        || exist. iniciales
+   mes_fin = #cacieex1#15 + 11;   || mes finales
+   #cabaexp1#5 = #caexistl#mes_fin#;        || exist. finales
+   descar = #cabaexp1#4 - #cabaexp1#5;
+   |SI descar ] 0;
+      #cabaexp1#6 = #caexistl#5;     || cuenta descarga D
+      #cabaexp1#7 = #caexistl#6;     || digito descarga D
+   |SINO;
+      #cabaexp1#6 = #caexistl#8;     || cuenta descarga H
+      #cabaexp1#7 = #caexistl#9;     || digito descarga H
+   |FINSI;
+   |SI FEstado ! 0;
+      |GRABA 020#4n;
+   |SINO;
+      |GRABA 020#4a;
+   |FINSI;
+   |LIBERA #4;
+|FPRC;
+
+|DEFBUCLE cacieexp0;
+   #1#1;
+   ;
+   #7#2;
+   #7#2;
+   e;
+   NULL, descarg;
+|FIN;
+
+|PROCESO lineades;
+   |BUCLE cacieexp0;
+|FPRC;
+
+|PROCESO pidepan;
+   |ABRE #4;
+   linea = 0;
+   |BUCLELIN 2lineades#6;
+   |CIERRA #4;
+|FPRC;
+
+**********************************************************************
+ACTUALIZACION DE NIVELES INFERIORES DE CUENTAS
+**********************************************************************
+|PROCESO altatra;
+   modcon = 1;
+|FPRC;
+
+****************************************************************************
+ACTUALIZACION DE CUENTAS Y CABECERAS DE APUNTES Y LECTURA ULT.ASIENTO
+****************************************************************************
+
+|PROCESO cabecera;
+   |SI #camaasil#9 = 0;  |ACABA;  |FINSI;
+   |DDEFECTO #2;
+   #camaasic#00 = #camaasil#0; ||  diario
+   #camaasic#01 = #camaasil#1; ||  fecha
+   #camaasic#02 = #camaasil#2; ||  documento
+   #camaasic#03 = #camaasil#2; ||  asiento
+   |LEE 101#2=;
+   FEstado = FSalida;
+   |SI #camaasil#08 = "D";
+      #camaasic#04 = #camaasic#04 + #camaasil#09;
+      |SI #camaasic#09 = 0; #camaasic#08 = #camaasil#4; #camaasic#09 = #camaasil#5; |FINSI;  || contrp.HABER
+   |FINSI;
+   |SI #camaasil#08 = "H";
+       #camaasic#05 = #camaasic#05 + #camaasil#09;
+       |SI #camaasic#11 = 0; #camaasic#10 = #camaasil#4; #camaasic#11 = #camaasil#5; |FINSI;  || contrp.DEBE
+   |FINSI;
+   #camaasic#12 = #camaasil#24; || Registro
+   #camaasic#06 = #camaasic#04 - #camaasic#05;
+   |SI FEstado = 0;
+      |GRABA 020#2a;
+   |SINO;
+      |GRABA 020#2n;
+   |FINSI;
+   |LIBERA #2;
+|FPRC;

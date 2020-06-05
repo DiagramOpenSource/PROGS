@@ -1,0 +1,185 @@
+|FICHEROS;
+     dscaz172;
+     dscam001;
+     dscam003;
+     dscam008;
+     dscam224;
+
+     &agif024@;
+     &caclipr@;
+     &canempr@;
+|FIN;
+
+|VARIABLES;
+   aParam        = "";
+   nTipo         = 0;
+   nGraba        = 0;
+   aIBAN         = "";
+   aBIC          = "";
+
+   &eaCodIBAN    = "";
+   &eaCodBIC     = "";
+   &aCuenta      = "";
+   &eaCodigo     = "";
+   &eaTipoCod    = "";
+|FIN;
+
+|PROCESO ModificaDatos;
+     |SI nTipo = 1;
+         #dscam224#0 = #dscam003#40;
+         |LEE 141#dscam224.=;
+         |SI FSalida ! 0;
+             |DDEFECTO #dscam224;
+             #dscam224#0 = #dscam003#40;
+             |GRABA 020#dscam224.b;
+         |FINSI;
+         aIBAN = #dscam224#1;
+         aBIC  = #dscam224#2;
+
+         eaCodigo  = #dscam003#32;
+         eaTipoCod = "C";
+         aCuenta   = #dscam003#5;
+     |FINSI;
+
+     |SI nTipo = 2;
+         aIBAN     = #dscam008#75;
+         aBIC      = #dscam008#76;
+         eaCodigo  = #dscam008#32;
+         eaTipoCod = "P";
+         aCuenta   = #dscam008#5;
+     |FINSI;
+
+     |HAZ LeeDatos;
+     |QBF aIBAN;
+     |QBF aBIC;
+     |QBF eaCodBIC;
+
+     |SI eaCodBIC = "";
+         #dscam001#0 = #agif024@#32;
+         |LEE 000#dscam001.=;
+         |SI FSalida = 0;
+             eaCodBIC = #dscam001#3;
+         |FINSI;
+     |FINSI;
+
+     nGraba = 0;
+
+     |SI aIBAN = ""; |O #dscaz172#18 = "S";
+         aIBAN  = eaCodIBAN;
+         nGraba = 1;
+     |FINSI;
+
+     |SI aBIC = ""; |O #dscaz172#19 = "S";
+         aBIC  = eaCodBIC;
+         nGraba = 1;
+     |FINSI;
+
+     |SI nTipo = 1;
+         |SI nGraba = 1;
+             #dscam224#1 = aIBAN;
+             #dscam224#2 = aBIC;
+             |GRABA 020#dscam224.a;
+         |FINSI;
+         |LIBERA #dscam224;
+         |LIBERA #dscam003;
+     |FINSI;
+
+     |SI nTipo = 2;
+         |SI nGraba = 1;
+             #dscam008#75 = aIBAN;
+             #dscam008#76 = aBIC;
+             |GRABA 020#dscam008.a;
+         |FINSI;
+         |LIBERA #dscam008;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE LeeRecCompras;
+     #dscam008#3;
+     5, 32, 4;
+     #dscaz172#16, #dscaz172#0, #dscaz172#10, #dscaz172#12, #dscaz172#14;
+     #dscaz172#17, #dscaz172#1, #dscaz172#11, #dscaz172#13, #dscaz172#15;
+     be;
+     NULL, ModificaDatos;
+|FIN;
+
+|DEFBUCLE LeeRecVentas;
+     #dscam003#2;
+     5, 32, 4;
+     #dscaz172#16, #dscaz172#0, #dscaz172#10, #dscaz172#12, #dscaz172#14;
+     #dscaz172#17, #dscaz172#1, #dscaz172#11, #dscaz172#13, #dscaz172#15;
+     be;
+     NULL, ModificaDatos;
+|FIN;
+
+|PROCESO agifa024;
+     aBIC  = #agif024@#216;  |QBF aBIC;
+     |SI aBIC = ""; |O #dscaz172#22 = "S";
+         #dscam001#0 = #agif024@#32;
+         |LEE 000#dscam001.=;
+         |SI FSalida = 0;
+             aBIC = #dscam001#3;  |QBF aBIC;
+         |FINSI;
+
+         |SI aBIC ! "";
+             #agif024@#216 = aBIC;
+
+             |GRABA 101#agif024@.a;
+         |FINSI;
+     |FINSI;
+
+     |LIBERA #agif024@;
+|FPRC;
+
+|DEFBUCLE agifa024;
+     #agif024@#1001;
+     ;
+     "      ";
+     "zzzzzz";
+     be;
+     NULL, agifa024;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #dscaz172#21 = "NO"; |ACABA; |FINSI;
+
+     |ABRE #dscam001;
+     |SI #dscaz172#20 ! "C";
+          nTipo = 1;
+          |BUCLE agifa024;
+
+          |ABRE #dscam224;
+          |ABRE #agif024@;
+          |BUCLE LeeRecVentas;
+          |CIERRA #agif024@;
+          |CIERRA #dscam224;
+     |FINSI;
+
+     |SI #dscaz172#20 ! "V";
+         nTipo = 2;
+         |BUCLE LeeRecCompras;
+     |FINSI;
+
+     |CIERRA #dscam001;
+|FPRCL;
+
+|PROGRAMA;
+     |HAZ Tipo8;
+
+     aParam = PARAMETRO; |QBF aParam;
+     |SI aParam = ""; aParam = "V"; |FINSI;
+     #dscaz172#20 = aParam;
+
+     |CLS;
+     |CABEZA "Recuperar IBAN y BIC";
+     |PINPA #0#dscaz172;
+     |SI #dscaz172#20 = "C";
+         |ATRI R;  |PINTA 0658, "Compras ";  |ATRI 0;
+                   |PINTA 1018, "Proveedor ";
+     |FINSI;
+
+     |PINDA #0#dscaz172;
+     |ENDATOS #1#dscaz172;
+
+     |HAZ Tipo9;
+|FPRO;

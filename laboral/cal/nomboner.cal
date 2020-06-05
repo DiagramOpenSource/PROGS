@@ -1,0 +1,181 @@
+|FICHEROS;
+     nomboner #0;
+
+     nomtmp06 #10;
+     labtraba #100;
+     nomhicca;
+|FIN;
+
+|VARIABLES;
+   aAlfa  = "";
+   aAlfa1 = "";
+   nCambiados = 0;
+   aMarca = "";
+   nCalc  = 0;
+   nOpcion = 0;
+   nNumTrab = 0;
+
+{-1}Menu  = "";
+    Menu1 = "2400";
+    Menu2 = "1";
+    Menu3 = "";
+    Menu4 = "RAC";
+    Menu5 = " Revisar ";
+    Menu6 = " Actualizar ";
+    Menu7 = " Cancelar ";
+
+     nMes = 0;
+     nAny = 0;
+     swSal = 0;
+     nNume = 0;
+|FIN;
+
+|RUTINA inf04;
+   #nomtmp06#0 = 00000;
+   #nomtmp06#1 = 00000;
+|FRUT;
+
+|RUTINA sup04;
+   #nomtmp06#0 = 99999;
+   #nomtmp06#1 = 99999;
+|FRUT;
+
+|| BONIF. DEL 50% DE CONT. COM. PARA TRABAJADORES EN ERE SEGUN RDL 2/2009
+
+|PROCESO BuscaERE;
+     nMes = 5;
+     nAny = 09;
+     swSal = 0;
+
+     |PARA; |SI swSal = 0; |HACIENDO;
+          nMes = nMes - 1;
+          |SI nMes = 0;
+               nMes = 12;
+               nAny = nAny - 1;
+          |FINSI;
+
+          #nomhicca#0 = #labtraba#0;
+          #nomhicca#1 = #labtraba#1;
+          #nomhicca#66 = nAny;       || desde el mes 5 de 2009
+          #nomhicca#2 = nMes;
+          #nomhicca#3 = 0;
+          |LEE 000#nomhicca.=;
+          |SI FSalida = 0;
+               nNume = nNume + #nomhicca#119;
+          |FINSI;
+
+          |SI nAny = 08; |Y nMes = 10;
+               swSal = 1;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Trabajadores;
+     nNumTrab = nNumTrab + 1;
+     nNume = 0;
+     |DDEFECTO #nomtmp06;
+     #nomtmp06#0 = #labtraba#0;
+     #nomtmp06#1 = #labtraba#1;
+     #nomtmp06#2 = #labtraba#2;
+     |SI #labtraba#218 ! 0;
+          nNume = #labtraba#218;
+     |SINO;
+          |SI #0#4 = "S";
+               |HAZ BuscaERE;
+          |FINSI;
+     |FINSI;
+     #nomtmp06#3 = nNume;
+     |GRABA 020#nomtmp06.n;
+|FPRC;
+
+|DEFBUCLE Trabajadores;
+     #labtraba#1;
+     44, 247;
+     #nomboner#0, #nomboner#2, "A", 111;
+     #nomboner#1, #nomboner#3, "A", 111;
+     ;
+     NULL, Trabajadores;
+|FIN;
+
+|PROCESO Actualiza;
+     #labtraba#0 = #nomtmp06#0;
+     #labtraba#1 = #nomtmp06#1;
+     |LEE 101#labtraba.=;
+     |SI FSalida = 0;
+          |SI #nomtmp06#4 = "*";
+               |SI #labtraba#188 ! "S"; |O #labtraba#218 ! #nomtmp06#3;
+                    #labtraba#188 = "S";
+                    #labtraba#218 = #nomtmp06#3;
+                    |GRABA 020#labtraba.a;
+                    nCambiados = nCambiados + 1;
+               |FINSI;
+          |FINSI;
+          |LIBERA #labtraba;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Actualiza;
+     #nomtmp06#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Actualiza;
+|FIN;
+
+|PROCESO Actualizar;
+     |ABRE #labtraba;
+     |BUCLE Actualiza;
+     |CIERRA #labtraba;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |CABEZA " ";
+
+     |PINPA #0#0; |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          aAlfa = "04" + Usuario; |NOME_DAT #nomtmp06#aAlfa#;
+          |DELINDEX #nomtmp06;
+          |ABRE #nomtmp06;
+          |ABRE #nomhicca;
+
+          nNumTrab = 0;
+          |BUCLE Trabajadores;
+
+          |CIERRA #nomhicca;
+
+          |C_V #nomtmp06#5, 1, "N";
+
+          |ET OtraVez;
+          |ENTLINEAL #1#nomtmp06, -2, 2, 21, 1, inf04, sup04;
+          |SI nNumTrab = 0;
+               |CIERRA #nomtmp06;   |DELINDEX #nomtmp06;
+              |ACABA;
+          |FINSI;
+
+          |ET OtroMenu;
+          |MENU Menu;
+          nOpcion = FSalida;
+          |SI nOpcion = 1; |VETE OtraVez;   |FINSI;
+          |SI nOpcion = 2;
+               nCambiados = 0;
+               |HAZ Actualizar;
+               |SI nCambiados > 0;
+                    aAlfa1 = nCambiados;
+                    aAlfa = "    Se ha activado la bonificación ";
+                    aAlfa = aAlfa + "en " + aAlfa1 + " trabajadores.";
+                    |MENAV aAlfa;
+               |FINSI;
+          |FINSI;
+          |SI nOpcion = 3;
+               aAlfa = "    N" + &191 + " Está seguro de salir sin aplicar los cambios ?";
+               |CONFI aAlfa;
+               |SI FSalida ! 0; |VETE OtraVez; |FINSI;
+          |FINSI;
+          |SI nOpcion < 1; |VETE OtroMenu; |FINSI;
+          |CIERRA #nomtmp06;
+          |DELINDEX #nomtmp06;
+     |FINSI;
+|FPRO;

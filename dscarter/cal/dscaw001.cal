@@ -1,0 +1,381 @@
+|FICHEROS;
+   dscaw001 #0;
+   dscam014 #1;
+   dscam051 #2;
+
+   dscam003 #10;
+   dscam008 #11;
+|FIN;
+
+|VARIABLES;
+   &eaTipo = 0;
+   &Pagos = 0;
+   &eaTipoRecibo = ""; &enNumDocum = 0;  &eaMensRet = ""; &enSwError = 0; &eaTOperacion = "";
+   &Divisa = "";       &enRemesa = 0;    &nDeci_Div = 0;  &eaModulo = ""; &enTipoRec = 0;
+   &eaFichClas = "";   &eaTipoClas = ""; &enSwClas = 0;   &eaResult = "";
+
+   &TotalSel = 0;
+
+   &eaCodigo   = "";
+   &eaCuenta   = "";
+   &enSwErr    = 0;
+   &eaEntidad  = "";
+   &eaSucursal = "";
+   &eaDC       = "";
+
+   &CodProv = ""; &CtaProv = "";
+   &enSwLineal = 0; &enClave = 0;
+   &enTipoRem = 0;
+
+   nSwErr  = 0;
+   aCuenta = "";
+   Comodin = "";
+   aAlfa   = "";
+   aAlfa1  = "";
+   aMarca  = "";
+   aTitClv = "";
+
+   nSwAvisa = 0;
+   nSw      = 0;
+   nCalc    = 0;
+   nTecla   = 0;
+
+   &eaTipoCod = "";
+   &ewErrorIBAN = 0;
+|FIN;
+
+|PROCESO EntregasPdtes1;
+   nSwErr = 1; |ERROR10;
+|FPRC;
+
+|DEFBUCLE EntregasPdtes1;
+#dscam008#5;
+14;
+aCuenta, 000000001, "e";
+aCuenta, 999999999, "e";
+;
+NULL, EntregasPdtes1;
+|FIN;
+
+|PROCESO Decimw001; |TIPO 13;
+   Divisa = #dscaw001#9; |HAZ TomaDecim;
+
+   |ATRI I;
+   aAlfa = "                    ";
+   |SI #dscaw001#13 = "C"; aAlfa = "Cobrado parcialmente"; |FINSI;
+   |SI #dscaw001#13 = "P"; aAlfa = "Pendiente de cobro  "; |FINSI;
+   |SI #dscaw001#13 = "I"; aAlfa = "Impagado            "; |FINSI;
+   |PINTA 2251, aAlfa;
+
+   Comodin = ("          " + TotalSel) % -110;
+   Comodin = " Total seleccion : " + Comodin;
+   |PINTA 2211, Comodin; |ATRI N;
+
+   |MODULO aAlfa;
+   |SI aAlfa = "dscam012";
+      |SI enClave = 1; aTitClv = "様様様様様 Ordenacion : Cliente "; |FINSI;
+   |SINO;
+      |SI enClave = 1; aTitClv = "様様様様 Ordenacion : Proveedor "; |FINSI;
+   |FINSI;
+   |SI enClave = 2; aTitClv = " Ordenacion : Fecha vencimiento "; |FINSI;
+   |ATRI I; |PINTA 0641, aTitClv; |ATRI N;
+|FPRC;
+
+|PROCESO MarcaTodos;
+   |SI eaModulo ! "";
+      |SI eaModulo = "dscaz085"; |O eaModulo = "dscaz086";
+         |ABRE #dscam003;
+         #dscam003#40 = #dscaw001#8;
+         |LEE 000#dscam003.=;
+         |SI FSalida ! 0; |DDEFECTO #dscam003; |FINSI;
+         |CIERRA #dscam003;
+         enSwClas   = 1; eaFichClas = eaModulo; eaTipoClas = #dscam003#12;
+         |HAZ CompruebaClas;
+         |SI eaFichClas = "INFOR"; |ERROR; |ACABA; |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |MODULO Comodin;
+   |SI Comodin = "dscam012";
+      |ABRE #dscam051;
+      |LEE 000#dscam051.p;
+      |SI FSalida ! 0;
+         |DDEFECTO #dscam051;
+         |GRABA 020#dscam051.n;
+      |FINSI;
+      |CIERRA #dscam051;
+
+      |ABRE #dscam003;
+      #dscam003#40 = #dscaw001#8;
+      |LEE 000#dscam003.=;
+      |SI FSalida ! 0; |DDEFECTO #dscam003; |FINSI;
+      |CIERRA #dscam003;
+
+      |SI #dscam051#111 = "S";
+          eaTipoCod = "C";
+          |HAZ ChequeoIBAN;
+          |SI ewErrorIBAN ! 0;
+              |ACABA;
+          |FINSI;
+      |FINSI;
+   |FINSI;
+
+   enSwError = 0;
+   eaTOperacion = "A"; enNumDocum = #dscaw001#8; |HAZ ProcesaTempo;
+   |SI enSwError = 0;
+      |SI CodProv ! ""; |Y CtaProv ! ""; |Y enRemesa = 0;
+         |SI #dscaw001#11 ! "      "; |Y CodProv ! "      ";
+          |Y #dscaw001#11 ! CodProv;
+             eaTOperacion = "B"; enNumDocum = #dscaw001#8; |HAZ ProcesaTempo;
+             |ACABA;
+         |FINSI;
+         |SI #dscaw001#10 ! "            "; |Y CtaProv ! "            ";
+          |Y #dscaw001#10 ! CtaProv;
+             eaTOperacion = "B"; enNumDocum = #dscaw001#8; |HAZ ProcesaTempo;
+             |ACABA;
+          |FINSI;
+      |FINSI;
+
+      |SI enRemesa = 0; eaCodigo = #dscaw001#11; eaCuenta = #dscaw001#10; |HAZ MiraSiBloq; |FINSI;
+
+      |SI enSwErr ! 0;
+         eaTOperacion = "B"; enNumDocum = #dscaw001#8; |HAZ ProcesaTempo;
+         |ACABA;
+      |FINSI;
+
+      CodProv = #dscaw001#11; CtaProv = #dscaw001#10;
+      #dscaw001#7 = "*";
+      TotalSel = TotalSel + #dscaw001#6;
+      |MODULO Comodin;
+      |SI #dscam051#3 = "S"; |Y Comodin = "dscam012";
+         |SI TotalSel > #dscam014#12; |Y Pagos = 0; |Y nSwAvisa = 1;
+            aAlfa = "    NSobrepasado el riesgo bancario concedido. " + &191 + " Continuar la seleccion ?";
+            |CONFI aAlfa;
+            |SI FSalida ! 0;
+               #dscaw001#7 = " "; TotalSel = TotalSel - #dscaw001#6;
+               |GRABA 020#dscaw001.a;
+               |ERROR10;
+            |SINO;
+               aAlfa = "    N" + &191 + " Continuar avisando del riesgo bancario sobrepasado ?";
+               |CONFI aAlfa;
+               |SI FSalida ! 0;
+                  nSwAvisa = 0;
+               |SINO;
+                  nSwAvisa = 1;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |GRABA 020#dscaw001.a;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MarcaTodos;
+#dscaw001#1;
+7;
+00001," ";
+99999," ";
+be;
+NULL,MarcaTodos;
+|FIN;
+
+|PROCESO DesmarcaTodos;
+   eaTOperacion = "B"; enNumDocum = #dscaw001#8; |HAZ ProcesaTempo;
+   #dscaw001#7 = " ";
+   |GRABA 020#dscaw001.a;
+   TotalSel = TotalSel - #dscaw001#6; TotalSel = TotalSel ! nDeci_Div;
+   CodProv = ""; CtaProv = "";
+|FPRC;
+
+|DEFBUCLE DesmarcaTodos;
+#dscaw001#1;
+7;
+00001,"*";
+99999,"*";
+be;
+NULL,DesmarcaTodos;
+|FIN;
+
+|PROCESO Marca; |TIPO 11;
+
+   |SI FSalida = 9;
+      |SALVA_FICHA #dscaw001;
+      nSwAvisa = 1;
+      |BUCLE MarcaTodos;
+      |REPON_FICHA #dscaw001;
+      Comodin = ("          " + TotalSel) % -110;
+      Comodin = " Total seleccion : " + Comodin;
+      |ATRI I; |PINTA 2211, Comodin; |ATRI N;
+      |PONCONTROL 23, "si";
+   |FINSI;
+   |SI FSalida = 10;
+      |SI enRemesa = 0;
+         eaCodigo = #dscaw001#11; eaCuenta = #dscaw001#10; |HAZ MiraSiBloq;
+         |SI enSwErr ! 0; |Y eaTipo = 0;
+            |MENAV "    Proveedor bloqueado";
+            |ERROR; |ACABA;
+         |FINSI;
+      |FINSI;
+
+      |SI #dscaw001#7 = " ";
+         |SI CodProv ! ""; |Y CtaProv ! ""; |Y enRemesa = 0;
+            |SI #dscaw001#11 ! "      "; |Y CodProv ! "      "; |Y #dscaw001#11 ! CodProv;
+               |MENAV "    El proveedor del documento marcado no coincide con el de los anteriores";
+               |ERROR; |ACABA;
+            |FINSI;
+            |SI #dscaw001#10 ! "            "; |Y CtaProv ! "            "; |Y #dscaw001#10 ! CtaProv;
+               |MENAV "    El proveedor del documento marcado no coincide con el de los anteriores";
+               |ERROR; |ACABA;
+            |FINSI;
+
+            aCuenta = #dscaw001#10;
+            nSwErr = 0;
+            |BUCLE EntregasPdtes1;
+            |SI nSwErr = 1;
+               aAlfa = "    NEste proveedor tiene entregas a cuenta pendientes de saldar. " + &191 + " Continuar ?";
+               |CONFI aAlfa;
+               |SI FSalida ! 0;
+                   |ERROR; |ACABA;
+               |FINSI;
+            |FINSI;
+         |SINO;
+            CodProv = #dscaw001#11; CtaProv = #dscaw001#10;
+
+            aCuenta = #dscaw001#10;
+            nSwErr = 0;
+            |BUCLE EntregasPdtes1;
+            |SI nSwErr = 1;
+               aAlfa = "    NEste proveedor tiene entregas a cuenta pendientes de saldar. " + &191 + " Continuar ?";
+               |CONFI aAlfa;
+               |SI FSalida ! 0;
+                   |ERROR; |ACABA;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+         |SI eaModulo ! "";
+            |SI eaModulo = "dscaz085"; |O eaModulo = "dscaz086";
+               |ABRE #dscam003;
+               #dscam003#40 = #dscaw001#8;
+               |LEE 000#dscam003.=;
+               |SI FSalida ! 0; |DDEFECTO #dscam003; |FINSI;
+               |CIERRA #dscam003;
+               |SI #dscam051#75 = "N";
+                  enSwClas   = 1; eaFichClas = eaModulo; eaTipoClas = #dscam003#12;
+                  |HAZ CompruebaClas;
+                  |SI eaFichClas = "INFOR";
+                     eaResult = "V"; enNumDocum = #dscaw001#8; enTipoRec = #dscam003#12;
+                     eaFichClas = eaModulo;
+                     |HAZ CambiaTR;
+                     |SI eaResult = "ERROR"; |ERROR; |ACABA; |FINSI;
+                  |FINSI;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+
+         |ABRE #dscam051;
+         |LEE 000#dscam051.p;
+         |SI FSalida ! 0;
+            |DDEFECTO #dscam051;
+            |GRABA 020#dscam051.n;
+         |FINSI;
+         |CIERRA #dscam051;
+
+         |MODULO Comodin;
+         |SI Comodin = "dscam012";
+            |ABRE #dscam003;
+            #dscam003#40 = #dscaw001#8;
+            |LEE 000#dscam003.=;
+            |SI FSalida ! 0; |DDEFECTO #dscam003; |FINSI;
+            |CIERRA #dscam003;
+
+            |SI #dscam051#111 = "S";
+                eaTipoCod = "C";
+                |HAZ ChequeoIBAN;
+                |SI ewErrorIBAN = 1;
+                    aAlfa ="0000El documento " + #dscam003#40 + " tiene vacio el Codigo IBAN";
+                    |MENAV aAlfa;
+                    |ERROR;
+                    |ACABA;
+                |FINSI;
+                |SI ewErrorIBAN = 2;
+                    aAlfa = "0000NEl Codigo IBAN del documento " + #dscam003#40 + " puede ser erroneo. Continuar";
+                    |CONFI aAlfa;
+                    |SI FSalida ! 0;
+                        |ERROR;
+                        |ACABA;
+                    |FINSI;
+                |FINSI;
+            |FINSI;
+         |FINSI;
+
+         enSwError = 0;
+         eaTOperacion = "A"; enNumDocum = #dscaw001#8; |HAZ ProcesaTempo;
+         |SI enSwError = 0;
+            #dscaw001#7 = "*";
+            TotalSel = TotalSel + #dscaw001#6;
+            |MODULO Comodin;
+            |SI #dscam051#3 = "S"; |Y Comodin = "dscam012"; |Y enTipoRem ! 5;
+               nCalc = #dscam014#13 + TotalSel;
+               |SI nCalc > #dscam014#12; |Y Pagos = 0;
+                  |MENAV "    Sobrepasado el riesgo bancario concedido";
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |SINO;
+         eaTOperacion = "B"; enNumDocum = #dscaw001#8; |HAZ ProcesaTempo;
+         #dscaw001#7 = " ";
+         TotalSel = TotalSel - #dscaw001#6; TotalSel = TotalSel ! nDeci_Div;
+         |SI TotalSel = 0;
+            CodProv = ""; CtaProv = "";
+         |FINSI;
+      |FINSI;
+      |GRABA 020#dscaw001.a;
+      Comodin = ("          " + TotalSel) % -110;
+      Comodin = " Total seleccion : " + Comodin;
+      |ATRI I;
+      |PINTA 2211, Comodin;
+      |ATRI N;
+   |FINSI;
+   |SI FSalida = 11;
+      aTitClv = "";
+      |SI enClave = 1;
+         enClave = 2;
+      |SINO;
+         enClave = 1;
+      |FINSI;
+      enSwLineal = 1;
+      |PTEC 807;
+   |FINSI;
+
+   || Debe darse una u otra ...
+   nSw = 0;
+   |SI FSalida = 12; nSw = 1; |FINSI;
+   |SI FSalida = 7; |Y enSwLineal = 0; nSw = 1; |FINSI;
+
+   |SI nSw = 1;
+      nTecla = FSalida;
+      |SALVA_FICHA #dscaw001;
+      nSwAvisa = 1;
+      |BUCLE DesmarcaTodos;
+      |REPON_FICHA #dscaw001;
+      Comodin = ("          " + TotalSel) % -110;
+      Comodin = " Total seleccion : " + Comodin;
+      |ATRI I; |PINTA 2211, Comodin; |ATRI N;
+      |SI nTecla ! 7; |O enSwLineal ! 0;
+         |PONCONTROL 23, "si";
+      |SINO;
+         |PTEC 807;
+      |FINSI;
+   |FINSI;
+
+   |MODULO aAlfa;
+   |SI aAlfa = "dscam012";
+      |SI enClave = 1; aTitClv = "様様様様様 Ordenacion : Cliente "; |FINSI;
+   |SINO;
+      |SI enClave = 1; aTitClv = "様様様様 Ordenacion : Proveedor "; |FINSI;
+   |FINSI;
+   |SI enClave = 2; aTitClv = " Ordenacion : Fecha vencimiento "; |FINSI;
+   |ATRI I; |PINTA 0641, aTitClv; |ATRI N;
+
+   Divisa = #dscaw001#9; |HAZ TomaDecim;
+|FPRC;

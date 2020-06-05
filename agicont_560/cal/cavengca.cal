@@ -1,0 +1,696 @@
+|FICHEROS;
+    cavengca #0;
+    cavengli #1;
+    cagruiva #2;
+    caivarep #3;
+    cacuenta #4;
+    caclipro #5;
+    cagruivx #6;
+    caivaasi #7;
+    calibros #10;
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    avisos = "";
+    mensa1 = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+    men1  = "     NO EXISTE EMPRESA !";
+    men2  = "     Longitud de Cuenta Fuera de Nivel !";
+    men3  = "      Esta Cuenta NO tiene Pase directo";
+    cont  = 0;
+    long  = "  ";
+    cta   = 0;
+    sw    = 0;
+    anter = 0;
+    antnum = 0;
+    swp   = 0;
+     estot = 0; || 0 = bases y 1 = factura
+     dividit = 0;
+    trim1 = @;
+    trim2 = @;
+    trim3 = @;
+    modo = 0;
+    doce = "            ";
+
+    sw_movim = 0;
+
+    dlibro = 0;        || libro repercutido
+    ddlibro = "";      || descripcion libro
+    dconc  = 0;        || concepto cliente
+    ddesc  = "";       || descripcion cliente
+    dbn    = "";       || bruto/neto
+    ddp    = "";       || departamento
+    tope_cant = 0;     || cantidad tope de facturas englobadas
+    dcta   = "";       || cuenta cliente
+    ddig   = 0;        || digito cuenta
+    dgru   = 0;        || grupo facturas
+    dnom   = "";
+    dcif   = "";
+
+    &pepe = 0;
+    para1 = 0;
+    y = 0;
+    sw1 = 0;
+    sw2 = 0;
+    sw3 = 0;
+    sw4 = 0;
+    sw5 = 0;
+    sw6 = 0;
+
+    tot_b = 0;
+    tot_i = 0;
+    tot_r = 0;
+    tot_f = 0;
+    salida = 0;
+    num = 0;
+    nume3 = 0;
+    nume4 = 0;
+    nume5 = 0;
+    nume6 = 0;
+    nume7 = 0;
+    nume8 = 0;
+
+    num21 = 0;
+    num22 = 0;
+    num23 = 0;
+    num24 = 0;
+    num25 = 0;
+
+     letrasnif = "TRWAGMYFPDXBNJZSQVHLCKE";
+     letra = "";
+     alfa1 = "";
+     alfa2 = "";
+     final = "";
+     x = "";
+     nume1 = 0;
+     nume2 = 0;
+     lugar = 0;
+     nifnum = 0;
+     resto = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE puntos_i;
+
+
+|| *************************************************************************
+|| ************************** DATOS DE CABECERA ****************************
+|| *************************************************************************
+
+|PROCESO control; |TIPO 8;
+|HAZ inicio;
+|ABRE #7;
+|DDEFECTO #7;
+|LEE 001#7p;
+|SI FSalida ! 0;
+    |MENAV "    Se aconseja definir 'Tratam.IVA/Ficheros Asociados/Control Entrada ...'";
+|FINSI;
+|CIERRA #7;
+
+    dlibro = #7#03;        || libro repercutido
+    dconc  = #7#05;        || concepto cliente
+    ddesc  = #7#07;        || descripcion cliente
+    dbn = #7#17;           || bruto/neto
+    ddp = #7#19;           || departamento
+    tope_cant = #7#38;     || cantidad tope de facturas englobadas
+    dcta = #7#39;          || cuenta cliente
+    ddig = #7#40;          || digito cuenta
+    dgru = #7#42;          || grupo facturas
+
+    |ABRE #10;
+    #10#0 = dlibro;
+    |LEE 001#10=;
+    |SI FSalida ! 0; |O #10#2 ! "R";
+        dlibro = 0;
+    |SINO;
+        ddlibro = #10#1;
+    |FINSI;
+    |CIERRA #10;
+
+    |ABRE #4;
+    #4#0 = dcta;
+    #4#1 = ddig;
+    |LEE 001#4=;
+    |SI FSalida ! 0; |O #4#3 ! "S";
+        dcta = doce;
+        ddig = 0;
+    |SINO;
+        |ABRE #5;
+        #5#10 = "C";
+        #5#10 = dcta;   || cuenta
+        #5#11 = ddig;   || digito
+        |LEE 001#5=;
+        |SI FSalida ! 0; |DDEFECTO #5; |FINSI;
+        dnom = #4#2;        || carga el nombre del plan contable
+        dcif = #5#9;        || carga el CIF del cliente
+        |CIERRA #5;
+    |FINSI;
+    |CIERRA #4;
+
+    alfa1 = #7#04;   |CAMPO_MODIFICA #0#01, 1, alfa1;
+    alfa1 = #7#06;   |CAMPO_MODIFICA #0#06, 1, alfa1;
+    alfa1 = #7#08;   |CAMPO_MODIFICA #0#07, 1, alfa1;
+
+    alfa1 = #7#18;  |CAMPO_MODIFICA #0#14, 1, alfa1;
+    alfa1 = #7#20;  |CAMPO_MODIFICA #0#10, 1, alfa1;
+    alfa1 = #7#28;  |CAMPO_MODIFICA #0#12, 1, alfa1;
+    alfa1 = #7#35;  |CAMPO_MODIFICA #0#08, 1, alfa1;
+    alfa1 = #7#36;  |CAMPO_MODIFICA #0#09, 1, alfa1;
+    alfa1 = #7#41;  |CAMPO_MODIFICA #0#04, 1, alfa1;
+    alfa1 = #7#43;  |CAMPO_MODIFICA #1#02, 1, alfa1;
+|FPRC;
+
+|PROCESO fecha; |TIPO 0;
+ |SI #0#0 < fec1; |O #0#0 > fec2;
+     |MENAV mensa1;
+     |ERROR;
+     |ACABA;
+ |FINSI;
+ swp = 0;
+ modo = (FEntrada / 100) ! 0;
+ |SI modo = 1;
+    alfa1 = #0#0;   alfa1 = alfa1 % -104;      || saca a¤o
+    alfa2 = "31.03." + alfa1;  trim1 = alfa2;  || primer trimestre
+    alfa2 = "30.06." + alfa1;  trim2 = alfa2;  || segundo trimestre
+    alfa2 = "30.09." + alfa1;  trim3 = alfa2;  || tercer trimestre
+    |SI #0#0 [ trim1;                   #0#12 = 1;  |FINSI;
+    |SI #0#0 > trim1;|Y #0#0 [ trim2;   #0#12 = 2;  |FINSI;
+    |SI #0#0 > trim2;|Y #0#0 [ trim3;   #0#12 = 3;  |FINSI;
+    |SI #0#0 > trim3;                   #0#12 = 4;  |FINSI;
+
+     #0#1 = dlibro;  |PINTA #0#1;
+     #0#2 = ddlibro; |PINTA #0#2;
+     #0#4 = dcta;    |PINTA #0#4;
+     #0#5 = ddig;
+     #0#8 = dnom;    |PINTA #0#8;
+     #0#9 = dcif;    |PINTA #0#9;
+     #0#6 = dconc;   |PINTA #0#6;
+     #0#7 = ddesc;   |PINTA #0#7;
+     #0#14 = dbn;    |PINTA #0#14;
+     #0#10 = ddp;    |PINTA #0#10;
+     |PINTA #0#12;
+     |HAZ ult_fra;
+     #0#3 = antnum;
+     |PINTA #0#3;
+ |FINSI;
+|FPRC;
+
+|PROCESO modi_ult; |TIPO 0;
+ swp = 1;
+ |SI FSalida ! 9; |ACABA; |FINSI;
+ |HAZ ult_fra;
+ #0#3 = antnum;
+ |PINTA #0#3;
+ |ERROR;
+|FPRC;
+
+
+|PROCESO cabtipo3; |TIPO 3;
+ sw_movim = 1;
+ modo = (FEntrada / 100) ! 0;
+ |SI modo = 3;
+     |PINTA #0#0;
+ |FINSI;
+|FPRC;
+
+|PROCESO salir; |TIPO 9;
+ |SI sw_movim = 0; |ACABA; |FINSI;
+ |AVISO;
+ |CONFI "2400SDesea actualizar las facturas en el Libro y en el Diario S/N : ";
+ |SI FSalida ! 0; |ACABA; |FINSI;
+ pepe = 1;
+ |CORRE "cavengac.tab";
+|FPRC;
+
+|| ----- Libro de IVA
+
+|PROCESO cheq_libro; |TIPO 0;
+ |SI #10#2 ! "R";
+     |MENAV "    ATENCION!!! Libro de I.V.A. Soportado ...";
+     |ERROR;
+     |ACABA;
+ |FINSI;
+ #0#2 = #10#1; |PINTA #0#2;
+ modo = (FEntrada / 100) ! 0;
+ |SI modo = 1;
+     |HAZ ult_fra;
+     #0#3 = antnum;
+     |PINTA #0#3;
+ |FINSI;
+|FPRC;
+
+|PROCESO ult_fra; || Calcular el ultimo numero de factura del libro
+  |ABRE #3;
+  anter = #0#1;
+  #3#0 = #0#1;
+  #3#2 = 999999;
+  #3#27 = "  ";
+  |LEE 001#3];
+  |SI FSalida = 0;
+      |LEE 001#3a;
+      |SI FSalida ! 0; |O anter ! #3#0;
+          #3#2 = 0;
+      |FINSI;
+      antnum = #3#2;
+  |SINO;
+      |LEE 001#3u;
+      |SI FSalida ! 0; |O anter ! #3#0;
+          #3#2 = 0;
+      |FINSI;
+      antnum = #3#2;
+  |FINSI;
+  |CIERRA #3;
+|FPRC;
+
+|| ------- Cuenta
+
+|PROCESO cuefin; |TIPO 0;
+    modo = (FEntrada / 100) ! 0;
+|ABRE #4;
+    #4#0 = #0#4;
+    #4#1 = #0#5;
+|LEE 001#4=;
+|SI FSalida = 0;
+    |SI #4#3 = "S";
+        |SI modo = 1;  |HAZ lee_client;  |FINSI;     || solo en alta
+    |SINO;
+        |MENAV men3;
+        |ERROR;
+    |FINSI;
+|SINO;
+    |ERROR;
+|FINSI;
+|CIERRA #4;
+|FPRC;
+
+|PROCESO lee_client;
+  |ABRE #5;
+  #5#10 = "C";
+  #5#10 = #0#4;   || cuenta
+  #5#11 = #0#5;   || digito
+  |LEE 001#5=;
+  |SI FSalida ! 0;
+      |DDEFECTO #5;
+  |FINSI;
+  #0#8 = #4#2;        || carga el nombre del plan contable
+  #0#9 = #5#9;        || carga el CIF del cliente
+  |PINTA #0#8;
+  |PINTA #0#9;
+  |CIERRA #5;
+|FPRC;
+
+|PROCESO cuenta;|TIPO 6;
+    p_alfa1 = #0Campo;
+    salidas = FSalida;
+    |SI p_alfa1 = doce;
+        |AVISO;
+        |ERROR;
+        |ACABA;
+    |FINSI;
+|HAZ punto;
+|SI p_error ! 0;  |ERROR;  |ACABA;  |FINSI;
+    cta  = #0#4;
+    long = cta % A0;
+    cont = 0;
+    sw = 0;
+|SI long = #30#14; sw = 1; #0#5 = 1; |FINSI;
+|SI long = #30#15; sw = 1; #0#5 = 2; |FINSI;
+|SI long = #30#16; sw = 1; #0#5 = 3; |FINSI;
+|SI long = #30#17; sw = 1; #0#5 = 4; |FINSI;
+|SI long = #30#18; sw = 1; #0#5 = 5; |FINSI;
+|SI long = #30#19; sw = 1; #0#5 = 6; |FINSI;
+|SI sw = 0;
+    |MENAV men2;
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO fincon; |TIPO 7;
+ |PTEC 816;
+|FPRC;
+
+|PROCESO nodepar; |TIPO 7;
+|SI #30#24 = "N";
+    |CAMPO_MODIFICA #0#10, 1, "N";
+|SINO;
+    |CAMPO_MODIFICA #0#10, 1, "S";
+|FINSI;
+|FPRC;
+
+|PROCESO mayusc;
+ alfa1 = #0Campo > " ";
+ #0Campo = alfa1;
+ |PINTA #0Campo;
+|FPRC;
+
+|PROCESO letra_0;  |TIPO 6;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+
+  alfa1 = #0Campo;   |QBT alfa1;
+  x    = alfa1 % 101;
+  |SI x ! "A"; |Y x ! "B"; |Y x ! "C"; |Y x ! "D"; |Y x ! "E"; |Y x ! "F";
+   |Y x ! "G"; |Y x ! "P"; |Y x ! "Q"; |Y x ! "S"; |Y x ! "X";
+      final = "";
+      alfa2 = alfa1 % 0;
+      nume1 = alfa2;
+      |PARA nume2 = 1;  |SI nume2 [ nume1;  |HACIENDO nume2 = nume2 + 1;
+            lugar = (nume2 * 100) + 1;
+            alfa2 = alfa1 % lugar;
+            |SI alfa2 = "0"; |O alfa2 = "1";|O alfa2 = "2"; |O alfa2 = "3";
+             |O alfa2 = "4"; |O alfa2 = "5";|O alfa2 = "6";
+             |O alfa2 = "7"; |O alfa2 = "8";|O alfa2 = "9";
+                final = final + alfa2;
+            |FINSI;
+      |SIGUE;
+      nifnum = final;
+      |SI nifnum ! 0; |Y final ! "";
+          resto   = nifnum $ 23;
+          resto   = resto + 1;
+          lugar   = (resto * 100) + 1;
+          letra   = letrasnif % lugar;
+          final   = ("000000000" + final + letra) % -109;
+          #0Campo = final;
+      |FINSI;
+   |SINO;
+      |MENAV "    ATENCION !!! No se calcular un C.I.F. ...";
+   |FINSI;
+   |PINTA #0Campo;
+|FPRC;
+
+|| *************************************************************************
+|| ***************** CAMPOS DE LAS LINEAS
+|| *************************************************************************
+|PROCESO chequeo; |TIPO 3;
+ |SI #1#3 ! 0; sw_movim = 1; |ACABA; |FINSI;
+ |SI #1#4 ! 0; sw_movim = 1; |ACABA; |FINSI;
+ |SI #1#5 ! 0; sw_movim = 1; |ACABA; |FINSI;
+ |SI #1#6 ! 0; sw_movim = 1; |ACABA; |FINSI;
+ |SI #1#7 ! 0; sw_movim = 1; |ACABA; |FINSI;
+ |SI #1#8 ! 0; sw_movim = 1; |ACABA; |FINSI;
+
+ avisos = "ATENCION !!!. Importe igual a Cero ... ";
+ |HAZ aviso5;
+ sw_movim = 1;
+|| |ERROR;
+|FPRC;
+
+|PROCESO verprimer; |TIPO 11;
+ |SI FSalida = 9;
+     |PUSHV 1401 2380;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |POPV;
+     |PAUSA;
+     |PINPA #1#0;
+     |PINDA #1#0;
+     swp = 1;
+     |ERROR;
+ |FINSI;
+|FPRC;
+
+|PROCESO funmodi;
+
+ |SI Campo = 2;|Y sw6 ! 1;   |ACABA; |FINSI;
+ |SI Campo < 4;
+     |SI sw1 = 1; num = 1; |FINSI;
+     |SI sw2 = 1; num = 2; |FINSI;
+     |SI sw3 = 1; num = 3; |FINSI;
+     |SI sw4 = 1; num = 4; |FINSI;
+     |SI sw5 = 1; num = 5; |FINSI;
+ |SINO;
+     num = Campo - 3;
+ |FINSI;
+ |HAZ sumanume;
+ |SI salida = 10; |O salida = 11; || ... BASE / IVA
+     |SI #1num21 = 0; |O #1num22 = 0;
+         |ERROR; |ACABA;
+     |FINSI;
+     |SI salida = 10;   || ... Suma base  y  Resta Iva
+         #1num21 = #1num21 + 1;
+         #1num23 = #1num23 - 1;
+     |SINO;              || ... Resta base  y  Suma Iva
+         #1num21 = #1num21 - 1;
+         #1num23 = #1num23 + 1;
+     |FINSI;
+     |PINTA #1num21;
+     |PINTA #1num23;
+ |FINSI;
+ |SI salida = 12; |O salida = 13; || ... IVA / RECARGO
+     |SI #1num21 = 0; |O #1num22 = 0; |O #1num24 = 0;
+         |ERROR; |ACABA;
+     |FINSI;
+     |SI salida = 12;   || ... Suma Iva  y  Resta Recargo
+         #1num23 = #1num23 + 1;
+         #1num25 = #1num25 - 1;
+     |SINO;              || ... Resta Iva  y  Suma Recargo
+         #1num23 = #1num23 - 1;
+         #1num25 = #1num25 + 1;
+     |FINSI;
+     |PINTA #1num23;
+     |PINTA #1num25;
+ |FINSI;
+ |PAUSA;
+|FPRC;
+
+|PROCESO totfactu;
+  tot_b = #1#4  + #1#5  + #1#6  + #1#7  + #1#8
+  tot_i = #1#9  + #1#10 + #1#11 + #1#12 + #1#13
+  tot_r = #1#14 + #1#15 + #1#16 + #1#17 + #1#18
+  tot_f = tot_b + tot_i + tot_r;
+|FPRC;
+
+|PROCESO sumar; |TIPO 2;
+  |HAZ totfactu;
+  || --
+  #0#15 = #0#15 +. tot_b;
+  #0#16 = #0#16 +. tot_i;
+  #0#17 = #0#17 +. tot_r;
+  || --
+  #0#19 = #0#19 +. tot_f;
+  modo = (FEntrada / 100) ! 0;
+  |SI modo ! 3;
+      |SI swp = 0; |PINPA #1#0; swp = 1; |FINSI;
+      |PINDA #1#0;
+  |FINSI;
+|FPRC;
+
+|PROCESO def_tipo; |TIPO 0;
+ modo = (FEntrada / 100) ! 0;
+ |SI modo = 1;
+     |CAMPO_MODIFICA #1#2, 1, "S";
+     #1#2 = dgru; |PINTA #1#2;
+ |SINO;
+     |CAMPO_MODIFICA #1#2, 1, "N";
+ |FINSI;
+|FPRC;
+
+|PROCESO caltot_fac;
+  |SI estot = 0; |ACABA; |FINSI;
+
+  salida = FSalida
+  |SI salida ] 10; |Y salida [ 13;
+      |HAZ funmodi;
+      |ACABA;
+  |FINSI;
+  tot_f = #1#3;
+  |SI sw1 = 1; num = 1; |FINSI;
+  |SI sw2 = 1; num = 2; |FINSI;
+  |SI sw3 = 1; num = 3; |FINSI;
+  |SI sw4 = 1; num = 4; |FINSI;
+  |SI sw5 = 1; num = 5; |FINSI;
+
+  |HAZ sumanume;
+  #1num21 = 0; #1num23 = 0; #1num25 = 0;
+  dividit = 1;
+  |SI #1num22 = 0; |Y #1num24 = 0;
+      #1num21 = tot_f;
+  |SINO;
+      |SI #1num22 ! 0; |Y #1num24 ! 0;
+          dividit = ( 100 + #1num22 + #1num24) / 100;
+          #1num21 = ( tot_f / dividit ) ! EURODB;
+          #1num23 = (( #1num21 * #1num22 ) / 100) ! EURODB;
+          #1num25 = tot_f - ( #1num21 + #1num23 );
+      |SINO;
+          |SI #1num22 ! 0;
+              dividit = ( 100 + #1num22 ) / 100;
+              #1num21 = ( tot_f / dividit ) ! EURODB;
+              #1num23 = tot_f -  #1num21;
+          |SINO;
+              dividit = ( 100 + #1num24 ) / 100;
+              #1num21 = ( tot_f / dividit ) ! EURODB;
+              #1num25 = tot_f -  #1num21;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|PINTA #1num21;
+|PINTA #1num23;
+|PINTA #1num25;
+|FPRC;
+
+|PROCESO caltot_bas;
+
+  |SI estot = 1; |ACABA; |FINSI;
+  salida = FSalida
+  |SI salida ] 10; |Y salida [ 13;
+      |HAZ funmodi;
+      |ACABA;
+  |FINSI;
+
+  num = Campo - 3;
+  |HAZ sumanume;
+  #1num23 = 0; #1num25 = 0;
+  |SI #1num22 ! 0;
+      #1num23 = (( #1num21 * #1num22 ) / 100) ! EURODB;
+  |FINSI;
+  |SI #1num24 ! 0;
+      #1num25 = (( #1num21 * #1num24 ) / 100) ! EURODB;
+  |FINSI;
+
+|HAZ totfactu;
+#1#3 = tot_f;
+|PINTA #1num23;
+|PINTA #1num25;
+|PINTA #1#3;
+|FPRC;
+
+|| --------------------- Lectura del Grupo;
+|PROCESO versiexiste; |TIPO 6;
+ salida = FSalida;
+ |ABRE #2;
+ #2#0 = #1#2;
+ |LEE 001#2=;
+ |SI FSalida ! 0;
+     |MENAV "    No existe Grupo de IVA ";
+     |ERROR;
+ |FINSI;
+ |CIERRA #2;
+|FPRC;
+
+|PROCESO leegrupoiva; |TIPO 0;
+|| salida = FSalida;
+ |ABRE #2;
+ #2#0 = #1#2;
+ |LEE 001#2=;
+ |SI FSalida ! 0;
+     |CIERRA #2;
+     |ERROR;
+     |ACABA;
+ |FINSI;
+ |SI salida = 9;
+     |HAZ consul_gru;
+     |ERROR;
+     |ACABA;
+ |FINSI;
+
+|HAZ primero; || pone todos los campos no modificables.
+ modo = (FEntrada / 100) ! 0;
+|PARA num = 1; |SI num [ 5; |HACIENDO num = num + 1;
+      |HAZ sumanume;
+      |SI #2nume1 > doce;
+          |SI num = 1; sw1 = 1; |FINSI;
+          |SI num = 2; sw2 = 1; |FINSI;
+          |SI num = 3; sw3 = 1; |FINSI;
+          |SI num = 4; sw4 = 1; |FINSI;
+          |SI num = 5; sw5 = 1; |FINSI;
+          |CAMPO_MODIFICA #1num21, 1, "S"; || Cuota Base
+          |SI modo = 1;
+              #1num22 = #2nume3;  |PINTA #1num22; || % IVA;
+              #1num24 = #2nume6;  |PINTA #1num24; || % Recargo
+          |FINSI;
+      |SINO;
+          |CAMPO_MODIFICA #1num21, 1, "N"; || Cuota Base
+          |SI modo = 1;
+              #1num21 = 0; |PINTA #1num21;
+              #1num22 = 0; #1num23 = 0; |PINTA #1num22; |PINTA #1num23;
+              #1num24 = 0; #1num25 = 0; |PINTA #1num24; |PINTA #1num25;
+          |FINSI;
+      |FINSI;
+|SIGUE;
+
+ sw6 = sw1 + sw2 + sw3 + sw4 + sw5;
+ |SI sw6 ! 1; |ACABA; |FINSI;
+ |SI #0#14 = "N";
+     estot = 1;
+     |CAMPO_MODIFICA #1#3, 1, "S"; || Total Factura.
+     |CAMPO_MODIFICA #1#4, 1, "N"; || Cuota Base 1
+     |CAMPO_MODIFICA #1#5, 1, "N"; || Cuota Base 2
+     |CAMPO_MODIFICA #1#6, 1, "N"; || Cuota Base 3
+     |CAMPO_MODIFICA #1#7, 1, "N"; || Cuota Base 4
+     |CAMPO_MODIFICA #1#8, 1, "N"; || Cuota Base 5
+ |FINSI;
+
+ |SI salida ] 10; |Y salida [13;
+     |HAZ funmodi;
+ |FINSI;
+|FPRC;
+
+|PROCESO primero;
+estot = 0; sw1 = 0; sw2 = 0; sw3 = 0; sw4 = 0; sw5 = 0; sw6 = 0
+|PARA para1 = 3; |SI para1 [ 28; |HACIENDO para1 = para1 + 1;
+  |CAMPO_MODIFICA #1para1, 1, "N";
+|SIGUE;
+|FPRC;
+
+|PROCESO consul_gru;
+ |DDEFECTO #6;
+|PARA para1 = 0; |SI para1 [ 42; |HACIENDO para1 = para1 + 1;
+      |SI para1 [ 16;            y = para1;      |FINSI;
+      |SI para1 ] 17; |Y para1 [ 31; y = para1 + 15; |FINSI;
+      |SI para1 ] 32;            y = para1 + 30; |FINSI;
+      #6para1 = #2y;
+|SIGUE;
+      #6#43 = #2#74; #6#44 = #2#76;
+|PUSHV 1111 2278;
+|PINPA #0#6;
+|PARA para1 = 0; |SI para1 [ 16; |HACIENDO para1 = para1 + 1;
+      |PINTA #6para1;
+|SIGUE;
+|PARA para1 = 17; |SI para1 [ 41; |HACIENDO para1 = para1 + 1;
+      |SI #6para1 ! 0; |PINTA #6para1; |FINSI;
+|SIGUE;
+|PAUSA;
+|POPV;
+|FPRC;
+
+|PROCESO sumanume;
+  nume1 = num + 1;
+  nume2 = nume1 + 30; || concepto Base
+  nume3 = nume1 + 60; || % IVA
+  nume4 = nume1 +  5; || Cta IVA
+  nume5 = nume1 + 35; || Concepto IVA
+  nume6 = nume1 + 65; || % Recargo
+  nume7 = nume1 + 10; || Cta Recargo
+  nume8 = nume1 + 40; || Concepto Recargo
+
+  num21 = num + 3;
+  num22 = num21 + 15; || % IVA
+  num23 = num21 +  5; || Cuota IVA
+  num24 = num21 + 20; || % Recargo
+  num25 = num21 + 10; || Cuota Recargo
+|FPRC;
+
+|PROCESO aviso5;
+|PUSHV 09101171;
+|HAZ color_f;
+|CUADRO 09 10 11 71;
+|HAZ color_c;
+|QBF avisos;
+    alfa1 = avisos % 0;  nume1 = alfa1;
+    nume2 = ((60 - nume1) / 2) ! 0;     nume1 = 60 - nume1 - nume2;
+    avisos = (" " * nume1) + avisos + (" " * nume2);        || lo centra
+|PINTA 1011, avisos;
+|ATRI 0;
+|AVISO;
+|PAUSA;
+|POPV;
+|FPRC;
+
+|PROCESO color_c;        || activa el color caracter en avisos
+|COLOR 14, 0;
+|ATRI 0;
+|FPRC;
+
+|PROCESO color_f;        || activa el color graficos en avisos
+|COLOR 4, 0;
+|ATRI 0;
+|FPRC;

@@ -1,0 +1,1082 @@
+|FICHEROS;
+     nomconca #0;
+     nomconax #1,MANTE;
+     nomcateg #2,MANTE;
+     nomcatca #3;
+     nomcatli #4;
+     nomconli #5,MANTE;
+     nompagfe #6,MANTE;
+     nomconfi #7,MANTE;
+     labdicoc #15;
+     labdicol #16;
+
+     nomcon01 #101,MANTE;
+     nomcon02 #102,MANTE;
+     nomcocop,MANTE;
+     nomconre,MANTE;
+     nomfinca;
+     nomfinli;
+     nomfan06;
+     nomconay;
+
+     nomcorfa #17,MANTE;      || APUNTA al nomcorli
+
+     nomcorca;
+     nomdesam;
+     nomlisco;
+|FIN;
+
+|VARIABLES;
+    paga = 0;
+    top = 0;
+    otro = 0;
+    campodef = 0;
+    campodia = 0;
+    mes = 0;
+    topemes = 0;
+    baja = 0;
+    xxxxfiac = "  ";
+    xxaponer = "  ";
+    xrelleno = "                              ";
+    varcampo = 0;
+    swcheck = 0;
+    mensaje0 = "0000ATENCION !!! Concepto fuera de rango ...";
+    mensaje1 = "0000ATENCION !!! Error de entrada ...";
+    mensaje2 = "0000ATENCION !!! Imposible calculo antiguedad, tipos iguales ...";
+
+ {-1}menu = "Menu Convenios";
+     menu1 = "1026";
+     menu2 = "1";
+     || migue
+     menu3 = "14";
+     ||menu3 = "13";
+     menu4 = "Par metros Generales";
+     menu5 = "Definici¢n de Pagas";
+     menu6 = "Definici¢n de Conceptos";
+     menu7 = "Categor¡as";
+     menu8 = "Definici¢n de Importes por Categor¡a";
+     menu9 = "Complementos IT";
+     menu10 = "Antigüedad segun a¤os";
+     || migue
+     || menu11 = "Fechas Recibos Pagas Extra";
+     menu11 = "Configuraci¢n Conceptos Sistema RED (CRA)";
+     menu12 = "D¡as Festivos de Convenio";
+     menu13 = "Indemnizaciones por cese de contrato";
+     menu14 = "Proceso de Copia de Convenio";
+     menu15 = "Registro Hist¢rico de Convenios";
+     menu16 = "Disposiciones";
+     || migue
+     menu17 = "Fechas Recibos Pagas Extra";
+     nOpcion = 0;
+     nCampo = 0;
+     nCampo1 = 0;
+     &nModo = 0;
+     FEstado = 0;
+     FEstado2 = 0;
+
+     aAlfa = "";
+     aAlfa1 = "";
+     nPan = 0;
+     nNume = 0;
+     &nConvenio = 0;
+
+     nCodigoRED = 0;
+     nConcepto = 0;
+     nDesdeConvenio = 0;
+     nHastaConvenio = 0;
+
+     &eaMensaCad = "";
+     &enErrorCad = 0;
+|FIN;
+
+||**************************************************************************
+||                     LLAMADAS DESDE EL MANTENIMIENTO
+||**************************************************************************
+
+|PROCESO checconf; |TIPO 0;   || chequea la CONFECCION
+|SI #102Campo > 12;|Y #102Campo < 99;
+    |MENAV "    Error de entrada ...";
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO nomodias; |TIPO 7;    || segun tipo hace no modificable num. dias
+    varcampo = Campo - 8;
+|SI #102varcampo = "P";
+    |HAZ nomodifi;
+|FINSI;
+|FPRC;
+
+|PROCESO nomoporc; |TIPO 7;    || segun tipo hace no modificable porcentaje
+    varcampo = Campo - 16;
+|SI #102varcampo = "N";
+    |HAZ nomodifi;
+|FINSI;
+|FPRC;
+
+|PROCESO nomodifi;             || rutina de conversion a no modificables
+    xxaponer = Anono;
+    xxxxfiac = Control % A1001;
+    Control = Control + xxxxfiac;
+    Control = Control + xrelleno;
+    Control = Control % A120;
+    Control = Control + xxaponer;
+|FPRC;
+
+|PROCESO checcon1; |TIPO 0;  || chequea rangos de conceptos y paga dentro paga
+|SI Campo=52;|O Campo=60;|O Campo=68;|O Campo=76;|O Campo=84;  paga=0; |FINSI;
+|SI Campo=53;|O Campo=61;|O Campo=69;|O Campo=77;|O Campo=85;  paga=1; |FINSI;
+|SI Campo=54;|O Campo=62;|O Campo=70;|O Campo=78;|O Campo=86;  paga=2; |FINSI;
+|SI Campo=55;|O Campo=63;|O Campo=71;|O Campo=79;|O Campo=87;  paga=3; |FINSI;
+|SI Campo=56;|O Campo=64;|O Campo=72;|O Campo=80;|O Campo=88;  paga=4; |FINSI;
+|SI Campo=57;|O Campo=65;|O Campo=73;|O Campo=81;|O Campo=89;  paga=5; |FINSI;
+|SI Campo=58;|O Campo=66;|O Campo=74;|O Campo=82;|O Campo=90;  paga=6; |FINSI;
+|SI Campo=59;|O Campo=67;|O Campo=75;|O Campo=83;|O Campo=91;  paga=7; |FINSI;
+    top = paga + 200;    || calcula el concepto maximo a incluir en cada paga
+    swcheck = 0;
+|SI #102Campo =   0; swcheck = 1; |FINSI;
+|SI #102Campo = 100; swcheck = 1; |FINSI;
+|SI #102Campo = 400; swcheck = 1; |FINSI;
+|SI #102Campo ] 101; |Y #102Campo [ 199; swcheck = 1; |FINSI;
+|SI #102Campo ] 201; |Y #102Campo [ top; swcheck = 1; |FINSI;
+|SI #102Campo ] 301; |Y #102Campo [ 310; swcheck = 1; |FINSI;
+|SI #102Campo ] 401; |Y #102Campo [ 420; swcheck = 1; |FINSI;
+|SI swcheck = 0;
+    |MENAV mensaje0;
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO desdedi1; |TIPO 0;
+    campodia = Campo + 104;
+|SI #102campodia = 0;|Y #102Campo ! 0;
+        #102campodia = 1;
+    |PINTA #102campodia;
+|FINSI;
+|FPRC;
+
+|PROCESO hastadi1; |TIPO 0;
+    campodia = Campo + 104;
+|SI #102campodia = 0;|Y #102Campo ! 0;
+        mes = #102Campo;
+    |HAZ ulti_dia;
+        #102campodia = topemes;
+    |PINTA #102campodia;
+|FINSI;
+|FPRC;
+
+|PROCESO desdedi2; |TIPO 0;
+    campodia = Campo + 32;
+|SI #102campodia = 0;|Y #102Campo ! 0;
+        #102campodia = 1;
+    |PINTA #102campodia;
+|FINSI;
+|FPRC;
+
+|PROCESO hastadi2; |TIPO 0;
+    campodia = Campo + 32;
+|SI #102campodia = 0;|Y #102Campo ! 0;
+        mes = #102Campo;
+    |HAZ ulti_dia;
+        #102campodia = topemes;
+    |PINTA #102campodia;
+|FINSI;
+|FPRC;
+
+|PROCESO ulti_dia;
+|SI mes =  1;  topemes = 31;  |FINSI;
+|SI mes =  2;  topemes = 28;  |FINSI;
+|SI mes =  3;  topemes = 31;  |FINSI;
+|SI mes =  4;  topemes = 30;  |FINSI;
+|SI mes =  5;  topemes = 31;  |FINSI;
+|SI mes =  6;  topemes = 30;  |FINSI;
+|SI mes =  7;  topemes = 31;  |FINSI;
+|SI mes =  8;  topemes = 31;  |FINSI;
+|SI mes =  9;  topemes = 30;  |FINSI;
+|SI mes = 10;  topemes = 31;  |FINSI;
+|SI mes = 11;  topemes = 30;  |FINSI;
+|SI mes = 12;  topemes = 31;  |FINSI;
+|FPRC;
+
+||**************************************************************************
+||              CALCULOS DE BORRADO DE FICHEROS RELACIONADOS
+||**************************************************************************
+
+|PROCESO nomfinli;   || lineas indemnizacion
+     |BORRA 020#nomfinli.a;
+|FPRC;
+
+|DEFBUCLE nomfinli;
+     #nomfinli#1;
+     ;
+     #0#0, 000, 000;
+     #0#0, 999, 999;
+     be;
+     NULL, nomfinli;
+|FIN;
+
+|PROCESO nomfinca;   || cabecera indemnizacion
+     |ABRE #nomfinca;
+     #nomfinca#0 = #0#0;
+     |LEE 101#nomfinca.=;
+     |SI FSalida = 0;
+          |BORRA 020#nomfinca.a;
+     |FINSI;
+     |CIERRA #nomfinca;
+|FPRC;
+
+|PROCESO nompagfe;   || fecha recibi en el recibo de paga extra
+     |ABRE #nompagfe;
+     #nompagfe#0 = #0#0;
+     |LEE 101#nompagfe.=;
+     |SI FSalida = 0;
+          |BORRA 020#nompagfe.a;
+     |FINSI;
+     |CIERRA #nompagfe;
+|FPRC;
+
+|PROCESO nomconfi;   || fiestas de convenio
+     |BORRA 020#nomconfi.a;
+|FPRC;
+
+|DEFBUCLE nomconfi;
+     #nomconfi#1;
+     ;
+     #0#0, 2000, "     ";
+     #0#0, 2999, "zzzzz";
+     be;
+     NULL, nomconfi;
+|FIN;
+
+|PROCESO auxiliar;   || auxiliar convenios
+|BORRA 020#1a;
+|LIBERA #1;
+|FPRC;
+
+|DEFBUCLE nomconca0;    || (0)
+ #1#1;
+ ;
+ #0#0;
+ #0#0;
+ be;
+ NULL, auxiliar;
+|FIN;
+
+|PROCESO catego;  || categorias
+|BORRA 020#2a;
+|LIBERA #2;
+|FPRC;
+
+|DEFBUCLE nomconca1;    || (1)
+ #2#1;
+ ;
+ #0#0,  0;
+ #0#0, 99;
+ be;
+ NULL, catego;
+|FIN;
+
+|PROCESO catcabs;  || auxiliar categorias cabeceras
+|BORRA 020#3a;
+|BUCLELIN 1NULL#3;
+|LIBERA #3;
+|FPRC;
+
+|DEFBUCLE nomconca2;   ||  (2)
+ #3#1;
+ ;
+ #0#0,  0;
+ #0#0, 99;
+ be;
+ NULL, catcabs;
+|FIN;
+
+|PROCESO nomconli;   || auxiliar convenios
+|BORRA 020#5a;
+|LIBERA #5;
+|FPRC;
+
+|DEFBUCLE nomconli;    ||
+ #5#1;
+ ;
+ #0#0, 000;
+ #0#0, 999;
+ be;
+ NULL, nomconli;
+|FIN;
+
+|PROCESO labdicol;   || Disposiciones Lineas
+     |BORRA 020#16a;
+     |LIBERA #16;
+|FPRC;
+
+|DEFBUCLE labdicol;    ||
+     #16#1;
+     ;
+     #0#0, 000;
+     #0#0, 999;
+     be;
+     NULL, labdicol;
+|FIN;
+
+|PROCESO labdicoc;
+     |ABRE #15;
+     #15#0 = #0#0;
+     |LEE 101#15=;
+     |SI FSalida = 0;
+         |BORRA 020#15a;
+         |LIBERA #15;
+     |FINSI;
+     |CIERRA #15;
+
+     |BUCLE labdicol;
+|FPRC;
+
+|PROCESO borracon; |TIPO 2;
+    baja = FEntrada / 100;
+    baja = baja ! 0;
+|SI baja = 3;
+    |BUCLE nomconca0;   || auxiliar convenios
+    |BUCLE nomconli;    || lineas convenios
+    |BUCLE nomconca1;   || categorias
+    |BUCLE nomconca2;   || auxiliar categorias
+    |HAZ nompagfe;
+    |BUCLE nomconfi;
+    |HAZ nomfinca;
+    |BUCLE nomfinli;
+    |HAZ labdicoc;
+|FINSI;
+|FPRC;
+
+|PROCESO mismo; |TIPO 0;      || chequea que claves de ant.y plus no sean
+|SI Campo = 2;                || las dos = 3
+    otro = 3;
+|SINO;
+    otro = 2;
+|FINSI;
+|SI #101Campo = 3; |Y #101otro = 3;
+    |MENAV mensaje2;
+    |ERROR;
+|SINO;
+    |POPV;
+|FINSI;
+|FPRC;
+
+|PROCESO a2; |TIPO 7;
+|SI FSalida = 5;|O FSalida = 4;    |ACABA;   |FINSI;
+
+|PUSHV 17122380;
+||CUADRO 17 12 24 71;
+|ATRI R;
+||           "3456789012345678901234567890123456789012345678901234567890"
+|PINTA 1813, " --------- CLAVES DE ANTIGUEDAD(102) POSIBLES ----------- ";
+|PINTA 1913, " (1) Importe segun unidades y valor del concepto 102      ";
+|PINTA 2013, " (2) Porcentaje s/a¤os antiguedad sobre [S.Base]          ";
+|PINTA 2113, " (2.bis) Importe por Categorias s/a¤os antiguedad         ";
+|PINTA 2213, " (3) Porcentaje s/a¤os antiguedad sobre [S.Base+Plus]     ";
+|PINTA 2313, " (4) Porcentaje s/a¤os antiguedad sobre [Tabla Bases]     ";
+|ATRI 0;
+|FPRC;
+
+|PROCESO a3; |TIPO 7;
+|SI FSalida = 5;|O FSalida = 4;    |ACABA;   |FINSI;
+
+|PUSHV 17122471;
+||CUADRO 17 12 22 71;
+|ATRI R;
+||           "3456789012345678901234567890123456789012345678901234567890"
+|PINTA 2013, " ----------- CLAVES DE PLUS(103) POSIBLES --------------- ";
+|PINTA 2113, " (1) Importe segun unidades y valor del concepto 103      ";
+|PINTA 2213, " (2) Porcentaje desde unidades sobre [S.Base]             ";
+|PINTA 2313, " (3) Porcentaje desde unidades sobre [S.Base+Antiguedad]  ";
+|ATRI 0;
+|FPRC;
+
+|PROCESO Indemnizaciones;
+     nConvenio = #0#0;
+     |SUB_EJECUTA_NP "nomfinca";
+|FPRC;
+
+|PROCESO MaxHis;
+     #nomconre#0 = #0#0;
+     #nomconre#1 = "31.12.2999";
+|FPRC;
+
+|PROCESO MinHis;
+     #nomconre#0 = #0#0;
+     #nomconre#1 = "01.01.2000";
+|FPRC;
+
+|PROCESO Historico;
+     |ENTLINEAL #1#nomconre, 2, 4, 20, 1, MinHis, MaxHis;
+|FPRC;
+
+|PROCESO min16;
+     #16#0 = #0#0;
+     #16#1 = 1;
+|FPRC;
+
+|PROCESO max16;
+     #16#0 = #0#0;
+     #16#1 = 999;
+|FPRC;
+
+|PROCESO Disposicion;
+     |PUSHV 05012380;
+     |SI nModo ! 4;
+         |ABRE #15;
+         #15#0 = #0#0;
+         |LEE 101#15=;
+         |SI FSalida ! 0;
+             #15#0 = #0#0;
+             |GRABA 020#15n;
+         |FINSI;
+         |LIBERA #15;
+         |CIERRA #15;
+
+         |ENTLINEAL #1#16, -2, 2, 22, 1, min16, max16;     || Modificacion
+     |SINO;
+          |ENTLINEAL #1#16, -2, 4, 22, 1, min16, max16;     || Consulta
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO CopiaConvenio;
+     |PINPA #0#nomcocop;
+     |PINDA #0#nomcocop;
+     #nomcocop#0 = #0#0;
+     #nomcocop#2 = #0#1;
+     |ENDATOS #1#nomcocop;
+|FPRC;
+
+|PROCESO minFie;
+     #nomconfi#0 = #0#0;
+     #nomconfi#1 = 2000;
+     #nomconfi#2 = "     ";
+|FPRC;
+
+|PROCESO maxFie;
+     #nomconfi#0 = #0#0;
+     #nomconfi#1 = 2999;
+     #nomconfi#2 = "zzzzz";
+|FPRC;
+
+|PROCESO FiestaConvenio;
+     |PUSHV 05012380;
+     |SI nModo ! 4;
+          |ENTLINEAL #1#7, -2, 2, 22, 1, minFie, maxFie;     || Modificacion
+     |SINO;
+          |ENTLINEAL #1#7, -2, 4, 22, 1, minFie, maxFie;     || Consulta
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO Importes;
+     nConvenio = #0#0;
+     |SUB_EJECUTA_NP "nomfan04";
+|FPRC;
+
+|PROCESO Antiguedad;
+     |ABRE #nomconax;
+     #nomconax#0 = #0#0;
+     |LEE 101#nomconax.=;
+     FEstado = FSalida;
+
+     |ABRE #nomconay;
+     #nomconay#0 = #0#0;
+     |LEE 101#nomconay.=;
+     FEstado2 = FSalida;
+
+     |PINPA #0#nomfan06;
+     |PINDA #0#nomfan06;
+
+     |PARA nCampo = 5; |SI nCampo [ 35; |HACIENDO nCampo = nCampo + 1;
+          nCampo1 = nCampo + 60;
+          #nomfan06#nCampo# = #nomconax#nCampo1#;
+          |PINTA #nomfan06#nCampo#;
+     |SIGUE;
+     |PARA nCampo = 36; |SI nCampo [ 65; |HACIENDO nCampo = nCampo + 1;
+          nCampo1 = nCampo - 35;
+          #nomfan06#nCampo# = #nomconay#nCampo1#;
+          |PINTA #nomfan06#nCampo#;
+     |SIGUE;
+
+     |SI nModo = 2;
+          |ENDATOS #1#nomfan06;
+          |SI FSalida = 0;
+               |PARA nCampo = 4; |SI nCampo [ 35; |HACIENDO nCampo = nCampo + 1;
+                    nCampo1 = nCampo + 60;
+                    #nomconax#nCampo1# = #nomfan06#nCampo#;
+               |SIGUE;
+               |SI FEstado = 0;
+                    |GRABA 020#nomconax.a;
+               |SINO;
+                    |GRABA 020#nomconax.n;
+               |FINSI;
+               |PARA nCampo = 36; |SI nCampo [ 65; |HACIENDO nCampo = nCampo + 1;
+                    nCampo1 = nCampo - 35;
+                    #nomconay#nCampo1# = #nomfan06#nCampo#;
+               |SIGUE;
+               |SI FEstado2 = 0;
+                    |GRABA 020#nomconay.a;
+               |SINO;
+                    |GRABA 020#nomconay.n;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI nModo = 1;
+          |ENDATOS #1#nomfan06;
+          |SI FSalida = 0;
+               |SI FEstado = 0;
+                    |GRABA 020#nomconax.a;
+               |SINO;
+                    |GRABA 020#nomconax.n;
+               |FINSI;
+               |SI FEstado2 = 0;
+                    |GRABA 020#nomconay.a;
+               |SINO;
+                    |GRABA 020#nomconay.n;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI nModo = 4;
+          |SI FEstado = 0; |O FEstado2 = 0;
+               |PAUSA;
+          |SINO;
+               |MENAV "    Definicion Antiguedad no encontrada";
+          |FINSI;
+     |FINSI;
+     |CIERRA #nomconax;
+     |CIERRA #nomconay;
+     |POPV;
+|FPRC;
+
+|PROCESO IT;
+     |ABRE #nomconax;
+     #nomconax#0 = #0#0;
+     |LEE 101#nomconax.=;
+     FEstado = FSalida;
+
+     |PINPA #0#1;
+     |PINDA #0#1;
+
+     |SI nModo = 4;
+          |SI FEstado = 0;
+               nPan = 1;
+               |PARA; |SI; |HACIENDO;
+                    |PAUSA;
+                    |BLANCO 08072373;
+                    |SI FSalida = 1;
+                         |SAL;
+                    |FINSI;
+                    |SI FSalida = 4;
+                         nPan = nPan - 1;
+                    |FINSI;
+                    |SI FSalida = 5;
+                         nPan = nPan + 1;
+                    |FINSI;
+                    |SI nPan [ 1;
+                         |PINPA #0#nomconax; |PINDA #0#nomconax;
+                         nPan = 1;
+                    |FINSI;
+                    |SI nPan = 2;
+                         |PINPA #1#nomconax; |PINDA #1#nomconax;
+                         nPan = 2;
+                    |FINSI;
+                    |SI nPan ] 3;
+                         |PINPA #2#nomconax; |PINDA #2#nomconax;
+                         nPan = 3;
+                    |FINSI;
+               |SIGUE;
+          |SINO;
+               |MENAV "    Definicion Complementos IT y Antiguedad no encontrada";
+          |FINSI;
+     |SINO;
+          |ENDATOS #1#1;
+          |SI FSalida = 0;
+               |SI FEstado = 0;
+                    |GRABA 020#nomconax.a;
+               |SINO;
+                    |GRABA 020#nomconax.n;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #nomconax;
+|FPRC;
+
+|PROCESO minCat;
+     #nomcateg#0 = #0#0;
+     #nomcateg#1 = 001;
+|FPRC;
+
+|PROCESO maxCat;
+     #nomcateg#0 = #0#0;
+     #nomcateg#1 = 999;
+|FPRC;
+
+|PROCESO Categorias;
+     |PUSHV 05012380;
+     |SI nModo ! 4;
+          |ENTLINEAL #1#2, -2, 2, 22, 1, minCat, maxCat;     || Modificacion
+     |SINO;
+          |ENTLINEAL #1#2, -2, 4, 22, 1, minCat, maxCat;     || Consulta
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO minConRED;
+     #17#0 = #0#0;
+     #17#1 = 001;
+|FPRC;
+
+|PROCESO maxConRED;
+     #17#0 = #0#0;
+     #17#1 = 999;
+|FPRC;
+
+|PROCESO ConceptosRED;
+     |PUSHV 05012380;
+     |SI nModo ! 4;
+          |ENTLINEAL #1#17, -2, 2, 22, 1, minConRED, maxConRED;     || Modificacion
+     |SINO;
+          |ENTLINEAL #1#17, -2, 4, 22, 1, minConRED, maxConRED;     || Consulta
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO FechaRecibo;
+     |ABRE #nompagfe;
+     #nompagfe#0 = #0#0;
+     |LEE 101#nompagfe.=;
+     FEstado = FSalida;
+
+     |PINPA #0#6;
+     |PINDA #0#6;
+
+     |SI nModo = 4;
+          |SI FEstado = 0;
+               |PAUSA;
+          |SINO;
+               |MENAV "    Definicion de fechas de recibo de pagas no encontrada";
+          |FINSI;
+     |SINO;
+          |ENDATOS #1#6;
+          |SI FSalida = 0;
+               |SI FEstado = 0;
+                    |GRABA 020#nompagfe.a;
+               |SINO;
+                    |GRABA 020#nompagfe.n;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #nompagfe;
+|FPRC;
+
+|PROCESO min;
+     #nomconli#0 = #0#0;
+     #nomconli#2 = 101;
+|FPRC;
+
+|PROCESO max;
+     #nomconli#0 = #0#0;
+     #nomconli#2 = 999;
+|FPRC;
+
+|PROCESO Conceptos;
+     |PUSHV 05012380;
+     |SI nModo ! 4;
+          |ENTLINEAL #1#5, -2, 2, 21, 1, min, max;      || Modificacion
+     |SINO;
+          |ENTLINEAL #1#5, -2, 4, 21, 1, min, max;      || Consulta
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO Fantasma2;
+     |PUSHV 05012380;
+     |LEE 101#0=;
+     |PINPA #0#102;
+     |PARA nCampo = 4; |SI nCampo [ 139; |HACIENDO nCampo = nCampo + 1;
+          #nomcon02#nCampo# = #nomconca#nCampo#;
+          |PINTA #102#nCampo#;
+     |SIGUE;
+     |SI nModo ! 4;
+          |ENDATOS #2#102;
+          |SI FSalida = 0;
+               |PARA nCampo = 4; |SI nCampo [ 139; |HACIENDO nCampo = nCampo + 1;
+                    #nomconca#nCampo# = #nomcon02#nCampo#;
+                    |PINTA #102#nCampo#;
+               |SIGUE;
+               |GRABA 020#0a;
+          |FINSI;
+     |SINO;
+          |PAUSA;
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO Fantasma1;
+     |PUSHV 05012380;
+     |LEE 101#0=;
+     |PINPA #0#101;
+     |PARA nCampo = 2; |SI nCampo [ 3; |HACIENDO nCampo = nCampo + 1;
+          #nomcon01#nCampo# = #nomconca#nCampo#;
+          |PINTA #101#nCampo#;
+     |SIGUE;
+     |PARA nCampo = 140; |SI nCampo [ 166; |HACIENDO nCampo = nCampo + 1;
+          #nomcon01#nCampo# = #nomconca#nCampo#;
+          |PINTA #101#nCampo#;
+     |SIGUE;
+     |SI nModo ! 4;
+          |ENDATOS #2#101;
+          |SI FSalida = 0;
+               |PARA nCampo = 2; |SI nCampo [ 3; |HACIENDO nCampo = nCampo + 1;
+                    #nomconca#nCampo# = #nomcon01#nCampo#;
+               |SIGUE;
+               |PARA nCampo = 140; |SI nCampo [ 166; |HACIENDO nCampo = nCampo + 1;
+                    #nomconca#nCampo# = #nomcon01#nCampo#;
+               |SIGUE;
+               |GRABA 020#0a;
+          |FINSI;
+     |SINO;
+          |PAUSA;
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO Agitool_nomconca; |TIPO 8;
+     eaMensaCad = "9";
+     |HAZ ControlCaducidad;
+     |SI enErrorCad = 1;
+         |PTEC 807;
+         |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo3_nomconca; |TIPO 30;
+     nModo = (FEntrada / 100) ! 0;
+     |PINDA #0#0;
+     |HAZ AvisoCon;
+     ||ABRE #0;
+     |PARA; |SI; |HACIENDO;
+          menu2 = nOpcion;
+          |MENUG menu;
+          nOpcion = FSalida;
+          |SI nOpcion = 1;         || parametros generales
+               |HAZ Fantasma1;
+          |FINSI;
+          |SI nOpcion = 2;         || Pagas
+               |HAZ Fantasma2;
+          |FINSI;
+          |SI nOpcion = 3;         || Conceptos
+               |HAZ Recarga;
+               |HAZ Conceptos;
+          |FINSI;
+          |SI nOpcion = 4;         || Categorias
+               |PUSHV 05012380;
+               |HAZ Categorias;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 5;         || Importes por Categoria
+               |PUSHV 05012380;
+               |HAZ Importes;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 6;         || Complementos IT
+               |PUSHV 05012380;
+               |HAZ IT;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 7;         || Antiguedad
+               |PUSHV 05012380;
+               |HAZ Antiguedad;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 8;         || Fecha Recibo Pagas Extras
+               |PUSHV 05012380;
+               |HAZ Recarga;
+               |HAZ ConceptosRED;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 9;         || Fiestas de Convenio
+               |PUSHV 05012380;
+               |HAZ FiestaConvenio;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 10;         || Indemnizaciones por cese de contrato
+               |PUSHV 05012380;
+               |HAZ Indemnizaciones;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 11;         || Copia de Convenios
+               |PUSHV 05012380;
+               |HAZ CopiaConvenio;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 12;         || Historico de Convenios
+               |PUSHV 05012380;
+               |HAZ Historico;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 13;         || Disposiciones
+               |PUSHV 05012380;
+               |HAZ Disposicion;
+               |POPV;
+          |FINSI;
+          |SI nOpcion = 14;         || Fecha Recibo Pagas Extras
+               |PUSHV 05012380;
+               |HAZ FechaRecibo;
+               |POPV;
+          |FINSI;
+
+          |SI nOpcion = 0;
+               nModo = 1;     || para que borre el aviso si es Consulta
+               |HAZ AvisoCon;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+     ||CIERRA #0;
+|FPRC;
+
+|PROCESO AvisoCon;
+     |SI nModo = 4;
+          |COLOR 7,1;
+          |ATRI I;   ||34567890
+          |PINTA 0566, "MODO CONSULTA";
+          |ATRI 0;
+     |SINO;
+          |ATRI 0;   ||3456789
+          |PINTA 0566, "ÄÄÄÄÄÄÄÄÄÄÄÄÄ";
+     |FINSI;
+|FPRC;
+
+|PROCESO Consultalo; |TIPO 0;
+     |MODULO aAlfa;
+     aAlfa1 = aAlfa % 106;
+     |SI aAlfa = "labtraba"; |O aAlfa = "nomw0003"; || por si vengo del labtraba
+     |O aAlfa = "nomcal01"; |O aAlfa = "nomcaldc"; |O aAlfa = "nomcarca";
+     |O aAlfa = "labcerm0";
+     |O aAlfa = "hotm0009"; |O aAlfa = "hotm0012"; |O aAlfa = "hotm0050";
+     |O aAlfa1 = "labacu"; |O aAlfa1 = "labcon";
+          |ACABA;
+     |FINSI;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 4;
+          |ABRE #0;
+          |LEE 000#0=;
+          |SI FSalida = 0;
+               |CIERRA #0;
+               |HAZ Tipo3_nomconca;
+          |SINO;
+               |MENAV "    ATENCION: No se ha encontrado el Convenio";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Comp1;
+     nNume = #101#148;
+     |SI nNume ! 0;
+          |SI nNume < 420; |O nNume > 431;
+               |MENAV "    Solo se admiten conceptos del 421 al 430";
+               |ERROR;
+          |FINSI;
+          |PARA nNume = 152; |SI nNume [ 156; |HACIENDO nNume = nNume + 1;
+               |CAMPO_MODIFICA #101nNume, 1, "S";
+          |SIGUE;
+     |SINO;
+          |PARA nNume = 152; |SI nNume [ 156; |HACIENDO nNume = nNume + 1;
+               |CAMPO_MODIFICA #101nNume, 1, "N";
+               #101nNume = 0;
+               |PINTA #101nNume;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO Comp2;
+     aAlfa = #101Campo;
+     nNume = aAlfa;
+     |SI nNume ! 0;
+          |SI nNume < 101; |O nNume > 420;
+               |MENAV "    Solo se admiten conceptos del 101 al 420";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+/****************************************************************************/
+/**** PROCESOS PARA REALIZAR LA RECARGA DE UNO O DE TODOS LOS CONVENIOS  ****/
+/****************************************************************************/
+
+|PROCESO Pagas;
+     #nomconca#0 = #nomcorfa#0;
+     |LEE 000#nomconca.=;
+     |SI FSalida = 0;
+          nCampo = #nomcorfa#1 - 200 + 19;
+          |SI #nomconca#nCampo# = 99;
+               nCodigoRED = 0005;
+          |SINO;
+               nCodigoRED = 0004;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecargaCon;
+     |DDEFECTO #nomcorfa;
+
+     nConcepto = #nomconli#2;
+     #nomcorfa#0 = #nomconli#0;
+     #nomcorfa#1 = #nomconli#2;
+     |LEE 000#nomcorfa.=;
+     |SI FSalida ! 0;
+          #nomcorfa#0 = #nomconli#0;
+          #nomcorfa#1 = #nomconli#2;
+          #nomcorfa#2 = #nomconli#6;
+
+          #nomdesam#0 = #nomconli#0;
+          #nomdesam#1 = #nomconli#2;
+          |LEE 000#nomdesam.=;
+          |SI FSalida = 0;
+               #nomcorfa#3 = #nomdesam#2;
+          |FINSI;
+
+          |SI #nomconli#2 < 400;
+               #nomcorfa#4 = "S";
+          |SINO;
+               |SI #nomconli#2 ] 400; |Y #nomconli#2 [ 499;
+                    |SI #nomconli#11 = "S"; |Y #nomconli#12 = "7";
+                         #nomcorfa#4 = "S";
+                    |SINO;
+                         #nomcorfa#4 = "N";
+                    |FINSI;
+               |SINO;
+                    #nomcorfa#4 = "S";
+               |FINSI;
+          |FINSI;
+
+          nCodigoRED = 0001;
+          |SI nConcepto = 125;
+               nCodigoRED = 0006;
+          |FINSI;
+          |SI 301 [ nConcepto; |Y nConcepto [ 305;
+               nCodigoRED = 0003;
+          |FINSI;
+          |SI 306 [ nConcepto; |Y nConcepto [ 310;
+               nCodigoRED = 0002;
+          |FINSI;
+          |SI nConcepto = 125;
+               nCodigoRED = 0006;
+          |FINSI;
+          |SI 201 [ nConcepto; |Y nConcepto [ 299;
+               |HAZ Pagas;
+          |FINSI;
+          |SI nConcepto = 410; |O nConcepto = 415;
+               nCodigoRED = 0054;
+          |FINSI;
+
+          #nomcorfa#5 = nCodigoRED;
+          #nomlisco#0 = #nomcorfa#5;
+          |LEE 000#nomlisco.=;
+          |SI FSalida = 0;
+               #nomcorfa#6 = #nomlisco#1;
+               #nomcorfa#7 = #nomlisco#2;
+               #nomcorfa#8 = #nomlisco#3;
+          |FINSI;
+
+          |SI nCodigoRED = 0001;
+          |Y nConcepto ! 101; |Y nConcepto ! 102;
+               #nomcorfa#9 = "*";
+          |SINO;
+               #nomcorfa#9 = "";
+          |FINSI;
+
+          |SI nCodigoRED = 0054;
+               #nomcorfa#9 = "*";
+          |FINSI;
+
+          |GRABA 020#nomcorfa.n;
+          |LIBERA #nomcorfa;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE RecargaCon;
+     #nomconli#1;
+     ;
+     nDesdeConvenio, 000;
+     nHastaConvenio, 999;
+     be;
+     NULL, RecargaCon;
+|FIN;
+
+|PROCESO Recarga;
+     |ABRE #nomcorca;
+     |ABRE #nomcorfa;
+     |ABRE #nomdesam;
+     |ABRE #nomlisco;
+
+     #nomcorca#0 = #0#0;
+     |LEE 000#nomcorca.=;
+     |SI FSalida ! 0;
+          #nomcorca#0 = #0#0;
+          #nomcorca#1 = #0#1;
+          |GRABA 020#nomcorca.n;
+
+          nDesdeConvenio = #0#0;
+          nHastaConvenio = #0#0;
+          |BUCLE RecargaCon;
+     |FINSI;
+
+     |CIERRA #nomlisco;
+     |CIERRA #nomdesam;
+     |CIERRA #nomcorfa;
+     |CIERRA #nomcorca;
+|FPRC;
+
+|PROCESO Convenios;
+     #nomcorca#0 = #nomconca#0;
+     #nomcorca#1 = #nomconca#1;
+     |GRABA 020#nomcorca.n;
+     |LIBERA #nomcorca;
+|FPRC;
+
+|DEFBUCLE Convenios;
+     #nomconca#1;
+     ;
+     000;
+     999;
+     ;
+     NULL, Convenios;
+|FIN;
+
+|PROCESO RecargaInicial; |TIPO 7;
+   || migue
+
+     |ABRE #nomconca;
+     |ABRE #nomcorfa;
+     |ABRE #nomdesam;
+     |ABRE #nomlisco;
+
+     |ABRE #nomcorca;
+     |LEE 000#nomcorca.p;
+     |SI FSalida ! 0;
+          |BUCLE Convenios;
+
+          nDesdeConvenio = 000;
+          nHastaConvenio = 999;
+          |BUCLE RecargaCon;
+
+          #0#0 = 001;
+          |PINTA #0#0;
+     |FINSI;
+
+     |CIERRA #nomlisco;
+     |CIERRA #nomdesam;
+     |CIERRA #nomcorfa;
+     |CIERRA #nomcorca;
+     |CIERRA #nomconca;
+
+|FPRC;
+
+|PROCESO Tipo80; |TIPO 80;
+     |CAMPO_ANCHO #nomconca#1, 1, 62;
+|FPRC;

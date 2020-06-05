@@ -1,0 +1,583 @@
+|FICHEROS;
+     dsorm001 #1;
+     dsorm100 #100;
+     dsorw050 #900;
+     dsorw051 #901;
+     dsorw052 #902;
+
+     agiuser1@ #101;
+|FIN;
+
+|VARIABLES;
+     aMaster   = "";
+     aHora     = "";
+     aBase     = "";
+     aAbre     = "";
+     aAlfa     = "";
+     aAlfa1    = "";
+     aDef      = "";
+     aFich     = "";
+     aFichero  = "";
+
+     nModo     = 0;
+     nForma    = 0;
+     nFormaL   = 0;
+     nUsuario  = 0;
+     nHandle   = 0;
+     nHandle1  = 0;
+     nHandle2  = 0;
+     nError    = 0;
+     nBufUsr   = 0;
+     nEleUsr   = 0;
+     nRegis    = 0;
+     nCaracter = 0;
+     nPos      = 0;
+     nCamuf    = 0;
+     nNum      = 0;
+     nMayor    = 0;
+     nRegistro = 0;
+     nMaster   = 0;
+     nGrupo    = 0;
+     nTablaUserFich = 0;
+     nTablaUserApli = 0;
+
+     fFecha    = @;
+
+     &eaPass        = "";
+     &eaPassEnc     = "";
+|FIN;
+
+|RUTINA Baja100;
+     #100#0 = 1;
+|FRUT;
+
+|RUTINA Alta100;
+     #100#0 = 999;
+|FRUT;
+
+
+|PROCESO GrabaSemaforo;
+     |DBASS aBase; |QBF aBase;
+     aAbre  = aBase + "dev/usr/ds_sys.smf";
+     |XABRE "W", aAbre, nHandle;
+     |SI FSalida ] 0;
+         fFecha = ~;
+         |HORA aHora;
+         aAlfa  = "Usuario : " + (((Usuario % 810) + "        ") % 108) + " Fecha : " + fFecha + " Hora : " + aHora;
+         |XGRABA nHandle, aAlfa;
+     |FINSI;
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO IniSemaforo;
+     |DBASS aBase; |QBF aBase;
+     aAbre  = aBase + "dev/usr/ds_sys.smf";
+
+     nError = 0;
+     |XABRE "E", aAbre, nHandle;
+     |SI FSalida ] 0;
+         nError = 1;
+         |ACABA;
+     |FINSI;
+
+     |HAZ GrabaSemaforo;
+|FPRC;
+
+|PROCESO FinSemaforo;
+     |DBASS aBase; |QBF aBase;
+     aAbre  = aBase + "dev/usr/ds_sys.smf";
+     |FBORRA aAbre;
+|FPRC;
+
+|PROCESO ActualizaUsuario;
+     eaPass = #100#3;
+     |HAZ EncriptaUsuario;
+
+     |ABRE #900;
+     |SELECT #2#900;
+     #900#1 = #100#2;
+     |LEE 101#900=;
+     |SI FSalida = 0;
+         #900#2 = eaPassEnc;
+         #900#5 = #100#6;
+         |GRABA 020#900a;
+         |LIBERA #900;
+     |SINO;
+         nMayor = 1;
+         |SELECT #3#900;
+         |LEE 040#900u;
+         |SI FSalida = 0;
+             nMayor = #900#4 + 1;
+             |SI nMayor > 999;
+                 |PARA nMayor = 1;  |SI nMayor [ 999;  |HACIENDO nMayor = nMayor + 1;
+                       #900#4 = nMayor;
+                       |LEE 040#900=;
+                       |SI FSalida ! 0;  |SAL;  |FINSI;
+                 |SIGUE;
+             |FINSI;
+         |FINSI;
+
+         |SI nMayor ] 999;
+             |MENAV "     Mas de 1000 Usuarios, pongase en contacto con su distribuidor.";
+             |CIERRA #900;
+             |ACABA;
+         |FINSI;
+
+         nRegistro = 0;
+         |SELECT #1#900;
+         |LEE 040#900u;
+         |SI FSalida = 0;
+             nRegistro = #900#0 + 1;
+         |FINSI;
+
+         #900#0 = nRegistro;
+         #900#1 = #100#2;
+         #900#2 = eaPassEnc;
+         #900#3 = "N";
+         #900#4 = nMayor;
+         #900#5 = #100#6;
+         |GRABA 020#900n;
+         |LIBERA #900;
+     |FINSI;
+     |CIERRA #900;
+|FPRC;
+
+|PROCESO Tipo2m100;  |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+         |ABRE #900;
+         |SELECT #2#900;
+         #900#1 = #100#2;
+         |LEE 101#900=;
+         |SI FSalida = 0;
+             |BORRA 020#900a;
+             |LIBERA #900;
+         |FINSI;
+         |CIERRA #900;
+         |ACABA;
+     |FINSI;
+
+     nForma = 0 +. 1;
+
+     |SI nForma = 1;
+         |ABRE #900;
+         |HAZ ActualizaUsuario;
+         |CIERRA #900;
+
+         |ABRE #902;
+         |PARA nGrupo = #100#4;  |SI nGrupo [ #100#5;  |HACIENDO nGrupo = nGrupo + 1;
+               #902#0 = nGrupo;
+               |LEE 101#1=;
+               |SI FSalida ! 0;
+                   |DDEFECTO #902;
+                   #902#0 = nGrupo;
+                   |GRABA 020#902b;
+               |FINSI;
+               #902#1 = "GRUPO ASIGNADO AL MASTER " + (("000" + #100#0) % -103);
+               #902#2 = ("000" + #100#0) % -103;
+               |GRABA 020#902a;
+               |LIBERA #902;
+         |SIGUE;
+         |CIERRA #902;
+     |SINO;
+         |ABRE #902;
+         |PARA nGrupo = #100#4;  |SI nGrupo [ #100#5;  |HACIENDO nGrupo = nGrupo + 1;
+               #902#0 = nGrupo;
+               |LEE 101#902=;
+               |SI FSalida = 0;
+                   |BORRA 020#902a;
+                   |LIBERA #902;
+               |FINSI;
+         |SIGUE;
+         |CIERRA #902;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo7C2m100;  |TIPO 7;
+     #100#2 = (("000" + #100#0) % -103) + "00000";
+     |PINTA #100#2;
+|FPRC;
+
+|PROCESO Tipo0C3m100;  |TIPO 0;
+     aAlfa = #100#3 - "¥";
+     |SI FSalida ! 0;
+         aAlfa = "0000 Por favor no introduzca " + &0209;
+         |MENAV aAlfa;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     aAlfa = #100#3 - "¤";
+     |SI FSalida ! 0;
+         aAlfa = "0000 Por favor no introduzca " + &0241;
+         |MENAV aAlfa;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo0C4m100;  |TIPO 0;
+     |ABRE #902;
+     #902#0 = #100#4;
+     |LEE 040#902=;
+     |SI FSalida = 0;
+         |MENAV "0000 Rango de Grupo Usado en otro Grupo.";
+         |ERROR;
+     |FINSI;
+     |CIERRA #902;
+|FPRC;
+
+|PROCESO Tipo0C5m100;  |TIPO 0;
+     |SI #100#5 < #100#4;
+         |MENAV "0000 El Hasta es Menor al Desde.";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |ABRE #902;
+     nError = 0;
+     |PARA nGrupo = #100#4;  |SI nGrupo [ #100#5;  |HACIENDO nGrupo = nGrupo + 1;
+           #902#0 = nGrupo;
+           |LEE 040#902=;
+           |SI FSalida = 0;
+               nError = 1;
+               |SAL;
+           |FINSI;
+     |SIGUE;
+     |CIERRA #902;
+
+     |SI nError = 1;
+         |MENAV "0000 Rango de Grupo Usado en otro Grupo.";
+         |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo6C6m100;  |TIPO 6;
+     |ABRE #1;
+     #1#0 = #100#6;
+     |LEE 101#1=;
+     |SI FSalida ! 0;
+         |CONFI "0000 El Grupo no Existe. Desea Crearlo.";
+         |SI FSalida = 0;
+             |PUSHV 0501 2380;
+
+             |DDEFECTO #1;
+             #1#0 = #100#6;
+
+             |PINPA #0#1;
+             |PINDA #0#1;
+             |ENDATOS #1#1;
+             |SI FSalida = 0;
+                 |GRABA 020#1n;
+                 |LIBERA #1;
+             |FINSI;
+
+             |POPV;
+         |FINSI;
+     |FINSI;
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO Tipo0C6m100;  |TIPO 0;
+     |SI #100#6 [ 9899;  |AVISO;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO CargaSecuencial;
+     aAlfa = aBase + "dev/usr/ds_sys.psw"
+     |LEESECUENCIAL aAlfa, nBufUsr, nEleUsr, 0, 0;
+     |PARA nRegis = 0; |SI nRegis < nEleUsr; |HACIENDO nRegis = nRegis + 1;
+           |DEL_BUF nBufUsr, nRegis, aAlfa;
+
+           |DDEFECTO #900;
+           #900#0 = nRegis + 1;
+           aAlfa1 = aAlfa % 410;   #900#1 = aAlfa1;
+           aAlfa1 = aAlfa % 1420;  #900#2 = aAlfa1;
+           aAlfa1 = aAlfa % 3401;  #900#3 = aAlfa1;
+           aAlfa1 = aAlfa % 103;   #900#4 = aAlfa1;
+
+           #101#0 = #900#4;
+           |LEE 000#101=;
+           |SI FSalida = 0;
+               #900#5 = #101#2;
+           |FINSI;
+           |GRABA 020#900n;
+     |SIGUE;
+     |FINDIM nBufUsr;
+|FPRC;
+
+|PROCESO LeeUsuarios;
+     |DBASS aBase; |QBF aBase;
+     aDef = aBase + "agitool/def/agiuser1.mas";
+     |CARGA_DEF aDef, agiuser1@;
+     |SI FSalida ! 0;
+         |MENAV "    [agitool/def/agiuser1.mas] inaccesible";
+         |ACABA;
+     |FINSI;
+
+     aFich = aBase + "agitool/fich/";
+     |PATH_DAT #101 aFich;
+
+     aFichero = ("user" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #900 aFichero;
+
+     |ABRE #900;
+     |ABRE #101;
+     |HAZ CargaSecuencial;
+     |CIERRA #101;
+     |CIERRA #900;
+|FPRC;
+
+|PROCESO LeeGrupos;
+     aFichero = ("grup" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #902 aFichero;
+
+     |DBASS aBase; |QBF aBase;
+     aAbre = aBase + "tablasnet";  |MKDIR aAbre;
+     aAbre = aAbre + "/tablagrupos.txt";
+
+     |XABRE "U", aAbre, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     |ABRE #902;
+     |PARA;  |SI;  |HACIENDO;
+         |XLEE nHandle, 250, aAlfa;
+         |SI FSalida < 0;  |SAL;  |FINSI;
+
+         |DDEFECTO #902;
+         aAlfa1 = aAlfa % 504;
+         #902#0 = aAlfa1;
+         |LEE 101#902=;
+         |SI FSalida ! 0;
+             |DDEFECTO #902;
+             aAlfa1 = aAlfa % 504;
+             #902#0 = aAlfa1;
+
+             aAlfa1 = aAlfa % 103;
+             #902#2 = aAlfa1;
+             |GRABA 020#902n;
+         |FINSI;
+     |SIGUE;
+     |CIERRA #902;
+
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO dsorw050;
+     aAlfa = ("000" + #900#4) % -103;
+     aAlfa = aAlfa + #900#1;
+     aAlfa = aAlfa + #900#2;
+     aAlfa = aAlfa + #900#3;
+     |XGRABA nHandle, aAlfa;
+
+     #101#0 = #900#4;
+     |LEE 101#101=;
+     |SI FSalida ! 0;
+         |DDEFECTO #101;
+         #101#0 = #900#4;
+         |GRABA 020#101b;
+     |FINSI;
+
+     #101#1 = #900#1;
+     #101#2 = #900#5;
+     |GRABA 020#101a;
+     |LIBERA #101;
+|FPRC;
+
+|DEFBUCLE dsorw050;
+     #900#1;
+     ;
+     000;
+     999;
+     ;
+     NULL, dsorw050;
+|FIN;
+
+|PROCESO GrabaUsuarios;
+     |DBASS aBase; |QBF aBase;
+     aAbre = aBase + "dev/usr/ds_sys.psw"
+     |XABRE "W", aAbre, nHandle;
+
+     |ABRE #101;
+     |BUCLE dsorw050;
+     |CIERRA #101;
+
+     |XCIERRA nHandle;
+
+     |DELINDEX #900;
+
+     |DESCARGA_DEF #agiuser1@;
+|FPRC;
+
+|PROCESO dsorw051;
+     aAlfa = #901#0 + "," + #901#2;
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|DEFBUCLE dsorw051;
+     #901#1;
+     ;
+     "        ";
+     "zzzzzzzz";
+     ;
+     NULL, dsorw051;
+|FIN;
+
+|PROCESO GrabaTablaApli;
+     aFichero = ("tabl" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #901 aFichero;
+
+     |ABRE #901;
+
+     |DBASS aBase; |QBF aBase;
+     aAbre = aBase + "tablasnet";  |MKDIR aAbre;
+     aAbre = aAbre + "/tablauserapli.txt";
+
+     |XABRE "U", aAbre, nHandle;
+     |SI FSalida ] 0;
+         |PARA;  |SI;  |HACIENDO;
+              |XLEE nHandle, 250, aAlfa;
+              |SI FSalida < 0;  |SAL;  |FINSI;
+
+              |DDEFECTO #901;
+              aAlfa1 = aAlfa % 108;
+              #901#0 = aAlfa1;
+              |LEE 101#901=;
+              |SI FSalida ! 0;
+                  |DDEFECTO #901;
+                  aAlfa1 = aAlfa % 108;
+                  #901#0 = aAlfa1;
+                  |GRABA 020#901b;
+              |FINSI;
+
+              aAlfa1 = aAlfa % 1004;  #901#2 = aAlfa1;
+              |GRABA 020#901a;
+              |LIBERA #901;
+         |SIGUE;
+         |XCIERRA nHandle;
+     |FINSI;
+
+     #901#0 = #100#2;
+     |LEE 101#901=;
+     |SI FSalida ! 0;
+         |DDEFECTO #901;
+         #901#0 = #100#2;
+         #901#2 = "_" + (("000" + #100#0) % -103);
+         |GRABA 020#901n;
+         |LIBERA #901;
+     |FINSI;
+     |CIERRA #901;
+
+     |DBASS aBase; |QBF aBase;
+     aAbre = aBase + "tablasnet/tablauserapli.txt";
+     |XABRE "W", aAbre, nHandle;
+
+     |BUCLE dsorw051;
+
+     |XCIERRA nHandle;
+     |DELINDEX #901;
+|FPRC;
+
+|PROCESO dsorw052;
+     aAlfa = #902#2 + "," + (("0000" + #902#0) % -104);
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|DEFBUCLE dsorw052;
+     #902#1;
+     ;
+     0001;
+     9899;
+     be;
+     NULL, dsorw052;
+|FIN;
+
+|PROCESO GrabaGrupos;
+     |DBASS aBase; |QBF aBase;
+     aBase = aBase + "tablasnet";  |MKDIR aBase;
+
+     aAbre = aBase + "/tablagrupos.txt"
+     |XABRE "W", aAbre, nHandle;
+
+     |BUCLE dsorw052;
+
+     |XCIERRA nHandle;
+
+     |DELINDEX #902;
+|FPRC;
+
+|PROCESO GrabaINI;
+     |DBASS aBase; |QBF aBase;
+     aAbre = aBase + "ds.ini";
+
+     |XABRE "U", aAbre, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     nTablaUserFich = 0;
+     nTablaUserApli = 0;
+     |PARA;  |SI;  |HACIENDO;
+         |XLEE nHandle, 250, aAlfa;
+         |SI FSalida < 0;  |SAL;  |FINSI;
+
+         aAlfa1 = aAlfa - "TABLAUSERFICH";
+         |SI FSalida ! 0;  nTablaUserFich = 1;  |FINSI;
+
+         aAlfa1 = aAlfa - "TABLAUSERAPLI";
+         |SI FSalida ! 0;  nTablaUserApli = 1;  |FINSI;
+     |SIGUE;
+
+     |SI nTablaUserFich = 0;
+         aAlfa = "TABLAUSERFICH=" + aBase + "tablasnet/tablauserfich.txt";
+         |XGRABA nHandle, aAlfa;
+     |FINSI;
+
+     |SI nTablaUserApli = 0;
+         aAlfa = "TABLAUSERAPLI=" + aBase + "tablasnet/tablauserapli.txt";
+         |XGRABA nHandle, aAlfa;
+     |FINSI;
+
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO dsorm100Chequeo;
+     |SI #100#4 = 0;  nError = 1;  |ERROR10;  |ACABA;  |FINSI;
+     |SI #100#5 = 0;  nError = 1;  |ERROR10;  |ACABA;  |FINSI;
+|FPRC;
+
+|DEFBUCLE dsorm100Chequeo;
+     #100#1;
+     ;
+     001;
+     999;
+     ;
+     NULL, dsorm100Chequeo;
+|FIN;
+
+|PROGRAMA;
+     nError = 0;
+     |HAZ IniSemaforo;
+
+     |SI nError = 1;
+         |MENAV "0000 El programa esta siendo usuado por otro usuario, intentelo mas tarde";
+         |ACABA;
+     |FINSI;
+
+     |HAZ LeeUsuarios;
+     |HAZ LeeGrupos;
+
+     |PARA;  |SI;  |HACIENDO;
+          |ENTLINEAL #1#100, -1, 2, 22, 1, Baja100, Alta100;
+
+          nError  = 0;
+          |BUCLE dsorm100Chequeo;
+          |SI nError = 0;  |SAL;  |FINSI;
+
+          |MENAV "0000 Usuarios sin asignar los Codigos de Grupo, Reviselos.";
+     |SIGUE;
+
+     |HAZ GrabaUsuarios;
+     |HAZ GrabaTablaApli;
+     |HAZ GrabaGrupos;
+     |HAZ GrabaINI;
+
+     |HAZ FinSemaforo;
+|FPRO;

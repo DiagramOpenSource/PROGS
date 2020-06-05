@@ -1,0 +1,162 @@
+|FICHEROS;
+   :integral/dsam0127;
+   :integral/dsam0026;
+   :integral/dsam0028;
+|FIN;
+
+|VARIABLES;
+
+   aAlfa      = "";
+   aAlfa1     = "";
+   aAlfa2     = "";
+   aAlfa3     = "";
+   nNume1     = 0;
+   nNume2     = 0;
+   nNume3     = 0;
+   nPara1     = 0;
+   nSuma      = 0;
+   aDEstado   = "";
+   aHEstado   = "";
+   nGraba     = 0;
+|FIN;
+
+|INCLUYE i_varfun;
+
+|PROCESO LeeTipTar;
+   eaTParImpar = "X";
+   |ABRE #dsam0127;
+   #dsam0127#0 = eaTTarTrans;
+   |LEE 041#dsam0127.=;
+   |SI FSalida = 0;
+       eaTParImpar = #dsam0127#2;
+   |FINSI;
+   |CIERRA #dsam0127;
+|FPRC;
+
+|PROCESO CalculaRenovacion;
+    enEjeRen    = 0;
+    enMesRen    = 0;
+
+    |HAZ LeeTipTar;
+
+    nSuma  = 0;
+    nNume1 =  enEjerAnt / 2;
+    nNume2 = (enEjerAnt / 2) ! 0;
+    |SI eaTParImpar ! "X";
+        |SI eaTParImpar = "P";
+            |SI nNume1 = nNume2; nSuma = 2; |FINSI;
+            |SI nNume1 ! nNume2; nSuma = 1; |FINSI;
+        |FINSI;
+        |SI eaTParImpar = "I";
+            |SI nNume1 = nNume2; nSuma = 1; |FINSI;
+            |SI nNume1 ! nNume2; nSuma = 2; |FINSI;
+        |FINSI;
+    |FINSI;
+    enEjeRen = enEjerAnt + nSuma;
+
+    enMesRen = 1;
+    aAlfa = eaNifEmpresa; |QBF aAlfa;
+    |SI aAlfa ! "";
+        aAlfa1 = aAlfa % 0;
+        nNume1 = aAlfa1;
+        nNume2 = 0;
+        aAlfa2 = "";
+        |PARA nPara1 = nNume1; |SI nPara1 > 0; |HACIENDO nPara1 = nPara1 - 1;
+              nNume3 = (nPara1 * 100) + 1;
+              aAlfa3 = aAlfa % nNume3;
+              |SI aAlfa3 ] "0"; |Y aAlfa3 [ "9";
+                  aAlfa2 = aAlfa3 + aAlfa2;
+                  nNume2 = nNume2 + 1;
+              |FINSI;
+              |SI nNume2 = 1; |SAL; |FINSI;
+        |SIGUE;
+        |SI aAlfa2 = "1"; |O aAlfa2 = "2"; |O aAlfa2 = "3";
+            |O aAlfa2 = "4"; |O aAlfa2 = "5"; |O aAlfa2 = "6";
+               |O aAlfa2 = "7";
+            enMesRen = aAlfa2;
+        |SINO;
+            |SI aAlfa2 = "8"; enMesRen = 9; |FINSI;
+            |SI aAlfa2 = "9"; enMesRen = 10; |FINSI;
+            |SI aAlfa2 = "0"; enMesRen = 11; |FINSI;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO VerRenovacion;
+    enErrorTar = 0;
+    enEjerAnt  = enEjer - 2;
+    |HAZ CalculaRenovacion;
+
+    |SI enEjeRen ! enEjer;
+        enErrorTar = 1;
+    |FINSI;
+    |SI enMesRen ! enHMes; |Y enHMes ! 0;
+        enErrorTar = 1;
+    |FINSI;
+|FPRC;
+
+|PROCESO ClaveAlta_26;
+   #dsam0026#0 = enEmpresa;
+   #dsam0026#8 = aDEstado;
+   #dsam0026#1 = "          ";
+|FPRC;
+
+|PROCESO ClaveBaja_26;
+   #dsam0026#0 = enEmpresa;
+   #dsam0026#8 = aHEstado;
+   #dsam0026#1 = "zzzzzzzzzz";
+|FPRC;
+
+|PROCESO AltasBajas_26;
+   aDEstado = " ";
+   aHEstado = "z";
+   |SI enTecla = 10;
+       aDEstado = "A";
+       aHEstado = "A";
+   |FINSI;
+
+   |ABRE #dsam0026;
+   #dsam0026#0 = enEmpresa;
+   #dsam0026#1 = eaMatricula;
+   #dsam0026#8 = " ";
+   |CONSULTA_F_CLAVE #2#dsam0026, ClaveAlta_26, ClaveBaja_26;
+   eaMatricula = #dsam0026#1;
+   |CIERRA #dsam0026;
+|FPRC;
+
+|PROCESO PActExpediente;
+   nGraba = 0;
+   #dsam0026#0 = enEmpresa;
+   #dsam0026#1 = #dsam0028#2;
+   |LEE 141#dsam0026.=;
+   |SI FSalida = 0;
+       |SI enOpcion = 1; |Y #dsam0026#8 ! "B";
+           #dsam0026#8 = #dsam0028#9;
+           |SI #dsam0026#8 = "A";
+               #dsam0026#5 = enMesRen;
+               #dsam0026#6 = enEjeRen;
+           |FINSI;
+           nGraba = 1;
+       |FINSI;
+   |FINSI;
+   |SI nGraba = 1;
+       |GRABA 020#dsam0026.a;
+   |FINSI;
+   |LIBERA #dsam0026;
+   |LIBERA #dsam0028;
+|FPRC;
+
+|DEFBUCLE PActExpediente;
+   #dsam0028#1;
+   ;
+   eaFun07, enNExpediente, "          ";
+   eaFun07, enNExpediente, "zzzzzzzzzz";
+   be;
+   NULL, PActExpediente;
+|FIN;
+
+|PROCESO ActuaDsm0026;
+   |ABRE #dsam0026;
+   |BUCLE PActExpediente;
+   |CIERRA #dsam0026;
+|FPRC;

@@ -1,0 +1,3353 @@
+|| Se base en nomagicu, modificada para aceptar un fichero de texto con los
+|| parametros basicos para su ejecucion
+||
+|| Y como resultado devuelve un json con los asientos generados
+||
+|| Se llama desde la web, a traves de hubapp00
+||
+|| Se basa en dspvy002 (de dspreven)
+
+|FICHEROS;
+     webascoz #0;
+     nomcalca #1;   || mensual
+     nomhicca #2;   || historico cabs, mensuales y atrasos
+     nomcalac #3;   || atrasos cabs.
+
+     nomcalli #4;   || lineas mensual
+     nomhicli #5;   || lineas historico
+     nomcalal #6;   || lineas atrasos
+
+     labempre #10;
+     labtraba #11;
+
+     labempax #12;  || aux. empresas
+     labemphi #13;  || aux. empresas historico
+
+     nomconli #14;  || convenios lins.
+     nomcorli #214;  || convenios lins.
+
+     nomagic1 #101;
+     nomagic2 #102;
+
+     webascow #501;  ||Sirve para obtener los asientos que debemos exportar en el json
+
+
+    :/contagen/def/caplalab #20;   || lugar donde hay que grabar
+    :/contagen/def/cadeflab #21;   || fichero control cuentas de asientos
+    :/contagen/def/canempre #22;   || empresas CONTAGEN
+    :/contagen/def/caplala2 #23;   || lineas bases irpf
+    :/contagen/def/caplala3 #24;   || lineas conceptos donde hay que grabar
+
+    :/contagen/def/cadeflal #25;   || lineas conceptos desglosados
+    :/contagen/def/cadeflay #31;   || Cuentas SS. para Desglose Centros
+    :/contagen/def/cadeflaz #33;   || Cuentas SS. para Desglose Area y secciones
+    :/contagen/def/caivaasi #34;   || Control IVA
+
+    :/contagen/def/cadefxab #121;  || fichero de control por centros
+    :/contagen/def/cadefxal #125;  || lineas concep, desg. por centros
+    :/contagen/def/cadefxaz #133;  || Ctas SS Desglose Area y centros
+
+    :/contagen/def/anm00007 #32;   || Cuentas Analiticas
+    :/contagen/def/caw00033 #933;  || Aux. Pase Nominas TC1 Desglose Centros
+    :/contagen/def/caw00051 #934;  || Aux. Pase Nominas TC1 Desglose Centros
+
+    :/contagen/def/caenlace #26;   || puente enlace apuntes
+    :/contagen/def/caconasi #27;   || fichero contador de documentos
+
+    :/modelos/def/dsmom030 #28;    || conceptos IRPF
+    :/modelos/def/dsmom107 #107;   || Control y Firmantes
+
+    :/contagen/def/camoneda #29;   || fichero moneda
+
+    activid@ #960;
+
+    nomw0020 #920,MANTE;
+
+    labcentr;
+    cretam00;
+    cretam01;
+    cretam02;
+|FIN;
+
+|VARIABLES;
+     aResultado = "";
+     aTextoR = "";
+
+     nPrimero = 0;
+     nExporta = 0;
+     nDiario = 0;
+     fFechaAsiento = @;
+     nDocAsiento = 0;
+     nDiarioAnt = 0;
+     fFechaAnt = @;
+     nDocAnt = 0;
+
+     &eaClavePLB = "";
+     &eaValorPLB = "";
+     &eaLineaPLB = "";
+     &eaFicheroLog = "";
+     &eaTextoLog = "";
+     &eaFicParametros = "";
+     &eaFicJson = "";
+     &eaNombreJson = "";
+
+     aBase = "";
+     aPath = "";
+     aFicLog = "";
+     aFicErr = "";
+     aFicPara = "";
+     nErrorLeer = 0;
+     aSaca          = "";
+     aCampo         = "";
+     aValor         = "";
+     nHandle        = 0;
+     aLinea         = "";
+     aTexto         = "";
+     nCampo         = -1;
+     aTab           = "";
+     aCom           = "";
+     &eaAlfaJson    = "";
+
+     nSalida=0;
+     &fich_alta="";
+     enNivel=0;
+     eswCta=0;
+     aLong="";
+     nLong=0;
+     dig4=0;
+     dig5=0;
+     dig6=0;
+     dig7=0;
+     dig8=0;
+     dig9=0;
+
+     nDocumento=0;
+     nRegistro=0;
+     aCuentaAux="";
+     nDigito=0;
+     nPorLoMenos1=0;
+
+     nImporteTC1=0;
+     nImporteSST=0;
+
+     nImporteDesglosadoT=0;
+     nBrutoRecibo=0;
+
+     nConceptoNominas=0;
+     nLDLinea=0;
+     aLDConceptoSalarial="";
+     nLDConcepto=0;
+     aLDDescConcepto="";
+     aLDCuenta="";
+     aLDSigno="";
+     aLDDinerariaEsp="";
+     nLDImporte=0;
+
+     nLinea=0;
+
+     &nXDesdeEmpresa=0;
+     &nXHastaEmpresa=0;
+     &nXDesdeTrabajador=0;
+     &nXHastaTrabajador=0;
+     &nXDesdeCentro=0;
+     &nXHastaCentro=0;
+     &nXDesdeMes=0;
+     &nXHastaMes=0;
+     &nXAnyo=0;
+
+     nExiste=0;
+     aDNI="";
+     aDescripAnyadida="";
+     nEmpresaAnterior=0;
+     aEmpresaPeriodo="";
+     path_empres="";
+     path_modelos="";
+     path_contagen="";
+     cod_empre = 0;
+     cod_perio = 0;
+     fFecha=@;
+     nUltimo=0;
+     aParametro="";
+     alfa1="";
+     fech1=@;
+     p_mes="";
+     para1=0;
+
+     nDevengos=0;
+     nSegSocial=0;
+     nSSCargo=0;
+     nRetencionIRPF=0;
+     nEspecie=0;
+     nOtrasDeducciones=0;
+     nAnticipos=0;
+     nLiquido=0;
+     nEmpresa=0;
+     nActividad = 0;
+     aNombreAct = "";
+     nMes=0;
+     nTrabajador=0;
+     nTipo=0;
+     nTRela=0;
+     aRTran="";
+
+     nBases1=0;
+     nIRPF1=0;
+     nRetencion1=0;
+
+     nBases11=0;
+     nIRPF11=0;
+     nRetencion11=0;
+     aCuenta = "";
+     nCampo1 = 0;
+
+     nBases2=0;
+     nIRPF2=0;
+     nRetencion2=0;
+
+     nBases3=0;
+     nIRPF3=0;
+     nRetencion3=0;
+
+     nBases4=0;          || exenta
+
+     nEjercicio = 0;
+     nBueno     = 0;
+     fec1   = @;
+     fec2   = @;
+     nAny   = 0;
+     aAlfa  = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aAlfa3 = "";
+     nNume1 = 0;
+     nNume2 = 0;
+     nNume3 = 0;
+     nCto = 0;
+     aClave = "";
+     aSubClave = "";
+     nExentaLin = 0;
+     nSwCentro = 0;  ||seleccion de Centros
+
+|| variables para llenar de ceros
+     aCadena="";
+     aCadena1="";
+     r_alfa = "";
+     r_long = "";
+     r_num  = 0;
+     r_masc = "000000"; || mascara para tama¤o 6
+
+     enRedondeo = 0;
+     enConversor = 0;
+     eaMoneda = "";
+     &EURODB = 0;
+
+     nEspecie908=0;
+     nEspecie923=0;
+     nEspecie924=0;
+
+     &enNoModif   = 0;
+     &eaNombreEmp = "";
+     &eaNifEmp    = "";
+     &enSwPasa    = 0;
+     &eaIncide    = "";
+     &eaExiMod    = "";
+     aFichero     = "";
+     aMMod        = "";
+     nMMod        = 0;
+     nEMod        = 0;
+     nSw920       = 0;
+
+     nSwDep       = 0;
+     nSwErrorDep  = 0;
+
+     aCentro      = "";
+     nCentro      = 0;
+     aArea        ="";
+     aSeccion     ="";
+     nImporteApte = 0;
+     nImport1     = 0;
+     nImport2     = 0;
+     nImport3     = 0;
+     aCta23       = "";
+     aCta25       = "";
+     aCta25b      = "";
+     aCtaAnaC     = "";
+     nApunte      = 0;
+     nEmpCen      = 0;
+
+     nCenAux      = 0;
+     aAreAux      = "";
+     aSecAux      = "";
+     nPorCenArea  = 0;
+     nCuadre      = 0;
+     &swModulo    = 0;
+     swPaso       = 0;
+     nEstado      = 0;
+     nSwDesglose  = 0;
+     nSinCentro   = 0;  ||0=solo un defecto, 1=existen defectos por centros
+     nSinEste     = 0;  ||0=no existe defecto centro, 1=existe
+     nApunteCD    = 0;
+     nApunteCH    = 0;
+     nDebe        = 0;
+     nHaber       = 0;
+     aEsCom       = "";
+     fActFin      = @;
+     aQueQuiero   = "";
+     aNumCampos   = "";
+     nNumCampos   = 0;
+     aOriginal20  = "";
+     aOriginal22  = "";
+
+     nAsto        = 0;
+     nAnyCreta    = 0;
+     nMesCreta    = 0;
+     swTTc1       = 0;
+     swTTc1Emp    = 0;
+     nDTipCreta   = 0;
+     nHTipCreta   = 0;
+     nExisCCC     = 0;
+|FIN;
+
+|PROCESO CambiaMoneda;
+     |HAZ LeeEURODB;
+
+     |ABRE #29;
+     #29#0 = cod_empre;
+     #29#1 = cod_perio;
+     |LEE 101#29=;
+     |SI FSalida ! 0;
+          eaMoneda = "P";
+     |SINO;
+          eaMoneda = #29#2;
+     |FINSI;
+     |CIERRA #29;
+
+     enConversor = 1;
+
+     |SI EURODB ! 0;
+          enRedondeo  = 2;
+          |SI eaMoneda = "P";
+               enConversor = 166.386;
+               enRedondeo = 0;
+          |FINSI;
+     |SINO;
+          enRedondeo  = 0;
+          |SI eaMoneda = "E";
+               enConversor = 0.00601012;
+               enRedondeo = 2;
+          |FINSI;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO PintaEmpresa;
+     |DDEFECTO #labempre;
+     |ABRE #labempre;
+     #labempre#0 = nEmpresa;
+     |LEE 000#labempre.=;
+     |CIERRA #labempre;
+
+     aCadena = "2203EMPRESA: " + nEmpresa + "-" + #labempre#2;
+     |ATRI I;
+     |MENSA aCadena;
+     |ATRI 0;
+|FPRC;
+
+
+|PROCESO llena_ceros;
+          |QBF aCadena;
+          r_alfa= aCadena;
+          |QBF r_alfa;
+          r_long = aCadena % A0;
+          r_alfa = r_masc + r_alfa;
+||          r_num = -106;    || para tama¤o 6
+          aCadena = r_alfa % r_num;
+|FPRC;
+
+|PROCESO Tipo8;|TIPO 8;
+     |DBASS path_modelos;
+     path_modelos=path_modelos+"modelos/";
+     path_modelos= path_modelos + "fich/";
+     || |PATH_DAT #28  path_modelos;  || modelos
+     |PATH_DAT #107 path_modelos;  || modelos
+
+     |ABRE #107;
+     |DDEFECTO #107;
+     |LEE 041#107p;
+     |CIERRA #107;
+|FPRC;
+
+|PROCESO AviCon; |TIPO 0;
+     swModulo = 0;
+     |HAZ BuscaModulo;
+
+     |SI swModulo = 2805;  |O #107#29 = "S";   ||swModulo = 1 ya no
+         |SI #0Campo ! "H"; |Y #0Campo ! "T";
+             |SI #107#29 = "N";
+                 |CONFI "    NPara controlar Asientos de Nominas es mas recomendable elegir <H> o <T>, Continuar ";
+                 |SI FSalida ! 0;
+                     |ERROR;
+                 |FINSI;
+             |SINO;
+                 |MENAV "    Para controlar Asientos de Nominas introducir <H> o <T>";
+                 |ERROR;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Concepto;|TIPO 0;
+     nSalida=FSalida;
+
+     |SI Campo = 24; nNume1 = 27; |FINSI;
+     |SI Campo = 26; nNume1 = 28; |FINSI;
+     |SI Campo = 33; nNume1 = 34; |FINSI;
+
+     |ABRE #28;
+
+     |SI nSalida=10; || F2
+          |CONSULTA_CLAVE #1#28;
+          |SI FSalida=0;
+              #0Campo  = #28#0;
+              #0nNume1 = #28#1;
+          |FINSI;
+     |SINO;
+          #28#0=#0Campo;
+          |LEE 000#28=;
+          |SI FSalida=0;
+              #0nNume1 = #28#1;
+          |SINO;
+               |MENAV "0000El Concepto no existe!";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+     |CIERRA #28;
+
+     |PINTA #0Campo;
+     |PINTA #0nNume1;
+|FPRC;
+
+|PROCESO ActualizarTC1;|TIPO 0;
+     |SI #0Campo="S";
+          |CONFI "00000Ha emitido los Seg.Sociales de las empresas seleccionadas?";
+          |SI FSalida!0;
+               #0Campo="N";
+               |PINTA #0Campo;
+          |FINSI;
+     |FINSI;
+
+     aAlfa1 = #0Campo;
+     |CAMPO_MODIFICA #0#23, 1, aAlfa1;
+     |CAMPO_MODIFICA #0#24, 1, aAlfa1;
+     |CAMPO_MODIFICA #0#25, 1, aAlfa1;
+     |CAMPO_MODIFICA #0#26, 1, aAlfa1;
+     |CAMPO_MODIFICA #0#27, 1, aAlfa1;
+     |CAMPO_MODIFICA #0#28, 1, aAlfa1;
+
+     |CAMPO_MODIFICA #0#32, 1, aAlfa1;
+     |CAMPO_MODIFICA #0#33, 1, aAlfa1;
+     |CAMPO_MODIFICA #0#34, 1, aAlfa1;
+|FPRC;
+
+|PROCESO CtaDeudora;  |TIPO 7;
+     aAlfa1 = #0#25; |QBF aAlfa1;
+     aAlfa2 = #0#32; |QBF aAlfa2;
+     |SI aAlfa2 = ""; |Y aAlfa1 ! "";
+         #0#32 = #0#25; |PINTA #0Campo;
+
+         #0#33 = #0#26; |PINTA #0#33;
+         #0#34 = #0#28; |PINTA #0#34;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeDatosLineaDesg;
+     |SI nSinEste = 0;
+          |SELECT #2#25;
+          #25#7=nConceptoNominas;
+          |LEE 000#25=;
+          nExiste=FSalida;
+
+          nLDLinea=#25#0;
+          aLDConceptoSalarial=#25#1;
+          nLDConcepto=#25#3;
+          aLDDescConcepto=#25#4;
+          aLDCuenta=#25#2;
+          aLDSigno=#25#5;
+          aLDDinerariaEsp=#25#6;
+
+          |SI nExiste ! 0;
+              nLDLinea=999;
+          |FINSI;
+    |SINO;
+          |SELECT #2#125;
+          #125#7=nConceptoNominas;
+          #125#9=nCentro;
+          |LEE 000#125=;
+          nExiste=FSalida;
+
+          nLDLinea=#125#0;
+          aLDConceptoSalarial=#125#1;
+          nLDConcepto=#125#3;
+          aLDDescConcepto=#125#4;
+          aLDCuenta=#125#2;
+          aLDSigno=#125#5;
+          aLDDinerariaEsp=#125#6;
+
+          |SI nExiste ! 0;
+              nLDLinea=999;
+          |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO GrabaLineaDesglose;
+          |SI nSinEste = 0;
+              |SELECT #1#25;
+          |SINO;
+              |SELECT #1#125;
+          |FINSI;
+          #24#0=nUltimo;
+          #24#1=aDNI;   || dni
+          #24#2=nLDLinea;
+          #24#3=aLDConceptoSalarial;  || concepto salarial
+          #24#4=nLDConcepto;  || concepto
+          #24#5=aLDDescConcepto;  || descripcion concepto
+          #24#6=aLDCuenta;  || cuenta
+          #24#7=(nLDImporte * enConversor) ! enRedondeo;  || importe
+          #24#8=aLDSigno;  || signo
+          #24#9=aLDDinerariaEsp;  || dineraria-especie
+
+          |SI #0#20 = "S"; |Y swPaso = 0;    |GRABA 020#24n;     |FINSI;
+|FPRC;
+
+|PROCESO PCrearDesgloseM;
+     nConceptoNominas=#4#4;
+     |HAZ LeeDatosLineaDesg;
+     |SI nExiste=0;
+          nLDImporte=#4#11*#4#10;  || importe
+          nImporteDesglosadoT=nImporteDesglosadoT+nLDImporte;
+
+          |HAZ GrabaLineaDesglose;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE BCrearDesgloseM;
+     #4#1;
+     ;
+     nEmpresa,nTrabajador,nMes,nTipo,000;
+     nEmpresa,nTrabajador,nMes,nTipo,999;
+     ;
+     NULL,PCrearDesgloseM;
+|FIN;
+
+
+|PROCESO PCrearDesgloseH;
+     nConceptoNominas=#5#4;
+     |HAZ LeeDatosLineaDesg;
+     |SI nExiste=0;
+          nLDImporte=#5#11*#5#10;  || importe
+          nImporteDesglosadoT=nImporteDesglosadoT+nLDImporte;
+
+          |HAZ GrabaLineaDesglose;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE BCrearDesgloseH;
+     #5#1;
+     ;
+     nEmpresa,nTrabajador,nXAnyo,nMes,nTipo,000;
+     nEmpresa,nTrabajador,nXAnyo,nMes,nTipo,999;
+     ;
+     NULL,PCrearDesgloseH;
+|FIN;
+
+|DEFBUCLE BCrearDesgloseT;
+     #5#1;
+     ;
+     nEmpresa,nTrabajador,nXAnyo,nMes,nTipo,000;
+     nEmpresa,nTrabajador,nXAnyo,nMes,nTipo,999;
+     ;
+     NULL,PCrearDesgloseH;
+|FIN;
+
+|PROCESO PCrearDesgloseA;
+     nConceptoNominas=#6#4;
+     |HAZ LeeDatosLineaDesg;
+     |SI nExiste=0;
+          nLDImporte=#6#11*#6#10;  || importe
+          nImporteDesglosadoT=nImporteDesglosadoT+nLDImporte;
+
+          |HAZ GrabaLineaDesglose;
+     |FINSI;
+|FPRC;
+
+
+|DEFBUCLE BCrearDesgloseA;
+     #6#1;
+     ;
+     nEmpresa,nTrabajador,nMes,nTipo,000;
+     nEmpresa,nTrabajador,nMes,nTipo,999;
+     ;
+     NULL,PCrearDesgloseA;
+|FIN;
+
+
+|PROCESO Plabemphi;
+     |SI #13#2 ! 0;|Y #13#2 ! 2; |Y #13#2 ! 8;|Y #13#2 ! 9;|Y #13#2 ! 10;|Y #13#2 ! 18;|Y #13#2 ! 19;
+          |SI #0#16 = "H";    |ACABA;   |FINSI;
+     |SINO;
+          |SI #0#16 = "T";    |ACABA;   |FINSI;
+     |FINSI;
+     nImporteTC1 = nImporteTC1 + #13#20;
+
+     |SI nSinCentro = 1;
+         nCentro = #13#18; |HAZ LeerControlLaboral;
+     |FINSI;
+     |SI #21#106 = "C"; |O #21#107 = "C"; |O nSinCentro = 1;
+         nEmpCen  = #13#0;
+         nCentro  = #13#18;
+         aCentro  = #13#23;
+         aArea    = "";
+         aSeccion = "";
+         nImport1 = #13#20;
+         nImport2 = 0;
+         nImport3 = 0;
+         |HAZ GrabaAux933;
+     |FINSI;
+|FPRC;
+
+
+|| el desde hasta mes solo hay 1 caso en el que son diferentes, y es cuando
+|| se actualiza desde la pantalla de atrasos. Solo cogemos el mes "desde"
+|| porque en el TC1 lo acumula ahi mismo.
+|DEFBUCLE Blabemphi;
+     #13#1;
+     ;
+     nEmpresaAnterior,   1, nXAnyo, nXDesdeMes,  0;
+     nEmpresaAnterior, 999, nXAnyo, nXDesdeMes, 19;
+     ;
+     NULL, Plabemphi;
+|FIN;
+
+|PROCESO Plabempax;
+     |SI #12#2 ! 0;|Y #12#2 ! 2; |Y #12#2 ! 8;|Y #12#2 ! 9;|Y #12#2 ! 10;|Y #12#2 ! 18;|Y #12#2 ! 19;
+          |SI #0#16 = "M";    |ACABA;   |FINSI;
+     |SINO;
+          |SI #0#16 = "A";    |ACABA;   |FINSI;
+     |FINSI;
+     nImporteTC1 = nImporteTC1 + #12#20;
+
+     |SI nSinCentro = 1;
+         nCentro = #12#18; |HAZ LeerControlLaboral;
+     |FINSI;
+
+     |SI #21#106 = "C"; |O #21#107 = "C"; |O nSinCentro = 1;
+         nEmpCen  = #12#0;
+         nCentro  = #12#18;
+         aCentro  = #12#23;
+         aArea    = "";
+         aSeccion = "";
+         nImport1 = #12#20;
+         nImport2 = 0;
+         nImport3 = 0;
+         |HAZ GrabaAux933;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Blabempax;
+     #12#1;
+     ;
+     nEmpresaAnterior,   1, nXDesdeMes,  0;
+     nEmpresaAnterior, 999, nXDesdeMes, 19;
+     ;
+     NULL, Plabempax;
+|FIN;
+
+|PROCESO BuscaDigito;
+
+     eswCta = 1;     ||Errores en Cuenta
+     aLong = aCuentaAux;
+     |QBF aLong;
+     aLong = aLong % 0;
+     nLong = aLong;
+     enNivel = 0;
+     |SI nLong = dig4; |Y dig4 ! 0; eswCta = 0; enNivel = 1; |FINSI;
+     |SI nLong = dig5; |Y dig5 ! 0; eswCta = 0; enNivel = 2; |FINSI;
+     |SI nLong = dig6; |Y dig6 ! 0; eswCta = 0; enNivel = 3; |FINSI;
+     |SI nLong = dig7; |Y dig7 ! 0; eswCta = 0; enNivel = 4; |FINSI;
+     |SI nLong = dig8; |Y dig8 ! 0; eswCta = 0; enNivel = 5; |FINSI;
+     |SI nLong = dig9; |Y dig9 ! 0; eswCta = 0; enNivel = 6; |FINSI;
+
+     |SI eswCta = 1; |Y nLong ! 0;
+          aCadena1="0000LONGITUD DE CUENTA "+ aCuentaAux +" FUERA DE NIVEL!";
+          |MENAV aCadena1;
+     |FINSI;
+
+     nDigito=enNivel;
+|FPRC;
+
+||////////////////////////// Apuntes TC1
+|PROCESO ApuntesTC1_23;
+         |DDEFECTO #26;   || apunte SS Cargo Empresa Asiento al DEBE
+
+         #26#10 = "N";      ||
+         #26#11 = #21#19;   || Libro
+         #26#0=#21#54;      || diario
+         #26#1=fFecha;      || fecha
+         #26#2=nDocumento;  || numero documento
+         nApunte = nApunte + 10;
+         #26#3=nApunte;     || numero apunte
+
+         #26#4=aCta23;       || Cuenta
+         aCuentaAux=#26#4;
+         |HAZ BuscaDigito;
+         #26#5=nDigito;       || Digito
+
+         #26#6=#0#24;         || Concepto
+         aCadena = #0#27;    |QBF aCadena;  aCadena = aCadena + #0#21;
+         #26#7=aCadena;             || Descp Concepto
+
+         #26#8="D";           || signo
+         #26#9=nImporteApte;
+         |SI nImporteApte < 0; |Y nSwDesglose = 1;
+             #26#8="H";           || signo
+             #26#9=-nImporteApte;
+         |FINSI;
+         #26#15=#21#22;       || departamento
+         #26#16=nRegistro;
+         #26#39=aCtaAnaC;
+         |GRABA 020#26n;
+         nApunteCD = nApunte;
+|FPRC;
+
+|PROCESO ApuntesTC1_25;
+         |DDEFECTO #26;   || apunte SS Cargo Trabajadores HABER
+         #26#10 = "N";
+         #26#11 = #21#19;  || Libro
+
+         #26#0=#21#54;      || diario
+         #26#1=fFecha;      || fecha
+         #26#2=nDocumento;  || numero documento
+         nApunte = nApunte + 10;
+         #26#3=nApunte;           || numero apunte
+         #26#4=aCta25;       || Cuenta
+
+         aCuentaAux=#26#4;
+         |HAZ BuscaDigito;
+         #26#5=nDigito;       || Digito
+
+         #26#6=#0#26;         || Concepto
+         aCadena = #0#28;      |QBF aCadena;  aCadena = aCadena + #0#21;
+         |SI nImporteApte < 0;
+             #26#6=#0#33;         || Concepto
+             aCadena = #0#34;  |QBF aCadena;  aCadena = aCadena + #0#21;
+         |FINSI;
+         #26#7=aCadena;             || Descp Concepto
+
+         #26#8="H";           || signo
+         #26#9=nImporteApte;
+         |SI nImporteApte < 0; |Y nSwDesglose = 1;
+             #26#8="D";           || signo
+             #26#9=-nImporteApte;
+         |FINSI;
+         #26#15=#21#22;       || departamento
+         #26#16=nRegistro;
+         |GRABA 020#26n;
+         nApunteCH = nApunte;
+|FPRC;
+
+
+|PROCESO Cuadre;  ||Apunte del Cuadre cuando tenemos Area y Secciones
+
+         nNume1 = (nImport1 - nImport2) ! EURODB;
+         nNume2 = (nImport3 - nImport2) ! EURODB;
+         nNume3 = (nNume1 - nNume2) ! EURODB;
+
+         |SI nNume3 ! 0;
+             |DDEFECTO #26;     || apunte SS Cargo Trabajadores
+             #26#0=#21#54;      || diario
+             #26#1=fFecha;      || fecha
+             #26#2=nDocumento;  || numero documento
+             #26#3=nApunteCD;
+             |LEE 040#26=;
+             |SI FSalida = 0;
+                 #26#9=#26#9 + nNume3;
+                 |GRABA 020#26a;
+                 #26#0=#21#54;      || diario
+                 #26#1=fFecha;      || fecha
+                 #26#2=nDocumento;  || numero documento
+                 #26#3=nApunteCH;
+                 |LEE 040#26=;
+                 |SI FSalida = 0;
+                     #26#9=#26#9 + nNume3;
+                     |GRABA 020#26a;
+                 |FINSI;
+             |FINSI;
+        |FINSI;
+        nCuadre = 0;
+|FPRC;
+|| ///////////////////////////////////////////////////////////////////////
+|PROCESO LeeAux934_CCC;
+    |SI #0#1=0; |Y #934#9 ! 0;
+        |SI #934#9 < #0#30; |O #934#9 > #0#31;
+            |ACABA;
+        |FINSI;
+    |FINSI;
+
+    |SI nSinCentro = 1;
+        nCentro = #934#9; |HAZ LeerControlLaboral;
+    |FINSI;
+
+    nImporteApte = ((#934#6-#934#7) * enConversor) ! enRedondeo;
+    nDebe  = (nDebe  + nImporteApte) ! enRedondeo;
+    nHaber = (nHaber + nImporteApte) ! enRedondeo;
+
+    aCtaAnaC = #934#3;
+    aCta23   = #934#4;
+    aCta25   = #934#5;
+
+||    |SI #934#7 = 0; |Y #934#8 = 0; |ACABA; |FINSI;
+
+    |HAZ  ApuntesTC1_23; nDebe  = 0;
+    |HAZ  ApuntesTC1_25; nHaber = 0;
+|FPRC;
+
+|DEFBUCLE LeeAux934_CCC;
+ #934#1;
+ ;
+ nEmpCen, "               ";
+ nEmpCen, "zzzzzzzzzzzzzzz";
+ ;
+ NULL, LeeAux934_CCC;
+|FIN;
+
+|PROCESO ExisCCC;
+  nExisCCC = 0;
+  |SI swTTc1Emp ! 1; |ACABA; |FINSI;
+
+  |ABRE #934;
+  |DDEFECTO #934;
+  #934#0 = nEmpresa;
+  #934#1 = #933#11;
+  |LEE 041#934=;
+  |SI FSalida = 0; |Y #934#9 = 0;
+      nExisCCC = 1;
+  |FINSI;
+  |CIERRA #934;
+|FPRC;
+
+|PROCESO Fin933;
+    || |SI #21#107 = "N"; |Y nDebe ! 0;
+    |SI nDebe ! 0;
+        nImporteApte = nDebe ! enRedondeo;
+        |HAZ ApuntesTC1_23;
+    |FINSI;
+    || |SI #21#106 = "N"; |Y nHaber ! 0;
+    |SI nHaber ! 0;
+        nImporteApte = nHaber ! enRedondeo;
+        |HAZ ApuntesTC1_25;
+    |FINSI;
+    nDebe    = 0;
+    nHaber   = 0;
+|FPRC;
+
+|PROCESO LeeAux933_Cen;
+    |SI #0#1=0;
+        |SI #933#1 < #0#30; |O #933#1 > #0#31;
+            |ACABA;
+        |FINSI;
+    |FINSI;
+
+    nPorCenArea=0;
+    |SI nSinCentro = 0;
+        |SI #21#106 = #21#107; nPorCenArea = 1; |FINSI;
+        |SI #21#106 = "N"; |O #21#107 = "N";
+            nPorCenArea = 1;
+       |FINSI;
+    |SINO;
+       |SI #21#106 = "N"; |Y #21#107 = "N"; nPorCenArea = 2; |FINSI;
+    |FINSI;
+
+    |SI nPorCenArea ! 0;    ||Dos apuntes por centro
+
+        nCentro = #933#1;
+        |SI nSinCentro = 1; |HAZ LeerControlLaboral; |FINSI;
+
+        aCtaAnaC = #933#3;
+        aCta23   = #933#4;
+        aCta25   = #933#5;
+
+        |HAZ ExisCCC;
+        |SI nExisCCC = 0;
+            nImporteApte = ((#933#6-#933#7) * enConversor) ! enRedondeo;
+        |SINO;
+            nImporteApte = ((#933#8-#933#7) * enConversor) ! enRedondeo;
+        |FINSI;
+
+        nDebe  = (nDebe  + nImporteApte) ! enRedondeo;
+        nHaber = (nHaber + nImporteApte) ! enRedondeo;
+        |SI #21#107 = "C"; |O nPorCenArea = 2; |HAZ  ApuntesTC1_23; nDebe  = 0; |FINSI;
+        |SI #21#106 = "C"; |O nPorCenArea = 2; |HAZ  ApuntesTC1_25; nHaber = 0; |FINSI;
+        |ACABA;
+    |FINSI;
+
+    |SI nCentro = -1;
+        nCentro = #933#1;
+        |SI nSinCentro = 1; |HAZ LeerControlLaboral; |FINSI;
+        aArea    = #933#9;
+        aSeccion = #933#10;
+        nImport1 = #933#6;
+        nImport2 = 0;
+        nImport3 = 0;
+    |FINSI;
+
+    |SI nCentro ! #933#1;
+        |HAZ Fin933;
+        |HAZ Cuadre;
+        nCentro  = #933#1;
+        |SI nSinCentro = 1; |HAZ LeerControlLaboral; |FINSI;
+        aArea    = #933#9;
+        aSeccion = #933#10;
+        nImport1 = #933#6;
+        nImport2 = 0;
+        nImport3 = 0;
+    |FINSI;
+
+    aCtaAnaC = #933#3;
+    aCta23   = #933#4;
+    aCta25   = #933#5;
+
+    |SI #933#7 = 0; |Y #933#8 = 0; |ACABA; |FINSI;
+
+    nImporteApte = ((#933#8-#933#7) * enConversor) ! enRedondeo;
+    nDebe  = (nDebe  + nImporteApte) ! enRedondeo;
+    nHaber = (nHaber + nImporteApte) ! enRedondeo;
+    |SI #21#107 = "A"; |HAZ  ApuntesTC1_23; nDebe = 0;  |FINSI;
+    |SI #21#106 = "A"; |HAZ  ApuntesTC1_25; nHaber = 0; |FINSI;
+    nImport2 = (nImport2 + #933#7) ! EURODB;
+    nImport3 = (nImport3 + #933#8) ! EURODB;
+    nCuadre  = 1;
+|FPRC;
+
+|DEFBUCLE LeeAux933_C;
+ #933#1;
+ ;
+ nEmpCen, 001, "    ", "    ";
+ nEmpCen, 999, "zzzz", "zzzz";
+ ;
+ NULL, LeeAux933_Cen, NULL, NULL, Fin933;
+|FIN;
+
+||////////////////////////////////  ... TC1  por Area y Secciones
+|PROCESO LeeAux933_Area;
+    aCtaAnaC = #933#3;
+    aCta23   = #933#4;
+    aCta25   = #933#5;
+
+    nImporteApte = ((#933#8-#933#7) * enConversor) ! enRedondeo;
+    nImport1 = nImporteTC1;
+    nImport2 = (nImport2 + #933#7) ! EURODB;
+    nImport3 = (nImport3 + #933#8) ! EURODB;
+    nCuadre  = 1;
+
+    nDebe  = (nDebe  + nImporteApte) ! enRedondeo;
+    nHaber = (nHaber + nImporteApte) ! enRedondeo;
+    |SI #21#107 = "A"; |HAZ  ApuntesTC1_23; nDebe  = 0; |FINSI;
+    |SI #21#106 = "A"; |HAZ  ApuntesTC1_25; nHaber = 0; |FINSI;
+|FPRC;
+
+|DEFBUCLE LeeAux933_A;
+ #933#2;
+ ;
+ nEmpCen, "    ", "    ", 00;
+ nEmpCen, "zzzz", "zzzz", 00;
+ ;
+ NULL, LeeAux933_Area, NULL, NULL, Fin933;
+|FIN;
+||  ///////////////////////////////////////////////////////////////////////
+
+|PROCESO CargaCaenlace;
+     |ABRE #27;
+     |LEE 101#27p;
+     |SI FSalida=0;
+          #27#1=#27#1+1;
+          #27#2=#27#2+1;
+          |GRABA 020#27a;
+     |SINO;
+          #27#1=1;
+          #27#2=1;
+          |GRABA 020#27b;
+     |FINSI;
+     |LIBERA #27;
+     |CIERRA #27;
+
+     nDocumento=#27#1;
+     nRegistro=#27#2;
+     nApunte  = -9;
+
+     || ahora genero 2 apuntes  o mas
+     |DELINDEX #26;
+
+     |ABRE #26;
+
+     |SI #21#106 = "N"; |Y #21#107 = "N"; |Y nSinCentro = 0;  ||No hay ningun desglose
+
+         nSwDesglose = 1;
+         nImporteApte = ((nImporteTC1-nImporteSST) * enConversor) ! enRedondeo;
+         aCta23 = #0#23;                                      || dos apuntes
+         aCta25 = #0#25;
+         |SI nImporteTC1 < 0;  aCta25 = #0#32; |FINSI;
+         |HAZ BuscaCtaAna;
+         |HAZ  ApuntesTC1_23;
+         |SI nImporteTC1 < 0;
+             nImporteApte = nImporteTC1;   |HAZ  ApuntesTC1_25;
+             aCta25       = aCta25b;
+             nImporteApte = - nImporteSST;
+             |SI nImporteApte ! 0;
+                 |HAZ  ApuntesTC1_25;
+             |FINSI;
+         |SINO;
+             |HAZ  ApuntesTC1_25;
+         |FINSI;
+    |SINO;
+
+         nSwDesglose = 0;
+         nCuadre  = 0;
+         nImport1 = 0;
+         nImport2 = 0;
+         nImport3 = 0;
+         nCentro  = -1;
+         aArea    = "";
+         aSeccion = "";
+         aCentro  = "";
+         nApunteCD = 0;
+         nApunteCH = 0;
+         |SI swTTc1Emp = 1; |Y #21#117 = "C";
+             |BUCLE LeeAux934_CCC;
+         |SINO;
+             |SI nSinCentro = 0;
+                 |SI #21#106 = "C"; |O #21#107 = "C";
+                     |BUCLE LeeAux933_C;
+                 |SINO;
+                     |BUCLE LeeAux933_A;
+                 |FINSI;
+             |SINO;
+                 |BUCLE LeeAux933_C;
+             |FINSI;
+         |FINSI;
+
+         |SI nCuadre ! 0;
+             |HAZ Cuadre;
+         |FINSI;
+     |FINSI;
+
+     |CIERRA #26;
+
+|FPRC;
+
+|PROCESO BuscaCtaAna;
+ aCtaAnaC = "";
+ |ABRE #32;
+ |DDEFECTO #32;
+ #32#0 = aCta23;
+ |LEE 001#23=;
+ |SI FSalida = 0;
+     aCtaAnaC = #32#3;
+ |FINSI;
+ |CIERRA #32;
+|FPRC;
+
+|| ... Procesos nuevos de Creta
+|PROCESO ControlTc1;
+   nMesCreta = nXDesdeMes;
+   nAnyCreta = 2000 + nXAnyo;
+   |SI nXAnyo ] 80;  nAnyCreta = 1900 + nXAnyo;  |FINSI;
+
+   swTTc1 = 1;
+   |ABRE #cretam00;
+   |DDEFECTO #cretam00;
+   |LEE 001#cretam00.p;
+   |CIERRA #cretam00;
+
+   |SI #cretam00#1 = "N"; swTTc1 = 0; |FINSI;  || No Activado
+   |SI #cretam00#8 ! "R"; swTTc1 = 0; |FINSI;  || No Real, en practicas
+
+   |SI #cretam00#10 > nAnyCreta; swTTc1 = 0; |FINSI;  || No se ha puesto en marcha
+   |SI #cretam00#10 = nAnyCreta;
+       |Y #cretam00#9 > nMesCreta;
+          swTTc1 = 0;
+   |FINSI;
+|FPRC;
+
+|PROCESO LeoCretam02;
+
+   |SI swTTc1Emp = -1; swTTc1Emp = 1; |FINSI;
+   |SI #cretam02#22 ! "C";
+       swTTc1Emp   = 0;
+       nImporteTC1 = 0;
+       |ERROR10;
+       |ACABA;
+   |FINSI;
+
+   nImporteTC1 = nImporteTC1 + #cretam02#16;
+
+   |SI nSinCentro = 1;
+       nCentro = #cretam02#5; |HAZ LeerControlLaboral;
+   |FINSI;
+   |SI #21#106 = "C"; |O #21#107 = "C"; |O nSinCentro = 1;
+       nEmpCen  = #cretam02#0;
+       nCentro  = #cretam02#5;
+       aCentro  = #cretam02#4 % 511;
+       aArea    = "";
+       aSeccion = "";
+       nImport1 = #cretam02#16;
+       nImport2 = 0;
+       nImport3 = 0;
+       |HAZ GrabaAux933;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoCretam02;
+   #cretam02#1;
+   ;
+   nEmpresaAnterior, nAnyCreta, nMesCreta,  nDTipCreta, "               ";
+   nEmpresaAnterior, nAnyCreta, nMesCreta,  nHTipCreta, "zzzzzzzzzzzzzzz";
+   ;
+   NULL, LeoCretam02;
+|FIN;
+
+|PROCESO Tc1Creta;
+
+    swTTc1Emp = -1;
+    nDTipCreta = 0;
+    nHTipCreta = 4;
+    |SI #0#16 = "A"; nDTipCreta = 5;     nHTipCreta = 9;     |FINSI;
+    |SI #0#16 = "T"; nDTipCreta = #0#17; nHTipCreta = #0#17; |FINSI;
+
+    |BUCLE LeoCretam02;
+|FPRC;
+
+|PROCESO PaseTC1;
+
+     |SI #0#22="S";
+          nImporteTC1=0;
+          nEmpCen=nEmpresaAnterior;
+
+          swPaso = 0;
+          |SI swModulo = 2805; |O #107#29 = "S";   ||  swModulo = 1;
+              |HAZ VeoHisAstoS;
+              |SI swPaso = 1;
+                  enSwPasa = 0;
+                  eaIncide = "TC1 ya estaba Contabilizado";
+                  |HAZ InciTC1;
+                  |ACABA;
+              |FINSI;
+          |FINSI;
+
+          swTTc1Emp = -1;
+          |SI swTTc1 = 1; |HAZ Tc1Creta; |FINSI;
+
+          |SI swTTc1Emp  = -1;
+              |SI #0#16 = "M";|O #0#16 = "A";
+                  |BUCLE Blabempax;     || asiento del TC1 (en pagas NO!)
+              |SINO;
+                  |BUCLE Blabemphi;     || asiento del TC1 historico (en pagas NO!)
+              |FINSI;
+          |FINSI;
+
+          |SI nImporteTC1 ! 0;     || se pasa aunque sea negativo
+               |HAZ CargaCaenlace;
+               |HAZ GraboHisAstoS;
+               fich_alta=path_empres;
+               aCadena=":contagen/dsapunte"+";"+path_empres;
+               |SUB_EJECUTA aCadena;
+               enSwPasa = 1;
+               eaIncide = "Realizado el Asiento del TC1";
+          |SINO;
+               |SI swTTc1Emp = 0;
+                   aCadena="0000Empresa " + nEmpresaAnterior + " con Liquidacion Siltra no consolidada";
+                   eaIncide = "Liquidacion Siltra no Consolidada";
+               |SINO;
+                   aCadena="0000Empresa " + nEmpresaAnterior + " sin seguros sociales emitidos.";
+                   eaIncide = "Seguros Sociales no emitidos";
+               |FINSI;
+               |MENSA aCadena;
+               enSwPasa = 0;
+          |FINSI;
+          |HAZ InciTC1;
+     |FINSI;
+|FPRC;
+
+|PROCESO InciTC1;
+      nAsto = 2;
+      eaExiMod    = "";
+      |HAZ GraboAux;
+|FPRC;
+
+|PROCESO GraboAux;
+
+  |ABRE #920;
+  #920#0  = nEMod;
+  #920#1  = nMMod;
+  #920#2  = nEmpresaAnterior;
+  #920#10 = nAsto;
+  |LEE 001#920=;
+  |SI FSalida ! 0;
+      #920#0  = nEMod;
+      #920#1  = nMMod;
+      #920#2  = nEmpresaAnterior;
+      #920#10 = nAsto;
+      #920#3  = aMMod;
+      #920#4  = eaNombreEmp;
+      #920#5  = eaNifEmp;
+      |GRABA 020#920c;
+  |FINSI;
+  |SI enSwPasa = 0; #920#6 = "NO"; |FINSI;
+  |SI enSwPasa = 1; #920#6 = "SI"; |FINSI;
+  |SI nAsto = 0;    #920#6 = "NO"; |FINSI;
+  #920#7 = eaExiMod;
+  #920#8 = eaIncide;
+  #920#9 = #0#14;
+  |GRABA 020#920a;
+  nSw920 = 1;
+  |CIERRA #920;
+|FPRC;
+
+|PROCESO PaseContabilidad;
+     |SI #0#20="S";
+          aCadena=nEmpresaAnterior;
+          r_masc="00000"
+          r_num=-105;
+          |HAZ llena_ceros;
+          aCadena=":contagen/caplalab canempr1 "+aEmpresaPeriodo+";"+aEmpresaPeriodo;
+          |SUB_EJECUTA aCadena;
+          nAsto=1;
+          |HAZ GraboAux;
+     |FINSI;
+|FPRC;
+
+|PROCESO LaFecha;
+  |SI #22#26 < 80;
+      nAny = 2000 + #22#26;
+  |SINO;
+      nAny = 1900 + #22#26;
+  |FINSI;
+
+  aAlfa1 = nAny;
+  aAlfa2 = #22#11; |QBF aAlfa2;
+  aAlfa2 = ("00" + aAlfa2) % -102;
+  aAlfa2 = "01." + aAlfa2 + "." + aAlfa1;
+  fec1  = aAlfa2;
+
+  |SI #22#11 ! 1;
+      nAny = nAny + 1;
+      aAlfa1 = nAny;
+  |FINSI;
+  aAlfa2 = #22#12; |QBF aAlfa2;
+  aAlfa2 = ("00" + aAlfa2) % -102;
+
+  aAlfa3 = "31.";
+  |SI #22#12 = 4; |O #22#12 = 6; |O #22#12 = 9; |O #22#12 = 11;
+      aAlfa3 = "30.";
+  |SINO;
+      |SI #22#12 = 2;
+          aAlfa3 = "28.";
+          nNume1 = nAny / 4; nNume2 = (nAny / 4) ! 0;
+          |SI nNume1 = nNume2;
+              aAlfa3 = "29.";
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  aAlfa2 = aAlfa3 + aAlfa2 + "." + aAlfa1;
+  fec2 = aAlfa2;
+|FPRC;
+
+|PROCESO PLee_canempre;
+   nBueno = 0;
+   |SI #22#11 = 1;
+       |SI #22#26 = nEjercicio;
+           nBueno = 1;
+       |FINSI;
+   |SINO;
+        |HAZ LaFecha;
+        |SI #0#14 ] fec1; |Y #0#14 [ fec2;
+            nBueno = 1;
+        |FINSI;
+   |FINSI;
+   |SI nBueno = 0; |ACABA; |FINSI;
+
+    cod_empre=#22#2;
+    cod_perio=#22#3;
+
+    dig4=#22#14;   || digitos de la empresa correspondiente para saber el nivel
+    dig5=#22#15;
+    dig6=#22#16;
+    dig7=#22#17;
+    dig8=#22#18;
+    dig9=#22#19;
+|FPRC;
+
+|DEFBUCLE BLee_canempre;
+     #22#1;
+     ;
+     nEmpresa, 0;
+     nEmpresa, 9;
+     ;
+     NULL, PLee_canempre;
+|FIN;
+
+|PROCESO PonerRutasFicheros;
+     aCadena=cod_empre;
+     aCadena1=cod_perio;
+     aCadena=aCadena+aCadena1;
+
+     r_masc="000000"
+     r_num=-106;
+     |HAZ llena_ceros; || en aCadena esta el resultado
+     aEmpresaPeriodo=aCadena;
+
+     |DBASS path_contagen;
+     path_contagen=path_contagen+"contagen/";
+     path_empres = path_contagen + "fich/" + aEmpresaPeriodo + "/";
+
+     |DBASS path_modelos;
+     path_modelos= path_modelos+"modelos/";
+     path_modelos= path_modelos + "fich/";
+
+     |PATH_DAT #34 path_empres;  || caivaasi
+     |PATH_DAT #20 path_empres;  || caplalab
+
+     |PATH_DAT #21 path_empres;  || cadeflab
+     |PATH_DAT #121 path_empres; || cadefxab
+
+     |PATH_DAT #23 path_empres;  || caplala2
+
+     |PATH_DAT #24 path_empres;  || caplala3
+
+     |PATH_DAT #25 path_empres;  || cadeflal
+     |PATH_DAT #125 path_empres; || cadefxal
+
+     |PATH_DAT #26 path_empres;  || caenlace
+
+     |PATH_DAT #27 path_empres;  || caconasi
+
+     |PATH_DAT #31 path_empres;  || cadeflay
+
+     |PATH_DAT #32 path_empres;  || anm00007;
+
+     |PATH_DAT #33 path_empres;  || cadeflaz;
+     |PATH_DAT #133 path_empres; || cadefxaz;
+|FPRC;
+
+|PROCESO LeerControlLaboral;
+
+     #0#20 = aOriginal20;   || elegido en pantalla
+     #0#22 = aOriginal22;   || elegido en pantalla
+
+     || leer el fichero de control para laboral
+     |ABRE #21;
+     |LEE 000#21p;
+     |SI FSalida ! 0;
+         |DDEFECTO #21;
+         #21#108 = "N";
+         #21#109 = "N";
+         #21#110 = "S";
+     |FINSI;
+     |CIERRA #21;
+
+     |ABRE #34;
+     |DDEFECTO #34;
+     |LEE 000#34p;
+     |CIERRA #34;
+
+     nSinEste   = 0;
+     nSinCentro = 0;
+     |SI #21#60 ! 0; |O #21#61 ! "N";
+        |ABRE #121;
+        |LEE 001#121p;
+        |SI FSalida = 0; nSinCentro = 1; |FINSI;
+        |CIERRA #121;
+    |FINSI;
+
+    |SI nSinCentro = 1;
+        |ABRE #121;
+        #121#0 = nCentro;
+        |LEE 001#121=;
+        |SI FSalida = 0;
+            nSinEste = 1;
+            |PARA nNume1 = 1; |SI nNume1 [ nNumCampos; |HACIENDO nNume1 = nNume1 + 1;
+                  |SI nNume1 ! 78; |Y nNume1 ! 79; |Y nNume1 ! 108; |Y nNume1 ! 109; |Y nNume1 ! 110; |Y nNume1 ! 117;
+                      #21nNume1 = #121nNume1;
+                  |FINSI;
+            |SIGUE;
+        |FINSI;
+        #21#60 = nCentro;
+        |CIERRA #121;
+    |FINSI;
+
+    |SI aOriginal20 = "S";  #0#20 = #21#108;  |FINSI;
+    |SI aOriginal22 = "S";  #0#22 = #21#109;  |FINSI;
+
+    enNoModif = 0;
+
+    |SI #21#110 = "N"; |Y #107#29 = "S"; enNoModif = 190; |FINSI;
+
+    |SI nSwDep = 0;
+        nSwErrorDep=0;
+        nSwDep = 1;
+        nActividad = #21#22;
+        |HAZ LeeActiv;
+        |SI fActFin > "01.01.1900"; |Y #34#119 = "S"; |Y fFecha ] fActFin;
+            aAlfa1 = "    NAtencion!!!. Actividad "+ #21#22 + " con Fecha de BAJA " + fActFin + ", Desea continuar ? ";
+            |CONFI aAlfa1;
+            |SI FSalida ! 0;
+                nAsto = 0;
+                nSwErrorDep=1;
+                eaIncide = "Actividad " + #21#22 + " con Fecha de Baja " + fActFin;
+                eaExiMod    = "";
+                |HAZ GraboAux;
+                |ACABA;
+            |FINSI;
+        |FINSI;
+        |SI aEsCom = "S";
+            |CONFI "    NAtencion!!!. Actividad Comunera, ¨ Desea introducir Nominas ? ";
+            |SI FSalida ! 0;
+                nAsto = 0;
+                nSwErrorDep=1;
+                eaIncide= "Actividad Comunera";
+                eaExiMod    = "";
+                |HAZ GraboAux;
+            |FINSI;
+        |FINSI;
+
+        aCta25b = #21#4;
+   |FINSI;
+|FPRC;
+
+|PROCESO dsmom030_1;
+     |SI #dsmom030#38 = 190;
+         nCto = #dsmom030#0;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsmom030;
+     #dsmom030#3;
+     ;
+     aClave, aSubClave;
+     aClave, aSubClave;
+     ;
+     NULL, dsmom030_1;
+|FIN;
+
+|PROCESO BuscaCto;
+     nCto = 0;
+     nNume1=#0#18;
+     |SI nNume1 < 80;
+         nNume1 = 2000 + nNume1;
+     |SINO;
+         nNume1 = 1900 + nNume1;
+     |FINSI;
+     |SI aClave = "A";
+         |SI nNume1 < 2015;
+             aSubClave = "  ";
+         |SINO;
+             |SI aSubClave = "  ";
+                 aSubClave = "01";
+             |FINSI;
+         |FINSI;
+     |FINSI;
+     |BUCLE dsmom030;
+     |SI nCto = 0;
+          aAlfa1 = "0000Clave [" + aClave + "." + aSubClave + "] inaccesible.";
+          |MENAV aAlfa1;
+     |FINSI;
+|FPRC;
+
+|PROCESO MiroCto;
+
+     |ABRE #dsmom030;
+     #dsmom030#0 = nCto;
+     |LEE 041#dsmom030.=;
+     |SI FSalida ! 0;
+         nCto = 0;
+     |SINO;
+         |SI #dsmom030#42 ! aClave; |O #dsmom030#43 ! aSubClave;
+              nCto = 0;
+         |FINSI;
+     |FINSI;
+     |CIERRA #dsmom030;
+
+     |SI nCto = 0;
+         |HAZ BuscaCto;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaExentas;
+     #23#0 = nUltimo;
+     #23#1 = nLinea;
+     aClave = "L";
+     aSubClave = #nomconli#13;
+     |HAZ BuscaCto;
+     #23#2 = nCto;
+     aCadena1 = #21#18;
+     |QBF aCadena1;
+     #23#3 = aCadena1 + "/" + #0#21;
+     #23#4 = "N";
+     |SI aSubClave = "24"; #23#4 = "S"; |FINSI;
+     #23#5 = "N";
+     #23#6 = (nExentaLin * enConversor) ! enRedondeo;
+     #23#7 = 0;
+     #23#8 = 0;
+     #23#9 = #21#16;     || cuenta
+
+     nLinea = nLinea + 1;
+     |SI #0#20="S"; |Y swPaso = 0; |GRABA 020#23n;     |FINSI;
+|FPRC;
+
+|PROCESO Exentas_1;
+     nExentaLin = 0;
+     |DDEFECTO #nomconli;
+     #nomconli#0 = #labtraba#87;
+     |SI #0#16 = "M";
+          #nomconli#2 = #nomcalli#4;
+          |LEE 000#nomconli.=;
+          |SI FSalida ! 0;
+               || aAlfa1 = "0000Concepto [" + #nomconli#0 + "." + #nomconli#2 + "] inaccesible.";
+               || MENAV aAlfa1;
+          |FINSI;
+          |SI #nomconli#13 = "  "; #nomconli#13 = "01";     |FINSI;
+          nExentaLin = (#nomcalli#11 * #nomcalli#10) ! enRedondeo;
+          |HAZ GrabaExentas;
+     |FINSI;
+     |SI #0#16 = "H";|O #0#16 = "T";
+          #nomconli#2 = #nomhicli#4;
+          |LEE 000#nomconli.=;
+          |SI FSalida ! 0;
+               || aAlfa1 = "0000Concepto [" + #nomconli#0 + "." + #nomconli#2 + "] inaccesible.";
+               || MENAV aAlfa1;
+          |FINSI;
+          |SI #nomconli#13 = "  "; #nomconli#13 = "01";     |FINSI;
+          nExentaLin = (#nomhicli#11 * #nomhicli#10) ! enRedondeo;
+          |HAZ GrabaExentas;
+     |FINSI;
+     |SI #0#16 = "A";
+          #nomconli#2 = #nomcalal#4;
+          |LEE 000#nomconli.=;
+          |SI FSalida ! 0;
+               || aAlfa1 = "0000Concepto [" + #nomconli#0 + "." + #nomconli#2 + "] inaccesible.";
+               || MENAV aAlfa1;
+          |FINSI;
+          |SI #nomconli#13 = "  "; #nomconli#13 = "01";     |FINSI;
+          nExentaLin = (#nomcalal#11 * #nomcalal#10) ! enRedondeo;
+          |HAZ GrabaExentas;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE ExentasM;
+     #nomcalli#1;
+     ;
+     nEmpresa, nTrabajador, nMes, 0, 411;
+     nEmpresa, nTrabajador, nMes, 4, 499;
+     ;
+     NULL, Exentas_1;
+|FIN;
+
+|DEFBUCLE ExentasH;
+     #nomhicli#1;
+     ;
+     nEmpresa, nTrabajador, nXAnyo, nMes, 0, 411;
+     nEmpresa, nTrabajador, nXAnyo, nMes, 4, 499;
+     ;
+     NULL, Exentas_1;
+|FIN;
+
+|DEFBUCLE ExentasT;
+     #nomhicli#1;
+     ;
+     nEmpresa, nTrabajador, nXAnyo, nMes, 5, 411;
+     nEmpresa, nTrabajador, nXAnyo, nMes, 9, 499;
+     ;
+     NULL, Exentas_1;
+|FIN;
+
+|DEFBUCLE ExentasA;
+     #nomcalal#1;
+     ;
+     nEmpresa, nTrabajador, nMes, 5, 411;
+     nEmpresa, nTrabajador, nMes, 9, 499;
+     ;
+     NULL, Exentas_1;
+|FIN;
+
+|PROCESO Graba23_A;
+         #23#0 = nUltimo;    || linea
+         #23#1 = nLinea;     || sublinea
+         |HAZ MiroCto;
+         #23#2 = nCto;       || concepto IRPF
+         |QBF aCadena1;
+         #23#3 = aCadena1 + "/" + #0#21;     || descripcion
+         #23#4 = #11#105;    || en especie
+         #23#5 = #11#108;    || repercute en especie
+         #23#6 = (nBases1 * enConversor) ! enRedondeo;    || base
+         #23#7 = nIRPF1;     || (%)
+         #23#8 = (nRetencion1 * enConversor) ! enRedondeo;|| retencion
+         #23#9 = aCuenta;    || cuenta
+
+         nLinea = nLinea + 1;
+
+         |SI #0#20 = "S"; |Y swPaso = 0;    |GRABA 020#23n;     |FINSI;
+|FPRC;
+
+|PROCESO CrearLineasRetencion;
+
+     |SI nBases1 ! 0;|O nBases2 ! 0;|O nBases3 ! 0;|O nBases4 ! 0; |O nBases11 ! 0;
+
+          |ABRE #23;
+          nLinea = 1;
+          |SI nBases1 ! 0; |O nBases11 ! 0;
+              |SI #0#18 ] 15; |Y #11#99 = "A"; |Y nNumCampos ] 111;
+                  |SI nBases1 ! 0;
+                      aClave    = #11#99;
+                      aSubClave = "01";
+                      nCto      = #21#17;
+                      aCadena1  = #21#18;
+                      aCuenta   = #21#16;
+                      |HAZ Graba23_A;
+                  |FINSI;
+                  |SI nBases11 ! 0;
+                      nBases1 = nBases11;
+                      nIRPF1  = nIRPF11;
+                      nRetencion1 = nRetencion11;
+                      aClave    = #11#99;
+                      aSubClave = "02";
+                      nCto      = #21#112;
+                      aCadena1  = #21#113;
+                      aCuenta   = #21#111;
+                      |SI aCuenta = "            "; aCuenta = #21#16; |FINSI;
+                      |HAZ Graba23_A;
+                  |FINSI;
+              |SINO;
+
+                   #23#0 = nUltimo;    || linea
+                   #23#1 = nLinea;     || sublinea
+                   aClave    = #11#99;
+                   aSubClave = #11#102;
+                   |HAZ BuscaCto;
+                   #23#2 = nCto;       || concepto IRPF
+                   aCadena1 = #21#18;
+                   |QBF aCadena1;
+                   #23#3 = aCadena1 + "/" + #0#21;     || descripcion
+                   #23#4 = #11#105;    || en especie
+                   #23#5 = #11#108;    || repercute en especie
+                   #23#6 = (nBases1 * enConversor) ! enRedondeo;    || base
+                   #23#7 = nIRPF1;     || (%)
+                   #23#8 = (nRetencion1 * enConversor) ! enRedondeo;|| retencion
+                   #23#9 = #21#16;     || cuenta
+
+                   nLinea = nLinea + 1;
+
+                   |SI #0#20 = "S"; |Y swPaso = 0;    |GRABA 020#23n;     |FINSI;
+              |FINSI;
+          |FINSI;
+
+          |SI nBases2 ! 0;
+               #23#0 = nUltimo;
+               #23#1 = nLinea;
+               aClave = #11#100;
+               aSubClave = #11#103;
+               |HAZ BuscaCto;
+               #23#2 = nCto;
+               aCadena1 = #21#18;
+               |QBF aCadena1;
+               #23#3 = aCadena1 + "/" + #0#21;
+               #23#4 = #11#106;  || en especie
+               #23#5 = #11#109;  || Reperc en especie
+               #23#6 = (nBases2 * enConversor) ! enRedondeo;
+               #23#7 = nIRPF2;
+               #23#8 = (nRetencion2 * enConversor) ! enRedondeo;
+               #23#9 = #21#16;  || cuenta
+
+               nLinea = nLinea + 1;
+               |SI #0#20 = "S"; |Y swPaso = 0;   |GRABA 020#23n;     |FINSI;
+          |FINSI;
+
+          |SI nBases3 ! 0;
+               #23#0 = nUltimo;
+               #23#1 = nLinea;
+               aClave = #11#101;
+               aSubClave = #11#104;
+               |HAZ BuscaCto;
+               #23#2 = nCto;
+               aCadena1 = #21#18;
+               |QBF aCadena1;
+               #23#3 = aCadena1 + "/" + #0#21;
+               #23#4 = #11#107;  || en especie
+               #23#5 = #11#110;  || Reperc en especie
+               #23#6 = (nBases3 * enConversor) ! enRedondeo;
+               #23#7 = nIRPF3;
+               #23#8 = (nRetencion3 * enConversor) ! enRedondeo;
+               #23#9 = #21#16;  || cuenta
+
+               nLinea = nLinea + 1;
+               |SI #0#20 = "S"; |Y swPaso = 0;   |GRABA 020#23n;     |FINSI;
+          |FINSI;
+
+          |SI nBases4 ! 0;
+               |ABRE #nomconli;
+               |SI #0#16 = "M";    |BUCLE ExentasM;     |FINSI;
+               |SI #0#16 = "H";    |BUCLE ExentasH;     |FINSI;
+               |SI #0#16 = "A";    |BUCLE ExentasA;     |FINSI;
+               |SI #0#16 = "T";    |BUCLE ExentasT;     |FINSI;
+               |CIERRA #nomconli;
+          |FINSI;
+
+          |CIERRA #23;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaAux933;
+ nCenAux = nCentro;
+ aAreAux = aArea;
+ aSecAux = aSeccion;
+
+ |SI nSinCentro = 0;
+    |SI #21#106 = #21#107;
+        |SI #21#106 = "C"; aAreAux = ""; aSecAux = ""; |FINSI;
+        |SI #21#106 = "A"; nCenAux = 00; |FINSI;
+    |FINSI;
+    |SI #21#106 = "N"; |O #21#107 = "N";
+        |SI #21#106 = "C"; |O #21#107 = "C";  aAreAux = "";  aSecAux = ""; |FINSI;
+        |SI #21#106 = "A"; |O #21#107 = "A";  nCenAux = 00;  |FINSI;
+    |FINSI;
+ |SINO;
+    |SI #21#106 = "N"; |Y #21#107 = "N";
+        aAreAux = ""; aSecAux = "";
+    |FINSI;
+ |FINSI;
+
+ |ABRE #933;
+ #933#0  = nEmpCen;
+ #933#1  = nCenAux;
+ #933#9  = aAreAux;
+ #933#10 = aSecAux;
+ |LEE 001#933=;
+ |SI FSalida ! 0;
+     |DDEFECTO #933;
+     #933#0  = nEmpCen;
+     #933#1  = nCenAux;
+     #933#9  = aAreAux;
+     #933#10 = aSecAux;
+     |HAZ CargaCtaSS;
+     #933#3  = aCtaAnaC;
+     #933#4  = aCta23;
+     #933#5  = aCta25;
+     #933#11 = aCentro;
+     |GRABA 020#933c;
+ |FINSI;
+ #933#6 = (#933#6 + nImport1) ! EURODB;
+ #933#7 = (#933#7 + nImport2) ! EURODB;
+ #933#8 = (#933#8 + nImport3) ! EURODB;
+ |GRABA 020#933a;
+ |CIERRA #933;
+
+     |ABRE #934;
+     #934#0  = nEmpCen;
+     #934#1  = aCentro;
+     |LEE 001#934=;
+     |SI FSalida ! 0;
+         |DDEFECTO #934;
+         #934#0  = nEmpCen;
+         #934#1  = aCentro;
+         #934#3  = #933#3;
+         #934#4  = #933#4;
+         #934#5  = #933#5;
+         #934#9  = #933#1;
+         |GRABA 020#934c;
+     |FINSI;
+     #934#6 = (#934#6 + nImport1) ! EURODB;
+     #934#7 = (#934#7 + nImport2) ! EURODB;
+     #934#8 = (#934#8 + nImport3) ! EURODB;
+
+     |SI #934#9 ! 0; |Y #934#9 ! #933#1;  #934#9 = 0;  |FINSI;
+
+     |GRABA 020#934a;
+     |CIERRA #934;
+|FPRC;
+
+|PROCESO CargaCtaSS;
+  aCtaAnaC = "";
+  aCta23  = #0#23;
+  aCta25  = #0#25;
+
+  |ABRE #31;
+  |DDEFECTO #31;
+  #31#0 = nCenAux;
+  |LEE 001#31=;
+  |CIERRA #31;
+
+  |ABRE #33;
+  |DDEFECTO #33;
+  #33#0 = aAreAux;
+  #33#1 = aSecAux;
+  |LEE 001#33=;
+  |CIERRA #33;
+  |SI nSinEste = 1;
+     |ABRE #133;
+     |DDEFECTO #133;
+     #133#0 = aAreAux;
+     #133#1 = aSecAux;
+     #133#10 = nCenAux;
+     |LEE 041#133=;
+     |SI FSalida = 0;
+         #33#0 = #133#0;
+         #33#1 = #133#1;
+         #33#2 = #133#2;
+         #33#3 = #133#3;
+         #33#4 = #133#4;
+         #33#5 = #133#5;
+         #33#6 = #133#6;
+         #33#7 = #133#7;
+         #33#8 = #133#8;
+         #33#9 = #133#9;
+     |FINSI;
+     |CIERRA #133;
+  |FINSI;
+
+  |SI #21#106 = "C"; |O nSinEste = 1; aCta25 = #31#7; |FINSI;
+  |SI #21#106 = "A"; aCta25 = #33#8; |FINSI;
+
+  |SI #21#107 = "C"; |O nSinEste = 1; aCtaAnaC = #31#4; aCta23 = #31#5; |FINSI;
+  |SI #21#107 = "A"; aCtaAnaC = #33#5; aCta23 = #33#6; |FINSI;
+
+  |QBF aCta23; |QBF aCta25;
+  |SI aCta23 = ""; aCta23 = #0#23; |FINSI;
+  |SI aCta25 = ""; aCta25 = #0#25; |FINSI;
+|FPRC;
+
+
+|PROCESO GrabaCaplalab;
+
+     swPaso = 0;
+     |SI swModulo = 2805; |O #107#29 = "S";
+         |HAZ VeoHisAstoT;
+         || ... No grabo pero hago los calculos
+     |FINSI;
+
+     |SI #0#1 = 0;   || Desde/Hasta fuera seleccion no Graba pro si calcula
+         |SI nTrabajador < #0#12; |O nTrabajador > #0#13; swPaso = 1; |FINSI;
+         |SI nCentro < #0#30;     |O nCentro > #0#31;     swPaso = 1; |FINSI;
+     |FINSI;
+
+     nPorLoMenos1=0;
+
+     |ABRE #20;
+     |LEE 000#20u;
+     |SI FSalida = 0;
+          nUltimo = #20#0 + 1;
+     |SINO;
+          nUltimo = 1;
+     |FINSI;
+
+     aDescripAnyadida=#0#21;
+
+     |DDEFECTO #20;
+     #20#0=nUltimo;
+     #20#1=aDNI;
+     #20#55=nTRela;
+     #20#56=aRTran;
+     #20#26=#11#2;
+     #20#32=#21#19;  || libro
+     #20#33=#21#54;  || diario
+     nNume1=#0#18;
+     |SI nNume1 < 80;
+         nNume1 = 2000 + nNume1;
+     |SINO;
+         nNume1 = 1900 + nNume1;
+     |FINSI;
+     #20#3=nNume1;   || periodo (a¤o)
+     #20#31=#0#21;   || descripcion a¤adida
+     #20#40=nCentro;
+     #20#50=aArea;
+     #20#51=aSeccion;
+     #20#2=fFecha;   || fecha
+
+     #20#27=#21#22;  || codigo departamento
+     nActividad = #21#22;
+     |HAZ LeeActiv;
+     #20#28=aNombreAct; || descrip departamento
+
+     #20#29=#21#57;  || codigo subdepartamento
+     #20#30=#21#58;  || descrip subdepartamento
+
+     || devengos
+     #20#6=(nDevengos * enConversor) ! enRedondeo;
+     #20#9=#21#1;  || cuenta
+     #20#7=#21#2;  || concepto
+
+     aCadena=#21#3;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#8=aCadena;  || descrip concepto
+
+     nImporteSST = nImporteSST + nSegSocial; || para el TC1
+
+     || aportacion a la seguridad social
+     #20#10=(nSegSocial * enConversor) ! enRedondeo;
+     #20#13=#21#4;  || cuenta
+     #20#11=#21#5;  || concepto
+
+     aCadena=#21#6;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#12=aCadena;  || descrip concepto
+
+     || retencion IRPF
+     #20#38=(nRetencionIRPF * enConversor) ! enRedondeo;
+     |HAZ CrearLineasRetencion;
+
+/*
+     || especie
+     #20#18=(nEspecie * enConversor) ! enRedondeo;
+     #20#21=#21#10;  || cuenta
+     #20#19=#21#11;  || concepto
+
+     aCadena=#21#12;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#20=aCadena;  || descrip concepto
+*/
+
+     || especie 1 (el 908)
+     #20#18=(nEspecie908 * enConversor) ! enRedondeo;
+     #20#21=#21#10;  || cuenta
+     #20#19=#21#11;  || concepto
+
+     aCadena=#21#12;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#20=aCadena;  || descrip concepto
+
+     || especie 2 (el 923)
+     #20#41=(nEspecie923 * enConversor) ! enRedondeo;
+     #20#44=#21#63;  || cuenta
+     #20#42=#21#64;  || concepto
+
+     aCadena=#21#65;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#43=aCadena;  || descrip concepto
+
+     || especie 3 (el 924)
+     #20#45=(nEspecie924 * enConversor) ! enRedondeo;
+     #20#48=#21#69;  || cuenta
+     #20#46=#21#70;  || concepto
+
+     aCadena=#21#71;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#47=aCadena;  || descrip concepto
+
+     || otras deducciones
+     #20#34=(nOtrasDeducciones * enConversor) ! enRedondeo;
+     #20#37=#21#49;  || cuenta
+     #20#35=#21#50;  || concepto
+
+     aCadena=#21#51;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#36=aCadena;  || descrip concepto
+
+     || anticipos
+     #20#14=(nAnticipos * enConversor) ! enRedondeo;
+     #20#17=#21#7;  || cuenta
+     #20#15=#21#8;  || concepto
+
+     aCadena=#21#9;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#16=aCadena;  || descrip concepto
+
+     || liquido a percibir
+     #20#22=(nLiquido * enConversor) ! enRedondeo;
+     #20#25=#21#13;  || cuenta
+     #20#23=#21#14;  || concepto
+
+     aCadena=#21#15;
+     |QBF aCadena;
+     aCadena=aCadena+aDescripAnyadida;
+     #20#24=aCadena;  || descrip concepto
+     #20#49=nTrabajador; || Numero trabajador en nominas
+
+     #20#52=nEmpresa;
+     #20#53=#0#15;
+     #20#54=#0#16;
+     #20#57=nTipo;
+
+     |SI #0#20="S"; |Y swPaso = 0;
+          |GRABA 020#20n;     || para no interferir en los calculos
+     |FINSI;                  ||/se condiciona solamente el |GRABA
+
+     |CIERRA #20;
+
+     |SI #21#106 ! "N"; |O #21#107 ! "N"; |O nSinEste = 1;
+         nEmpCen  = nEmpresa;
+         nImport1 = 0;
+         nImport2 = nSegSocial;
+         nImport3 = nSSCargo;
+         |HAZ GrabaAux933;
+     |FINSI;
+
+     |SI swModulo = 2805; |O #107#29 = "S";     || swModulo = 1;
+         |SI #0#20="S"; |Y swPaso = 0;  || las mismas condiciones que para
+             |HAZ GraboHisAstoT;        || grabar el registro caplalab
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|| ***** Procesos Especiales para Controlar Enlaces contables
+|PROCESO GraboHisAstoT;  || Grabo registro asiento del Trabajador
+
+  || |SI nTipo > 4; |ACABA; |FINSI;  ||Tique 70000_7224
+
+  |ABRE #101;
+  |DDEFECTO #101;
+  #101#0 = nEmpresa;
+  #101#1 = nTrabajador;
+  #101#2 = #0#18;
+  #101#3 = nMes;
+  #101#4 = nTipo;
+  #101#5 = #0#16;
+  |LEE 101#101=;
+  nEstado = FSalida;
+
+  #101#0 = nEmpresa;
+  #101#1 = nTrabajador;
+  #101#2 = #0#18;
+  #101#3 = nMes;
+  #101#4 = nTipo;
+  #101#5 = #0#16;
+  #101#9  = cod_empre;
+  #101#10 = cod_perio;
+  #101#11 = aDNI;
+  #101#12 = 3; |SI #21#110 = "N"; #101#12 = 103; |FINSI;
+  |SI nEstado = 0; |GRABA 020#101a; |FINSI;
+  |SI nEstado ! 0; |GRABA 020#101n; |FINSI;
+  |LIBERA #101;
+  |CIERRA #101;
+
+  |DDEFECTO #webascow;
+  #webascow#0 = #101#0;
+  #webascow#1 = #101#1;
+  #webascow#2 = #101#2;
+  #webascow#3 = #101#3;
+  #webascow#4 = #101#4;
+  #webascow#5 = #101#5;
+  |LEE 101#webascow.=;
+  |SI FSalida ! 0;
+       |GRABA 020#webascow.n;
+  |FINSI;
+  |LIBERA #webascow;
+|FPRC;
+
+|PROCESO VeoHisAstoT;
+
+  swPaso = 0; || ... |SI nTipo > 4; |ACABA; |FINSI;  ||Tique 70000_7224 no
+
+  |ABRE #101;
+  #101#0 = nEmpresa;
+  #101#1 = nTrabajador;
+  #101#2 = #0#18;
+  #101#3 = nMes;
+  #101#4 = nTipo;
+  #101#5 = #0#16;
+  |LEE 101#101=;
+  |SI FSalida = 0;
+      swPaso = 1;
+      |SI #101#7 = "01.01.0000"; swPaso = 0; |FINSI;
+  |FINSI;
+  |LIBERA #101;
+  |CIERRA #101;
+|FPRC;
+
+|PROCESO GraboHisAstoS;  || Registro Asiento del TC1
+
+  |SI #0#16 = "T"; |O #0#16 = "A"; |ACABA; |FINSI;
+
+  |ABRE #102;
+  |DDEFECTO #102;
+  #102#0 = nEmpresaAnterior;
+  #102#1 = 00;
+  #102#2 = #0#18;
+  #102#3 = nMes;
+  #102#4 = 0;
+  #102#5 = #0#16;
+  |LEE 101#102=;
+  nEstado = FSalida;
+
+  #102#0 = nEmpresaAnterior;
+  #102#1 = 00;
+  #102#2 = #0#18;
+  #102#3 = nMes;
+  #102#4 = 0;
+  #102#5 = #0#16;
+  #102#6 = #26#0;
+  #102#7 = #26#1;
+  #102#8 = #26#2;
+  #102#9  = cod_empre;
+  #102#10 = cod_perio;
+  #102#11 = 0; |SI #21#110 = "N"; #102#11 = 190; |FINSI;
+  |SI nEstado = 0; |GRABA 020#102a; |FINSI;
+  |SI nEstado ! 0; |GRABA 020#102n; |FINSI;
+  |LIBERA #102;
+  |CIERRA #102;
+|FPRC;
+
+|PROCESO VeoHisAstoS;
+  swPaso = 0;
+  |SI #0#16 = "T"; |O #0#16 = "A"; |ACABA; |FINSI;
+
+  |ABRE #102;
+  #102#0 = nEmpresaAnterior;
+  #102#1 = 00;
+  #102#2 = #0#18;
+  #102#3 = nMes;
+  #102#4 = 0;
+  #102#5 = #0#16;
+  |LEE 101#102=;
+  |SI FSalida = 0;
+      swPaso = 1;
+      |SI #102#7 = "01.01.0000"; swPaso = 0; |FINSI;
+  |FINSI;
+  |LIBERA #102;
+  |CIERRA #102;
+|FPRC;
+
+|| *************************************************************************
+|PROCESO ImporteIT_Cal;
+
+     #214#0 = #labtraba#87;
+     |SI #0#16 = "M";                 #214#2 = #4#4; |FINSI;
+     |SI #0#16 = "H"; |O #0#16 = "T"; #214#2 = #5#4; |FINSI;
+     |SI #0#16 = "A";                 #214#2 = #6#4; |FINSI;
+     |LEE 041#214=;
+     |SI FSalida = 0;
+         |SI #214#5 = 55; |O #214#5 = 56;
+              nCampo1 = 0;
+              |SI #0#16 = "M";                 nCampo1 =  (#4#11 * #4#10) ! 2; |FINSI;
+              |SI #0#16 = "H"; |O #0#16 = "T"; nCampo1 =  (#5#11 * #5#10) ! 2; |FINSI;
+              |SI #0#16 = "A";                 nCampo1 =  (#6#11 * #6#10) ! 2; |FINSI;
+
+              nBases11 = nBases11 + nCampo1;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE ImporteIT_H;
+     #nomhicli#1;
+     ;
+     #2#0, #2#1, #2#66, #2#2, #2#3, 401;
+     #2#0, #2#1, #2#66, #2#2, #2#3, 410;
+     ;
+     NULL, ImporteIT_Cal;
+|FIN;
+
+|DEFBUCLE ImporteIT_M;
+     #nomcalli#1;
+     ;
+     #1#0, #1#1, #1#2, #1#3, 401;
+     #1#0, #1#1, #1#2, #1#3, 410;
+     ;
+     NULL, ImporteIT_Cal;
+|FIN;
+
+|DEFBUCLE ImporteIT_A;
+     #nomcalal#1;
+     ;
+     #3#0, #3#1, #3#2, #3#3, 401;
+     #3#0, #3#1, #3#2, #3#3, 410;
+     ;
+     NULL, ImporteIT_Cal;
+|FIN;
+
+
+|PROCESO ImporteIT;
+
+     nBases11 = 0;
+     |ABRE #214;
+     |SI #0#16 = "H"; |O #0#16 = "T";
+         |BUCLE ImporteIT_H;
+     |FINSI;
+     |SI #0#16 = "A";
+         |BUCLE ImporteIT_A;
+     |FINSI;
+     |SI #0#16 = "M";
+         |BUCLE ImporteIT_M;
+     |FINSI;
+
+     |CIERRA #214;
+|FPRC;
+|| *************************************************************************
+
+|PROCESO EspecieM;
+     |ABRE #4;
+     #4#0 = nEmpresa;
+     #4#1 = nTrabajador;
+     #4#2 = nMes;
+     #4#3 = nTipo;
+
+     #4#4 = 908;
+     |LEE 000#4=;
+     |SI FSalida = 0;
+          nEspecie908 = #4#10 * #4#11;
+     |FINSI;
+
+     #4#4 = 923;
+     |LEE 000#4=;
+     |SI FSalida = 0;
+          nEspecie923 = #4#10 * #4#11;
+     |FINSI;
+
+     #4#4 = 924;
+     |LEE 000#4=;
+     |SI FSalida = 0;
+          nEspecie924 = #4#10 * #4#11;
+     |FINSI;
+
+     |CIERRA #4;
+|FPRC;
+
+|PROCESO ObtieneImportesM;
+     || devengos
+||     nDevengos=#1#74+#1#18+#1#16;
+
+     nDevengos=#1#46+#1#16;  ||Tique 744_394 (irpf de automonos repercute = N)
+
+     || aportacion a la seguridad social
+     nSegSocial=#1#48+#1#49+#1#50+#1#51+#1#164;
+     nSSCargo= nSegSocial + #1#45 - (#1#57+#1#58);  || tc1 en nomina
+
+     || retencion IRPF
+     nRetencionIRPF=#1#75+#1#17;
+
+     || especie
+     nEspecie=#1#54;
+     nEspecie908 = 0;
+     nEspecie923 = 0;
+     nEspecie924 = 0;
+     |HAZ EspecieM;
+
+     || otras deducciones / embargos
+     nOtrasDeducciones=#1#104; || tique 668_757  29.08.2011
+
+     || anticipos
+     nAnticipos=#1#52+#1#53+#1#89;
+
+     || liquido a percibir
+     nLiquido=nDevengos-nSegSocial-nRetencionIRPF-nEspecie-nOtrasDeducciones-nAnticipos;  || importe
+
+     nBases11=0;
+     nIRPF11=0;
+     nRetencion11=0;
+
+     nBases1=#1#14+#1#16;
+     nIRPF1=#1#13;
+     nRetencion1=#1#15+#1#17;
+     nNume1=#0#18;
+     |SI nNume1 < 80;
+         nNume1 = 2000 + nNume1;
+     |SINO;
+         nNume1 = 1900 + nNume1;
+     |FINSI;
+     |SI nNume1 ] 2015; |Y #11#99 = "A"; |Y nNumCampos ] 111;
+
+         |HAZ ImporteIT;
+
+         |SI #1#57 ! 0; |O #1#58 ! 0;
+           |O #1#59 ! 0; |O #1#60 ! 0;
+            |O #1#73 ! 0; |O nBases11 ! 0;
+
+             nBases11 = nBases11 + #1#57 + #1#58 + #1#59 + #1#60 + #1#73;
+             nIRPF11  = #1#13;
+             nRetencion11 = ( nBases11 % nIRPF11) ! 2;
+
+             nBases1     = nBases1 - nBases11;
+             nRetencion1 = nRetencion1 - nRetencion11;
+         |FINSI;
+     |FINSI;
+
+     nBases2=#1#69;
+     nIRPF2=#1#67;
+     nRetencion2=#1#71;
+
+     nBases3=#1#70;
+     nIRPF3=#1#68;
+     nRetencion3=#1#72;
+
+     nBases4=#1#18;
+     |SI #0#18 > 80;
+         nNume2 = 1900 + #0#18;
+     |SINO;
+         nNume2 = 2000 + #0#18;
+     |FINSI;
+     |SI nNume2 > 2010; |Y #1#147 ! 0;
+         nTRela=#1#147; ||Tipo Relacion
+     |FINSI;
+|FPRC;
+
+|PROCESO EspecieH;
+     |ABRE #5;
+     #5#0 = nEmpresa;
+     #5#1 = nTrabajador;
+     #5#2 = nMes;
+     #5#3 = nTipo;
+     #5#4 = 908;
+     #5#12 = nXAnyo;
+     |LEE 000#5=;
+     |SI FSalida = 0;
+          nEspecie908 = #5#10 * #5#11;
+     |FINSI;
+
+     #5#4 = 923;
+     |LEE 000#5=;
+     |SI FSalida = 0;
+          nEspecie923 = #5#10 * #5#11;
+     |FINSI;
+
+     #5#4 = 924;
+     |LEE 000#5=;
+     |SI FSalida = 0;
+          nEspecie924 = #5#10 * #5#11;
+     |FINSI;
+
+     |CIERRA #5;
+|FPRC;
+
+|PROCESO ObtieneImportesH;
+     || devengos
+     ||  nDevengos=#2#113+#2#18+#2#16;
+
+     nDevengos=#2#46+#2#16; || ||Tique 744_394 (irpf de automonos repercute = N)
+
+     || aportacion a la seguridad social
+     nSegSocial=#2#48+#2#49+#2#50+#2#51+#2#206;
+     nSSCargo=nSegSocial+#2#45-(#2#57+#2#58);  || tc1 en nomina
+
+     || retencion IRPF
+     nRetencionIRPF=#2#114+#2#17;
+
+     || especie
+     nEspecie=#2#54;
+     nEspecie908 = 0;
+     nEspecie923 = 0;
+     nEspecie924 = 0;
+     |HAZ EspecieH;
+
+     || otras deducciones
+     nOtrasDeducciones=#2#146; || tique 668_757  29.08.2011
+
+     || anticipos
+     nAnticipos=#2#52+#2#53+#2#131;
+
+     || liquido a percibir
+     nLiquido=nDevengos-nSegSocial-nRetencionIRPF-nEspecie-nOtrasDeducciones-nAnticipos;  || importe
+
+     nBases11=0;
+     nIRPF11=0;
+     nRetencion11=0;
+
+     nBases1=#2#14+#2#16;
+     nIRPF1=#2#13;
+     nRetencion1=#2#15+#2#17;
+
+     nNume1=#0#18;
+     |SI nNume1 < 80;
+         nNume1 = 2000 + nNume1;
+     |SINO;
+         nNume1 = 1900 + nNume1;
+     |FINSI;
+
+     |SI nNume1 ] 2015; |Y #11#99  = "A"; |Y nNumCampos ] 111;
+         |HAZ ImporteIT;
+
+         |SI #2#57 ! 0; |O #2#58 ! 0;
+           |O #2#59 ! 0; |O #2#60 ! 0;
+            |O #2#112 ! 0; |O nBases11 ! 0;
+
+             nBases11 = nBases11 + #2#57 + #2#58 + #2#59 + #2#60 + #2#112;
+             nIRPF11  = #2#13;
+             nRetencion11 = ( nBases11 % nIRPF11) ! 2;
+
+             nBases1     = nBases1 - nBases11;
+             nRetencion1 = nRetencion1 - nRetencion11;
+         |FINSI;
+     |FINSI;
+
+     nBases2=#2#108;
+     nIRPF2=#2#106;
+     nRetencion2=#2#110;
+
+     nBases3=#2#109;
+     nIRPF3=#2#107;
+     nRetencion3=#2#111;
+
+     nBases4=#2#18;
+     |SI #0#18 > 80;
+         nNume2 = 1900 + #0#18;
+     |SINO;
+         nNume2 = 2000 + #0#18;
+     |FINSI;
+     |SI nNume2 > 2010; |Y #2#189 ! 0;
+         nTRela=#2#189; || tipo relacion
+     |FINSI;
+|FPRC;
+
+|PROCESO EspecieA;
+     |SI #6#4 = 908;
+          nEspecie908 = #6#10 * #6#11;
+     |FINSI;
+
+     |SI #6#4 = 923;
+          nEspecie923 = #6#10 * #6#11;
+     |FINSI;
+
+     |SI #6#4 = 924;
+          nEspecie924 = #6#10 * #6#11;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE EspecieA;
+     #6#1;
+     ;
+     nEmpresa,nTrabajador,nMes,5,908;
+     nEmpresa,nTrabajador,nMes,9,924;
+     ;
+     NULL,EspecieA;
+|FIN;
+
+|PROCESO ObtieneImportesA;
+     || devengos
+     nDevengos=#3#74+#3#18+#3#16;
+
+     || aportacion a la seguridad social
+     nSegSocial=#3#48+#3#49+#3#50+#3#51;
+     nSSCargo=nSegSocial+#3#45-(#3#57+#3#58);  || tc1 en nomina
+
+     || retencion IRPF
+     nRetencionIRPF=#3#75+#3#17;
+
+     || especie
+     nEspecie=#3#54;
+     nEspecie908 = 0;
+     nEspecie923 = 0;
+     nEspecie924 = 0;
+     |BUCLE EspecieA;
+
+     || otras deducciones
+     nOtrasDeducciones=0;
+
+     || anticipos
+     nAnticipos=#3#52+#3#53+#3#89;
+
+     || liquido a percibir
+     nLiquido=nDevengos-nSegSocial-nRetencionIRPF-nEspecie-nOtrasDeducciones-nAnticipos;  || importe
+
+     nBases11=0;
+     nIRPF11=0;
+     nRetencion11=0;
+
+     nBases1=#3#14+#3#16;
+     nIRPF1=#3#13;
+     nRetencion1=#3#15+#3#17;
+
+     nNume1=#0#18;
+     |SI nNume1 < 80;
+         nNume1 = 2000 + nNume1;
+     |SINO;
+         nNume1 = 1900 + nNume1;
+     |FINSI;
+
+     |SI nNume1 ] 2015; |Y #11#99 = "A"; |Y nNumCampos ] 111;
+         |HAZ ImporteIT;
+
+         |SI #3#57 ! 0; |O #3#58 ! 0;
+           |O #3#59 ! 0; |O #3#60 ! 0;
+            |O #3#73 ! 0; |O nBases11 ! 0;
+
+             nBases11 = nBases11 + #3#57 + #3#58 + #3#59 + #3#60 + #3#73;
+             nIRPF11  = #3#13;
+             nRetencion11 = ( nBases11 % nIRPF11) ! 2;
+
+             nBases1     = nBases1 - nBases11;
+             nRetencion1 = nRetencion1 - nRetencion11;
+         |FINSI;
+     |FINSI;
+
+     nBases2=#3#69;
+     nIRPF2=#3#67;
+     nRetencion2=#3#71;
+
+     nBases3=#3#70;
+     nIRPF3=#3#68;
+     nRetencion3=#3#72;
+
+     nBases4=#3#18;
+|FPRC;
+
+|PROCESO LeeLabtraba;
+     |DDEFECTO #11;
+     |ABRE #11;
+     #11#0 = nEmpresa;
+     #11#1 = nTrabajador;
+     |LEE 000#11=;
+     |CIERRA #11;
+
+     nTRela=#11#111;
+     aRTran=#11#131;
+     aDNI=#11#7;
+     nCentro=#11#77;
+     aArea=#11#62;
+     aSeccion=#11#63;
+
+     |ABRE #labcentr;
+     |DDEFECTO #labcentr;
+     #labcentr#0 = nEmpresa;
+     #labcentr#1 = nCentro;
+     |LEE 000#labcentr.=;
+     |CIERRA #labcentr;
+     aCentro = #labcentr#10;
+
+     nSwCentro = 0;
+     |SI nCentro < nXDesdeCentro; |O nCentro > nXHastaCentro;
+         nSwCentro = 1;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO GrabaDesgloses;
+          |ABRE #24;
+          |ABRE #25; |ABRE #125;
+
+          nImporteDesglosadoT=0;
+
+          |SI #0#16="M";
+               |BUCLE BCrearDesgloseM;
+
+               nBrutoRecibo=#1#46+#1#47;
+          |FINSI;
+
+          |SI #0#16="H";
+               |BUCLE BCrearDesgloseH;
+
+               nBrutoRecibo=#2#46+#2#47;
+          |FINSI;
+
+          |SI #0#16="T";
+               |BUCLE BCrearDesgloseT;
+
+               nBrutoRecibo=#2#46+#2#47;
+          |FINSI;
+
+          |SI #0#16="A";
+               |BUCLE BCrearDesgloseA;
+
+               nBrutoRecibo=#3#46+#3#47;
+          |FINSI;
+
+          nConceptoNominas=999;
+          |HAZ LeeDatosLineaDesg;
+          nLDImporte=nBrutoRecibo-nImporteDesglosadoT;
+          |SI nLDImporte ! 0;
+              |HAZ GrabaLineaDesglose;
+          |FINSI;
+
+          |CIERRA #125; |CIERRA #25;
+          |LIBERA #24;
+          |CIERRA #24;
+|FPRC;
+
+|PROCESO PCalculo;  || viene de nomcalca
+
+     |SI #0#16="M";
+          nEmpresa=#1#0;
+          nTrabajador=#1#1;
+          nMes=#1#2;
+          nTipo=#1#3;
+     |FINSI;
+
+     |SI #0#16="H";|O #0#16="T";
+          nEmpresa=#2#0;
+          nTrabajador=#2#1;
+          nMes=#2#2;
+          nTipo=#2#3;
+     |FINSI;
+
+     |SI #0#16="A";
+          nEmpresa=#3#0;
+          nTrabajador=#3#1;
+          nMes=#3#2;
+          nTipo=#3#3;
+     |FINSI;
+
+     |HAZ PintaEmpresa;
+
+     |SI nEmpresaAnterior!nEmpresa; |Y nEmpresaAnterior!-1;
+         |SI nSwErrorDep = 0;
+             |HAZ PaseTC1;
+             |HAZ PaseContabilidad;
+         |FINSI;
+         nImporteTC1=0;
+         nImporteSST=0;
+         nSwDep=0;
+         nSwErrorDep=0;
+     |FINSI;
+
+     |SI nSwErrorDep=1; |ACABA; |FINSI;
+
+     #0#20 = aOriginal20;
+     #0#22 = aOriginal22;
+
+     nEmpresaAnterior=nEmpresa;
+     eaNombreEmp = #labempre#2;
+     eaNifEmp    = #labempre#10;
+
+     cod_empre=-1;
+     |BUCLE BLee_canempre;  || devuelve empresa y periodo
+     |SI cod_empre=-1;
+          aCadena=nEmpresa;
+          r_masc="00000"
+          r_num=-105;
+          |HAZ llena_ceros;
+
+          aCadena="0000Empresa " + aCadena + "/" + #0#18 + " inexistente en Contabilidad.";
+          |MENSA aCadena;
+          |SI #0#1 ! 0;
+              nAsto = 0;
+              eaIncide = "Ejer. " + (aCadena % 1950);
+              eaExiMod    = "";
+              |HAZ GraboAux;
+          |FINSI;
+          nEmpresaAnterior=-1;
+          |ACABA;
+     |FINSI;
+
+     |HAZ CambiaMoneda;
+     |HAZ LeeLabtraba;
+     |SI nSwCentro = 1; |ACABA; |FINSI;
+     |HAZ PonerRutasFicheros;
+     |HAZ LeerControlLaboral;
+     |SI nSwErrorDep=1; |ACABA; |FINSI;
+     |SI #0#20 ! "S"; |Y #0#22 ! "S"; |ACABA; |FINSI;
+
+     |SI #0#16="M";
+          |HAZ ObtieneImportesM;
+     |FINSI;
+
+     |SI #0#16="H"; |O #0#16="T";
+          |HAZ ObtieneImportesH;
+     |FINSI;
+
+     |SI #0#16="A";
+          |HAZ ObtieneImportesA;
+     |FINSI;
+
+     |HAZ GrabaCaplalab;
+
+     |SI #21#42="S";   || si quieren desglose, lo tendran
+         |SI swPaso = 0; |HAZ GrabaDesgloses; |FINSI;
+     |FINSI;
+|FPRC;
+
+
+|DEFBUCLE BCalculoM;
+     #1#1;
+     ;
+     nXDesdeEmpresa,nXDesdeTrabajador,nXDesdeMes,0;
+     nXHastaEmpresa,nXHastaTrabajador,nXHastaMes,4;
+     ;
+     NULL,PCalculo;
+|FIN;
+
+|DEFBUCLE BCalculoH;
+     #2#1;
+     ;
+     nXDesdeEmpresa,nXDesdeTrabajador,nXAnyo,nXDesdeMes,0;
+     nXHastaEmpresa,nXHastaTrabajador,nXAnyo,nXHastaMes,4;
+     ;
+     NULL,PCalculo;
+|FIN;
+
+|DEFBUCLE BCalculoA;
+     #3#1;
+     ;
+     nXDesdeEmpresa,nXDesdeTrabajador,nXDesdeMes,5;
+     nXHastaEmpresa,nXHastaTrabajador,nXHastaMes,9;
+     ;
+     NULL,PCalculo;
+|FIN;
+
+|DEFBUCLE BCalculoT;
+     #2#1;
+     ;
+     nXDesdeEmpresa,nXDesdeTrabajador,nXAnyo,nXDesdeMes,#0#17;
+     nXHastaEmpresa,nXHastaTrabajador,nXAnyo,nXHastaMes,#0#17;
+     ;
+     NULL,PCalculo;
+|FIN;
+
+|PROCESO Parrilla;
+     nXDesdeTrabajador=1;      nXDesdeCentro=0;
+     nXHastaTrabajador=99999;  nXHastaCentro=99;
+     nXDesdeMes=#0#15;
+     nXHastaMes=#0#15;
+     |SI #0#16 = "A"; |O #0#16 = "T"; nXHastaMes = #0#29; |FINSI;
+     nXAnyo=#0#18;
+
+     |HAZ ControlTc1;
+
+     |PARA para1 = 1; |SI para1 [ 9; |HACIENDO para1 = para1 + 1;
+          |SI #0para1!0;
+               |HAZ PintaEmpresa;
+
+               nXDesdeEmpresa=#0para1;
+               nXHastaEmpresa=#0para1;
+
+               |SI #0#16="M";   || seleccion mensual
+                    |BUCLE BCalculoM;
+               |FINSI;
+
+               |SI #0#16="H";   || seleccion historico
+                    |BUCLE BCalculoH;
+               |FINSI;
+
+               |SI #0#16="A";   || seleccion atrasos
+                    |BUCLE BCalculoA;
+               |FINSI;
+
+               |SI #0#16="T";   || seleccion atrasos historico
+                    |BUCLE BCalculoT;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO SeleccionDesdeHasta;
+     nXDesdeEmpresa=#0#10;
+     nXHastaEmpresa=#0#11;
+     nXDesdeTrabajador=#0#12;
+     nXHastaTrabajador=#0#13;
+     nXDesdeCentro=#0#30;
+     nXHastaCentro=#0#31;
+     nXDesdeMes=#0#15;
+     nXHastaMes=#0#15;
+     |SI #0#16 = "A"; |O #0#16 = "T"; nXHastaMes = #0#29; |FINSI;
+     nXAnyo=#0#18;
+
+     |SI #0#22 = "S";
+         nXDesdeTrabajador=1;     nXDesdeCentro = 0;
+         nXHastaTrabajador=99999; nXHastaCentro = 99;
+     |FINSI;
+
+     |HAZ ControlTc1;
+
+     |SI #0#16="M";   || seleccion mensual
+          |BUCLE BCalculoM;
+     |FINSI;
+
+     |SI #0#16="H";   || seleccion historico
+          |BUCLE BCalculoH;
+     |FINSI;
+
+     |SI #0#16="A";   || seleccion atrasos
+          |BUCLE BCalculoA;
+     |FINSI;
+
+     |SI #0#16="T";   || seleccion atrasos historico
+          |BUCLE BCalculoT;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO desde_hasta; |TIPO 0;
+     |PARA para1 = 2; |SI para1 [ 9; |HACIENDO para1 = para1 + 1;
+          |CAMPO_MODIFICA #0para1, 1, "S";
+     |SIGUE;
+
+     |CAMPO_MODIFICA #0#10, 1, "N";
+     |CAMPO_MODIFICA #0#11, 1, "N";
+     |CAMPO_MODIFICA #0#12, 1, "N";
+     |CAMPO_MODIFICA #0#13, 1, "N";
+     |CAMPO_MODIFICA #0#30, 1, "N";
+     |CAMPO_MODIFICA #0#31, 1, "N";
+
+     |SI #0#1 = 0;
+          |PARA para1 = 2; |SI para1 [ 9; |HACIENDO para1 = para1 + 1;
+               |CAMPO_MODIFICA #0para1, 1, "N";
+               #0para1 = 0; |PINTA #0para1;
+          |SIGUE;
+          |CAMPO_MODIFICA #0#10, 1, "S";
+          |CAMPO_MODIFICA #0#11, 1, "S";
+          |CAMPO_MODIFICA #0#12, 1, "S";
+          |CAMPO_MODIFICA #0#13, 1, "S";
+          |CAMPO_MODIFICA #0#30, 1, "S";
+          |CAMPO_MODIFICA #0#31, 1, "S";
+     |FINSI;
+|FPRC;
+
+|PROCESO lee_emp; |TIPO 0;
+     |SI #0Campo ! 0;
+          |ABRE #10;
+          #10#0 = #0Campo;
+          |LEE 000#10=;
+          |SI FSalida ! 0;
+               |MENAV "    Empresa INEXISTENTE ...";
+               |ERROR;
+          |FINSI;
+          |CIERRA #10;
+    |FINSI;
+|FPRC;
+
+|PROCESO pin_emp; |TIPO 7;
+     |DDEFECTO #10;
+     |SI #0Campo ! 0;
+          |ABRE #10;
+          #10#0 = #0Campo;
+          |LEE 000#10=;
+          |CIERRA #10;
+     |SINO;
+          #10#2= "";
+     |FINSI;
+
+     |ATRI I;
+     |PINTA 0924,#10#2;
+     |ATRI 0;
+|FPRC;
+
+|PROCESO no_any; |TIPO 7;
+/*
+     |SI #0#16 = "H";|O #0#16 = "T";
+          alfa1 = "S";
+     |SINO;
+          alfa1 = "N";
+     |FINSI;
+     |C_M #0#18, 1, alfa1;
+*/
+|FPRC;
+
+|PROCESO no_atrasost; |TIPO 7;
+     |SI #0#16 = "T";
+          alfa1 = "S";
+     |SINO;
+          alfa1 = "N";
+     |FINSI;
+     |C_M #0#17, 1, alfa1;
+|FPRC;
+
+|PROCESO mayus; |TIPO 0;
+    #0Campo = #0Campo > #0Campo;
+    |PINTA #0Campo;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7;
+     |SI #0#16 = "H";|O #0#16 = "T";
+          fech1 = ~;
+          alfa1 = fech1;
+          alfa1 = alfa1 % -102;
+          #0Campo = alfa1;
+          |PINTA #0Campo;
+     |FINSI;
+|FPRC;
+
+|PROCESO mirames; |TIPO 7;
+     fech1 = ~;
+     alfa1 = fech1;
+     alfa1 = alfa1 % 402;
+     #0Campo = alfa1;
+     |PINTA #0Campo;
+|FPRC;
+
+|PROCESO LaFuente;
+  |SI #0#16 = "A"; |O #0#16 = "T";
+      |C_V #0#29,1,"S"; |C_M #0#29,1,"S";
+      |PINTA 0637, "De"; |PINTA 0661, "A Mes:    [      ]";
+      |PINTA #0#29;
+  |SINO;
+      |C_V #0#29,1,"N"; |C_M #0#29,1,"N";
+      |PINTA 0637, "  "; |PINTA 0661, "                  ";
+  |FINSI;
+|FPRC;
+
+|PROCESO pintames; |TIPO 0;
+     |C_M #0Campo,0,alfa1;
+     |SI alfa1 = "N"; |ACABA; |FINSI;
+
+     |SI Campo = 29;
+         |SI #0#15 > #0#29;
+             |MENAV "    Error en seleccion Mes Hasta";
+             |ERROR;
+         |FINSI;
+     |SINO;
+         #0#29 = #0#15;
+         |SI #0#16 = "A"; |O #0#16 = "T"; |PINTA #0#29; |FINSI;
+     |FINSI;
+
+     |SI #0Campo =  1;  p_mes = "ENERO     ";  nUltimo = 31; |FINSI;
+     |SI #0Campo =  2;  p_mes = "FEBRERO   ";  nUltimo = 28; |FINSI;
+     |SI #0Campo =  3;  p_mes = "MARZO     ";  nUltimo = 31; |FINSI;
+     |SI #0Campo =  4;  p_mes = "ABRIL     ";  nUltimo = 30; |FINSI;
+     |SI #0Campo =  5;  p_mes = "MAYO      ";  nUltimo = 31; |FINSI;
+     |SI #0Campo =  6;  p_mes = "JUNIO     ";  nUltimo = 30; |FINSI;
+     |SI #0Campo =  7;  p_mes = "JULIO     ";  nUltimo = 31; |FINSI;
+     |SI #0Campo =  8;  p_mes = "AGOSTO    ";  nUltimo = 31; |FINSI;
+     |SI #0Campo =  9;  p_mes = "SEPTIEMBRE";  nUltimo = 30; |FINSI;
+     |SI #0Campo = 10;  p_mes = "OCTUBRE   ";  nUltimo = 31; |FINSI;
+     |SI #0Campo = 11;  p_mes = "NOVIEMBRE ";  nUltimo = 30; |FINSI;
+     |SI #0Campo = 12;  p_mes = "DICIEMBRE ";  nUltimo = 31; |FINSI;
+
+     |ATRI I;
+     |SI Campo = 15; |PINTA 0649, p_mes; |FINSI;
+     |SI Campo = 29;
+          p_mes = p_mes % 106;
+          |PINTA 0672, p_mes;
+     |FINSI;
+     |ATRI 0;
+|FPRC;
+
+|PROCESO MiraFecha; |TIPO 0;
+  |SI #0#18 > 80;
+      nNume2 = 1900 + #0#18;
+  |SINO;
+      nNume2 = 2000 + #0#18;
+  |FINSI;
+  aAlfa2 = #0#14;
+  aAlfa2 = aAlfa2 % -104;
+  nNume1 = aAlfa2;
+
+  |SI nNume1 ! nNume2;
+      |SI nNume1 < 1990;
+          |MENAV "    Error, Fecha incorrecta";
+          |ERROR;
+      |SINO;
+          |CONFI "    NError. La Fecha no corresponde al Ejercicio Contable. Continuar S/N? ";
+          |SI FSalida ! 0; |ERROR; |FINSI;
+      |FINSI;
+ |SINO;
+     aAlfa = #0#14;
+     aAlfa1 = aAlfa % -104; nEMod = aAlfa1;
+     aAlfa2 = aAlfa % 402;  nMMod = aAlfa2;
+     |SI nMMod =  1; aMMod = "ENERO     "; |FINSI;
+     |SI nMMod =  2; aMMod = "FEBRERO   "; |FINSI;
+     |SI nMMod =  3; aMMod = "MARZO     "; |FINSI;
+     |SI nMMod =  4; aMMod = "ABRIL     "; |FINSI;
+     |SI nMMod =  5; aMMod = "MAYO      "; |FINSI;
+     |SI nMMod =  6; aMMod = "JUNIO     "; |FINSI;
+     |SI nMMod =  7; aMMod = "JULIO     "; |FINSI;
+     |SI nMMod =  8; aMMod = "AGOSTO    "; |FINSI;
+     |SI nMMod =  9; aMMod = "SEPTIEMBRE"; |FINSI;
+     |SI nMMod = 10; aMMod = "OCTUBRE";    |FINSI;
+     |SI nMMod = 11; aMMod = "NOVIEMBRE";  |FINSI;
+     |SI nMMod = 12; aMMod = "DICIEMBRE";  |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO Inf920;
+ #920#0  = nEMod;
+ #920#1  = nMMod;
+ #920#2  = 00001;
+ #920#10 = 0;
+|FPRC;
+
+|PROCESO Sup920;
+ #920#0  = nEMod;
+ #920#1  = nMMod;
+ #920#2  = 99999;
+ #920#10 = 2;
+|FPRC;
+
+|PROCESO CargaValores;
+     nErrorLeer = 0;
+
+     nHandle = 0;
+     |XABRE "U", aFicPara, nHandle;
+     |SI FSalida < 0;
+          nErrorLeer = 1;
+          eaFicheroLog = aFicErr;
+          eaTextoLog = "Error: No puedo leer el fichero " + eaFicParametros
+          |HAZ EscribeEnLog;
+          |ACABA;
+     |FINSI;
+
+     |PARA; |SI; |HACIENDO;
+          |XLEE nHandle, 250, aLinea;
+          |SI FSalida < 0;  |SAL;  |FINSI;
+
+          aSaca = aLinea % 120;
+          aTexto = aSaca % 107;
+          |SI aTexto = "*CAMPO*";
+              aCampo = aLinea % 0803;
+              nCampo = aCampo;
+              aValor = aLinea % 22;
+              #webascoz#nCampo# = aValor;
+          |FINSI;
+     |SIGUE;
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO webascow_exporta;
+     nExporta = 0;
+     nDiario = #webascow#6;
+     fFechaAsiento = #webascow#7;
+     nDocAsiento = #webascow#8;
+
+     |SI nDiario ! nDiarioAnt; |O fFechaAsiento ! fFechaAnt; |O nDocAsiento ! nDocAnt;
+          nExporta = 1;
+          nDiarioAnt = nDiario;
+          fFechaAnt = fFechaAsiento;
+          nDocAnt = nDocAsiento;
+     |FINSI;
+
+     |SI nPrimero = 1;
+          nPrimero = 0;
+     |SINO;
+          |SI nExporta = 1;
+               eaAlfaJson = aTab + aTab + ",";
+               |HAZ EscribeFicJson;
+          |FINSI;
+     |FINSI;
+
+     |SI nExporta = 1;
+          eaAlfaJson = aTab + aTab + aTab + "{";
+          |HAZ EscribeFicJson;
+
+          eaAlfaJson = aTab + aTab + aTab + aCom + "diario" + aCom + ": " + aCom + nDiario + aCom + ",";
+          |HAZ EscribeFicJson;
+          eaAlfaJson = aTab + aTab + aTab + aCom + "fecha" + aCom + ": " + aCom + fFechaAsiento + aCom + ",";
+          |HAZ EscribeFicJson;
+          eaAlfaJson = aTab + aTab + aTab + aCom + "documento" + aCom + ": " + aCom + nDocAsiento + aCom;
+          |HAZ EscribeFicJson;
+
+          eaAlfaJson = aTab + aTab + aTab + "}";
+          |HAZ EscribeFicJson;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE webascow_exporta;
+ #webascow#2;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, webascow_exporta;
+|FIN;
+
+|PROCESO webascow_rellena;
+     #nomagic1#0 = #webascow#0;
+     #nomagic1#1 = #webascow#1;
+     #nomagic1#2 = #webascow#2;
+     #nomagic1#3 = #webascow#3;
+     #nomagic1#4 = #webascow#4;
+     #nomagic1#5 = #webascow#5;
+     |LEE 000#nomagic1.=;
+     |SI FSalida = 0;
+          #webascow#6 = #nomagic1#6;
+          #webascow#7 = #nomagic1#7;
+          #webascow#8 = #nomagic1#8;
+          |GRABA 020#webascow.a;
+          |LIBERA #webascow;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE webascow_rellena;
+ #webascow#1;
+ ;
+ INICIO;
+ FINAL;
+ be;
+ NULL, webascow_rellena;
+|FIN;
+
+|PROCESO ComandoRemoto;
+     |ABRE #webascow;
+
+     aTab = &9;
+     aCom = &34;
+
+     |DBASE aBase; |QBF aBase;
+     aPath    = aBase + "shells/";
+     |MKDIR aPath;
+     aFicLog  = aPath + "ejeRemoto.log";
+     aFicErr  = aPath + "ejeRemoto.err";
+     aFicPara = aPath + eaFicParametros;
+
+     eaFicJson  = aFicPara - ".txt";
+     eaFicJson  = eaFicJson + ".json";
+
+     |SI eaFicParametros = "";
+         eaFicheroLog = aFicErr;
+         |MODULO aAlfa;
+         eaTextoLog = "Error: Llamada al " + aAlfa + " sin pasarle fichero (.txt) de parametros";
+         |HAZ EscribeEnLog;
+         |ACABA;
+     |FINSI;
+
+     eaFicheroLog = aFicLog;
+     eaTextoLog = "Ejecucion remota con estos parametros: " + eaFicParametros;
+     |HAZ EscribeEnLog;
+
+     |ABRE #webascoz;
+     |DDEFECTO #webascoz;
+
+     |HAZ CargaValores;
+
+     |SI nErrorLeer = 1;  |ACABA;  |FINSI;
+
+     eaFicheroLog = aFicLog;
+     eaTextoLog = "* Inicio creacion json. parametros: " + eaFicParametros;
+     |HAZ EscribeEnLog;
+
+     |HAZ AbreFicJson;
+
+     |SI #107#29 = "N";
+          aResultado = "Error";
+          aTextoR = "No es posible realizar el proceso porque Llevar el Control de las N¢minas contabilizadas esta desactivado";
+          |HAZ MeteErrorJson;
+     |SINO;
+          || NUCLEO ||ARA45
+          aOriginal20 = #0#20;
+          aOriginal22 = #0#22;
+
+          nEmpresaAnterior=-1;
+          fFecha=#0#14;
+          aAlfa1=#0#14; aAlfa1=aAlfa1 % -102;
+          nEjercicio=aAlfa1;
+
+          |HAZ Parrilla;
+
+          |SI nEmpresaAnterior!-1;
+               |HAZ PaseTC1;
+               |HAZ PaseContabilidad;
+          |FINSI;
+
+          |SI nPorLoMenos1=1; |Y nSw920 = 0;
+               aResultado = "Error";
+               aTextoR = "Selecci¢n vacia";
+               |HAZ MeteErrorJson;
+          |SINO;
+               ||Rellenar webascow, a partir de los datos de nomagic1
+               |ABRE #nomagic1;
+
+               |BUCLE webascow_rellena;
+               |CIERRA #nomagic1;
+               eaAlfaJson = "{";  |HAZ EscribeFicJson;
+
+               eaAlfaJson = aTab + aCom + "resultado" + aCom + ": " + aCom + "Ok" + aCom + ",";
+               |HAZ EscribeFicJson;
+
+               eaAlfaJson = aTab + aCom  + "textoR" + aCom + ": " + aCom + "" + aCom + ",";
+               |HAZ EscribeFicJson;
+
+               eaAlfaJson = aTab + aCom  + "datos" + aCom + ": ";
+               |HAZ EscribeFicJson;
+
+               eaAlfaJson = aTab + "[";  |HAZ EscribeFicJson;
+
+               ||Recorrer webascow por la clave 2, y volcar asientos
+               nPrimero = 1;
+               nDiarioAnt = -1;
+               |BUCLE webascow_exporta;
+
+               eaAlfaJson = aTab + "]";  |HAZ EscribeFicJson;
+
+               eaAlfaJson = "}";  |HAZ EscribeFicJson;
+          |FINSI;
+     |FINSI;
+
+     |HAZ CierraFicJson;
+     |CIERRA #webascoz;
+
+     eaFicheroLog = aFicLog;
+     eaTextoLog = "* Final  creacion json. parametros: " + eaFicParametros;
+     |HAZ EscribeEnLog;
+     |CIERRA #webascow;
+|FPRC;
+
+|PROCESO MeteErrorJson;
+     eaAlfaJson = "{";  |HAZ EscribeFicJson;
+
+     eaAlfaJson = aTab + aCom + "resultado" + aCom + ": " + aCom + aResultado + aCom + ",";
+     |HAZ EscribeFicJson;
+
+     eaAlfaJson = aTab + aCom  + "textoR" + aCom + ": " + aCom + aTextoR + aCom;
+     |HAZ EscribeFicJson;
+
+     eaAlfaJson = "}";  |HAZ EscribeFicJson;
+
+     || Meto el error en el fichero de registro de Ejecuciones, para tener mas informacion
+     eaFicheroLog = aFicLog;
+     eaTextoLog = "*** " + aResultado + " " + aTextoR;
+     |HAZ EscribeEnLog;
+|FPRC;
+
+|PROGRAMA;
+     aFichero = ("w7" + Usuario) % 108;
+     |NOME_DAT #920 aFichero;
+     |DELINDEX #920;
+
+     aFichero = ("w8" + Usuario) % 108;
+     |NOME_DAT #933 aFichero;
+     |DELINDEX #933;
+
+     aFichero = ("w9" + Usuario) % 108;
+     |NOME_DAT #934 aFichero;
+     |DELINDEX #934;
+
+     aFichero = ("w6" + Usuario) % 108;
+     |NOME_DAT #501 aFichero;
+     |DELINDEX #501;
+
+     aQueQuiero = "|NC";
+     aNumCampos = #cadeflab#aQueQuiero#;
+     nNumCampos = aNumCampos;
+     nNumCampos = nNumCampos - 1;
+
+     |HAZ Tipo8;
+     nPorLoMenos1=1;
+
+     |SI PARAMETRO = "COMANDO_REMOTO";
+          |HAZ ComandoRemoto;
+          |DELINDEX #920;
+          |DELINDEX #933;
+          |DELINDEX #934;
+          |DELINDEX #501;
+          |ACABA;
+     |FINSI;
+
+     |SI aParametro="nomactca"; |O aParametro="nomactat";
+          nEmpresaAnterior=-1;
+          fFecha=~;
+
+          |HAZ ControlTc1;
+          |SI aParametro="nomactca";
+               #0#16="M";
+               #0#20="S"; aOriginal20 = #0#20;
+               #0#22="S"; aOriginal22 = #0#22;
+               |BUCLE BCalculoM;
+          |SINO;
+               #0#16="A";
+               #0#20="S"; aOriginal20 = #0#20;
+               #0#22="S"; aOriginal22 = #0#22;
+               |BUCLE BCalculoA;
+          |FINSI;
+
+          |SI nEmpresaAnterior!-1;
+               |HAZ PaseTC1;
+               |HAZ PaseContabilidad;
+          |FINSI;
+     |SINO;
+          |CLS;
+          |CABEZA "Enlace CONTAGEN (Mes)";
+          |DDEFECTO #0;
+          |PINPA #0#0;
+          |PINDA #0#0;
+
+          |ABRE #0;
+          |LEE 101#0p;
+          |SI FSalida ! 0;
+               |GRABA 020#0b;
+          |FINSI;
+          #0#19 = "NO";
+          |HAZ LaFuente;
+
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0;|Y #0#19 = "SI";
+
+               aOriginal20 = #0#20;
+               aOriginal22 = #0#22;
+
+               nEmpresaAnterior=-1;
+               fFecha=#0#14;
+               aAlfa1=#0#14; aAlfa1=aAlfa1 % -102;
+               nEjercicio=aAlfa1;
+
+               |SI #0#1!0;  || se ha seleccionado la parrilla
+                    |HAZ Parrilla;
+               |SINO;
+                    |HAZ SeleccionDesdeHasta;
+               |FINSI;
+
+               |SI nEmpresaAnterior!-1;
+                    |HAZ PaseTC1;
+                    |HAZ PaseContabilidad;
+               |FINSI;
+
+               |SI nPorLoMenos1=1; |Y nSw920 = 0;
+                    |MENAV "0000Seleccion Vacia.";
+               |SINO;
+                    |SI nSw920 = 1;
+                        |PINPA #0#920;
+                        |BLIN 4;
+                        |ENTLINEAL #1#920, -3, 4, 22, 0, Inf920, Sup920;
+                        |CONFI "    NImprimir Relacion S/N";
+                        |SI FSalida = 0;
+                            |HAZ Imprime;
+                        |FINSI;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+
+          |GRABA 020#0a;
+          |LIBERA #0;
+          |CIERRA #0;
+     |FINSI;
+
+  ||   |DELINDEX #920;
+     |DELINDEX #933;
+     |DELINDEX #934;
+|FPRO;
+
+
+|| --- Procesos para leer actividad
+|PROCESO LeeActiv;
+  fActFin     = "01.01.0000";
+  aNombreAct  = "";
+  aAlfa1 = ":/basica/def/agicen14.mas";
+  |CARGA_DEF aAlfa1, activid@;
+  |SI FSalida = 0;
+      |ABRE #activid@;
+      #activid@#0 = nEmpresa;
+      #activid@#1 = nActividad;
+      |LEE 001#activid@.=;
+      |SI FSalida = 0;
+         aNombreAct  = #activid@#4;
+         fActFin     = #activid@#6;
+         aEsCom      = #activid@#14;
+      |FINSI;
+      |CIERRA #activid@;
+      |DESCARGA_DEF #activid@;
+  |FINSI;
+|FPRC;
+
+|PROCESO LeeAuxiliar;
+ |PRINT;
+|FPRC;
+
+|DEFBUCLE LeeAuxiliar;
+ #920#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, LeeAuxiliar;
+|FIN;
+
+|PROCESO Imprime;
+ |IMPRE 0;
+ |SI FSalida ! 0; |ACABA; |FINSI;
+
+ |INFOR "nomw0020";
+ |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+
+ |BUCLE LeeAuxiliar;
+ |PIEINF;
+ |FININF;
+ |FINIMP;
+|FPRC;

@@ -1,0 +1,195 @@
+|FICHEROS;
+     dsreplic #0;
+     dsreplil,MANTE;
+     auxiliar@ #100;
+|FIN;
+
+|VARIABLES;
+     aAlfa1 = "";
+     aAlfa2 = "";
+
+     {-1}menu = "";
+     menu1 = "2400";
+     menu2 = "1";
+     menu3 = "Elegir Opcion:";
+     menu4 = "AC";
+     menu5 = "Procesar Replica";
+     || menu6 = "Seleccionar";
+     menu6 = "Cancelar";
+     nOpcion = 0;
+
+     aAlfa = "";
+     aDirBase = "";
+     aRutaDatos = "";
+     aRutaDef = "";
+     nError = 0;
+     nLinea = 0;
+     aLinea = "";
+|FIN;
+
+|PROCESO BuscaValores; |TIPO 7;
+     aAlfa1 = "ACTIVAR_RESPALDO_EXTERNO";
+     |VALOR_INI aAlfa1, aAlfa2;
+     |QBF aAlfa2;
+     |SI aAlfa2 = "0";
+          aAlfa2 = "1";
+          aAlfa1 = aAlfa1 + "=" + aAlfa2;
+          |VALOR_INI aAlfa1, aAlfa2;
+          aAlfa1 = "ACTIVAR_RESPALDO_EXTERNO";
+          |VALOR_INI aAlfa1, aAlfa2;
+     |FINSI;
+     #0#0 = aAlfa2;
+     |PINTA #0#0;
+
+     aAlfa1 = "SERVICIO_DB_EXTERNO";
+     |VALOR_INI aAlfa1, aAlfa2;
+     #0#1 = aAlfa2;
+     |PINTA #0#1;
+
+     aAlfa1 = "FILTRO_DB_EXTERNO";
+     |VALOR_INI aAlfa1, aAlfa2;
+     #0#2 = aAlfa2;
+     |PINTA #0#2;
+|FPRC;
+
+|PROCESO replica;
+     |CARGA_DEF aRutaDef, auxiliar@;
+     |SI FSalida ! 0;
+          nError = 3;    || Error en CARGA_DEF: no encuentro fichero
+     |SINO;
+          |PATH_DAT #100 aRutaDatos;
+          |ABRE #100;
+          |LEE 101#100p;
+          |SI FSalida = 0;
+               |PARA; |SI FSalida = 0; |HACIENDO;
+                    |GRABA 020#100a;
+                    |LIBERA #100;
+                    |LEE 101#100s;
+               |SIGUE;
+          |FINSI;
+          |CIERRA #100;
+          |DESCARGA_DEF #auxiliar@;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaRuta;
+     aRutaDatos = "";
+     aRutaDef = "";
+     nError = 0;
+     |DBASS aDirBase;
+     aAlfa = #dsreplil#1;     || aplicacion
+     |QBF aAlfa;
+     |SI aAlfa = "";
+          nError = 1;         || no se ha especificado aplicacion
+          |ACABA;
+     |SINO;
+          aRutaDatos = aDirBase + aAlfa + "/fich/";     || fich
+          aRutaDef = aDirBase + aAlfa + "/def/";     || def's
+     |FINSI;
+     aAlfa = #dsreplil#2;     || empresa (si hay)
+     |QBF aAlfa;
+     |SI aAlfa ! "";
+          aRutaDatos = aRutaDatos + aAlfa + "/";
+     |FINSI;
+     aAlfa = #dsreplil#3;     || def
+     |QBF aAlfa;
+     |SI aAlfa = "";
+          nError = 2;         || no se ha especificado def
+          |ACABA;
+     |SINO;
+          || aRutaDatos = aRutaDatos + aAlfa + ".dat";
+          aRutaDef = aRutaDef + aAlfa + ".mas";
+     |FINSI;
+|FPRC;
+
+|PROCESO principal;
+     |HAZ BuscaRuta;
+
+     nLinea = #dsreplil#0;
+     aLinea = nLinea; aLinea = "000" + aLinea; aLinea = aLinea % -103;
+     |SI nError ! 0;
+          |SI nError = 1;
+               aAlfa = "    ATENCION: linea " + aLinea + ": no se ha especificado aplicacion";
+               |MENAV aAlfa;
+          |FINSI;
+          |SI nError = 2;
+               aAlfa = "    ATENCION: linea " + aLinea + ": no se ha especificado def";
+               |MENAV aAlfa;
+          |FINSI;
+          |ACABA;
+     |FINSI;
+
+     |HAZ replica;
+
+     |SI nError = 3;
+          aAlfa = "    ATENCION: linea " + aLinea + ": Error en CARGA_DEF, no encuentro el def";
+          |MENAV aAlfa;
+          |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO ReplicaTodos;
+     |HAZ BuscaRuta;
+     |SI nError ! 0;
+          |ACABA;
+     |FINSI;
+     |HAZ replica;
+|FPRC;
+
+|DEFBUCLE DesdeDentro;
+     #dsreplil#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, principal;
+|FIN;
+
+|DEFBUCLE DesdeFuera;
+     #dsreplil#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, ReplicaTodos;
+|FIN;
+
+|PROCESO Pantalla;
+     |PINPA #0#0;
+     |PINDA #0#0;
+|FPRC;
+
+|PROCESO min;
+     #dsreplil#0 = 1;
+|FPRC;
+
+|PROCESO max;
+     #dsreplil#0 = 999;
+|FPRC;
+
+|PROGRAMA;
+     |SI PARAMETRO = "";
+          |HAZ Pantalla;
+          |||HAZ BuscaValores;
+          |PARA; |SI; |HACIENDO;
+               |ENTLINEAL #1#dsreplil, -1, 2, 22, 1, min, max;
+               |MENU menu;
+               nOpcion = FSalida;
+               |SI nOpcion = 1;
+                    |BUCLE DesdeDentro;
+                    ||SUB_EJECUTA "dsreplil";
+               |FINSI;
+               /*
+               |SI nOpcion = 2;
+                    |ENTLINEAL #1#dsreplil, -4, 2, 22, 1, min, max;
+               |FINSI;
+               */
+               |SI nOpcion = 2;
+                    |ACABA;
+               |FINSI;
+          |SIGUE;
+     |SINO;
+          |HAZ BuscaValores;
+          |BUCLE DesdeFuera;
+     |FINSI;
+|FPRO;

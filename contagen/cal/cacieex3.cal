@@ -1,0 +1,651 @@
+|FICHEROS;
+   cacieex3 #00;   || def de proceso
+
+   cacuenta #01;   || cuentas
+   camaasic #02;   || apuntes cabs.
+   camaasil #03;   || apuntes lins.
+   caexistc #06;   || cabs. descarga exist.
+   cacuedep #11;   || Cuentas por Departamentos
+
+   :/modelos/def/dsmom030 #09;   || conceptos automaticos
+
+   camandia #10;   || diarios
+   caconasi #20;
+   canempre #30;
+
+   ca8m0011 #431;
+   ca8m0012 #432;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+
+   &eSwSelec  = 1;
+   &eaDDepar  = "";
+   &eaHDepar  = "";
+   &efDFecha  = @;
+   &efHFecha  = @;
+   &eaNomFDep = "";  ||Nombre del Fichero Creado
+
+   aElDepar = "";
+   aDDepar  = "";
+   aHDepar  = "";
+   nAsiento = 0;
+   nLinea   = 0;
+   swAlgun  = 0;
+   swMovi   = 0;
+   nImporte = 0;
+   nImport0 = 0;
+   LaCuenta = "";
+   nDebe    = 0;
+   nHaber   = 0;
+
+   nEstado = 0;
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+   alfa4 = "";
+
+   nada = " ";
+   zeta = "z";
+   aCDesc = "";
+
+   aElDep  = "";
+   aElSub  = "";
+   aCtaPer = "";
+   nError  = 0;
+   nAlgun  = 0;
+   nume1   = 0;
+   nume2   = 0;
+   nSiHay8y9 = 0;
+
+   aDCuenta = "";
+   aHCuenta = "";
+   nSwOp    = 0;
+
+   nDocum   = 0;
+   &enErrorW17 = 0;
+   nSwError = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| =====================================================================
+|| CALCULOS PANTALLA
+|| =====================================================================
+|PROCESO Tipo8_ci3; |TIPO 8;
+ |HAZ inicio;
+ nSiHay8y9 = 0;
+ |ABRE #1;
+ #1#0 = "8           ";
+ |LEE 041#1];
+ |SI FSalida = 0; nSiHay8y9 = 1; |FINSI;
+ |CIERRA #1;
+ |SI nSiHay8y9 = 0;
+     |C_M #0#13,1,"N";
+     |C_M #0#14,1,"N";
+ |FINSI;
+
+ |ABRE #9;
+ #9#0 = #0#13;
+ |LEE 001#9=;
+ |SI FSalida ! 0;
+     |DDEFECTO #9;
+     #9#0 = #0#13;
+     #9#1 = "REGUL.IMPUT. A PATRIMONIO NETO";
+     #9#2 = "REGULARIZACION DE IMPUTACIONES A PATRIMONIO NETO";
+     #9#8 = "S";
+     |GRABA 020#9n;
+ |FINSI;
+ |CIERRA #9;
+|FPRC;
+
+|CALCULO ElPtec; |TIPO 7;
+   |SI eaSobreEs ! "S";
+       |PTEC 816;
+   |FINSI;
+|FCAL;
+
+|CALCULO defecto; |TIPO 7;
+   |HAZ eLeeParametro;
+   #0Campo = fec2;
+   |PINTA #0Campo;
+|FCAL;
+
+|CALCULO topes; |TIPO 0;
+   |SI #0Campo < fec1; |O #0Campo > fec2;
+      |MENAV "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+      |ERROR;
+   |SINO;
+      |SI #0Campo [ fec3;
+          |MENAV "    ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+          |ERROR;
+      |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO estruct; |TIPO 0;
+   |C_M #0#1, 0, alfa1;
+   |SI alfa1 = "N"; |ACABA; |FINSI;
+
+   |ABRE #6;
+   #6#0 = #0#1;
+   |LEE 001#6=;
+   |SI FSalida ! 0;
+      |MENAV "    No existe la estructura de descarga.";
+      |ERROR;
+   |FINSI;
+   |CIERRA #6;
+
+   #0#6 = #6#1; |PINTA #0#6;
+   #0#7 = #6#2; |PINTA #0#7;
+   #0#12 = #6#3;
+
+   alfa1 = #0#7; |QBF alfa1;
+   |SI alfa1 = "";
+      |MENAV "    Error. Cuenta de Perdidas y Ganancias en Blanco";
+      |ERROR;
+      |ACABA;
+   |FINSI;
+
+   |ABRE #1;
+   #1#0 = #0#7;
+   |LEE 001#1=;
+   |SI FSalida !  0;
+       |MENAV "    Error. No existe Cuenta de Perdidas y Ganancias";
+       |ERROR;
+   |FINSI;
+   |CIERRA #1;
+   aCDesc = #0#1; |QBF aCDesc;
+   aCDesc = ("00" + aCDesc) % -102;
+|FCAL;
+
+
+|PROCESO VerCtaP;
+  nAlgun  = 1;
+  aCtaPer = #6#2; |QBF aCtaPer;
+  |SI aCtaPer = "";
+      nError = 7;
+  |SINO;
+      |ABRE #cacuenta;
+      #cacuenta#0 = aCtaPer;
+      |LEE 041#cacuenta.=;
+      |SI FSalida ! 0;
+          nError = 5;
+      |FINSI;
+      |CIERRA #cacuenta;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE VerCtaP;
+ #6#1;
+ ;
+ nume1;
+ nume2;
+ ;
+ NULL, VerCtaP;
+|FIN;
+
+|PROCESO VerCtaPer;
+   |C_M #0#11, 0, alfa1;
+   |SI alfa1 = "N"; |ACABA; |FINSI;
+
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   nError = 0;
+   nAlgun = 0;
+   nume1  = #0#10;
+   nume2  = #0#11;
+   |BUCLE VerCtaP;
+   |SI nAlgun = 0;
+       alfa1= "    NO EXISTE DESCARGA DE EXISTENCIAS        ";
+       nError = 6;
+   |SINO;
+      |SI nError = 5; alfa1= "    NO EXISTE CUENTA DE PERDIDAS Y GANANCIAS (1290) "; |FINSI;
+      |SI nError = 7; alfa1= "    EN BLANCO CTA PERDIDAS Y GANANCIAS EN DESC.EXISTENCIAS"; |FINSI;
+   |FINSI;
+   |SI nError ! 0;
+       |MENAV alfa1;
+       |ERROR;
+   |FINSI;
+|FPRC;
+
+|CALCULO concepto; |TIPO 0;
+   |ABRE #9;
+   #dsmom030#0 = #0Campo;
+   |LEE 021#dsmom030.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dsmom030;
+   |FINSI;
+   |SI #dsmom030#8 ! "S";
+       |MENAV "    El concepto no corresponde al Tipo de Apunte";
+       |ERROR;
+   |FINSI;
+   |CIERRA #dsmom030;
+   nume1 = Campo + 1;
+   #0nume1 = #dsmom030#1; |PINTA #0nume1;
+|FCAL;
+
+|CALCULO diario_expl; |TIPO 0;
+   |ABRE #10;
+   #10#0 = #0#4;
+   |LEE 021#10=;
+   |SI FSalida ! 0;
+      |DDEFECTO #10;
+   |FINSI;
+   #0#5 = #10#1;
+   |PINTA #0#5;
+   |CIERRA #10;
+|FCAL;
+
+|CALCULO Antes8; |TIPO 7;
+   |C_M #0#8,1,"S";
+   |SI eaDepar = "N";
+       |C_M #0#8,1,"N"; #0#8 = "N"; |PINTA #0#8;
+   |FINSI;
+|FCAL;
+
+|CALCULO PorqueOpta;
+ |SI #0#8 = "S";
+     |C_M #0#9,1,"S";
+     |C_M #0#10,1,"S";
+     |C_M #0#11,1,"S";
+
+     |C_M #0#1,1,"N";  #0#1 = 00; |PINTA #0#1;
+                       #0#6 = ""; |PINTA #0#6;
+                       #0#7 = ""; |PINTA #0#7;
+ |SINO;
+     |C_M #0#1,1,"S";
+
+     |C_M #0#9,1,"N";  #0#9 = "N";   |PINTA #0#9;
+     |C_M #0#10,1,"N"; #0#10 = "  "; |PINTA #0#10;
+     |C_M #0#11,1,"N"; #0#11 = "99"; |PINTA #0#11;
+ |FINSI;
+|FCAL;
+
+|| ========================================================================
+|| PROCESO PADRE
+|| ========================================================================
+|| ***********************************************************************
+|PROCESO Asto917;
+        |DDEFECTO #3;
+        #3#00 = #0#4;      ||  diario
+        #3#01 = #0#0;      ||  fecha
+        #3#02 = nAsiento;  ||  documento
+        #3#03 = nLinea;    ||  linea
+        |LEE 101#3=;
+        nEstado = FSalida;
+        #3#04 = LaCuenta;  ||  cuenta
+        eaCuenta = #3#4;  |HAZ SacaNivel; #3#5 = enNivel;
+
+        |HAZ GrabaLinea;
+        |SI #3#8 = "D";
+            nDebe  = nDebe + #3#9;
+        |SINO;
+            nHaber = nHaber + #3#9;
+        |FINSI;
+        swAlgun = 1;
+|FPRC;
+
+|PROCESO LasLineas;
+ LaCuenta = #432#2;
+ nImporte  = #432#4;
+ |SI nImport0 > 0; nImporte = - nImporte; |FINSI;
+ alfa4 = aElDepar;
+ aElDepar = #432#6;
+ |HAZ Asto917;
+ aElDepar = alfa4;
+|FPRC;
+
+|DEFBUCLE LasLineas;
+ #432#1;
+ 6;
+ #431#0, 01, aDDepar;
+ #431#0, 99, aHDepar;
+ e;
+ NULL, LasLineas;
+|FIN;
+
+|PROCESO CreaApunte;
+
+    #431#0 = LaCuenta;
+    |LEE 001#431=;
+    |SI FSalida ! 0;
+        nSwError = 2;
+        |ACABA;
+    |FINSI;
+
+    |SI nLinea = 1;
+        aElDepar = aCDesc;
+        |HAZ contador;
+        nAsiento = nDOCUMENTO;
+    |FINSI;
+
+    |SI aElDepar ! aCDesc;
+        aElDepar = aCDesc;
+        |SI #0#9 = "S";
+            nLinea = 1;
+            |HAZ contador;
+            nAsiento = nDOCUMENTO;
+        |FINSI;
+    |FINSI;
+
+    nImporte = nImport0;
+    |HAZ Asto917;
+
+    LaCuenta = #431#2; |QBF LaCuenta;
+    |SI LaCuenta ! "";
+        nImporte = -nImport0;
+        |HAZ Asto917;
+    |SINO;
+        aDDepar = "  "; aHDepar = "zz";
+        |SI #0#8 = "S";  aDDepar = aElDepar; aHDepar = aElDepar; |FINSI;
+        |BUCLE LasLineas;
+    |FINSI;
+|FPRC;
+
+|PROCESO expl4;
+
+    |SI swAlgun = -1; swAlgun = 0; |FINSI;
+
+    |SI #0#8 = "S";
+        |SI #11#3 ! "S";  |ACABA;  |FINSI;
+        |SI #11#53 = 0;   |ACABA;  |FINSI;
+        LaCuenta = #11#0;
+        aCDesc   = #11#57;
+        nImport0 = #11#53;
+    |SINO;
+        |SI #1#3 ! "S";  |ACABA;  |FINSI;
+        |SI #1#53 = 0;   |ACABA;  |FINSI;
+        LaCuenta = #1#0;
+        nImport0 = #1#53;
+        aCDesc   = aElDep;
+    |FINSI;
+
+    |PINTA 2336, LaCuenta; |PINTA 2249, aCDesc;
+
+    |SI nSwOp = 1; |HAZ CreaApunte; |FINSI;
+
+    |SI nSwOp = 0;
+        |SI nLinea = 1;
+            aElDepar = aCDesc;
+            |HAZ contador;
+            nAsiento = nDOCUMENTO;
+            nDebe   = 0;
+            nHaber  = 0;
+        |FINSI;
+
+        |SI aElDepar ! aCDesc;
+            |HAZ expl5;
+            aElDepar = aCDesc;
+            |SI #0#9 = "S";
+                nLinea = 1;
+                |HAZ contador;
+                nAsiento = nDOCUMENTO;
+            |FINSI;
+            nDebe   = 0;
+            nHaber  = 0;
+        |FINSI;
+
+        nImporte = nImport0;
+
+        |DDEFECTO #3;
+        #3#00 = #0#4;      ||  diario
+        #3#01 = #0#0;      ||  fecha
+        #3#02 = nAsiento;  ||  documento
+        #3#03 = nLinea;    ||  linea
+        |LEE 101#3=;
+        nEstado = FSalida;
+        #3#04 = LaCuenta;  ||  cuenta
+        eaCuenta = #3#4;  |HAZ SacaNivel; #3#5 = enNivel;
+
+        |HAZ GrabaLinea;
+        |SI #3#8 = "D";
+            nDebe  = nDebe + #3#9;
+        |SINO;
+            nHaber = nHaber + #3#9;
+        |FINSI;
+        swAlgun = 1;
+    |FINSI;
+    |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE cacieexp2;
+   #1#1;
+   ;
+   aDCuenta;
+   aHCuenta;
+   be;
+   NULL, expl4;
+|FIN;
+
+|DEFBUCLE LeeCtaDep;
+ #11#2;
+ 3,4;
+ eaDDepar, aDCuenta, "S",  1;
+ eaHDepar, aHCuenta, "S", 99;
+ e;
+ NULL, expl4;
+|FIN;
+
+|PROCESO AstoNuevo;
+  |SUB_EJECUTA "ca8z0011;CIERRE";
+  |SI enErrorW17 = 1;
+      nSwError = 1;   ||no esta bien el reparto
+      |ACABA;
+  |FINSI;
+
+  |ATRI S;
+  |PINTA 2301,"  Proceso en Imputacion P. Neto .:              ";
+  |ATRI 0;
+
+  nSwError = 0;
+  nLinea   = 1;
+  aDCuenta = "8           ";
+  aHCuenta = "999999999999";
+  nSwOp    = 1;
+
+  |ABRE #2;
+  |ABRE #3;
+  |ABRE #431;
+  |SI #0#8 = "S";
+     |BUCLE LeeCtaDep;
+  |SINO;
+     |BUCLE cacieexp2;
+  |FINSI;
+  |CIERRA #431;
+  |CIERRA #3;
+  |CIERRA #2;
+
+  |SI nSwError = 2;
+      |MENAV "    Repase el Asto de Imputacion al Patrimonio, puede estar descuadrado";
+      nSwError = 0;
+  |FINSI;
+|FPRC;
+
+||------------------------------------------------------------------------
+|CALCULO proceso; |TIPO 3;
+  |HAZ eLeeParametro;
+  aElDep = eaDfDepC; |SI eaDepar = "N"; aElDep = ""; |FINSI;
+  aElSub = eaDfSubC; |SI eaSubde = "N"; aElSub = ""; |FINSI;
+
+  |SI #0#8 = "S";
+                   || ... Explotacion por Departamentos
+      eSwSelec  = 1;
+      eaDDepar  = #0#10;  eaHDepar  = #0#11;
+      efDFecha  = fec1;  efHFecha  = fec2;
+      |ATRI I;
+      |PINTA 2302, "Procesando Cuentas por Departamentos ... Espere ";
+      |ATRI 0;
+      |SUB_EJECUTA_NP "cacuedep";
+      |PINTA 2302, "                                                ";
+
+      |NOME_DAT #11 eaNomFDep;
+  |FINSI;
+
+  || ... Primer proceso para Imputacion al Patrimonio Neto
+  nSwError = 0;
+  |SI nSiHay8y9 = 1;
+      |HAZ AstoNuevo;
+      |SI nSwError = 1;
+          |MENAV "    Asiento de Imputacion al Patrimonio no realizado. Proceso Interrumpido";
+          |ACABA;
+      |FINSI;
+  |FINSI;
+
+  |ABRE #2;
+  |ABRE #3;
+  || ... Asiento de Explotacion
+  |ATRI S;
+  |PINTA 2301,"       Proceso en Explotacion ...:              ";
+  |ATRI 0;
+
+   swAlgun  = -1;
+   nLinea   = 1;
+   nSwOp    = 0;
+   aDCuenta = "6           ";
+   aHCuenta = "799999999999";
+   |SI #0#8 = "S";
+      |BUCLE LeeCtaDep;
+   |SINO;
+      |BUCLE cacieexp2;
+   |FINSI;
+
+   |SI swAlgun = 1;
+       |HAZ expl5;
+   |SINO;
+       |SI swAlgun = 0;
+           |MENAV "    Atencion. Las Cuentas 6 y 7 no tienen saldo. No se ha realizado el Asiento de Explotacion";
+       |SINO;
+           |MENAV "    Atencion. No hay Cuentas 6 y 7. No se ha realizado el Asiento de Explotacion";
+       |FINSI;
+   |FINSI;
+
+   |CIERRA #2;
+   |CIERRA #3;
+
+   |SI swMovi = 0; |Y swAlgun = 1;
+       |MENAV "    Atencion. No hay movimientos en las Cuentas 6 y 7. No se ha realizado el Asiento de Explotacion";
+   |FINSI;
+|FCAL;
+
+|| **********************************************************************
+|PROCESO expl5;         || perdidas y ganacias
+
+   nImporte = nDebe - nHaber;  || saldo de la cabecera del asiento de explotacion
+   |SI nImporte = 0;  |ACABA;  |FINSI;
+
+   |DDEFECTO #3;
+   #3#00 = #0#4;      ||  diario
+   #3#01 = #0#0;      ||  fecha
+   #3#02 = nAsiento;  ||  documento
+   #3#03 = nLinea;    ||  linea
+   |LEE 101#3=;
+   nEstado = FSalida;
+   |SI #0#8 = "S";
+       |HAZ LeeDescarga;
+   |SINO;
+       eaCuenta = #0#7;  ||  cuenta
+   |FINSI;
+   #3#04 = eaCuenta; |HAZ SacaNivel;
+   #3#05 = enNivel;
+
+   |HAZ GrabaLinea;
+   |HAZ ActTesteo;
+
+    swAlgun = 0;
+    nDebe   = 0;
+    nHaber  = 0;
+|FPRC;
+
+|| *************************************************************************
+|| ACTUALIZACION DE CUENTAS Y CABECERAS DE APUNTES Y LECTURA ULT.ASIENTO
+|| *************************************************************************
+
+|PROCESO GrabaLinea;
+  |SI nSwOp = 0;
+      #3#06 = #0#2;      ||  concepto (explotacion)
+      #3#07 = #0#3;      ||  descripcion (explotacion)
+  |SINO;
+      #3#06 = #0#13;      ||  concepto (p.neto)
+      #3#07 = #0#14;      ||  descripcion (p.neto)
+  |FINSI;
+
+  |SI nImporte > 0;  #3#08 = "H";  |FINSI;
+  |SI nImporte < 0;  #3#08 = "D";  nImporte = nImporte * -1;  |FINSI;
+  |HAZ carga;
+
+  #3#09 = nImporte;  ||  importe
+  #3#21 = aElDepar;  || ... |SI #0#8 = "N"; #3#21 = aElDep; |FINSI;
+  #3#28 = aElSub;
+  #3#24 = nREGISTRO;
+
+  |SI nEstado = 0;  |GRABA 020#3a;  |FINSI;
+  |SI nEstado ! 0;  |GRABA 020#3n;  |FINSI;
+  |LIBERA #3;
+  |HAZ cabecera;
+
+  MasMenos     = #3#9;
+  DebeHaber    = #3#8;
+  aCUENTA      = #3#4;
+  nREGISTRO    = #3#24;
+  nDIARIO      = #3#0;
+  aFECHA       = #3#1;
+  nDOCUMENTO   = #3#2;
+  nNIVELCUENTA = #3#5;
+  |HAZ ActDiario;          || diario
+  |HAZ ActCuenta;          || cuenta
+  nLinea = nLinea + 3;
+  swMovi  = 1;
+|FPRC;
+
+|PROCESO cabecera;
+   |SI #3#9 = 0;  |ACABA;  |FINSI;
+   |DDEFECTO #2;
+   #2#00 = #3#0; ||  diario
+   #2#01 = #3#1; ||  fecha
+   #2#02 = #3#2; ||  documento
+   #2#03 = #3#2; ||  asiento
+   |LEE 101#2=;
+   nEstado = FSalida;
+   |SI #3#08 = "D";
+       #2#04 = #2#04 + #3#09;
+       #2#08 = #0#7; #2#09 = #0#12;
+   |FINSI;
+   |SI #3#08 = "H";
+       #2#05 = #2#05 + #3#09;
+       #2#10 = #0#7; #2#12 = #0#12;
+   |FINSI;
+   #2#12 = #3#24;
+   |SI nEstado = 0;
+      |GRABA 020#2a;
+   |SINO;
+      |GRABA 020#2n;
+   |FINSI;
+   |LIBERA #2;
+|FPRC;
+
+|PROCESO carga;
+  |SI #3#08 = "H";
+      #3#10 = #3#4;
+      #3#11 = #3#5;
+      #3#16 = "";
+      #3#17 = 0;
+   |SINO;
+      #3#10 = "";
+      #3#11 = 0;
+      #3#16 = #3#4;
+      #3#17 = #3#5;
+   |FINSI;
+|FPRC;
+
+|PROCESO LeeDescarga;
+   |ABRE #6;
+   #6#0 = aCDesc;
+   |LEE 001#6=;
+   eaCuenta = #6#2;
+   #0#7  = #6#2;
+   #0#12 = #6#3;
+   |CIERRA #6;
+|FPRC;
+|| **********************************************************************

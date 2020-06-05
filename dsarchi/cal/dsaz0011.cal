@@ -1,0 +1,1424 @@
+|| Modulo para todo lo relativo de la FacturaE de la AA.PP.
+|| MeteDestinoAAPP
+
+|| Tb. incluye parte de los medios de Pago.
+|| Tb. incluye la parte del sigaus de DSCEPSA
+
+|| Tb. incluye lo prefijo de codigo Pais en Nif identificativo
+|| PonPrefijoPais
+
+|| Tb. incluye si se da el caso .. el envio al servidor xface para soap
+|| facturaE
+
+|| Tb. incluye las lineas de Factura que son Trabajo (DSCOMER8)
+|| se utiliza en Carrozados La Moderna.  LineasFacturaTrabajo
+
+|FICHEROS;
+     referen@ #1000;
+     auxdef@  #2000;
+     otrodef@ #1001;
+
+     refeiva@  #66;
+
+     dsarw025 #25;
+     dsarm011 #511;        ||Formato XML Facturae
+
+     dsarz062 #62;         ||Conf. Datos WS FACE
+
+     flowm006 #906;        ||Historico movimientos
+
+     dsarm013@ #113;
+|FIN;
+
+|VARIABLES;
+     aReturnUnix = "";
+     aTextoLinea = "";
+     nNumLinea = 0;
+     aTextoRespuesta = "";
+     aBusco = "";
+
+     nSinLineas = 0;
+     nContador = 0;
+     aAuxUnidades = "";
+     aAuxPrecio = "";
+
+     ||LineasFacturaTrabajo  (LA MODERNA)
+     aRef = "";
+     &eaSerAlb8 = "";
+     &enNumAlb8 = 0;
+     &eaNumLin8 = 0;
+     &enBruto8 = 0;
+     &enBase8 = 0;
+     &enIva8 = 0;
+     &efFecha8 = @;
+     nNumTrabajo = 0;
+     &eaPathDef8 = "";
+     &eaPathDatos8 = "";
+
+
+     &enSwDeliveryEstaAlba = 0;
+     aMas = "";
+
+     nDoc = 0;
+     nLinea = 0;
+     nSitu = 0;
+     &enNumRegFlow = 0;
+     &enSituFlow = 0;
+     &eaDesSituFlow = "";
+
+     aLetra = "";
+     aFicheroRespuesta = "";
+     nHandleHis = 0;
+     nHandleRes = 0;
+     aPathRespuesta = "";
+     aHistoricoFace = "";
+     fFecha = @;
+     aFecha = "";
+     aHora = "";
+     aTextoHoraFecha = "";
+
+     aScript = "";
+     aUsuario = "";
+
+     || Sigaus DSCEPSA
+     nTotalIva = 0;
+     nPorIva = 0;
+     nTipoIva = 0;
+     aAuxVer = "";
+     aAuxEsq = "";
+     aAuxValor = "";
+     nAuxCont = 0;
+
+     &eaArFecDoc = "";
+     fFactura = @;
+     &eaAuxVersion = "";
+     nTotalSigaus = 0;
+     aSerieFac = "";
+     aNumFac = "";
+     &eaSerieFE = "";
+     &eaNumeroFE = "";
+     &eaDefLinFe = "";
+
+     aEsquema = "";
+     aNomEsquema = "";
+     aFinalEsquema = "";
+     aContenido = "";
+     aIdNif = "";
+     aPais = "";
+     aLong = "";
+     nLong = 0;
+
+     &eaFormaPagoFace = "";
+     &eaDefDatosPagoFe = "";
+     &enTipoPagoFace = 0;
+     &eaIbanFace = "";
+
+     &eaAlfa = "";
+
+     &enHandleAAPP = 0;
+     &eaDefAAPPFe = "";
+     &eaArCodCli = "";
+     &eaObligaAAPP = "";
+
+     &enMeteAAPP = 0;
+     &enFaltanDatosAAPP = 0;
+     &eaPathDefAAPP = "";
+     &eaPathDatosAAPP = "";
+     &eaAplicacion = "";
+     &enSwEnviaSOAPFACE = 0;
+     &enSwWebServiceFace = 0;
+     &eaDefMultiLin = "";
+
+     aPathDef = "";
+     aPathDatos = "";
+     aAlfa = "";
+     aAux = "";
+     aDef = "";
+     aNomDef = "";
+     aMensaje = "";
+
+     aReturn = "";
+     aTab = "";
+     aTag = "";
+     nPuntos = 0;
+     aLinea = "";
+     aValor = "";
+
+     nSwPrefijoPaisEnNif = 0;
+
+     &eaFacturaSOAP = "";
+     &eaNomFacSOAP = "";
+     &eaNumDocSOAP = "";
+     &eaUnidad = "";
+
+     aUsuarioFTP = "";
+     aPasswordFTP = "";
+
+     aBase = "";
+     aPathPlugins = "";
+     aReturnDos = "";
+     aDirFtp = "";
+     aDirRecoge = "";
+     aFichero = "";
+     aOrigen = "";
+     aDestino = "";
+     {1}aContiene = "";
+     aDocRemoto = "";
+     aDocServidor = "";
+     aIPRemoto = "";
+
+     aAbre = "";
+     nHandle = 0;
+
+     &enSwSuprimirLinCero = 0;
+|FIN;
+
+|PROCESO ClienteEsAAPP;
+     ||Leo el agifa281 para ver si el cliente esta activo
+     ||como AAPP y tiene al menos los 3 campos rellenos de AdministrativeCentre
+
+     aPathDef = eaPathDefAAPP;
+     aPathDatos = eaPathDatosAAPP;
+     aDef = eaDefAAPPFe;
+
+     aNomDef = aPathDef + aDef;
+     |CARGA_DEF aNomDef, referen@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas CARGA_DEF " + aDef;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |PATH_DAT #1000 aPathDatos;
+
+     |ABRE #referen@;
+
+     |DDEFECTO #referen@;
+     #referen@#0 = eaArCodCli;
+     |LEE 000#referen@.=;
+     |SI FSalida = 0; |Y #referen@#2 = "S";
+          enMeteAAPP = 1;
+
+          |SI eaAplicacion = "dscomer9";
+               |SI #referen@#49 = "S";
+                    enSwSuprimirLinCero = 1;
+               |FINSI;
+          |FINSI;
+
+          ||Revisar si falta algun dato.
+          aAux = #referen@#3;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Codigo Oficina Contable Vacio";
+               enFaltanDatosAAPP = 1;
+               |DESCARGA_DEF #referen@;
+               |ACABA;
+          |FINSI;
+          aAux = #referen@#5;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Direccion";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#8;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Codigo Postal";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#9;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Poblacion";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#10;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Provincia";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+
+          aAux = #referen@#13;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Codigo Organo Gestor Vacio";
+               enFaltanDatosAAPP = 1;
+               |DESCARGA_DEF #referen@;
+               |ACABA;
+          |FINSI;
+          aAux = #referen@#15;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Direccion";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#18;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Codigo Postal";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#19;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Poblacion";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#20;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Provincia";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+
+          aAux = #referen@#23;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Codigo Unidad Tramitadora Vacio";
+               enFaltanDatosAAPP = 1;
+               |DESCARGA_DEF #referen@;
+               |ACABA;
+          |FINSI;
+          aAux = #referen@#25;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Direccion";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#28;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Codigo Postal";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#29;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Poblacion";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+          aAux = #referen@#30;    |QBF aAux;
+          |SI aAux = "";
+               eaObligaAAPP = "Falta Provincia";
+               enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+          |FINSI;
+
+          ||Este campo es obligatorio, pero si esta, se debe rellenar completo
+          aAux = #referen@#33;    |QBF aAux;
+          |SI aAux ! "";
+               aAux = #referen@#35;    |QBF aAux;
+               |SI aAux = "";
+                     eaObligaAAPP = "Falta Direccion. (SubDir. Compras)";
+                     enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+               |FINSI;
+               aAux = #referen@#38;    |QBF aAux;
+               |SI aAux = "";
+                     eaObligaAAPP = "Falta Codigo Postal. (SubDir. Compras)";
+                     enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+               |FINSI;
+               aAux = #referen@#39;    |QBF aAux;
+               |SI aAux = "";
+                     eaObligaAAPP = "Falta Poblacion. (SubDir. Compras)";
+                     enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+               |FINSI;
+               aAux = #referen@#40;    |QBF aAux;
+               |SI aAux = "";
+                     eaObligaAAPP = "Falta Provincia. (SubDir. Compras)";
+                     enFaltanDatosAAPP = 1; |DESCARGA_DEF #referen@; |ACABA;
+               |FINSI;
+          |FINSI;
+
+          enSwEnviaSOAPFACE = 0;
+          ||ARA42
+          ||Si es dscomer9, si tiene activo FACE y si #agifa281#44 = "S";
+          ||Tengo que enviar al servidor SOAP del FACE
+          |SI eaAplicacion = "dscomer9"; |Y enSwWebServiceFace = 1;
+               |SI #referen@#44 = "S";
+                    enSwEnviaSOAPFACE = 1;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          enSwEnviaSOAPFACE = 0;
+          enMeteAAPP = 0;
+     |FINSI;
+
+     |CIERRA #referen@;
+
+     |DESCARGA_DEF #referen@;
+|FPRC;
+
+|PROCESO MeteLineaAAPP;
+     aLinea = aLinea + aReturn;
+     |XGRABA enHandleAAPP, aLinea;
+|FPRC;
+
+|PROCESO MeteDestinoAAPP;
+     aReturn = &13 + &10;
+     aTab = &9;
+
+     aPathDef = eaPathDefAAPP;
+     aPathDatos = eaPathDatosAAPP;
+     aDef = eaDefAAPPFe;
+
+     aNomDef = aPathDef + aDef;
+     |CARGA_DEF aNomDef, referen@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas CARGA_DEF " + aDef;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |PATH_DAT #1000 aPathDatos;
+
+     |ABRE #referen@;
+
+     |DDEFECTO #referen@;
+     #referen@#0 = eaArCodCli;
+     |LEE 000#referen@.=;
+     |SI FSalida = 0; |Y #referen@#2 = "S";
+
+          aTag = "AdministrativeCentres"; nPuntos = 3; aLinea = aTab * nPuntos;
+          aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               || 1.
+               aTag = "AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "CentreCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#3; |QBF aValor;
+               eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "RoleTypeCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#4; |QBF aValor;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Address"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#5; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "PostCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#8; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Town"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#9; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Province"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#10; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "CountryCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#11; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "/AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               |SI eaAplicacion = "dscomer9";
+                    aAux = #referen@#45;    |QBF aAux;
+                    |SI aAux ! "";
+                         aTag = "CentreDescription"; nPuntos = 5; aLinea = aTab * nPuntos;
+                         aValor = aAux;
+                         eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                         aLinea = aLinea + "<" + aTag + ">";
+                         aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+                    |FINSI;
+               |FINSI;
+
+               aTag = "/AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+
+               || 2.
+               aTag = "AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "CentreCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#13; |QBF aValor;
+               eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "RoleTypeCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#14; |QBF aValor;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Address"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#15; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "PostCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#18; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Town"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#19; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Province"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#20; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "CountryCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#21; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "/AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               |SI eaAplicacion = "dscomer9";
+                    aAux = #referen@#46;    |QBF aAux;
+                    |SI aAux ! "";
+                         aTag = "CentreDescription"; nPuntos = 5; aLinea = aTab * nPuntos;
+                         aValor = aAux;
+                         eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                         aLinea = aLinea + "<" + aTag + ">";
+                         aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+                    |FINSI;
+               |FINSI;
+
+               aTag = "/AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+
+               || 3.
+               aTag = "AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "CentreCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#23; |QBF aValor;
+               eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "RoleTypeCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#24; |QBF aValor;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Address"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#25; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "PostCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#28; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Town"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#29; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Province"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#30; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "CountryCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#31; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "/AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               |SI eaAplicacion = "dscomer9";
+                    aAux = #referen@#47;    |QBF aAux;
+                    |SI aAux ! "";
+                         aTag = "CentreDescription"; nPuntos = 5; aLinea = aTab * nPuntos;
+                         aValor = aAux;
+                         eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                         aLinea = aLinea + "<" + aTag + ">";
+                         aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+                    |FINSI;
+               |FINSI;
+
+               aTag = "/AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+          aAux = #referen@#33;    |QBF aAux;
+          |SI aAux ! "";
+               || 4.
+               aTag = "AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "CentreCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#33; |QBF aValor;
+               eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "RoleTypeCode"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aValor = #referen@#34; |QBF aValor;
+               aLinea = aLinea + "<" + aTag + ">";
+               aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Address"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#35; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "PostCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#38; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Town"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#39; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "Province"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#40; |QBF aValor;
+                    eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+                    aTag = "CountryCode"; nPuntos = 6; aLinea = aTab * nPuntos;
+                    aValor = #referen@#41; |QBF aValor;
+                    aLinea = aLinea + "<" + aTag + ">";
+                    aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               aTag = "/AddressInSpain"; nPuntos = 5; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+
+               |SI eaAplicacion = "dscomer9";
+                    aAux = #referen@#48;    |QBF aAux;
+                    |SI aAux ! "";
+                         aTag = "CentreDescription"; nPuntos = 5; aLinea = aTab * nPuntos;
+                         aValor = aAux;
+                         eaAlfa = aValor; |HAZ QuitaRarosXML; aValor = eaAlfa;
+                         aLinea = aLinea + "<" + aTag + ">";
+                         aLinea = aLinea + aValor + "</" + aTag + ">"; |HAZ MeteLineaAAPP;
+                    |FINSI;
+               |FINSI;
+
+               aTag = "/AdministrativeCentre"; nPuntos = 4; aLinea = aTab * nPuntos;
+               aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+          |FINSI;
+
+          aTag = "/AdministrativeCentres"; nPuntos = 3; aLinea = aTab * nPuntos;
+          aLinea = aLinea + "<" + aTag + ">"; |HAZ MeteLineaAAPP;
+     |FINSI;
+
+     |CIERRA #referen@;
+
+     |DESCARGA_DEF #referen@;
+|FPRC;
+
+|PROCESO dsarw025_esquema;
+     aPais = #dsarw025#3;
+     |QBF aPais;
+|FPRC;
+
+|DEFBUCLE dsarw025_esquema;
+ #dsarw025#1;
+ ;
+ "     ", aEsquema,     0;
+ "zzzzz", aEsquema, 99999;
+ ;
+ NULL, dsarw025_esquema;
+|FIN;
+
+|PROCESO dsarw025_prefijo;
+     aIdNif = #dsarw025#3;
+     |QBF aIdNif;
+
+     #dsarw025#3 = aPais + aIdNif;
+     |GRABA 020#dsarw025.a;
+|FPRC;
+
+|DEFBUCLE dsarw025_prefijo;
+ #dsarw025#1;
+ ;
+ "     ", aEsquema,     0;
+ "zzzzz", aEsquema, 99999;
+ be;
+ NULL, dsarw025_prefijo;
+|FIN;
+
+|PROCESO PonPrefijoPais;
+     aPathDef = eaPathDefAAPP;
+     aPathDatos = eaPathDatosAAPP;
+     aDef = eaDefAAPPFe;
+
+     aNomDef = aPathDef + aDef;
+     |CARGA_DEF aNomDef, referen@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas CARGA_DEF " + aDef;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |PATH_DAT #1000 aPathDatos;
+
+     |ABRE #referen@;
+
+     |DDEFECTO #referen@;
+     #referen@#0 = eaArCodCli;
+     |LEE 000#referen@.=;
+     |SI FSalida = 0; |Y #referen@#2 = "S";
+          |SI #referen@#43 = "S";
+               nSwPrefijoPaisEnNif = 1;
+          |FINSI;
+     |FINSI;
+     |CIERRA #referen@;
+     |DESCARGA_DEF #referen@;
+
+
+     |SI nSwPrefijoPaisEnNif = 1;
+          aEsquema = "2.1.4.1.4.1.5.";
+          aPais = "";
+          |BUCLE dsarw025_esquema;
+          |SI aPais = "";
+               aPais = "ES";
+          |SINO;
+               aPais = aPais % 102;
+               |QBF aPais;
+               aLong = aPais % A0;
+               nLong = aLong;
+               |SI nLong ! 2;
+                    aPais = "ES";
+               |FINSI;
+          |FINSI;
+
+          aEsquema = "2.1.1.3.";
+          |BUCLE dsarw025_prefijo;
+
+          aEsquema = "2.2.4.1.4.1.5.";
+          aPais = "";
+          |BUCLE dsarw025_esquema;
+          |SI aPais = "";
+               aPais = "ES";
+          |SINO;
+               aPais = aPais % 102;
+               |QBF aPais;
+               aLong = aPais % A0;
+               nLong = aLong;
+               |SI nLong ! 2;
+                    aPais = "ES";
+               |FINSI;
+          |FINSI;
+
+          aEsquema = "2.2.1.3.";
+          |BUCLE dsarw025_prefijo;
+     |FINSI;
+|FPRC;
+
+|PROCESO DameTipoPagoIban;
+     enTipoPagoFace = 0;
+     eaIbanFace = "";
+
+     aPathDef = eaPathDefAAPP;
+     aPathDatos = eaPathDatosAAPP;
+     aDef = "agifa282";
+
+     aNomDef = aPathDef + aDef;
+     |CARGA_DEF aNomDef, referen@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas CARGA_DEF " + aDef;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |PATH_DAT #1000 aPathDatos;
+
+     |ABRE #referen@;
+
+     |DDEFECTO #referen@;
+     #referen@#0 = eaFormaPagoFace;
+     |LEE 000#referen@.=;
+     |SI FSalida = 0;
+          enTipoPagoFace = #referen@#1;
+          eaIbanFace = #referen@#2;
+          |QBF eaIbanFace;
+     |FINSI;
+
+     |CIERRA #referen@;
+     |DESCARGA_DEF #referen@;
+|FPRC;
+
+|PROCESO dsarw025Controles;
+     aNomEsquema = #dsarw025#4;
+     |QBF aNomEsquema;
+     aFinalEsquema = aNomEsquema % -112;
+     |SI aFinalEsquema = "CurrencyCode";
+          aContenido = #dsarw025#3;
+          |SI aContenido ! "EUR";
+               #dsarw025#3 = "EUR";
+               |GRABA 020#dsarw025.a;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsarw025Controles;
+ #dsarw025#2;
+ ;
+ INICIO;
+ FINAL;
+ be;
+ NULL, dsarw025Controles;
+|FIN;
+
+|PROCESO dsarw025ControlesVarios;
+     |BUCLE dsarw025Controles;
+|FPRC;
+
+|PROCESO LineasFacturasSigaus;
+     |DDEFECTO #auxdef@;
+     #auxdef@#52 = #referen@#15;
+     #auxdef@#0 = #referen@#2;
+     |LEE 000#auxdef@.=;
+     |SI FSalida = 0;
+          nTotalSigaus = nTotalSigaus + #auxdef@#133;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE LineasFacturasSigaus;
+ #referen@#1003;
+ ;
+ aSerieFac, aNumFac,   1;
+ aSerieFac, aNumFac, 999;
+ ;
+ NULL, LineasFacturasSigaus;
+|FIN;
+
+|PROCESO MeteLineaAux_w25;
+     |DDEFECTO #dsarw025;
+     #dsarw025#0 = aAuxVer;
+     #dsarw025#1 = aAuxEsq;
+     #dsarw025#2 = nAuxCont;
+     |LEE 101#dsarw025.=;
+     |SI FSalida ! 0; |GRABA 020#dsarw025.b; |FINSI;
+     #dsarw025#3 = aAuxValor;
+
+     |DDEFECTO #dsarm011;
+     #dsarm011#0 = aAuxVer;
+     #dsarm011#1 = aAuxEsq;
+     |LEE 000#dsarm011.=;
+     #dsarw025#4 = #dsarm011#2;
+     #dsarw025#5 = #dsarm011#3;
+     |GRABA 020#dsarw025.a;
+     |LIBERA #dsarw025;
+|FPRC;
+
+|PROCESO DamePorIva;
+     nPorIva = 0;
+
+     aDef = "agifa066";
+     aNomDef = aPathDef + aDef;
+     |CARGA_DEF aNomDef, refeiva@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas CARGA_DEF " + aDef;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |PATH_DAT #66 aPathDatos;
+
+     |ABRE #66;
+     #66#0 = nTipoIva;
+     #66#6 = "01.01.0000";
+     |LEE 000#66];
+     |PARA; |SI FSalida = 0; |Y #66#0 = nTipoIva; |Y fFactura ] #66#6; |HACIENDO;
+          nPorIva = #66#2;
+          |LEE 000#66s;
+     |SIGUE;
+     |CIERRA #66;
+
+     |DESCARGA_DEF #refeiva@;
+|FPRC;
+
+|PROCESO MiraSigausDSCEPSA;
+     aPathDef = eaPathDefAAPP;
+     aPathDatos = eaPathDatosAAPP;
+     aDef = eaDefLinFe;
+
+     aNomDef = aPathDef + aDef;
+     |CARGA_DEF aNomDef, referen@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas CARGA_DEF " + aDef;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aNomDef = aPathDef + "agifa010";
+     |CARGA_DEF aNomDef, auxdef@;
+     |SI FSalida ! 0;
+          |DESCARGA_DEF #referen@;
+          aMensaje = "0000Problemas CARGA_DEF agifa010 (Albaranes)";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |PATH_DAT #2000 aPathDatos;
+     |PATH_DAT #1000 aPathDatos;
+
+     aSerieFac = eaSerieFE;
+     aNumFac = eaNumeroFE;
+
+     |ABRE #auxdef@;
+     nTotalSigaus = 0;
+     |BUCLE LineasFacturasSigaus;
+     |CIERRA #auxdef@;
+     |CIERRA #referen@;
+     |DESCARGA_DEF #auxdef@;
+     |DESCARGA_DEF #referen@;
+
+     nTipoIva = 2;
+     fFactura = eaArFecDoc;
+     |HAZ DamePorIva;
+
+     |SI nTotalSigaus ! 0;
+          nAuxCont = 7750;
+          aAuxVer = eaAuxVersion;
+
+          aAuxEsq = "3.1.6.1.";
+          aAuxValor = "";
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.7.";
+          aAuxValor = "SIGAUS";
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.8.";
+          aAuxValor = 1;
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.10.";
+          aAuxValor = nTotalSigaus;
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.11.";
+          aAuxValor = nTotalSigaus;
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.14.";
+          aAuxValor = nTotalSigaus;
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.15.";
+          aAuxValor = "";
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.15.1.";
+          aAuxValor = "";
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.15.1.1.";
+          aAuxValor = nTipoIva;
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.15.1.2.";
+          aAuxValor = nPorIva;
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.15.1.3.";
+          aAuxValor = "";
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.15.1.3.1.";
+          aAuxValor = nTotalSigaus;
+          |HAZ MeteLineaAux_w25;
+
+          aAuxEsq = "3.1.6.1.15.1.4.";
+          aAuxValor = "";
+          |HAZ MeteLineaAux_w25;
+
+          nTotalIva = nTotalSigaus % nPorIva;
+          aAuxEsq = "3.1.6.1.15.1.4.1.";
+          aAuxValor = nTotalIva;
+          |HAZ MeteLineaAux_w25;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO EnviaFacturaSOAP;
+     ||IN
+     || eaFacturaSOAP         ||Path completo a la factura .xsig
+     || eaNomFacSOAP          ||Nombre factura .xsig
+
+     ||OUT
+     || Fichero de respuesta del Soap
+
+     |SI eaFacturaSOAP = ""; |O eaNomFacSOAP = "";
+          |ACABA;
+     |FINSI;
+
+
+     aUsuarioFTP = "";
+     aPasswordFTP = "";
+     |ABRE #dsarz062;
+     |DDEFECTO #dsarz062;
+     |LEE 000#dsarz062.p;
+     |SI FSalida = 0;
+          aUsuarioFTP = #dsarz062#1;
+          |QBF aUsuarioFTP;
+          aPasswordFTP = #dsarz062#2;
+          |QBF aPasswordFTP;
+     |FINSI;
+     |CIERRA #dsarz062;
+
+     |SI aUsuarioFTP = ""; |O aPasswordFTP = "";
+          aMensaje = "0000Configuraci¢n Datos WS FACE";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |DBASE aBase;
+     |QBF aBase;
+     aPathPlugins = aBase + "dlls/";
+
+     aReturnDos = &13 + &10;       ||Return en maquina Local. Siempre Windows
+
+     |HAZ DimeUnidad;
+
+     aAlfa      = eaUnidad + ":\DOCUMENTOS";                     |RMKDIR aAlfa;
+     aAlfa      = eaUnidad + ":\DOCUMENTOS\DSARCHI";             |RMKDIR aAlfa;
+     aDirFtp    = aAlfa;
+     aDirRecoge = aAlfa + "\";
+
+     aFichero = "dsftp.exe";
+     aOrigen = aPathPlugins + aFichero;
+     aDestino = aDirRecoge + aFichero;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     |SI aDocRemoto ! aDocServidor;  |O aDocRemoto = "";
+          aIPRemoto = "";
+          |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+          |SI aIPRemoto ! "";
+               |ENVIA_FICHERO aOrigen, aDestino;
+          |SINO;
+               |COPIA_FICHERO aOrigen, aDestino;
+          |FINSI;
+     |FINSI;
+
+     aFichero = "porfavor_espere.exe";
+     aOrigen = aPathPlugins + aFichero;
+     aDestino = aDirRecoge + aFichero;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     |SI aDocRemoto ! aDocServidor;  |O aDocRemoto = "";
+          aIPRemoto = "";
+          |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+          |SI aIPRemoto ! "";
+               |ENVIA_FICHERO aOrigen, aDestino;
+          |SINO;
+               |COPIA_FICHERO aOrigen, aDestino;
+          |FINSI;
+     |FINSI;
+
+     aUsuario = Usuario % 810;
+     |QBF aUsuario;
+     aUsuario = aUsuario < "";
+     aScript = "script_" + aUsuario + ".ftp";
+
+     fFecha = ~;
+     aFecha = fFecha;
+     |HORA aHora;
+     aTextoHoraFecha = "-> " + aFecha + " Hora: " + aHora;
+
+     aAbre =  aDirRecoge + "dsftp.bat";
+     |XABRE "CWB", aAbre, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = "@ECHO OFF"                                          + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = eaUnidad + ":"                                       + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = "cd " + aDirRecoge                                   + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ""                                                  + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ":: crear un archivo temporal llamado " + aScript    + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ":: el signo > y >> es para canalizar el texto."     + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">"  + aDirRecoge + aScript + " ECHO " + aUsuarioFTP + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO %1"             + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO bin"            + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO cd upload"      + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO put " + eaNomFacSOAP + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO bye"            + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ":: Usamos el archivo recien creado:"                 + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = aDirRecoge + "dsftp.exe " + aDirRecoge + aScript + " xface.dv.diagram.net" + aReturnDos; |XGRABA nHandle, aAlfa;
+          aAlfa = ":: sobreescribimos el fichero temporal y lo borramos" + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = "TYPE NUL > " + aDirRecoge + aScript                + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = "DEL " + aDirRecoge + aScript                       + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ""                                                  + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ":: Esperamos 10 segundos"                          + aReturnDos;  |XGRABA nHandle, aAlfa;
+||          aAlfa = "::ping -n 9 127.0.0.1 > NUL"                     + aReturnDos;  |XGRABA nHandle, aAlfa;
+||          aAlfa = "cmd " + &34 + "/c START /MIN /WAIT porfavor_espere.exe 10 /quiet > NULL" + &34 + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = "porfavor_espere.exe 10 /quiet"                     + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ""                                                  + aReturnDos;  |XGRABA nHandle, aAlfa;
+
+          aScript = "script_" + aUsuario + "_down.ftp";
+          aAlfa = ">"  + aDirRecoge + "marca_tiempo.txt ECHO Marca de procesado" + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ""                                                  + aReturnDos;  |XGRABA nHandle, aAlfa;
+
+          aAlfa = ">"  + aDirRecoge + aScript + " ECHO " + aUsuarioFTP + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO %1"             + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO bin"            + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO cd download"    + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO put marca_tiempo.txt" + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO get " + eaNomFacSOAP + ".res" + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO del " + eaNomFacSOAP + ".res" + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO get listado_respuestas.txt" + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO del listado_respuestas.txt" + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ">>" + aDirRecoge + aScript + " ECHO bye"            + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = aDirRecoge + "dsftp.exe " + aDirRecoge + aScript + " xface.dv.diagram.net" + aReturnDos; |XGRABA nHandle, aAlfa;
+          aAlfa = "TYPE NUL > " + aDirRecoge + aScript                + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = "DEL " + aDirRecoge + aScript                       + aReturnDos;  |XGRABA nHandle, aAlfa;
+
+          aAlfa = "GOTO End"                                          + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ":Ayuda"                                            + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = "ECHO Uso: %0 password"                             + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = ":End"                                              + aReturnDos;  |XGRABA nHandle, aAlfa;
+          aAlfa = "exit"                                              + aReturnDos;  |XGRABA nHandle, aAlfa;
+     |SINO;
+          aMensaje = "0000Problemas al crear dsftp.bat para obtener los datos del servidor";
+          |MENAV aMensaje;
+          |XCIERRA nHandle;
+          |ACABA;
+     |FINSI;
+     |XCIERRA nHandle;
+
+     aAlfa = "cmd " + &34 + "/c " + aDirRecoge + "dsftp.bat " + aPasswordFTP + &34;
+     |RSYSTEM aAlfa;
+
+     |SLEEP 1;
+     aAbre = aDirRecoge + "dsftp.bat";
+     ||TODO CCC. Descomentar
+     |RFBORRA aAbre;
+
+     aAbre = aDirRecoge + "DsFtp.log";
+     ||TODO CCC. Descomentar
+     |RFBORRA aAbre;
+
+
+     |DBASE aBase;
+     |QBF aBase;
+     aPathRespuesta = aBase + "face/";
+     |MKDIR aPathRespuesta;
+
+     aHistoricoFace = aPathRespuesta + eaNumDocSOAP + ".txt";
+
+     aFicheroRespuesta = aDirRecoge + eaNomFacSOAP + ".res";
+
+     nNumLinea = 0;
+     aTextoRespuesta = "";
+     aTextoLinea = "";
+     aReturnUnix = &10;
+
+
+     nHandleHis = 2;
+     |XABRE "AB", aHistoricoFace, nHandleHis;
+     |SI FSalida ] 0;
+          aLinea = aTextoHoraFecha;
+          aLinea = aLinea + aReturnDos;
+          |XGRABA nHandleHis, aLinea;
+
+          aLinea = "   Enviada factura " + eaNomFacSOAP + " al Web Service de FACE";
+          aLinea = aLinea + aReturnDos;
+          |XGRABA nHandleHis, aLinea;
+
+          nHandleRes = 4;
+          |XABRE "CBU", aFicheroRespuesta, nHandleRes;
+          |SI FSalida ] 0;
+               fFecha = ~;
+               aFecha = fFecha;
+               |HORA aHora;
+               aTextoHoraFecha = "<- " + aFecha + " Hora: " + aHora;
+
+               aLinea = aTextoHoraFecha;
+               aLinea = aLinea + aReturnDos;
+               |XGRABA nHandleHis, aLinea;
+
+               aLinea = "   ";
+               |XGRABA nHandleHis, aLinea;
+
+               |XLEE nHandleRes, 1, aLetra;
+               |PARA; |SI FSalida > 0; |HACIENDO;
+                    || Return Unix
+                    |SI aLetra = aReturnUnix;
+                         nNumLinea = nNumLinea + 1;
+                         |SI nNumLinea = 2;
+                              aTextoRespuesta = aTextoLinea;
+                         |FINSI;
+                         aTextoLinea = "";
+                    |SINO;
+                         aTextoLinea = aTextoLinea + aLetra;
+                    |FINSI;
+                    |XGRABA nHandleHis, aLetra;
+                    |XLEE nHandleRes, 1, aLetra;
+               |SIGUE;
+               aLinea = aReturnDos;
+               |XGRABA nHandleHis, aLinea;
+          |FINSI;
+          |XCIERRA nHandleRes;
+          |RFBORRA aFicheroRespuesta;
+     |FINSI;
+     |XCIERRA nHandleHis;
+
+     |SI aTextoRespuesta ! "";
+          ||Tengo que sacar este texto SI es distinto de:
+          || 0,Correcto,None
+
+          aBusco = aTextoRespuesta % 111;
+          |SI aBusco = "0,Correcto,";
+               ||TODO CORRECTO
+          |SINO;
+               aMensaje = "0000Error: " + aTextoRespuesta;
+               |MENAV aMensaje;
+          |FINSI;
+     |FINSI;
+
+     nDoc = eaNumDocSOAP;
+     ||Historico
+     |HORA aHora;
+     aUsuario = Usuario % 810;
+     |ABRE #flowm006;
+     #flowm006#0  = nDoc;
+     #flowm006#1  = 99999;
+     |LEE 000#flowm006.];
+     |SI FSalida = 0;
+          |LEE 000#flowm006.a;
+     |SINO;
+          |LEE 000#flowm006.u;
+     |FINSI;
+     |SI FSalida = 0; |Y #flowm006#0  = nDoc;
+          nLinea = #flowm006#1 + 1;
+          nSitu = #flowm006#2;
+     |SINO;
+          nSitu = 0;
+          nLinea = 1;
+     |FINSI;
+     |DDEFECTO #flowm006;
+     #flowm006#0  = nDoc;
+     #flowm006#1  = nLinea;
+     |LEE 101#flowm006.=;
+     |SI FSalida ! 0; |GRABA 020#flowm006.b; |FINSI;
+     #flowm006#2  = nSitu;
+     #flowm006#3  = ~;
+     #flowm006#4  = aHora;
+     #flowm006#5  = aUsuario;
+     #flowm006#6  = "Envio Factura a WS FACE (Doble Click para mas info)";
+
+     enNumRegFlow = #flowm006#0;
+     enSituFlow = #flowm006#2;
+     |HAZ DimeDesFlow;
+     #flowm006#7 = eaDesSituFlow;
+
+     |GRABA 020#flowm006.a;
+     |LIBERA #flowm006;
+     |CIERRA #flowm006;
+|FPRC;
+
+|PROCESO ControlEnvioSOAP;
+
+/*
+     eaFacturaSOAP = "C:\DOCUMENTOS\DSARCHI\000003542.xsig";
+     eaNomFacSOAP = "000003542.xsig";
+     eaNumDocSOAP = "000003542";
+     |HAZ EnviaFacturaSOAP;
+*/
+|FPRC;
+
+
+|PROCESO DeliveryEstaAlba;
+     ||El problema se produce en Materiales e Implantes.
+     ||Que les sale por duplicado el DeliveryNoteNumber
+     ||Porque lo tienen en la definicion, pero desde el programa tb. se calcula
+     ||Ahora controlo que no esta en la definicion del Equivalencia FacturaE
+     ||si ya esta aqui, no lo creo "otra vez".
+
+
+     |SI eaAplicacion = "dscomer9";
+
+          |DBASE aAlfa; |QBF aAlfa;
+          aMas = aAlfa + "def/dsarm013.mas";
+          |CARGA_DEF aMas, dsarm013@;
+          |SI FSalida ! 0; |ACABA; |FINSI;
+
+          |ABRE #dsarm013@;
+
+          |DDEFECTO #dsarm013@;
+          #dsarm013@#0 = eaAplicacion;
+          #dsarm013@#1 = "agifa010";
+          #dsarm013@#2 = 0;
+          |LEE 000#dsarm013@.=;
+          |SI FSalida = 0;
+               aEsquema = #dsarm013@#5;
+               |QBF aEsquema;
+               |SI aEsquema = "3.1.6.1.6.1.1.";
+                    enSwDeliveryEstaAlba = 1;
+               |FINSI;
+          |FINSI;
+
+          |CIERRA #dsarm013@;
+
+          |DESCARGA_DEF  #dsarm013@;
+     |FINSI;
+|FPRC;
+
+|PROCESO DameNumTrabajo;
+     aDef = "agi00002";
+     aNomDef = aPathDef + aDef;
+     |CARGA_DEF aNomDef, auxdef@;
+     |SI FSalida ! 0;
+          aMensaje = "0000Problemas CARGA_DEF " + aDef + " (Trabajos)";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |PATH_DAT #2000 aPathDatos;
+
+     |ABRE #2000;
+     |SELECT #4#2000;
+     #2000#2 = eaSerAlb8;
+     #2000#3 = enNumAlb8;
+     |LEE 000#2000.=;
+     |SI FSalida = 0;
+          nNumTrabajo = #2000#0;
+     |FINSI;
+     |CIERRA #2000;
+     |DESCARGA_DEF #auxdef@;
+|FPRC;
+
+|PROCESO LineasFacturaTrabajo;
+     nLinea = 7000 + eaNumLin8;
+
+     aPathDef = eaPathDef8;
+     aPathDatos = eaPathDatos8;
+
+     aRef = eaSerAlb8 + "/" + enNumAlb8;
+     nAuxCont = nLinea;
+     aAuxVer = eaAuxVersion;
+
+     aAuxEsq = "3.1.6.1.6.1.1.";
+     aAuxValor = aRef;
+     |HAZ MeteLineaAux_w25;
+
+     nNumTrabajo = 0;
+     |HAZ DameNumTrabajo;
+
+     aAuxEsq = "3.1.6.1.7.";
+     aAuxValor = "NUMLINEACONCEPTO " + nNumTrabajo;
+     |HAZ MeteLineaAux_w25;
+
+     aAuxEsq = "3.1.6.1.8.";
+     aAuxValor = 1;
+     |HAZ MeteLineaAux_w25;
+
+     aAuxEsq = "3.1.6.1.10.";
+     aAuxValor = enBruto8;
+     |HAZ MeteLineaAux_w25;
+
+     aAuxEsq = "3.1.6.1.11.";
+     aAuxValor = enBruto8;
+     |HAZ MeteLineaAux_w25;
+
+     aAuxEsq = "3.1.6.1.14.";
+     aAuxValor = enBruto8;
+     |HAZ MeteLineaAux_w25;
+
+     aAuxEsq = "3.1.6.1.15.1.1.";
+     aAuxValor = 2;
+     |HAZ MeteLineaAux_w25;
+
+     nPorIva = ((100 * enIva8) / enBase8) ! 2;
+     aAuxEsq = "3.1.6.1.15.1.2.";
+     aAuxValor = nPorIva;
+     |HAZ MeteLineaAux_w25;
+
+     aAuxEsq = "3.1.6.1.15.1.3.1.";
+     aAuxValor = enBase8;
+     |HAZ MeteLineaAux_w25;
+
+     aAuxEsq = "3.1.6.1.15.1.4.1.";
+     aAuxValor = enIva8;
+     |HAZ MeteLineaAux_w25;
+
+     aFecha = efFecha8;
+     aAuxEsq = "3.1.6.1.18.";
+     aAuxValor = aFecha;
+     |HAZ MeteLineaAux_w25;
+|FPRC;
+
+|PROCESO dsarw025_borralin;
+     |BORRA 020#dsarw025.a;
+     |LIBERA #dsarw025;
+|FPRC;
+
+|DEFBUCLE dsarw025_borralin;
+   #dsarw025#2;
+   ;
+   nContador,    0;
+   nContador, 9999;
+   ;
+   NULL, dsarw025_borralin;
+|FIN;
+
+|PROCESO SuprimirLinCero;
+     nSinLineas = 0;     ||Sirve para terminar el bucle
+     |PARA nContador = 7000; |SI nContador [ 7200; |HACIENDO nContador = nContador + 1;
+
+          aAuxUnidades = "-1";
+          aAuxPrecio = "-1";
+          |SELECT #3#dsarw025;
+
+          #dsarw025#5 = 4630;
+          #dsarw025#2 = nContador;
+          |LEE 000#dsarw025.=;
+          |SI FSalida = 0;
+               aAuxUnidades = #dsarw025#3; |QBF aAuxUnidades;
+          |SINO;
+               nSinLineas = nSinLineas + 1;
+          |FINSI;
+
+          #dsarw025#5 = 4650;
+          #dsarw025#2 = nContador;
+          |LEE 000#dsarw025.=;
+          |SI FSalida = 0;
+               aAuxPrecio = #dsarw025#3; |QBF aAuxPrecio;
+          |FINSI;
+
+          |SI aAuxUnidades = "0"; |Y aAuxPrecio = "0";
+               |BUCLE dsarw025_borralin;
+          |FINSI;
+
+          |SI nSinLineas > 5;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;

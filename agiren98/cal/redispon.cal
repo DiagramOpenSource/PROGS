@@ -1,0 +1,361 @@
+|FICHEROS;
+    redispon #0;  ||  Seleccion de empresas comparacion rendimientos.
+    retmpdis #1;  ||  Temporal Comparativa rendimientos.
+    redatcon #2;  ||  Datos del contribuyente.
+    retotren #3;  ||  Liquidacion Renta.
+    retotrea #4;  ||  Extension liquidacion de Renta. (Liquidacion Adjunta).
+    regrinfl #6;  ||  Lineas Campos Renta por grupos.
+    redefin2 #7;  ||  Cabec. Definidor de informe.
+    redefin3 #8;  ||  Lineas Grupos Definidor de informe.
+    redefin4 #9;  ||  Lineas Campos Definidor de informe.
+    retmpdi1 #10; ||  Def de impresion de linea de temporal.
+|FIN;
+
+|VARIABLES;
+    &programa = 0;
+    &numinfor = 0;
+    xxxxfiac = "  ";
+    xxaponer = "  ";
+    xrelleno = "                              ";
+    existe_emp = 0;
+    existe_ren = 0;
+    campo      = 0;
+    informe = "redispon";
+    sw_grabatmp = 0;
+    lin_tmp = 0;
+    suma  = 0;
+    suma1 = 0;
+    suma2 = 0;
+    camgrl_campo = 0;
+    camgrl_casil = 0;
+    camtmp = 0;
+    camren = 0;
+    impresora = "";
+    tmpnum = 0;
+    tmpnu1 = 0;
+    bucle  = 0;
+    tmpalf = "";
+    fichero = "";
+    filtro = 0;
+    opera = 0;
+    opera_tot = 0;
+    puntot = -1;
+{100}totales = 0;
+ {25}lin_tot = 0;
+     linimp_tot = 0;
+     num_opera = 0;
+|FIN
+
+|| -------------------------- PROCESOS DE IMPRESION -------------------------
+
+|PROCESO print;
+         |PARA camtmp = 1; |SI camtmp < 6; |HACIENDO camtmp = camtmp + 1;
+               #10camtmp = #1camtmp;
+         |SIGUE;
+         |PRINT;
+|FPRC;
+
+|DEFBUCLE lee_tmp;
+          #1#1;
+          ;
+          001;
+          999;
+          e;
+          NULL,print;
+|FIN;
+
+|PROCESO imprime;
+         |SI impresora = "";
+             |IMPRE 0;
+             impresora = Impresora;
+         |SINO;
+             |IMPRE -1;
+         |FINSI;
+         |SI FSalida = 0;
+             |INFOR informe;
+             |SI FSalida = 0;
+                 |BUCLE lee_tmp;
+                 |PIEINF;
+                 |FININF;
+             |FINSI;
+             |FINIMP;
+         |FINSI;
+|FPRC;
+
+|| ----------------------------- PROCESOS DE TOTALES ------------------------
+
+||     Variable puntot = Contiene el numero de totales utilizados - 1;
+||                       Rango de trabajo de 0 a 24.
+
+||     Puntero totales = Contiene el valor del total. Tener en cuenta que por
+||                       cada linea se utilizan 4 totales.
+||                       Disponemos de 100 punteros por lo que el maximo de
+||                       lineas de total es 100 / 4 = 25.
+
+||    Puntero lin_tot = Contiene por linea de total a que linea del fichero de
+||                      Grupos corresponde.
+||                      Disponemos de 25 punteros = maximo de lineas de total
+||                      de que disponemos.
+
+|PROCESO carga_lintot;
+         |SI #9#7 ! " ";
+             Ilin_tot = lin_tot1 <-;
+             Ilin_tot = Ilin_tot + puntot;
+             lin_tot = #8#2;               ||  Numero de linea de grupo;
+         |FINSI;
+|FPRC;
+
+|PROCESO carga_tot;
+         |PARA tmpnum = 0; |SI tmpnum < puntot; |HACIENDO tmpnum = tmpnum + 1;
+               Ilin_tot = lin_tot1 <-;
+               Ilin_tot = Ilin_tot + tmpnum;
+               |SI lin_tot = #9#5;
+                   |PARA camtmp = 2; |SI camtmp < 6; |HACIENDO camtmp = camtmp + 1;
+                         Itotales = totales1 <-;
+                         Itotales = Itotales + ((tmpnum * 4) + (camtmp - 2));
+                         #1camtmp = #1camtmp + (totales * opera_tot);
+                   |SIGUE;
+                   |SAL;
+               |FINSI;
+         |SIGUE;
+         num_opera = num_opera + 1;
+         |SI num_opera = #8#9;
+             opera_tot = 1;
+             |PARA camtmp = 1; |SI camtmp < 6; |HACIENDO camtmp = camtmp + 1;
+                   suma = #1camtmp;
+                   |HAZ totales;
+             |SIGUE;
+             |HAZ carga_lintot;
+             |SI #8#5 = "S"; |HAZ graba_desgrp; |FINSI;
+         |FINSI;
+|FPRC;
+
+|PROCESO totales;
+         Itotales = totales1 <-;
+         Itotales = Itotales + ((puntot * 4) + (camtmp - 2));
+         totales  = totales + (suma * opera_tot);
+|FPRC;
+
+||                 ***** Inicializacion de punteros. *****
+
+|PROCESO ini_tot;
+
+         tmpnu1 = (puntot * 4) + 3;
+
+         |PARA tmpnum = 0; |SI tmpnum < tmpnu1; |HACIENDO tmpnum = tmpnum + 1;
+               Itotales = totales1 <-;
+               Itotales = Itotales + tmpnum;
+               totales = 0;
+         |SIGUE;
+         |PARA tmpnum = 0; |SI tmpnum [ puntot; |HACIENDO tmpnum = tmpnum + 1;
+               Ilin_tot = lin_tot1 <-;
+               Ilin_tot = Ilin_tot + tmpnum;
+               lin_tot = 0;
+         |SIGUE;
+         puntot = -1;
+|FPRC;
+
+|| --------------------- PROCESOS DE CREACION DE TEMPORAL -------------------
+
+|PROCESO carga_tempo;
+         |SI #3#141 = "A"; camtmp = 2; |FINSI;
+         |SI #3#141 = "T"; camtmp = 3; |FINSI;
+         |SI #3#141 = "C"; camtmp = 4; |FINSI;
+         |SI #3#141 ] "1"; |Y #3#141 [ "4"; camtmp = 5; |FINSI;
+         suma = 0;
+         opera = 1;
+         |SI #6#2 > 0;
+             camren = #6#3;
+             |HAZ suma;
+         |SINO;
+             |PARA camgrl_campo = 12; |SI camgrl_campo < 19; |HACIENDO camgrl_campo = camgrl_campo + 1;
+                   camgrl_casil = camgrl_campo - 7;
+                   |SI #6camgrl_casil < 0; opera = -1; |FINSI;
+                   camren = #6camgrl_campo;
+                   |HAZ suma;
+             |SIGUE;
+         |FINSI;
+         #1camtmp = suma;
+         sw_grabatmp = 1;
+         |SI #9#7 ! " "; |Y suma ! 0; |HAZ totales; |FINSI;
+|FPRC;
+
+|PROCESO suma;
+         |SI camren > 0;
+             |SI camren > 250;
+                 camren = camren - 250;
+                 suma = suma + (#4camren * opera);
+             |SINO;
+                 suma = suma + (#3camren * opera);
+             |FINSI;
+         |FINSI;
+|FPRC;
+
+|PROCESO retotrea;
+         #4#0 = #3#0;   ||  Codigo de empresa.
+         #4#1 = #3#141; ||  Tipo.
+         |LEE 001#4=;
+         |SI FSalida ! 0; |DDEFECTO #4; |FINSI;
+|FPRC;
+
+|DEFBUCLE retotren;
+          #3#1;
+          ;
+          #2#0,"1";
+          #2#0,"T";
+          e;
+          NULL,retotrea,NULL,carga_tempo;
+|FIN;
+
+|PROCESO lee_liqui;
+         |ABRE #4;
+         |BUCLE retotren;
+         |CIERRA #4;
+|FPRC;
+
+|PROCESO regrinfl;
+         |SI #9#5 > 0;
+             opera_tot = 0;
+             |SI #9#7 = "+"; opera_tot =  1; |FINSI;
+             |SI #9#7 = "-"; opera_tot = -1; |FINSI;
+             |SI #8#3 > 0;
+                 |DDEFECTO #6;
+                 #6#0 = #9#4;  ||  Grupo.
+                 #6#1 = #9#5;  ||  Campo.
+                 |LEE 001#6=;
+                 |SI FSalida = 0;
+                     |DDEFECTO #1;
+                     |HAZ lee_liqui;
+                     |SI sw_grabatmp = 1;
+                         |SI #9#8 = "S";
+                             lin_tmp = lin_tmp + 1;
+                             #1#0  = lin_tmp;
+                             #1#1  = #9#6;  ||  Descripcion.
+                             |GRABA 020#1n;
+                         |FINSI;
+                         |HAZ carga_lintot;
+                     |FINSI;
+                 |FINSI;
+             |SINO;
+                 |SI num_opera = 0; |DDEFECTO #1; |FINSI;
+                 |HAZ carga_tot;
+             |FINSI;
+         |SINO;
+             |SI num_opera = 0;
+                 lin_tmp = lin_tmp + 1;
+                 #1#0  = lin_tmp;
+                 #1#1  = #9#6;  ||  Descripcion.
+                 |GRABA 020#1n;
+             |FINSI;
+         |FINSI;
+|FPRC;
+
+|DEFBUCLE redefin4;
+          #9#1;
+          ;
+          #8#0,#8#1,#8#2,001;
+          #8#0,#8#1,#8#2,999;
+          e;
+          NULL,regrinfl;
+|FIN;
+
+|PROCESO graba_desgrp;
+         lin_tmp = lin_tmp + 1;
+         #1#0  = lin_tmp;
+         #1#1  = #8#4;
+         |GRABA 020#1n;
+|FPRC;
+
+|PROCESO redefin3;
+         num_opera = 0;
+         |DDEFECTO #1;
+         |SI #8#5 = "S"; |Y #8#3 > 0; |HAZ graba_desgrp; |FINSI;
+         |SI #8#10 ! " "; puntot = puntot + 1; |FINSI;
+         |BUCLE redefin4;
+|FPRC;
+
+|PROCESO crea_tmp;
+         lin_tmp = 0;
+         sw_grabatmp = 0;
+         |BUCLELIN 2redefin3#7;
+|FPRC;
+
+|PROCESO comprueba;  ||  Comprueba si existe renta.
+         |ABRE #3;
+         #3#0   = #2#0;
+         #3#141 = "1";
+         |LEE 001#3];
+         existe_ren = FSalida;
+         |CIERRA #3;
+         |SI existe_ren = 0; |Y #3#0 = #2#0;
+             |HAZ ini_tot;
+             |ABRE #1;
+             |HAZ crea_tmp;
+             |CIERRA #1;
+             |HAZ imprime;
+             |DELINDEX #1;
+         |FINSI;
+|FPRC;
+
+|DEFBUCLE redatcon;
+          #2#1;
+          ;
+          #0#1;
+          #0#2;
+          e;
+          NULL,comprueba;
+|FIN;
+
+|PROCESO redefin2;
+         |ABRE #7;
+         |DDEFECTO #7;
+         #7#0 = programa;
+         #7#1 = numinfor;
+         |LEE 001#7=;
+         |CIERRA #7;
+|FPRC;
+
+|PROCESO fichero;
+         fichero = Usuario; |QBT fichero;
+         fichero = (fichero + "zzzzzzzz") % 106;
+         fichero = "di" + fichero;
+|FPRC;
+
+|PROCESO final; |TIPO 3;
+         |HAZ fichero;
+         |NOME_DAT #1 fichero;
+         |ABRE #1; |CIERRA #1; |DELINDEX #1;
+         |HAZ redefin2;
+         |ABRE #6;
+         |SI #0#0 = "S";
+             |BUCLE redatcon;
+         |SINO;
+             |PARA campo = 3; |SI campo < 33; |HACIENDO campo = campo + 1;
+                   |SI #0campo > 0;
+                       #0#1 = #0campo;
+                       #0#2 = #0campo;
+                       |BUCLE redatcon;
+                   |FINSI;
+             |SIGUE;
+         |FINSI;
+         |CIERRA #6;
+|FPRC;
+
+|| ---------------------- PROCESOS DE ENTRADA DE DATOS -----------------------
+
+|PROCESO empresas; |TIPO 7;
+         |SI #0#0 = "N"; |HAZ nomodi; |FINSI;
+|FPRC;
+
+|PROCESO parrilla; |TIPO 7;
+         |SI #0#0 = "S"; |HAZ nomodi; |FINSI;
+|FPRC;
+
+|PROCESO nomodi;
+         xxaponer = Anono;
+         xxxxfiac = Control % A1001;
+         Control = Control + xxxxfiac;
+         Control = Control + xrelleno;
+         Control = Control % A120;
+         Control = Control + xxaponer;
+|FPRC;

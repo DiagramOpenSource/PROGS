@@ -1,0 +1,803 @@
+|| lee la empresa y carga niveles            || numero 0
+
+|INCLUYE dscont_i;
+|INCLUYE impdat_i;
+
+|FICHEROS;
+   :/contagen/def/canempre #30;
+   :/contagen/def/caconimp #99;   || configuracion impresiones
+   :/contagen/def/camandia #10;   || diarios
+   :/contagen/def/cafantas #98;   || def fantasma para imprimir
+   :/contagen/def/camoneda #130;
+   :/contagen/def/ca8ctrle #400;
+   :/contagen/def/ca8accaa #409;
+
+   :/contagen/def/cacuiv2c #201;
+   :/contagen/def/cacuiv2l #202;
+|FIN;
+
+|VARIABLES;
+    aPath = "";
+    i1 = 0;
+    {-1}punt1 = 0;
+    nume1 = 0;
+    aIntegral = "";
+    &enTipOpera = 0;
+    &efPn10 = @;
+    &efPn11 = @;
+    &enPin12 = 0;
+    &eaPin13 = "";
+    aAlfa1 = "";
+    &enEmpres = 0;
+    &enDescuadre = 0;
+    &enParaActua = 0;
+    &eaFecUltimo = "";
+    &eaDocUltimo = "";
+    &enActu1     = 0;
+    &enActu2     = 0;
+    &enActu3     = 0;
+    &enActu4     = 0;
+    &enActu5     = 0;
+    &enActu6     = 0;
+    &enActu7     = 0;
+
+    nNume1       = 0;
+    nNume2       = 0;
+    nNume3       = 0;
+    nCanal       = 0;
+    TipoIva      = "";
+    nEjer        = 0;
+    fFecha       = @;
+    nHazCambio   = 0;
+
+    aAbre        = "";
+    aAlfa        = "";
+
+    &nCaw010     = 0;
+    &enSwMvo     = 0;
+    &LaConsola   = 0;
+    &eaBloqueo   = "";
+|FIN;
+
+|PROCESO MiraBloqueo;
+     nNume1 = FSalida;
+     |DBASS aBase;
+     aAbre = aBase + "integral/def/dsam0021.mas";
+     |XABRE "E", aAbre, 0;
+     |SI FSalida ] 0;
+         aAlfa = ":integral/dsam0021;" + (("00000" + enEmpresa) % -105);
+         aAlfa = aAlfa + "CHEQUEO";
+         |SUB_EJECUTA aAlfa;
+         |PULSATECLA;
+
+         |SI eaBloqueo ! "1";
+             aAlfa = "|:integral/dsam0021;" + (("00000" + enEmpresa) % -105);
+             aAlfa = aAlfa + "PANTALLA";
+             |SUB_EJECUTA aAlfa;
+         |FINSI;
+     |FINSI;
+     FSalida = nNume1;
+|FPRC;
+
+|PROCESO inicio; |TIPO 8;
+   |HAZ configura;
+   swerror = 0;
+   |QBF fich_alta;
+   |SI fich_alta ! "";
+      empresa = fich_alta;
+   |SINO;
+      |DFICE empresa;
+   |FINSI;
+   cod_emp1 = empresa  % -107;
+   cod_emp2 = cod_emp1 %  106;
+   clave1 = cod_emp2 %  105;
+   clave2 = cod_emp2 % -101;
+   cod1 = clave1;   empre = cod1;
+   cod2 = clave2;   ejerc = cod2;
+   |DFICB aPath;
+
+   fec1 = "01.01.0000";
+   fec2 = "01.01.0000";
+   fec3 = "01.01.0000";
+   |ABRE #30;
+   |DDEFECTO #30;
+   #canempre#2 = cod1;
+   #canempre#3 = cod2;
+   |LEE 000#30=;
+   |SI FSalida ! 0;
+      swerror = 1;
+      |SI cod1 ! 0; |Y cod2 ! 0;
+         |MENAV "    No existe Empresa !!!";
+      |FINSI;
+      |CIERRA #30;
+      |ACABA;
+   |FINSI;
+
+   dig1 = #canempre#11;       || desde mes
+   dig3 = #canempre#13;       || nro. niveles
+   dig4 = #canempre#14;       || 1 nivel
+   dig5 = #canempre#15;       || 2 nivel
+   dig6 = #canempre#16;       || 3 nivel
+   dig7 = #canempre#17;       || 4 nivel
+   dig8 = #canempre#18;       || 5 nivel
+   dig9 = #canempre#19;       || 6 nivel
+
+   enEmpresa   = #30#2;
+   enPeriodo   = #30#3;
+   eaNombreEmp = #30#1;
+   eaNifEmp    = #30#8;
+   eaDepar     = #30#24;
+   eaSubde     = #30#22;
+   enSubde     = 0; |SI eaSubde = "O"; eaSubde = "S"; enSubde = 1; |FINSI;
+   eaDfDepC    = #30#30;
+   eaDfSubC    = #30#31;
+   eaDfDepN    = #30#32;
+   eaDfSubN    = #30#33;
+
+   |HAZ VerMoneda;
+   eaMoneda    = #30#28;
+   |HAZ Monedas;
+   |CIERRA #30;
+   cod2 = #canempre#26;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   tra1 = 100 + #canempre#11;
+   mes1 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = "01." + mes1 + ".20" + clave2;
+      enEjercicio = 2000 + #canempre#26;
+   |SINO;
+      work1 = "01." + mes1 + ".19" + clave2;
+      enEjercicio = 1900 + #canempre#26;
+   |FINSI;
+   enAny = #canempre#26;
+   fec1 = work1;
+   tra1 = 100 + #canempre#12;
+   mes1 = tra1 % -102;
+   |SI #canempre#11 > #canempre#12;
+      cod2 = cod2 + 1;
+      |SI cod2 > 99; cod2 = cod2 - 100;    |FINSI;
+   |FINSI;
+   dia1 = "31";
+   |SI #canempre#12 = 4; |O #canempre#12 = 6; |O #canempre#12 = 9; |O #canempre#12 = 11;
+      dia1 = "30";
+   |FINSI;
+   |SI #canempre#12 = 2;
+      dia1 = "28";
+      |SI cod2 = 88; |O cod2 = 92; |O cod2 = 96; |O cod2 = 0; |O cod2 = 4;
+          |O cod2 = 8; |O cod2 = 12; |O cod2 = 16; |O cod2 = 20;
+         dia1 = "29";
+      |FINSI;
+   |FINSI;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = dia1 + "." + mes1 + ".20" + clave2;
+   |SINO;
+      work1 = dia1 + "." + mes1 + ".19" + clave2;
+   |FINSI;
+   fec2 = work1;
+   fec3 = #canempre#34;
+
+  || Recoger informacion sobre los niveles ...
+  Ipunt1 = dig3<-;
+  Ipunt1 = Ipunt1 + dig3;
+  MaximoDigitos = punt1;
+
+  |HAZ VerPlan2008;
+  |SI nCaw010 = 0; |HAZ Tipo8Version; |FINSI;
+
+   |SI enNoBloq = 0;
+       |HAZ MiraBloqueo;
+       |SI eaBloqueo = "3";
+           |PTEC 807;
+           |ACABA;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO leelo;
+   fec1 = "01.01.0000";
+   fec2 = "01.01.0000";
+   fec3 = "01.01.0000";
+   swerror = 0;
+   |SI LaConsola = 0;
+       |DDEFECTO #30;
+       |ABRE #30;
+       #canempre#2 = cod1;
+       #canempre#3 = cod2;
+       |LEE 040#30=;
+       |SI FSalida ! 0;
+          swerror = 1;
+          |CIERRA #30;
+          |SI emEmp = 0; |MENAV "    No existe Empresa !!!"; |FINSI;
+          |ERROR;
+          |ACABA;
+       |FINSI;
+   |FINSI;
+   empre = cod1; ejerc = cod2;
+
+   dig1 = #canempre#11;
+   dig3 = #canempre#13;
+   dig4 = #canempre#14;
+   dig5 = #canempre#15;
+   dig6 = #canempre#16;
+   dig7 = #canempre#17;
+   dig8 = #canempre#18;
+   dig9 = #canempre#19;
+||
+   cod2 = #canempre#26;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   tra1 = 100 + #canempre#11;
+   mes1 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = "01." + mes1 + ".20" + clave2;
+      enEjercicio = 2000 + #canempre#26;
+   |SINO;
+      work1 = "01." + mes1 + ".19" + clave2;
+      enEjercicio = 1900 + #canempre#26;
+   |FINSI;
+   fec1 = work1;
+   tra1 = 100 + #canempre#12;
+   mes1 = tra1 % -102;
+   |SI #canempre#11 > #canempre#12;
+      cod2 = cod2 + 1;
+   |FINSI;
+   dia1 = "31";
+   |SI #canempre#12 = 4; |O #canempre#12 = 6; |O #canempre#12 = 9; |O #canempre#12 = 11;
+      dia1 = "30";
+   |FINSI;
+   |SI #canempre#12 = 2;
+      dia1 = "28";
+      |SI cod2 = 88; |O cod2 = 92; |O cod2 = 96; |O cod2 = 0; |O cod2 = 4;
+          |O cod2 = 8; |O cod2 = 12; |O cod2 = 16; |O cod2 = 20;
+         dia1 = "29";
+      |FINSI;
+   |FINSI;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = dia1 + "." + mes1 + ".20" + clave2;
+   |SINO;
+      work1 = dia1 + "." + mes1 + ".19" + clave2;
+   |FINSI;
+   enAny = #canempre#26;
+   fec2 = work1;
+   fec3 = #30#34;
+
+   enEmpresa   = #30#2;
+   enPeriodo   = #30#3;
+   eaNombreEmp = #30#1;
+   eaNifEmp    = #30#8;
+   eaDepar     = #30#24;
+   eaSubde     = #30#22;
+   enSubde     = 0; |SI eaSubde = "O"; eaSubde = "S"; enSubde = 1; |FINSI;
+   eaDfDepC    = #30#30;
+   eaDfSubC    = #30#31;
+   eaDfDepN    = #30#32;
+   eaDfSubN    = #30#33;
+
+   |HAZ VerMoneda;
+   eaMoneda    = #30#28;
+   |HAZ Monedas;
+
+  || Recoger informacion sobre los niveles ...
+  Ipunt1 = dig3<-;
+  Ipunt1 = Ipunt1 + dig3;
+  MaximoDigitos = punt1;
+
+  |SI LaConsola = 0;
+      |CIERRA #30;
+  |FINSI;
+  |HAZ VerPlan2008;
+
+|FPRC;
+
+|PROCESO configura;
+   |DDEFECTO #99;
+   |ABRE #99;
+   #99#0 = 1;
+   |LEE 000#99=;
+   |SI FSalida ! 0;
+       |DDEFECTO #99;
+       #99#0 = 1;
+       |GRABA 020#99n;
+       |CIERRA #99;
+       |ACABA;
+   |FINSI;
+   nNume3 = 0;
+   |SI #99#1  ! "L"; |Y #99#1  ! "M"; #99#1  = "M"; nNume3 = 1; |FINSI;
+   |SI #99#2  ! "N"; |Y #99#2  ! "S"; #99#2  = "S"; nNume3 = 1; |FINSI;
+   |SI #99#3  ! "N"; |Y #99#3  ! "S"; #99#3  = "S"; nNume3 = 1; |FINSI;
+   |SI #99#4  ! "N"; |Y #99#4  ! "S"; #99#4  = "N"; nNume3 = 1; |FINSI;
+   |SI #99#5  ! "N"; |Y #99#5  ! "S"; #99#5  = "N"; nNume3 = 1; |FINSI;
+   |SI #99#6  ! "N"; |Y #99#6  ! "S"; #99#6  = "N"; nNume3 = 1; |FINSI;
+   |SI #99#7  ! "N"; |Y #99#7  ! "S"; #99#7  = "S"; nNume3 = 1; |FINSI;
+   |SI #99#8  ! "N"; |Y #99#8  ! "S"; #99#8  = "S"; nNume3 = 1; |FINSI;
+   |SI #99#9  ! "N"; |Y #99#9  ! "S"; #99#9  = "N"; nNume3 = 1; |FINSI;
+   |SI #99#10 ! "N"; |Y #99#10 ! "S"; #99#10 = "N"; nNume3 = 1; |FINSI;
+   |SI #99#11 ! "N"; |Y #99#11 ! "S"; #99#11 = "N"; nNume3 = 1; |FINSI;
+
+   |SI nNume3 = 1;
+       |GRABA 020#99a;
+   |FINSI;
+
+   |CIERRA #99;
+|FPRC;
+
+|PROCESO los_informes;
+   que_i1 = "";
+   que_i2 = "";
+   |MODULO elige_i;
+   |SI #caconimp#1 ! "L";
+      |SI elige_i = "ca8ye001";    que_i1 = "ca8ye001"; que_i2 = "ca8yec01"; |FINSI;
+      |SI elige_i = "ca8yp001";    que_i1 = "ca8yp001"; que_i2 = "ca8ypc01"; |FINSI;
+      |SI elige_i = "ca8ys001";    que_i1 = "ca8ys001"; que_i2 = "ca8ysc01"; |FINSI;
+      |SI elige_i = "cabatodo";    que_i1 = "cabatodo"; que_i2 = "cabatod1"; |FINSI;
+      |SI elige_i = "cabaexpl";    que_i1 = "cabaexpl"; que_i2 = "cabaexp1"; |FINSI;
+      |SI elige_i = "cabasitu";    que_i1 = "cabasitu"; que_i2 = "cabasit1"; |FINSI;
+      |SI elige_i = "cabaorap";    que_i1 = "cabaorap"; que_i2 = "";         |FINSI;
+      |SI elige_i = "cadiario";    que_i1 = "cadiario"; que_i2 = "";         |FINSI;
+      |SI elige_i = "caextrim";    que_i1 = "caextrim"; que_i2 = "caextris"; |FINSI;
+      |SI elige_i = "cavaexpl";    que_i1 = "cavaexpl"; que_i2 = "";         |FINSI;
+      |SI elige_i = "caivexpl";    que_i1 = "caivexpl"; que_i2 = "";         |FINSI;
+      |SI elige_i = "cacasitu";    que_i1 = "cacasitu"; que_i2 = "cavasitu"; |FINSI;
+      |SI elige_i = "cacaexpl";    que_i1 = "cacaexpl"; que_i2 = "cacaexp1"; |FINSI;
+      |SI elige_i = "cay4ivac";    que_i1 = "cay41vac"; que_i2 = "cay22vac"; |FINSI;
+      |SI elige_i = "cay4ivav";    que_i1 = "cay41vav"; que_i2 = "cay22vac"; |FINSI;
+      |SI elige_i = "caybalsy";    que_i1 = "caybalsy"; que_i2 = "caybals2"; |FINSI;
+      |SI elige_i = "caycosy0";    que_i1 = "caycosy0"; que_i2 = "";         |FINSI;
+      |SI elige_i = "cainfres";    que_i1 = "cainfres"; que_i2 = "cainfre1"; |FINSI;
+      |SI #caconimp#4 ! "S";
+         |SI elige_i = "ca8ye001";    que_i1 = "cr8ye001"; que_i2 = "cr8yec01"; |FINSI;
+         |SI elige_i = "ca8yp001";    que_i1 = "cr8yp001"; que_i2 = "cr8ypc01"; |FINSI;
+         |SI elige_i = "ca8ys001";    que_i1 = "cr8ys001"; que_i2 = "cr8ysc01"; |FINSI;
+         |SI elige_i = "cabatodo";    que_i1 = "crbatodo"; que_i2 = "crbatod1"; |FINSI;
+         |SI elige_i = "cabaexpl";    que_i1 = "crbaexpl"; que_i2 = "crbaexp1"; |FINSI;
+         |SI elige_i = "cabasitu";    que_i1 = "crbasitu"; que_i2 = "crbasit1"; |FINSI;
+         |SI elige_i = "cabaorap";    que_i1 = "crbaorap"; que_i2 = "";         |FINSI;
+         |SI elige_i = "cadiario";    que_i1 = "crdiario"; que_i2 = "";         |FINSI;
+         |SI elige_i = "caextrim";    que_i1 = "crextrim"; que_i2 = "crextris"; |FINSI;
+         |SI elige_i = "cavaexpl";    que_i1 = "crvaexpl"; que_i2 = "";         |FINSI;
+         |SI elige_i = "caivexpl";    que_i1 = "crivexpl"; que_i2 = "";         |FINSI;
+         |SI elige_i = "cacasitu";    que_i1 = "crcasitu"; que_i2 = "crvasitu"; |FINSI;
+         |SI elige_i = "cacaexpl";    que_i1 = "crcaexpl"; que_i2 = "crcaexp1"; |FINSI;
+         |SI elige_i = "cay4ivac";    que_i1 = "cry41vac"; que_i2 = "cay22vac"; |FINSI;
+         |SI elige_i = "cay4ivav";    que_i1 = "cry41vav"; que_i2 = "cay22vac"; |FINSI;
+         |SI elige_i = "caybalsy";    que_i1 = "crybalsy"; que_i2 = "crybals2"; |FINSI;
+         |SI elige_i = "cainfres";    que_i1 = "cainfres"; que_i2 = "crinfre1"; |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI #caconimp#1 = "L";
+      |SI elige_i = "ca8ye001";    que_i1 = "cr8ye001"; que_i2 = "cr8yec01"; |FINSI;
+      |SI elige_i = "ca8yp001";    que_i1 = "cr8yp001"; que_i2 = "cr8ypc01"; |FINSI;
+      |SI elige_i = "ca8ys001";    que_i1 = "cr8ys001"; que_i2 = "cr8ysc01"; |FINSI;
+      |SI elige_i = "cabatodo";    que_i1 = "clbatodo"; que_i2 = "clbatod1"; |FINSI;
+      |SI elige_i = "cabaexpl";    que_i1 = "clbaexpl"; que_i2 = "clbaexp1"; |FINSI;
+      |SI elige_i = "cabasitu";    que_i1 = "clbasitu"; que_i2 = "clbasit1"; |FINSI;
+      |SI elige_i = "cabaorap";    que_i1 = "cabaorap"; que_i2 = "";         |FINSI;
+      |SI elige_i = "cadiario";    que_i1 = "cldiario"; que_i2 = "";         |FINSI;
+      |SI elige_i = "caextrim";    que_i1 = "clextrim"; que_i2 = "caextris"; |FINSI;
+      |SI elige_i = "cavaexpl";    que_i1 = "clvaexpl"; que_i2 = "";         |FINSI;
+      |SI elige_i = "caivexpl";    que_i1 = "caivexpl"; que_i2 = "";         |FINSI;
+      |SI elige_i = "cacasitu";    que_i1 = "cacasitu"; que_i2 = "clvasitu"; |FINSI;
+      |SI elige_i = "cacaexpl";    que_i1 = "cacaexpl"; que_i2 = "cacaexp1"; |FINSI;
+      |SI elige_i = "cay4ivac";    que_i1 = "cly41vac"; que_i2 = "cly22vac"; |FINSI;
+      |SI elige_i = "cay4ivav";    que_i1 = "cly41vav"; que_i2 = "cly22vac"; |FINSI;
+      |SI elige_i = "caybalsy";    que_i1 = "clybalsy"; que_i2 = "clybals2"; |FINSI;
+      |SI elige_i = "caycosy0";    que_i1 = "clycosy0"; que_i2 = "";         |FINSI;
+      |SI elige_i = "cainfres";    que_i1 = "cainfres"; que_i2 = "cainfre1"; |FINSI;
+      |SI #caconimp#4 ! "S";
+         |SI elige_i = "cabaorap";    que_i1 = "crbaorap"; que_i2 = "";         |FINSI;
+         |SI elige_i = "caextrim";    que_i1 = "clextrim"; que_i2 = "crextris"; |FINSI;
+         |SI elige_i = "caivexpl";    que_i1 = "crivexpl"; que_i2 = "";         |FINSI;
+         |SI elige_i = "cacasitu";    que_i1 = "crcasitu"; que_i2 = "clvasitu"; |FINSI;
+         |SI elige_i = "cacaexpl";    que_i1 = "crcaexpl"; que_i2 = "crcaexp1"; |FINSI;
+         |SI elige_i = "cainfres";    que_i1 = "cainfres"; que_i2 = "crinfre1"; |FINSI;
+      |FINSI;
+   |FINSI;
+
+   eaValeCero = #caconimp#9;
+|FPRC;
+
+|PROCESO PantaImp_a;
+       aTexImp = " - " + aTexImp + "                                                    ";
+       aTexImp = aTexImp % 0152;
+       nume1 = 1;
+       |SI aIntegral = "";
+           |SI nHay01 = 1; |Y nHay04 = 1; |D_CUADRO 1613,2066; |FINSI;
+           |SI nHay01 = 0; |O nHay04 = 0; |D_CUADRO 1613,1966; |FINSI;
+           |ATRI R;
+           |PINTA 1714," ATENCION:  Esta Empresa tiene datos informados en  ";
+           |SI nHay01 = 1;
+               |PINTA 1814," - Entrada General de Datos Contables afectos al IS ";
+           |FINSI;
+           |SI nHay04 = 1;
+               |SI nHay01 = 0; |PINTA 1814, aTexImp; |FINSI;
+               |SI nHay01 = 1; |PINTA 1914, aTexImp; |FINSI;
+           |FINSI;
+           |ATRI r;
+       |SINO;
+           |SI nHay01 = 1; |Y nHay04 = 1; |D_CUADRO 1113,1566; |FINSI;
+           |SI nHay01 = 0; |O nHay04 = 0; |D_CUADRO 1113,1466; |FINSI;
+           |ATRI R;
+           |PINTA 1214," ATENCION:  Esta Empresa tiene datos informados en  ";
+           |SI nHay01 = 1;
+               |PINTA 1314," - Entrada General de Datos Contables afectos al IS ";
+           |FINSI;
+           |SI nHay04 = 1;
+               |SI nHay01 = 0; |PINTA 1314, aTexImp; |FINSI;
+               |SI nHay01 = 1; |PINTA 1414, aTexImp; |FINSI;
+           |FINSI;
+           |ATRI r;
+       |FINSI;
+|FPRC;
+
+|PROCESO inicial; |TIPO 8;              || al principio del.run
+   aIntegral= PARAMETRO; |QBF aIntegral;
+   aIntegral = aIntegral % 201;
+
+   enNoBloq = 1;
+   |HAZ inicio;
+   enNoBloq = 0;
+   nume1 = 0;
+   |SI enSwMvo ! 0; |ACABA; |FINSI;
+
+   |SI enSiBloq = 0;
+       |HAZ MiraBloqueo;
+       |SI eaBloqueo = "3";
+           |PTEC 807;
+           |ACABA;
+      |FINSI;
+   |FINSI;
+
+   |SI aIntegral = "";
+      enTipOpera = 1;
+      enEmpres   = #canempre#2;
+      |PULSATECLA;
+      |SUB_EJECUTA_NP "caz00002;NOMEQUITESQUETECORTOLOSGUEVOS";
+
+      |C_A #cafantas#4,1, 10;
+      |C_A #cafantas#8,1, 10;
+      |C_A #cafantas#9,1, 13;
+      #cafantas#7  = enEjercicio;
+      #cafantas#4  = "Activa"; |SI #canempre#21 = "I"; #cafantas#4 = "Inactiva"; |FINSI;
+      #cafantas#10 = efPn10;
+      #cafantas#11 = efPn11;
+      #cafantas#5  = eaPin13;
+      #cafantas#8  = eaFecUltimo;
+      #cafantas#16 = eaDocUltimo;
+
+      |CLS;
+      |MENSA "    <F9> Cambio empresa";
+      |D_CUADRO 0610,1070;
+      |D_CUADRO 0610,1670;
+      |ATRI S;   |PINTA 0511, "ESTA USTED ENTRANDO A LA EMPRESA ";
+      |ATRI R;   |PINTA 0711," EMPRESA   ";
+      |ATRI I;   |PINTA 0723, #canempre#2;   |PINTA 0729, #canempre#1;
+      |ATRI R;   |PINTA 0811," CIF/NIF   ";
+      |ATRI I;   |PINTA 0823, #canempre#8;
+      |ATRI R;   |PINTA 0911," PERIODO   ";
+      |ATRI I;   |PINTA 0923, #canempre#3;
+      |ATRI R;   |PINTA 0929," EJERCICIO ";
+      |ATRI I;   |PINTA 0941, #cafantas#7;
+
+      |ATRI R;   |PINTA 1111," FECHA DE ALTA ";
+      |ATRI I;   |PINTA 1127, #cafantas#10;
+      |SI efPn11 > " 01.01.1900";
+          |ATRI R;   |PINTA 1140," FECHA DE BAJA ";
+          |ATRI I;   |PINTA 1156, #cafantas#11;
+      |FINSI;
+      |ATRI R;   |PINTA 1211," SITUACION     ";
+      |ATRI I;   |PINTA 1227, #cafantas#4;
+      |ATRI R;   |PINTA 1311," TIPO EMPRESA  ";
+      |ATRI I;   |PINTA 1327, #cafantas#5;
+
+      || |ATRI R;   |PINTA 1511, " FECHA ULTIMO ASIENTO ";
+      || |ATRI I;   |PINTA 1534, #cafantas#8;
+      |ATRI R;   |PINTA 1511, " ULTIMO ASIENTO ";
+      |ATRI I;   |PINTA 1528, #cafantas#16;
+      |ATRI R;   |PINTA 1535, " FECHA ";
+      |ATRI I;   |PINTA 1543, #cafantas#8;
+      #cafantas#9 = " DIARIO ";
+      |SI enDescuadre = 1;
+          |ATRI S; |PINTA 1456, #cafantas#9;
+          #cafantas#9 = " DESCUADRADO ";
+          |ATRI S; |PINTA 1556, #cafantas#9;
+      |SINO;
+           |ATRI I; |PINTA 1456, #cafantas#9;
+           #cafantas#9 = " CUADRADO  ";
+           |ATRI I; |PINTA 1556, #cafantas#9; || 1549
+      |FINSI;
+      |ATRI 0;
+
+      |SI enParaActua = 1;
+          nNume2 = 0;
+          nNume1 = enActu1 + enActu2 + enActu3 + enActu4 + enActu5 + enActu6 + enActu7;
+          |SI nNume1 = 7; |D_CUADRO 1610,2170; |FINSI;
+          |SI nNume1 > 3; |Y nNume1 < 7; |D_CUADRO 1610,2070; |FINSI;
+          |SI nNume1 [ 3; |D_CUADRO 1610,1970; |FINSI;
+          |ATRI P; |PINTA 1711, "PLANILLAS CONTABLES PARA ACTUALIZAR: "; |ATRI I;
+          |SI enActu1 = 1; aAlfa1 = "Por Ctas Contables"; |HAZ Poner; |FINSI;
+          |SI enActu2 = 1; aAlfa1 = "Por Caja Efectivo "; |HAZ Poner; |FINSI;
+          |SI enActu3 = 1; aAlfa1 = "Por Nominas       "; |HAZ Poner; |FINSI;
+          |SI enActu4 = 1; aAlfa1 = "Por Bloques       "; |HAZ Poner; |FINSI;
+          |SI enActu5 = 1; aAlfa1 = "Facturas          "; |HAZ Poner; |FINSI;
+          |SI enActu6 = 1; aAlfa1 = "Ventas Englobadas "; |HAZ Poner; |FINSI;
+          |SI enActu7 = 1; aAlfa1 = "Ventas diarias    "; |HAZ Poner; |FINSI;
+      |FINSI;
+      |ATRI 0;
+      nume1 = 1;
+      |C_A #cafantas#4,1, 80;
+      |C_A #cafantas#8,1, 80;
+      |C_A #cafantas#9,1, 80;
+   |FINSI;
+
+   |ABRE #10;
+   #camandia#0 = 99;
+   |LEE 040#10=;
+   |SI FSalida = 0;  |Y #camandia#2 ! 0;  |Y #camandia#3 ! 0;
+      |AVISO;
+      |SI aIntegral = "";
+          |D_CUADRO 2113,2366;
+          |ATRI R;
+          |PINTA 2114," ATENCION:  Esta empresa puede estar cerrada, tiene ";
+          |PINTA 2214,"            movimientos en el diario 99             ";
+          |ATRI r;
+      |SINO;
+          |D_CUADRO 1613,1966;
+          |ATRI R;
+          |PINTA 1714," ATENCION:  Esta empresa puede estar cerrada, tiene ";
+          |PINTA 1814,"            movimientos en el diario 99             ";
+          |ATRI r;
+      |FINSI;
+      |AVISO;
+      nume1 = 1;
+   |FINSI;
+   |CIERRA #10;
+
+   || .... Nuevo Control de Impuesto de Sociedades
+   |DBASS aBase; |QBT aBase;  || Directorio Base de las Aplaciones
+   aPContas = aBase + "contasoc/"; || contasoc   Contabilidad Sociedades
+   aElProgr = aPContas + "def/isacceso.mas";
+   |XABRE "E", aElProgr, nCanal;
+   |SI FSalida < 0;
+       aPContas = "";
+   |FINSI;
+   |XCIERRA nCanal;
+   |SI aPContas ! "";
+       nEmpImp = enEmpresa;
+       nEjeImp = enEjercicio;
+       |HAZ MiroImpuesto;
+       |SI nHay01 = 1; |O nHay04 = 1;
+           |HAZ PantaImp_a;
+       |FINSI;
+   |FINSI;
+
+   |SI nume1 = 1;
+       |PAUSA;
+       |SI FSalida = 7;  swerror = 2; |FINSI;
+       |SI FSalida = 17; swerror = 3; |FINSI;
+       |SI swerror = 0;
+           |SI fec3 < fec2; |O fec3 [ "01.01.0000";
+               |SI nHay01 = 1;
+                   |CONFI "    NBorrar la Entrada de Datos Contables afectos al IS";
+                   |SI FSalida = 0;
+                       |HAZ BSodacoca;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+   |BLIN 4;
+|FPRC;
+
+|PROCESO Poner;
+ |SI nNume2 = 0; nNume1 = 1811; |FINSI;
+ |SI nNume2 = 1; nNume1 = 1831; |FINSI;
+ |SI nNume2 = 2; nNume1 = 1851; |FINSI;
+ |SI nNume2 = 3; nNume1 = 1911; |FINSI;
+ |SI nNume2 = 4; nNume1 = 1931; |FINSI;
+ |SI nNume2 = 5; nNume1 = 1951; |FINSI;
+ |SI nNume2 = 6; nNume1 = 2011; |FINSI;
+
+ |PINTA nNume1, aAlfa1;
+ nNume2 = nNume2 + 1;
+|FPRC;
+__________________________________________________________
+|PROCESO Monedas;
+     |SI eaMoneda = "P";                  || pesetas
+          EURO = 1 / 166.386;
+          EURODB = 0;
+          EURODV = 2;
+     |FINSI;
+     |SI eaMoneda = "E";                  || euros
+          EURO = 166.386;
+          EURODB = 2;
+          EURODV = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO VerMoneda;
+     |ABRE #camoneda;
+     |DDEFECTO #camoneda;
+     #camoneda#0 = #canempre#2;
+     #camoneda#1 = #canempre#3;
+     |LEE 001#camoneda.=;
+     |SI FSalida = 0;
+         |SI #camoneda#2 ! #canempre#28;
+             #canempre#28 = #camoneda#2;
+             |GRABA 020#canempre.a;
+         |FINSI;
+     |SINO;
+         #camoneda#0 = #canempre#2;
+         #camoneda#1 = #canempre#3;
+         #camoneda#2 = #canempre#28;
+         |GRABA 020#camoneda.n;
+     |FINSI;
+
+     |CIERRA #camoneda;
+|FPRC;
+
+|PROCESO EjerCCAA;
+    enEjerBal = #409#0;
+|FPRC;
+
+|DEFBUCLE EjerCCAA;
+    #409#1;
+    ;
+    2008;
+    enEjercicio;
+    e;
+    NULL, EjerCCAA;
+|FIN;
+
+|PROCESO VerPlan2008;
+     |SI enEjercicio ] 2008;
+         |ABRE #ca8ctrle;
+         |DDEFECTO #ca8ctrle;
+         #ca8ctrle#0 = #canempre#2;
+         #ca8ctrle#1 = #canempre#3;
+         |LEE 001#ca8ctrle.=;
+         |SI FSalida = 0;
+             eNum2008 = #ca8ctrle#2;
+         |FINSI;
+         |CIERRA #ca8ctrle;
+
+         enEjerBal = 2008;
+         |BUCLE EjerCCAA;
+     |FINSI;
+|FPRC;
+
+|PROCESO CambioIvaLin;
+  |SALVA_DATOS #202;
+  #202#13 = fFecha;
+
+|SI enEjercicio = 2010;
+  |SI #202#2 = 16;
+      #202#2 = 18;
+  |SINO;
+      |SI #202#2 = 7;
+          #202#2 = 8;
+      |SINO;
+          |SI #202#2 = 9;
+              #202#2 = 10;
+          |SINO;
+              |SI #202#2 = 7.50;
+                  #202#2 = 8.50;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FINSI;
+
+|SI enEjercicio = 2012;
+  |SI #202#2 = 18;
+      #202#2 = 21;
+  |SINO;
+      |SI #202#2 = 8;
+          #202#2 = 10;
+      |SINO;
+          |SI #202#2 = 10;
+              #202#2 = 12;
+          |SINO;
+              |SI #202#2 = 8.50;
+                  #202#2 = 10.50;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  |SI #202#4 = 4;
+      #202#4 = 5.20;
+  |SINO;
+      |SI #202#4 = 1;
+          #202#4 = 1.40;
+      |FINSI;
+  |FINSI;
+|FINSI;
+
+  |GRABA 040#202n;
+  |REPON_DATOS #202;
+|FPRC;
+
+|DEFBUCLE CambioIvaLin;
+   #202#1;
+   ;
+   #201#0, #201#20, #201#21, 01;
+   #201#0, #201#20, #201#21, 99;
+   e;
+   NULL, CambioIvaLin;
+|FIN;
+
+|PROCESO CambioIvaCap;
+  #201#0  = TipoIva;
+  #201#20 = enEjercicio;
+  #201#21 = "01.01.2000";
+  |LEE 001#201];
+  |SI FSalida = 0; |Y #201#0 = TipoIva; |Y #201#20 = enEjercicio;
+      |SI #201#21 < fFecha;
+          |BUCLE CambioIvaLin;
+          #201#0 = TipoIva;
+          #201#20 = enEjercicio;
+          #201#21 = fFecha;
+          |GRABA 040#201n;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO Tipo8Version;
+
+     |SI enEjercicio ! 2010; |Y enEjercicio ! 2012; |ACABA; |FINSI;
+
+     nHazCambio = 0;
+     nEjer      = enEjercicio;
+     |SI enEjercicio = 2012;
+         fFecha     = "01.09.2012";
+     |SINO;
+         fFecha     = "01.07.2010";
+     |FINSI;
+
+     |ABRE #201;
+     #201#0  = "R";
+     #201#20 = enEjercicio;
+     #201#21 = fFecha;
+     |LEE 000#201=;
+     |SI FSalida ! 0;
+         nHazCambio = 1;
+         #201#0 = "R";
+         #201#20 = enEjercicio;
+         #201#21 = "01.01.2000";
+         |LEE 041#201];
+         |SI FSalida ! 0; |O #201#20 ! enEjercicio;
+             |CIERRA #201;
+             |SUB_EJECUTA "caw00010;crea";
+         |FINSI;
+     |FINSI;
+     |SI nHazCambio = 0;
+         #201#0  = "S";
+         #201#20 = enEjercicio;
+         #201#21 = fFecha;
+         |LEE 000#201=;
+         |SI FSalida ! 0;
+             nHazCambio = 1;
+             #201#0 = "S";
+             #201#20 = enEjercicio;
+             #201#21 = "01.01.2000";
+             |LEE 041#201];
+             |SI FSalida ! 0; |O #201#20 ! enEjercicio;
+                 |CIERRA #201;
+                 |SUB_EJECUTA "caw00010;crea";
+             |FINSI;
+         |FINSI;
+     |FINSI;
+     |CIERRA #201;
+     enEjercicio = nEjer;
+
+     |SI nHazCambio = 1;
+         |ABRE #201;
+         TipoIva = "R"; |HAZ CambioIvaCap;
+         TipoIva = "S"; |HAZ CambioIvaCap;
+         |CIERRA #201;
+     |FINSI;
+|FPRC;

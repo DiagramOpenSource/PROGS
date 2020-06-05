@@ -1,0 +1,258 @@
+||Recalculos varios.
+
+||Info Extra FacturaE.
+
+|FICHEROS;
+     dsarw025 #25;
+
+     dsarm038 #38;
+     dsarm011 #11;
+|FIN;
+
+|VARIABLES;
+     aCP = "";
+     aEsquema = "";
+     nCondicion = 0;
+     nSwCanarias = 0;
+     aAuxVer = "";
+     aAuxAux = "";
+
+     nUltimaLinea = 0;
+     aMensaje = "";
+     nVoy = 0;
+
+     nTotal = 0;
+     nCantidad = 0;
+     nImporte = 0;
+     nTotalReal = 0;
+     nImporteNuevo = 0;
+
+     nPorcentaje = 0;
+     nImporteIva = 0;
+     nIvaReal = 0;
+|FIN;
+
+|PROCESO RecalTotIvaTalleres;
+     ||Se utiliza para Talleres, porque las facturas tienen
+     ||un redondeo a tres decimales, que no es exacto para los importes
+     ||de iva.
+
+     ||TotalAmount: 124.26
+     ||Iva:         21.0
+     ||TotalAmount: 26.09
+
+     ||Pero en la factura esta grabado: 26.10
+
+     ||05 - Error Comprobacion contable
+     ||La cuota de ImpuestosRepercutidos del tipo de impuesto 01,
+     ||porcentaje 21.00% y recargo de equivalencia 0 de la factura
+     ||numero 1283 no corresponde con la aplicacion del porcentaje
+     ||a la base imponible, deberia ser 26.09
+
+     ||Lo mas curioso es la que la web oficial NO se queda de este error de
+     ||redondeo, pero nuestro firmador SI.
+
+     ||aMensaje = "0000Redondeo TalleresSC";
+     |||MENAV aMensaje;
+
+     |ABRE #dsarw025;
+     nUltimaLinea = 0;
+     |SELECT #3#dsarw025;
+
+     ||TODO CCC
+     |PARA nVoy = 3000; |SI nVoy [ 3006; |HACIENDO nVoy = nVoy + 1;
+
+          nTotal = 0;
+          nPorcentaje = 0;
+          nImporteIva = 0;
+
+          ||TotalAmount
+          #dsarw025#5 = 3770;
+          #dsarw025#2 = nVoy;
+          |LEE 000#dsarw025.=;
+          |SI FSalida = 0;
+               nTotal = #dsarw025#3;
+          |FINSI;
+
+          ||TaxRate
+          #dsarw025#5 = 3750;
+          #dsarw025#2 = nVoy;
+          |LEE 000#dsarw025.=;
+          |SI FSalida = 0;
+               nPorcentaje = #dsarw025#3;
+          |FINSI;
+
+          ||TotalAmount
+          #dsarw025#5 = 3800;
+          #dsarw025#2 = nVoy;
+          |LEE 000#dsarw025.=;
+          |SI FSalida = 0;
+               nImporteIva = #dsarw025#3;
+          |FINSI;
+
+
+          |SI nTotal = 0; |Y nCantidad = 0; |Y nImporte = 0;
+               ||No hacer absolutamente NADA
+          |SINO;
+               nIvaReal = (nTotal % nPorcentaje) ! 2
+               |SI nImporteIva ! nIvaReal;
+                    #dsarw025#5 = 3800;
+                    #dsarw025#2 = nVoy;
+                    |LEE 101#dsarw025.=;
+                    |SI FSalida = 0;
+                         #dsarw025#3 = nIvaReal;
+                         |GRABA 020#dsarw025.a;
+                         |LIBERA #dsarw025;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+
+     |SELECT #1#dsarw025;
+     |CIERRA #dsarw025;
+|FPRC;
+
+
+|PROCESO DecimalesTotalesLin;
+     ||Sirve para evitar problemas de redondeo con los decimales
+
+     || Ejemplo
+
+     || Cantidad:  25
+     || Precio: 18.333
+     || Total: 458.33
+
+     || Pero da error, porque realmente le corresponde 458.32  (458.325)
+
+     || La mejor solucion es modificar el precio, ajustando los decimales
+     || para que las cantidades se correspondan a los importes calculados
+
+     |ABRE #dsarw025;
+     nUltimaLinea = 0;
+     |SELECT #3#dsarw025;
+     #dsarw025#5 = 4660;
+     #dsarw025#2 = 99999;
+     |LEE 000#dsarw025.];
+     |SI FSalida = 0;
+          |LEE 000#dsarw025.a;
+     |SINO;
+          |LEE 000#dsarw025.u;
+     |FINSI;
+     |SI FSalida = 0; |Y #dsarw025#5 = 4660;
+          nUltimaLinea = #dsarw025#2;
+     |FINSI;
+
+     |SI nUltimaLinea ! 0;
+          |PARA nVoy = 7000; |SI nVoy [ nUltimaLinea; |HACIENDO nVoy = nVoy + 1;
+
+               nTotal = 0;
+               nCantidad = 0;
+               nImporte = 0;
+
+               ||TotalCost
+               #dsarw025#5 = 4660;
+               #dsarw025#2 = nVoy;
+               |LEE 000#dsarw025.=;
+               |SI FSalida = 0;
+                    nTotal = #dsarw025#3;
+               |FINSI;
+
+               ||Quantity
+               #dsarw025#5 = 4630;
+               #dsarw025#2 = nVoy;
+               |LEE 000#dsarw025.=;
+               |SI FSalida = 0;
+                    nCantidad = #dsarw025#3;
+               |FINSI;
+
+               ||UnitPriceWithoutTax
+               #dsarw025#5 = 4650;
+               #dsarw025#2 = nVoy;
+               |LEE 000#dsarw025.=;
+               |SI FSalida = 0;
+                    nImporte = #dsarw025#3;
+               |FINSI;
+
+
+               |SI nTotal = 0; |Y nCantidad = 0; |Y nImporte = 0;
+                    ||No hacer absolutamente NADA
+               |SINO;
+                    nTotalReal = nCantidad * nImporte;
+                    |SI nTotalReal ! nTotal;
+                         nImporteNuevo = nTotal / nCantidad;
+
+                         #dsarw025#5 = 4650;
+                         #dsarw025#2 = nVoy;
+                         |LEE 101#dsarw025.=;
+                         |SI FSalida = 0;
+                              #dsarw025#3 = nImporteNuevo;
+                              |GRABA 020#dsarw025.a;
+                              |LIBERA #dsarw025;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+
+     |SELECT #1#dsarw025;
+     |CIERRA #dsarw025;
+|FPRC;
+
+|PROCESO MiraSiCanarias;
+     |SELECT #2#dsarw025;
+     #dsarw025#2 = 0;
+     #dsarw025#5 = 2970;
+     |LEE 000#dsarw025.=;
+     |SI FSalida = 0;
+          aCP = #dsarw025#3 % 102;
+          |SI aCP = "35"; |O aCP = "38";
+               nSwCanarias = 1;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO dsarm038;
+     aEsquema = #dsarm038#1;
+     |QBF aEsquema;
+     nCondicion = #dsarm038#8;
+     |SI aEsquema = ""; |O nCondicion ! 1;
+          |ACABA;
+     |FINSI;
+     |SI nCondicion = 1;
+          ||Miro el codigo Postal si es de Canarias
+          nSwCanarias = 0;
+          |HAZ MiraSiCanarias;
+          |SI nSwCanarias = 1;
+               |SELECT #1#dsarw025;
+               |DDEFECTO #dsarw025;
+               #dsarw025#0 = "3.1  ";        ||La version me da igual
+               #dsarw025#1 = aEsquema;
+               #dsarw025#2 = 8500;           ||Para canarias 8500
+               |LEE 101#dsarw025.=;
+               |SI FSalida ! 0; |GRABA 020#dsarw025.b; |FINSI;
+               #dsarw025#3 = "***DSINFOEXTRA***" + #dsarm038#0;
+
+               |DDEFECTO #dsarm011;
+               #dsarm011#0 = #dsarw025#0;
+               #dsarm011#1 = #dsarw025#1;
+               |LEE 000#dsarm011.=;
+               #dsarw025#4 = #dsarm011#2;
+               #dsarw025#5 = #dsarm011#3;
+               |GRABA 020#dsarw025.a;
+               |LIBERA #dsarw025;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsarm038;
+ #dsarm038#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, dsarm038;
+|FIN;
+
+|PROCESO InfoExtraFacturaE;
+     |BUCLE dsarm038;
+|FPRC;

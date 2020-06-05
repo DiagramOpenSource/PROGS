@@ -1,0 +1,507 @@
+|FICHEROS;
+    agifa573 #0;  ||  Lineas de cobro credito.
+    agifa572 #1;  ||  Lineas de credito.
+    agifa571 #2;  ||  Cabecera de credito.
+    agifa513 #3;  ||  Cobros por caja.
+    agifa027 #4;  ||  Fichero de contadores.
+    agifa505 #5;  ||  Fichero de parametros.
+    agifa024 #6;  ||  Fichero de clientes;
+    agifa509 #7;  ||  Resumen parcial.
+    agifa515 #8;  ||  Tarjetas de credito.
+    agifa516 #9;  ||  Diario de tarjetas de credito.
+    agifa575 #10; ||  Pantalla de cambio.
+    agifa024 #20;
+    agifa517 #30; ||  Parametros TPV
+    agifa501 #501;
+|FIN;
+
+|CAMPOS;
+    #4#1  contador;
+|FIN;
+
+|VARIABLES;
+    sw = 0;
+    mascara = "00000";
+    tempo   = "";
+    filtro  = "-106";
+    opcion = 0;
+    modo   = 0;
+    &posi  = 0;
+    sw_auto = 0;
+    linea1 = 0;
+    linea2 = 0;
+    fechap = @;
+    caja   = 0;
+    cajero = 0;
+    importe = 0;
+    tipo   = "";
+    tarjeta= 0;
+    cobro  = "";
+    situcaja = 0;
+    existe   = 0;
+    puente = "";
+    empresa = 0;
+    informe = "agifa513";
+    ferr_tarjeta = "";      || Fichero de Error -> 'error'
+    oper_tarjeta = "";      || Operacion
+    bat_tarjeta  = "";      || Fcihero Cobro
+    path         = "";
+    alfa         = "";
+    memo_tarjeta = "";
+    ErrorTarjeta = 0;
+    f            = 0;
+|FIN;
+
+|PROCESO entra_lin; |TIPO 7;
+         opcion = (FEntrada / 100) ! 0;
+         |SI opcion = 4;
+             |PTEC 806;  ||  Escape.  Para visualizar las lineas de cobro
+         |FINSI;         ||           solamente.
+         modo = 0;
+|FPRC;
+
+|PROCESO sal_lin; |TIPO 0;
+         opcion = (FEntrada / 100) ! 0;
+         |SI opcion = 1;
+             #0#6 = #1#9;  ||  Importe pendiente.
+             #0#8 = 0;     ||  Codigo tarjeta.
+         |FINSI;
+         |HAZ lee_cliente;
+|FPRC;
+
+|PROCESO caja; |TIPO 0;
+         |HAZ lee_serie;
+         |SI existe ! 0; |O #5#23 = "N";
+             |SI existe ! 0;
+                 |MENAV "0000CAJA INEXISTENTE";
+             |SINO;
+                 |MENAV "0000CAJA CERRADA";
+             |FINSI;
+             |ERROR;
+         |FINSI;
+|FPRC;
+
+|PROCESO fecha; |TIPO 0;
+         |HAZ lee_resumen;
+         |SI situcaja = 0;
+             |MENAV "0000NO EXISTE MOVIMIENTO EN ESTA FECHA O ESTA CERRADO";
+             |ERROR;
+         |FINSI;
+|FPRC;
+
+|PROCESO pendiente; |TIPO 2;
+         |SI modo = 0;
+             opcion = (FEntrada / 100) ! 0;
+             |HAZ lee_resumen;
+         |FINSI;
+         modo = 0 +. 1;
+         |SI #0#6 > 0; |Y situcaja = 1;
+             |ABRE #1;
+             #1#0 = #0#0;
+             #1#1 = #0#1;
+             |LEE 101#1=;
+             |SI FSalida = 0; |HAZ actua_linea; |FINSI;
+             |CIERRA #1;
+             |SI modo = 1; |O opcion = 3;
+              ||   |PINTA posi,#1#9;
+              ||   |PINTA #1#12;
+                    |PINDA #0#1;
+             |FINSI;
+         |SINO;
+             |SI situcaja = 0;
+                 |MENAV "0000NO EXISTE MOVIMIENTO EN ESTA FECHA O ESTA CERRADO";
+                 situcaja = 2;
+             |FINSI;
+             |ERROR;
+         |FINSI;
+|FPRC;
+
+|PROCESO actua_linea;
+          |ABRE #20;
+          #20#0 = #1#0;
+          |LEE 121#20=;
+          |SI FSalida = 0;
+               #20#49 = #20#49 -. #0#6; || Riesgo Actual
+               |GRABA 021#20a;
+          |FINSI;
+          |CIERRA #20;
+
+         #1#9  = #1#9  -. #0#6;  || Pendiente de cobro. (Linea)
+         #1#12 = #1#12 +. #0#6;  || Total pagado. (Linea)
+         #2#3  = #2#3  +. #0#6;  || Total pagado. (Cabecera)
+         #2#4  = #2#4  -. #0#6;  || Pendiente de cobro. (Cabecera)
+         |SI #1#9 = 0;
+             #1#11 = "S";  ||  SI cobrado.
+         |SINO;
+             #1#11 = "N";  ||  NO cobrado.
+         |FINSI;
+         |GRABA 020#1a;
+         |LIBERA #1;
+         |PINTA #2#3;
+         |PINTA #2#4;
+         |SI #0#7 ! "D";
+               |HAZ actua_cobro;
+         |FINSI;
+         |HAZ actua_resumen;
+         |SI #0#7 = "T"; |HAZ actua_tarjeta; |FINSI;
+|FPRC;
+
+|PROCESO tipo_cobro; |TIPO 0;
+         |SI #0#7 = "T";
+             |CAMPO_MODIFICA #0#8,1,"S";
+         |SINO;
+             #0#8 = 0;
+             |PINTA #0#8;
+             |CAMPO_MODIFICA #0#8,1,"N";
+         |FINSI;
+|FPRC;
+|| El fichero ERROR devuelve 'bien' o 'mal'
+|PROCESO CompruTarjeta;
+     Pos = -1;
+     alfa = "rt  " + ferr_tarjeta;
+     |FABRE alfa;
+     |SI FSalida ] 0;
+          f = FSalida;
+          alfa = f + " 80";
+          |FLEE alfa;
+          |QBT alfa; alfa = alfa > alfa;
+          |SI FSalida [ 0; |O alfa ! "BIEN";
+               ErrorTarjeta = 1;
+               |MENAV "0000 ERROR EN TARJETA...";
+          |FINSI;
+          FSalida = f;
+          |FCIERRA FSalida;
+     |SINO;
+          |MENAV "0000No existe el fichero 'ERROR'";
+          ErrorTarjeta = 1;
+     |FINSI;
+     Pos = -1;
+|FPRC;
+
+|PROCESO Tarjetas;
+     ||----Ejecuta bat Tarjeta Parametros: Importe, Memoria, Operacion
+     |ABRE #8;
+     |DDEFECTO #8;
+     #8#0 = #0#8;  ||  Codigo de tarjeta;
+     |LEE 020#8=;
+     ErrorTarjeta = FSalida;
+     |CIERRA #8;
+
+     |SI ErrorTarjeta ! 0; |ACABA; |FINSI;
+
+     |ABRE #30; |LEE 000#30p; |CIERRA #30;
+     oper_tarjeta = #30#8;        |QBF oper_tarjeta;
+     path = #30#11;               |QBF path;
+     bat_tarjeta = path + #30#9;  |QBF bat_tarjeta;
+     ferr_tarjeta = path + "error";
+
+     |SI #30#12 = "S";
+          |MENSA "0000Introduzca Codigo de operacion";
+          |PUSHV 0501 2380;
+          |ATRI R; |CUADRO 0926 1145; |ATRI 0;
+          |PINTA 1027," Operacion:       ";
+          E_sup = 2;
+          E_inf = "";
+          oper_tarjeta = 1039 ? 1;
+          |SI FSalida = 0;
+               |QBT oper_tarjeta;
+               memo_tarjeta = #8#6; |QBF memo_tarjeta;
+               alfa = bat_tarjeta + " " + #10#1 + " " + memo_tarjeta + " " + oper_tarjeta;
+               |SYSTEM alfa;
+               |HAZ CompruTarjeta;
+          |SINO;
+               ErrorTarjeta = 1;
+          |FINSI;
+          |POPV;
+     |FINSI;
+     FSalida = ErrorTarjeta;
+|FPRC;
+
+|PROCESO importe; |TIPO 0;
+         |PUSHV 0501 2380;
+         |BLANCO 1125 1747;
+         |PINPA #0#10;
+         |DDEFECTO #10;
+         FSalida = 1;
+         |PARA; |SI FSalida ! 0; |HACIENDO;
+                #10#0 = #0#6;
+                #10#1 = #0#6;
+                #10#2 = 0;
+                |PINDA #0#10;
+                |ENDATOS #1#10;
+         |SIGUE;
+         |SI #0#7 = "T";
+              |HAZ Tarjetas;
+         |FINSI;
+         |POPV;
+         #0#6 = #10#0;
+         sw_auto = 0;
+         sw = 0;
+         |SI #0#6 > #1#9;
+             sw = 1;
+             sw_auto = #0#6 - #1#9;
+             #0#6 = #1#9;
+             linea1 = #0#1;
+             linea2 = #0#2;
+             fechap = #0#3;
+             caja   = #0#4;
+             cajero = #0#5;
+             importe= #0#6;
+             tipo   = #0#7;
+             tarjeta= #0#8;
+         |FINSI;
+         |PINTA #0#6;
+|FPRC;
+
+|PROCESO mira_linea;
+         #0#0 = #1#0;  ||  Codigo cliente.
+         #0#1 = #1#1;  ||  Linea de Credito;
+         |HAZ busca_linea;
+         #0#3 = fechap;
+         #0#4 = caja;
+         #0#5 = cajero;
+         #0#7 = tipo;
+         #0#8 = tarjeta;
+         |SI sw_auto > #1#9;
+             #0#6 = #1#9;
+             sw_auto = sw_auto - #1#9;
+         |SINO;
+             #0#6 = sw_auto;
+             sw_auto = 0;
+         |FINSI;
+         |HAZ actua_linea;
+         |GRABA 020#0n;
+         |SI sw_auto = 0; |ERROR10; |FINSI;
+|FPRC;
+
+|DEFBUCLE lineas;
+          #1#1;
+          11;
+          #0#0,0000,"N";
+          #0#0,9999,"N";
+          be;
+          NULL,mira_linea;
+|FIN;
+
+|PROCESO automatico; |TIPO 3;
+         |SI sw_auto > 0;
+             cobro = #0#9;
+             |BUCLE lineas;
+             #0#1 = linea1;
+             #0#2 = linea2;
+             |SI opcion = 2; |LEE 101#0=; |FINSI;
+             #0#3 = fechap;
+             #0#4 = caja;
+             #0#5 = cajero;
+             #0#6 = importe;
+             #0#7 = tipo;
+             #0#8 = tarjeta;
+             #0#9 = cobro;
+             #1#1 = linea1;
+             |PTEC 806;
+         |FINSI;
+|FPRC;
+
+|PROCESO busca_linea;
+         FSalida = 0;
+         #0#2 = 0;
+         |PARA; |SI FSalida = 0; |HACIENDO;
+                #0#2 = #0#2 + 1;
+                |LEE 001#0=;
+         |SIGUE;
+|FPRC;
+
+|PROCESO actua_cobro;
+     |ABRE #3;
+     |DDEFECTO #3;
+     |SI opcion = 1;
+          |ABRE #4;
+          FSalida = 0;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               |HAZ lee_contador;
+               #3#14 = #1#2; || ANTES SERIE DEFECTO #5#22;  VIC 05/08/98
+               #3#0  = #0#9;
+               |LEE 001#3=;
+          |SIGUE;
+          |CIERRA #4;
+          |HAZ carga_cobro;
+          |GRABA 020#3n;
+          |HAZ imprime;
+     |SINO;
+          |HAZ lee_serie;
+          #3#14 = #1#2; || ANTES #5#22;  ||  Serie de cobro de creditos. VIC
+          #3#0  = #0#9;   ||  Numero de cobro.
+          |SI opcion = 3;
+               |BORRA 020#3c;
+          |SINO;
+               |LEE 101#3=;
+               |HAZ carga_cobro;
+               |SI FSalida = 0;
+                    |GRABA 020#3a;
+                    |HAZ imprime;
+               |SINO;
+                    |GRABA 020#3b;
+               |FINSI;
+               |LIBERA #3;
+          |FINSI;
+     |FINSI;
+     |CIERRA #3;
+|FPRC;
+
+|PROCESO carga_cobro;
+         |DDEFECTO #3;
+         #3#14 = #1#2; || ANTES SERIE DEFECTO #5#22;  VIC 05/08/98
+         #3#0  = #0#9;
+         #3#1  = #0#0;  ||  Codigo cliente.
+         #3#2  = #6#16; ||  Codigo contable.
+         #3#3  = "Cobro de credito " + #1#2 + "-" + #1#3 + "/" + #0#2;
+         #3#4  = #0#6;  ||  Importe.
+         #3#5  = #0#4;  ||  Caja.
+         #3#6  = #0#5;  ||  Operario.
+         #3#11 = #0#3;  ||  Fecha de cobro.
+         #3#12 = #0#7;  ||  Tipo de cobro.
+         #3#13 = #0#8;  ||  Codigo tarjeta.
+
+         |ABRE #501;
+         #501#36 = #agifa572#13;
+         #501#0 = #agifa572#3;
+         |LEE 020#501=;
+         |CIERRA #501;
+
+         #3#19 = #501#35;
+         #3#20 = #agifa572#2;
+         #3#21 = #agifa572#4;
+|FPRC;
+
+|PROCESO lee_contador;
+     |HAZ lee_serie;
+     #4#0 = "contcobr";
+     #4#2 = #5#22;   ||   Serie de cobro de creditos.
+     |LEE 101#4=;
+     |SI FSalida = 0;
+         #0#9 = contador;
+         contador = contador + 1;
+         |GRABA 101#4a;
+     |SINO;
+         #0#9  = "000001";
+         contador = contador + 1;
+         |GRABA 101#4b;
+     |FINSI;
+     |LIBERA #4;
+     |SI sw = 1;
+          |GRABA 020#0a;
+          sw = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO lee_serie;
+         |ABRE #5;
+         |DDEFECTO #5;
+         #5#0 = #0#4;  ||  Codigo de caja.
+         |LEE 001#5=;
+         existe = FSalida;
+         |CIERRA #5;
+|FPRC;
+
+|PROCESO actua_tarjeta;
+         |ABRE #8;
+         |DDEFECTO #8;
+         #8#0 = #0#8;  ||  Codigo de tarjeta;
+         |LEE 101#8=;
+         |SI opcion = 1;
+             #8#3 = #0#3;  ||  Fecha ultima operacion.
+             #8#4 = #0#6;  ||  Importe ultima operacion.
+         |SINO;
+             |SI #8#2 = #8#4; #8#4 = 0; |FINSI;
+         |FINSI;
+         #8#2 = #8#2 +. #0#6;  ||  Total pts. cargadas.
+         |SI FSalida = 0;
+             |GRABA 020#8a;
+         |SINO;
+             |GRABA 020#8b;
+         |FINSI;
+         |LIBERA #8;
+         |CIERRA #8;
+         |HAZ actua_apunte;
+|FPRC;
+
+|PROCESO actua_apunte;
+         |ABRE #9;
+         |DDEFECTO #9;
+         #9#0 = #0#8;     || Numero tarjeta.
+         #9#1 = #0#3;     || Fecha del cobro
+         |LEE 101#9=;
+         #9#2 = #9#2 +. #0#6;  || Total Ptas. dia (Diario Tarjeta)
+         |SI FSalida = 0;
+             |GRABA 020#9a;
+         |SINO;
+             |GRABA 020#9b;
+         |FINSI;
+         |LIBERA #9;
+         |CIERRA #9;
+|FPRC;
+
+|PROCESO lee_resumen;
+         |DFICE puente;  |QBF puente;
+         puente = puente % -205;
+         empresa = puente;
+         situcaja = 1;
+         |ABRE #7;
+         |DDEFECTO #7;
+         #7#63 = empresa;
+         #7#0 = #0#4;  ||  Caja;
+         #7#1 = #0#3;  ||  Fecha;
+         |LEE 001#7=;
+         |SI FSalida ! 0; |O #7#56 = "N"; situcaja = 0; |FINSI;
+         |CIERRA #7;
+|FPRC;
+
+|PROCESO actua_resumen;
+         |DFICE puente;  |QBF puente;
+         puente = puente % -205;
+         empresa = puente;
+         |ABRE #7;
+         |DDEFECTO #7;
+         #7#63 = empresa;
+         #7#0 = #0#4;  ||  Caja;
+         #7#1 = #0#3;  ||  Fecha;
+         |LEE 101#7=;
+         |SI FSalida = 0; |Y #7#56 = "S";
+             #7#4 = #7#4 +. #0#6;  ||  Total cobros.
+             |SI #0#7 = "E"; #7#52 = #7#52 +. #0#6; |FINSI;
+             |SI #0#7 = "T"; #7#53 = #7#53 +. #0#6; |FINSI;
+             |SI #0#7 = "C"; #7#54 = #7#54 +. #0#6; |FINSI;
+             |SI #0#7 = "D"; #7#57 = #7#57 +. #0#6; |FINSI;
+             |SI #1#5 = #0#3; |Y #1#6 = #0#4;
+                 #7#58 = #7#58 -. #0#6;
+             |FINSI;
+             #7#55 = #7#55 +. #0#6;
+             |GRABA 020#7a;
+             |LIBERA #7;
+         |FINSI;
+         |CIERRA #7;
+|FPRC;
+
+|PROCESO lee_cliente;
+         |ABRE #6;
+         |DDEFECTO #6;
+         #6#0 = #0#0;
+         |LEE 001#6=;
+         |CIERRA #6;
+|FPRC;
+
+|PROCESO imprime;
+     |CONFI "2400S¿DESEA IMPRIMIR UN RECIBO? (S/N): ";
+     |SI FSalida = 0;
+          |IMPRE 0;
+          |SI FSalida = 0;
+               |INFOR informe;
+               |SI FSalida = 0;
+                    |PRINT;
+                    |PIEINF;
+                    |FININF;
+               |FINSI;
+               |FINIMP;
+          |FINSI;
+      |FINSI;
+|FPRC;

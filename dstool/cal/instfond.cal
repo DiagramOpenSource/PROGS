@@ -1,0 +1,238 @@
+|FICHEROS;
+|FIN;
+
+|VARIABLES;
+     nHandle          = 0;
+     nTree            = 0;
+     nLinea           = 0;
+     nLong            = 0;
+     nCargar          = 0;
+     nPosi            = 0;
+     nPos             = 0;
+     n1Vent           = 0;
+
+     aBase            = "";
+     aFicTgz          = "";
+     aFicTar          = "";
+     aOrigen          = "";
+     aDestino         = "";
+     aPatOrigen       = "";
+     aPatDestino      = "";
+     aFicInstalado    = "";
+     aAlfa            = "";
+     aAbre            = "";
+     aDir             = "";
+     aEsc1            = "";
+     aEsc2            = "";
+     aRetu            = "";
+     aTecla           = "";
+     aContenido       = "";
+     aContenido1      = "";
+     aLong            = "";
+     aCarac           = "";
+     aTexto           = "";
+     aEjec            = "";
+
+     {-1}sTree        = 0;
+     sT_nID           = 0;
+     sT_nOper         = 0;
+     sT_aData         = "";
+
+     &eaRutaOrigen    = "";
+     &eaRutaDestino   = "";
+     &eaUnidadBasico  = "";
+     &eaFicheroTxt    = "";
+     &eaFicheroTgz    = "";
+     &eaFicheroTar    = "";
+     &eaAlfa          = "";
+|FIN;
+
+|PROCESO PreparaFondos;
+     aFicInstalado = "";
+
+     aDir  = aPatDestino + "*.tgz";
+     |_PDIR aDir;
+     |SI FSalida = 0;
+         aFicInstalado = aDir - aPatDestino - ".tgz";
+     |FINSI;
+
+
+     aFicTgz     = "fondoswebs.tgz";
+     aFicTar     = "fondoswebs.tar";
+     aOrigen     = aPatOrigen  + aFicTgz;
+     aDestino    = aPatDestino + aFicTgz
+     |COPIA_FICHERO aOrigen, aDestino;
+     |SI FSalida ! 0;
+         |RCOPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+
+     aAlfa = aDestino;
+     |DESCOMPRIME aAlfa;
+     |SI FSalida = 0;
+         |FBORRA aAlfa;
+
+         aAlfa = aPatDestino + aFicTar;
+         |DETAR aAlfa, aPatDestino;
+
+         |FBORRA aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO MontaContenido;
+     aAlfa       = aContenido;  |QBF aAlfa;
+     aContenido1 = "";
+     aLong       = aAlfa % 0;
+     nLong       = aLong;
+     nCargar     = 0;
+     |PARA nPosi = 1;  |SI nPosi [ nLong;  |HACIENDO nPosi = nPosi + 1;
+           nPos = (nPosi * 100) + 1;
+           aCarac = aAlfa % nPos;
+
+           |SI nCargar = 1;
+               aContenido1 = aContenido1 + aCarac;
+           |FINSI;
+
+           |SI aCarac = ":";  nCargar = 1; |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO EvntTree;
+     |SI FEntrada = 0;
+         aTexto = Contenido;  |QBF aTexto;
+         |ACABA;
+     |FINSI;
+
+     aContenido = Contenido;  |QBF aContenido;
+
+     |SI aContenido = "";  |ACABA;  |FINSI;
+
+     |SI aContenido = "desinstalar";
+         aAlfa = "0000NQuiere desinstalar el fondo ";
+     |SINO;
+         aAlfa = "0000NQuiere instalar el fondo " + aContenido;
+     |FINSI;
+
+     |CONFI aAlfa;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     aFicInstalado = aContenido;
+
+     |PTEC 806;
+|FPRC;
+
+|PROCESO CargaArbol;
+     |QBF aAlfa;
+     aAlfa = aAlfa + &13 + &10;
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|PROCESO MontaArbol;
+     |DBASE aBase;  |QBF aBase;
+     aAlfa = aBase + "tmp";          |MKDIR aAlfa;
+
+     eaRutaOrigen  = aBase + "tmp/";
+     eaRutaDestino = eaUnidadBasico + "\documentos";           |RMKDIR eaRutaDestino;
+     eaRutaDestino = eaUnidadBasico + "\documentos\tmp";       |RMKDIR eaRutaDestino;
+     eaRutaDestino = eaUnidadBasico + "\documentos\tmp\";
+     eaFicheroTxt  = "instfond01" + Usuario + ".txt";
+     eaFicheroTgz  = "instfond01" + Usuario + ".tgz";
+     eaFicheroTar  = "instfond01" + Usuario + ".tar";
+
+     aAbre = eaRutaOrigen + eaFicheroTxt;
+
+     sT_nID   = nTree;
+     sT_nOper = 0;
+
+     |XABRE "WB", aAbre, nHandle;
+
+     nLinea = 1;
+     aAlfa  = nLinea + ":Desinstalar fondos webs {{desinstalar}}";
+     |HAZ CargaArbol;
+
+     aDir  = aPatDestino + "*.tgz";
+     |_PDIR aDir;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          nLinea = nLinea + 1;
+          aAlfa  = aDir - aPatDestino - ".tgz";
+          aAlfa  = nLinea + ":"  + aAlfa + "{{" + aAlfa + "}}";
+          |HAZ CargaArbol;
+
+          |_SDIR aDir;
+     |SIGUE;
+
+     |XCIERRA nHandle;
+
+     |HAZ TraeTxtComprimido;
+     aAlfa = eaRutaDestino + eaFicheroTxt;
+
+     eaAlfa = "TREECTRL,Fondos webs {{" + aAlfa + "}}";
+     |CONTROL_SIMPLE 0, eaAlfa, 0620, 2270, EvntTree;
+     nTree = FSalida;
+
+     eaFicheroTxt  = "instfond01" + Usuario + ".txt";
+     aAlfa         = eaRutaDestino + eaFicheroTxt;
+     |RFBORRA aAlfa;
+
+     sT_nID   = nTree;
+     sT_nOper = 2;
+     sT_aData = "1:";
+
+     |ESPECIFICA "COMMANDCONTROL", sTree;
+
+     |FOCOTECLADO nTree;
+     |PULSATECLA;
+|FPRC;
+
+|PROGRAMA;
+     |DBASE aBase;
+     aPatOrigen  = aBase + "plugins/";
+     aPatDestino = aBase + "fondos";  |MKDIR aPatDestino;
+     aPatDestino = aPatDestino + "/";
+
+     |CLS;
+     |CABEZA "Configuraci¢n fondos web";
+
+     |VENTANA 0501, 2599, -1, 16, "Fondos web";
+     n1Vent = FSalida;
+
+     |HAZ PreparaFondos;
+
+     aAlfa = "LABEL,{{16}}Actualmente no hay ningun fondo instalado";
+     |SI aFicInstalado ! "";
+         aAlfa = "LABEL,{{16}}Actualmente est  instalado el fondo " + aFicInstalado;
+     |FINSI;
+
+     |CONTROL_SIMPLE 0, aAlfa, 2420, 2498, NULL;
+
+     |PTEC 802;  |PAUSA;
+
+     |HAZ LeeUnidadBasico;
+
+     |HAZ MontaArbol;
+
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+         FSalida = "::{{001}}Salir," + nTree;
+         |LEETECLA aTecla;
+         |SI aTecla = aEsc1; |SAL;  |FINSI;
+         |SI aTecla = aEsc2; |SAL;  |FINSI;
+         |SI aTecla = aRetu; |SAL;  |FINSI;
+     |SIGUE;
+
+     aDir  = aPatDestino + "*.tgz";
+     |_PDIR aDir;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          aAlfa = aDir - aPatDestino - ".tgz";
+          |SI aAlfa ! aFicInstalado;
+              |FBORRA aDir;
+          |FINSI;
+
+          |_SDIR aDir;
+     |SIGUE;
+
+     |FIN_CONTROL_WINDOWS nTree;
+
+     |FINVENTANA n1Vent;
+|FPRO;

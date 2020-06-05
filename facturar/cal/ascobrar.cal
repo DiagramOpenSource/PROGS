@@ -1,0 +1,166 @@
+|FICHEROS;
+   ascobrar #0;
+   ascobra1 #1;
+   ashisrec #2;
+   asclient #3;
+   asparcia #4;          ||Mantenimiento de cobros parciales
+   ashismic #90;
+
+   &bancosp@ #706;
+|FIN;
+
+|VARIABLES;
+   limite = 0;
+   suma = 0;
+   lin  = 0;
+     fFech = @;
+     qFech = "";
+     dFech = "";
+     hFech = "";
+
+     &enCodBanco  = 0;
+     &enSwDeDonde = 0;
+|FIN;
+
+|PROCESO importe;
+enCodBanco = #2#7;
+|HAZ LeeBancoPropio;
+
+|SI #0#8  = "S";
+    |HAZ parcial;
+    #4#3 = #0#9;      #4#4 = #2#5;     #4#5 = #2#6;
+    #4#6 = #2#6;      #4#7 = 0;        #4#8 = #2#6 - #2#9;
+    #4#9 = #2#3;      #4#12 = #2#2;
+    #4#13 = #706#11;
+    |SI enSwDeDonde = 0;  #4#13 = #706#23;  |FINSI;      ||Cuenta cobro
+
+    |GRABA 021#4a;
+    |LIBERA #4;
+
+    #2#8  = #0#9;
+    #2#9  = #2#6;
+    #2#10 = "S";
+    |GRABA 020#2a;
+
+    #90#0 = #2#0;
+    #90#1 = #2#1;
+    |LIBERA #90;
+    |LEE 140#90=;
+    |SI FSalida = 0;
+        #90#32 = #2#10;
+        |GRABA 140#90a;
+    |FINSI;
+|SINO;
+    #3#0 = #2#3;
+    |LEE 040#3=;
+    |SI FSalida ! 0; |DDEFECTO #3; |FINSI;
+
+|ET arriba;
+    |PINPA #0#1;
+    #1#0 = #2#0;
+    #1#1 = #2#1;
+    #1#2 = #2#3;
+    #1#3 = #3#2;
+    #1#4 = #2#6;
+    #1#5 = #2#9;
+    #1#6 = #2#6 - #2#9;
+    |PINDA #0#1;
+
+    |ENDATOS #1#1;
+    |HAZ limite;
+    |SI limite = 1; |VETE arriba; |FINSI;
+    |SI FSalida = 0;
+        |HAZ parcial;
+        #4#3 = #0#9;   #4#4 = #2#5;   #4#5 = #2#6;
+        #4#6 = #2#9 + #1#6;
+        #4#7 = #2#6 - #2#9 - #1#6;
+        #4#8 = #1#6;   #4#9 = #2#3;
+        #4#12 = #2#2;
+        #4#13 = #706#11;
+        |SI enSwDeDonde = 0;  #4#13 = #706#23;  |FINSI;      ||Cuenta cobro
+        |GRABA 021#4a; |LIBERA #4;
+
+        #2#9 = #2#9 + #1#6;
+        |SI #2#6 = #2#9; #2#10 = "S"; |FINSI;
+        #2#8  = #0#9;
+        |GRABA 020#2a;
+
+        #90#0 = #2#0;
+        #90#1 = #2#1;
+        |LIBERA #90;
+        |LEE 140#90=;
+        |SI FSalida = 0;
+            #90#32 = #2#10;
+            |GRABA 140#90a;
+        |FINSI;
+    |SINO;
+        |CONFI "2400SDesea introducir el cobro de nuevo : ";
+        |SI FSalida = 0; |VETE arriba; |FINSI;
+    |FINSI;
+|FINSI;
+|LIBERA #2;
+|FPRC;
+
+|DEFBUCLE ashisrec;
+#2#1;
+2, 7, 10, 3;
+#0#0, #0#2, #0#4, #0#6, "N", #0#12;
+#0#1, #0#3, #0#5, #0#7, "N", #0#13;
+be;
+NULL, importe;
+|FIN;
+
+|PROCESO cobrar; |TIPO 3;
+|SI #0#10 ! "SI"; |ACABA; |FINSI;
+
+|ABRE #1;
+|ABRE #3;
+|ABRE #4;
+|ABRE #90;
+|BUCLE ashisrec;
+|CIERRA #1;
+|CIERRA #3;
+|CIERRA #4;
+|CIERRA #90;
+|FPRC;
+
+|PROCESO limite;
+limite = 0;
+suma = #1#5 + #1#6;
+|SI suma > #1#4;
+    limite = 1;
+    |MENAV "      Supera el importe del cobro al importe del recibo";
+|FINSI;
+|FPRC;
+
+|PROCESO parcial;
+     |DDEFECTO #4;
+     #4#0 = #2#0;
+     #4#1 = #2#1;
+     #4#2 = 999;
+     |LEE 001#4];
+     |SI FSalida = 0;
+          |LEE 001#4a;
+     |SINO;
+          |LEE 001#4u;
+     |FINSI;
+     |SI FSalida = 0; |Y #2#0 = #4#0; |Y #2#1 = #4#1;  ||Existe el registro
+          lin = #4#2 + 1;
+          |DDEFECTO #4;
+          #4#0 = #2#0; #4#1 = #2#1; #4#2 = lin; |GRABA 021#4b;
+     |SINO;
+          |DDEFECTO #4;
+          #4#0 = #2#0; #4#1 = #2#1; #4#2 = 1; |GRABA 021#4b;
+     |FINSI;
+|FPRC;
+
+|PROCESO sacaano; |TIPO 7;
+     fFech = ~;
+     qFech = fFech % -104;
+     dFech = "01.01." + qFech;
+     hFech = "31.12." + qFech;
+     #0#4  = dFech;
+     #0#5  = hFech;
+     |PINTA #0#4;
+     |PINTA #0#5;
+|FPRC;

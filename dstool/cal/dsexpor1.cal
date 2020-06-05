@@ -1,0 +1,514 @@
+|FICHEROS;
+     dsexpor0 #0;
+     dsexpor1 #1;
+     dsexpor2 #2;
+     dsexpor3 #3,MANTE;
+     dsexpor4 #4;
+     dsexpor5 #5,MANTE;
+     referen@ #100;
+|FIN;
+
+|VARIABLES;
+     &eaNomFic = "";
+     aIP = "";
+{255}aDato     = "";
+{255}aCamp     = "";
+     aApli     = "";
+     aAlfa     = "";
+     aAlf1     = "";
+     aAlf2     = "";
+     aPath     = "";
+     aDir      = "";
+     aFich     = "";
+     nHandle   = 0;
+     aDef      = "";
+     nCampo    = 0;
+     nCampos   = 0;
+     i         = 0;
+     aEmp      = "";
+     aFichero  = "";
+     aDat      = "";
+     nBoton1   = 0;
+     aRuta     = "";
+ {-1}aMenu     = "";
+     aMenu1    = "2400";
+     aMenu2    = "1";
+     aMenu3    = "";
+     aMenu4    = "RPC";
+     aMenu5    = " Repasar ";
+     aMenu6    = " Procesar ";
+     aMenu7    = " Cancelar ";
+     aMarca = "";
+     aFinReg = "";
+     nPrime = 0;
+     aCampo = "";
+     aTipo = "";
+     aDes = "";
+     aOrg = "";
+     aCar = "";
+     aLon = "";
+     nPos = 0;
+|FIN;
+
+|PROCESO QuitaRarosExp;
+     aLon = aAlfa % A0;
+     aDato = "";
+     |PARA i = 0; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = (i + 1) * 100 + 1;
+          aCar = aAlfa % nPos;
+          |SI aCar = "¥"; aCar = &209; |FINSI;
+          |SI aCar = "¤"; aCar = &241; |FINSI;
+          |SI aCar = " "; aCar = &225; |FINSI;
+          |SI aCar = "‚"; aCar = &233; |FINSI;
+          |SI aCar = "¡"; aCar = &237; |FINSI;
+          |SI aCar = "¢"; aCar = &243; |FINSI;
+          |SI aCar = "£"; aCar = &250; |FINSI;
+          |SI aCar = "§"; aCar = &176; |FINSI;
+          |SI aCar = "¦"; aCar = &170; |FINSI;
+          |SI aCar = "°"; aCar = &176; |FINSI;  ||Euro
+          aDato = aDato + aCar;
+     |SIGUE;
+     aAlfa = aDato;
+|FPRC;
+
+|PROCESO dsexpor3Dato;
+     nCampo = #3#2;
+     aCampo = ("000" + nCampo) % -103;
+
+     aTipo = "|C" + aCampo + "TIPO";
+     aTipo = #referen@#aTipo#;
+
+     aAlfa = #referen@#nCampo#;
+     |QBF aAlfa;
+     |HAZ QuitaRarosExp;
+
+     |SI aTipo = "F";
+          aAlfa = (aAlfa % 102) + "/" + (aAlfa % 402) + "/" + (aAlfa % 704);
+     |FINSI;
+     |SI aTipo = "A";
+          aAlfa = &34 + aAlfa + &34;
+     |FINSI;
+
+     |SI nPrime ! 0;
+          aAlfa = ";" + aAlfa;
+     |FINSI;
+     |XGRABA nHandle, aAlfa;
+     nPrime = 1;
+|FPRC;
+
+|DEFBUCLE dsexpor3Dato;
+     #3#1;
+     4;
+     #5#0, #5#1, 000, "*";
+     #5#0, #5#1, 999, "*";
+     ;
+     NULL, dsexpor3Dato;
+|FIN;
+
+|PROCESO BucReferen;
+     |ABRE #referen@;
+     |LEE 000#referen@.p;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          nPrime = 0;
+          |BUCLE dsexpor3Dato;
+          |XGRABA nHandle, aFinReg;
+          |LEE 000#referen@.s;
+     |SIGUE;
+     |CIERRA #referen@;
+|FPRC;
+
+|PROCESO dsexpor3Campo;
+     aCampo = ("000" + #3#2) % -103;
+     aAlfa = "|C" + aCampo + "NOMBRE"; aAlfa = #referen@#aAlfa#;
+     aAlfa = &34 + aAlfa + &34;
+     |SI nPrime ! 0;
+          aAlfa = ";" + aAlfa;
+     |FINSI;
+     |XGRABA nHandle, aAlfa;
+     nPrime = 1;
+|FPRC;
+
+|DEFBUCLE dsexpor3Campo;
+     #3#1;
+     4;
+     #5#0, #5#1, 000, "*";
+     #5#0, #5#1, 999, "*";
+     ;
+     NULL, dsexpor3Campo;
+|FIN;
+
+|PROCESO dsexpor5;
+     aDes = #5#2; |QBF aDes;
+     |SI aDes ! "";
+          aDef = #5#1; |QBF aDef;
+          aDef = aPath + "/" + aApli + "/def/" + aDef;
+          |CARGA_DEF aDef, referen@;
+          |SI FSalida ! 0;
+               aAlfa = "0000Error al cargar " + #5#1;
+               |MENAV aAlfa;
+          |SINO;
+               aEmp = #1#3; |QBF aEmp;
+               |SI aEmp = "";
+                   aDat = aPath + aApli + "/fich/";
+               |SINO;
+                    aDat = aPath + aApli + "/fich/" + aEmp + "/";
+               |FINSI;
+
+               |PATH_DAT #referen@#aDat#;
+
+               |DFICE aOrg;
+               aOrg = aOrg + Usuario;
+               |XABRE "WB", aOrg, nHandle;
+               |SI FSalida ] 0;
+                    nPrime = 0;
+                    |BUCLE dsexpor3Campo;
+                    |XGRABA nHandle, aFinReg;
+                    |HAZ BucReferen;
+                    |XCIERRA nHandle;
+
+                    aIP = "";
+                    |IP_REMOTO aIP;
+                    |SI aIP = "";
+                         |COPIA_FICHERO aOrg, aDes;
+                         |FBORRA aOrg;
+                    |SINO;
+                         |ENVIA_FICHERO aOrg, aDes;
+                         |RFBORRA aOrg;
+                    |FINSI;
+               |FINSI;
+               |DESCARGA_DEF #referen@;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsexpor5;
+     #5#1;
+     ;
+     #1#0, "        ";
+     #1#0, "zzzzzzzz";
+     ;
+     NULL, dsexpor5;
+|FIN;
+
+|PROCESO Boton1;
+     |PTEC 824;
+|FPRC;
+
+|PROCESO Browser; |TIPO 6;
+     |SI FSalida ! 10; |ACABA; |FINSI;
+
+     |HAZ DsBrowse;
+     |SI eaNomFic = ""; |ERROR; |ACABA; |FINSI;
+
+     aAlfa = eaNomFic - ".";
+     |SI aAlfa = eaNomFic;
+          eaNomFic = eaNomFic + ".csv";
+     |FINSI;
+     #5#2 = eaNomFic; |PINTA #5#2;
+/*
+     aRuta = #5#2;  |QBF aRuta;
+     |SI aRuta = "";
+         aRuta = "*.csv";
+     |FINSI;
+     aRuta = "F" + aRuta;
+
+     |BROWSE aRuta;
+
+     aRuta = aRuta % 299;
+     #5#2 = aRuta;
+     |PINTA #5#2;
+     |QBF aRuta;
+     |SI aRuta = ""; |ERROR; |FINSI;
+*/
+|FPRC;
+
+|PROCESO Min5;
+     #5#0 = #1#0;
+     #5#1 = "                    ";
+|FPRC;
+
+|PROCESO Max5;
+     #5#0 = #1#0;
+     #5#1 = "zzzzzzzzzzzzzzzzzzzz";
+|FPRC;
+
+|PROCESO Min3;
+     #3#0 = #5#0;
+     #3#1 = #5#1;
+     #3#2 = 0;
+|FPRC;
+
+|PROCESO Max3;
+     #3#0 = #5#0;
+     #3#1 = #5#1;
+     #3#2 = 999;
+|FPRC;
+
+|PROCESO FicCSV6; |TIPO 6;
+     |ESTADO_CONTROL nBoton1, "DISABLE";
+     aAlfa = #5#2; |QBF aAlfa;
+     |SI aAlfa ! "";
+          aAlfa = #5#2 - ".";
+          |SI aAlfa = #5#2;
+               aAlfa = #5#2; |QBF aAlfa;
+               aAlfa = aAlfa + ".csv";
+               #5#2 = aAlfa; |PINTA #5#2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO FicCSV7; |TIPO 7;
+     |ESTADO_CONTROL nBoton1, "ENABLE";
+|FPRC;
+
+|PROCESO LeeCampos;
+     aPath = #1#2; |QBF aPath;
+     aApli = #1#1; |QBF aApli;
+     aDef = #5#1; |QBF aDef;
+     aDef = aPath + "/" + aApli + "/def/" + aDef;
+     |CARGA_DEF aDef, referen@;
+     |SI FSalida ! 0;
+          aAlfa = "0000Error al cargar " + aDef;
+          |MENAV aAlfa;
+     |SINO;
+          aAlfa = "|NC";
+          aAlfa = #referen@#aAlfa#;
+          nCampos = aAlfa;
+
+          |ABRE #3;
+          |PARA i = 0 ;|SI i < nCampos; |HACIENDO i = i + 1;
+               |DDEFECTO #3;
+               #3#0 = #5#0;
+               #3#1 = #5#1;
+               #3#2 = i;
+               |LEE 101#3=;
+               |SI FSalida ! 0; |GRABA 020#3b; |FINSI;
+               aAlfa = "|C" + (("000" + i) % -103) + "NOMBRE";
+               aAlfa = #referen@#aAlfa#;
+               #3#3 = aAlfa;
+               |GRABA 020#3a;
+               |LIBERA #3;
+          |SIGUE;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+|FPRC;
+
+|PROCESO Marca11; |TIPO 11;
+     |SI FSalida = 13;
+          |PONCONTROL 23, "SI";
+          |SI #3#4 = " "; aMarca = "*"; |SINO; aMarca = ""; |FINSI;
+          |SALVA_DATOS #3;
+          #3#0 = #5#0;
+          #3#1 = #5#1;
+          #3#2 = 0;
+          |LEE 101#3];
+          |PARA; |SI FSalida = 0; |Y #3#0 = #5#0; |Y #3#1 = #5#1; |HACIENDO;
+               #3#4 = aMarca;
+               |GRABA 020#3a;
+               |LIBERA #3;
+               |LEE 101#3s;
+          |SIGUE;
+          |LIBERA #3;
+          |REPON_DATOS #3;
+          |LEE 000#3=;
+     |FINSI;
+|FPRC;
+
+|PROCESO Marca0; |TIPO 0;
+     |SI FSalida = 0; |Y #3Campo = Contenido;
+          |SI #3#4 = " ";
+               #3#4 = "*";
+          |SINO;
+               #3#4 = " ";
+          |FINSI;
+          |GRABA 020#3a;
+          |PINTA #3#4;
+     |FINSI;
+|FPRC;
+
+|PROCESO Def0; |TIPO 0;
+     |SI #5#1 = Contenido;
+        |ET E1;
+          |ENCAMPO #2#5;
+          |SI FSalida ! 0; |Y FSalida ! 10; |VETE Sal; |FINSI;
+               |GRABA 020#5a;
+               |PUSHV 05012380;
+               |HAZ LeeCampos;
+               |ENTLINEAL #1#3, 2, 4, 22, 1, Min3, Max3;
+               |POPV;
+        |ET Sal;
+     |FINSI;
+|FPRC;
+
+|PROCESO Def66; |TIPO 66;
+     |ABRE #4;
+     #4#0 = #5#1;
+     |LEE 000#4];
+     |CONSULTA_CLAVE #1#4;
+     |SI FSalida = 0;
+          #5#1 = #4#0;  |PINTA #5#1;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #4;
+|FPRC;
+
+|PROCESO Tipo12; |TIPO 12;
+     |SI aDat = "";
+          |MENAV "0000Configuracion de importacion incompleta.";
+          |ACABA;
+     |FINSI;
+
+     |HAZ LeeDir;
+
+     |ABRE #2;
+     #2#0 = #1#0;
+     |LEE 101#2=;
+     |SI FSalida ! 0; |GRABA 020#2b; |FINSI;
+     #2#1 = #1#1;
+     #2#2 = #1#2;
+     #2#3 = #1#3;
+     |GRABA 020#2a;
+     |CIERRA #2;
+
+     |PARA; |SI aMenu2 = 1; |HACIENDO;
+          |ENTLINEAL #1#5, -1, 4, 22, 0, Min5, Max5;
+          |MENU aMenu;
+          aMenu2 = FSalida;
+     |SIGUE;
+     |ESTADO_CONTROL nBoton1, "DISABLE";
+
+     |SI aMenu2 = 2;
+          |BUCLE dsexpor5;
+     |FINSI;
+|FPRC;
+
+|PROCESO empresa0; |TIPO 0;
+     |SI FSalida = 2; |ACABA; |FINSI;
+     aPath = #1#2; |QBF aPath;
+     aApli = #1#1; |QBF aApli;
+     aEmp = #1#3; |QBF aEmp;
+     |SI aEmp = "";
+         aDat = aPath + aApli + "/fich/";
+     |SINO;
+          aDat = aPath + aApli + "/fich/" + aEmp + "/";
+     |FINSI;
+
+     |MKDIR aDat;
+     |SI FSalida = 0;
+          |RMDIR aDat;
+          |MENAV "0000La empresa no existe...";
+          |ERROR;
+          aDat = "";
+     |FINSI;
+|FPRC;
+
+|PROCESO DefPath7; |TIPO 7;
+     aAlfa = #1#2; |QBF aAlfa;
+     |SI aAlfa = "";
+          |DBASS aAlfa;
+          #1#2 = aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO PonBarra; |TIPO 0;
+     aAlfa = #1#2; |QBF aAlfa;
+     |SI aAlfa ! "";
+          aAlf1 = aAlfa % -101;
+          |SI aAlf1 ! "/";|Y aAlf1 ! "\";
+               aAlfa = aAlfa + "/";
+               #1#2 = aAlfa;
+               |PINTA #1#2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Corrige5;
+     #4#0 = #5#1;
+     |LEE 000#4=;
+     |SI FSalida ! 0;
+          |BORRA 020#5a;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Corrige5;
+     #5#1;
+     ;
+     #1#0, "        ";
+     #1#0, "zzzzzzzz";
+     be;
+     NULL, Corrige5;
+|FIN;
+
+|PROCESO LeeDir;
+     |MENSA "0000Cargando....";
+     aPath = #1#2; |QBF aPath;
+     aApli = #1#1; |QBF aApli;
+     aDir = aPath + "/" + aApli + "/fich/" + aApli + ".dir";
+     |XABRE "U", aDir, nHandle;
+     |SI FSalida < 0;
+          aAlfa = "0000[" + aDir + "] inaccesible o inexistente.";
+          |MENAV aAlfa;
+     |SINO;
+          |DELINDEX #4;
+          |ABRE #4;
+          |ABRE #5;
+          |DDEFECTO #5;
+          |PARA; |SI FSalida ] 0 ;|HACIENDO;
+               |XLEE nHandle, 255, aAlf1; |SI FSalida < 0; |SAL; |FINSI;
+               |XLEE nHandle, 255, aAlf2; |SI FSalida < 0; |SAL; |FINSI;
+               |XLEE nHandle, 255, aAlfa; |SI FSalida < 0; |SAL; |FINSI;
+               |XLEE nHandle, 255, aAlfa; |SI FSalida < 0; |SAL; |FINSI;
+               |XLEE nHandle, 255, aAlfa; |SI FSalida < 0; |SAL; |FINSI;
+               #5#0 = #1#0;
+               #5#1 = aAlf1;
+               #5#3 = aAlf2;
+               |GRABA 000#5n;
+               #4#0 = aAlf1;
+               #4#1 = aAlf2;
+               |GRABA 000#4n;
+          |SIGUE;
+          |CIERRA #5;
+          |BUCLE Corrige5;
+          |CIERRA #4;
+     |FINSI;
+|FPRC;
+
+|PROCESO Codi0; |TIPO 0;
+     |SI #1Campo = Contenido; |ACABA; |FINSI;
+
+     |ABRE #2;
+     #2#0 = #1#0;
+     |LEE 000#2=;
+     |SI FSalida = 0;
+          #1#1 = #2#1; |PINTA #1#1;
+          #1#2 = #2#2; |PINTA #1#2;
+          #1#3 = #2#3; |PINTA #1#3;
+     |FINSI;
+     |CIERRA #2;
+
+     |ENTLINEAL #1#5, -1, 7, 22, 0, Min5, Max5;
+|FPRC;
+
+|PROGRAMA;
+     aFinReg = &13;
+     aFinReg = aFinReg + & 10;
+
+     aAlfa = Usuario; |QBF aAlfa;
+     |NOME_DAT #4 aAlfa;
+
+     |CONTROL_SIMPLE 0, "BOTON, Fichero CSV ", 1152, 1169, Boton1;
+     nBoton1 = FSalida;
+     |ESTADO_CONTROL nBoton1, "DISABLE";
+
+     |CLS;
+     |PINPA #0#1;
+     |PINDA #0#1;
+     |ENTLINEAL #1#5, -1, 7, 22, 0, Min5, Max5;
+     |ENDATOS #1#1;
+
+     |DELINDEX #4;
+
+     |FIN_CONTROL_WINDOWS nBoton1;
+     |PULSATECLA;
+|FPRO;

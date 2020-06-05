@@ -1,0 +1,958 @@
+||Desde este modulo se sub-ejecuta tambien si la empresa es de SEUR
+||es decir ] 70. el modulo de impresion de etiquetas de DSSEUR
+||Proceso EtiquetaSeur
+
+|FICHEROS;
+     dsm00003 #3;
+     agifa010 #10; ||Albaranes cabeceras;
+     agifa071 #71; ||Albaranes lineas;
+     agifa019 #19; ||Articulos
+     agifa024 #24;
+     agifa041 #41;
+
+     dsseum01@ #1; ||Empresas Guipuzcoana
+     dsseum02@ #2; ||Parametros Aplicacion Guipuzcoana
+
+     dsseum06@ #6; ||Datos Albaranes
+     guim0001@;
+
+     referen@  #100;          ||Para averiguar empresa DSSEUR
+|FIN;
+
+|VARIABLES;
+     aCodTari = "";
+     aTipo4 = "";
+     nBulto = 0;
+     aIP = "";
+     nErr = 0;
+     {1}aContiene = "";
+     aMd5Org = "";
+     aMd5Des = "";
+     aFicDes = "";
+     aPathTmp = "";
+     &enInforpConfi = -1;
+     &eaSerAlbaran = "";
+     &enNumAlbaran = 0;
+     &enAgenciaAlba = 0;
+
+     aEjecuta = "";
+     aBase = "";
+     nEmp = 0;
+     nEmpSeur = 0;
+     aPathSeur = "";
+     aPathDef = "";
+     aPathFich = "";
+     aMas = "";
+     nVoy = 0;
+     aEmpBusco = "";
+     aBusco = "";
+     aPathDatos = "";
+
+
+     aRelleno = "";
+     nPos = 0;
+     nLon = 0;
+     aTipo = "";
+     nDec = 0;
+     nNu1 = 0;
+     nNu2 = 0;
+
+     aDef = "";
+     aPath = "";
+     aCliSer = "";
+     aFic = "";
+     aFicTmp = "";
+     nHandle = 0;
+     aTab = "";
+     nNume = 0;
+     &enKilosAlb = 0;
+     &enReembAlb = 0;
+     &eaObservaAlb = "";
+     &eaCliente = "";
+
+     aAlfa = "";
+     aCodEmp8 = "";
+     aCodEmpG = "";
+
+
+     aCod_empre = "";
+     aDirBase = "";
+     aDirBase2 = "";
+     aNomDef = "";
+     aDirFich = "";
+     aMensaje = "";
+
+     &eaCodGuipuz = "";
+
+     aCod_empreG = "";
+     aCod_empre8 = "";
+
+     &ser_alb  = "";
+     &num_alb  = 0;
+     aTlf = "";
+|FIN;
+
+|PROCESO FicheroAge04;
+     |PARA nBulto = 1; |SI nBulto [ #10#2; |HACIENDO nBulto = nBulto + 1;
+          || Numero
+          aAlfa = ("000000" + #10#0) % -106;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+          || Destinatario
+          aAlfa = #10#29; |QBF aAlfa;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+          || Direccion
+          aAlfa = #10#30; |QBF aAlfa;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+          || Poblacion
+          aAlfa = #10#31; |QBF aAlfa;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+          || CP
+          aAlfa = #10#62; |QBF aAlfa;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+
+          |SI aTipo4 = "U";
+               || Bultos
+               aAlfa = #10#2; |QBF aAlfa;
+               aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+          |FINSI;
+
+          || Peso
+          nNume = #10#55;  aAlfa = nNume;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+          || Reembolso
+          nNume = #10#56; aAlfa = nNume;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+          || Telefono
+          |SI #10#84 = 1;
+               aAlfa = #24#17; |QBF aAlfa;
+          |SINO;
+               aAlfa = "";
+          |FINSI;
+          aTlf = #10#83; |QBF aTlf;
+          |SI aTlf = ""; aTlf = aAlfa; |FINSI;
+          aAlfa = aTlf + aTab; |XGRABA nHandle, aAlfa;
+          || Obs
+          aAlfa = #10#57; |QBF aAlfa;
+          aAlfa = aAlfa + " " + #10#97; |QBF aAlfa;
+          aAlfa = aAlfa + aTab; |XGRABA nHandle, aAlfa;
+
+          |SI aTipo4 = "U"; |SAL; |FINSI;
+
+          || ID
+          aAlfa = ("000000" + #10#0) % -106;
+          aAlfa = aAlfa + (("0000" + nBulto) % -104);
+          aAlfa = aAlfa + &13 + &10; |XGRABA nHandle, aAlfa;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Relleno;
+     |SI aTipo = "A";
+          aRelleno = " " * nLon;
+          aAlfa = aAlfa + aRelleno;
+          nPos = nLon + 100;
+          aAlfa = aAlfa % nPos;
+     |SINO;
+          nNume = aAlfa;
+          |SI nNume < 0; nNume = nNume * - 1; |FINSI;
+          nNu1 = nNume ! 0;
+          |SI nNu1 > nNume; nNu1 = nNu1 - 1; |FINSI;
+          nNu2 = nNume - nNu1;
+          |SI nDec = 0;
+               aAlfa = nNu1;
+          |SINO;
+               aAlfa = nNu2;
+               aAlfa = aAlfa + "00000000000000000000000000";
+               nPos = nDec + 300;
+               aAlfa = aAlfa % nPos;
+               aAlfa = nNu1 + "." + aAlfa;
+          |FINSI;
+          aAlfa = "000000000000000000000000000000000000000000000" + aAlfa;
+          nPos = -1 * (nLon + 100);
+          aAlfa = aAlfa % nPos;
+     |FINSI;
+     |XGRABA nHandle, aAlfa;
+     aTipo = "";
+     nDec = 0;
+|FPRC;
+
+|PROCESO FicheroAge20;
+||Fecha del albaran                       Según formatodd/mm/aaaa
+     aAlfa = #10#1;
+     aAlfa = (aAlfa % 102) +"/"+ (aAlfa % 402) +"/"+ (aAlfa % -104);
+     nLon = 10; aTipo = "A";
+     |HAZ Relleno;
+||Tipo de servicio                        3  (FIJO 24)
+     ||aAlfa = "024";
+     aAlfa = "014";                ||Segun tiquet 3411/4
+     nLon = 3; aTipo = "A";
+     |HAZ Relleno;
+||Nombre remitente                        30
+     aAlfa = #41#1;
+     nLon = 30; aTipo = "A";
+     |HAZ Relleno;
+||Direccion remitente                     30
+     aAlfa = #41#2;
+     nLon = 30; aTipo = "A";
+     |HAZ Relleno;
+||Población remitente                     30
+     aAlfa = #41#3;
+     nLon = 30;  aTipo = "A";
+     |HAZ Relleno;
+||Nombre destinatario                     30
+     aAlfa = #10#29;
+     nLon = 30;  aTipo = "A";
+     |HAZ Relleno;
+||Direccion destino                       50
+     aAlfa = #10#30;
+     nLon = 50;  aTipo = "A";
+     |HAZ Relleno;
+||Vía destino                             3
+     aAlfa = "";
+     nLon = 3;  aTipo = "A";
+     |HAZ Relleno;
+||Numero destino                          4
+     aAlfa = "";
+     nLon = 4;  aTipo = "A";
+     |HAZ Relleno;
+||Piso destino                            10
+     aAlfa = "";
+     nLon = 10;  aTipo = "A";
+     |HAZ Relleno;
+||Teléfono destinatario                   12
+     aTlf = #10#83; |QBF aTlf;
+     |SI aTlf = "";
+          aAlfa = #24#17;
+     |SINO;
+          aAlfa = aTlf;
+     |FINSI;
+     nLon = 12; aTipo = "A";
+     |HAZ Relleno;
+||Población destino                       50
+     aAlfa = #10#31;
+     nLon = 50; aTipo = "A";
+     |HAZ Relleno;
+||Código postal destino                   5
+     aAlfa = #10#62;
+     nLon = 5; aTipo = "A";
+     |HAZ Relleno;
+||Nº de Bultos                            3
+     aAlfa = #10#2;
+     nLon = 3; aTipo = "N";
+     |HAZ Relleno;
+||Kilogramos                              9.2
+     aAlfa = #10#55;
+     nLon = 12; nDec = 2; aTipo = "N";
+     |HAZ Relleno;
+||Importe de reembolsos                   9.2
+     aAlfa = #10#56;
+     nLon = 12; nDec = 2; aTipo = "N";
+     |HAZ Relleno;
+||Valor mercancía                         9.2
+     aAlfa = "";
+     nLon = 12; nDec = 2; aTipo = "N";
+     |HAZ Relleno;
+||Portes Debidos                          1
+     |SI #10#64 = "D"; aAlfa = "S"; |SINO; aAlfa = "N"; |FINSI;
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||Observaciones
+     aAlfa = #10#57; |QBF aAlfa;
+     aAlfa = aAlfa + " " + #10#97; |QBF aAlfa;
+     nLon = 99; aTipo = "A";
+     |HAZ Relleno;
+     aAlfa = " ";
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||Nº total de paquetes                    3
+     aAlfa = #10#2;
+     nLon = 3; aTipo = "N";
+     |HAZ Relleno;
+||Anchura de expedición                   3
+     aAlfa = "";
+     nLon = 3; aTipo = "N";
+     |HAZ Relleno;
+||Altura de expedición                    3
+     aAlfa = "";
+     nLon = 3; aTipo = "N";
+     |HAZ Relleno;
+||Longitud de expedición                  3
+     aAlfa = "";
+     nLon = 3; aTipo = "N";
+     |HAZ Relleno;
+||Entrega en sábado                       1
+     aAlfa = "";
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||Con retorno                             1
+     aAlfa = "";
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||Referencia del albaran                  30
+     aAlfa = #10#0;
+     nLon = 30; aTipo = "A";
+     |HAZ Relleno;
+||Tipo salida ruta                        1
+     aAlfa = "1";
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||Indicador de retorno acuse recibo       1
+     aAlfa = "";
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||e-mail remitente                        100
+     aAlfa = "";
+     nLon = 100; aTipo = "A";
+     |HAZ Relleno;
+||e-mail destinatario                     100
+     aAlfa = "";
+     nLon = 100; aTipo = "A";
+     |HAZ Relleno;
+||¿e-mail a remitente?                    1
+     aAlfa = "";
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||¿e-mail a destinatario?                 1
+     aAlfa = "";
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+|FPRC;
+
+|PROCESO FicheroAge30;
+||REFERENCIA     20 caracteres
+     aAlfa = "IN";
+     nLon = 2; aTipo = "A";
+     |HAZ Relleno;
+
+     aAlfa = #10#0;
+     nLon = 18; nDec = 0; aTipo = "N";
+     |HAZ Relleno;
+||DESTINATARIO   40  caracteres
+     aAlfa = #10#29;
+     nLon = 40; aTipo = "A";
+     |HAZ Relleno;
+||DIRECCION DESTINATARIO   40 caracteres
+     aAlfa = #10#30;
+     nLon = 40; aTipo = "A";
+     |HAZ Relleno;
+||ATENCION (PERSONA DE CONTACTO 40 caracteres
+||     aAlfa = #24#36;
+     aAlfa = #10#57; |QBF aAlfa;
+     aAlfa = aAlfa + " " + #10#97; |QBF aAlfa;
+     nLon = 40; aTipo = "A";
+     |HAZ Relleno;
+||CODIGO POSTAL DESTINATARIO    7 caracteres, aunque los nacionales solo ocupan 5
+     aAlfa = #10#62;
+     nLon = 7; aTipo = "A";
+     |HAZ Relleno;
+||TELEFONO  15caracteres
+     aTlf = #10#83; |QBF aAlfa;
+     |SI aTlf = "";
+          aAlfa = #3#13;
+     |SINO;
+          aAlfa = aTlf;
+     |FINSI;
+     nLon = 15; aTipo = "A";
+     |HAZ Relleno;
+||POBLACION DESTINATARIO   40 caracteres
+     aAlfa = #10#31;
+     nLon = 40; aTipo = "A";
+     |HAZ Relleno;
+||TIPO PORTE     1 carácter
+     aAlfa = #10#64;
+     nLon = 1; aTipo = "A";
+     |HAZ Relleno;
+||TIPO DE PRODUCTO    2 caracteres
+     aAlfa = aCodTari;
+     nLon = 2; aTipo = "A";
+     |HAZ Relleno;
+||NUMERO DE BULTOS    6 caracteres
+     aAlfa = #10#2;
+     nLon = 6; aTipo = "N";
+     |HAZ Relleno;
+||KILOS     10 caracteres
+     aAlfa = #10#55;
+     nLon = 10; aTipo = "N";
+     |HAZ Relleno;
+||REEMBOLSO 12 caracteres
+     aAlfa = #10#56;
+     nLon = 12; aTipo = "A";
+     |HAZ Relleno;
+||CODIGO PAIS    4 caracteres
+     aAlfa = "";
+     nLon = 4; aTipo = "A";
+     |HAZ Relleno;
+||OBSERVACIONES 1     40 caracteres
+     aAlfa = #10#57; |QBF aAlfa;
+     aAlfa = aAlfa + " " + #10#97; |QBF aAlfa;
+     nLon = 40; aTipo = "A";
+     |HAZ Relleno;
+||OBSERVACIONES 2     40 caracteres
+     aAlfa = "";
+     nLon = 40; aTipo = "A";
+     |HAZ Relleno;
+|FPRC;
+
+|PROCESO GuiFichero;
+     |DFICB aAlfa;
+     |PATH_DAT #41 aAlfa;
+     |DFICE aAlfa;
+     aAlfa = aAlfa % -202;
+     |ABRE #41;
+     #41#0 = aAlfa;
+     |LEE 000#41=;
+     |CIERRA #41;
+
+     |ABRE #24;
+     #24#0 = #10#3;
+     |LEE 000#24=;
+     |CIERRA #24;
+
+     |ABRE #3;
+     #3#0 = #10#3;
+     #3#1 = #10#84;
+     |CIERRA #3;
+
+     |DDEF aDef;
+     aDef = aDef + "guim0001";
+     |CARGA_DEF aDef, guim0001@;
+     |SI FSalida = 0;
+          |ABRE #guim0001@; |LEE 000#guim0001@.p; |CIERRA #guim0001@;
+          aPath = #guim0001@#1; |QBF aPath;
+          aCliSer = #guim0001@#2;
+          aTipo4 = #guim0001@#18;
+          aPathTmp = "";
+          |SI #10#88 = 20;
+               aPath = #guim0001@#3; |QBF aPath;
+               aCliSer = #guim0001@#4;
+          |FINSI;
+          |SI #10#88 = 30;
+               aPath = #guim0001@#13; |QBF aPath;
+               aPathTmp = #guim0001@#17; |QBF aPathTmp;
+               aCliSer = #guim0001@#14;
+               aCodTari = #guim0001@#19;
+          |FINSI;
+          |DESCARGA_DEF #guim0001@;
+     |FINSI;
+     aFic = ("000000" + #10#0) % -106;
+     |SI aPathTmp = "";
+          aFic = aPath + aFic + ".txt";
+     |SINO;
+          aFicDes = aPath + aFic + ".txt";
+          aFic = aPathTmp + aFic + ".txt";
+     |FINSI;
+
+     |DFICE aAlfa; aFicTmp = aAlfa + Usuario;
+     |XABRE "WB", aFicTmp, nHandle;
+     |SI FSalida ] 0;
+          aTab = &9;
+          |SI #10#88 = 4; |HAZ FicheroAge04; |FINSI;
+          |SI #10#88 = 20; |HAZ FicheroAge20; |FINSI;
+          |SI #10#88 = 30; |HAZ FicheroAge30; |FINSI;
+          |SI #10#88 ! 30;
+               aAlfa = &10 + &13;
+               |XGRABA nHandle,aAlfa
+          |FINSI;
+          |XCIERRA nHandle;
+          nErr = 0;
+          |SI aCliSer = "C";
+               aIP = "";
+               |IP_REMOTO aIP;
+               |SI aIP = "";
+                    |SI aPathTmp = "";
+                         |FBORRA aFic;
+                         |RENOMBRA_FICHERO aFicTmp, aFic;
+                    |SINO;
+                         |FBORRA aFicDes;
+                         |RENOMBRA_FICHERO aFicTmp, aFicDes;
+                    |FINSI;
+                    |SI FSalida ! 0;
+                         |MENAV "0000Error al copiar fichero...";
+                    |FINSI;
+               |SINO;
+                    |ENVIA_FICHERO aFicTmp, aFic;
+
+                    aContiene = aFicTmp;
+                    |ESPECIFICA "MD5", aContiene;
+                    aMd5Org = FSalida;
+                    aContiene = aFic;
+                    |ESPECIFICA "REMOTOMD5", aContiene;
+                    aMd5Des = FSalida;
+
+                    |SI aMd5Org = aMd5Des;
+                         |SI aPathTmp ! "";
+                              |RFBORRA aFicDes;
+                              |RRENOMBRA_FICHERO aFic, aFicDes;
+                         |SINO;
+                              FSalida = 0;
+                         |FINSI;
+                    |SINO;
+                         |MENAV "0000Error al copiar fichero al servidor...";
+                         nErr = 1;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               |COPIA_FICHERO aFicTmp, aFic;
+               |SI aPathTmp ! "";
+                    |FBORRA aFicDes;
+                    |RENOMBRA_FICHERO aFic, aFicDes;
+               |FINSI;
+          |FINSI;
+          |SI nErr = 0;
+               |SI FSalida = 0;
+                    aFic = ("000000" + #10#0) % -106;
+                    aAlfa = "0000Creado Fichero:" + aFic + ".txt";
+                    |SI enInforpConfi ! 2;
+                         |MENAV aAlfa;
+                    |FINSI;
+               |SINO;
+                    aAlfa = "0000Error al copiar:" + aFic;
+                    |MENAV aAlfa;
+               |FINSI;
+          |FINSI;
+          |FBORRA aFicTmp;
+     |SINO;
+          aAlfa = "0000Error al crear:" + aFic;
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO GuiFicNacex;
+     |DFICB aAlfa;
+     |PATH_DAT #41 aAlfa;
+     |DFICE aAlfa;
+     aAlfa = aAlfa % -202;
+     |ABRE #41;
+     #41#0 = aAlfa;
+     |LEE 000#41=;
+     |CIERRA #41;
+
+     |ABRE #24;
+     #24#0 = #10#3;
+     |LEE 000#24=;
+     |CIERRA #24;
+
+     |DDEF aDef;
+     aDef = aDef + "guim0001";
+     |CARGA_DEF aDef, guim0001@;
+     |SI FSalida = 0;
+          |ABRE #guim0001@; |LEE 000#guim0001@.p; |CIERRA #guim0001@;
+          aPath = #guim0001@#15; |QBF aPath;
+          aCliSer = #guim0001@#16;
+          |DESCARGA_DEF #guim0001@;
+     |FINSI;
+     aFic = ("000000" + #10#0) % -106;
+     aFic = aPath + aFic + ".txt";
+     |SI aCliSer = "C";
+          |XABRE "CWB", aFic, nHandle;
+     |SINO;
+          |XABRE "WB", aFic, nHandle;
+     |FINSI;
+     |SI FSalida ] 0;
+          aTab = &9;
+          |HAZ FicheroNacex;
+          aAlfa = &10 + &13; |XGRABA nHandle,aAlfa
+          |XCIERRA nHandle;
+          aFic = ("000000" + #10#0) % -106;
+          aAlfa = "0000Creado Fichero:" + aFic + ".txt";
+          |SI enInforpConfi ! 2;
+               |MENAV aAlfa;
+          |FINSI;
+     |SINO;
+          aAlfa = "0000Error al crear:" + aFic;
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO GuipuzEti2;
+     |ABRE #10;
+     #10#52 = ser_alb;
+     #10#0 = num_alb;
+     |LEE 000#10=;
+     |SI FSalida = 0;
+          |SI #10#88 = 12;     || Nacex
+               |HAZ GuiFicNacex;
+          |SINO;
+               |SI #10#88 = 7;          || La agencia es '07'
+                    |HAZ GuipuzEti;
+               |SINO;
+                    |SI #10#88 = 4; |O #10#88 = 20; |O #10#88 = 30;
+                         || La agencia es '04' '20' '30'
+                         |HAZ GuiFichero;
+                    |SINO;
+                         |SI #10#88 ] 70;       || La agencia es mayor o igual a 70
+                              |HAZ EstaDsseur;
+                              |SI FSalida = 0;
+                                   |HAZ EtiquetaSeur;
+                              |SINO;
+                                   |SI enInforpConfi ! 2;
+                                        |MENAV "0000No es un albaran de etiquetadora";
+                                        ||SUB_EJECUTA_NP "agifa013";
+                                   |FINSI;
+                              |FINSI;
+                         |SINO;
+                              |SI enInforpConfi ! 2;
+                                   |MENAV "0000No es un albaran de etiquetadora";
+                                   ||SUB_EJECUTA_NP "agifa013";
+                              |FINSI;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #10;
+|FPRC;
+
+
+/* ||ESTO SERIA SI CALCULAMOS AUTOMATICAMENTE LOS KILOS
+
+|PROCESO SacaKg;
+     #19#0 = #71#2
+     |LEE 000#19=;
+     |SI FSalida = 0;
+          enKilosAlb = enKilosAlb + (#71#5 * #19#102);
+     |FINSI;
+|FPRC;
+
+*/
+|PROCESO GuipuzEti;
+     |ABRE #10;
+     #10#52 = ser_alb;
+     #10#0 = num_alb;
+     |LEE 000#10=;
+     |SI FSalida = 0;
+          |HAZ SacaEmpGuipuz;
+          |SI eaCodGuipuz ! "";
+
+               enKilosAlb = #10#55;
+               enReembAlb = #10#56;
+               eaObservaAlb = #10#57; |QBF eaObservaAlb
+               eaObservaAlb = eaObservaAlb + " " + #10#97; |QBF eaObservaAlb;
+               eaCliente = #10#3;
+
+               aAlfa = ":dsguipuz/dsseuz06.tab dsseum01 " + eaCodGuipuz;
+               |SUB_EJECUTA aAlfa;
+          |SINO;
+               |MENAV "0000No se encuentra parametrizacion correcta.";
+          |FINSI;
+     |FINSI;
+     |CIERRA #10;
+
+
+/* ||ESTO SERIA SI CALCULAMOS AUTOMATICAMENTE LOS KILOS
+     |ABRE #10;
+     |ABRE #71;
+     |ABRE #19;
+     #10#52 = eaSerieAlb;
+     #10#0 = enNumAlb;
+     |LEE 101#10=;
+     |SI FSalida = 0;
+          enKilosAlb = 0;
+          |BUCLELIN 0SacaKg#10;
+     |FINSI;
+     |CIERRA #10;
+     |CIERRA #71;
+     |CIERRA #19;
+*/
+|FPRC;
+
+|PROCESO dsseum01;
+     aCod_empreG = #1#0;
+     aCod_empreG = "00" + aCod_empreG;
+     aCod_empreG = aCod_empreG % -102;
+
+     aDirFich = aDirBase2 - "def";
+     aDirFich = aDirFich + "fich/" + aCod_empreG + "/";
+     |PATH_DAT #2 aDirFich;
+     |ABRE #2;
+     |LEE 000#2p;
+     |SI FSalida = 0;|Y #2#13 = aCod_empre8;
+          eaCodGuipuz = aCod_empreG;  ||me guardo #1#0 formateado
+          |ERROR10;
+     |FINSI;
+     |CIERRA #2;
+|FPRC;
+
+|DEFBUCLE dsseum01;
+     #1#1001;
+     ;
+     00;
+     99;
+     ;
+     NULL, dsseum01;
+|FIN;
+
+|PROCESO SacaEmpGuipuz;
+     eaCodGuipuz = "";
+
+  ||1§ Me guardo la empresa en la que estoy
+     aCod_empre8 = #48#0;
+
+  ||2§ Hago un cargadef del fichero de empresas de dsguipuz
+     |DBASS aDirBase;
+     aDirBase2 = aDirBase + "dsguipuz/def";
+     aNomDef = aDirBase2 + "/dsseum01"
+     |CARGA_DEF aNomDef, dsseum01@;
+     |SI FSalida = 0;
+          aNomDef = aDirBase2 + "/dsseum02";
+          |CARGA_DEF aNomDef, dsseum02@;
+          |SI FSalida = 0;
+               aDirFich = aDirBase2 - "def";
+               aDirFich = aDirFich + "fich/";
+               |PATH_DAT #1 aDirFich;
+               |BUCLE dsseum01;
+               |DESCARGA_DEF #dsseum02@;
+          |SINO;
+               aMensaje = "0000Error carga_def " + aNomDef;
+               |MENAV aMensaje;
+          |FINSI;
+          |DESCARGA_DEF #dsseum01@;
+     |SINO;
+          aMensaje = "0000Error carga_def " + aNomDef;
+          |MENAV aMensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO BorraLineaG;
+     || ser_alb  = "";
+     || num_alb  = 0;
+     |HAZ SacaEmpGuipuz;  ||ahora en eaCodGuipuz tengo la empresa de dsguipuz
+
+     |DBASS aDirBase;
+     aDirBase2 = aDirBase + "dsguipuz/def";
+     aNomDef = aDirBase2 + "/dsseum06";
+     |CARGA_DEF aNomDef, dsseum06@;
+     |SI FSalida = 0;
+          aDirFich = aDirBase2 - "def";
+          aDirFich = aDirFich + "fich/" + aCod_empreG + "/";
+          |PATH_DAT #6 aDirFich;
+
+          |ABRE #6;
+          #6#0 = ser_alb;
+          #6#1 = num_alb;
+          |LEE 101#6=;
+          |SI FSalida = 0;   ||si existe ese registro en Datos Albaranes -> lo borro
+               |BORRA 020#6a;
+          |FINSI;
+          |LIBERA #6;
+          |CIERRA #6;
+
+          |DESCARGA_DEF #dsseum06@;
+     |SINO;
+          aMensaje = "0000Error carga_def " + aNomDef;
+          |MENAV aMensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO DimeEmpresaSeur;
+     |DBASS aBase;
+     |QBF aBase;
+
+     aPathSeur = aBase + "dsseur/";
+     aPathDef = aPathSeur + "def/";
+     aPathFich = aPathSeur + "fich/";
+
+     aMas = aPathDef + "dsseum02";
+     |CARGA_DEF aMas, referen@;
+     |SI FSalida ! 0;
+          |ACABA;
+     |FINSI;
+
+     |PARA nVoy = 1; |SI nVoy [ 99; |HACIENDO nVoy = nVoy + 1;
+          aEmpBusco = ("00" + nVoy) % -102;
+
+          aBusco = aPathFich + aEmpBusco + "/dsseum02.dat";
+          |XABRE "E", aBusco, nHandle;
+          |SI FSalida ] 0;
+               aPathDatos = aPathFich + aEmpBusco + "/";
+               |PATH_DAT #100 aPathDatos;
+               |ABRE #100;
+               |LEE 000#100.p;
+               |SI FSalida = 0;
+                    |SI #100#13 = nEmp;
+                         nEmpSeur = nVoy;
+                         |ACABA;
+                    |FINSI;
+               |FINSI;
+               |CIERRA #100;
+          |FINSI;
+     |SIGUE;
+
+     |DESCARGA_DEF #100;
+|FPRC;
+
+
+|PROCESO EtiquetaSeur;
+     nEmp = #48#0;
+     nEmpSeur = 0;
+     |HAZ DimeEmpresaSeur;
+
+     |SI nEmpSeur ! 0;
+          aMensaje = "0000Llamada a la empresa " + nEmpSeur;
+          ||MENAV aMensaje;
+          ||SUB_EJECUTO, pasandolo el numero de albaran
+          eaSerAlbaran = #agifa010#52;
+          enNumAlbaran = #agifa010#0;
+          enAgenciaAlba = #agifa010#88;
+
+          aEjecuta = ":dsseur/dsseuz03 dsseum01 " + nEmpSeur + ";AUTO";
+          |SUB_EJECUTA aEjecuta;
+     |SINO;
+          aMensaje = "0000Modulo DSSEUR, no configurado para la empresa " + nEmp;
+          |MENAV aMensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO FicheroNacex;
+||    Long.     Tipo CONTENIDO
+||5    N    Código de cliente (Nº abonado Nacex)    00284
+     aAlfa = "00284"; |XGRABA nHandle, aAlfa;
+
+||10   C    Departamento del cliente    blanco
+     aAlfa = " " * 10; |XGRABA nHandle, aAlfa;
+
+||2    N    Tipo de servicio     08
+     aAlfa = "08"; |XGRABA nHandle, aAlfa;
+
+||1    C    Tipo de Cobro (O = Origen / D = Destino / T = Tercera)
+     aAlfa = "O"; |XGRABA nHandle, aAlfa;
+
+||3    N    Número de excesos    000
+     aAlfa = "000"; |XGRABA nHandle, aAlfa;
+
+||20   C    Referencia del cliente        nº ALBARAN
+     aAlfa = ("000000" + #10#0) % -106;
+     nLon = 20; aTipo = "A"; |HAZ Relleno;
+
+||1    C    Tipo de envío (1 = Bag / 2 = Paq / M = Muestra / D = Documentos)
+     aAlfa = "2"; |XGRABA nHandle, aAlfa;
+
+||3    N    Número de bultos (Ej. Para 5 bultos, 005)   #agifa010#2
+     aAlfa = ("000" + #10#2) % -103; |XGRABA nHandle, aAlfa;
+
+||6    N    Kilos (2 últimos dígitos decimales) (Ej. Para 12 kilos, 001200)    #agifa010#55 añadir los dos ceros que corresponden a decimales, ellos indican siempre enteros.
+     aAlfa = #10#55; |QBT aAlfa;
+     aAlfa = ("0000" + aAlfa) % -104; aAlfa = aAlfa + "00";
+     |XGRABA nHandle, aAlfa;
+
+||35   C    Nombre de entrega      #agifa010#29
+     aAlfa = #agifa010#29;
+     nLon = 35; aTipo = "A"; |HAZ Relleno;
+
+||35   C    Departamento de entrega     blanco
+     aAlfa = " " * 35; |XGRABA nHandle, aAlfa;
+
+||35   C    Persona de entrega       blanco
+     aAlfa = " " * 35;
+     aAlfa = #agifa010#97 + aAlfa;
+     aAlfa = aAlfa % 135;
+     |XGRABA nHandle, aAlfa;
+
+||45   C    Dirección de entrega     #agifa010#30
+     aAlfa = #agifa010#30;
+     nLon = 45; aTipo = "A"; |HAZ Relleno;
+
+||2    C    País de entrega          ES
+     aAlfa = "ES"; |XGRABA nHandle, aAlfa;
+
+||15   C    Código postal entrega (Ej. 08902)    #agifa010#62
+     aAlfa = #agifa010#62;
+     nLon = 15; aTipo = "A"; |HAZ Relleno;
+
+||30   C    Población de entrega       #agifa010#31
+     aAlfa = #agifa010#31;
+     nLon = 30; aTipo = "A"; |HAZ Relleno;
+
+||30   C    Provincia de entrega     #agifa010#33
+     aAlfa = #agifa010#33;
+     nLon = 30; aTipo = "A"; |HAZ Relleno;
+
+||15   C    Teléfono de entrega        #agifa024#17
+     aAlfa = #agifa010#83; |QBF aAlfa;
+     |SI aAlfa = ""; aAlfa = #agifa024#17; |FINSI;
+     nLon = 15; aTipo = "A"; |HAZ Relleno;
+
+||7    N    Importe del reembolso (Dos últimos dígitos decimales sin “,” )   0000000
+     aAlfa = "0" * 7; |XGRABA nHandle, aAlfa;
+
+||1    C    Comisión del reembolso (O = Origen / D = Destino / N = No reembolso.)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||38   C    Observaciones 1        #agifa010#57
+     aAlfa = #agifa010#57;
+     nLon = 38; aTipo = "A"; |HAZ Relleno;
+
+||38   C    Observaciones 2        blancos
+     aAlfa = " " * 38; |XGRABA nHandle, aAlfa;
+
+||38   C    Observaciones 3        blancos
+     aAlfa = " " * 38; |XGRABA nHandle, aAlfa;
+
+||38   C    Observaciones 4          blancos
+     aAlfa = " " * 38; |XGRABA nHandle, aAlfa;
+
+||1    C    Envío con retorno (S / N)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||1    C    Nacex 8.30 (S / N)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||1    C    Entrega en Sábado (S / N)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||1    C    Gestión / Tramite: No / Origen / Destino / Ambos Trámite  R Origen /  E Destino / T Ambas
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||1    C    Confirmación Ok. 15 minutos (S / N)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||1    C    Prepagado (S / N)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||1    C    Tipo de seguro (A = General / B = Joyería  / C = Telefonía móvil / D = Mercancía de valor / N =No se asegura)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||7    N    Importe valor a asegurar en Euros sin decimales    0000000
+     aAlfa = "0" * 7; |XGRABA nHandle, aAlfa;
+
+||1    C    Tipo de ealerta (N = No se avisa /  S = SMS  /  E = E-Mail)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||50   C    ealerta (al móvil o dirección de e-mail indicados)   blancos
+     aAlfa = " " * 50; |XGRABA nHandle, aAlfa;
+
+||3    N    Alto en cm       000
+     aAlfa = "000"; |XGRABA nHandle, aAlfa;
+
+||3    N    Ancho en cm    000
+     aAlfa = "000"; |XGRABA nHandle, aAlfa;
+
+||3    N    Largo en cm     000
+     aAlfa = "000"; |XGRABA nHandle, aAlfa;
+
+||76   C    Contenido     blancos
+     aAlfa = " " * 76; |XGRABA nHandle, aAlfa;
+
+||7    N    Valor declarado     0000000
+     aAlfa = "0" * 7; |XGRABA nHandle, aAlfa;
+
+||1    C    Digitalizar / Almacenar  (N = No digitalizar / D = Digitalizar / A = Digitalizar y Archivar)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||2    N    Número de copias a escanear   00
+     aAlfa = "00"; |XGRABA nHandle, aAlfa;
+
+||7    C    Reservado     blancos
+     aAlfa = " " * 7; |XGRABA nHandle, aAlfa;
+
+||1    C    Tipo Prealertao (N = No se avisa /  S = SMS  /  E = E-Mail)
+     aAlfa = "N"; |XGRABA nHandle, aAlfa;
+
+||48   C    Prealerta (al móvil o dirección de e-mail indicados)    blancos
+     aAlfa = " " * 48; |XGRABA nHandle, aAlfa;
+
+||2    N    Código de plantilla Prealera Plus. Debe ir a 00 para la prealerta Standard    00
+     aAlfa = "00"; |XGRABA nHandle, aAlfa;
+
+||2    N    Código de plantilla Instrucciones Adicionales. Si no hay IA debe ir a 00
+     aAlfa = "00"; |XGRABA nHandle, aAlfa;
+|FPRC;

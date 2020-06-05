@@ -1,0 +1,377 @@
+|FICHEROS;
+   casalcar #0;
+   cacuenta #1;
+
+   camancob #2;
+   camanpag #3;
+|FIN;
+
+|VARIABLES;
+   nParte1 = 0;
+   nParte2 = 0;
+   aParte1 = "";
+   aParte2 = "";
+
+   aLong   = "";
+   nLong   = 0;
+   MaxDig  = 0;
+
+   Comodin = "";
+   Calc    = 0;
+
+   &SwDatos = 0;
+   &LinPag = 0;
+   NumLins = 0;
+   &NumPag = 1;
+
+   &SwCta  = 0;
+   &SwCab  = 0;
+   &SwTot  = 0;
+   &SwAnt  = 0;
+   &Fecha  = @;
+   &SwLin  = 0;
+   &SwSum  = 0;
+   &SwEspacio = 0;
+   &Libro     = "";
+   &Serie     = "";
+   &Factura   = "";
+   &Recibo    = "";
+   &Emision   = "";
+   &Vencto    = "";
+   &TipoRec   = "";
+   &Importe   = 0;
+   &Negoc     = 0;
+   &Devol     = 0;
+   &nSaldo1   = 0;
+   &nSaldo    = 0;
+   TotPdtCli  = 0;
+   &eaImpo    = "";
+
+    {-1}form  = "";
+        form1 = "2400";
+        form2 = "1";
+        form3 = "Elija formato: ";
+        form4 = "12";
+        form5 = " < 1 > ";
+        form6 = " < 2 > ";
+
+    {-1}TRec  = "";
+        TRec1 = "2400";
+        TRec2 = "1";
+        TRec3 = "Dato a usar : ";
+        TRec4 = "IOG";
+        TRec5 = " Importe Recibo ";
+        TRec6 = " Importe Original";
+        TRec7 = " Imp.Original+Gastos Dev.";
+
+    Opcion    = 0;
+    Opcion1   = 0;
+    TotRecibo = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+
+|PROCESO Marca;
+   |SI Campo = 2;
+      |SI #0#2 = "X";
+         #0#3 = " ";
+      |SINO;
+         #0#3 = "X";
+      |FINSI;
+   |SINO;
+      |SI #0#3 = "X";
+         #0#2 = " ";
+      |SINO;
+         #0#2 = "X";
+      |FINSI;
+   |FINSI;
+   |PINTA #0#2;
+   |PINTA #0#3;
+|FPRC;
+
+|PROCESO PuntoCuenta; |TIPO 6;
+
+   |SI #48#19 ! 0; MaxDig = #48#19; |SINO;
+      |SI #48#18 ! 0; MaxDig = #48#18; |SINO;
+         |SI #48#17 ! 0; MaxDig = #48#17; |SINO;
+            |SI #48#16 ! 0; MaxDig = #48#16; |SINO;
+               |SI #48#15 ! 0; MaxDig = #48#15; |SINO;
+                  |SI #48#14 ! 0; MaxDig = #48#14; |SINO;
+                     MaxDig = 0;
+   |FINSI; |FINSI; |FINSI; |FINSI; |FINSI; |FINSI;
+
+   Comodin = #casalcar#Campo#;
+   Comodin = Comodin - ".";
+   |SI FSalida ! 0;
+      Calc = FSalida;
+      nParte1 = 99 + ((Calc / 100) ! 0);
+      aParte1 = Comodin % nParte1;
+      nParte2 = 98 + Calc;
+      aParte2 = Comodin % nParte2;
+      |QBF Comodin;
+      aLong = Comodin % 0; nLong = aLong;
+      nLong = MaxDig - nLong;
+      Comodin = aParte1 + ("0" * nLong) + aParte2;
+      #casalcar#Campo# = Comodin;
+      |PINTA #casalcar#Campo#;
+   |FINSI;
+|FPRC;
+
+|| ****************************************************************
+|PROCESO RevisaCli;
+   |SI Opcion1 = 1; TotRecibo = #camancob#8;  |FINSI;
+   |SI Opcion1 = 2; TotRecibo = #camancob#26; |FINSI;
+   |SI Opcion1 = 3; TotRecibo = #camancob#26 + #camancob#10; |FINSI;
+
+   TotPdtCli = TotPdtCli + (TotRecibo - #camancob#24);
+|FPRC;
+
+|DEFBUCLE RevisaCli;
+    #camancob#2;
+    23;
+    #cacuenta#0,#cacuenta#1,"01.01.1900","N";
+    #cacuenta#0,#cacuenta#1,"31.12.2999","N";
+    ;
+    NULL,RevisaCli;
+|FIN;
+
+|PROCESO RevisaPro;
+    TotPdtCli = TotPdtCli + (#camanpag#8 - #camanpag#23);
+|FPRC;
+
+|DEFBUCLE RevisaPro;
+    #camanpag#2;
+    22;
+    #cacuenta#0,#cacuenta#1,"01.01.1900","N";
+    #cacuenta#0,#cacuenta#1,"31.12.2999","N";
+    ;
+    NULL,RevisaPro;
+|FIN;
+
+|| //////////////////////////////////////////////////////////
+
+|PROCESO PdteCli;
+
+   |SI Comodin = "40"; |O Comodin = "41"; |O Comodin = "52";
+       TotRecibo = #camanpag#8;
+   |SINO;
+       |SI Opcion1 = 1; TotRecibo = #camancob#8;  |FINSI;
+       |SI Opcion1 = 2; TotRecibo = #camancob#26; |FINSI;
+       |SI Opcion1 = 3; TotRecibo = #camancob#26+#camancob#10; |FINSI;
+   |FINSI;
+
+   Calc = NumLins - 5;
+   |SI LinPag ] Calc;
+       NumPag = NumPag + 1;
+       |SI SwDatos = 1;
+           SwSum = 1; |PRINT; SwSum = 0;
+           LinPag = LinPag + 3;
+       |FINSI;
+       |HAZ VeteAlPie;
+       |PIEINF;
+       LinPag = 8;
+       SwCab = 1; SwAnt = 1;
+   |FINSI;
+
+   |SI SwCab = 1; LinPag = LinPag + 3; |FINSI; || Por la cabecera del detalle de recibos
+   |SI SwAnt = 1; LinPag = LinPag + 1; |FINSI; || Por la linea de suma anterior
+
+   SwDatos = 1;
+   |SI Comodin = "40"; |O Comodin = "41"; |O Comodin = "52";
+       Libro   = ("00" + #camanpag#0) % -102;
+       Serie   = #camanpag#2;
+       Factura = ("000000" + #camanpag#1) % -106;
+       Recibo  = ("000" + #camanpag#3) % -103;
+       Emision = #camanpag#6;
+       Vencto  = #camanpag#7;
+       Importe = TotRecibo - #camanpag#23;
+       Negoc   = #camanpag#9;
+       TipoRec = ("00" + #camanpag#11) % -102;
+   |SINO;
+       Libro   = ("00" + #camancob#0) % -102;
+       Serie   = #camancob#2;
+       Factura = ("000000" + #camancob#1) % -106;
+       Recibo  = ("000" + #camancob#3) % -103;
+       Emision = #camancob#6;
+       Vencto  = #camancob#7;
+       Importe = TotRecibo - #camancob#24;
+       Negoc   = #camancob#9;
+       Devol   = #camancob#10;
+       TipoRec = ("00" + #camancob#11) % -102;
+   |FINSI;
+   SwLin = 1;
+
+   |SI SwCab = 1;
+       Calc = NumLins - 5;
+       |SI LinPag ] Calc;
+           NumPag = NumPag + 1;
+           |PIEINF;
+           LinPag = 8;
+       |FINSI;
+   |FINSI;
+
+   |PRINT; LinPag = LinPag + 1;
+   |SI SwCab = 1; SwCab = 0; |FINSI;
+   |SI SwAnt = 1; SwAnt = 0; |FINSI;
+   SwLin = 0;
+|FPRC;
+
+|DEFBUCLE PdteCli;
+    #camancob#2;
+    23;
+    #cacuenta#0,#cacuenta#1,"01.01.1900","N";
+    #cacuenta#0,#cacuenta#1,"31.12.2999","N";
+    ;
+    NULL,PdteCli;
+|FIN;
+
+|DEFBUCLE PdteProv;
+    #camanpag#2;
+    22;
+    #cacuenta#0,#cacuenta#1,"01.01.1900","N";
+    #cacuenta#0,#cacuenta#1,"31.12.2999","N";
+    ;
+    NULL,PdteCli;
+|FIN;
+
+|PROCESO Cuentas;
+
+   Comodin = #cacuenta#0 % 0102;
+
+   nSaldo1 = (#cacuenta#53 - #cacuenta#50) ! 2;
+   nSaldo  = nSaldo1;
+   |SI #cacuenta#5 = "P"; |O #cacuenta#5 = "H"; nSaldo = - nSaldo; |FINSI;
+
+   |SI #casalcar#2 = "X";
+       TotPdtCli = 0;
+       |SI Comodin = "40"; |O Comodin = "41"; |O Comodin = "52";
+           |BUCLE RevisaPro;
+       |SINO;
+           |BUCLE RevisaCli;
+       |FINSI;
+       TotPdtCli = TotPdtCli ! EURODB;
+       |SI nSaldo ! TotPdtCli; |Y TotPdtCli ! 0; |Y nSaldo ! 0;
+           |PRINT;
+           LinPag = LinPag + 1;
+       |FINSI;
+   |SINO;
+      |SI nSaldo ! 0;
+          Calc = NumLins - 5;
+          |SI LinPag > Calc;
+              NumPag = NumPag + 1;
+              |HAZ VeteAlPie;
+              |PIEINF;
+              LinPag = 8;
+              SwCta = 1;
+         |FINSI;
+         |PRINT; LinPag = LinPag + 1;
+      |FINSI;
+   |FINSI;
+   SwCta = 0;
+   SwCab = 1;
+   SwDatos = 0;
+
+   |SI Comodin = "43"; |O Comodin = "44";
+       |SI #casalcar#2 = "X";
+           TotPdtCli = 0;
+           |BUCLE RevisaCli;
+           TotPdtCli = TotPdtCli ! EURODB;
+           |SI nSaldo ! TotPdtCli; |Y TotPdtCli ! 0; |Y nSaldo ! 0;
+               |BUCLE PdteCli;
+           |FINSI;
+       |SINO;
+           |SI nSaldo ! 0;
+               |BUCLE PdteCli;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SI Comodin = "40"; |O Comodin = "41"; |O Comodin = "52";
+       |SI #casalcar#2 = "X";
+           TotPdtCli = 0;
+           |BUCLE RevisaPro;
+           TotPdtCli = TotPdtCli ! EURODB;
+           |SI nSaldo ! TotPdtCli; |Y TotPdtCli ! 0; |Y nSaldo ! 0;
+               |BUCLE PdteProv;
+           |FINSI;
+       |SINO;
+           |SI nSaldo ! 0;
+               |BUCLE PdteProv;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+||   |SI nSaldo ! 0;
+      SwCab = 0;
+      |SI SwDatos = 1;
+          SwTot = 1; |PRINT; LinPag = LinPag + 3; SwTot = 0;
+      |SINO;
+          |SI nSaldo ! 0; |Y #casalcar#3 = "X";
+              SwTot = 1; |PRINT; LinPag = LinPag + 3; SwTot = 0;
+          |FINSI;
+      |FINSI;
+      SwCta = 1;
+||   |FINSI;
+|FPRC;
+
+|DEFBUCLE Cuentas;
+    #cacuenta#1;
+    3;
+    #casalcar#0, 0, "S";
+    #casalcar#1, 9, "S";
+    ;
+    NULL,Cuentas;
+|FIN;
+
+|PROCESO VeteAlPie;
+   SwCta = 0;
+   SwCab = 0;
+   SwAnt = 0;
+   SwLin = 0;
+   SwTot = 0;
+   SwSum = 0;
+   SwEspacio = 1;
+   |PARA LinPag; |SI LinPag < NumLins; |HACIENDO LinPag = LinPag + 1;
+      |PRINT;
+   |SIGUE;
+   SwEspacio = 0;
+|FPRC;
+
+|PROGRAMA;
+   |HAZ inicio;
+   |CLS;
+   |CABEZA "Listado saldos/cartera";
+   |PINPA #0#0;
+   |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      |MENU form;
+      Opcion = FSalida;
+      |SI Opcion < 1; |O Opcion > 2; |ACABA; |FINSI;
+
+      |MENU TRec;
+      Opcion1 = FSalida;
+      |SI Opcion1 < 1; |O Opcion1 > 3; |ACABA; |FINSI;
+
+                        eaImpo = "   Imp.Recibo";
+       |SI Opcion1 = 2; eaImpo = " Imp.Original"; |FINSI;
+       |SI Opcion1 = 3; eaImpo = "I. Or+Gs.Dev."; |FINSI;
+
+      |IMPRE 0;
+      |SI FSalida < 0; |ACABA; |FINSI;
+      |SI Opcion = 1;
+         |INFOR "casalca1";
+      |SINO;
+         |INFOR "casalca2";
+      |FINSI;
+      |SI FSalida < 0; |ACABA; |FINSI;
+
+      NumLins = #casalcar#4;
+      SwCta = 1; Fecha = ~; LinPag = 8;
+      |BUCLE Cuentas;
+
+      |PIEINF;
+      |FININF;
+      |FINIMP;
+   |FINSI;
+|FPRO;

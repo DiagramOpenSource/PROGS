@@ -1,0 +1,287 @@
+|FICHEROS;
+     gopre008 #0;
+     gopre002 #1;
+     gopre004 #4;
+     gopre003 #2;
+     goartdes #9;
+     gopre001 #10;
+     goparame #100;
+|FIN;
+-----------------------------------------------------------------------------
+|VARIABLES;
+     nPrecio = 0;
+     nIncremento = 0;
+     &cCodMonBase   = "";
+     &cDesMonBase   = "";
+     &cCodMonTrab   = "";
+     &cDesMonTrab   = "";
+
+     &nDeci_PBase   = 0;
+     &nDeci_TBase   = 0;
+     &nDeci_PTrab   = 0;
+     &nDeci_TTrab   = 0;
+     &nDeci_TotVis  = 0;
+     &nEurComTrab   = 0;
+     &nEurComBase   = 0;
+     &nEurVenTrab   = 0;
+     &nEurVenBase   = 0;
+
+     nModo          = 0;
+     nIncrem        = 0;
+     nBotF02        = 0;
+
+     cCapitulo      = "";
+
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO MiraAsigPar; |TIPO 0;
+     |ABRE #10;
+     #10#0 = #0#0;
+     #10#1 = #0#1;
+     |LEE 000#10=;
+
+     |SI FSalida = 0;
+
+          |SI #10#17 ! " "; |Y #10#17 ! "E";
+               |MENAV "0000EL PRESUPUESTO, YA ESTA ASIGNADO. NO SE PUEDE VARIAR";
+               |ERROR;
+               |ACABA;
+          |FINSI;
+
+     |FINSI;
+
+     |CIERRA #10;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MonTra006; |TIPO 14;
+     cCodMonTrab = #0#4;
+     ||SUB_EJECUTA_NP "gomoneda";
+     |HAZ MonBas;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO ComPre;
+     |SI #0#9 < #0#14;
+          |AVISO;
+          |MENAV "2400EL IMPORTE INTRODUCIDO ESTA POR DEBAJO DEL COSTE";
+          |CONFI "2400NCONTINUAR";
+          |SI FSalida ! 0;
+              |ERROR;
+              |ACABA;
+          |FINSI;
+     |FINSI;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO CalPor;
+     |SI #0#9 ! Contenido;
+          |SI #10#42 = "+";
+               nIncrem = ((#0#9-#0#13)/#0#13)*100; ||Calcula el Incremento.
+          |SINO;
+               nIncrem = (1 - (#0#13/#0#9))*100;
+          |FINSI;
+          #0#10 = nIncrem;
+          |PINTA #0#10;
+     |FINSI;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO CalPre; |TIPO 0;
+     |SI #0#10 ! Contenido;
+          #0#9 = #0#13 > #0#10;
+          |PINTA #0#9;
+          nIncrem = #0#10;
+     |FINSI;
+     |HAZ CamPreCap;
+     |PTEC 802;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO ActuPrecEsca;
+     |SI #0#11 = #2#4;
+          #4#13 = nIncrem;
+     |FINSI;
+     #4#10 = #4#9;                                ||Precio Compra.
+     |SI #10#42 = "+";
+          #4#11 = (#4#9*#4#8) > #4#13;                 ||Importe Venta.
+     |SINO;
+          #4#11 = (#4#8 * #4#9) / (1 - (#4#13 / 100));
+     |FINSI;
+
+     #4#12 = #4#10*#4#8;                          ||Importe Coste.
+     #2#8  = #2#8 + #4#11;                        ||Precio Venta Partida.
+     #2#9  = #2#9 + #4#12;                        ||Precio Compra Partida.
+     #2#10 = #2#8 * #2#7;                         ||Importe Venta Partida.
+     #2#11 = #2#9 * #2#7;                         ||Importe Coste Partida.
+     |SI #10#42 = "+";
+          #2#12 = ((#2#8-#2#9)/#2#9)*100; ||Calcula el Incremento.
+     |SINO;
+          #2#12 = (1 - (#2#9/#2#8))*100;
+     |FINSI;
+
+     |SI #2#21 = "S";
+
+          |SI #2#20 > #2#10;
+               #2#17 = 100;                       ||Porcentaje total a certificar
+               #2#19 = 100;                       ||Porcentaje pendiente de certificar
+               #2#20 = #2#10;                     ||Importe pendiente a certificar
+          |FINSI;
+
+     |SINO;
+          #2#17 = 100;                            ||Porcentaje total a certificar
+          #2#19 = 100;                            ||Porcentaje pendiente de certificar
+          #2#20 = #2#10;                          ||Importe pendiente a certificar
+     |FINSI;
+
+     |GRABA 020#4a;
+     |LIBERA #4;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE ActuPrecEsca;
+     #4#1;
+     ;
+     #2#0, #2#1, #2#2, #2#4, 1;
+     #2#0, #2#1, #2#2, #2#4, 999;
+     be;
+     NULL, ActuPrecEsca;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO ActuPrecPart;
+     #2#8 = 0;
+     #2#9 = 0;
+     |BUCLE ActuPrecEsca;
+     #1#7  = #1#7 + #2#10;                        ||Precio Venta Capitulo.
+     #1#8  = #1#8 + #2#11;                        ||Precio Coste Capitulo.
+     #1#9  = #1#7 * #1#6;                         ||Importe Venta Capitulo
+     #1#10 = #1#8 * #1#6;                         ||Importe Coste Capitulo.
+     |SI #10#42 = "+";
+          #1#11 = ((#1#7-#1#8)/#1#8)*100; ||Calcula el Incremento.
+     |SINO;
+          #1#11 = (1 - (#1#8/#1#7))*100;
+     |FINSI;
+
+     |GRABA 020#1a;
+     |GRABA 020#2a;
+     |LIBERA #2;
+
+     #0#9 = #2#10;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE ActuPrecPres;
+     #2#1;
+     ;
+     #1#0, #1#1, #1#12, 1;
+     #1#0, #1#1, #1#12, 999;
+     be;
+     NULL, ActuPrecPart;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO ActuPrecPres;
+     #1#7  = 0;
+     #1#8  = 0;
+     |SI #10#42 = "+";
+          nIncrem = ((#0#9-#0#14)/#0#14)*100; ||Calcula el Incremento.
+     |SINO;
+          nIncrem = (1 - (#0#14/#0#9))*100;
+     |FINSI;
+
+     #1#11 = nIncrem;
+     |BUCLE ActuPrecPres;
+     #10#5 = #10#5 + #1#9;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO CamPreCap;
+     nPrecio = #0#9;
+     nIncremento = #0#10;
+     |ABRE #10;
+     #10#0 = #0#0;
+     #10#1 = #0#1;
+     |LEE 101#10=;
+     |SI FSalida = 0;
+          #10#5 = 0;
+          #10#21 = 0;
+          |BUCLELIN 0 ActuPrecPres #10;
+          #10#21 = #10#5 - #10#6;            ||MARGEN BENEFICIO PRESUPUESTO
+          |GRABA 020#10a;
+          #0#10 = nIncrem;
+          |PINTA #0#9;
+          |PINTA #0#10;
+     |FINSI;
+     |CIERRA #10;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO Capi; |TIPO 0;
+     |SI FSalida = 10;
+          |ABRE #2;
+          |CONSULTA_F_CLAVE #1#2, MinCap, MaxCap;
+          |SI FSalida = 0;
+               #0#9  = #2#10;
+               #0#11 = #2#4;
+               #0#12 = #2#5;
+               #0#13 = #2#10;
+               #0#14 = #2#11;
+               cCapitulo = #2#2;
+               |PINTA #0#9;
+               |PINTA #0#11;
+               |PINTA #0#12;
+               |PINTA #0#13;
+               |PINTA #0#14;
+          |SINO;
+               |ERROR;
+               |ACABA;
+          |FINSI;
+          |CIERRA #2;
+     |SINO;
+          |ERROR;
+          |ACABA;
+     |FINSI;
+     |HAZ BH008;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MinCap;
+     #2#0 = #0#0;
+     #2#1 = #0#1;
+     #2#2 = " "*13;
+     #2#3 = 1;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MaxCap;
+     #2#0 = #0#0;
+     #2#1 = #0#1;
+     #2#2 = "z"*13;
+     #2#3 = 999;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO BI008; |TIPO 80;
+     |CLS;
+     |CONTROL_SIMPLE 0, "BOTON,F2 - Partidas de Presupuesto", 2430, 2450, F2008;
+     nBotF02 = FSalida;
+     |ESTADO_CONTROL nBotF02, "HIDE";             ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+------------------------------------------------------------------------------
+|PROCESO BF008; |TIPO 90;
+     |PULSATECLA;
+     |FIN_CONTROL_WINDOWS nBotF02;
+     |PULSATECLA;
+|FPRC;
+------------------------------------------------------------------------------
+|PROCESO BS008; |TIPO 7;
+
+     |SI Campo = 11;
+          |ESTADO_CONTROL nBotF02, "SHOW";        ||"SHOW""HIDE""ENABLE""DISABLE".
+     |FINSI;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO BH008; |TIPO 0;
+     |ESTADO_CONTROL nBotF02, "HIDE";             ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO F2008;
+     |PTEC 824;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Tipo13; |TIPO 13;
+     |ABRE #100; |LEE 000#100p; |CIERRA #100;
+     |SI #100#141 = "O";
+          |PINTA 604, "O.E........:";
+          |PINTA 1316, "O.E........:";
+          |PINTA 1416, "O.E........:";
+     |FINSI;
+|FPRC;

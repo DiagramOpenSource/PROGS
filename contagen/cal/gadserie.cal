@@ -1,0 +1,254 @@
+|FICHEROS;
+     gadm0005;
+     gadz0100;
+
+     calibros;
+     caivases;
+
+     agifa041@;
+     agifa007@;
+     agifa007A@;
+|FIN;
+
+|VARIABLES;
+     aBase               = "";
+     aMas                = "";
+     aFic                = "";
+     aAlfa               = "";
+     aFij                = "";
+     aSerAnt             = "";
+
+     nError              = 0;
+     nEjAnt              = 0;
+     nCmp                = 0;
+
+     &eaSer              = "";
+     &enEj               = "";
+     &enError            = 0;
+|FIN;
+
+|PROCESO ConstruyeSerie;
+     aSerAnt = "";
+
+     |QBF eaSer;
+     aAlfa = eaSer;
+     aAlfa = aAlfa % -102;
+     |SI aAlfa = "XX";
+         aFij    = eaSer % -3;
+         eaSer   = aFij + (("00" + enEj) % -102);
+
+         nEjAnt  = enEj - 1;
+         aSerAnt = aFij + (("00" + nEjAnt) % -102);
+     |FINSI;
+|FPRC;
+
+|PROCESO PideEmpresa;
+     |MENAV "0000No est  configurada la empresa dscomer9, a continuaci¢n seleccione la empresa";
+
+     |DBASS aBase;
+     aMas =  aBase + "dscomer9/def/agifa041.mas";
+     |CARGA_DEF aMas, agifa041@;
+
+     aFic =  aBase + "dscomer9/fich/";
+     |PATH_DAT #agifa041@#aFic#;
+
+     nError = 1;
+
+     |ABRE #agifa041@;
+     #agifa041@#0 = #48#2;
+     |LEE 000#agifa041@.=;
+
+     |CONSULTA_CLAVE #1#agifa041@;
+     |SI FSalida = 0;
+         nError = 0;
+
+         #gadz0100#0 = 1;
+         |LEE 101#gadz0100.=;
+         |SI FSalida ! 0;
+             |DDEFECTO #gadz0100;
+             #gadz0100#0 = 1;
+             |GRABA 020#gadz0100.b;
+         |FINSI;
+
+         #gadz0100#1 = "dscomer9";
+         #gadz0100#2 = #agifa041@#0;
+         #gadz0100#3 = #agifa041@#1;
+         #gadz0100#4 = "1";
+         #gadz0100#5 = "Total factura";
+
+         |GRABA 020#gadz0100.a;
+         |LIBERA #gadz0100;
+     |FINSI;
+     |CIERRA #agifa041@;
+     |DESCARGA_DEF #agifa041@;
+|FPRC;
+
+|PROCESO AltaDSCOMER;
+     |DBASS aBase;
+     aMas = aBase + "dscomer9/def/agifa041.mas";
+     |XABRE "E", aMas, 0;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     |LEE 000#gadm0005.=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     nError = 0;
+     |CONFI "0000SQuiere grabar la nueva serie en la gesti¢n comercial";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |ABRE #gadz0100;
+     |LEE 000#gadz0100.p;
+     |SI FSalida ! 0;  |O #gadz0100#2 = 0;
+         |HAZ PideEmpresa;
+     |FINSI;
+     |CIERRA #gadz0100;
+
+     |SI #gadz0100#2 = 0;
+         |MENAV "0000Proceso grabaci¢n serie en la gesti¢n cancelado, no existe empresa definida.";
+
+         |ACABA;
+     |FINSI;
+
+     |SI #gadz0100#1 ! "dscomer9";
+         |MENAV "0000Proceso grabaci¢n serie en la gesti¢n cancelado, la importaci¢n no es por dscomer9.";
+
+         |ACABA;
+     |FINSI;
+
+     |SI nError = 1;
+         |MENAV "0000Proceso grabaci¢n serie en la gesti¢n cancelado. No existe configuraci¢n";
+
+         |ACABA;
+      |FINSI;
+
+     aMas =  aBase + "dscomer9/def/agifa007.mas";
+     |CARGA_DEF aMas, agifa007A@;   || Ejercicio anterior
+     |CARGA_DEF aMas, agifa007@;    || Ejercicio actual
+
+     aFic =  aBase + "dscomer9/fich/" + (("00000" + #gadz0100#2) % -105) + "/";
+     |PATH_DAT #agifa007A@#aFic#;
+     |PATH_DAT #agifa007@#aFic#;
+
+     eaSer = #gadm0005#1;
+     |HAZ ConstruyeSerie;
+
+     |DDEFECTO #agifa007A@;
+     |SI aSerAnt ! "";
+         |ABRE #agifa007A@;
+         #agifa007A@#26 = aSerAnt;
+         |LEE 000#agifa007A@.=;
+         |SI FSalida ! 0;  |DDEFECTO #agifa007A@;  |FINSI;
+         |CIERRA #agifa007A@;
+     |FINSI;
+
+     |ABRE #agifa007@;
+     #agifa007@#26 = eaSer;
+     |LEE 101#agifa007@.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #agifa007@;
+
+         |PARA nCmp = 0;  |SI nCmp [ 51;  |HACIENDO nCmp = nCmp + 1;
+               #agifa007@#nCmp# = #agifa007A@#nCmp#;
+         |SIGUE;
+
+         #agifa007@#26 = eaSer;
+         |GRABA 020#agifa007@.b;
+     |FINSI;
+
+     #agifa007@#27 = #gadm0005#2;
+     |GRABA 020#agifa007@.a;
+
+     |LIBERA #agifa007@;
+     |CIERRA #agifa007@;
+
+     |DESCARGA_DEF #agifa007@;
+     |DESCARGA_DEF #agifa007A@;
+
+     aAlfa = "0000Se ha grabado en la empresa " + (("00000" + #gadz0100#2) % -105);
+     aAlfa = aAlfa + " " + #gadz0100#3;  |QBF aAlfa;
+     |MENAV aAlfa;
+|FPRC;
+
+|PROCESO AltaDSCOMER_Auto;
+     |DBASS aBase;
+     aMas = aBase + "dscomer9/def/agifa041.mas";
+     |XABRE "E", aMas, 0;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     aMas =  aBase + "dscomer9/def/agifa007.mas";
+     |CARGA_DEF aMas, agifa007A@;   || Ejercicio anterior
+     |CARGA_DEF aMas, agifa007@;    || Ejercicio actual
+
+     aFic =  aBase + "dscomer9/fich/" + (("00000" + #gadz0100#2) % -105) + "/";
+     |PATH_DAT #agifa007A@#aFic#;
+     |PATH_DAT #agifa007@#aFic#;
+
+     eaSer = #gadm0005#1;
+     |HAZ ConstruyeSerie;
+
+     |DDEFECTO #agifa007A@;
+     |SI aSerAnt ! "";
+         |ABRE #agifa007A@;
+         #agifa007A@#26 = aSerAnt;
+         |LEE 000#agifa007A@.=;
+         |SI FSalida ! 0;  |DDEFECTO #agifa007A@;  |FINSI;
+         |CIERRA #agifa007A@;
+     |FINSI;
+
+     |ABRE #agifa007@;
+     #agifa007@#26 = eaSer;
+     |LEE 101#agifa007@.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #agifa007@;
+         |PARA nCmp = 0;  |SI nCmp [ 51;  |HACIENDO nCmp = nCmp + 1;
+               #agifa007@#nCmp# = #agifa007A@#nCmp#;
+         |SIGUE;
+
+         #agifa007@#26 = eaSer;
+         |GRABA 020#agifa007@.b;
+     |FINSI;
+
+     #agifa007@#27 = #gadm0005#2;
+     |GRABA 020#agifa007@.a;
+
+     |LIBERA #agifa007@;
+     |CIERRA #agifa007@;
+     |DESCARGA_DEF #agifa007@;
+     |DESCARGA_DEF #agifa007A@;
+|FPRC;
+
+|PROCESO PideComerAuto;
+     enError = 0;
+     |ABRE #gadz0100;
+     |LEE 000#gadz0100.p;
+     |SI FSalida ! 0;  |O #gadz0100#2 = 0;
+         |HAZ PideEmpresa;
+     |FINSI;
+     |CIERRA #gadz0100;
+
+     |ABRE #gadz0100;
+     |LEE 000#gadz0100.p;
+     |SI FSalida ! 0;  |O #gadz0100#2 = 0;
+         enError = 1;
+     |FINSI;
+     |CIERRA #gadz0100;
+|FPRC;
+
+|PROCESO GrabaSerieConta;
+     eaSer = #gadm0005#1;
+     |HAZ ConstruyeSerie;
+
+     |ABRE #caivases;
+     #caivases#0 = eaSer;
+     #caivases#1 = #gadm0005#5;
+     |LEE 101#caivases.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #caivases;
+         #caivases#0 = eaSer;
+         #caivases#1 = #gadm0005#5;
+         #caivases#2 = #gadm0005#2;
+         |GRABA 020#caivases.n;
+     |FINSI;
+     |LIBERA #caivases;
+     |CIERRA #caivases;
+|FPRC;

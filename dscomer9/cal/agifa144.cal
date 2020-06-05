@@ -1,0 +1,243 @@
+|FICHEROS;
+     agifa144 #0;  ||  Seleccion.
+     agifa143 #1,MANTE;  ||  Temporal Facturas Proformas a seleccionar.
+     agifa146 #2;  ||  Cabec. Facturas Proforma.
+     agifa007 #3;  ||  Series.
+     agifa321 #5;
+     agifa324 #6;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     &enSwVezApa = 0;
+     aTipo = "";
+     &eaSer = "";
+     &enDocu = 0;
+     &eaTipo = "";
+     &nDeci_Base     = 0;   || Decimales en Totales de la moneda base
+     &nDeci_PreBase  = 0;   || Decimales en el Precio en moneda base
+     &nDeci_BaseMx   = 0;   || Decimales en Totales de la moneda base (Maxima precision)
+     &nDeci_PreBaseMx= 0;   || Decimales en el Precio en moneda base (Maxima precision)
+     &nDeci_Div      = 0;   || Decimales en Totales de la divisa
+     &nDeci_PreDiv   = 0;   || Decimales en el Precio en divisa
+     &nDeci_TotVis   = 0;   || Decimales en Totales visibles (el de la moneda de trabajo)
+     &nDeci_TotNoVis = 0;   || Decimales en Totales no visibles (el de la otra moneda)
+     &nDeci_PreVis   = 0;   || Decimales en el Precio visual. (lineas)
+     &nDeci_ImpVis   = 0;   || Decimales en el Importe visual. (lineas)
+     nfecha    = 0;
+     &ac_divisa = "N";   || Vale "S" cuando las divisas en ventas estan
+                         || activadas y la serie es de divisas
+     &pintado = 0;       || Sirve para controlar los pintados de las lineas
+     &decim_divisa = 0;  || Decimales de la divisa
+     &precio_divisa = 0; || Decimales del precio en divisa
+     &decim_base = 0;    || Decimales de la moneda base
+     &precio_base = 0;   || Decimales del precio en moneda base
+     div_act = 0;        || Divisa actualizada. Me sirve en un PARA para que
+                         || no salga hasta que este actualizada (div_act=1)
+     &cli_divisa = "";   || Codigo de Cliente. Se pasa a CLIENTES/DIVISAS
+     &divisa = "";       || Codigo de Divisa. Se pasa a ACTUAL. de DIVISAS
+     &Tempo    = "";
+     aTempo1   = "";
+     lin_tmp = 0;
+     existe_serie = 0;
+     xxxxfiac = "  ";
+     xxaponer = "  ";
+     xrelleno = "                              ";
+     sw_grabatmp = 0;
+     aFichero = "";
+     aAlfa = "";
+|FIN;
+
+|PROCESO LeeMonB; ||Lee los parametros de la moneda base
+|ABRE #agifa321;
+|ABRE #agifa324;
+|LEE 010#agifa321.p;   ||Leo parametros de divisa
+#agifa146#68 = #agifa321#9;  ||Cojo la Moneda Base de parametros
+#agifa324#0 = #agifa321#9;
+|LEE 010#agifa324.=;         ||Leo la ficha de la moneda base en Divisas
+#agifa146#69 = #agifa324#2;  ||Asigno el cambio de la moneda base con el euro
+decim_base = #agifa324#7;    ||Asigno los decimales de la moneda base
+precio_base = #agifa324#9;   ||Asigno los decimales del precio en la mon. base
+|CIERRA #agifa324;
+|CIERRA #agifa321;
+|FPRC;
+
+|PROCESO Divisas;
+     |ABRE #agifa324;
+     #agifa324#0 = #agifa146#65;
+     |LEE 001#agifa324.=;   || Leo la divisa
+     decim_divisa = #agifa324#7;  || Decimales de la divisa
+     precio_divisa = #agifa324#9;  || Decimales en el precio de la divisa
+     nDeci_Div = decim_divisa;   || Decimales de la divisa
+     nDeci_PreDiv = precio_divisa;  || Decimales en el precio de la divisa
+     |SI #agifa146#67 = "B";   || Si trabajo con la moneda base ...
+       nDeci_PreVis   = precio_divisa;
+       nDeci_ImpVis   = decim_divisa;
+       nDeci_Base     = decim_base;
+       nDeci_PreBase  = precio_base;
+       nDeci_BaseMx  = decim_base;
+       nDeci_PreBaseMx = precio_base;
+       nDeci_TotVis   = decim_base;
+       nDeci_TotNoVis = decim_divisa;
+     |SINO;     || Si trabajo con la divisa ...
+       nDeci_PreVis   = precio_base;
+       nDeci_ImpVis   = decim_base;
+       nDeci_Base     = decim_base;     || Max. precision en los decimales de la moneda base
+       nDeci_PreBase  = precio_base;    || Max. precision en los dec. del precio de la moneda base
+       |SI #agifa146#66 = 1;
+           nDeci_BaseMx    = decim_base;    || sin triangulacion
+           nDeci_PreBaseMx = precio_base;
+       |SINO;
+           nDeci_BaseMx    = #agifa321#10;  || con triangulacion
+           nDeci_PreBaseMx = #agifa321#11;
+       |FINSI;
+       nDeci_TotVis   = decim_divisa;
+       nDeci_TotNoVis = decim_base;
+     |FINSI;
+     |CIERRA #agifa324;
+     |HAZ Deci_IVA;
+|FPRC;
+
+|PROCESO graba_temp;
+     |SI #2#83 ! "R";
+          |HAZ LeeMonB;
+          |HAZ Divisas;
+          |DDEFECTO #1;
+          lin_tmp = lin_tmp + 1;
+          #1#0 = lin_tmp;  ||  Linea.
+          #1#1 = #2#3;     ||  Cliente.
+          #1#2 = #2#48;    ||  Serie factura.
+          #1#3 = #2#0;     ||  Numero factura.
+          #1#4 = #2#4;     ||  Nombre cliente.
+          #1#5 = #2#1;     ||  Fecha factura.
+          #1#6 = #2#41;    ||  Total factura.
+          |SI #0#7 = "F";
+              #1#7 = #2#48;  ||  Serie pedido = Serie factura.
+              #0#8 = #2#48;  |PINTA #0#8;
+          |SINO;
+              #1#7 = #0#8;   ||  Serie pedido = Serie entrada.
+          |FINSI;
+          |SI #0#9 = "S"; #1#8 = "*"; |FINSI;
+          |GRABA 020#1n;
+          sw_grabatmp = 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE factprof;
+     #2#1;
+     1,3, 61;
+     #0#2, 000001, #0#4, #0#0, "      ";
+     #0#3, 999999, #0#5, #0#1, "      ";
+     ;
+     NULL,NULL,NULL,NULL,NULL,graba_temp;
+     #2#3,#2#48,#2#0;
+|FIN;
+
+|PROCESO min;
+         #1#0 = 1;
+|FPRC;
+
+|PROCESO max;
+         #1#0 = lin_tmp;
+|FPRC;
+
+|| -------------------------- PROCESOS DE ENTRADA ---------------------------
+
+|PROCESO comp_serped; |TIPO 7;
+         |SI #0#7 = "F";
+             #0#8 = "  ";
+             |PINTA #0#8;
+             |ABRE #3;
+             |DDEFECTO #3;
+             #3#26 = #0#8;
+             |LEE 001#3=;
+             existe_serie = FSalida;
+             |SI FSalida ! 0;
+                 |GRABA 020#3n;
+                 |LIBERA #3;
+             |FINSI;
+             |HAZ nomodi144;
+         |FINSI;
+|FPRC;
+
+|PROCESO serped; |TIPO 0;
+         |SI #0#7 = "F";
+             |SI existe_serie ! 0; |BORRA 020#3a; |FINSI;
+             |CIERRA #3;
+         |FINSI;
+|FPRC;
+
+|PROCESO marca; |TIPO 7;
+         |SI #0#6 = "A";
+             #0#9 = "S";
+             |PINTA #0#9;
+             |HAZ nomodi144;
+         |FINSI;
+|FPRC;
+
+|PROCESO nomodi144;
+         xxaponer = Anono;
+         xxxxfiac = Control % A1001;
+         Control = Control + xxxxfiac;
+         Control = Control + xrelleno;
+         Control = Control % A120;
+         Control = Control + xxaponer;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |CLS;
+     |CABEZA "Pase de Facturas Proforma";
+     |DDEFECTO #0;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENTLINEAL #1#1,1,7,22,0,min,max;
+
+     |HAZ CreaTempo; aTempo1 = Tempo;
+     |NOME_DAT #1 aTempo1; |DELINDEX #1;
+
+
+     |HAZ EsMecanogra;
+     |SI FSalida = 0;
+          |C_M #0#7, 1, "N";
+          |C_M #0#10, 1, "N";
+     |FINSI;
+
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+         |ABRE #1;
+         sw_grabatmp = 0;
+         |BUCLE factprof;
+         |CIERRA #1;
+         |SI sw_grabatmp = 1;
+             |SI #0#6 = "M";
+                 |ENTLINEAL #1#1,-1,4,22,0,min,max;
+                 |CONFI "0000SConfirma la seleccion ? ";
+             |FINSI;
+             |SI FSalida = 0;
+                 |SI #0#10 = "P";
+                     aAlfa =  "agifa166;" + aTempo1;
+                     |SUB_EJECUTA aAlfa;
+                 |FINSI;
+                 |SI #0#10 = "F";
+                     aAlfa =  "agifa167;" + aTempo1;
+                     |SUB_EJECUTA aAlfa;
+                 |FINSI;
+
+                 |SI #0#10 = "A";
+                     |HAZ EsAparecida;
+                     |SI FSalida = 0;
+                         aAlfa =  "aparm011;" + aTempo1;
+                     |SINO; ||estandar
+                         aAlfa =  "dsz00112;" + aTempo1;
+                     |FINSI;
+                     |SUB_EJECUTA aAlfa;
+                 |FINSI;
+
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |DELINDEX #1; Tempo = aTempo1; |HAZ BoraTempo;
+|FPRO;

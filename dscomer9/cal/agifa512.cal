@@ -1,0 +1,459 @@
+|FICHEROS;
+     agifa512 #0;  || Fichero de Pagos por caja
+     agifa027 #5;  || Fichero de contadores
+     agifa505 #4;  || Fichero de parametros tpv
+     agifa509 #8;  || Fichero diario
+     agifa517 #30; || Fichero de PARAMETROS TIENDA
+     agifa112 #31; || Proveedores.
+
+     agifa077 #77; || Alb. Com
+     agifa079 #79; || Fac. Com
+|FIN;
+
+|CAMPOS;
+     #0#0   codigo;
+     #0#4   pagimpor;      || Importe del pago
+     #5#1   contador;
+     #8#5   diapagos;      || Pagos Varios
+     #8#52  diaefect;      || Total efectivo
+     #8#55  diatotal;      || Total caja
+|FIN;
+
+|VARIABLES;
+    &eswCta = 0;
+    &eaCta = "";
+    aProv   = "";
+    nGuarda = 0;
+    aHora   = "";
+    nModo   = 0;
+    mascara = "0000000";
+    mensaje1= "0000ATENCION No existe el Diario para esta Caja";
+    mensaje2= "0000ATENCION No existe la caja";
+    mensaje3= "0000ATENCION La caja esta cerrada";
+    mensaje4= "0000ATENCION Debe crear el fichero PARAMETROS TIENDA";
+    mensaje5= "0000ATENCION Permiso Pago por Caja Denegado a este Proveedor...";
+    nForma  = 0;
+    puente  = "";
+    empresa = 0;
+    aAlfa   = "";
+    nErr    = 0;
+    nTotal  = 0;
+    nVto    = 0;
+    nImpVto = 0;
+    i       = 0;
+|FIN;
+
+||INC-LUYE llena_c1;
+
+|PROCESO entrar; |TIPO 8;
+     |DFICE puente; |QBF puente;
+     puente = puente % -205;
+     empresa = puente;
+|FPRC;
+
+
+|| Este proceso comprueba que el diario de resumen correspondiente a la caja
+|| indicada y a la fecha indicada existe. Posteriormente habra que comprobar
+|| que no este cerrada.
+|PROCESO estadiario;|TIPO 0;
+     |ABRE #8;      || Fichero diario
+     #8#63 = empresa;
+     #8#0=#0#5;     || Numero caja fichero pago
+     #8#1=#0#11;    || Fecha de pago
+     |LEE 001#8=;
+     |SI FSalida ! 0;
+          |MENAV mensaje1;
+          |PTEC 807;   || Fuerzo CTRL + C
+     |FINSI;
+     |CIERRA #8;
+|FPRC;
+
+|| Este proceso es del tipo reversible. Descuenta del importe efectivo en caja
+|| de ese dia y aumenta el importe Ptas. pagadas en concepto de PAGOS VARIOS
+|| y actualiza el valor TOTAL CAJA;
+
+|PROCESO actdiario;|TIPO 2;
+     #0#9 = "N";
+     nForma = 0 +. 1;
+     |ABRE #8;      || Fichero diario
+     #8#63 = empresa;
+     #8#0=#0#5;     || Numero caja fichero pago
+     #8#1=#0#11;    || Fecha de pago
+     |LEE 101#8=;
+     |SI FSalida ! 0;
+          |SI nForma = -1;
+               |MENAV mensaje1;
+          |FINSI;
+          |CIERRA #8;
+          |ERROR;
+          |ACABA;
+     |SINO;
+          |SI #8#56 ! "S";
+               |MENAV mensaje3;
+               |CIERRA #8;
+               |ERROR;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+     #8#5 = #8#5 +. #0#4;     || Pagos varios  (diario)
+     #8#52= #8#52 -. #0#4;    || Efectivo Ptas (diario)
+     #8#55= #8#55 -. #0#4;    || Total caja    (diario)
+     |HAZ abrecajon;
+     |GRABA 101#8a;
+     |LIBERA #8;
+     |CIERRA #8;
+
+     |SI #0#16 ! " "; |Y #0#16 ! "L";
+          |HAZ ActACuenta;
+     |FINSI;
+|FPRC;
+
+||Este proceso controla que la caja con la que queremos trabajar este abierta
+|PROCESO abierta;
+     |ABRE #4;     || Configuracion tpv
+     #4#0=#0#5;    || Cargo la caja del fichero cobro
+     |LEE 001#4=;
+     |SI FSalida ! 0;         || Si no lo encuentra aviso de que no existe
+          |MENAV mensaje2;
+          |ERROR;
+     |SINO;                   || Si existe compruebo que este abierta
+          |SI #4#23 = "N";   || Si esta cerrada aviso y no dejo salir
+              |MENAV mensaje3;
+              |ERROR;
+          |SINO;             || Si existe descargo la fecha que hay en la caja
+              #0#11 = #4#24;
+              |PINTA #0#11;
+          |FINSI;
+     |FINSI;
+     |CIERRA #4;
+|FPRC;
+
+|PROCESO cogeserie;|TIPO 7;
+     |ABRE #30;
+     |LEE 000#30p;
+     |SI FSalida ! 0;
+        |MENAV mensaje4;
+        |ERROR;
+        |ACABA;
+     |SINO;
+         #0#12=#30#1;
+     |FINSI;
+     |CIERRA #30;
+|FPRC;
+
+
+|PROCESO contpago; |TIPO 0;
+     #5#0 = "contpago";      || Asigno claves
+     #5#2 = #0#12;           || Serie informada en el cobro
+     |ABRE #5;               || Abro fichero de contadores
+     |LEE 101#5=;
+     |SI FSalida = 0;
+          codigo = contador;
+          contador = contador + 1;
+          |GRABA 101#5a;
+     |SINO;
+          codigo   = "000001";
+          contador = contador +1;
+          |GRABA 101#5n;
+     |FINSI;
+     |LIBERA #5;
+     |CIERRA #5;
+|FPRC;
+
+|| Proceso que abre el cajon
+|PROCESO abrecajon;
+     |ABRE #4;
+     #4#0 = #0#5;
+     |LEE 001#4=;
+     |SI FSalida ! 0; |DDEFECTO #4; |FINSI;
+     |CIERRA #4;
+     |HAZ AbreCajon;
+|FPRC;
+
+|PROCESO compas; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          |HORA aHora; |QBF aHora;
+          #0#14 = aHora; |PINTA #0#14;
+     |FINSI;
+
+         |ABRE #31;
+         #31#0 = #0#1;
+         |LEE 000#31=;
+         |SI #31#79 = "N";
+           |MENAV mensaje5;
+           |ERROR;
+         |FINSI;
+         |CIERRA #31;
+|FPRC;
+
+|PROCESO importe; |TIPO 6;
+     |SI #8#55 < #0#4;
+          |MENAV "0000Supera al Efectivo de la Caja...";
+          |ERROR;
+     |SINO;
+          |ABRE #31;
+          #31#0 = #0#1;
+          |LEE 000#31=;
+          |SI FSalida = 0;
+               |SI #31#79 = "N";
+                    |MENAV "0000PAGO NO PERMITIDO A ESTE PROVEEDOR...";
+                    |ERROR;
+               |FINSI;
+               |SI #31#79 = "I"; |Y #0#4 > #31#85;
+                    |MENAV "0000EL IMPORTE SUPERA LO PERMITIDO...";
+                    |ERROR;
+               |FINSI;
+          |FINSI;
+          |CIERRA #31;
+     |FINSI;
+|FPRC;
+
+|PROCESO Imprime;
+     Impresora = #4#121; |QBF Impresora;
+     |SI Impresora = "";
+          |MENAV "0000No hay impresora...";
+     |SINO;
+          |IMPRE -1;
+          |SI FSalida = 0;
+               |INFOR "pagocaja";
+               |SI FSalida = 0;
+                    |PRINT;
+                    |PIEINF;
+                    |FININF;
+               |FINSI;
+               |FINIMP;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo4; |TIPO 4;
+     |HAZ Imprime;
+|FPRC;
+
+|PROCESO tipo3; |TIPO 3;
+     |CONFI "2400SImprimir Documento. S/N.: ";
+     |SI FSalida = 0;
+          |HAZ Imprime;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min;
+     #31#0 = "    ";
+|FPRC;
+
+|PROCESO Max;
+     #31#0 = "zzzz";
+|FPRC;
+
+|PROCESO Tipo66; |TIPO 66;
+     ||HAZ llena_c1;
+     |PUSHV 0101 2380;
+     |CLS;
+     nGuarda = FEntrada;
+     |ABRE #31;
+     #31#0 = #0#1;
+     |LEE 000#31=;
+     |SI #4#139 = "T";
+          |PINPA #0#31;
+          |PINDA #0#31;
+          |CONSULTA #0#31;
+          |SI FSalida = 0;
+               #0#1 = #31#0;
+          |FINSI;
+     |SINO;
+          |CONSULTA_F_CLAVE #1#31, Min, Max;
+          |SI FSalida = 0;
+               #0#1 = #31#0;
+               |PINPA #0#31;
+               |PINDA #0#31;
+               |PAUSA;
+          |FINSI;
+     |FINSI;
+     |POPV;
+     |ERROR;
+     FEntrada = nGuarda;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴 A Cuenta 컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO ACuenta; |TIPO 0;
+     |SI #0#16 = " "; |Y #4#154 = "S";
+          |MENAV "0000El Documento es obligatorio...";
+          |ERROR; |ACABA;
+     |FINSI;
+
+     |SI #0#16 = " ";
+          aAlfa = "N";
+          #0#17 = ""; |PINTA #0#17;
+          #0#18 = ""; |PINTA #0#18;
+     |SINO;
+          aAlfa = "S";
+     |FINSI;
+     |C_M #0#17, 1, aAlfa;
+     |C_M #0#18, 1, aAlfa;
+|FPRC;
+
+|PROCESO Documento; |TIPO 0;
+     |SI #0#16 = " "; |O #0#16 = "L"; |ACABA; |FINSI;
+     |SI FSalida = 2; |ACABA; |FINSI;
+
+     |SI #0#16 = "F";
+          |ABRE #79;
+          #79#66 = #0#17;
+          #79#0 = #0#18;
+          |LEE 000#79=;
+          nErr = FSalida;
+          |CIERRA #79;
+          nTotal = #79#118 -  #79#32;
+          aProv = #79#2;
+     |FINSI;
+     |SI #0#16 = "A";
+          |ABRE  #77;
+          #77#50 = #0#17;
+          #77#0 = #0#18;
+          |LEE 000#77=;
+          nErr = FSalida;
+          |CIERRA #77;
+          nTotal = #77#66 - #77#74;
+          |SI nErr = 0; |Y #77#38 = "S";
+               aAlfa = "0000Albaran facturado." + &10 + "Factura: [" + #77#51 + "/" + #77#39 + "]";
+               |MENAV aAlfa;
+               |ERROR;
+          |FINSI;
+          aProv = #77#3;
+     |FINSI;
+     |SI nErr ! 0;
+          |MENAV "0000El documento no existe...";
+          |ERROR;
+     |FINSI;
+     |SI aProv ! #0#1;
+          aAlfa = "0000Proveedor Incorrecto." + &13 + "Proveedor:" + aProv;
+          |MENAV aAlfa;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo66Cuenta; |TIPO 66;
+     |SI #0#16 = "F";
+          |ABRE #79
+          #79#66 = #0#17;
+          #79#0 = #0#18;
+          |LEE 000#79];
+          |CONSULTA_CLAVE #1#79;
+          |SI FSalida = 0;
+               #0#17 = #79#66; |PINTA #0#17;
+               #0#18 = #79#0;  |PINTA #0#18;
+          |SINO;
+               |ERROR;
+          |FINSI;
+          |CIERRA #79;
+     |FINSI;
+     |SI #0#16 = "A";
+          |ABRE  #77;
+          #77#50 = #0#17;
+          #77#0 = #0#18;
+          |LEE 000#77];
+          |CONSULTA_CLAVE #1#77;
+          |SI FSalida = 0;
+               #0#17 = #77#50; |PINTA #0#17;
+               #0#18 = #77#0;  |PINTA #0#18;
+          |SINO;
+               |ERROR;
+          |FINSI;
+          |CIERRA #77;
+     |FINSI;
+|FPRC;
+
+|PROCESO ImpoCuenta; |TIPO 0;
+     |SI #0#16 = " "; |O #0#16 = "L";
+          |ACABA;
+     |FINSI;
+     |HAZ Documento;
+     |SI #0#4 > nTotal;
+          aAlfa = "0000El importe supera la factura... [" + nTotal + "]";
+          |MENAV aAlfa;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO ActACuenta;
+     |SI #0#16 = "F";
+          |ABRE #79;
+          #79#66 = #0#17;
+          #79#0 = #0#18;
+          |LEE 121#79=;
+          |SI FSalida = 0;
+               #79#32 = #79#32 + (#0#4 * nForma);
+               |SI #79#45 = "S"; ||Impresa
+                    |SI nForma = 1;
+                         nTotal = #0#4;
+                         |PARA i = 33; |SI i [ 44; |Y nTotal > 0; |HACIENDO i = i + 1;
+                              |SI #79i < nTotal;
+                                   nTotal = nTotal - #79i;
+                                   #79i = 0;
+                              |SINO;
+                                   #79i = #79i - nTotal;
+                                   nTotal = 0;
+                              |FINSI;
+                         |SIGUE;
+                    |SINO;
+                         nVto = 0;
+                         |PARA i = 68; |SI i [ 73; |HACIENDO i = i + 1;
+                              |SI #79i ! "01.01.0000"; nVto = nVto + 1; |FINSI;
+                         |SIGUE;
+                         |PARA i =129; |SI i [134; |HACIENDO i = i + 1;
+                              |SI #79i ! "01.01.0000"; nVto = nVto + 1; |FINSI;
+                         |SIGUE;
+                         nImpVto = (#79#118 / nVto) ! 0;
+                         nTotal = #0#4;
+                         nVto = 32 + nVto;
+                         |PARA i = 33; |SI i [ nVto; |Y nTotal > 0; |HACIENDO i = i + 1;
+                              |SI i = nVto;
+                                   #79i = #79i + nTotal;
+                              |SINO;
+                                   |SI nTotal > nImpVto;
+                                        #79i = #79i + nImpVto;
+                                        nTotal = nTotal - nImpVto;
+                                   |SINO;
+                                        #79i = #79i + nTotal;
+                                        nTotal = 0;
+                                   |FINSI;
+                              |FINSI;
+                         |SIGUE;
+                    |FINSI;
+               |FINSI;
+               |GRABA 020#79a;
+          |FINSI;
+          |CIERRA #79;
+     |FINSI;
+     |SI #0#16 = "A";
+          |ABRE  #77;
+          #77#50 = #0#17;
+          #77#0 = #0#18;
+          |LEE 121#77=;
+          |SI FSalida = 0;
+               #77#74 = #77#74 + (#0#4 * nForma);
+               |GRABA 020#77a;
+          |FINSI;
+          |CIERRA #77;
+     |FINSI;
+|FPRC;
+
+|PROCESO NoPasaNa; |TIPO 0;
+     aAlfa = #0#3; |QBF aAlfa;
+     |SI aAlfa = "";
+          |MENAV "0000Es necesario indicar la descripcion del concepto...";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Cta512; |TIPO 0;
+     eaCta = #0Campo;
+     |HAZ MFiltraPtos;
+     #0Campo = eaCta; |PINTA #0Campo;
+
+     |HAZ MCtaContable;
+     |SI eswCta = 1;
+          |MENAV "    Error. Longitud de Cuenta fuera de Nivel";
+          |ERROR;
+     |FINSI;
+|FPRC;

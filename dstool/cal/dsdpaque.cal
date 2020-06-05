@@ -1,0 +1,295 @@
+|FICHEROS;
+     dsdpaque #0;   ||Este Def.
+     dstool01 #1;   ||Mensaje;
+|FIN;
+
+|VARIABLES;
+     nSwAutorizado = 0;
+     nHandle = 0;
+     aUsuMin = "";
+     aNombre = "";
+     aNomMin = "";
+     aUsuario = "";
+     aBase = "";
+     aControl = "";
+
+     aAlfa     = "";
+     aAlfa1    = "";
+     aAlfa2    = "";
+     aAlfa4    = "";
+     aIPRemoto = "";||Nos sirve para averiguar si trabajamos en Cliente/servidor o
+                    ||en el mismo ordenador.
+     aOrigen   = "";     ||Fichero origen con PATH
+     aSemiOrigen = "";   ||Fichero origen con PATH, pero sin extension.
+     aDestino  = "";     ||Destino del fichero (incluyendo el nombre del fichero)
+     aDestino1 = "";     ||Destino del fichero
+     aProg     = "";     ||Nombre del fichero (Incluyendo directorios)
+     aLon      = "";     ||Longuitud en caracteres del fichero con directorios
+     aNomFic   = "";     ||Nombre del Fichero
+     i         = 0;      ||Para los bucles
+     nPos      = 0;      ||Numero para extraer caracter de texto.
+     aExtensio = "";     ||Extension del paquete comprimido (.tgz o .0)
+     nPara1    = 0;      ||Contador del bucle para
+     aMensaje  = "";     ||Mensaje de texto
+     aSemiNomFic = "";   ||Nombre del fichero sin la extension
+     nContador = 0;      ||Contador para bucle PARA
+     aFichero  = "";     ||Nombre del fichero .tar
+     aDirecto  = "";     ||Directorio base para el bin/agirm
+     aTrabajo  = "";     ||Sentencia a ejecutar con el SYSTEM
+     nFragmento = 0;     ||Numero de fragmento
+     nExito    = 0;      ||Recupera el valor de FSalida
+|FIN;
+
+|PROCESO tipo7; |TIPO 7;
+     aAlfa1 = #dsdpaque#2;
+     |QBF aAlfa1;
+     |SI aAlfa1 = "";
+          aAlfa1 = "";
+          |DIRECTORIO aAlfa1;
+          #dsdpaque#2 = aAlfa1;
+          |PINTA #dsdpaque#2;
+     |FINSI;
+|FPRC;
+
+|PROCESO MkDir; |TIPO 0;
+     aAlfa1 = #dsdpaque#2;
+     |QBF aAlfa1;
+     aAlfa2 = aAlfa1 % -101;
+     |SI aAlfa2 ! "/";|Y aAlfa2 ! "\";
+          aAlfa1 = aAlfa1 + "/";
+          #dsdpaque#2 = aAlfa1;
+          |PINTA #dsdpaque#2;
+     |FINSI;
+     |MKDIR aAlfa1;
+|FPRC;
+
+|PROCESO PaqueteBlanco; |TIPO 7;
+     aAlfa1 = #dsdpaque#1;
+     |QBF aAlfa1;
+     |SI aAlfa1 = "";
+          |HAZ ElBrowse;
+     |FINSI;
+|FPRC;
+
+|PROCESO Browse; |TIPO 0;     ||Selector de fichero de Windows
+     |SI FSalida ! 10; |ACABA; |FINSI;
+     |HAZ ElBrowse;
+|FPRC;
+
+|PROCESO ElBrowse;
+     aAlfa = "A" + #dsdpaque#1;
+     |BROWSE aAlfa;
+     aAlfa = (aAlfa % 270); |QBF aAlfa;
+     #dsdpaque#1 = aAlfa;
+     |PINTA #dsdpaque#1;
+     |ERROR;
+|FPRC;
+
+|PROCESO tipo3; |TIPO 3;
+     |AVISO;
+     |CONFI "0000NLa informacion existente se perdera. Continuar?";
+     |SI FSalida = 0;    ||Realizar el proceso.
+          nFragmento = 0;
+          aOrigen  = #dsdpaque#1;    ||Nombre del paquete
+          |QBF aOrigen;
+          |HAZ HallaNombre;   ||Nombre unicamente del fichero
+          aDestino = #dsdpaque#2;    ||Directorio destino
+          |QBF aDestino;
+
+          ||Miro a ver si necesita la barra inclinada "/"
+          aAlfa2 = aDestino % -101;
+          |SI aAlfa2 ! "/"; |Y aAlfa2 ! "\";
+               aDestino = aDestino + "/";
+          |FINSI;
+          aDestino1 = aDestino;
+
+          |SI #dsdpaque#0 = "S";   ||ES DISQUETE
+               aExtensio = aNomFic % -104;
+               |SI aExtensio ! ".tgz";   ||Se supone que habra varios ficheros
+                    aExtensio = aNomFic % -102;
+                    |SI aExtensio ! ".0";
+                         aMensaje = "0000Error. El fichero debe tener extension (.tgz) o (.0)";
+                         |MENAV aMensaje;
+                         |ACABA;
+                    |SINO;
+                         aSemiNomFic = aNomFic - "0";   ||Nombre del fichero sin la extension (.0)
+                         |QBF aSemiNomFic;
+                         aSemiOrigen = aOrigen - "0";   ||Origen sin la extension (.0)
+                         |QBF aSemiOrigen;
+                         |PARA nPara1 = 0; |SI nPara1 < 99; |HACIENDO nPara1 = nPara1 + 1;
+                              ||Ir Pidiendo los discos uno a uno. Hasta ESC.
+                              aAlfa4 = "0000SIntroduzca Volumen " + nFragmento + ". Continuar?";
+                              |CONFI aAlfa4;
+                              |SI FSalida ! 0;
+                                   |SAL;
+                              |SINO;
+                                    aOrigen  = aSemiOrigen + nFragmento;
+                                    aDestino = aDestino1 + aSemiNomFic + nFragmento;
+                                    |HAZ RecibeFichero;
+                                    |SI nExito = 0;
+                                         nFragmento = nFragmento + 1;
+                                    |FINSI;
+                              |FINSI;
+                         |SIGUE;
+                    |FINSI;
+               |SINO; ||UN SOLO FICHERO
+                    aSemiNomFic = aNomFic - "tgz";   ||Nombre del fichero sin la extension (.tgz)
+                    |QBF aSemiNomFic;
+
+                    ||Ahora le anyado el nombre del fichero origen
+                    aDestino = aDestino + aNomFic;
+                    |HAZ RecibeFichero;
+               |FINSI;
+          |SINO;    ||UN SOLO FICHERO
+               aExtensio = aNomFic % -104;
+               |SI aExtensio ! ".tgz";
+                    aMensaje = "0000Error. El fichero debe tener extension (.tgz)";
+                    |MENAV aMensaje;
+                    |ACABA;
+               |SINO;
+                    aSemiNomFic = aNomFic - "tgz";   ||Nombre del fichero sin la extension (.tgz)
+                    |QBF aSemiNomFic;
+               |FINSI;
+
+               ||Ahora le anyado el nombre del fichero origen
+               aDestino = aDestino + aNomFic;
+               |HAZ RecibeFichero;
+          |FINSI;
+
+          ||Si han venido fragmentado tengo que volver a unirlos.
+          |SI nFragmento > 0;     ||Significa que he de unir los nFragmentos
+               aDestino = aDestino1 + aSemiNomFic + "tgz";
+
+               ||Antes de empezar a concatenar los fragmentos borrare
+               ||si existe algun fichero aDestino ( .tgz)
+               aFichero = aDestino;
+               aDirecto = "";
+               |DIRECTORIO aDirecto;
+               aTrabajo = aDirecto + "bin/agirm " + aFichero;   |QBF aTrabajo;
+               |SYSTEM aTrabajo;
+
+               |PARA nContador=0; |SI nContador < nFragmento; |HACIENDO nContador = nContador + 1;
+                    aOrigen  = aDestino1 + aSemiNomFic + nContador;
+                    |AFEGIR_FICHERO aOrigen, aDestino;
+
+                    ||Una vez usado ya puedo borrar el fragmento .0 .1 ...
+                    aFichero = aOrigen;
+                    aDirecto = "";
+                    |DIRECTORIO aDirecto;
+                    aTrabajo = aDirecto + "bin/agirm " + aFichero;   |QBF aTrabajo;
+                    |SYSTEM aTrabajo;
+               |SIGUE;
+          |FINSI;
+
+          ||Descomprimir el archivo
+          |DESCOMPRIME aDestino;
+
+          ||Ahora tengo un tar que he de deseempaquetar
+          aDestino = aDestino1;
+          aFichero = aDestino1 + aSemiNomFic + "tar";
+          |DETAR aFichero, aDestino;
+          nExito = FSalida;
+
+          ||Borrar el .tar y el .tgz que me ha sobrado.
+          aFichero = aDestino1 + aSemiNomFic + "tar";
+          aDirecto = "";
+          |DIRECTORIO aDirecto;
+          aTrabajo = aDirecto + "bin/agirm " + aFichero;   |QBF aTrabajo;
+          |SYSTEM aTrabajo;
+
+          aFichero = aDestino1 + aSemiNomFic + "tgz";
+          aDirecto = "";
+          |DIRECTORIO aDirecto;
+          aTrabajo = aDirecto + "bin/agirm " + aFichero;   |QBF aTrabajo;
+          |SYSTEM aTrabajo;
+
+          |SI nExito = 0;
+               |MENAV "0000Proceso de recuperacion concluido con exito.";
+          |SINO;
+               |MENAV "0000Ha ocurrido un error al desempaquetar el fichero.";
+          |FINSI;
+     |SINO;
+          || Por defecto no recuperare la informacion.
+          aMensaje = "0000Proceso Abortado.";
+          |MENAV aMensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecibeFichero;
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+     |SI aIPRemoto ! "";
+         |RECIBE_FICHERO aOrigen, aDestino;
+     |SINO;
+         |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+     nExito = FSalida;
+|FPRC;
+
+|PROCESO HallaNombre;
+     aProg = #dsdpaque#1; |QBF aProg;
+     aLon = aProg % A0;
+     aNomFic = "";
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = -((i * 100) + 1);
+          aAlfa = aProg % nPos;
+          |SI aAlfa = "/"; |O aAlfa = "\"; |SAL; |FINSI;
+          aNomFic = aAlfa + aNomFic;
+     |SIGUE;
+|FPRC;
+
+|PROCESO AccesoUsuario; |TIPO 7;
+     |DBASS aBase;
+     |QBF aBase;
+     aControl = aBase + "empaqueta.txt";
+
+     aUsuario = Usuario % 810;
+     |XABRE "U", aControl, nHandle;
+     |SI FSalida ] 0;
+          nSwAutorizado = 0;
+          |PARA; |SI; |HACIENDO;
+               |XLEE nHandle, 250, aNombre;
+               |SI FSalida < 0;
+                    |SAL;
+               |FINSI;
+               |QBF aNombre;
+               aNomMin = aNombre < aNombre;
+               aUsuMin = aUsuario < aUsuario;
+               |SI aNomMin = aUsuMin;
+                    nSwAutorizado = 1;
+                    |SAL;
+               |FINSI;
+          |SIGUE;
+          |XCIERRA nHandle;
+     |SINO;
+          nSwAutorizado = 0;
+     |FINSI;
+
+     |SI nSwAutorizado = 0;
+          |HAZ SacaMensaje;
+          |PTEC 807;
+     |FINSI;
+|FPRC;
+
+|PROCESO SacaMensaje;
+     |PUSHV 0501 2327;
+          |PINPA #0#dstool01;
+          aMensaje = "El usuario [" + aUsuario + "] no dispone del acceso adecuado.";
+          |PINTA 1107, aMensaje;
+          aMensaje = "Incluya " + &34 + aUsuario + &34 + " en el fichero: ";
+          |PINTA 1307, aMensaje;
+
+          aIPRemoto = "";
+          |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+          |SI aIPRemoto ! "";
+               aMensaje = &34 + aControl + &34 + " del servidor.";
+          |SINO;
+               aMensaje = &34 + aControl + &34 + " de su PC.";
+          |FINSI;
+          |PINTA 1407, aMensaje;
+
+          |PINTA 1607, "Con cualquier editor de texto estandar.";
+          |PAUSA;
+     |POPV;
+|FPRC;

@@ -1,0 +1,9 @@
+cp nifpara1.dat xifpara1.dat  
+cp nifpara1.ddx xifpara1.ddx  
+cp nifpara1.ixx xifpara1.ixx  
+cp nifpara2.dat xifpara2.dat  
+cp nifpara2.ddx xifpara2.ddx  
+cp nifpara2.ixx xifpara2.ixx  
+cp nifpara3.dat xifpara3.dat  
+cp nifpara3.ddx xifpara3.ddx  
+cp nifpara3.ixx xifpara3.ixx  

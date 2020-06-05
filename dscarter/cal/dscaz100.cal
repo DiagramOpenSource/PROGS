@@ -1,0 +1,291 @@
+|FICHEROS;
+   dscaz100 #0;
+
+   dscam003 #10;
+   dscam004 #11;
+
+   dscam012 #12;
+   dscam013 #13;
+
+   dscaw073 #100;
+|FIN;
+
+|VARIABLES;
+   &aInforme = "";
+   &enSw = 0;
+   &Divisa = "";
+   &nDeci_Div = 0;
+
+   aEstado = "";
+   aAlfa   = "";
+
+   aCliAnt = "";
+   aFactu  = "";
+   nDiv    = 0;
+   nTotAnt = 0;
+   nCalc  = 0;
+   nNivel = 0;
+   nPdte  = 0;
+   nDocum = 0;
+   nDatos = 0;
+   nAgrup = 0;
+   nDivis = 0;
+   nConta = 0;
+   nCoefi = 0;
+   nTotal = 0;
+
+   fHasta = @;
+   nSwArtenvas = 0;
+|FIN;
+
+|PROCESO MiraSiPendte;
+   |SI nSwArtenvas = 0;
+       |SI #dscam004#5 = "COB"; |O #dscam004#5 = "COP"; |O #dscam004#5 = "REM";
+        |O #dscam004#5 = "RCB"; |O #dscam004#5 = "CAC"; |O #dscam004#5 = "RTA";
+           nPdte = nPdte - ((#dscam004#8 * nCoefi) ! 2);
+       |FINSI;
+       |SI #dscam004#5 = "IMP"; |O #dscam004#5 = "RCE";
+           nPdte = nPdte + ((#dscam004#9 * nCoefi) ! 2);
+       |FINSI;
+       |SI nPdte < 0; aEstado = "L"; |SINO; aEstado = "P"; |FINSI;
+   |SINO;
+       |SI #dscam004#5 = "COB"; |O #dscam004#5 = "COP";
+        |O #dscam004#5 = "RCB"; |O #dscam004#5 = "CAC"; |O #dscam004#5 = "RTA";
+           nPdte = nPdte - ((#dscam004#8 * nCoefi) ! 2);
+       |FINSI;
+       |SI #dscam004#5 = "REM";
+	        |ABRE #dscam012;
+            |ABRE #dscam013; |SELECT #2#dscam013;
+             #dscam013#16 = #dscam004#17;
+             #dscam013#17 = #dscam004#3;
+             |LEE 000#dscam013.=;
+			 |SI FSalida = 0;
+			    #dscam012#0 = #dscam013#0;
+				|LEE 000#dscam012.=;
+				|SI FSalida = 0;
+                   |SI #dscam012#22 = 2; |O #dscam012#22 = 4;
+				       |SI #dscam013#15 = "S";
+                           nPdte = nPdte - ((#dscam004#8 * nCoefi) ! 2);
+					   |FINSI;
+					|SINO;
+					   nPdte = nPdte - ((#dscam004#8 * nCoefi) ! 2);
+					|FINSI;
+				|FINSI;
+             |FINSI;
+             |SELECT #1#dscam013; |CIERRA #dscam013;
+       |FINSI;
+       |SI #dscam004#5 = "IMP"; |O #dscam004#5 = "RCE";
+           nPdte = nPdte + ((#dscam004#9 * nCoefi) ! 2);
+       |FINSI;
+       |SI nPdte < 0; aEstado = "L"; |SINO; aEstado = "P"; |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraSiPendte;
+#dscam004#1;
+6;
+#dscam003#40,01,"01.01.1900";
+#dscam003#40,99,#dscaz100#1;
+;
+NULL,MiraSiPendte;
+|FIN;
+
+|DEFBUCLE Divididos;
+#dscam003#11;
+83;
+#dscaz100#2,"01.01.0000", "     ", nDivis;
+#dscaz100#3,"31.12.9999", "zzzzz", nDivis;
+;
+NULL,RellenaTempo;
+|FIN;
+
+|PROCESO RellenaTempo;
+   |SI #dscam003#31 = 0; |ACABA; |FINSI;
+
+   Divisa = #dscam003#57; |HAZ TomaDecim;
+
+   aAlfa = " Tratando el cliente " + (("000000" + #dscam003#32) % -106);
+   aAlfa = aAlfa + " " + #dscam003#6; |QBF aAlfa;
+   |BLIN 23;
+   |ATRI I; |PINTA 2310, aAlfa; |ATRI N;
+
+   nDatos = 1; nNivel = nNivel + 1;
+
+   |SI #dscam003#69 ! " "; |O #dscam003#47 ! "N"; nDatos = 1; nNivel = nNivel - 1; |ACABA; |FINSI;
+   |SI nNivel = 1;
+      |SI #dscam003#49 = "S"; |O #dscam003#82 = "S"; nDatos = 1; nNivel = nNivel - 1; |ACABA; |FINSI;
+      nCoefi = 1;
+   |SINO;
+      |SI nDiv = 0; nCoefi = nCoefi * (nTotal / #dscam003#30); |FINSI;
+   |FINSI;
+
+   aAlfa =         ("     "  + #dscam003#0) % -105; aAlfa = aAlfa + "/";
+   aAlfa = aAlfa + ("000000" + #dscam003#1) % -106;
+   |SI aFactu ! aAlfa; |Y nNivel = 1;
+      ||nPdte = #dscam003#31;
+      nPdte = #dscam003#30;
+      aEstado = " ";
+      aFactu = aAlfa;
+   |FINSI;
+
+   |BUCLE MiraSiPendte;
+   |SI #dscam003#14 = "A";
+      nTotal = #dscam003#30;
+      nAgrup = #dscam003#41;
+      |SALVA_FICHA #dscam003;
+      |SELECT #1#dscam003;
+      #dscam003#40 = nAgrup;
+      |LEE 000#dscam003.=;
+      |SI FSalida = 0; |HAZ RellenaTempo; |FINSI;
+      |SELECT #11#dscam003;
+      |REPON_FICHA #dscam003;
+      nTotal = nTotal / nCoefi;
+   |FINSI;
+   |SI #dscam003#14 = "D";
+      nDiv = 1;
+      nDivis = #dscam003#40;
+      |SALVA_FICHA #dscam003;
+      |BUCLE Divididos;
+      |REPON_FICHA #dscam003;
+      nDiv = 0;
+   |FINSI;
+
+   |SI nNivel = 1;
+      #dscaw073#0 = #dscam003#32;
+      aAlfa =         ("     "  + #dscam003#0) % -105; aAlfa = aAlfa + "/";
+      aAlfa = aAlfa + ("000000" + #dscam003#1) % -106;
+      #dscaw073#3 = aAlfa;
+      |LEE 101#dscaw073.=;
+      |SI FSalida ! 0;
+         |DDEFECTO #dscaw073;
+         #dscaw073#0 = #dscam003#32;
+         aAlfa =         ("     "  + #dscam003#0) % -105; aAlfa = aAlfa + "/";
+         aAlfa = aAlfa + ("000000" + #dscam003#1) % -106;
+         #dscaw073#3 = aAlfa;
+         |GRABA 020#dscaw073.b;
+      |FINSI;
+      #dscaw073#1 = #dscam003#5;
+      #dscaw073#2 = #dscam003#6;
+      aAlfa = #dscam003#4; |QBF aAlfa; aAlfa = aAlfa % -104; nCalc = aAlfa;
+      nCalc = #dscaz100#0 - nCalc;
+      |SI nCalc > 4; #dscaw073#4 = #dscaw073#4 + nPdte; |FINSI;
+      |SI nCalc = 4; #dscaw073#5 = #dscaw073#5 + nPdte; |FINSI;
+      |SI nCalc = 3; #dscaw073#6 = #dscaw073#6 + nPdte; |FINSI;
+      |SI nCalc = 2; #dscaw073#7 = #dscaw073#7 + nPdte; |FINSI;
+      |SI nCalc = 1; #dscaw073#8 = #dscaw073#8 + nPdte; |FINSI;
+      |SI nCalc = 0; #dscaw073#9 = #dscaw073#9 + nPdte; |FINSI;
+      |GRABA 020#dscaw073.a; |LIBERA #dscaw073;
+
+      aAlfa =         ("     "  + #dscam003#0) % -105; aAlfa = aAlfa + "/";
+      aAlfa = aAlfa + ("000000" + #dscam003#1) % -106;
+      aFactu = aAlfa;
+   |FINSI;
+
+   |SI nNivel > 1;
+      |SI nDiv = 0;
+         nCoefi = nCoefi / (nTotal / #dscam003#30);
+      |FINSI;
+   |FINSI;
+
+   nNivel = nNivel - 1;
+|FPRC;
+
+|DEFBUCLE RellenaTempo;
+#dscam003#11;
+4;
+#dscaz100#2,"01.01.0000", "     ", "01.01.1900";
+#dscaz100#3,"31.12.9999", "zzzzz", fHasta;
+;
+NULL,RellenaTempo;
+|FIN;
+
+|PROCESO Imprime;
+   |SI aCliAnt ! #dscaw073#0;
+      nConta = 1;
+      |SI aCliAnt ! "-1"; enSw = 1; |PRINT; enSw = 0; |FINSI;
+      aCliAnt = #dscaw073#0;
+   |FINSI;
+   #dscaw073#10 = nConta; nConta = nConta + 1;
+   |GRABA 020#dscaw073.a;
+
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE Imprime;
+   #dscaw073#1;
+   ;
+   INICIO;
+   FINAL;
+   ;
+   NULL,Imprime;
+|FIN;
+
+|PROGRAMA;
+   |HAZ Tipo8;
+
+   nSwArtenvas = 0;
+   |HAZ EsArtenvas;
+   |SI FSalida = 0; nSwArtenvas = 1; |FINSI;
+
+   |CLS;
+   |CABEZA "Listado saldos pendientes";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      aAlfa = "31.12." + #dscaz100#0; fHasta = aAlfa;
+
+      aAlfa = "sp" + Usuario; |NOME_DAT #100 aAlfa;
+      |DELINDEX #dscaw073; |ABRE #dscaw073;
+      |ABRE #dscam003;
+      nDatos = 0;
+      |BUCLE RellenaTempo;
+      |SI aEstado = "P";
+         #dscaw073#0 = #dscam003#32;
+         aAlfa =         ("     "  + #dscam003#0) % -105; aAlfa = aAlfa + "/";
+         aAlfa = aAlfa + ("000000" + #dscam003#1) % -106;
+         #dscaw073#3 = aAlfa;
+         |LEE 101#dscaw073.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #dscaw073;
+            #dscaw073#0 = #dscam003#32;
+            aAlfa =         ("     "  + #dscam003#0) % -105; aAlfa = aAlfa + "/";
+            aAlfa = aAlfa + ("000000" + #dscam003#1) % -106;
+            #dscaw073#3 = aAlfa;
+            |GRABA 020#dscaw073.b;
+         |FINSI;
+         #dscaw073#1 = #dscam003#5;
+         #dscaw073#2 = #dscam003#6;
+         aAlfa =         ("     "  + #dscam003#0) % -105; aAlfa = aAlfa + "/";
+         aAlfa = aAlfa + ("000000" + #dscam003#1) % -106;
+         #dscaw073#3 = aAlfa;
+         aAlfa = #dscam003#4; |QBF aAlfa; aAlfa = aAlfa % -104; nCalc = aAlfa;
+         nCalc = #dscaz100#0 - nCalc;
+         |SI nCalc > 4; #dscaw073#4 = #dscaw073#4 + nPdte; |FINSI;
+         |SI nCalc = 4; #dscaw073#5 = #dscaw073#5 + nPdte; |FINSI;
+         |SI nCalc = 3; #dscaw073#6 = #dscaw073#6 + nPdte; |FINSI;
+         |SI nCalc = 2; #dscaw073#7 = #dscaw073#7 + nPdte; |FINSI;
+         |SI nCalc = 1; #dscaw073#8 = #dscaw073#8 + nPdte; |FINSI;
+         |SI nCalc = 0; #dscaw073#9 = #dscaw073#9 + nPdte; |FINSI;
+         |GRABA 020#dscaw073.a; |LIBERA #dscaw073;
+      |FINSI;
+      |SI nDatos = 0;
+         |MENAV "    Seleccion vacia "; |ACABA;
+      |FINSI;
+
+      |IMPRE 0;
+      |SI FSalida = 0;
+         aInforme = "Informe saldos pendientes"; |HAZ ObtenInforme;
+         |SI aInforme = "Informe saldos pendientes"; aInforme = "dscaz100"; |FINSI;
+         |INFOR aInforme;
+         |SI FSalida = 0;
+            aCliAnt = "-1"; enSw = 0; nConta = 0;
+            |BUCLE Imprime;
+            |PIEINF; |FININF;
+         |FINSI;
+         |FINIMP;
+      |FINSI;
+      |CIERRA #dscam003; |CIERRA #dscaw073;
+   |FINSI;
+
+   |HAZ Tipo9;
+|FPRO;

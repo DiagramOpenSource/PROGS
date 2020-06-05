@@ -1,0 +1,317 @@
+|FICHEROS;
+   carechis #0;
+
+   camaniva #10;
+   calibros #11;
+   camaasic #12;
+   camaasil #13;
+
+   HisGest@ #100;
+   HisCart@ #101;
+
+   dscam03@ #200;
+   dscam04@ #201;
+   agif041@ #202;
+   dscam00@ #203;
+|FIN;
+
+|VARIABLES;
+   nSwAsignado = 0;
+   nSwAsigCart = 0;
+   nSwAsigGest = 0;
+
+   aClv1 = "";
+   aClv2 = "";
+   aClv3 = "";
+   aTipo = "";
+   aAlfa = "";
+   aAlfa1 = "";
+   aCadena = "";
+
+   nSwCambia = 0;
+
+   nEmpresa = 0;
+   nPeriodo = 0;
+   nDiario  = 0;
+   nDocumento = 0;
+
+   fFecha   = @;
+|FIN;
+
+|PROCESO RevisaFras;
+   aAlfa = "    Revisando asiento de gestion comercial " + (("00" + #HisGest@#4) % -102);
+   aAlfa = aAlfa + "/" + #HisGest@#5 + "/" + (("000000" + #HisGest@#6) % -106);
+   |ATRI I; |PINTA 2302, aAlfa; |ATRI N;
+
+   |SI #HisGest@#0 = "FV"; |O #HisGest@#0 = "FD"; aTipo = "R"; |FINSI;
+   |SI #HisGest@#0 = "FC";                        aTipo = "S"; |FINSI;
+
+   |DFICB aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + (("00000" + #HisGest@#8) % -105) + #HisGest@#9 + "/";
+   |PATH_DAT #camaniva#aAlfa#; |PATH_DAT #calibros#aAlfa#;
+   |PATH_DAT #camaasic#aAlfa#; |PATH_DAT #camaasil#aAlfa#;
+   |ABRE #camaasic; |ABRE #camaasil;
+   |ABRE #camaniva; |SELECT #3#camaniva;
+   |ABRE #calibros; nSwCambia = 0;
+   |LEE 000#calibros.p;
+   |PARA; |SI FSalida = 0; |HACIENDO;
+      |SI #calibros#2 = aTipo;
+         #camaniva#0 = #calibros#0;
+         #camaniva#2 = #HisGest@#1;
+         #camaniva#3 = #HisGest@#2;
+         |LEE 000#camaniva.=;
+         |SI FSalida = 0;
+            |SI #HisGest@#4 = #camaniva#7; |Y #HisGest@#5 = #camaniva#8;
+               aAlfa = "La factura " + (("00" + #calibros#0) % -102);
+               aAlfa = aAlfa + "/" + #HisGest@#1; |QBF aAlfa;
+               aAlfa1 = #HisGest@#2; |QBF aAlfa1;
+               aAlfa = aAlfa + "/" + (("000000" + aAlfa1) % -106);
+               aAlfa = aAlfa + " cambia el apunte del historico " + (("00" + #HisGest@#4) % -102);
+               aAlfa = aAlfa + "/" + #HisGest@#5 + " del documento " + (("000000" + #HisGest@#6) % -106);
+               aAlfa = aAlfa + " a " + (("000000" + #camaniva#9) % -106);
+               |IMPRIME aAlfa;
+
+               #HisGest@#6 = #camaniva#9;
+               |GRABA 020#HisGest@.a;
+
+               #camaasic#0 = #HisGest@#4;
+               #camaasic#1 = #HisGest@#5;
+               #camaasic#2 = #HisGest@#6;
+               |LEE 101#camaasic.=;
+               |SI FSalida = 0;
+                  |SI #camaasic#13 < 100;
+                     #camaasic#13 = #camaasic#13 + 100;
+                     |GRABA 020#camaasic.a; |LIBERA #camaasic;
+                  |FINSI;
+               |FINSI;
+               nSwCambia = 1;
+               |SAL;
+            |SINO;
+               aAlfa = "El asiento de la factura " + (("00" + #calibros#0) % -102);
+               aAlfa = aAlfa + #HisGest@#1 + "/";
+               aAlfa = aAlfa + (("000000" + #HisGest@#2) % -106) + " de contabilidad";
+               aAlfa = aAlfa + " no tiene el mismo diario o fecha a la que apunta el historico. No se cambia el documento.";
+               |IMPRIME aAlfa;
+               nSwCambia = 1;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |LEE 000#calibros.s;
+   |SIGUE;
+
+   |SI nSwCambia = 0;
+      aAlfa = "No se ha encontrado en contabilidad la factura " + #HisGest@#1; |QBF aAlfa;
+      aAlfa = aAlfa + "/" + (("000000" + #HisGest@#2) % -106);
+      |IMPRIME aAlfa;
+   |FINSI;
+
+   |CIERRA #camaasic; |CIERRA #camaasil;
+   |CIERRA #calibros; |CIERRA #camaniva;
+|FPRC;
+
+|DEFBUCLE RecuperaGestion;
+#HisGest@#1007;
+;
+"  ", "          ", "          ", "          ", 000000, #48#2, #48#3;
+"zz", "zzzzzzzzzz", "zzzzzzzzzz", "zzzzzzzzzz", 999999, #48#2, #48#3;
+be;
+NULL, RevisaFras;
+|FIN;
+
+|PROCESO BuscaLinAsto;
+  aAlfa = #camaasil#7; |QBF aAlfa;
+  aAlfa = aAlfa - aCadena;
+  |SI FSalida ! 0;
+     nDocumento = #camaasil#2; |ERROR10;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaLinAsto;
+#camaasil#1;
+;
+nDiario, fFecha, 000000, 0000;
+nDiario, fFecha, 999999, 9999;
+;
+NULL, BuscaLinAsto;
+|FIN;
+
+|PROCESO RevisaCart;
+   aAlfa = "    Revisando asiento de cartera " + (("00" + #HisCart@#4) % -102);
+   aAlfa = aAlfa + "/" + #HisCart@#5 + "/" + (("000000" + #HisCart@#6) % -106);
+   |ATRI I; |PINTA 2302, aAlfa; |ATRI N;
+
+   |DFICB aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + (("00000" + #HisCart@#8) % -105) + #HisCart@#9 + "/";
+   |PATH_DAT #camaasic#aAlfa#; |PATH_DAT #camaasil#aAlfa#;
+   |ABRE #camaasic; |ABRE #camaasil;
+
+   |SI #HisCart@#0 = "CB";
+      #dscam03@#40 = #HisCart@#1;
+      |LEE 000#dscam03@.=;
+      |SI FSalida = 0;
+         #dscam04@#17 = #HisCart@#1;
+         #dscam04@#3  = #HisCart@#2;
+         |LEE 000#dscam04@.=;
+         |SI FSalida = 0;
+            |SI #dscam04@#5 = "COB"; |O #dscam04@#5 = "COP";
+               aCadena = "COBRO N/F." + #dscam03@#0 + "-" + #dscam03@#1; |QBF aCadena;
+            |FINSI;
+            |SI #dscam04@#5 = "IMP";
+               aCadena = "DEVOL.FRA." + #dscam03@#0 + "/" + #dscam03@#1; |QBF aCadena;
+            |FINSI;
+            nDiario = #HisCart@#4; fFecha = #HisCart@#5;
+            nDocumento = -1; |BUCLE BuscaLinAsto;
+            |SI nDocumento > 0;
+               aAlfa = "El cobro " + #dscam03@#0 + "/" + (("000000" + #dscam03@#1) % -106);
+               aAlfa = aAlfa + "[" + #dscam03@#40 + "]";
+               aAlfa = aAlfa + " cambia el apunte del historico " + (("00" + #HisCart@#4) % -102);
+               aAlfa = aAlfa + "/" + #HisCart@#5 + " del documento " + (("000000" + #HisCart@#6) % -106);
+               aAlfa = aAlfa + " a " + (("000000" + nDocumento) % -106);
+               |IMPRIME aAlfa;
+
+               #HisCart@#6 = nDocumento;
+               |GRABA 020#HisCart@.a;
+            |SINO;
+               aAlfa = "No se encuentra la cadena '" + aCadena + "' en las descripciones de los asientos.";
+               |IMPRIME aAlfa;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI #HisCart@#0 = "RM";
+      aAlfa = #HisCart@#3; |QBF aAlfa;
+      |SI aAlfa = "E";
+         aCadena = "REMESA N§" + #HisCart@#1; |QBF aCadena;
+         aCadena = aCadena + "/" + #HisCart@#5; |QBF aCadena;
+         nDiario = #HisCart@#4; fFecha = #HisCart@#5;
+         nDocumento = -1; |BUCLE BuscaLinAsto;
+         |SI nDocumento > 0;
+            aAlfa = "La linea " + #HisCart@#2; |QBF aAlfa;
+            aAlfa = aAlfa + " de la remesa " + #HisCart@#1; |QBF aAlfa;
+            aAlfa = aAlfa + " cambia el apunte del historico " + (("00" + #HisCart@#4) % -102);
+            aAlfa = aAlfa + "/" + #HisCart@#5 + " del documento " + (("000000" + #HisCart@#6) % -106);
+            aAlfa = aAlfa + " a " + (("000000" + nDocumento) % -106);
+            |IMPRIME aAlfa;
+
+            aAlfa = #HisCart@#1; FSalida = 0;
+            |PARA; |SI FSalida = 0; |Y #HisCart@#1 = aAlfa; |HACIENDO;
+               #HisCart@#6 = nDocumento; |GRABA 020#HisCart@.a;
+               |LEE 000#HisCart@.s;
+            |SIGUE;
+            |LEE 000#HisCart@.a;
+         |SINO;
+            aAlfa = "No se encuentra la cadena '" + aCadena + "' en las descripciones de los asientos.";
+            |IMPRIME aAlfa;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |CIERRA #camaasic; |CIERRA #camaasil;
+|FPRC;
+
+|DEFBUCLE RecuperaCartera;
+#HisCart@#1007;
+;
+"  ", "          ", "          ", "          ", 000000, #48#2, #48#3;
+"zz", "zzzzzzzzzz", "zzzzzzzzzz", "zzzzzzzzzz", 999999, #48#2, #48#3;
+be;
+NULL, RevisaCart;
+|FIN;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Recuperacion historicos de enlaces";
+
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida ! 0; |O #0#0 ! "S"; |ACABA; |FINSI;
+
+   |IMPRE 0;
+   |SI FSalida ! 0;
+      |MENAV "    Proceso cancelado";
+      |ACABA;
+   |FINSI;
+
+   aAlfa = "*" * 80; |IMPRIME aAlfa;
+   aAlfa = ("*" * 5) + (" " * 13) + " INFORME DE CAMBIOS EN HISTORICO DE ENLACES " + (" " * 13) + ("*" * 5); |IMPRIME aAlfa;
+   aAlfa = "*" * 80; |IMPRIME aAlfa;
+   aAlfa = " ";      |IMPRIME aAlfa;
+   aAlfa = " Recuperacion gestion comercial ";      |IMPRIME aAlfa;
+   aAlfa = " ";      |IMPRIME aAlfa;
+
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscomer9/def/agifa722.mas";
+   |CARGA_DEF aAlfa, HisGest@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dscomer9/def/agifa041.mas";
+      |CARGA_DEF aAlfa, agif041@;
+      |SI FSalida = 0;
+         |DBASS aAlfa; |QBF aAlfa;
+         aAlfa = aAlfa + "dscomer9/fich/"; |PATH_DAT #agif041@#aAlfa#;
+         |ABRE #agif041@;
+         |LEE 000#agif041@.p;
+         |PARA; |SI FSalida = 0; |HACIENDO;
+            |DBASS aAlfa; |QBF aAlfa;
+            aAlfa = aAlfa + "dscomer9/fich/" + (("00000" + #agif041@#0) % -105) + "/";
+            |PATH_DAT #HisGest@#aAlfa#;
+
+            aAlfa = "      Empresa " + (("00000" + #agif041@#0) % -105);
+            aAlfa = aAlfa + " (" + #agif041@#5; |QBF aAlfa;
+            aAlfa = aAlfa + ") " + #agif041@#1; |QBF aAlfa; |IMPRIME aAlfa;
+            aAlfa = " "; |IMPRIME aAlfa;
+
+            |BUCLE RecuperaGestion;
+            |LEE 000#agif041@.s;
+         |SIGUE;
+         |CIERRA #agif041@; |DESCARGA_DEF #agif041@;
+      |FINSI;
+      |CIERRA #HisGest@; |DESCARGA_DEF #HisGest@;
+   |FINSI;
+
+   aAlfa = " ";      |IMPRIME aAlfa;
+   aAlfa = " Recuperacion cartera ";      |IMPRIME aAlfa;
+   aAlfa = " ";      |IMPRIME aAlfa;
+
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscarter/def/dscam067.mas";
+   |CARGA_DEF aAlfa, HisCart@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dscarter/def/dscam000.mas";
+      |CARGA_DEF aAlfa, dscam00@;
+      |SI FSalida = 0;
+         |DBASS aAlfa; |QBF aAlfa;
+         aAlfa = aAlfa + "dscarter/def/dscam003.mas";
+         |CARGA_DEF aAlfa, dscam03@;
+         |SI FSalida = 0;
+            |DBASS aAlfa; |QBF aAlfa;
+            aAlfa = aAlfa + "dscarter/def/dscam004.mas";
+            |CARGA_DEF aAlfa, dscam04@;
+            |SI FSalida = 0;
+               |DBASS aAlfa; |QBF aAlfa;
+               aAlfa = aAlfa + "dscarter/fich/"; |PATH_DAT #dscam00@#aAlfa#;
+               |ABRE #dscam00@;
+               |LEE 000#dscam00@.p;
+               |PARA; |SI FSalida = 0; |HACIENDO;
+                  |DBASS aAlfa; |QBF aAlfa;
+                  aAlfa = aAlfa + "dscarter/fich/" + (("00000" + #dscam00@#0) % -105) + "/";
+                  |PATH_DAT #HisCart@#aAlfa#; |PATH_DAT #dscam03@#aAlfa#;
+                  |PATH_DAT #dscam04@#aAlfa#;
+                  |ABRE #dscam03@; |ABRE #dscam04@;
+                  |BUCLE RecuperaCartera;
+                  |CIERRA #dscam03@; |CIERRA #dscam04@;
+                  |LEE 000#dscam00@.s;
+               |SIGUE;
+               |DESCARGA_DEF #dscam04@;
+            |FINSI;
+            |DESCARGA_DEF #dscam03@;
+         |FINSI;
+         |CIERRA #dscam00@; |DESCARGA_DEF #dscam00@;
+      |FINSI;
+      |CIERRA #HisGest@; |DESCARGA_DEF #HisGest@;
+   |FINSI;
+
+   |FINIMP;
+|FPRO;

@@ -1,0 +1,232 @@
+|FICHEROS;
+     foto0001  #0;  || Cab.Tiquets historico
+     foto0006  #1;  || Parametros fotos.
+|FIN;
+|VARIABLES;
+     modo                 = 0;
+     opcion               = 0;
+     &fecha               = @;
+     &nFotosRollo         = 0;
+     &aPrograma           = "foto0001";
+     &nTamano             = 0;
+     &nCopias             = 0;
+     &aBrillo             = "B";
+     &aCodigo             = "";
+     &nUni                = 0;
+|FIN;
+
+|PROCESO Entra; |TIPO 8;
+     |CLS;
+     |CABEZA "Consulta historico tiquets";
+     |PINPA #0#foto0001;
+     |ABRE #foto0001;
+
+
+|FPRC;
+
+
+|PROCESO NoAlBa;  || Proceso que controla que no se pueda dar ni altas ni bajas
+     modo = (FEntrada /100) !0;
+
+     |SI modo = 1;|O modo = 3;
+          |MENAV "0000ATENCION!!! No puede dar de alta ni de baja";
+          |ERROR;
+          |PTEC 807;
+     |FINSI;
+|FPRC;
+|PROCESO baja; |TIPO 1;  || se repite como NOALBA para evitar la baja pulsando f11
+     modo = (FEntrada /100) !0;
+
+     |SI modo = 1;|O modo = 3;
+          |MENAV "0000ATENCION!!! No puede dar de alta ni de baja";
+          |ERROR;
+          |PTEC 807;
+     |FINSI;
+|FPRC;
+
+|PROCESO PulsaTecla; |TIPO 7;
+
+     FSalida=0;
+     |MENSA "0000<F1>-Anula Env¡o. <F2>-Anula Entrada. <ESC>-Salir";
+
+     |PARA FSalida = 0; |SI FSalida ! 1; |HACIENDO;
+
+          |PAUSA;
+          |SI FSalida = 9;
+               |HAZ AnulaEnvio;
+               FSalida=1;
+          |FINSI;
+          |SI FSalida = 10;
+               |HAZ AnulaEntrada;
+               FSalida=1;
+          |SINO;
+             |SI FSalida ! 1; FSalida=0;|FINSI;
+          |FINSI;
+     |SIGUE;
+     |CIERRA #foto0001;
+     |DDEFECTO #foto0001;
+     |PINDA #0#foto0001;
+     |PTEC 807;
+
+|FPRC;
+
+|PROCESO AnulaEnvio;
+     |SI #foto0001#19 = "L"; |O #foto0001#19 = "R";
+          |SI #foto0001#19 = "L";   ||Envio a laboratorio;
+              |SI #foto0001#0 = "M";  |HAZ AnulaEnvioMini; || Entrada a Mini-Lab
+              |SINO; |HAZ AnulaEnvioExte; |FINSI;  ||Entrada a Externo
+          |SINO;||Reenvio a laboratorio;
+              #foto0001#34="00.00.0000";
+              #foto0001#35=" ";
+              #foto0001#19="A";
+              #foto0001#30= "";
+              #foto0001#36=0;
+              |GRABA 021#foto0001.a;
+              |LIBERA #foto0001;
+
+
+          |FINSI;
+     |SINO;
+          |MENSA "0000Este sobre no est  en Laboratorio ni es un Reenvio";
+          |PAUSA;
+          |MENSA "0000<F1>-Anula Env¡o. <F2>-Anula Entrada. <ESC>-Salir";
+     |FINSI;
+
+|FPRC;
+
+|PROCESO AnulaEntrada;
+     |SI #foto0001#19="A";
+          |SI #foto0001#0 = "M";  |HAZ AnulaEntradaMini; || Entrada de Mini-Lab
+          |SINO; |HAZ AnulaEntradaExte; |FINSI;  ||Entrada de Externo
+
+     |SINO;
+          |MENSA "0000Este sobre no est  acabado ni recibido de Laboratorio ";
+          |PAUSA;
+          |MENSA "0000<F1>-Anula Env¡o. <F2>-Anula Entrada. <ESC>-Salir";
+     |FINSI;
+
+|FPRC;
+
+|PROCESO AnulaEnvioMini;
+     |HAZ LeeParamFoto;
+     aPrograma="foto0001";
+     nFotosRollo=#foto0001#41;
+     fecha=#foto0001#11;
+     |HAZ Revelado;
+     |BORRA 021#foto0001.a;
+     |LIBERA #foto0001;
+
+|FPRC;
+
+|PROCESO AnulaEnvioExte;
+     |BORRA 021#foto0001.a;
+     |LIBERA #foto0001;
+|FPRC;
+
+
+|PROCESO AnulaEntradaMini;
+     |HAZ LeeParamFoto;
+     aPrograma="foto0001";
+     nFotosRollo=#foto0001#41;
+     fecha=#foto0001#31;
+
+     nTamano = #foto0001#9;
+     aBrillo = #foto0001#8;
+    |SI #foto0001#5 ! 0;
+          || Primero para las primeras copias
+          nCopias = #foto0001#5;
+          |HAZ CostePositivo;
+
+    |FINSI;
+    |SI #foto0001#38 ! 0;
+          || Despues las segundas copias
+          nCopias = #foto0001#38;
+          |HAZ CostePositivo;
+    |FINSI;
+
+    || Carterilla
+
+    aCodigo = #foto0006#127;  nUni = 1;
+    |HAZ LeeArti;
+
+    || Coste del pack
+
+    aCodigo = #foto0001#28;
+    |HAZ Pack;
+    #foto0001#23=0;          || coste del pack
+
+
+
+    #foto0001#5  = 0;       || Numero de copias de 1ra.
+    #foto0001#38 = 0;       || Numero de copias de 2da.
+
+    #foto0001#19 = "L";                || Estado
+    #foto0001#30 = " ";                || Observaciones
+    #foto0001#31 = "00.00.0000"        || Fecha entrega de laboratorio
+    #foto0001#32 = " ";               || Hora de entrega de Laboratorio
+    #foto0001#33 = 0;                 || Cajero de entrega de laboratorio
+    #foto0001#24 = #foto0001#20;      || Coste total. = al revelado.
+|| *** COSTE ***
+     #foto0001#21 = 0;
+     #foto0001#22 = 0;
+
+|| *** VENTA ***
+     #foto0001#26 = 0;                  || Venta 1ra copia uni
+     #foto0001#27 = 0;                  || Venta 2da copia uni
+     #foto0001#39 = 0;   || Venta 1ra. Copia total
+     #foto0001#40 = 0;   || Venta 1ra. Copia total
+
+     || Total Venta = Venta Revelado + Venta 1ra. Copia + Venta 2da. Copia
+     #foto0001#29 = #foto0001#25 + #foto0001#39 + #foto0001#40;
+
+     || Articulo pack de regalo
+     #foto0001#28 = "";
+
+     |GRABA 021#foto0001.a;
+     |LIBERA #foto0001;
+
+|FPRC;
+
+|PROCESO AnulaEntradaExte;
+     |HAZ LeeParamFoto;
+     aPrograma="foto0001";
+     nFotosRollo=#foto0001#41;
+     fecha=#foto0001#31;
+
+     aCodigo = #foto0001#28;
+     #foto0001#23 = 0;                || Coste Pack
+     |HAZ Pack;                       || De fotos.cal
+
+     #foto0001#19 = "L";           || Acabado, preparado para recoger por
+                                   || cliente
+     || Coste
+
+     #foto0001#24 = #foto0001#20;    || Coste Total.
+     #foto0001#21 = 0;
+     #foto0001#22 = 0;
+
+
+     || *** VENTA ***
+     #foto0001#26 = 0;                            || Venta 1ra copia uni
+     #foto0001#27 = 0;                            || Venta 2da copia uni
+     #foto0001#39 = 0;                            || Venta 1ra. Copia total
+     #foto0001#40 = 0;                            || Venta 2da. Copia total
+     #foto0001#5  = 0;                            || Numero de Copias 1ra.
+     #foto0001#38 = 0;                            || Numero de Copias 2da.
+     #foto0001#28 = "";                           || Articulo pack de regalo
+
+
+     || Total Venta = Venta Revelado + Venta 1ra. Copia + Venta 2da. Copia
+     #foto0001#29 = #foto0001#25;
+
+     #foto0001#31 = "00.00.0000";                  || Fecha entrada de laboratorio
+     #foto0001#32 = "";                            || Hora
+     #foto0001#33 = 0;                             || Cajero
+
+
+
+     |GRABA 021#foto0001.a;
+     |LIBERA #foto0001;
+
+
+|FPRC;

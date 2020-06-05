@@ -1,0 +1,749 @@
+|FICHEROS;
+    aomaccos #0;   || def de proceso
+    calculos@ #1;   || fichero cabeceras de calculos
+    aomtemp1 #2;   || fichero temporal total por obra/subobra
+    aomentra #3;   || fichero de entrada de horas
+    aomhoras #4;   || fichero de tipos de horas
+    aomcoste #5;   || fichero de costes
+    aomtemp3 #6;   || fichero temporal total por trabajador
+    aocartmp #7;
+    aomparam #10;
+    labempre;
+    labtraba;
+    nomepigr;
+    nomepitr;
+    nomconst;
+    nombonif;
+
+    aomfiniq #5000;
+    aomentrv;
+|FIN;
+
+|VARIABLES;
+     aD = "";
+     aH = "";
+    nPorc = 0;
+
+    nErr = 0;
+    nume1 = 0;
+    bisiesto = 0;
+    topemes = 0;
+    any = 0;
+    seleccio = 0;
+    total = 0;
+    horas = 0;
+    FEstado = 0;
+    parci = 0;
+    bruto = 0;
+    dtoss = 0;
+    dtohp = 0;
+    prest = 0;
+    cargo = 0;
+    prorr = 0;
+    anter1 = 0;
+    anter2 = 0;
+    desfec = @;
+    hasfec = @;
+    fecsys = @;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    meses = "";
+    meses1 = "ENERO.....FEBRERO...MARZO.....ABRIL.....MAYO......JUNIO.....";
+    meses2 = "JULIO.....AGOSTO....SEPTIEMBREOCTUBRE...NOVIEMBRE.DICIEMBRE.";
+    ssvac = "";
+    &EURODB = 0;
+
+     aDesdeCap = "                    ";
+     aHastaCap = "zzzzzzzzzzzzzzzzzzzz";
+     aDesdePar = "                    ";
+     aHastaPar = "zzzzzzzzzzzzzzzzzzzz";
+
+     aAlfa = "";
+     aDef = "";
+     nEmp = 0;
+     nTra = 0;
+     aFuente = "";
+     nCampo1 = 0;
+     nCampo2 = 0;
+     &nEpigConv = 0;
+|FIN;
+
+*****************************************************************************
+   RUTINAS DE LA PANTALLA
+*****************************************************************************
+
+|PROCESO PintaFuente;
+     |ATRI R;
+     |SI #0#16 = "M";
+          |PINTA 0943, " Datos desde Mto. MENSUAL   ";
+     |SINO;
+          |PINTA 0943, " Datos desde Mto. HISTORICO ";
+     |FINSI;
+     |ATRI 0;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7;  || CARGA EL A¥O DE LA FECHA DEL SISTEMA
+    fecsys = ~;
+    alfa1 = fecsys;
+    alfa1 = alfa1 % -102;
+    #0Campo = alfa1;
+|PINTA #0Campo;
+|FPRC;
+
+|PROCESO topedias; |TIPO 0; || CARGA SWITCH DE A¥O BISIESTO
+    nume1 = #0Campo $ 4;
+|SI nume1 = 0;
+        bisiesto = 1;
+|SINO;
+        bisiesto = 0;
+|FINSI;
+|FPRC;
+
+|PROCESO mirames; |TIPO 7;  || CARGA EL MES DE LA FECHA DEL SISTEMA
+    fecsys = ~;
+    alfa1 = fecsys;
+    alfa1 = alfa1 % 402;
+    #0Campo = alfa1;
+|PINTA #0Campo;
+    meses = meses1 + meses2;
+    nume1 = ((#0Campo - 1) * 10) + 1;
+    nume1 = (nume1 * 100) + 10;
+    alfa1 = nume1;
+    alfa1 = meses % alfa1;
+|PINTA 1047, alfa1;
+|FPRC;
+
+|PROCESO pintames; |TIPO 0;    || PINTA EL MES EN LETRA
+    meses = meses1 + meses2;
+    nume1 = ((#0Campo - 1) * 10) + 1;
+    nume1 = (nume1 * 100) + 10;
+    alfa1 = nume1;
+    alfa1 = meses % alfa1;
+|PINTA 1047, alfa1;
+|SI #0Campo =  1;  topemes = 31;             |FINSI;
+|SI #0Campo =  2;  topemes = 28 + bisiesto;  |FINSI;
+|SI #0Campo =  3;  topemes = 31;             |FINSI;
+|SI #0Campo =  4;  topemes = 30;             |FINSI;
+|SI #0Campo =  5;  topemes = 31;             |FINSI;
+|SI #0Campo =  6;  topemes = 30;             |FINSI;
+|SI #0Campo =  7;  topemes = 31;             |FINSI;
+|SI #0Campo =  8;  topemes = 31;             |FINSI;
+|SI #0Campo =  9;  topemes = 30;             |FINSI;
+|SI #0Campo = 10;  topemes = 31;             |FINSI;
+|SI #0Campo = 11;  topemes = 30;             |FINSI;
+|SI #0Campo = 12;  topemes = 31;             |FINSI;
+|FPRC;
+
+|PROCESO fechas; |TIPO 7;
+|SI #0#4 < 80;
+        any = 2000 + #0#4;
+|SINO;
+        any = 1900 + #0#4;
+|FINSI;
+
+    alfa1 = topemes; alfa1 = "00" + alfa1;   alfa1 = alfa1 % -102;
+    alfa2 = #0#5;    alfa2 = "00" + alfa2;   alfa2 = alfa2 % -102;
+    alfa3 = any;
+
+    alfa4 = "01."       + alfa2 + "." + alfa3;  desfec = alfa4; || desde fecha
+    alfa4 = alfa1 + "." + alfa2 + "." + alfa3;  hasfec = alfa4; || hasta fecha
+
+    #0#7 = desfec;  |PINTA #0#7;
+    #0#8 = hasfec;  |PINTA #0#8;
+|FPRC;
+
+*****************************************************************************
+   RUTINAS DE DEFBUCLE 1 -> lectura de movimientos horas de cada trabajador
+*****************************************************************************
+
+/*
+|PROCESO b_bucle2;    || ACUMULA EN LOS REGISTROS DEL TEMPORAL, POR OBRAS
+|DDEFECTO #2;
+    #2#0 = #3#2;   || carga codigo empresa
+    #2#1 = #3#3;   || carga codigo trabajador
+    #2#2 = #3#1;   || carga codigo obra
+    #2#5 = #3#7;   || carga codigo subobra
+|LEE 101#2=;
+    FEstado = FSalida;
+|| PEPE
+    #2#3 = #2#3 + parci;  || acumula importe ptas.
+    #2#4 = #2#4 + #3#5;   || acumula nro. de horas
+
+|SI FEstado = 0;  |GRABA 020#2a;  |FINSI;
+|SI FEstado ! 0;  |GRABA 020#2n;  |FINSI;
+|LIBERA #2;
+
+|DDEFECTO #6;
+    #6#0 = #3#2;   || carga codigo empresa
+    #6#1 = #3#3;   || carga codigo trabajador
+|LEE 101#6=;
+    FEstado = FSalida;
+
+    #6#2 = #6#2 + #3#5;  || acumula nro. de horas
+
+|SI FEstado = 0;  |GRABA 020#6a;  |FINSI;
+|SI FEstado ! 0;  |GRABA 020#6n;  |FINSI;
+|LIBERA #6;
+|FPRC;
+*/
+
+|PROCESO b_bucle2;    || ACUMULA EN LOS REGISTROS DEL TEMPORAL, POR OBRAS
+     |DDEFECTO #2;
+     #2#0 = #aomentra#2;   || carga codigo empresa
+     #2#1 = #aomentra#3;   || carga codigo trabajador
+     #2#2 = #aomentra#1;   || carga codigo obra
+     #2#5 = #aomentra#7;   || carga codigo subobra
+
+     #2#6 = #aomentra#8;   || serie presupuesto
+     #2#7 = #aomentra#9;   || numero presupuesto
+     #2#8 = #aomentra#11;   || codigo capitulo
+     #2#9 = #aomentra#13;   || codigo partida
+
+     |LEE 101#2=;
+     FEstado = FSalida;
+
+     #2#3 = #2#3 + parci;          || acumula importe
+     #2#4 = #2#4 + #aomentra#5;    || acumula nro. de horas
+
+     #2#10 = #aomentra#10;          || titulo presupuesto
+     #2#11 = #aomentra#12;         || descripcion capitulo
+     #2#12 = #aomentra#14;         || descripcion partida
+
+     |SI FEstado = 0;  |GRABA 020#2a;  |FINSI;
+     |SI FEstado ! 0;  |GRABA 020#2n;  |FINSI;
+     |LIBERA #2;
+
+     |DDEFECTO #6;
+     #6#0 = #3#2;   || carga codigo empresa
+     #6#1 = #3#3;   || carga codigo trabajador
+     |LEE 101#6=;
+     FEstado = FSalida;
+
+     #6#2 = #6#2 + #aomentra#5;  || acumula nro. de horas
+
+     |SI FEstado = 0;  |GRABA 020#6a;  |FINSI;
+     |SI FEstado ! 0;  |GRABA 020#6n;  |FINSI;
+     |LIBERA #6;
+|FPRC;
+
+/*
+|PROCESO b_bucle1;    || LEE EL TIPO DE HORA Y CALCULA IMPORTES Y ACUMULADOS
+|DDEFECTO #4;
+    #4#0 = #3#4;
+|LEE 020#4=;
+
+    parci = (#4#1 * #3#5) + #3#6;  || parcial ptas. por obra
+    horas = horas + #3#5;          || total horas por trabajador
+    total = total + parci;         || total ptas. por trabajador
+|HAZ b_bucle2;  || (en el defbucle lo hacia mal)
+|FPRC;
+*/
+
+|PROCESO b_bucle1;    || LEE EL TIPO DE HORA Y CALCULA IMPORTES Y ACUMULADOS
+     |DDEFECTO #4;
+     #4#0 = #aomentra#4;
+     |LEE 020#4=;
+
+     parci = (#4#1 * #aomentra#5) + #aomentra#6;  || parcial importe por obra
+     horas = horas + #aomentra#5;          || total horas por trabajador
+     total = total + parci;         || total ptas. por trabajador
+     |HAZ b_bucle2;  || (en el defbucle lo hacia mal)
+|FPRC;
+
+|PROCESO b_bucle0;   || INICIALIZA VARIABLES
+    horas = 0;
+    total = 0;
+|FPRC;
+
+/*
+|DEFBUCLE aomaccos1;
+ #3#2;
+ ;
+ #1#0, #1#1, desfec,      1,  0,  1;
+ #1#0, #1#1, hasfec, 999999, 99, 99;
+ ;
+ b_bucle0, b_bucle1;
+|FIN;
+*/
+
+|DEFBUCLE aomaccos1;
+ #aomentra#2;
+ 8, 9, 11, 13;
+ nEmp, nTra, desfec,     1,      0,  1, "     ",      0, aDesdeCap, aDesdePar;
+ nEmp, nTra, hasfec, 99999, 999999, 99, "zzzzz", 999999, aHastaCap, aHastaPar;
+ ;
+ b_bucle0, b_bucle1;
+|FIN;
+
+*****************************************************************************
+   RUTINAS DE DEFBUCLE 0 -> lectura de registros del calculo
+*****************************************************************************
+
+|PROCESO a_bucle2;        || CARGA SWITCH DE SELECCION LLENA
+    seleccio = 1;
+|FPRC;
+
+|PROCESO a_bucle1;        || EFECTIVO PARA CUANDO EL TRABAJADOR NO TIENE MOVIM.
+     |SI total = 0; |Y horas = 0;
+          #2#0 = #1#0;   || codigo empresa
+          #2#1 = #1#1;   || codigo trabajador
+          #2#2 = #0#6;   || codigo obra varios
+          #2#5 = 0;      || codigo subobra varios
+          #2#3 = #2#3 + #1#46;  || bruto recibo
+          #2#4 = 1;      || horas (la unidad)
+
+          #2#6 = "     ";
+          #2#7 = 000000;
+          #2#8 = "                    ";
+          #2#9 = "                    ";
+          |LEE 000#2=;
+
+          |SI FSalida = 0;
+               |GRABA 020#2a;
+          |SINO;
+               #2#10 = "Sin Presupuesto";
+               #2#11 = "Sin Capitulo";
+               #2#12 = "Sin Partida";
+               |GRABA 020#2n;
+          |FINSI;
+          |LIBERA #2;
+
+          #6#0 = #1#0;   || codigo empresa
+          #6#1 = #1#1;   || codigo trabajador
+          |LEE 000#6=;
+          |SI FSalida = 0;
+               |GRABA 020#6a;
+          |SINO;
+               #6#2 = 1;      || horas (la unidad)
+               |GRABA 020#6n;
+          |FINSI;
+          |LIBERA #6;
+     |FINSI;
+|FPRC;
+
+|PROCESO a_bucle0;        || LEE MOVIMIENTOS DE HORAS DE CADA TRABAJADOR
+     #0#09 = #1#0;  |PINTA #0#09;
+     #0#10 = #1#1;  |PINTA #0#10;
+     nEmp = #1#0;
+     nTra = #1#1;
+
+     |BUCLE aomaccos1;
+     |HAZ a_bucle1;  || (en el defbucle lo hacia mal)
+|FPRC;
+
+|DEFBUCLE aomaccos0_m;
+ #1#1004;
+ ;
+ #0#0, #0#2, #0#5, 0;
+ #0#1, #0#3, #0#5, 0;
+ ;
+ NULL, a_bucle0, NULL, NULL, a_bucle2;
+|FIN;
+
+|DEFBUCLE aomaccos0_h;
+ #1#1005;
+ ;
+ #0#0, #0#2, #0#4, #0#5, 0;
+ #0#1, #0#3, #0#4, #0#5, 0;
+ ;
+ NULL, a_bucle0, NULL, NULL, a_bucle2;
+|FIN;
+
+*****************************************************************************
+   RUTINAS DE DEFBUCLE 2 -> lectura de temporal y grabacion de costes
+*****************************************************************************
+
+|VARIABLES;
+     base_6 = 0;
+     base_7 = 0;
+     base_8 = 0;
+     base_9 = 0;
+     zbase_9 = 0;
+     base_A = 0;
+     zbase_A = 0;
+     base_B = 0;
+     zbase_B = 0;
+     base_C = 0;
+     zbase_C = 0;
+     base_D = 0;
+     base_E = 0;
+     base_F = 0;
+     zbase_F = 0;
+     base_G = 0;
+     epig_ilt = 0;
+     epig_ims = 0;
+     por1_cont = 0;
+     por1_dfpg = 0;
+     por1_hor1 = 0;
+     por1_hor2 = 0;
+     por2_cont = 0;
+     por2_dfpg = 0;
+     por2_hor1 = 0;
+     por2_hor2 = 0;
+|FIN;
+
+|PROCESO ssvac;
+     ssvac = 0;
+
+     base_A = 0;  base_B = 0;  base_C = 0;  base_F = 0;
+     base_D = 0;  base_E = 0;  base_G = 0;
+     zbase_A = 0; zbase_B = 0; zbase_C = 0; zbase_F = 0;
+
+     |SI #1#9 = 85;|Y #1#9 = 87;|Y #1#9 = 97;
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #labempre;
+     |ABRE #labempre;
+     #labempre#0 = #1#0;
+     |LEE 000#labempre.=;
+     |CIERRA #labempre;
+
+     |DDEFECTO #labtraba;
+     |ABRE #labtraba;
+     #labtraba#0 = #1#0;
+     #labtraba#1 = #1#1;
+     |LEE 000#labtraba.=;
+     |CIERRA #labtraba;
+
+     |DDEFECTO #nomconst;
+     |ABRE #nomconst;
+     #nomconst#0 = #labempre#32;
+     |LEE 000#nomconst.=;
+     |CIERRA #nomconst;
+
+     por1_cont = #nomconst#07;
+     por1_hor1 = #nomconst#09;
+     por1_hor2 = #nomconst#11;
+     por1_dfpg = #nomconst#13 + #nomconst#15 + #nomconst#17 + #nomconst#19;
+     por2_cont = #nomconst#06;
+     por2_hor1 = #nomconst#08;
+     por2_hor2 = #nomconst#10;
+     por2_dfpg = #nomconst#12 + #nomconst#14 + #nomconst#16 + #nomconst#18;
+
+     |DDEFECTO #nomepigr;
+     |ABRE #nomepigr;
+     |SI #0#4 [ 06;
+          nEpigConv = #labtraba#32;
+     |SINO;
+          |HAZ VerifCNAE;
+     |FINSI;
+     #nomepigr#0 = nEpigConv;
+     |LEE 000#nomepigr.=;          || lee epigrafe
+     |CIERRA #nomepigr;
+     epig_ilt = #nomepigr#1;
+     epig_ims = #nomepigr#2;
+
+     |ABRE #nomepitr;
+     #nomepitr#0 = #labtraba#0;
+     #nomepitr#1 = #labtraba#1;
+     #nomepitr#2 = #labtraba#32;
+     |LEE 000#nomepitr.=;          || lee epigrafes/trabajador
+     |SI FSalida = 0; |Y #0#6 [ 06;
+          epig_ilt = #nomepitr#3;
+          epig_ims = #nomepitr#4;
+     |FINSI;
+     |CIERRA #nomepitr;
+
+     |DDEFECTO #nombonif;
+     |ABRE #nombonif;
+     #nombonif#0 = #1#12;
+     |LEE 000#nombonif.=;          || lee bonificacion
+     |CIERRA #nombonif;
+
+     base_8 = (#5#17 % por2_cont) + (#5#17 % por2_dfpg); || conting.
+     base_9 = #5#17 % (epig_ilt + epig_ims);             || epig
+
+     |SI aFuente = "M";
+          nCampo1 = 82;
+          nCampo2 = 83;
+     |SINO;
+          nCampo1 = 124;
+          nCampo2 = 125;
+     |FINSI;
+
+     |SI #1#12 ! 0;|Y #1nCampo1 ! 0;
+          base_A = (((#5#17 % #nombonif#4)!EURODB) % #1nCampo1) ! EURODB;    || bonif.linea 1
+          base_B = (((#5#17 % #nombonif#5)!EURODB) % #1nCampo1) ! EURODB;    || bonif.linea 2
+          |SI #nombonif#8 = "S";
+               zbase_9 = (#5#17 % (epig_ilt + epig_ims)) ! EURODB;
+               base_C = (zbase_9 % #1nCampo1) ! EURODB;           || bonif.epigrafes
+          |FINSI;
+     |FINSI;
+
+     |SI #1#12 ! 0;|Y #1nCampo2 ! 0;
+          zbase_A = (((#5#17 % #nombonif#4)!EURODB) % #1nCampo2) ! EURODB;   || bonif.linea 1
+          zbase_B = (((#5#17 % #nombonif#5)!EURODB) % #1nCampo2) ! EURODB;   || bonif.linea 2
+          |SI #nombonif#08 = "S";
+               zbase_9 = (#5#17 % (epig_ilt + epig_ims)) ! EURODB;
+               zbase_C = (zbase_9 % #1nCampo2) ! EURODB;          || bonif.epigrafes
+          |FINSI;
+     |FINSI;
+
+     base_E = base_8+base_9-(base_A+base_B+base_C+zbase_A+zbase_B+zbase_C+base_D+base_G);
+
+     ssvac = base_E;
+|FPRC;
+
+|PROCESO c_bucle3;         || GRABA O REGRABA COSTE
+|DDEFECTO #5;
+    #5#00 = #0#4;    || a¤o
+    #5#01 = #0#5;    || mes
+    #5#02 = #2#2;    || codigo obra
+    #5#14 = #2#5;    || codigo subobra
+    #5#03 = #2#0;    || codigo empresa
+    #5#04 = #2#1;    || codigo trabajador
+
+     #5#22 = #2#6;       || serie presupuesto
+     #5#23 = #2#7;       || numero presupuesto
+     #5#26 = #2#8;       || codigo capitulo
+     #5#28 = #2#9;       || codigo partida
+
+|LEE 101#5=;
+    FEstado = FSalida;
+
+    #5#05 = bruto;   || bruto recibo
+    #5#06 = dtoss;   || dto S.S.
+    #5#07 = dtohp;   || dto IRPF
+    #5#08 = prest;   || prestaciones S.S.
+    #5#09 = cargo;   || S.S. cgo. empresa
+    #5#10 = #2#4;    || nro. de horas
+    #5#11 = prorr;   || prorrata pagas
+
+    |SI #0#14 = "N";
+        #5#5 = #5#5 - #5#11;
+    |FINSI;
+
+    |ABRE #aomfiniq;
+    #aomfiniq#0 = #2#0;
+    #aomfiniq#1 = #2#1;
+    |LEE 000#aomfiniq.=;
+    |SI FSalida = 0;
+       nPorc = #aomfiniq#2;
+    |SINO;
+       nPorc = #0#11;
+    |FINSI;
+    |CIERRA #aomfiniq;
+
+    |SI #0#15 = "N";
+       |SI #labtraba#48 = "N"; nPorc = 0; |FINSI;
+    |FINSI;
+
+    #5#12 = #5#5 % nPorc;     || ptas. prev. finiquitos
+    #5#13 = #5#5 % #0#12;     || ptas. prev. ILT
+    #5#15 = nPorc;            || (%) finiquitos
+    #5#16 = #0#12;            || (%) ILT
+    #5#17 = #5#11 / 2;        || prorrata vacaciones
+|HAZ ssvac;
+    #5#18 = ssvac;            || cuota s.s. vacaciones
+     #5#20 = (#5#5+#5#11+#5#17+#5#18);
+
+     |SI #aomparam#7 = "S";
+          #5#20 = #5#20 + #5#8;
+     |FINSI;
+     |SI #aomparam#7 = "R";
+          #5#20 = #5#20 - #5#8;
+     |FINSI;
+
+     |SI #aomparam#10 = "S";
+          #5#20 = #5#20 + #5#9;
+     |FINSI;
+     |SI #aomparam#10 = "R";
+          #5#20 = #5#20 - #5#9;
+     |FINSI;
+
+    #5#20 = #5#20 / #5#10;
+
+/*
+    |SI #aomparam#7 = "N";
+       #5#20 = (#5#5+#5#11+#5#17+#5#18)/#5#10;
+    |SINO;
+       #5#20 = (#5#5+#5#9+#5#11+#5#17+#5#18+#5#8)/#5#10;
+    |FINSI;
+*/
+
+     #5#24 = #2#10;      || descripcion presupuesto
+     #5#27 = #2#11;      || descripcion capitulo
+     #5#29 = #2#12;      || descrripcion partida
+
+     #5#25 = #10#4;
+
+|SI FEstado = 0;  |GRABA 020#5a;  |FINSI;
+|SI FEstado ! 0;  |GRABA 020#5n;  |FINSI;
+|LIBERA #5;
+|FPRC;
+
+|PROCESO c_bucle2;         || PROPORCIONA IMPORTES
+|SI #0#13 = "I";
+        bruto = #2#3;                        || bruto s/ importe horas
+|SINO;
+    |DDEFECTO #6;
+        #6#0 = #2#0;
+        #6#1 = #2#1;
+    |LEE 020#6=;
+        bruto = (#1#46 * #2#4) / #6#2;       || bruto s/ unidades horas
+|FINSI;
+    dtoss = (#1#48+#1#49+#1#50+#1#51) * (bruto / #1#46);  || dtos. S.S.
+
+     |SI aFuente = "M";
+          nCampo1 = 71;
+          nCampo2 = 72;
+     |SINO;
+          nCampo1 = 110;
+          nCampo2 = 111;
+     |FINSI;
+    dtohp =  (#1#15 + #1nCampo1 + #1nCampo2) * (bruto / #1#46);   || dto. IRPF
+    prest = (#1#57+#1#58) * (bruto / #1#46);              || prestaciones S.S.
+    cargo =  #1#45 * (bruto / #1#46);                     || S.S. cgo. empresa
+    prorr =  #1#38 * (bruto / #1#46);                     || prorrata
+|FPRC;
+
+|PROCESO c_bucle1;       || EFECTIVO CUANDO ES LINEA DE TOTAL
+     |SI anter1 ! #2#0; |O anter2 ! #2#1;
+          |DDEFECTO #1;
+          #1#0 = #2#0;  || codigo empresa         / lee el calculo para
+          #1#1 = #2#1;  || codigo trabajador      / cargar bruto, dtos., etc.
+          #1#2 = #0#5;  || mes
+          #1#3 = 0;     || tipo
+          |SI aFuente = "H";
+               #1#66 = #0#4;
+          |FINSI;
+          |LEE 020#1=;
+          anter1 = #2#0;   #0#09 = #2#0;   |PINTA #0#09;
+          anter2 = #2#1;   #0#10 = #2#1;   |PINTA #0#10;
+     |FINSI;
+     |HAZ c_bucle2;  || (en el defbucle lo hacia mal)
+|FPRC;
+
+|PROCESO c_bucle0;
+    anter1 = -1;
+    anter2 = -1;
+|FPRC;
+
+|DEFBUCLE aomaccos2;
+     #2#1;
+     ;
+         1,     1,      1,     0, "     ",      0, aDesdeCap, aDesdePar;
+     99999, 99999, 999999, 99999, "zzzzz", 999999, aHastaCap, aHastaPar;
+     ;
+     c_bucle0, c_bucle1, NULL, c_bucle3;
+|FIN;
+
+/*
+|DEFBUCLE aomaccos2;
+ #2#1;
+ ;
+     1,     1,      1,  0;
+ 99999, 99999, 999999, 99;
+ ;
+ c_bucle0, c_bucle1, NULL, c_bucle3;
+|FIN;
+*/
+
+*****************************************************************************
+   RUTINAS DE DESARROLLO DE PROCESO
+*****************************************************************************
+|PROCESO Chequea;
+     |SI #5#19 = "S";
+          #7#0 = #5#0;
+          #7#1 = #5#1;
+          #7#2 = #5#2;
+          #7#3 = #5#3;
+          #7#4 = #5#4;
+          #7#5 = #5#14;
+          |PUSHV 0501 2380;
+          |BLANCO 9251956;
+          |PINPA #0#7;
+          |PINDA #0#7;
+          |AVISO;
+          |PAUSA;
+          |POPV;
+          nErr = 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Chequea;
+     #5#1;
+     ;
+     #0#4, #0#5, 00001, 000000, "     ", 000001, aD, aD, #0#0, #0#2;
+     #0#4, #0#5, 99999, 999999, "zzzzz", 999999, aH, aH, #0#1, #0#3;
+     ;
+     NULL, Chequea;
+|FIN;
+
+
+|PROCESO proceso0; |TIPO 3;   || INICIO DEL PROCESO
+     aFuente = #0#16;
+     |DBASE aAlfa; |QBF aAlfa;
+     |SI aFuente = "M";
+          aDef = aAlfa + "def/nomcalca";
+     |SINO;
+          aDef = aAlfa + "def/nomhicca";
+     |FINSI;
+     |CARGA_DEF aDef, calculos@;
+     |SI FSalida = 0;
+          aD = " " * 20;
+          aH = "z" * 20;
+          |BUCLE Chequea;
+          |SI nErr ! 0;
+               |MENAV "0000Para actualizar hay que dar de baja los trabajadores ya pasados.";
+               |ACABA;
+          |FINSI;
+
+          |HAZ proceso1;
+          |SI seleccio = 0;
+               |ATRI P;
+               |MENAV "    Seleccion vacia ...";
+               |ATRI 0;
+          |SINO;
+               |HAZ proceso2;
+               |DELINDEX #2;
+               |DELINDEX #6;
+          |FINSI;
+          |DESCARGA_DEF #calculos@;
+     |FINSI;
+|FPRC;
+
+|PROCESO proceso1;           || LECTURA DE CARGA DEL TEMPORAL
+     alfa1 = Usuario; |QBF alfa1;
+     alfa2 = "1" + alfa1; |NOME_DAT #2 alfa2; |DELINDEX #2;
+     alfa2 = "2" + alfa1; |NOME_DAT #6 alfa2; |DELINDEX #6;
+     |ABRE #2;      || temporal 1
+     |ABRE #4;      || tipos de hora
+     |ABRE #6;      || temporal 2
+
+     |SI aFuente = "M";
+          |BUCLE aomaccos0_m;
+     |SINO;
+          |BUCLE aomaccos0_h;
+     |FINSI;
+     |CIERRA #2;
+     |CIERRA #4;
+     |CIERRA #6;
+|FPRC;
+
+|PROCESO proceso2;      || LECTURA SOBRE EL TEMPORAL
+|ABRE #1;      || calculos cabs.
+|ABRE #5;      || costes
+|ABRE #6;      || temporal 2
+|BUCLE aomaccos2;
+|CIERRA #1;
+|CIERRA #5;
+|CIERRA #6;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #10; |LEE 000#10p; |CIERRA #10;
+     #0#15 = #10#8;
+     |PTEC 802;
+     |PTEC 802;
+     |PTEC 802;
+     #0#13 = #10#5;
+     #0#14 = #10#6;
+     |CLS;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+|FPRO;

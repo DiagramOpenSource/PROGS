@@ -1,0 +1,353 @@
+|| modificacion de asientos desde entrada 'camoddi0' y desde menu 'camoddia'
+
+|FICHEROS;
+    camaasic #01;        || apuntes cabs.
+    camaasil #02;        || apuntes lins.
+    catramod #05;        || actualizacion niveles inferiores
+    caivarep #15;        || iva repercutido
+    caivasop #16;        || iva soportado
+    camancob #21;        || manten. cobros
+    camanpag #22;        || manten. pagos
+
+    calicont #31;        || Contrapartidas
+    caivaasi #999;       || Control entrada apuntes
+|FIN;
+
+|PROCESO fecha; |TIPO 0;
+|SI #0Campo < fec1; |O #0Campo > fec2;
+    |SI Campo = 1;
+        alfa1 = "   NERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO. CONTINUAR";
+        |CONFI alfa1;
+        |SI FSalida ! 0;
+            |ERROR;
+        |FINSI;
+    |SINO;
+        |MENAV mensa1;
+        |ERROR;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO borrar;
+    modcon = 0;
+|FPRC;
+
+|PROCESO cambio;
+|SI #0#0 ! #0#3;                        || diario
+    |SI #0#0 = 0; |O #0#0 = 99;
+            modcon = 1;
+    |FINSI;
+    |SI #0#3 = 0; |O #0#3 = 99;
+            modcon = 1;
+    |FINSI;
+|FINSI;
+|SI #0#1 ! #0#4;                        || fecha
+        traba1 = #0#1;
+        mesi1 = traba1 % 402;
+        traba1 = #0#4;
+        mesi2 = traba1 % 402;
+    |SI mesi1 ! mesi2;
+            modcon = 1;
+    |FINSI;
+|FINSI;
+    #1#0 = #0#0;
+    #1#1 = #0#1;
+    #1#2 = #0#2;
+|LEE 021#1=;             || lee cabs. vieja
+|SI FSalida = 0;
+        #1#0 = #0#3;
+        #1#1 = #0#4;
+        #1#2 = #0#5;
+        #1#3 = #0#10;
+    |GRABA 020#1n;       || graba cabs. nueva
+|FINSI;
+    #2#3 = 0;
+|ET otralinea;
+    #2#0 = #0#0;
+    #2#1 = #0#1;
+    #2#2 = #0#2;
+|LEE 001#2>;             || lee lins. vieja
+|SI FSalida = 0;
+    |SI #2#0 = #0#0;  |Y #2#1 = #0#1; |Y #2#2 = #0#2;
+            #2#0 = #0#3;
+            #2#1 = #0#4;
+            #2#2 = #0#5;
+        |GRABA 020#2n;        || graba lins. nueva
+            opera = "A";
+        |HAZ altatra;
+            d_diari = #2#0;
+            d_opera = #2#8;
+            d_impor = #2#9;
+        |HAZ actu_diari;
+        |HAZ contrapartida;
+        |VETE otralinea;
+    |FINSI;
+|FINSI;
+    #1#0 = #0#0;
+    #1#1 = #0#1;
+    #1#2 = #0#2;
+|LEE 021#1=;             || lee cabs. vieja
+|SI FSalida = 0;
+    |BORRA 020#1a;
+|FINSI;
+    #2#3 = 0;
+|ET bajalinea;
+    #2#0 = #0#0;
+    #2#1 = #0#1;
+    #2#2 = #0#2;
+|LEE 001#2>;
+|SI FSalida = 0;
+    |SI #2#0 = #0#0;  |Y #2#1 = #0#1; |Y #2#2 = #0#2;
+        |BORRA 020#2a;
+            opera = "B";
+        |HAZ altatra;
+            d_diari = #2#0;
+            d_opera = #2#8;
+            d_impor = -1 * #2#9;
+        |HAZ actu_diari;
+        |VETE bajalinea;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO antasto; |TIPO 7;
+ #0#10 = #0#5; |PINTA #0#10;
+|FPRC;
+
+|PROCESO lectura; |TIPO 0;
+|SI FSalida = 2; |ACABA; |FINSI;
+
+    si_sigue = 1;
+|ABRE #1;
+    #1#0 = #0#0;
+    #1#1 = #0#1;
+    #1#2 = #0#2;
+|LEE 040#1=;
+|SI FSalida = 0;
+    |HAZ ver_iva;
+        #0#6 = #1#4;
+        #0#7 = #1#5;
+        #0#9 = #1#3;
+    |PINTA #0#6;
+    |PINTA #0#7;
+    |PINTA #0#9;
+|SINO;
+    |MENAV men4;
+        si_sigue = 0;
+|FINSI;
+|CIERRA #1;
+|FPRC;
+
+|PROCESO altatra;
+    modifi = 1;
+|ABRE #5;
+    #5#0 = codcon;       || control
+    #5#1 = #2#4;         || cuenta
+    #5#2 = #2#5;         || digito
+    #5#3 = #2#1;         || fecha
+    #5#4 = #2#8;         || signo
+    #5#6 = #2#0;         || diario
+|LEE 101#5=;
+|SI FSalida ! 0;
+    |DDEFECTO #5;
+        #5#0 = codcon;
+        #5#1 = #2#4;
+        #5#2 = #2#5;
+        #5#3 = #2#1;
+        #5#4 = #2#8;
+        #5#6 = #2#0;
+    |GRABA 020#5b;
+|FINSI;
+    importe = #2#9;
+|SI opera = "B";
+        importe = -importe;
+|FINSI;
+    #5#5 = #5#5 + importe;
+|GRABA 020#5a;
+|LIBERA #5;
+|CIERRA #5;
+|FPRC;
+
+|PROCESO cambia_sop;
+    #16#45 = #0#3;       || diario nuevo
+    #16#46 = #0#4;       || fecha nueva
+    #16#47 = #0#5;       || documento nuevo
+    |SI #0#8 = "S";
+        #16#3 = #0#4;
+        |SI #16#28 = "N";
+            |HAZ act_pag;
+            |HAZ periodo;
+            #16#44 = i_perio;
+        |FINSI;
+    |FINSI;
+|GRABA 020#16a;
+|LIBERA #16;
+|FPRC;
+
+|DEFBUCLE soportado;
+ #16#4;
+ ;
+ #0#0, #0#1, #0#2;
+ #0#0, #0#1, #0#2;
+ be;
+ NULL, cambia_sop;
+|FIN;
+
+|PROCESO cambia_rep;
+    #15#45 = #0#3;       || diario nuevo
+    #15#46 = #0#4;       || fecha nueva
+    #15#47 = #0#5;       || documento nuevo
+    |SI #0#8 = "S";
+        #15#3 = #0#4;
+        |SI #15#28 = "N";
+            |HAZ act_cob;
+            |HAZ periodo;
+            #15#44 = i_perio;
+        |FINSI;
+    |FINSI;
+|GRABA 020#15a;
+|LIBERA #15;
+|FPRC;
+
+|DEFBUCLE repercutido;
+ #15#4;
+ ;
+ #0#0, #0#1, #0#2;
+ #0#0, #0#1, #0#2;
+ be;
+ NULL, cambia_rep;
+|FIN;
+
+|PROCESO los_ivas;
+||  |SI sw_exi = 0; |ACABA; |FINSI;
+  |ABRE #caivaasi;
+  |LEE 010#caivaasi.p;
+  |SI FSalida ! 0;
+     |DDEFECTO #caivaasi;
+     |GRABA 020#caivaasi.n;
+  |FINSI;
+  |CIERRA #caivaasi;
+
+  |BUCLE repercutido;
+  |BUCLE soportado;
+|FPRC;
+
+|PROCESO ver_iva;
+ |ABRE #15;
+ |ABRE #16;
+ sw_exi = 0;
+ |SELECT #4#15;
+    #15#45 = #0#0;
+    #15#46 = #0#1;
+    #15#47 = #0#2;
+    |LEE 040#15=;
+    |SI FSalida = 0;
+        sw_exi = 1;
+        |VETE si_exi;
+    |FINSI;
+ |SELECT #4#16;
+    #16#45 = #0#0;
+    #16#46 = #0#1;
+    #16#47 = #0#2;
+    |LEE 040#16=;
+    |SI FSalida = 0;
+        sw_exi = 1;
+    |FINSI;
+
+|ET si_exi;
+ |SI sw_exi = 0;
+     |CAMPO_MODIFICA #0#8,1,"N";
+     #0#8 = "N";
+     |PINTA #0#8;
+ |SINO;
+     |CAMPO_MODIFICA #0#8,1,"S";
+ |FINSI;
+
+ |CIERRA #15;
+ |CIERRA #16;
+|FPRC;
+
+|PROCESO periodo;
+    alfa1 = #0#4;
+|| ... ¨como se si es Trimestral o Mensual? ... |SI #11#10 = "T";
+    |SI #caivaasi#46 = "T";
+        alfa1 = alfa1 % -104;   || saca a¤o
+        alfa2 = "31.03." + alfa1;  trim1 = alfa2;  || primer trimestre
+        alfa2 = "30.06." + alfa1;  trim2 = alfa2;  || segundo trimestre
+        alfa2 = "30.09." + alfa1;  trim3 = alfa2;  || tercer trimestre
+
+        |SI #0#4 [ trim1;                  i_perio = 1;  |FINSI;
+        |SI #0#4 > trim1;|Y #0#4 [ trim2;  i_perio = 2;  |FINSI;
+        |SI #0#4 > trim2;|Y #0#4 [ trim3;  i_perio = 3;  |FINSI;
+        |SI #0#4 > trim3;                  i_perio = 4;  |FINSI;
+    |SINO;
+        alfa1 = alfa1 % 402;    || saca mes
+        i_perio = alfa1;
+    |FINSI;
+|FPRC;
+
+
+|PROCESO fuera_cob;
+  #21#6 = #0#4;
+  |GRABA 020#21a;
+|FPRC;
+
+|DEFBUCLE cobros;
+#21#1;
+;
+#15#0, #15#27, #15#2,   1;
+#15#0, #15#27, #15#2, 999;
+e;
+NULL, fuera_cob;
+|FIN;
+
+|PROCESO act_cob;
+|ABRE #21;
+|BUCLE cobros;
+|CIERRA #21;
+|FPRC;
+
+|PROCESO fuera_pag;
+  #22#6 = #0#4;
+  |GRABA 020#22a;
+|FPRC;
+
+|DEFBUCLE pagos;
+#22#1;
+;
+#16#0, #16#27, #16#2,  1;
+#16#0, #16#27, #16#2, 999;
+e;
+NULL, fuera_pag;
+|FIN;
+
+|PROCESO act_pag;
+|ABRE #22;
+|BUCLE pagos;
+|CIERRA #22;
+|FPRC;
+
+|PROCESO contrapartida;
+ |ABRE #31;
+ #31#0 = #0#0;
+ #31#1 = #0#1;
+ #31#2 = #0#2;
+ #31#3 = #2#3;
+ |LEE 001#31=;
+ |SI FSalida = 0;
+     |LIBERA #31;
+     #31#0 = #0#3;
+     #31#1 = #0#4;
+     #31#2 = #0#5;
+     #31#3 = #2#3;
+     |GRABA 020#31n;
+
+     #31#0 = #0#0;
+     #31#1 = #0#1;
+     #31#2 = #0#2;
+     #31#3 = #2#3;
+     |BORRA 020#31c;
+ |FINSI;
+ |LIBERA #31;
+ |CIERRA #31;
+|FPRC;

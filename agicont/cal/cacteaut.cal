@@ -1,0 +1,521 @@
+|FICHEROS;
+    cacteaut #00;   ||  el #5 y el #8 estan reservados para los 'INCLUYE'
+    camaasic #02;   || /para 'cacuenta' y 'catradia' respect.
+    camaasil #03;
+    camautoc #06;
+    camautol #07;
+    catrasi1 #09,MANTE;   || Def Trabajo pase Asientos
+    camandia #10;
+    cacuebal #11;
+    ca8m0002 #422;
+|FIN;
+
+|VARIABLES;
+    &enDiario   = 0;
+    &enContador = 0;
+    &entrada = 1;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    fech1 = @;
+    fech2 = @;
+    para1 = 0;
+
+    diar = 0;
+    fech = @;
+    asie = 0;
+    apun = 0;
+    cuen = "";
+    digi = 0;
+    sign = "";
+    ptas = 0;
+    conc = 0;
+    desc = "";
+
+    sw = 0;
+    estado = 0;
+
+    dpar = "";
+    swpr = 0;
+    documen = 0;
+    escon = 0;
+    inkey = 0;
+    swsel = 0;
+    nIncrApte = 0;
+    &enEjerBal = 0;
+|FIN;
+
+|INCLUYE varnue_i;
+|INCLUYE inicio_i;
+|INCLUYE actcta_i;
+|INCLUYE tempo_i;
+|INCLUYE defec1_i;
+
+|| ************************************************************************
+|| *********** CALCULOS PANTALLA ******************************************
+|| ************************************************************************
+|PROCESO mayor;
+  alfa1 = #0Campo > " ";
+  #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO limite; |TIPO 0;
+ |C_M #0#5,0,alfa1;
+ |SI alfa1 = "N"; |ACABA; |FINSI;
+ |SI #0Campo< fec1; |O #0Campo > fec2;
+     |MENAV "    ATENCION!!! La fecha no corresponde al ejercicio contable ...";
+     |ERROR;
+     |ACABA;
+ |FINSI;
+|FPRC;
+
+|PROCESO defectos; |TIPO 7;
+ fech = #0#5;
+
+ enDiario = #0#9;
+ |HAZ contador;
+ #0#8 = enContador; |PINTA #0#8;
+|FPRC;
+
+|| ************************************************************************
+|PROCESO leecta;
+ sign = "D";
+ ptas = 0;
+ |ABRE #5;
+ #5#0 = cuen;
+ #5#1 = digi;
+ |LEE 001#5=;
+ |SI FSalida ! 0;
+     |DDEFECTO #5;
+ |FINSI;
+ |SI #5#53 < 0; sign = "D"; ptas = - #5#53; #0#12 = #0#12 + ptas; |FINSI;
+ |SI #5#53 ] 0; sign = "H"; ptas =   #5#53; #0#13 = #0#13 + ptas; |FINSI;
+ |CIERRA #5;
+|FPRC;
+
+|PROCESO leelineas;
+ ptas = 0;
+
+ cuen  = #7#2;
+ digi  = #7#3;
+ conc  = #7#4;
+ alfa2 = #7#5; |QBF alfa2;
+ alfa1 = #0#6;
+ alfa1 = " " + alfa1;
+ desc =  alfa2 + alfa1;
+ dpar = #7#6;
+
+ |SI #7#7 = "D";
+     sign = #7#7;
+     ptas = #7#8;
+     #0#12 = #0#12 + #7#8;
+ |FINSI;
+ |SI #7#7 = "H";
+     sign = #7#7;
+     ptas = #7#8;
+     #0#13 = #0#13 + #7#8;
+ |FINSI;
+ |SI #7#7 = "S";
+     |HAZ leecta;
+ |FINSI;
+ |SI #7#7 = "C";
+     |SI #0#14 ] 0; sign = "H"; ptas = #0#14;   #0#13 = #0#13 + ptas; |FINSI;
+     |SI #0#14 < 0; sign = "D"; ptas = - #0#14; #0#12 = #0#12 + ptas; |FINSI;
+ |FINSI;
+ |SI ptas = 0; |ACABA; |FINSI;
+
+ apun  = apun + nIncrApte;
+ |HAZ lineas;
+ sw   = 1;
+ #0#14 = #0#12 - #0#13;
+|FPRC;
+
+|| _______________________________________________
+
+|PROCESO contab1;   || controla la grabacion de apuntes
+
+ #0#9  = #6#10;      || Diario Nuevo Asiento
+ #0#10 = #0#5;       || Fecha;
+ #0#11 = documen;    || Documento
+ #0#12 = 0;  #0#13 = 0; #0#14 = 0;
+
+ |SI  #0#7 = "N";
+      |CUADRO 2112 2367;
+      |PINTA 2213, " Pasando Asiento:                               ";
+      |PINTA 2231, #6#0;
+      |PINTA 2237, #6#1;
+ |FINSI;
+ nIncrApte = #6#12; |SI nIncrApte = 0; nIncrApte = 10; |FINSI;
+
+ |ABRE #9;
+ |DDEFECTO #9;
+ apun = 1 - nIncrApte;
+
+ sw = 0;
+ |BUCLELIN 2leelineas#6;
+ |CIERRA #9;
+
+ |SI sw = 1;
+     |PUSHV 1001 2380;
+     |SI #0#7 = "S";
+         |PINPA #0#9;
+         |PINTA #0#12;
+         |PINTA #0#13;
+         |PINTA #0#14;
+         |ENTLINEAL #1#9, -4, 4, 22, 0, min1, max1;
+     |SINO;
+         escon = 1;
+     |FINSI;
+     |SI escon = 1;
+         |HAZ pasa_asto;
+     |FINSI;
+     |POPV;
+ |FINSI;
+ |LIBERA #6;
+ |DELINDEX #9;
+|FPRC;
+
+|| ************************
+|RUTINA min1;
+    #9#00 = #0#9;
+    #9#01 = #0#10;
+    #9#02 = #0#11;
+    #9#03 = 1;
+|FRUT;
+
+|RUTINA max1;
+    #9#00 = #0#9;
+    #9#01 = #0#10;
+    #9#02 = #0#11;
+    #9#03 = 9999;
+|FRUT;
+
+|PROCESO eltip11; |TIPO 11;
+ inkey = FSalida;
+ |SI inkey = 1; |O inkey = 7;
+     escon = 1;
+     |CONFI "2451SPasar Asiento Contables S/N ";
+     |SI FSalida ! 0; escon = 0; |FINSI;
+ |FINSI;
+|FPRC;
+
+|| *************************
+
+|DEFBUCLE cacteaut0;
+ #6#1;
+ 11;
+ #0#0, #0#2;
+ #0#1, #0#2;
+ be;
+ NULL, contab1;
+|FIN;
+
+|| **************************************************************************
+
+|PROCESO proceso; |TIPO 3;
+
+ |SI #30#26 < 80;
+     enEjercicio = 2000 + #30#26;
+ |SINO;
+     enEjercicio = 1900 + #30#26;
+ |FINSI;
+
+ |HAZ nom_usu;
+ alfa1 = "q" + nom_tmp;
+ |NOME_DAT #9 alfa1;
+ |ABRE #9;
+ |CIERRA #9;
+ |DELINDEX #9;
+
+  || .................. Abre fichero Auxiliar de Cuentas
+    |ABRE #8;
+    |LEE 101#8u;
+    |SI FSalida ! 0;
+        |DDEFECTO #8;
+        #8#0 = 1;
+    |SINO;
+        #8#0 = #8#0 + 1;
+    |FINSI;
+    |GRABA 101#8n;
+    codcon = #8#0;
+    |LIBERA #8;
+    |CIERRA #8;
+  || ----------------------------------------------------------
+ |C_V #0#12,1,"S";
+ |C_V #0#13,1,"S";
+ |C_V #0#14,1,"S";
+
+ documen = #0#8; || Primer Documento
+ |BUCLE cacteaut0;
+
+
+ || ............... Terminar
+ |SI modcon = 0;
+      |ABRET #8
+      |DDEFECTO #8;
+      #8#0 = codcon;
+      |LEE 040#8=;
+      |BORRA 101#8a;
+      |CIERRAT #8;
+ |SINO;
+      |CORRE "camaapua.tab"
+ |FINSI;
+|FPRC;
+
+
+|| ************************************************************************
+|PROCESO lineas;    || graba apunte
+    |DDEFECTO #9;
+    #9#00 = #0#9;
+    #9#01 = #0#10;
+    #9#02 = #0#11;
+
+    #9#03 = apun;   || apunte
+    #9#04 = cuen;   || cuenta
+    #9#05 = digi;   || digito
+    #9#06 = conc;   || concepto
+    #9#07 = desc;   || descripcion
+    #9#08 = sign;   || signo
+    #9#09 = ptas;   || importe
+    #9#21 = dpar;   || Departamento
+    |SI #9#08 = "D";
+        #9#16 = #9#4;
+        #9#17 = #9#5;
+        #9#10 = "";
+        #9#11 = 0;
+    |SINO;
+        #9#16 = "";
+        #9#17 = 0;
+        #9#10 = #9#4;
+        #9#11 = #9#5;
+    |FINSI;
+    |GRABA 020#9n;
+|FPRC;
+
+|PROCESO pasa_asto1;    || graba apunte
+    |DDEFECTO #3;
+    |PARA para1 = 0; |SI para1 [ 23; |HACIENDO para1 = para1 + 1;
+          #3para1 = #9para1;
+    |SIGUE;
+    |GRABA 020#3n;
+    |HAZ cabecera;           || cabecera apunte
+    ressum = #3#9;
+    |HAZ actualiz1;          || cuenta
+    |HAZ actualiz3;          || diario
+    opera = "A";
+    |HAZ altatra;            || subniveles
+|FPRC;
+
+|DEFBUCLE pasa_asto0;
+ #9#1;
+ ;
+ 00, "01.01.1900", 000001, 0001;
+ 99, "31.12.2090", 999999, 9999;
+ e;
+ NULL, pasa_asto1;
+|FIN;
+
+|PROCESO pasa_asto;
+ |ABRE #2;
+ |ABRE #3;
+ |BUCLE pasa_asto0;
+ |CIERRA #2;
+ |CIERRA #3;
+
+ enDiario = #0#9;
+ |HAZ contador;
+
+ |SI enContador < documen;
+     enContador = documen;
+     |HAZ GrabaContador;
+ |FINSI;
+
+ documen = documen + 1;
+ alfa1 = #9#0; alfa1 = ("00" + alfa1) % -102;
+ #6#7  = alfa1;
+ #6#8  = #9#1;
+ alfa1  = #9#2; alfa1 = ("000000" + alfa1) % -106;
+ #6#9  = alfa1;
+ |GRABA 020#6a;
+|FPRC;
+
+|PROCESO cabecera;       || actualiza cabeceras
+ |DDEFECTO #2;
+ #2#00 = #3#0; ||  diario
+ #2#01 = #3#1; ||  fecha
+ #2#02 = #3#2; ||  documento
+ #2#03 = #3#2; ||  asiento
+ |LEE 101#2=;
+ estado = FSalida;
+ |SI #3#08 = "D";
+     #2#04 = #2#04 + #3#09;
+     |SI #2#09 = 0; #2#08 = #3#4; #2#09 = #3#5; |FINSI;  || contrp.HABER
+ |SINO;
+     #2#05 = #2#05 + #3#09;
+     |SI #2#11 = 0; #2#10 = #3#4; #2#11 = #3#5; |FINSI;  || contrp.DEBE
+ |FINSI;
+ #2#6 = #2#4 - #2#5;      || saldo
+ |SI estado = 0;  |GRABA 020#2a;  |FINSI;
+ |SI estado ! 0;  |GRABA 020#2n;  |FINSI;
+ |LIBERA #2;
+|FPRC;
+
+|PROCESO actualiz3;
+ |ABRE #10;
+ #10#0 = #3#0;
+ |LEE 121#10=;
+ |SI FSalida ! 0;
+     |DDEFECTO #10;
+     #10#0 = #3#0;
+     #10#1 = "<DIARIO SIN DEFINIR>";
+     |GRABA 020#10b;
+ |FINSI;
+ |SI #3#8 = "D";  #10#2 = #10#2 + #3#9;  |FINSI;
+ |SI #3#8 = "H";  #10#3 = #10#3 + #3#9;  |FINSI;
+ |GRABA 020#10a;
+ |LIBERA #10;
+ |CIERRA #10;
+|FPRC;
+
+|PROCESO cuenta;    || comprueba si la cuenta esta dada de alta
+ |ABRE #5;
+ #5#0 = cuen;
+ #5#1 = digi;
+ |LEE 001#5=;
+ |SI FSalida ! 0;
+     |DDEFECTO #5;
+     #5#0 = cuen;
+     #5#1 = digi;
+     |HAZ defect1;
+     |PUSHV 0501 2380;
+     |PINPA #0#5;
+     |PINDA #0#5;
+     |ENDATOS #1#5;
+     |GRABA 020#5n;
+     |POPV;
+ |FINSI;
+ |CIERRA #5;
+|FPRC;
+
+/*  || Calculos de fecha en Asientos automaticos que no se utilizan
+|PROCESO cal_fecha;
+|SI swpr = 1;
+     alfa1 = #6#6;    || Primera Fecha
+     alfa1 = ("0000" + alfa1) % -104;
+     alfa1 = (alfa1 % 102) + "." + (alfa1 % 302);
+     |SI #30#26 > 80;
+         nume1 = 1900 + #30#26;
+     |SINO;
+         nume1 = 2000 + #30#26;
+     |FINSI;
+     alfa3 = nume1; alfa3 = ("0000" + alfa3) % -104; || Any
+     alfa1 = alfa1 + "." + alfa3;
+     fech1 = alfa1;
+     |ACABA;
+ |FINSI;
+
+ |SI #6#2 = "D";
+     fech1 = #6#8;     || Fecha Ultimo Asiento
+     nume1 = fech1;    ||
+     nume2 = nume1 + #6#3;
+     fech1 = nume2;
+     |ACABA;
+ |FINSI;
+
+ |SI #6#4 ! 99;
+     alfa1 = #6#4;   alfa1 = ("00" + alfa1) % -102; || Dia del Mes
+ |SINO;
+     alfa1 = "31";
+     |SI #0#3 = 4; |O #0#3 = 6; |O #0#3 = 9; |O #0#3 = 11; alfa1 = "30"; |FINSI;
+     |SI #0#3 = 2; alfa1 = "28"; |FINSI;
+ |FINSI;
+ alfa2 = #0#3;   alfa2 = ("00" + alfa2) % -102; || Mes
+ |SI #30#26 > 80;
+     nume1 = 1900 + #30#26;
+ |SINO;
+     nume1 = 2000 + #30#26;
+ |FINSI;
+ alfa3 = nume1; alfa3 = ("0000" + alfa3) % -104; || Any
+ alfa1 = alfa1 + "." + alfa2 + "." + alfa3;
+ fech1 = alfa1;
+|FPRC;
+|| _______________________________________________
+
+|PROCESO contab1;   || controla la grabacion de apuntes
+ swsel = 0;
+ |SI #0#2 = "X";
+     swsel = 1;
+ |SINO;
+     |SI #0#2  = #6#2; swsel = 1; |FINSI;
+     |SI #0#15 = #6#2; swsel = 1; |FINSI;
+     |SI #0#16 = #6#2; swsel = 1; |FINSI;
+     |SI #0#17 = #6#2; swsel = 1; |FINSI;
+ |FINSI;
+ |SI swsel = 0; |ACABA; |FINSI;
+|| ... Ver si corresponde hacer este Asiento.
+
+   alfa1 = #6#8; |QBF alfa1;  || ... Fecha del Ultimo Asiento Hecho
+   |SI #6#2 = "A"; |Y alfa1 ! ""; |ACABA; |FINSI; || Asto Anual YA hecho
+   alfa2 = #6#8 % 0402;
+   nume1 = alfa2;        || Mes del Ultimo Asiento.
+   swpr = 0;
+   |SI nume1 =  0; swpr = 1; |FINSI;
+
+   |SI #6#2 ! "D";       || No es diario, ver si corresponde Mes
+       |SI nume1 =  0;                       || Primer Asiento
+           |SI #6#5 ! #0#3; |ACABA; |FINSI;  || Si no corresponde mes, sale
+       |SINO;
+           |SI nume1 = #0#3; |ACABA; |FINSI; || Asto de este Mes YA hecho
+           nume2 = 0;
+           |SI #6#2 = "M"; nume2 = 1; |FINSI;
+           |SI #6#2 = "B"; nume2 = 2; |FINSI;
+           |SI #6#2 = "T"; nume2 = 3; |FINSI;
+           |SI #6#2 = "S"; nume2 = 6; |FINSI;
+           nume3 = nume1 + nume2;
+           |SI nume3 > #0#3; |ACABA; |FINSI;  || No toca hacer aun el asiento
+       |FINSI;
+    |SINO;                                   || Si es diario
+       |SI nume1 =  0;                       || Primer Asiento
+           alfa1 = #6#6; alfa1 = ("0000" + alfa1) % -104;
+           alfa2 = alfa1 % -102; nume2 = alfa2;
+           |SI nume2 ! #0#3; |ACABA; |FINSI;  || Si no corresponde mes sale
+           |SI #0#4 = "N";                    || Si es fecha fija
+               alfa2 = #0#5; alfa2 = ( alfa2 % 102) + (alfa2 % 0402);
+               |SI alfa2 ! alfa1; |ACABA; |FINSI; || No es la misma fecha
+           |FINSI;
+       |SINO;
+           |SI #0#4 = "N";
+               nume2 = #0#5;  || fecha Pantalla
+               fech1 = #6#8;  || Fecha Ultimo Asiento
+               nume3 = fech1;
+               nume4 = nume2 - nume3;
+               |SI nume4 < #6#3; |ACABA; |FINSI; || Aun no corresponde
+           |SINO;
+               fech1 = #6#8;  || Fecha Ultimo Asiento
+               nume3 = fech1;
+               nume2 = nume3 + #6#3;
+               fech1 = nume2;
+               alfa2 = fech1 % 0402;
+               nume2 = alfa2;
+               |SI nume2 ! #0#3; |ACABA; |FINSI; || No corresponde mes
+           |FINSI;
+       |FINSI;
+    |FINSI;
+
+|| .........................................................................
+ nIncrApte = #6#12; |SI nIncrApte = 0; nIncrApte = 10; |FINSI;
+ #0#9  = #6#10;      || Diario Nuevo Asiento
+ |SI #0#4 = "N";
+     #0#10 = #0#5;   || Fecha;
+ |SINO;
+     |HAZ cal_fecha;
+     #0#10 = fech1;
+ |FINSI;
+|FPRC;
+*/

@@ -1,0 +1,200 @@
+|FICHEROS;
+   aspasnul #0;
+   ashisrec #1;
+   asclient #2;
+
+   ashismic #90;
+   asparcia #100;
+
+   ascabrem #13;
+   aslinrem #14;
+|FIN;
+
+|VARIABLES;
+    parrilla = "";
+    xxx      = 0;
+    yyy      = 0;
+     fFech = @;
+     qFech = "";
+     dFech = "";
+     hFech = "";
+     &efFechaO   = @;
+     &efFechaL   = @;
+     &enImporte  = 0;
+     &enDesRemesa = 0;
+     nPara1       = 0;
+     nDCobro      = 0;
+     nHCobro      = 0;
+     nSwOp        = 0;
+|FIN;
+
+|INCLUYE agicon_i;
+
+|PROCESO sacaano; |TIPO 7;
+     fFech = ~;
+     qFech = fFech % -104;
+     dFech = "01.01." + qFech;
+     hFech = "31.12." + qFech;
+     #0#4  = dFech;  |PINTA #0#4;
+     #0#5  = hFech;  |PINTA #0#5;
+|FPRC;
+
+|PROCESO parrilla; |TIPO 0;
+     parrilla = #0Campo;
+     |DDEFECTO #0;
+     #0Campo = parrilla;
+
+     |SI #0Campo = "S";
+         |PARA xxx = 8; |SI xxx [ 37; |HACIENDO xxx = xxx + 1;
+              |CAMPO_MODIFICA #0xxx, 1, "S";
+         |SIGUE;
+         |PARA xxx = 0; |SI xxx [ 7; |HACIENDO xxx = xxx + 1;
+               |CAMPO_MODIFICA #0xxx, 1, "N";
+         |SIGUE;
+         |C_M #0#39,1,"N"; |C_M #0#40,1,"N";
+     |SINO;
+         |PARA xxx = 8; |SI xxx [ 37; |HACIENDO xxx = xxx + 1;
+              |CAMPO_MODIFICA #0xxx, 1, "N";
+         |SIGUE;
+         |PARA xxx = 0; |SI xxx [ 7; |HACIENDO xxx = xxx + 1;
+              |CAMPO_MODIFICA #0xxx, 1, "S";
+         |SIGUE;
+         |C_M #0#39,1,"S"; |C_M #0#40,1,"S";
+    |FINSI;
+    |PINDA #0#0;
+|FPRC;
+
+|| //////////////////////////////////////////////////////////////////////
+/*
+|PROCESO BajaRemesa;  || no lo borro de la remesa
+   #13#0 = #100#14;
+   |LEE 141#13=;
+   |SI FSalida = 0;
+       efFechaO = #13#6;
+       #14#0 = #13#0;
+       #14#1 = #100#15;
+       |LEE 141#14=;
+       |SI FSalida = 0;
+           #13#4 = #13#4 - #14#7;
+           |GRABA 020#13a;
+
+           |BORRA 020#14a;
+       |FINSI;
+       |LIBERA #14;
+   |FINSI;
+   |LIBERA #13;
+|FPRC;
+*/
+
+|PROCESO LeoParciales;
+
+   |SI nSwOp = 0;
+       |BORRA 020#100a;
+
+       efFechaO = #100#3;
+       |SI #100#14 ! 0;
+           #13#0 = #100#14;
+           |LEE 041#13=;
+           |SI FSalida = 0;
+               efFechaO = #13#6;
+           |FINSI;
+       |FINSI;
+
+       enDesRemesa = 3;
+       |HAZ eGraba_Min;
+   |FINSI;
+
+   |SI nSwOp = 1;
+       #1#9 = #1#9 + #100#8;  || cobrado
+       |SI #1#8 < #100#3;  #1#8 = #100#3; |FINSI;
+       |SI #1#9 = #1#6; #1#10 = "S"; |FINSI;
+
+       #100#6 = #1#9;
+       #100#7 = #100#5 - #100#6;
+       |GRABA 020#100a;
+   |FINSI;
+
+   |LIBERA #100;
+|FPRC;
+
+|DEFBUCLE LeoParciales;
+   #100#1;
+   ;
+   #1#0, #1#1, nDCobro;
+   #1#0, #1#1, nHCobro;
+   be;
+   NULL, LeoParciales;
+|FIN;
+
+|PROCESO secuencial;
+
+   |DDEFECTO #2;
+   #2#0 = #1#3;
+   |LEE 040#2=;
+
+   nDCobro = 001;
+   nHCobro = 999;
+   |SI #0#38 = "N";
+       nDCobro = #0#39;
+       nHCobro = #0#40;
+   |FINSI;
+   nSwOp = 0; |BUCLE LeoParciales;
+
+   #1#10 = "N";
+   #1#12 = "N";
+   #1#8  = "01.01.1900";
+   #1#9  = 0;
+   |SI #0#38 = "N";
+       nDCobro = 001; nHCobro = 999;
+       nSwOp = 1; |BUCLE LeoParciales;
+   |FINSI;
+   |GRABA 021#1a;
+   |LIBERA #1;
+
+   #90#0 = #1#0;
+   #90#1 = #1#1;
+   |LIBERA #90;
+   |LEE 141#90=;
+   |SI FSalida = 0;
+        #90#32 = #1#10;
+        #90#33 = #1#12;
+        |GRABA 020#90a;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE capasban0;
+     #1#1;
+     2,7;
+     #0#0, #0#2, #0#4, #0#6;
+     #0#1, #0#3, #0#5, #0#7;
+     be;
+     NULL,secuencial;
+|FIN;
+
+|PROCESO pase; |TIPO 3;
+
+     |ABRE #2;
+     |ABRE #100;
+     |ABRE #90;
+     |ABRE #13;
+     |SI #0#38 = "N";
+         |BUCLE capasban0;
+     |SINO;
+         |ABRET #1;
+         |PARA xxx = 8; |SI xxx [ 22; |HACIENDO xxx = xxx + 1;
+               yyy = xxx + 15;
+               |SI #0yyy ! 0;
+                   #1#0 = #0xxx;
+                   #1#1 = #0yyy;
+                   |LIBERA #1;
+                   |LEE 141#1=;
+                   |SI FSalida = 0; |HAZ secuencial; |FINSI;
+               |FINSI;
+         |SIGUE;
+         |CIERRAT #1;
+     |FINSI;
+     |CIERRA #13;
+     |CIERRA #90;
+     |CIERRA #100;
+     |CIERRA #2;
+|FPRC;

@@ -1,0 +1,460 @@
+|FICHEROS;
+   catqz003 #0;
+
+   camaasic #1;
+   camaasil #2;
+
+   catqm001 #10;
+   catqw003 #100;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   fFecha   = @;
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   nNume1   = 0;
+   nDebe    = 0;
+   nHaber   = 0;
+
+   mensa1   = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+   mensa2   = "    ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+   aFichero = "";
+   nConte   = 0;
+   nError   = 0;
+
+   nSwHay   = 0;
+
+   aDCuenta  = "";
+   aHCuenta  = "";
+   fFecUlt   = @;
+   aSigAn    = "";
+   aDeMas    = "";
+
+   Comodin = "";
+   &nLeer   = 0;
+   nSw      = 0;
+   nSal     = 0;
+   nHay     = 0;
+
+   &enTFich   = 0;
+   &Local     = 0;
+   &enLlegoa9 = 0;
+   &enNum9    = 0;
+   &eaPath    = "";
+   &eaPathExc = "";
+   &eaFichero = "";
+
+   &enError    = 0;
+   &enDiario   = 0;
+   &efFecha    = @;
+   &enDocume   = 0;
+   &enAsto     = 0;
+   &enImporte  = 0;
+   &eaDescrip  = "";
+   &eaSigno    = "";
+   &eaReferen  = "";
+
+   &eaUnidadBasico = "";
+   &eaOrigen  = "";
+   &eaDestino = "";
+
+   nLinea   = 0;
+   nSwBueno = 0;
+   aCol     = "";
+   aExcel   = "";
+   nXls     = 0;
+   aExt     = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ************************************************************************
+
+|CALCULO fecha;
+   |SI #0Campo < fec1; |O #0Campo > fec2;
+      |MENAV mensa1;
+      |ERROR;
+      |ACABA;
+   |SINO;
+      |SI #0Campo [ fec3;
+          |MENAV mensa2;
+          |ERROR;
+          |ACABA;
+      |FINSI;
+   |FINSI;
+
+   |SI Campo = 4;  |Y #0#3 > #0#4;
+      |MENAV "     Atencion  fecha Erronea";
+      |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO BuscaDoc; |TIPO 0;
+   |HAZ contador;
+   #0#7 = nDOCUMENTO;
+   #0#8 = #0#7;
+
+   |C_M #0#7, 1, "S";
+   |SI eaPaDOM1 = "S";
+       |C_M #0#7, 1, "N"; |PINTA #0#7;
+   |FINSI;
+|FCAL;
+
+|PROCESO RepDoc; |TIPO 0;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   nConte = Contenido;
+   |SI #0#7 ! nConte;
+       |SI eaPaDOM3 ! "S";
+           nNume1 = nConte + 1;
+           |SI nNume1 < #0#7;
+               nNume1 = 0;
+               |SI eaPaDOM3 = "A";
+                   |CONFI "    NNumero Documento superior al Ultimo + 1, Continuar";
+                   |SI FSalida = 0;
+                       nNume1 = 1;
+                   |FINSI;
+               |SINO;
+                   |MENAV "    Error. Numero Documento superior al Ultimo + 1";
+               |FINSI;
+               |SI nNume1 = 0;
+                   #0#7 = nConte;
+                   |ERROR;
+                   |ACABA;
+                |FINSI;
+            |FINSI;
+         |FINSI;
+    |FINSI;
+
+    nError = 0;
+    |SI eaPaDOM2 = "S"; |ACABA; |FINSI;  || no mira
+
+    |ABRE #1;
+    |SELECT #3#1;
+    #1#2 = #0#7;
+    |LEE 000#1=;
+    |SI FSalida = 0;
+        nError = 1;
+        |SI eaPaDOM2 = "A";
+           |CONFI "    NAtencion, Ya existe numero de Documento. Continuar";
+           |SI FSalida = 0;
+               nError = 0;
+               |ACABA;
+           |FINSI;
+        |FINSI;
+    |FINSI;
+    |SELECT #1#1;
+    |CIERRA #1;
+    |SI nError = 1;
+        |ERROR;
+        #0#7 = nConte;
+    |FINSI;
+|FPRC;
+
+|CALCULO cuenta6; |TIPO 6;
+   emCta = 1;        || Dar mensajes de error
+
+   eaCuenta = #0Campo;
+   salidas  = FSalida;
+   |HAZ FiltraPuntos;
+   #0Campo = eaCuenta;
+   |PINTA #0Campo;
+
+   |HAZ SacaNivel;
+   FSalida = salidas;
+|FCAL;
+
+|| ********************************************************************
+|PROCESO GrabaAuxiliar;
+     nLinea = nLinea + 1;
+     #100#0 = eaCuenta;
+     #100#1 = nLinea;
+     |GRABA 020#100n;
+     |SI #100#2 > fFecUlt; fFecUlt = #100#2; |FINSI;
+     nSwHay = 1;
+|FPRC;
+
+|PROCESO Una;
+     ||| aCol contiene la columna, "A", "B" y nXls la fila
+     aAlfa = aCol + nXls;
+     |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa;
+     |SI FSalida ! 0;
+         nSal = 1;
+    |SINO;
+         |QBF aAlfa;
+         |SI aAlfa ! ""; nHay = 1; |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO CargaHoja;
+     nLinea = 0;
+
+     |PARA nXls = 2; |SI nXls < 65536; |HACIENDO nXls = nXls + 1;
+           nSal = 0;
+           nHay = 0;
+           aCol = "A"; |HAZ Una; #100#2 = aAlfa;
+           aCol = "B"; |HAZ Una; #100#3 = aAlfa;
+           aCol = "C"; |HAZ Una; #100#4 = aAlfa;
+           aCol = "D"; |HAZ Una; #100#5 = aAlfa;
+           aCol = "E"; |HAZ Una; #100#6 = aAlfa;
+           aCol = "F"; |HAZ Una; #100#7 = aAlfa;
+           aCol = "K"; |HAZ Una; #100#8 = aAlfa;
+
+           |SI nSal = 1; |O nHay = 0;
+               |SAL;
+          |SINO;
+               |HAZ GrabaAuxiliar;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO excel;
+     aExcel = eaPathExc + eaFichero;
+
+     |XABRE "CE", aExcel, 0;
+     |SI FSalida < 0;
+          aAlfa = "0000No existe " + aExcel;
+          |MENAV aAlfa;
+          |ACABA;
+     |FINSI;
+
+     aAlfa = "Pasando datos de la Hoja Excel " + eaFichero;
+     |PINTA 2107, aAlfa;
+
+     aAlfa = eaCuenta;
+     |ALFACALLDLL "agixl97.dll", "carga_book", aExcel;
+     |ALFACALLDLL "agixl97.dll", "selecciona_hoja", aAlfa;
+     |SI FSalida = 0;
+         |ABRE #100;
+         |HAZ CargaHoja;
+         |CIERRA #100;
+     |FINSI;
+     |ALFACALLDLL "agixl97.dll", "fin_book", "salva";
+|FPRC;
+
+|PROCESO PasoaIndenxado;
+
+    |CARGADLL "agixl97.dll";
+    |SI FSalida < 0;
+        |MENAV "0000No se puede usar agixl97.dll";
+    |SINO;
+        |HAZ excel;
+        |DESCARGADLL "agixl97.dll";
+    |FINSI;
+|FPRC;
+
+|PROCESO seleccion;
+    aExt  = ".xlsx";
+    aAlfa = eaFichero - aExt;
+    |SI FSalida = 0;
+        aExt = ".xls";
+        aAlfa = eaFichero - aExt;
+    |FINSI;
+
+    nSwBueno = 0;
+    aAlfa    = aAlfa % 0;
+    nNume1   = aAlfa;
+    |SI nNume1 ! MaximoDigitos;  |ACABA; |FINSI; || no es una cuenta
+
+    aAlfa    = eaFichero - aExt;
+    eaCuenta = aAlfa;
+    |SI eaCuenta ] aDCuenta; |Y eaCuenta [ aHCuenta;
+        emCta = 0;
+        |HAZ LeeCuenta;
+        |SI eswCta = 0;
+            nSwBueno = 1;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO VerDirectorio;
+      nSw      = 0;
+      eaOrigen = eaPath + "*.xl*";
+      |_PDIR eaOrigen;
+      |PARA; |SI FSalida = 0; |HACIENDO;
+             nLeer    = 1;
+             nSw      = 1;
+             eaFichero = eaOrigen - eaPath;
+             |HAZ seleccion;
+             |SI nSwBueno = 1;
+                 eaPathExc = eaPath;
+                 |HAZ CopioAntes;
+                 |HAZ PasoaIndenxado;
+             |FINSI;
+             |_SDIR eaOrigen;
+       |SIGUE;
+
+       |SI nSw = 0;
+           eaOrigen = eaPath + "*.xl*";
+           |R_PDIR eaOrigen;
+           |PARA; |SI FSalida = 0; |HACIENDO;
+                  nLeer  = 2;
+                  nSw    = 1;
+                  eaFichero = eaOrigen - eaPath;
+                  |HAZ seleccion;
+                  |SI nSwBueno = 1;
+                      eaPathExc = eaPath;
+                      |HAZ CopioAntes;
+                      |HAZ PasoaIndenxado;
+                  |FINSI;
+
+                  |R_SDIR eaOrigen;
+            |SIGUE;
+       |FINSI;
+|FPRC;
+
+|| ********************************************************************
+
+|PROCESO LeeAuxiliar;
+   |SI #100#6 = 0; |Y #100#7 = 0;  || no hay importe, no hay asiento
+       |ACABA;
+   |FINSI;
+   |SI #100#8 = doce; |ACABA; |FINSI;  ||sin contrapartida
+   |SI #100#2 < #0#3; |O #100#2 > #0#4; |ACABA; |FINSI;
+
+   |PINTA 2107, "                                                         ";
+   aAlfa = "Creando Asientos Contables de la Cuenta " + #100#0;
+   |PINTA 2107, aAlfa;
+
+   efFecha  = #100#2;
+   enDiario = #0#6;
+   enDocume = #0#7;
+   enAsto   = #0#8;
+   |HAZ cabecera;
+   |SI enError = 1; |ERROR10; |ACABA; |FINSI;
+
+|| ... Apunte a la cuenta del Banco
+   eaCuenta    = #100#0;
+   enConcepto  = #10#30;
+   eaDescrip   = #100#4;
+   eaReferen   = #100#3;
+
+   |SI #100#6 ! 0;
+       eaSigno   = "D";
+       enImporte = #100#6;
+   |SINO;
+       eaSigno   = "H";
+       enImporte = #100#7;
+   |FINSI;
+   |HAZ GrabaLinea;
+
+|| ... Apunte de la contrapartida
+   eaCuenta    = #100#8;
+   |SI eaSigno = "D";
+       eaSigno = "H";
+   |SINO;
+       eaSigno = "D";
+   |FINSI;
+   |HAZ GrabaLinea;
+
+|| .............................................................
+
+   #0#7   = enDocume + 1;
+   #0#8   = enAsto + 1;
+   nSw    = 1;
+|FPRC;
+
+
+|DEFBUCLE LeeAuxiliar;
+   #100#1;
+   ;
+   #0#9,  0001;
+   #0#10, 9999;
+   ;
+   NULL, LeeAuxiliar;
+|FIN;
+
+|| ********************************************************************
+|PROCESO elpase;
+
+   aDCuenta = #0#9;  |QBF aDCuenta;
+   aHCuenta = #0#10; |QBF aHCuenta;
+
+   |ABRE #10;
+   |DDEFECTO #10;
+   #10#0 = #0#1;
+   |LEE 041#10=;
+   |CIERRA #10;
+
+   enTFich = 3;  ||fichero de recaudacion
+
+   eaPath = #10#24; |QBF eaPath;
+   |SI eaPath = "";
+       |MENAV "    Error. Path de ficheros erroneo";
+       |ACABA;
+   |FINSI;
+
+   Comodin = "";
+   |IP_REMOTO Comodin;
+   |QBF Comodin;
+   |SI Comodin = "";
+       Local = 1;
+   |SINO;
+       Local = 0;
+   |FINSI;
+
+   aFichero = "3h" + Usuario;
+   |NOME_DAT #100 aFichero;
+   |DELINDEX #100;
+
+   nSwHay = 0;
+   |HAZ VerDirectorio;
+
+   |SI nSwHay = 1;
+       nSw    = 0;
+
+       |ABRE #2;
+       |ABRE #1;
+       |BUCLE LeeAuxiliar;
+       |SI nSw = 1;
+           |HAZ ActContador;
+       |SINO;
+           |MENAV "    No encontrados movimientos para importar";
+       |FINSI;
+       |CIERRA #1;
+       |CIERRA #2;
+   |SINO;
+       |MENAV "    No existen Ficheros para Importar";
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+
+   |HAZ inicio;
+   |HAZ DirAplicSt;
+   |HAZ eLeeParametro;
+   |HAZ LeeUnidadBasico;
+
+   |CLS;
+   |PINPA #0#0;
+   |CABEZA "Contabilizar de los Cobros";
+
+   |ABRE #0;
+   #0#0 = "A";
+   |LEE 141#0=;
+   |SI FSalida ! 0;
+       |DDEFECTO #0;
+       #0#3 = fec1;
+       #0#4 = fec2;
+       |GRABA 020#0b;
+   |FINSI;
+   |HAZ BuscaDoc;
+
+   |PINDA #0#0;
+   |ENDATOS #2#0;
+   |SI FSalida = 0;
+       nNume1  = #0#3; nNume1 = nNume1 - 1;
+       fFecUlt = nNume1;
+       |HAZ elpase;
+       nNume1  = fFecUlt; nNume1 = nNume1 + 1;
+       #0#3    = nNume1;
+       #0#4    = fec2;
+       |SI #0#3 > #0#4; #0#3 = #0#4; |FINSI;
+
+       |GRABA 021#0a;
+   |FINSI;
+   |LIBERA #0;
+   |CIERRA #0;
+|FPRO;

@@ -1,0 +1,851 @@
+|FICHEROS;
+    nomactat #0;
+    nomcalac #1;    || calculos cabs.
+    nomcalal #2;    || calculos lins.
+    nomhicca #3;    || historico cabs.
+    nomhicli #4;    || historico lins.
+    labtraba #5;    || trabajadores
+    labempax #6;    || aux. empresas
+    labbasec #9;    || bases cabs.
+    labbasel #10;   || bases lins.
+    labempre #12;   || empresas
+    nomtepig #13;   || aux. epigrafes
+    labtrtra #25;   || def de trabajadores
+    nomcalat #26;   || pantalla calculo atrasos (recoge a¤o por defecto)
+    nomhiatr #30;   || Atrasos para el 110
+
+     cretam01;
+     cretam02;
+     cretam03;
+     cretam04;
+|FIN;
+
+|VARIABLES;
+    &nXDesdeEmpresa=0;
+    &nXHastaEmpresa=0;
+    &nXDesdeTrabajador=0;
+    &nXHastaTrabajador=0;
+    &nXDesdeMes=0;
+    &nXHastaMes=0;
+    &nXAnyo=0;
+
+    estado = 0;
+    sw = 0;
+    linea = 0;
+    campo = 0;
+    x = 0;
+    x1 = 0;
+    x2 = 0;
+    x3 = 0;
+    y1 = 0;
+    y2 = 0;
+    y3 = 0;
+    mes = 0;
+    any = 0;
+    anyonum = 0;
+    anyobas = 0;
+    dia = 0;
+    alfa1 = "";
+    fecsys = @;
+    alfa = "";
+    diab = "";
+    mesb = "";
+    anyb = "";
+    fecha = "";
+    clave = "";
+    fecalf = "";
+    antempre = 0;
+    continua = 0;
+    cuent = 0;
+    porce = 0;
+    lleva = 0;
+    anyo_irpf = 0;
+    nPerAnt = 0;
+    nAnyo   = 0;
+     aAlfa = "";
+     aAlfa2 = "";
+     swExiste = 0;
+     nAnyHis = 0;
+     aCCC = "";
+     aNaf = "";
+     fFecha = @;
+|FIN;
+
+
+*************************************************************************
+        GESTION DE PANTALLA
+*************************************************************************
+
+|PROCESO ValidaTipo;
+     |SI #0#10 = 5;
+          aAlfa = "    ATENCION. El tipo 5 no está permitido para la actualización ";
+          aAlfa = aAlfa + "de atrasos al Histórico desde Sep-2015.";
+          |MENAV aAlfa;
+          aAlfa = "    Utilice en su lugar cualquier tipo del 6 al 20.";
+          |MENAV aAlfa;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Cotizacion; |TIPO 7;
+     #0#8 = #0#5;
+     |PINTA #0#8;
+|FPRC;
+
+|PROCESO Defectos; |TIPO 7;
+     fecsys = ~;
+     alfa = fecsys;
+     alfa = alfa % -102;
+     #0#9 = alfa;
+
+     |ABRE #nomcalat;
+     |LEE 000#nomcalat.p;
+     |SI FSalida = 0;
+          #0#5 = #nomcalat#9 $ 100;
+          #0#0 = #nomcalat#0;
+          #0#1 = #nomcalat#1;
+          #0#2 = #nomcalat#2;
+          #0#3 = #nomcalat#3;
+          #0#4 = #nomcalat#8;
+          #0#6 = #nomcalat#10;
+     |SINO;
+          #0#5 = #0#9;
+     |FINSI;
+     |CIERRA #nomcalat;
+
+     #0#8 = #0#5;
+
+     |PINDA #0#0;
+|FPRC;
+
+|PROCESO meshasta; |TIPO 0;
+|SI #0#6 < #0#4;|Y FSalida ! 2;
+    |MENAV "0000Error de entrada ...";
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO SinMes; |TIPO 7;
+     |SI #0#5 ! #0#9;
+     |SINO;
+     |FINSI;
+|FPRC;
+
+|PROCESO SinPeriodo; |TIPO 7;
+/*
+     |SI #0#5 ! #0#9;
+          |C_M #0#13, 1, "S";
+     |SINO;
+          |C_M #0#13, 1, "N";
+     |FINSI;
+*/
+|FPRC;
+____________________________________/ LECTURA Y ACTUALIZACION
+
+|PROCESO AsientosContables;
+     nXDesdeEmpresa=#0#0;
+     nXHastaEmpresa=#0#1;
+     nXDesdeTrabajador=#0#2;
+     nXHastaTrabajador=#0#3;
+     nXDesdeMes=#0#4;
+     nXHastaMes=#0#6;
+     nXAnyo=#0#5;
+     |SUB_EJECUTA "nomagicu;nomactat";
+|FPRC;
+
+
+|PROCESO lee_calculos1;
+|SI antempre ! #1#0;
+    |BLIN 4;
+    |HAZ boraux;
+    |HAZ borepi;
+        antempre = #1#0;
+|FINSI;
+    continua = 0;
+|HAZ por_si_esta;
+|SI continua = 0;
+    |PINTA 2124, #1#0;
+    |PINTA 2143, #1#1;
+    |PINTA 2156, #1#2;
+    |PINTA 2166, #0#10;
+        lleva = lleva + 1;
+        porce = ((lleva * 100) / cuent) ! 0;
+    |SI porce < 10;
+        |PINTA 2170, porce;        || (queda mas bonito ...)
+    |SINO;
+        |PINTA 2169, porce;
+    |FINSI;
+    |HAZ basesd;
+    |HAZ traba;
+    |HAZ grabahis;
+|SINO;
+    |SI continua = -2;
+        |ERROR10;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO ordena;
+    cuent = cuent + 1;
+
+    alfa1 = #1#4;
+    #0#11 = (alfa1 % -104) + (alfa1 % 402) + (alfa1 % 102);
+|FPRC;
+
+|DEFBUCLE lee_calculos;       || actualiza por orden de alta para que todos
+ #1#1;                        ||/se actualicen con el mismo tipo
+ ;
+ #0#0, #0#2, #0#4, 5;
+ #0#1, #0#3, #0#6, 5;
+ ;
+ NULL, ordena, NULL, NULL, NULL, lee_calculos1;
+ #1#0, #0#11, #1#1, #1#2, #1#3;
+|FIN;
+
+|PROCESO actualiz; |TIPO 3;
+|SI #0#12 = "NO";   |ACABA;   |FINSI;
+
+|SI #0#9 < 80; anyo_irpf = #0#9 + 2000; |SINO; anyo_irpf = #0#9 + 1900; |FINSI;
+
+/*
+|HAZ AsientosContables;
+*/
+
+|ABRET #3;     || historico cabs.
+|ABRET #4;     || historico lins.
+|ABRET #5;     || trabajadores
+|ABRET #9;     || bases cabs.
+|ABRET #10;    || bases lins.
+|ABRET #12;    || empresas
+|BUCLE lee_calculos;
+|CIERRAT #3;
+|CIERRAT #4;
+|CIERRAT #5;
+|CIERRAT #9;
+|CIERRAT #10;
+|CIERRAT #12;
+
+|FPRC;
+____________________________________/ RUTINAS DE LECTURA Y ACTUALIZACION
+|VARIABLES;
+     aAlfa1 = "";
+     nEmpresa = 0;
+     aClave = "";
+     aSubClave = "";
+     nTipo = 0;
+     nMes = 0;
+     nBase = 0;
+     nPorc = 0;
+     nCuot = 0;
+     nEspe = 0;
+     nPorE = 0;
+     nCuoE = 0;
+     nGtos = 0;
+     nRedu = 0;
+     nPens = 0;
+     nAnua = 0;
+     aEspe = "";
+     aRepe = "";
+     nExento = 0;
+|FIN;
+
+/****************************************************************************/
+/*****    PROCESOS PARA CAMBIAR EL TIPO DE ATRASOS SI ESTA CREADA ***********/
+/********************** LA LIQUIDACION PARA EL CRETA ************************/
+/****************************************************************************/
+
+|PROCESO cretam02_busca;
+     swExiste = 1;
+|FPRC;
+
+|DEFBUCLE cretam02_busca;
+     #cretam02#1;
+     ;
+     #nomhicca#0, nAnyHis, #nomhicca#2, 5, "               ";
+     #nomhicca#0, nAnyHis, #nomhicca#2, 5, "zzzzzzzzzzzzzzz";
+     be;
+     NULL, cretam02_busca;
+|FIN;
+
+|PROCESO cretam01;
+     || ahora busco si queda algun CCC en esta empresa con el tipo 5 y si no queda,
+     || me cargo el registro tipo 5 del cretam01 esta empresa
+
+     #cretam01#0 = #nomhicca#0;
+     #cretam01#1 = nAnyHis;
+     #cretam01#2 = #nomhicca#2;
+
+     swExiste = 0;
+     |BUCLE cretam02_busca;
+     |SI swExiste = 0;
+          #cretam01#3 = 5;
+          |LEE 101#cretam01.=;
+          |SI FSalida = 0;
+               |BORRA 020#cretam01.a;
+          |FINSI;
+     |SINO;
+          || si algo queda y no me lo cargo, leo el tipo 5 para la copia
+          #cretam01#3 = 5;
+          |LEE 000#cretam01.=;
+     |FINSI;
+
+     || por ultimo lo mismo, con el cretam01 grabo el nuevo tipo
+
+     #cretam01#0 = #nomhicca#0;
+     #cretam01#1 = nAnyHis;
+     #cretam01#2 = #nomhicca#2;
+     #cretam01#3 = #0#10;
+     |LEE 101#cretam01.=;
+     |SI FSalida = 0;
+          |GRABA 020#cretam01.a;
+     |SINO;
+          |GRABA 020#cretam01.n;
+     |FINSI;
+     |LIBERA #cretam01;
+|FPRC;
+
+|PROCESO cretam03_busca;
+     swExiste = 1;
+|FPRC;
+
+|DEFBUCLE cretam03_busca;
+     #cretam03#1;
+     ;
+     #nomhicca#0, nAnyHis, #nomhicca#2, 5, aCCC, "            ";
+     #nomhicca#0, nAnyHis, #nomhicca#2, 5, aCCC, "zzzzzzzzzzzz";
+     be;
+     NULL, cretam03_busca;
+|FIN;
+
+|PROCESO cretam02;
+     || primero busco si queda algun trabajador en este CCC y si no queda,
+     || me cargo el registro tipo 5 del cretam02 este CCC
+
+     #cretam02#0 = #nomhicca#0;
+     #cretam02#1 = nAnyHis;
+     #cretam02#2 = #nomhicca#2;
+     #cretam02#4 = aCCC;
+
+     swExiste = 0;
+     |BUCLE cretam03_busca;
+     |SI swExiste = 0;
+          #cretam02#3 = 5;
+          |LEE 101#cretam02.=;
+          |SI FSalida = 0;
+               |BORRA 020#cretam02.a;
+          |FINSI;
+     |SINO;
+          || si algo queda y no me lo cargo, leo el tipo 5 para la copia
+          #cretam02#3 = 5;
+          |LEE 000#cretam02.=;
+     |FINSI;
+
+     || ahora grabo el nuevo tipo (campo #10)
+
+     #cretam02#0 = #nomhicca#0;
+     #cretam02#1 = nAnyHis;
+     #cretam02#2 = #nomhicca#2;
+     #cretam02#3 = #0#10;
+     #cretam02#4 = aCCC;
+     |LEE 101#cretam02.=;
+     |SI FSalida = 0;
+          |GRABA 020#cretam02.a;
+     |SINO;
+          |GRABA 020#cretam02.n;
+     |FINSI;
+     |LIBERA #cretam02;
+|FPRC;
+
+|PROCESO cretam03;
+     #cretam03#0 = #nomhicca#0;
+     #cretam03#1 = nAnyHis;
+     #cretam03#2 = #nomhicca#2;
+     #cretam03#3 = 5;
+     #cretam03#4 = aCCC;
+     #cretam03#5 = aNaf;
+     |LEE 101#cretam03.=;
+     |SI FSalida = 0;
+          |BORRA 020#cretam03.a;
+     |FINSI;
+
+     #cretam03#3 = #0#10;
+     |LEE 101#cretam03.=;
+     |SI FSalida = 0;
+          |GRABA 020#cretam03.a;
+     |SINO;
+          |GRABA 020#cretam03.n;
+     |FINSI;
+     |LIBERA #cretam03;
+|FPRC;
+
+|PROCESO cretam04;
+     swExiste = 1;
+     aCCC = #cretam04#4;
+
+     |BORRA 020#cretam04.a;
+
+     #cretam04#3 = #0#10;
+     |LEE 101#cretam04.=;
+     |SI FSalida = 0;
+          |GRABA 020#cretam04.a;
+     |SINO;
+          |GRABA 020#cretam04.n;
+     |FINSI;
+     |LIBERA #cretam04;
+|FPRC;
+
+|DEFBUCLE cretam04;
+     #cretam04#1;
+     ;
+     #nomhicca#0, nAnyHis, #nomhicca#2, 5, "               ", aNaf, 01;
+     #nomhicca#0, nAnyHis, #nomhicca#2, 5, "zzzzzzzzzzzzzzz", aNaf, 99;
+     be;
+     NULL, cretam04;
+|FIN;
+
+|PROCESO creta;
+     |ABRE #cretam01;
+     |ABRE #cretam02;
+     |ABRE #cretam03;
+     |ABRE #cretam04;
+
+     nAnyHis = #nomhicca#66 + 2000;
+
+     aNaf = #labtraba#75;
+     |QBF aNaf;
+     aAlfa1 = aNaf % 102;
+     aAlfa2 = aNaf % 310;
+     |QBF aAlfa2;
+     aAlfa2 = ("0000000000" + aAlfa2) % -110;
+     aNaf = aAlfa1 + aAlfa2;
+
+     swExiste = 0;
+     |BUCLE cretam04;
+     |SI swExiste = 1;
+          |HAZ cretam03;
+          |HAZ cretam02;
+          |HAZ cretam01;
+     |FINSI;
+
+     |CIERRA #cretam04;
+     |CIERRA #cretam03;
+     |CIERRA #cretam02;
+     |CIERRA #cretam01;
+|FPRC;
+
+/****************************************************************************/
+
+|PROCESO por_si_esta;         || aviso de sobreactualizacion
+    #3#0  = #1#0;   || Codigo empresa
+    #3#1  = #1#1;   || Codigo trabajador
+    #3#2  = #1#2;   || mes
+    #3#66 = #0#5;   || a¤o
+    #3#3  = #0#10;  || tipo
+    |LEE 000#3=;
+    |SI FSalida = 0;
+         |AVISO;
+         |CONFI "0000SFicha ya existente. Regrabar (S/N): ";
+         |SI FSalida = 0;
+              continua = 0;
+         |SINO;
+              |MENAV "0000Ficha pendiente de actualizacion ...";
+              |AVISO;
+              |CONFI "0000NContinuar con la actualizacion (S/N): ";
+              |SI FSalida = 0;
+                   continua = -1;
+              |SINO;
+                   continua = -2;
+              |FINSI;
+         |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO borrando;
+|SI #6#2 = 5;|O #6#2 = 6;|O #6#2 = 7;|O #6#2 = 15;|O #6#2 = 16;|O #6#2 = 17;
+    |BORRA 020#6a;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE bor_empresa;
+ #6#1;
+ ;
+ #1#0,  0,  0,  0;
+ #1#0, 99, 12, 19;
+ ;
+ NULL, borrando;
+|FIN;
+
+|PROCESO boraux;
+|BUCLE bor_empresa;
+|FPRC;
+
+|PROCESO basesd;
+    #9#0 = #1#0;    || Codigo empresa
+    #9#1 = #1#1;    || Codigo trabajador
+|LEE 101#9=;
+    estado = FSalida;
+|DDEFECTO #9;
+    #9#0 = #1#0;    || Codigo empresa
+    #9#1 = #1#1;    || Codigo trabajador
+|SI estado = 0;
+    |GRABA 020#9a;
+|SINO;
+    |GRABA 020#9n;
+|FINSI;
+|LIBERA #9;
+
+|HAZ fechabas;
+
+    sw = 0;
+    linea = 0;
+|SI estado = 0;
+    |BUCLELIN 2bases#9;
+    |SI sw = 0;
+            #10#0 = #1#0;      || Codigo empresa
+            #10#1 = #1#1;      || Codigo trabajador
+            #10#2 = linea + 1; || Linea
+            #10#3 = fecha;     || Fecha
+            #10#4 = #1#8;      || Dias cotizados
+            #10#5 = #1#11;     || Horas contratos
+            alfa1 = #1#9;
+            alfa1 = ("000" + alfa1) % -103;
+            #10#6 = alfa1;     || Tipo de contrato
+            #10#7 = #1#39;     || Bases contigencias
+            #10#8 = #1#40;     || Bases desempleo
+            #10#9 = "Atrasos incluidos";        || Observaciones
+        |GRABA 020#10n;
+        |LIBERA #10;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO leetodo;
+|DDEFECTO #12;
+    #12#0 = #5#0;
+|LEE 020#12=;            || empresa
+|FPRC;
+
+|PROCESO traba;
+    #5#0 = #1#0;    || Codigo empresa
+    #5#1 = #1#1;    || Codigo trabajador
+|LEE 101#5=;
+|SI FSalida = 0;
+    |HAZ leetodo;
+    |HAZ cargatra;
+
+    |GRABA 020#5a;       || no haria falta, pero de momento lo dejo
+|FINSI;
+|LIBERA #5;
+|FPRC;
+
+|PROCESO GrabaPuente110;
+|ABRE #30;
+#30#0 = #3#0;
+
+                nAnyo = 2000 + #0#9;
+|SI #0#9 > 80;  nAnyo = 1900 + #0#9;  |FINSI;
+
+#30#1 = nAnyo;
+#30#2 = #3#3;
+                nAnyo = 2000 + #0#5;
+|SI #0#5 > 80;  nAnyo = 1900 + #0#5;  |FINSI;
+
+#30#3 = nAnyo;
+
+|LEE 101#30=;
+|SI FSalida ! 0;
+    |DDEFECTO #30;
+     #30#0 = #3#0;
+
+                     nAnyo = 2000 + #0#9;
+     |SI #0#9 > 80;  nAnyo = 1900 + #0#9;  |FINSI;
+
+     #30#1 = nAnyo;
+     #30#2 = #3#3;
+                     nAnyo = 2000 + #0#5;
+     |SI #0#5 > 80;  nAnyo = 1900 + #0#5;  |FINSI;
+
+     #30#3 = nAnyo;
+     |GRABA 020#30b;
+|FINSI;
+
+#30#4 = #0#13;           || periodo declaracion 110/111
+#30#5 = #0#8 + 2000;     || periodo COTIZACION
+
+|GRABA 020#30a;
+|LIBERA #30;
+|CIERRA #30;
+|FPRC;
+
+|PROCESO grabahis;
+|DDEFECTO #3;
+    #3#0  = #1#0;   || Codigo empresa
+    #3#1  = #1#1;   || Codigo trabajador
+    #3#2  = #1#2;   || mes
+    #3#3  = #0#10;  || tipo
+    #3#66 = #0#5;   || a¤o
+|LEE 101#3=;
+    estado = FSalida;
+|PARA x = 4; |SI x [ 65; |HACIENDO x = x + 1;
+        #3x = #1x;    || Pase de variables
+|SIGUE;
+    #3#67 = #25#87;  || codigo convenio
+    #3#68 = #25#60;  || clave enfermedad
+    #3#69 = #25#88;  || dias enf. a¤o
+    #3#70 = #25#89;  || dias enf. actual
+    #3#71 = #25#90;  || dias enf. cal. anual
+    #3#72 = #25#91;  || dias acc. a¤o
+    #3#73 = #25#92;  || dias acc. actual
+    #3#74 = #25#93;  || dias huelga
+    #3#75 = #25#94;  || dias absentismo
+    #3#76 = #25#95;  || promedio enfer.
+    #3#77 = #25#96;  || promedio acci.
+    #3#78 = #25#45;  || tipo contrato
+    #3#79 = #25#46;  || dias contrato
+    #3#80 = #25#47;  || horas contrato
+|PARA x1 = 50; |SI x1 [ 54; |HACIENDO x1 = x1 + 1;   || dias dto. (origen)
+        x2 = x1 + 5;   || acum. bases/dias (origen)
+        x3 = x1 + 15;  || bases diferidas  (origen)
+        y1 = x1 + 31;  || dias dto.        (destino)
+        y2 = x1 + 39;  || acum. bases/dias (destino)
+        y3 = x1 + 47;  || bases diferidas  (destino)
+        #3y1 = #25x1;
+        #3y2 = #25x2;
+        #3y3 = #25x3;
+|SIGUE;
+|PARA x1 = 78; |SI x1 [ 80; |HACIENDO x1 = x1 + 1;   || dias dto. (origen)
+        x2 = x1 + 3;   || acum. bases/dias (origen)
+        x3 = x1 + 6;   || bases diferidas  (origen)
+        y1 = x1 + 8;   || dias dto.        (destino)
+        y2 = x1 + 16;  || acum. bases/dias (destino)
+        y3 = x1 + 24;  || bases diferidas  (destino)
+        #3y1 = #25x1;
+        #3y2 = #25x2;
+        #3y3 = #25x3;
+|SIGUE;
+    #3#105 = #1#66;    || dias vacaciones
+    #3#106 = #1#67;    || (%) retencion 2
+    #3#107 = #1#68;    || (%) retencion 3
+    #3#108 = #1#69;    || base irpf 2
+    #3#109 = #1#70;    || base irpf 3
+    #3#110 = #1#71;    || imp. retencion 2
+    #3#111 = #1#72;    || imp. retencion 3
+    #3#112 = #1#73;    || prest. enf. empresa
+    #3#113 = #1#74;    || total bases
+    #3#114 = #1#75;    || total retenciones
+    #3#115 = #25#173;  || dias vacaciones a¤o (trabajador)
+    #3#119 = #1#78;    || dias desempleo
+    #3#120 = #25#243;  || dias desempleo a¤o
+    #3#121 = #1#79;    || base bonif. cc 2
+    #3#122 = #1#80;    || base bonif. cp 2
+    #3#123 = #1#81;    || cuota bonif. 2
+    #3#124 = #1#82;    || % bonif. 1
+    #3#125 = #1#83;    || % bonif. 2
+    #3#126 = #1#84;    || base ILT bonif 1
+    #3#127 = #1#85;    || base ILT bonif 2
+    #3#130 = #1#88;    || bonif mayores 60 a¤os
+
+     || campos recaidas
+     #3#134 = #1#92;
+     #3#135 = #1#93;
+     #3#136 = #1#94;
+     #3#137 = #1#95;
+
+     #3#139 = #1#97;
+     #3#140 = #1#98;
+     #3#141 = #1#99;
+     #3#142 = #1#100;
+
+
+    #3#148 = #1#106;   || bonif mayores 59 a¤os
+
+    #3#145 = #1#103;   || es una complementaria (S/N)
+    #3#150 = #1#108;
+    #3#151 = #1#109;
+    #3#152 = #1#110;
+    #3#153 = #1#111;
+    #3#154 = #1#112;
+    #3#155 = #1#113;
+    #3#156 = #1#114;
+    #3#157 = #1#115;
+    #3#158 = #1#116;
+    #3#159 = #1#117;
+    #3#160 = #1#118;
+
+    #3#171 = #1#129;   || dias emb. riesgo
+    #3#172 = #1#130;   || dias emb. riesgo
+    #3#173 = #1#131;
+    #3#174 = #1#132;
+    #3#175 = #1#133;
+    #3#181 = #1#139;   || dias paternidad
+
+    #3#161 = #1#119;   || proporcion ERE A TP
+    #3#162 = #1#120;
+    #3#163 = #1#121;
+    #3#164 = #1#122;
+
+    #3#190 = #1#148;
+    #3#191 = #1#149;
+    #3#192 = #1#150;
+    #3#193 = #1#151;
+    #3#194 = #1#152;
+    #3#195 = #1#153;
+    #3#196 = #1#154;
+    #3#197 = #1#155;
+    #3#198 = #1#156;
+    #3#199 = #1#157;
+    #3#200 = #1#158;
+    #3#213 = #1#171;
+    #3#223 = #1#181;
+
+    #3#226 = #1#184;
+    #3#230 = #1#188;
+    #3#231 = #1#189;
+    #3#232 = #1#190;
+
+    #3#243 = #1#201;
+    #3#244 = #1#202;
+    #3#245 = #1#203;
+    #3#246 = #1#204;
+    #3#247 = #1#205;
+
+     || Campos SS Empresa desglosado:
+     #3#215 = #1#173;
+     #3#216 = #1#174;
+     #3#217 = #1#175;
+     #3#218 = #1#176;
+     #3#219 = #1#177;
+     #3#220 = #1#178;
+     #3#221 = #1#179;
+     #3#222 = #1#180;
+
+     fFecha = ~;
+     #3#231 = fFecha;
+
+|SI estado = 0;
+    |GRABA 020#3a;
+|SINO;
+    |GRABA 020#3n;
+|FINSI;
+|LIBERA #3;
+                         || Graba el Fichero Puente con el 110 solo en PI.
+|HAZ GrabaPuente110;
+
+
+|SI estado = 0;
+    |BUCLELIN 1NULL#3;   || si existe borra las lineas del historico
+|FINSI;
+
+|BUCLELIN 2grabalin#1;   || Bucle de lineas de calculos
+
+|BORRA 020#1a;           || Borra cabecera de calculos
+
+     || no esta claro
+     ||HAZ creta;
+|FPRC;
+____________________________________/ SUBRUTINAS DE LECTURA Y ACTUALIZACION
+|PROCESO grabalin;       || Graba lineas del historico
+|DDEFECTO #4;
+    #4#0  = #2#0;   || Codigo empresa
+    #4#1  = #2#1;   || Codigo trabajador
+    #4#2  = #2#2;   || Mes
+    #4#3  = #0#10;  || Tipo
+    #4#4  = #2#4;   || Registro
+    #4#12 = #0#5;   || A¤o
+|LEE 101#4=;
+    estado = FSalida;
+|PARA x = 5; |SI x [ 11; |HACIENDO x = x + 1;
+        #4x = #2x;    || Pase de variables
+|SIGUE;
+|SI estado = 0;
+    |GRABA 020#4a;
+|SINO;
+    |GRABA 020#4n;
+|FINSI;
+|LIBERA #4;
+
+|BORRA 020#2a;
+|FPRC;
+
+|PROCESO bases;      || busca linea de base de desempleo para actualizar
+    linea = #10#2;
+|SI #10#3 = fecha;
+    |LEE 121#10=;
+        #10#0 = #1#0;                        || Codigo empresa
+        #10#1 = #1#1;                        || Codigo trabajador
+        #10#2 = linea;                       || Linea
+        #10#3 = fecha;                       || Fecha
+        || #10#4 = #10#4 + #1#8;         || Dias cotizados
+        || #10#5 = #10#5 + #1#11;        || Horas contratos
+        || #10#6 = #10#6 + #1#9;         || Tipo de contrato
+        #10#7 = #10#7 + #1#39;               || Bases contigencias
+        #10#8 = #10#8 + #1#40;               || Bases desempleo
+    |SI #1#39 ! 0;|O #1#40 ! 0;
+            #10#9 = "Atrasos incluidos";     || Observaciones
+    |FINSI;
+    |GRABA 020#10a;
+    |LIBERA #10;
+        sw = 1;
+|FINSI;
+|FPRC;
+
+|PROCESO borepi2;   || borra auxiliar de epigrafes
+|SI #13#9 = 5;|O #13#9 = 6;|O #13#9 = 7;|O #13#9 = 15;|O #13#9 = 16;|O #13#9 = 17;
+    |BORRA 020#13a;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE nomactat1;
+ #13#1;
+ ;
+ #1#0,  0,  0,   0,  0;
+ #1#0, 99, 12, 999, 19;
+ e;
+ NULL, borepi2;
+|FIN;
+
+|PROCESO borepi;
+|BUCLE nomactat1;
+|FPRC;
+
+|PROCESO cargatra;   || CARGA LOS CAMPOS DEL TRABAJADOR
+|DDEFECTO #25;
+|PARA x = 0; |SI x [ 247; |HACIENDO x = x + 1;
+        #25x = #5x;
+|SIGUE;
+|FPRC;
+
+|PROCESO fechabas;
+    fecalf = #1#5;
+|HAZ desglosa;
+|SI mes = #1#2; |Y any = anyobas;
+        diab = dia;
+|SINO;
+     |SI #1#2 = 2;|Y #1#7 = 28;
+          |SI anyobas = 2000;|O anyobas = 2004;|O anyobas = 2008;
+                  diab = 29;
+          |SINO;
+                  diab = #1#7;
+          |FINSI;
+     |SINO;
+            diab = #1#7;
+     |FINSI;
+|FINSI;
+                  diab = "0" + diab;  diab = diab % -102;
+    mesb = #1#2;  mesb = "0" + #1#2;  mesb = mesb % -102;
+    anyb = anyobas;
+    fecha = diab + "." + mesb + "." + anyb;
+|FPRC;
+
+|PROCESO desglosa;     || DESGLOSA EN DIA, MES Y ANYO UNA FECHA DD.MM.AAAA
+|SI #0#5 < 80; anyonum = 2000 + #0#5; |SINO; anyonum = 1900 + #0#5; |FINSI;
+|SI #0#8 < 80; anyobas = 2000 + #0#8; |SINO; anyobas = 1900 + #0#8; |FINSI;
+    alfa1 = fecalf %  102;   dia = alfa1;
+    alfa1 = fecalf %  402;   mes = alfa1;
+    alfa1 = fecalf % -104;   any = alfa1;
+|SI alfa1 = "....";
+        dia = 0;
+        mes = 0;
+        any = 0;
+|FINSI;
+|FPRC;

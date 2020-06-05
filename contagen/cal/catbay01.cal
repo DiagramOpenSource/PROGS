@@ -1,0 +1,161 @@
+|FICHEROS;
+   catbay01;
+
+   catbam04;       || apuntes contrapartidas
+   catbam02;
+   catbam03;       || apuntes ctas lins.
+   catbam01;       || Saldo Anterior.
+
+   cacuenta;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   &modcon  = 0;
+
+   informe  = "catbay01";
+   aParam   = "";
+   aAlfa    = "";
+   nSw      = 0;
+
+   &SwLinea = 0;
+   &enSaldo = 0;
+   &enDebe  = 0;
+   &enHaber = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *************************************************************************
+|PROCESO cuenta; |TIPO 6;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+    eaCuenta = #catbay01#Campo#;
+    salidas  = FSalida;
+    |HAZ FiltraPuntos;
+    #catbay01#Campo# = eaCuenta;
+    |PINTA #catbay01#Campo#;
+
+    emCta = 1;
+    |HAZ SacaNivel;
+|FPRC;
+
+|PROCESO ctah; | TIPO 0;   ||  hasta cuenta
+   |SI #catbay01#0 > #catbay01#2;  |ERROR;  |FINSI;
+|FPRC;
+
+|| **************************************************************************
+
+|PROCESO Lacontra;
+   |DDEFECTO #cacuenta;
+   #cacuenta#0 = #catbam04#4;
+   |LEE 041#cacuenta.=;
+
+   |PRINT;
+   SwLinea = 3;
+|FPRC;
+
+|DEFBUCLE LeoCatbam04;
+   #catbam04#1;
+   ;
+   #catbam03#0, #catbam03#2, 1;
+   #catbam03#0, #catbam03#2, 99999;
+   ;
+   NULL, Lacontra;
+|FIN;
+
+|PROCESO apuntes;
+
+   enDebe  = 0;
+   enHaber = 0;
+   |SI #catbam03#6 = "D";
+       enDebe  = #catbam03#7;
+   |SINO;
+       enHaber = #catbam03#7;
+   |FINSI;
+   enSaldo = enSaldo + enDebe - enHaber;
+
+   SwLinea = 1; |PRINT;
+   aAlfa = #catbam03#8; |QBF aAlfa;
+   |SI aAlfa = "";
+       SwLinea = 2;
+       |BUCLE LeoCatbam04;
+       |SI SwLinea = 3; SwLinea = 4; |PRINT; |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoCatbam03;
+   #catbam03#2;
+   ;
+   #catbam02#0, "01.01.1900", 00001;
+   #catbam02#0, "31.12.2100", 99999;
+   e;
+   NULL, apuntes;
+|FIN;
+
+|PROCESO cabs_ctas;
+   nSw = 1;
+
+   |DDEFECTO #catbam01;
+   #catbam01#0 = #catbam02#0;
+   |LEE 041#catbam01.=;
+
+   enSaldo = #catbam02#4;
+   SwLinea = 0;
+   |BUCLE LeoCatbam03;
+   |SI SwLinea ! 0;
+       |PIEINF;
+   |FINSI;
+
+   |LIBERA #catbam02;
+|FPRC;
+
+|DEFBUCLE LeoCatbam02;
+   #catbam02#1;
+   ;
+   #catbay01#0;
+   #catbay01#2;
+   e;
+   NULL, cabs_ctas;
+|FIN;
+
+|| **************************************************************************
+|PROCESO actual; |TIPO 3;
+
+   |HAZ eLeeParametro;
+
+   |IMPRE 0;
+   |SI FSalida ! 0;
+       |MENAV "0000Proceso interrumpido";
+       |ACABA;
+   |FINSI;
+
+   |INFOR informe;
+   |SI FSalida ! 0;
+       |MENAV "0000No existe informe";
+       |FINIMP;
+       |ACABA;
+   |FINSI;
+
+   nSw     = 0;
+   SwLinea = 0;
+   |ABRE #catbam01;
+   |BUCLE LeoCatbam02;
+   |CIERRA #catbam01;
+
+   |FININF;
+   |FINIMP;
+|FPRC
+
+
+|PROGRAMA;
+   aParam = PARAMETRO; |QBF aParam;
+
+   |SI aParam ! "";
+       #catbay01#0 = eaCuenta;
+       #catbay01#2 = eaCuenta;
+       |HAZ actual;
+   |SINO;
+       |MANTE #catbay01;
+   |FINSI;
+|FPRO;

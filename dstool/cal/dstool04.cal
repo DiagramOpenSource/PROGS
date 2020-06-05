@@ -1,0 +1,206 @@
+|FICHEROS;
+     dstool04 #0;
+|FIN;
+
+|VARIABLES;
+     &eaCone = "";
+     &eaSistema = "";
+     &eaVerBas = "";
+     &eaLicencia = "";
+     &enNumApli = 0;
+     &eaVerOpe = "";
+     nHandle = 0;
+     aIP = "";
+     aSistema = "";
+     aAlfa = "";
+     aFicVer = "";
+     aVer = "";
+     aFicApli = "";
+     nIni = 0;
+     aIni = "";
+     aVerSO = "";
+     aFicInf = "";
+     aDSCorreo = "";
+     aProxy = "";
+     aDirOri = "";
+     aDirDes = "";
+     aTitulo = "";
+     aTexto = "";
+     aFic = "";
+     aFicIni = "";
+     aFicMen = "";
+     aFicTar = "";
+     nPos = 0;
+     aPos = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aPath = "";
+     aOrg = "";
+     aDes1 = "";
+     aDes2 = "";
+     {-1}aSerie = "";
+|FIN;
+
+|PROCESO BuscaIni;
+     aIni = "000000";
+     |DBASS aAlfa;
+     aFicIni = aAlfa + "ds.ini";
+     |XABRE "", aFicIni, nHandle;
+     |SI FSalida = 0;
+          |PARA; |SI; |HACIENDO;
+               |XLEE nHandle, 255, aAlfa;
+               |SI FSalida < 0; |SAL; |FINSI;
+               aSerie = aAlfa - "SERIE:";
+               |SI aSerie ! aAlfa;
+                    aPos = (("00000" + FSalida) % -105) % 103;
+                    nPos = aPos + 6;
+                    nPos = nPos * 100 + 6;
+                    aIni = aAlfa % nPos;
+                    |SAL;
+               |FINSI;
+          |SIGUE;
+          |XCIERRA nHandle;
+     |FINSI;
+|FPRC
+
+|PROCESO Tgz;
+     |DFICE aPath
+     aFicTar = aPath + "informacion.tgz";
+
+     aOrg = aFicIni;
+     aDes1 = aPath + "ds.ini";
+     |COPIA_FICHERO aOrg, aDes1;
+
+     aOrg = aFicMen;
+     aDes2 = aPath + "ds.men";
+     |COPIA_FICHERO aOrg, aDes2;
+
+     aAlfa1 = aFicTar + " ds.men ds.ini aplicaciones.txt informacion.txt";
+     aAlfa2 = aPath;
+     |ATAR aAlfa1, aAlfa2;
+
+     |FBORRA aDes1;
+     |FBORRA aDes2;
+|FPRC;
+
+|PROCESO EnviaCorreo;
+     |DBASS aAlfa;
+     aFicIni = aAlfa + "ds.ini";
+     aFicMen = aAlfa + "ds.men";
+
+     aDSCorreo = "217.13.81.114";
+     aProxy = "asmtp.diagram.es";
+     aDirOri = "dstool@diagram.es";
+     aDirDes = aDirOri;
+     aTitulo = aIni + ":Informacion del sistema";
+     aTexto = "$$$$" + aFicInf;
+     |HAZ Tgz;
+     aFic = aFicTar;
+
+     |DSCORREO_ENVIA aDSCorreo, aProxy, aDirOri, aDirDes, aTitulo, aTexto, aFic;
+|FPRC;
+
+|PROCESO Imprime;
+     |SI aIP = "";
+          eaCone = "Local";
+     |SINO;
+          eaCone = "Cliente-Servidor";
+     |FINSI;
+     eaSistema = aSistema;
+     eaVerBas =  aVer;
+     eaLicencia = aIni;
+     eaVerOpe = aVerSO;
+
+     |DFICE aFicInf;
+     aFicInf = aFicInf + "informacion.txt";
+     Impresora = aFicInf;
+     |IMPRE -77;
+     |SI FSalida = 0;
+          |INFOR "dstool04";
+          |SI FSalida = 0;
+               |PRINT;
+               |PIEINF;
+               |FININF;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+|FPRC;
+
+|PROCESO Version;
+     |DFICE aFicVer;
+     aFicVer = aFicVer + "versionso.txt";
+
+     |SI aSistema = "ESDOS";
+          aAlfa = "ver > " + aFicVer;
+     |SINO;
+          aAlfa = "uname -a > " + aFicVer;
+     |FINSI;
+     |SYSTEM aAlfa;
+
+     |XABRE "", aFicVer, nHandle;
+     |SI FSalida ] 0;
+          |XLEE nHandle, 250, aVerSO;
+          |SI aSistema = "ESDOS";            || en Windows hay una linea
+               |XLEE nHandle, 250, aVerSO;   ||/en blanco antes
+          |FINSI;
+          |XCIERRA nHandle;
+     |FINSI;
+|FPRC;
+
+|PROCESO AveriguaINI;
+     aSerie = "";
+     |ESPECIFICA "SERIALIZACION", aSerie;
+     ||aSerie = aSerie % 1906;          ||Esto es el numero de ORO
+     aSerie = aSerie % 106;          ||Esto es el numero de ORO
+     nIni = aSerie;
+     aIni = ("000000" + nIni) % -106;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     ||SI #0#0 ! "SI"; |ACABA; |FINSI;
+
+     |HAZ Imprime;
+     |HAZ EnviaCorreo;
+|FPRC;
+
+|PROGRAMA;
+     |MENSA "0000Obteniendo la informacion del sistema";
+
+||     |HAZ AveriguaINI;  FALLA EL BASICO!!!
+     |HAZ BuscaIni;      ||lo hago leiendo el ini
+
+     |IP_REMOTO aIP;
+     |QBT aIP;
+
+     |QUE_SISTEMA aSistema;
+
+     |HAZ Version;
+
+     |VERSIONRTME aVer;
+
+     |DFICE aFicApli;
+     aFicApli = aFicApli + "aplicaciones.txt";
+     aAlfa = "dstool02;" + aFicApli;
+     |SUB_EJECUTA_NP aAlfa;
+
+
+     |SI aIP = "";
+          #0#1 = "Local";
+     |SINO;
+          #0#1 = "Cliente-Servidor";
+     |FINSI;
+     #0#2 = aSistema;
+     #0#4 = aVer;
+     #0#3 = aVerSO;
+     #0#5 = aIni;
+     #0#6 = enNumApli;
+
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+
+     |SI aFicApli ! ""; |FBORRA aFicApli; |FINSI;
+     |SI aFicVer ! ""; |FBORRA aFicVer; |FINSI;
+     |SI aFicInf ! ""; |FBORRA aFicInf; |FINSI;
+     |SI aFicTar ! ""; |FBORRA aFicTar; |FINSI;
+|FPRO;

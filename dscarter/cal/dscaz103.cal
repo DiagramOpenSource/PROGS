@@ -1,0 +1,242 @@
+|FICHEROS;
+   dscaz103 #0;
+
+   dscam003 #10;
+   dscam004 #11;
+   dscam067 #12;
+   dscam030 #30;
+
+   dscaw013 #50;
+
+   Referen@ #100;
+|FIN;
+
+|VARIABLES;
+   aAlfa = "";
+
+   &Divisa = ""; &nDeci_Div = 0; &nDeci_Base = 0;
+   &HayConta = 0;
+
+   &eaTipoOper   = "";
+   &enEmpCartera = 0;
+   &enEmpGestion = 0;
+   &eaSerie      = "";
+   &eaCliGest    = "";
+   &nImporte     = 0;
+
+   NumRemesa = 0;
+   NumLinea  = 0;
+   nHayAsto = 0;
+   nError = 0;
+   &enSwError = 0;
+   &eaDirConta  = "";
+   &eaEmpContab = "";
+   &efFecha = @;
+|FIN;
+
+|PROCESO CompruebaDocum;
+   |SI FSalida = 10;
+      aAlfa = "SELECT * FROM dscam003 INTO tm" + Usuario + ".def WHERE 69 == ' ' AND 47 == 'S' AND 14 == 'e'";
+      |SQL aAlfa;
+      |SI FSalida = 0;
+         |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "def/tm" + Usuario + ".mas";
+         |CARGA_DEF aAlfa, Referen@;
+         |SI FSalida = 0;
+            |DFICE aAlfa; |QBF aAlfa; |PATH_DAT #100 aAlfa;
+            |ABRE #Referen@;
+            |CONSULTA_CLAVE #1#Referen@;
+            |SI FSalida = 0;
+               #dscaz103#0 = #Referen@#40;
+               |PINTA #dscaz103#0; |ERROR;
+            |FINSI;
+            |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+            |ACABA;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI FSalida = 11;
+      Divisa = #dscam003#59; |HAZ TomaDecim;
+      |PUSHV 0501 2380;
+      #dscam003#40 = #dscaz103#0;
+      |LEE 000#dscam003.=;
+      |SI FSalida = 0;
+         |PINPA #0#dscam003; |PINDA #0#dscam003;
+         |PAUSA;
+      |FINSI;
+      |POPV; |ERROR; |ACABA;
+   |FINSI;
+
+   #dscam003#40 = #dscaz103#0;
+   |LEE 000#dscam003.=;
+   |SI FSalida = 0;
+      |SI #dscam003#69 ! " ";
+         |MENAV "    Esta entrega pertenece a gestion comercial. Debera darla de baja desde alli."; |ERROR;
+      |FINSI;
+      |SI #dscam003#14 ! "e"; |Y #dscam003#14 ! "p";
+         |MENAV "    Esta entrega tiene movimientos. No se puede dar de baja."; |ERROR;
+      |FINSI;
+   |SINO;
+      |MENAV "    No se encuentra el documento indicado"; |ERROR;
+   |FINSI;
+
+|FPRC;
+
+|PROCESO BajaLin;
+     NumRemesa = #dscam003#17;
+     NumLinea  = #dscam003#37;
+
+     enSwError = 0;
+     |ABRE #dscam067; |DDEFECTO #dscam067;
+     aAlfa = "CB";
+     |SI #dscam004#5 = "REM";
+          #dscam067#0  = "RM";
+          #dscam067#1  = NumRemesa;
+          #dscam067#2  = NumLinea;
+          |LEE 000#dscam067.];
+          |SI FSalida = 0; |Y #dscam067#0  = "RM";
+                    |Y #dscam067#1  = NumRemesa; |Y #dscam067#2  = NumLinea;
+               nHayAsto = 1;
+          |SINO;
+               nHayAsto = 0;
+          |FINSI;
+    |SINO;
+          |SI #dscam004#5 = "EMR";
+               nHayAsto = 0;
+               #dscam067#0  = "RM";
+               #dscam067#1  = NumRemesa;
+               #dscam067#2  = 1;
+               #dscam067#3  = "I";
+               |LEE 000#dscam067.];
+               |PARA; |SI FSalida = 0; |Y #dscam067#0  = "RM";
+                         |Y #dscam067#1  = NumRemesa; |HACIENDO;
+                    |SI #dscam067#3  = "I"; nHayAsto = 1; |SAL; |FINSI;
+                    |LEE 000#dscam067.s;
+               |SIGUE;
+          |SINO;
+               #dscam067#0  = "CB";
+               #dscam067#1 = #dscam004#17;
+               #dscam067#2 = #dscam004#3;
+               |LEE 000#dscam067.];
+               |SI FSalida = 0; |Y #dscam067#0 = "CB";
+                         |Y #dscam067#1 = #dscam004#17;
+                         |Y #dscam067#2 = #dscam004#3;
+                    nHayAsto = 1;
+               |SINO;
+                    nHayAsto = 0;
+               |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |SI nHayAsto = 1;
+          |ABRE #dscam030;
+          #dscam030#0 = #dscam067#10;
+          |LEE 000#dscam030.=;
+          |SI FSalida = 0;
+               eaDirConta  = #dscam030#6; |QBF eaDirConta;
+               eaEmpContab = (("00000" + #dscam067#8) % -105) + #dscam067#9;
+               efFecha     = #dscam067#5; |HAZ CompruebaEmpContable;
+          |FINSI;
+          |CIERRA #dscam030;
+     |FINSI;
+
+     |SI enSwError ! 0;
+          |SI enSwError = -1;
+               |MENAV "    Error. Empresa contable cerrada o inexistente. No se efectuara la operacion";
+               nError = 1;
+               |ACABA;
+         |FINSI;
+         |SI enSwError = -2;
+               |MENAV "    No se encuentra el fichero de asientos de contabilidad.";
+               nError = 1;
+               |ACABA;
+         |FINSI;
+         |SI enSwError = -3;
+               |MENAV "    Error. No se encuentra el fichero de empresas contables. No se efectuara la operacion";
+               nError = 1;
+               |ACABA;
+         |FINSI;
+         |SI enSwError = -4;
+               aAlfa = "    Error. La empresa contable tiene bloqueo con fecha " + efFecha + ". No se efectuara la operacion";
+               |MENAV aAlfa;
+               nError = 1;
+               |ACABA;
+         |FINSI;
+     |FINSI;
+
+
+   |DDEFECTO #dscam067;
+   #dscam067#0 = "CB";
+   #dscam067#1 = #dscam004#17;
+   #dscam067#2 = #dscam004#3;
+   |LEE 000#dscam067.];
+   |SI FSalida = 0; |Y #dscam067#0 = "CB"; |Y #dscam067#1 = #dscam004#17;
+    |Y #dscam067#2 = #dscam004#3; |Y HayConta = 1;
+      aAlfa = Usuario; |QBF aAlfa; aAlfa = "ac" + aAlfa;
+      |NOME_DAT #50 aAlfa;
+      |DELINDEX #dscaw013; |ABRE #dscaw013;
+      #dscaw013#15 = #dscam067#10; #dscaw013#0  = 1;
+      #dscaw013#13 = "dscam004";   #dscaw013#14 = 17;
+      #dscaw013#5 = #dscam004#17;  #dscaw013#6  = #dscam004#17;
+      #dscaw013#11 = "N";          #dscaw013#12 = 10;
+      |GRABA 020#dscaw013.n; |LIBERA #dscaw013;
+      #dscaw013#15 = #dscam067#10; #dscaw013#0  = 2;
+      #dscaw013#13 = "dscam004";   #dscaw013#14 = 3;
+      #dscaw013#5  = #dscam004#3;  #dscaw013#6  = #dscam004#3;
+      #dscaw013#11 = "N";          #dscaw013#12 = 3;
+      |GRABA 020#dscaw013.n; |LIBERA #dscaw013;
+      aAlfa = #dscam067#10; |QBF aAlfa;
+      aAlfa = "dscam033.tab;" + aAlfa + ",B";
+      |LIBERA #dscam003; |CIERRAT #dscam003;
+      |LIBERA #dscam004; |CIERRAT #dscam004;
+      |LIBERA #dscam067; |CIERRAT #dscam067;
+      |SUB_EJECUTA_NP aAlfa;
+      |CIERRA #dscaw013; |DELINDEX #dscaw013;
+      |ABRET #dscam003;  |LEE 101#dscam003.=;
+      |ABRET #dscam004;  |LEE 101#dscam004.=;
+      |ABRET #dscam067;  |LEE 000#dscam067.=;
+   |FINSI;
+
+   |SI #dscam004#5 = "RAC";
+      eaTipoOper = "-5";
+      enEmpCartera = -1;     enEmpGestion = #dscam003#46;
+      eaSerie = #dscam003#0; eaCliGest = #dscam003#32;
+      nImporte = #dscam004#8;
+      |HAZ BucleRiesgo;
+   |FINSI;
+
+   |BORRA 020#dscam004.a;
+|FPRC;
+
+|DEFBUCLE BajaLin;
+#dscam004#1;
+;
+#dscam003#40,  1;
+#dscam003#40, 99;
+be;
+NULL, BajaLin;
+|FIN;
+
+|PROGRAMA;
+   |HAZ Tipo8;
+
+   |ABRE #dscam003; |ABRE #dscam004; |ABRE #dscam067;
+
+   |CLS;
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      #dscam003#0 = #dscaz103#0;
+      |LEE 101#dscam003.=;
+      |SI FSalida = 0;
+         nError = 0;
+         |BUCLE BajaLin;
+         |SI nError = 0;
+               |BORRA 020#dscam003.a; |LIBERA #dscam003;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+   |CIERRA #dscam067; |CIERRA #dscam003; |CIERRA #dscam004;
+
+   |HAZ Tipo9;
+|FPRO;

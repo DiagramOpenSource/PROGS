@@ -1,0 +1,1217 @@
+|FICHEROS;
+     caxsecfi #0;    ||Pantalla importacion
+     caxsectl #1;    ||Fichero de control path
+     encow001 #2;    || ... fichero encoemp5 apuntes               star3
+     encow002 #18;   || ... fichero imptmp1  nuevos numeros de IVA star3
+
+     caenlace #92;   ||fichero de apuntes enlace gestion
+
+     :/modelos/def/dsmom030 #330;
+     calibros #10;
+     caivases #11;
+     caclipro #12;
+     cacuenta #13;
+     caivaasi #200;
+
+     RegNifs@ #1000;
+     Paises@  #1001;
+
+     camaasic #3;
+     camaniva #4;
+|FIN;
+
+|VARIABLES;
+
+  &enEmpImpor = 0;
+  &enBuscaDoc = 0;
+  &fichero    = "";
+  &directo    = "";
+  aFichero    = "";
+  aFicSec     = "";
+  aFic        = "";
+  aNombre     = "";
+
+  aAlfa      = "";
+  aAlfa1      = "";
+  aAlfa2      = "";
+  aAlfa3      = "";
+  aAlfa4      = "";
+  aAlfa5      = "";
+  alfa1       = "";
+  alfa2       = "";
+  handle      = 0;
+  nHandle     = 0;
+  canal       = "";
+  canal1      = "";
+  canal2      = "";
+  nSwAlguno   = 0;
+  nLibro      = 0;
+  aSerie      = "";
+  NumFactura  = 0;
+  &enNoModif  = 0;
+  nTope       = 0;
+  aC13        = "";
+  aC11        = "";
+
+  nLongCta    = 0;
+  nSwBasica   = 0;
+  nDiario     = 0;
+  fFecha      = @;
+  nDocum      = 0;
+  nDocumSec   = 0;
+  nApunte     = 0;
+  nNume1      = 0;
+  nNume2      = 0;
+  nPara1      = 0;
+  nIvas       = 0;
+  nSwCab      = 0;
+  nCopio = 0;
+  &eaOrigen  = "";
+  &eaDestino = "";
+  &enErrPas  = 0;
+  aNumFraAnt = "";
+  aNumFra    = "";
+
+  nDebug = 0;
+
+  aReferencia = "";
+  nCalc   = 0;
+  nCalc1  = 0;
+  nCamp25 = 0;
+  nCamp26 = 0;
+  nCamp27 = 0;
+  nCamp31 = 0;
+  nCamp32 = 0;
+  nCamp33 = 0;
+  nCamp50 = 0;
+  nCamp51 = 0;
+  nCamp54 = 0;
+  nCamp55 = 0;
+  nUltDoc = 0;
+  nConcepto = 0;
+  nSwPaso = 0;
+  aPasar  = "";
+  nSw     = 0;
+  &enDnDIARIO   = 0;
+  &enHnDIARIO   = 0;
+  &efDFechas    = @;
+  &efHFechas    = @;
+  &enDDocume    = 0;
+  &enHDocume    = 0;
+  &enBorraAu    = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ********************************************************************
+|CALCULO mira;|TIPO 6;        ||miro que exista el registro en el control
+     |ABRE #1;                ||de importacines
+     #1#0=#0#1;
+     |LEE 001#1=;
+     |SI FSalida = 0;
+          #0#2 = #1#1;
+          |PINTA #0#2;
+     |SINO;
+          |MENAV "0000No Existe el Control Path Importaciones";
+          |ERROR;
+     |FINSI;
+     |CIERRA #1;
+|FCAL;
+
+|CALCULO BuscaDoc;
+   |ABRE #3;
+   |SELECT #3#3;
+   |LEE 010#3u;
+   |SI FSalida = 0;
+       #0#9  = #3#2 + 1;
+   |SINO;
+       #0#9  = 1;
+   |FINSI;
+   |SELECT #1#3;
+   |CIERRA #3;
+|FCAL;
+
+|CALCULO Despues42; |TIPO 0;
+    aAlfa = #0#42;
+    |C_M #0#43,1,aAlfa;
+    |C_M #0#44,1,aAlfa;
+    |SI aAlfa = "N";
+        #0#43 = "N"; |PINTA #0#43;
+        #0#44 = "N"; |PINTA #0#44;
+    |FINSI;
+|FCAL;
+
+|CALCULO Despues43; |TIPO 0;
+    aAlfa = #0#43;
+    |C_M #0#44,1,aAlfa;
+    |SI aAlfa = "N";
+        #0#44 = "N"; |PINTA #0#44;
+    |FINSI;
+|FCAL;
+
+|| ----------------------------------------------------------------------
+|PROCESO BorroAntes;
+   enDnDIARIO = #4#7;     || diario
+   enHnDIARIO = #4#7;
+   efDFechas  = #4#8;     || fecha
+   efHFechas  = #4#8;
+   enDDocume  = #4#9;     || documento
+   enHDocume  = #4#9;     || documento
+   enBorraAu  = 3;
+
+   |SUB_EJECUTA_NP "caborasi;NOMEQUITESQUETECORTOLOSGUEVOS";
+
+|FPRC;
+
+
+|PROCESO VerFactura;
+
+   nSwPaso = 0;
+
+   |SI #0#6 = "N";
+
+       |SELECT #3#4;
+       #4#0 = #2#14;    || Libro
+       #4#2 = #2#17;    || Serie
+       #4#3 = #2#16;    || Numero Factura
+       |LEE 041#4=;
+       |SI FSalida = 0;
+
+           aAlfa  = ("00" + #4#0) % -102;
+           aAlfa1 = #4#2; |QBF aAlfa1; |SI aAlfa1 ! ""; aAlfa1 = aAlfa1 + "/"; |FINSI;
+           aAlfa2 = ("000000" + #4#3) % -106;
+           aAlfa1 = aAlfa + "-" + aAlfa1 + aAlfa2;
+           aAlfa  = "    "+ aPasar  + "La Factura " + aAlfa1 + " ya existe. (S) Pasar otra vez o (N) ignorar";
+           |CONFI aAlfa;
+           |SI FSalida = 0;
+               aPasar = "S";
+           |SINO;
+               aPasar = "N";
+           |FINSI;
+           |SI aPasar = "N";
+                nSwPaso = 1;
+           |SINO;
+               |HAZ BorroAntes;
+           |FINSI;
+       |FINSI;
+       |SELECT #1#4;
+   |FINSI;
+|FPRC;
+
+
+|PROCESO CargoDatos;
+ nSwCab = 1;
+ nIvas = 0;
+ #0#10 = #2#22; #0#15 = #2#25; #0#20 = #2#28; #0#25 = #2#31; #0#30 = #2#34;
+ #0#11 = #2#23; #0#16 = #2#26; #0#21 = #2#29; #0#26 = #2#32; #0#31 = #2#35;
+ #0#12 = #2#24; #0#17 = #2#27; #0#22 = #2#30; #0#27 = #2#33; #0#32 = #2#36;
+ #0#13 = #2#48; #0#18 = #2#50; #0#23 = #2#52; #0#28 = #2#54; #0#33 = #2#56;
+ #0#14 = #2#49; #0#19 = #2#51; #0#24 = #2#53; #0#29 = #2#55; #0#34 = #2#57;
+ |SI #0#10 ! 0; |O #0#15 ! 0; |O #0#25 ! 0; nIvas = nIvas + 1; |FINSI;
+ |SI #0#11 ! 0; |O #0#16 ! 0; |O #0#26 ! 0; nIvas = nIvas + 1; |FINSI;
+ |SI #0#12 ! 0; |O #0#17 ! 0; |O #0#27 ! 0; nIvas = nIvas + 1; |FINSI;
+ |SI #0#13 ! 0; |O #0#18 ! 0; |O #0#28 ! 0; nIvas = nIvas + 1; |FINSI;
+ |SI #0#14 ! 0; |O #0#19 ! 0; |O #0#29 ! 0; nIvas = nIvas + 1; |FINSI;
+ #0#35 = #2#38;  || inversion
+ #0#36 = #2#39;  || deducible
+ #0#37 = #2#41;  || fecha factura
+ #0#38 = #2#58;  || DNI
+ #0#39 = #2#59;  || Referencia
+ #0#40 = #2#60;  || Cuenta Analitica
+ alfa1 = #2#15 % 0110; |QBF alfa1;
+ |SI alfa1 ! "";
+    #0#46 = alfa1;  || Fecha Operacion
+ |FINSI;
+
+ |HAZ VerFactura;
+
+|FPRC;
+
+|PROCESO DevuelvoDatos;
+ #2#22 = #0#10; #2#25 = #0#15; #2#28 = #0#20; #2#31 = #0#25; #2#34 = #0#30;
+ #2#23 = #0#11; #2#26 = #0#16; #2#29 = #0#21; #2#32 = #0#26; #2#35 = #0#31;
+ #2#24 = #0#12; #2#27 = #0#17; #2#30 = #0#22; #2#33 = #0#27; #2#36 = #0#32;
+ #2#48 = #0#13; #2#50 = #0#18; #2#52 = #0#23; #2#54 = #0#28; #2#56 = #0#33;
+ #2#49 = #0#14; #2#51 = #0#19; #2#53 = #0#24; #2#55 = #0#29; #2#57 = #0#34;
+ |SI #0#35 > " ";                    #2#38 = #0#35; |FINSI; || inversion
+ |SI #0#36 > " ";                    #2#39 = #0#36; |FINSI; || deducible
+ |SI #0#37 > "01.01.0000";           #2#41 = #0#37; |FINSI; || fecha factura
+ |SI #0#38 > "               ";      #2#58 = #0#38; |FINSI; || DNI
+ |SI #0#39 > "                    "; #2#59 = #0#39; |FINSI; || Referencia
+ |SI #0#40 > "       ";              #2#60 = #0#40; |FINSI; || Cuenta Analitica
+ |SI #0#46 > "01.01.0000";           #2#15 = #0#46; |FINSI; || fecha operacion
+|FPRC;
+
+|| ----------------------------------------------------------------------
+|PROCESO PasaEnlace;
+
+ |SI #2#0 ! nDiario; |O fFecha ! #2#1; |O nDocumSec ! #2#2;
+     nSwCab     = 0;
+     nDiario    = #2#0;
+     fFecha     = #2#1;
+     nDocumSec  = #2#2;
+     nApunte    = -9;
+     |SI #0#9 = 0;
+         nDocum = nDocumSec;
+     |SINO;
+         nDocum = #0#9;
+         #0#9   = #0#9 + 1;
+     |FINSI;
+
+     nSwPaso = 0;
+     nIvas   = 0;
+     |PDEFECTO #0,10,41;
+     #0#46   = "01.01.0000";
+     aAlfa1 = #2#5; |QBF aAlfa1;
+     aAlfa2 = #2#6; |QBF aAlfa2;
+     |SI aAlfa1 = ""; |Y aAlfa2 = "";
+         |SI #2#13 = "R";  |O #2#13 = "S";
+             |HAZ CargoDatos;
+             |ACABA;
+         |FINSI;
+     |SINO;
+         |SI #2#13 = "R";  |O #2#13 = "S";
+             |HAZ VerFactura;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+
+ |SI nSwPaso = 1; |ACABA; |FINSI;
+
+ |SI #2#13 ! "R"; |Y #2#13 ! "S";   ||Este Apunte no es de IVA
+     |HAZ GraboLinea;
+     |ACABA;
+ |FINSI;
+
+ |SI nSwCab = 1; |HAZ DevuelvoDatos; |FINSI;
+
+ |SI #2#42 = " "; |O #2#42 = "F";   || Linea del total factura
+     |HAZ GraboLinea;
+ |SINO;
+     |SI nIvas [ 1;
+         || #2#43 = 1;    || Numero
+         |HAZ GraboLinea;
+     |SINO;
+         |SI #2#43 = 0;
+             |PARA nPara1 = 1; |SI nPara1 [ nIvas; |HACIENDO nPara1 = nPara1 + 1;
+                   #2#43 = nPara1;
+                   |SI #2#42 = "B"; nNume2 = nPara1 + 9;  |FINSI;
+                   |SI #2#42 = "I"; nNume2 = nPara1 + 19; |FINSI;
+                   |SI #2#42 = "R"; nNume2 = nPara1 + 29; |FINSI;
+                   #2#12 = #0nNume2;
+                   |HAZ GraboLinea;
+             |SIGUE;
+         |SINO;
+             |HAZ GraboLinea;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+
+|FPRC;
+
+|PROCESO GraboLinea;
+
+ nApunte = nApunte + 10;
+ |HAZ Graba92;
+ |SI #2#11 = "D";
+     eaCuenta = #2#5;
+ |SINO;
+     eaCuenta = #2#6;
+ |FINSI;
+ #92#4 = eaCuenta;
+ |HAZ SacaNivel;
+ #92#5 = enNivel;
+ #92#6 = #2#9;      || Concepto
+ #92#7 = #2#10;     || Descripcion
+ #92#8 = #2#11;     || Signo
+ #92#9 = #2#12;     || Importe
+
+ |SI #2#14 = 0;
+     |SI #2#13 = "R"; #2#14 = #200#3;  |FINSI;
+     |SI #2#13 = "S"; #2#14 = #200#29; |FINSI;
+ |FINSI;
+ #92#10 = #2#13;    || Soportado/Repercutido
+ #92#11 = #2#14;    || Libro
+ #92#12 = #2#17;    || Serie
+ #92#13 = #2#16;    || Numero Factura
+ #92#14 = 0;        || Recibo 0
+
+ #92#15 = #2#40;    || Departamento
+ #92#19 = Usuario;  || Usuario
+
+ #92#26 = #2#42;    || Tipo Acumulador
+ #92#27 = #2#43;    || Numero
+
+ #92#45 = #2#59;
+ aAlfa  = #2#15 % 110; |QBF aAlfa;
+ |SI aAlfa ! "";
+     #92#51 = aAlfa;
+     |SI #92#51 < "01.01.2000"; |O #92#51 > "31.12.2099"; #92#51 = "01.01.0000"; |FINSI;
+ |FINSI;
+
+ |SI #92#10 ! "R"; |Y #92#10 ! "S";
+     #92#11 = 0;
+     #92#12 = "";
+     #92#13 = 0;
+     #92#26 = "";
+     #92#27 = 0;
+ |FINSI;
+
+ aAlfa1 = #92#26; aAlfa1 = aAlfa1 > " ";
+ |SI aAlfa1 = "B"; |O aAlfa1 = "I"; |O aAlfa1 = "R";
+     |SI #92#27 [ 1; nNume1 = 25; |FINSI;
+     |SI #92#27 = 2; nNume1 = 26; |FINSI;
+     |SI #92#27 = 3; nNume1 = 27; |FINSI;
+     |SI #92#27 = 4; nNume1 = 50; |FINSI;
+     |SI #92#27 = 5; nNume1 = 51; |FINSI;
+     #92#28 = #2nNume1;
+
+     |SI #92#27 [ 1; nNume1 = 31; |FINSI;
+     |SI #92#27 = 2; nNume1 = 32; |FINSI;
+     |SI #92#27 = 3; nNume1 = 33; |FINSI;
+     |SI #92#27 = 4; nNume1 = 54; |FINSI;
+     |SI #92#27 = 5; nNume1 = 55; |FINSI;
+     #92#33 = #2nNume1;
+ |FINSI;
+
+ #92#29 = #2#41;  || Fecha Factura
+ |SI #92#10 = "R"; |O #92#10 = "S";
+     |SI #2#41 [ "01.01.1000";
+         #92#29 = #2#1;  || Fecha Asiento
+     |FINSI;
+ |FINSI;
+ #92#31 = #2#39;  || Deducible
+ #92#32 = #2#38;  || Inversion
+
+ #92#44 = #2#58; || NIF
+ |GRABA 020#92a;
+
+ |SI nUltDoc < nDocum; nUltDoc = nDocum; |FINSI;
+|FPRC;
+
+|PROCESO Graba92;
+
+ #92#0 = nDiario;   || Diaro
+ #92#1 = fFecha;    || Fecha
+ #92#2 = nDocum;    || Documento
+ #92#3 = nApunte;
+ #92#37 = enEmpresa;
+ #92#38 = enPeriodo;
+ |LEE 001#92=;
+ |SI FSalida ! 0;
+     |DDEFECTO #92;
+     #92#0 = nDiario;   || Diaro
+     #92#1 = fFecha;    || Fecha
+     #92#2 = nDocum;    || Documento
+     #92#3 = nApunte;
+     #92#37 = enEmpresa;
+     #92#38 = enPeriodo;
+     |GRABA 020#92c;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE PasaEnlace;
+ #2#1;
+ ;
+ 00, "01.01.0000", 000000, 00000;
+ 99, "31.12.2999", 999999, 99999;
+ ;
+ NULL, PasaEnlace;
+|FIN;
+
+|PROCESO CambioConcepto;
+
+ |ABRE #330;
+ #330#0 = nConcepto;
+ |LEE 001#330=;
+ |SI FSalida ! 0; |O #330#4 ! "S";
+     |SI #2#13 = "R"; #2#9 = #200#5;  |FINSI;
+     |SI #2#13 = "S"; #2#9 = #200#31; |FINSI;
+ |FINSI;
+ |CIERRA #330;
+|FPRC;
+
+|PROCESO Negativo;
+
+   aAlfa3 = alfa2 - "-";
+   |SI aAlfa3 ! alfa2;
+      aAlfa3 = alfa2 % 0;
+      nNume1 = aAlfa3;
+
+      aAlfa3 = "";
+      nSw    = 0;
+      |PARA nNume2 = 1; |SI nNume2 [ nNume1; |HACIENDO nNume2 = nNume2 + 1;
+            aAlfa4 = nNume2;
+            aAlfa4 = aAlfa4 + "01";
+            aAlfa4 = alfa2 % aAlfa4;
+            |SI aAlfa4 = "-"; nSw = 1; |FINSI;
+            |SI nSw = 1;
+                aAlfa3 = aAlfa3 + aAlfa4;
+            |FINSI;
+      |SIGUE;
+      nNume1 = aAlfa3;
+      alfa2 = nNume1;
+  |FINSI;
+|FPRC;
+
+|PROCESO sep_apunte;
+  |DDEFECTO #2;
+  alfa2 = canal % 102;
+  #2#0 = alfa2;             || diario
+  alfa2 = canal % 310;
+  #2#1 = alfa2;             || fecha
+  alfa2 = canal % 1306;
+  #2#2 = alfa2;             || documento
+  alfa2 = canal % 1906;
+  #2#3 = alfa2;             || asiento
+  alfa2 = canal % 2504;
+  #2#4 = alfa2;             || apunte
+  alfa2 = canal % 2912;
+  #2#5 = alfa2;             || cuenta debe
+  alfa2 = canal % 4112;
+  #2#6 = alfa2;             || cuenta haber
+  alfa2 = canal % 5301;
+  #2#7 = alfa2;             || nivel debe
+  alfa2 = canal % 5401;
+  #2#8 = alfa2;             || nivel haber
+  alfa2 = canal % 5503;
+  #2#9 = alfa2;             || concepto
+  alfa2 = canal % 5830;
+  #2#10 = alfa2;            || descripcion
+  alfa2 = canal % 8801;
+  #2#11 = alfa2;            || signo
+
+  alfa2 = canal % 8911;     |HAZ Negativo;
+  #2#12 = alfa2;            || importe
+  alfa2 = canal % 10001;
+  #2#13 = alfa2;            || iva sop./rep.
+  alfa2 = canal % 10102;
+  #2#14 = alfa2;            || libro  (el campo #2#15 no hace falta)
+  alfa2 = canal % 10306; aNumFra = alfa2;
+  #2#16 = alfa2;            || factura/orden
+  alfa2 = canal % 10902;
+  #2#17 = alfa2;            || serie
+
+  |SI #2#13 = "S"; || ABDON 17/12/2009 Tiquet 004008/00004
+     |SI #0#48 = "S";
+         aAlfa5 = canal % 11430;
+     |SINO;
+         aAlfa5 = "S/FRA. " + #2#17 + "/" + (("000000" + aNumFra) % -106);
+     |FINSI;
+     #2#59 = aAlfa5;
+     |SI aNumFraAnt ! aNumFra;
+        aNumFraAnt = aNumFra;
+        aTipoIVA = #2#13;
+        nLibro   = #2#14;
+        aSerie   = #2#17;
+        |HAZ BuscaNumero;
+     |SINO;
+        #2#16 = NumFactura;
+     |FINSI;
+  |FINSI;
+  |SI #2#13 = "R"; || ABDON 17/12/2009 Tiquet 004008/00004
+     |SI #0#6 = "S";
+        |SI aNumFraAnt ! #2#16;
+           aNumFraAnt = #2#16;
+           aTipoIVA = #2#13;
+           nLibro   = #2#14;
+           aSerie   = #2#17;
+           |HAZ BuscaNumero;
+        |SINO;
+           #2#16 = NumFactura;
+        |FINSI;
+     |FINSI;
+  |FINSI;
+  alfa2 = canal % 11103;
+  #2#18 = alfa2;            || concepto iva
+  alfa2 = canal % 11430;
+  #2#19 = alfa2;            || descripcion iva
+  alfa2 = canal % 14412;
+  #2#20 = alfa2;            || cuenta cliente/proveedor
+  alfa2 = canal % 15601;
+  #2#21 = alfa2;            || nivel cuenta
+  alfa2 = canal % 15710;    |HAZ Negativo;
+  #2#22 = alfa2;            || base imp. 1
+  alfa2 = canal % 16710;    |HAZ Negativo;
+  #2#23 = alfa2;            || base imp. 2
+  alfa2 = canal % 17710;    |HAZ Negativo;
+  #2#24 = alfa2;            || base imp. 3
+  alfa2 = canal % 18705;
+  #2#25 = alfa2;            || (%) iva 1
+  alfa2 = canal % 19205;
+  #2#26 = alfa2;            || (%) iva 2
+  alfa2 = canal % 19705;
+  #2#27 = alfa2;            || (%) iva 3
+
+  alfa2 = canal1 % 110;     |HAZ Negativo;
+  #2#28 = alfa2;            || cuota iva 1
+  alfa2 = canal1 % 1110;    |HAZ Negativo;
+  #2#29 = alfa2;            || cuota iva 2
+  alfa2 = canal1 % 2110;    |HAZ Negativo;
+  #2#30 = alfa2;            || cuota iva 3
+
+  alfa2 = canal1 % 3105;
+  #2#31 = alfa2;            || (%) rec 1
+  alfa2 = canal1 % 3605;
+  #2#32 = alfa2;            || (%) rec 2
+  alfa2 = canal1 % 4105;
+  #2#33 = alfa2;            || (%) rec 3
+  alfa2 = canal1 % 4610;    |HAZ Negativo;
+  #2#34 = alfa2;            || cuota rec 1
+  alfa2 = canal1 % 5610;    |HAZ Negativo;
+  #2#35 = alfa2;            || cuota rec 2
+  alfa2 = canal1 % 6610;    |HAZ Negativo;
+  #2#36 = alfa2;            || cuota rec 3
+
+  alfa2 = canal1 % 7610;    |HAZ Negativo;
+  #2#37 = alfa2;            || total factura
+  alfa2 = canal1 % 8601;
+  #2#38 = alfa2;            || inversion
+  alfa2 = canal1 % 8701;
+  #2#39 = alfa2;            || deducible
+  alfa2 = canal1 % 8802;
+  #2#40 = alfa2;            || departamento
+  alfa2 = canal1 % 9010;
+  #2#41 = alfa2;            || fecha iva
+  alfa2 = canal1 % 10001;
+  #2#42 = alfa2;            || tipo acumulador iva
+  alfa2 = canal1 % 10101;
+  #2#43 = alfa2;            || nro. acumulador iva
+  alfa2 = canal1 % 10202;
+  #2#44 = alfa2;            || periodo
+  alfa2 = canal1 % 10403;
+  #2#45 = alfa2;            || empresa contable
+  alfa2 = canal1 % 10701;
+  #2#46 = alfa2;            || periodo     (el campo #2#47 no hace falta)
+
+     ||A partir de aqui cargo las 2 bases restantes
+
+  alfa2 = canal1 % 10810;  |HAZ Negativo;
+  #2#48 = alfa2;           ||base -4-
+  alfa2 = canal1 % 11810;  |HAZ Negativo;
+  #2#49 = alfa2;           ||base -5-
+
+  alfa2 = canal1 % 12805;  ||Iva -4-
+  #2#50 = alfa2;
+  alfa2 = canal1 % 13305;  ||Iva -5-
+  #2#51 = alfa2;
+
+  alfa2 = canal1 % 13810;  |HAZ Negativo;
+  #2#52 = alfa2;           ||cuota -4-
+
+  alfa2 = canal1 % 14810;  |HAZ Negativo;
+  #2#53 = alfa2;           ||cuota -5-
+
+  alfa2 = canal1 % 15805;  ||Rec -4-
+  #2#54 = alfa2;
+  alfa2 = canal1 % 16305;  ||Rec -5-
+  #2#55 = alfa2;
+  alfa2 = canal1 % 16809;  |HAZ Negativo;
+  #2#56 = alfa2;           ||Cuota rec -4-
+  alfa2 = canal1 % 17709;  |HAZ Negativo;
+  #2#57 = alfa2;           ||Cuota rec -5-
+
+  |SI #caxsecfi#45 = "S";
+      alfa2 = canal2 % 0130;  ||Fecha Operacion
+      #2#15 = alfa2;
+      aReferencia = #2#15 % 1120; |QBF aReferencia;
+      |SI aReferencia ! "";
+          #2#59 = aReferencia;
+      |FINSI;
+      |SI #0#48 = "S"; |Y #2#13 = "S";
+          #2#59 = #2#19;
+      |FINSI;
+  |FINSI;
+
+  |SI #2#2 ! nDocum;
+      nCamp25 = 0; nCamp26 = 0;
+      nCamp27 = 0; nCamp31 = 0; nCamp32 = 0;
+      nCamp33 = 0; nCamp50 = 0; nCamp51 = 0;
+      nCamp54 = 0; nCamp55 = 0;
+      nDocum = #2#2;
+      |SI #2#13 = "R"; |O #2#13 = "S";
+          nCamp25 = #2#25;
+          nCamp26 = #2#26;
+          nCamp27 = #2#27;
+          nCamp31 = #2#31;
+          nCamp32 = #2#32;
+          nCamp33 = #2#33;
+          nCamp50 = #2#50;
+          nCamp51 = #2#51;
+          nCamp54 = #2#54;
+          nCamp55 = #2#55;
+     |FINSI;
+  |FINSI;
+
+  |SI #2#42 = " ";
+      |SI #2#13 = "R"; |O #2#13 = "S";
+          eaCuenta = ""; || #2#42 = "F";
+          aAlfa1 = #2#5; |QBF aAlfa1; |SI aAlfa1 ! ""; eaCuenta = aAlfa1; |FINSI;
+          aAlfa2 = #2#6; |QBF aAlfa2; |SI aAlfa2 ! ""; eaCuenta = aAlfa2; |FINSI;
+          |SI eaCuenta ! "";
+              aAlfa1 = eaCuenta % 102;
+              |SI aAlfa1 = "47";
+                  #2#42 = "I";
+              |SINO;
+                  aAlfa1 = eaCuenta % 101;
+                  |SI aAlfa1 = "4"; #2#42 = "F"; |FINSI;
+                  |SI aAlfa1 = "6"; |O aAlfa1 = "7"; #2#42 = "B"; |FINSI;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  aAlfa1 = #2#5; |QBF aAlfa1;
+  aAlfa2 = #2#6; |QBF aAlfa2;
+  |SI aAlfa1 = ""; |Y aAlfa2 = "";
+      |SI #2#4 > 1; #2#4 = 0; |FINSI;
+||     |ACABA;   ||No hay cuenta Debe ni cuenta Haber, cabecera factura
+  |FINSI;
+
+  |SI #2#13 = "R"; |O #2#13 = "S";
+      nConcepto = #2#9; |HAZ CambioConcepto;
+      |SI #2#25 = 0; |Y #2#26 = 0; |Y #2#27 = 0; |Y #2#50 = 0;
+          |Y #2#51 = 0;
+          #2#25 = nCamp25;
+          #2#26 = nCamp26;
+          #2#27 = nCamp27;
+          #2#31 = nCamp31;
+          #2#50 = nCamp50;
+          #2#51 = nCamp51;
+      |FINSI;
+      |SI #2#31 = 0; |Y #2#32 = 0; |Y #2#33 = 0; |Y #2#54 = 0;
+          |Y #2#54 = 0;
+          #2#31 = nCamp31;
+          #2#32 = nCamp32;
+          #2#33 = nCamp33;
+          #2#54 = nCamp54;
+          #2#55 = nCamp55;
+     |FINSI;
+  |SINO;
+     #2#37 = 0; || total factura
+  |FINSI;
+
+  |SI #2#22 ! 0; |O #2#23 ! 0; |O #2#24 ! 0;
+                 |O #2#48 ! 0; |O #2#49 ! 0;        || si es asiento de iva
+/*
+      aAlfa5 = "    " + #2#13 + "/" + #2#14 + "/" + #2#17 + "/" + #2#16 + "/" + #2#59; |QBF aAlfa5;
+      aAlfa5 = aAlfa5 + "/" + #2#22 + "/" + #2#23 + "/" + #2#24 + "/" + #2#48 + "/" + #2#49;
+      |MENAV aAlfa5;
+*/
+      |ABRE #18;
+      #18#0 = #2#13;        || tipo de iva
+      #18#1 = #2#14;        || libro
+      #18#2 = #2#16;        || fra./orden
+      #18#3 = #2#17;        || serie
+      |LEE 000#18.=;
+      |SI FSalida = 0;
+         |SI #18#4 ! aNumFraAnt;   || fra./orden segun historico
+            aAlfa = "    ATENCION!!! Registro de IVA duplicado en Secuencial ...";
+            aAlfa = aAlfa + "(" + FSalida + ") [";
+            |SI #2#13 = "S";
+               aAlfa = aAlfa + #2#59; |QBF aAlfa;
+               aAlfa = aAlfa + "]";
+            |SINO;
+               aAlfa = aAlfa + (("00" + #2#14) % -102) + "/" + #2#17 + "/" + (("000000" + #2#16) % -106)+ "]";
+            |FINSI;
+            |MENAV aAlfa;
+         |FINSI;
+      |SINO;
+         #18#0 = #2#13;        || tipo de iva
+         #18#1 = #2#14;        || libro
+         #18#2 = #2#16;        || fra./orden
+         #18#3 = #2#17;        || serie
+         #18#4 = aNumFraAnt;   || fra./orden segun historico
+         |GRABA 000#18n;
+      |FINSI;
+      |CIERRA #18;
+  |FINSI;
+  |GRABA 020#2n;
+  nSwAlguno = 1;
+|FPRC;
+
+|PROCESO SeparaCliPro;
+   aAlfa = canal1 % 11101;
+   #caclipro#23 = aAlfa;
+   aAlfa = canal  % 19312;
+   #caclipro#10 = aAlfa;
+   |LEE 101#caclipro.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #caclipro;
+      aAlfa = canal1 % 11101; #caclipro#23 = aAlfa;
+      aAlfa = canal  % 19312; #caclipro#10 = aAlfa;
+      |GRABA 020#caclipro.b;
+   |SINO;
+      aAlfa  = #caclipro#1; |QBF aAlfa;
+      aAlfa4 = #caclipro#2; |QBF aAlfa4;
+      |SI aAlfa ! ""; |O aAlfa4 ! "";
+         |SI #0#8 = "N"; |LIBERA #caclipro; |VETE Cuenta; |FINSI;
+      |FINSI;
+   |FINSI;
+   aAlfa = canal  % 0112;  #caclipro#0  = aAlfa;
+   aAlfa = canal  % 1340;  #caclipro#1  = aAlfa;
+   || aAlfa = canal  % 5350;  #caclipro#2  = aAlfa;
+
+   aAlfa = ""; aAlfa4 = "";
+   aAlfa4 = canal % 5302;  || SG
+   aAlfa  = aAlfa + aAlfa4;
+   aAlfa4 = canal % 5535;  || Domicilio
+   aAlfa  = aAlfa + aAlfa4;
+   aAlfa4 = canal % 9004;  || Numero
+   |SI aAlfa4 ! ""; aAlfa = aAlfa + ", "; |FINSI;
+   aAlfa  = aAlfa + aAlfa4;
+   aAlfa4 = canal % 9403;  || Escalera
+   |SI aAlfa4 ! ""; aAlfa = aAlfa + ", "; |FINSI;
+   aAlfa  = aAlfa + aAlfa4;
+   aAlfa4 = canal % 9703; || Piso
+   |SI aAlfa4 ! ""; aAlfa = aAlfa + ", "; |FINSI;
+   aAlfa  = aAlfa + aAlfa4;
+   aAlfa4 = canal % 10003;|| Puerta
+   |SI aAlfa4 ! ""; aAlfa = aAlfa + ", "; |FINSI;
+   aAlfa  = aAlfa + aAlfa4;
+                            #caclipro#2  = aAlfa;
+   aAlfa = canal  % 10302;  #caclipro#3  = aAlfa;
+   aAlfa = canal  % 10503;  #caclipro#4  = aAlfa;
+   aAlfa = canal  % 10815;  #caclipro#5  = aAlfa;
+   aAlfa = canal  % 12325;  #caclipro#6  = aAlfa;
+   aAlfa = canal  % 14815;  #caclipro#7  = aAlfa;
+   aAlfa = canal  % 16315;  #caclipro#8  = aAlfa;
+   aAlfa = canal  % 17815;  #caclipro#9  = aAlfa;
+   || aAlfa = canal  % 19312;  #caclipro#10 = aAlfa;
+   aAlfa = canal  % 20501;  #caclipro#11 = aAlfa;
+   aAlfa = canal  % 20601;  #caclipro#12 = aAlfa;
+   aAlfa = canal  % 20730;  #caclipro#13 = aAlfa;
+
+   aAlfa = canal1  % 0130;  #caclipro#14 = aAlfa;
+   aAlfa = canal1  % 3102;  #caclipro#15 = aAlfa;
+   aAlfa = canal1  % 3303;  #caclipro#16 = aAlfa;
+   aAlfa = canal1  % 3620;  #caclipro#17 = aAlfa;
+   aAlfa = canal1  % 5615;  #caclipro#18 = aAlfa;
+   aAlfa = canal1  % 7125;  #caclipro#19 = aAlfa;
+   aAlfa = canal1  % 9602;  #caclipro#20 = aAlfa;
+   aAlfa = canal1  % 9812;  #caclipro#21 = aAlfa;
+   aAlfa = canal1  % 11001; #caclipro#22 = aAlfa;
+   aAlfa = canal1  % 11101; #caclipro#23 = aAlfa;
+   aAlfa = canal1  % 11203; #caclipro#24 = aAlfa;
+   aAlfa = canal1  % 11505; #caclipro#25 = aAlfa;
+   aAlfa = canal1  % 12005; #caclipro#26 = aAlfa;
+   aAlfa = canal1  % 12506; #caclipro#27 = aAlfa;
+   aAlfa = canal1  % 13103; #caclipro#28 = aAlfa;
+   aAlfa = canal1  % 13404; #caclipro#29 = aAlfa;
+   aAlfa = canal1  % 13804; #caclipro#30 = aAlfa;
+   aAlfa = canal1  % 14202; #caclipro#31 = aAlfa;
+   aAlfa = canal1  % 14410; #caclipro#32 = aAlfa;
+   aAlfa = canal1  % 15405; #caclipro#33 = aAlfa;
+   aAlfa = canal1  % 15902; #caclipro#34 = aAlfa;
+   aAlfa = canal1  % 16102; #caclipro#35 = aAlfa;
+   aAlfa = canal1  % 16302; #caclipro#36 = aAlfa;
+   aAlfa = canal1  % 16501; #caclipro#37 = aAlfa;
+   aAlfa = canal1  % 16608; #caclipro#38 = aAlfa;
+   aAlfa = canal1  % 17411; #caclipro#39 = aAlfa;
+   aAlfa = canal1  % 18534; #caclipro#40 = aAlfa;
+   aAlfa = canal1  % 21911; #caclipro#41 = aAlfa;
+   aAlfa = canal1  % 23002; #caclipro#42 = aAlfa;
+
+   aAlfa = canal2  % 0110;  #caclipro#43 = aAlfa;
+   aAlfa = canal2  % 1150;  #caclipro#44 = aAlfa;
+   aAlfa = canal2  % 6102;  #caclipro#45 = aAlfa;
+   aAlfa = canal2  % 6303;  #caclipro#46 = aAlfa;
+   aAlfa = canal2  % 6615;  #caclipro#47 = aAlfa;
+   aAlfa = canal2  % 8125;  #caclipro#48 = aAlfa;
+   aAlfa = canal2  % 10606; #caclipro#49 = aAlfa;
+   aAlfa = canal2  % 11205; #caclipro#50 = aAlfa;
+   |SI #0#42 ! "N";
+       aAlfa = canal2  % 11780; #caclipro#51 = aAlfa;
+       |SI #0#43 ! "N";
+           aAlfa = canal2  % 19703; #caclipro#52 = aAlfa;
+           |SI #0#44 ! "N";
+               aAlfa = canal2  % 20010; #caclipro#53 = aAlfa;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+   |GRABA 020#caclipro.a; |LIBERA #caclipro;
+
+|ET Cuenta;
+   aAlfa = canal % 19312;   #cacuenta#0 = aAlfa;
+   |LEE 000#cacuenta.=;
+   |SI FSalida ! 0;
+      nCalc1 = 0;
+      |PARA nCalc = 19; |SI nCalc ] 14; |HACIENDO nCalc = nCalc + 1;
+         |SI #48#nCalc# ! 0;
+            nCalc1 = #48#nCalc#;
+            nCalc1 = nCalc1 + 100;
+            aAlfa = canal % 19312; |QBF aAlfa;
+            aAlfa = aAlfa % nCalc1;
+            #cacuenta#0 = aAlfa;
+            |LEE 000#cacuenta.=;
+            |SI FSalida = 0;
+               aAlfa = canal % 19312;   #cacuenta#0 = aAlfa;
+               aAlfa = canal % 1340;    #cacuenta#2 = aAlfa;
+               |GRABA 020#cacuenta.n;
+               nCalc1 = -1; |SAL;
+            |FINSI;
+         |FINSI;
+      |SIGUE;
+      |SI nCalc1 ! -1;
+      |FINSI;
+   |FINSI;
+
+   aAlfa = canal % 17815; #RegNifs@#0 = aAlfa;
+   |LEE 000#RegNifs@.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #RegNifs@;
+      aAlfa = canal % 17815; #RegNifs@#0  = aAlfa;
+      aAlfa = canal % 1340;  #RegNifs@#1  = aAlfa;
+      aAlfa = canal % 5535;  #RegNifs@#2  = aAlfa;
+      aAlfa = canal % 9004;  #RegNifs@#3  = aAlfa;
+      aAlfa = canal % 10302; #RegNifs@#4  = aAlfa;
+      aAlfa = canal % 10503; #RegNifs@#5  = aAlfa;
+      aAlfa = canal % 12325; #RegNifs@#6  = aAlfa;
+      aAlfa = canal % 10815; #RegNifs@#7  = aAlfa;
+      aAlfa = canal % 14815; #RegNifs@#8  = aAlfa;
+      aAlfa = canal % 5302;  #RegNifs@#9  = aAlfa;
+      aAlfa = canal % 9703;  #RegNifs@#10 = aAlfa;
+      aAlfa = canal % 10003; #RegNifs@#11 = aAlfa;
+      aAlfa = canal1 % 11203;#RegNifs@#12 = aAlfa;
+
+      |SI nSwBasica = 1;
+         #Paises@#0 = #RegNifs@#12;
+         |LEE 000#Paises@.=;
+         |SI FSalida ! 0; |DDEFECTO #Paises@; |FINSI;
+         #RegNifs@#13 = #Paises@#1;
+      |FINSI;
+      |SI nSwBasica = 0;
+         #Paises@#0 = #RegNifs@#4;
+         #Paises@#1 = #RegNifs@#5;
+         |LEE 000#Paises@.=;
+         |SI FSalida ! 0; |DDEFECTO #Paises@; |FINSI;
+         |SI #RegNifs@#12 ! #Paises@#6;
+            #RegNifs@#12 = #Paises@#6;
+         |FINSI;
+         #RegNifs@#13 = #Paises@#7;
+         #RegNifs@#14 = #Paises@#4;
+         #RegNifs@#15 = #Paises@#5;
+      |FINSI;
+
+      aAlfa = canal % 9403;  #RegNifs@#16 = aAlfa;
+      |GRABA 020#RegNifs@.n;
+   |FINSI;
+|FPRC;
+
+|PROCESO SecCliPro;
+  |XABRE "UB", aFic, handle;
+  |SI FSalida < 0;
+     |XABRE "CUB", aFic, handle;
+  |FINSI;
+
+  nSwBasica = -1;
+  |SI FSalida < 0;
+     aAlfa = "0000Error al abrir:" + aFic;
+     aAlfa = "0000Error al abrir el Fichero de Clientes/Proveedores";
+     |MENAV aAlfa;
+  |SINO;
+     |DBASS aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + "basica/def/agim0003.mas";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;
+        |CARGA_DEF aAlfa, RegNifs@;
+        |SI FSalida = 0;
+           |DBASS aAlfa; |QBF aAlfa;
+           aAlfa = aAlfa + "basica/def/agim0016.mas";
+           |CARGA_DEF aAlfa, Paises@;
+
+           |DBASS aAlfa; |QBF aAlfa;
+           aAlfa = aAlfa + "basica/fich/";
+           |PATH_DAT #RegNifs@#aAlfa#; |PATH_DAT #Paises@#aAlfa#;
+           |ABRE #RegNifs@; |ABRE #Paises@;
+           nSwBasica = 1;
+        |FINSI;
+     |SINO;
+        |DBASS aAlfa; |QBF aAlfa;
+        aAlfa = aAlfa + "integral/def/dsam0103.mas";
+        |XABRE "E", aAlfa, nHandle;
+        |SI FSalida ] 0;
+           |CARGA_DEF aAlfa, RegNifs@;
+           |SI FSalida = 0;
+              |DBASS aAlfa; |QBF aAlfa;
+              aAlfa = aAlfa + "integral/def/dsam0101.mas";
+              |CARGA_DEF aAlfa, Paises@;
+
+              |DBASS aAlfa; |QBF aAlfa;
+              aAlfa = aAlfa + "integral/fich/";
+              |PATH_DAT #RegNifs@#aAlfa#; |PATH_DAT #Paises@#aAlfa#;
+              |ABRE #RegNifs@; |ABRE #Paises@;
+              nSwBasica = 0;
+           |FINSI;
+        |FINSI;
+     |FINSI;
+
+     |ABRE #caclipro;
+     |ABRE #cacuenta;
+     nSwAlguno = 0;
+
+     nLongCta = 209;           || Longitud del registro CON el email incluido
+     |SI #0#44 = "N";  nLongCta = 199; |FINSI; ||         SIN
+     |SI #0#43 = "N";  nLongCta = 196; |FINSI; ||         SIN
+     |SI #0#42 = "N";  nLongCta = 116; |FINSI; ||         SIN
+     |SI #caxsecfi#47 = "S";  nLongCta = nLongCta + 2; |FINSI;
+
+/*
+     nTope = 236 + 231 + nLongCta;
+     aC13 = &13;
+     aC11 = &11;
+     nNume1 = 0;
+     canal  = "";
+     canal1 = "";
+     canal2 = "";
+     |PARA; |SI; |HACIENDO;
+        |XLEE handle, 1, aAlfa;
+        |SI FSalida ! 1; |SAL; |FINSI;
+
+        |SI aAlfa ! aC13; |Y aAlfa ! aC11;
+            nNume1 = nNume1 + 1;
+            |SI nNume1 [ 236;
+                canal = canal + aAlfa;
+            |SINO;
+                |SI nNume1 > 236; |Y nNume1 [ 467;
+                    canal1 = canal1 + aAlfa;
+                |SINO;
+                    |SI nNume1 [ nTope;
+                        canal2 = canal2 + aAlfa;
+                    |SINO;
+                        |HAZ SeparaCliPro;
+                        nNume1 = 0;
+                        canal   = "";
+                        canal1  = "";
+                        canal2  = "";
+                    |FINSI;
+                |FINSI;
+            |FINSI;
+        |SINO;
+            |SI nNume1 ! 0;
+                |HAZ SeparaCliPro;
+            |FINSI;
+            nNume1 = 0;
+            canal  = "";
+            canal1 = "";
+            canal2 = "";
+        |FINSI;
+     |SIGUE;
+     |SI nNume1 ! 0;
+         |HAZ SeparaCliPro;
+     |FINSI;
+*/
+
+     |PARA; |SI; |HACIENDO;
+        |XLEE handle, 236, canal;   || 236
+        |SI FSalida ! 236;   |SAL;   |FINSI;
+
+        |XLEE handle, 231, canal1;   || 231
+        |SI FSalida ! 231;   |SAL;   |FINSI;
+
+        |XLEE handle, nLongCta, canal2;
+        |SI FSalida ! nLongCta;   |SAL;   |FINSI;
+
+        |HAZ SeparaCliPro;
+     |SIGUE;
+
+     |XCIERRA handle;
+
+  |FINSI;
+  Pos = -1;
+
+  |SI nSwBasica ! -1;
+     |CIERRA #Paises@;  |DESCARGA_DEF #Paises@;
+     |CIERRA #RegNifs@; |DESCARGA_DEF #RegNifs@;
+     nSwBasica = -1;
+  |FINSI;
+
+  |BLIN 4;
+|FPRC;
+
+|PROCESO nombre;  || nombre del fichero
+     directo = dirfich0;
+     fichero = #0#3;
+     fichero = "0000" + fichero;
+     fichero = fichero % -104;
+     aFicSec  = aNombre + fichero;
+     aFicSec  = aFicSec % -108;
+     aFicSec  = aFicSec + ".seq";
+     aFic = directo + aNombre + fichero + ".seq";
+
+     Pos   = -1;
+     nCopio = 0;
+     |XABRE "UB", aFic, handle;
+     |SI FSalida < 0;
+         |XABRE "CUB", aFic, handle;
+         |SI FSalida = 0; nCopio = 1; |FINSI;
+     |FINSI;
+     |XCIERRA handle;
+
+|SI nCopio = 1;
+    |DFICE aBase;
+    eaOrigen  = aFic;
+    eaDestino = aBase + aFicSec;
+    |HAZ eReciboFich;
+    |SI enErrPas = 0; aFic = eaDestino; |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO secuencial;
+  aAlfa1 = "ez" + Usuario;
+  |NOME_DAT #2 aAlfa1;  |DELINDEX #2;
+  aAlfa1 = "es" + Usuario;
+  |NOME_DAT #18 aAlfa1; |DELINDEX #18;
+
+  |MENSA "    Preparando Fichero de Apuntes ...";
+
+     aNombre = "enco"; |HAZ nombre;
+
+     |XABRE "UB", aFic, handle;
+     |SI FSalida < 0;
+          |XABRE "CUB", aFic, handle;
+     |FINSI;
+
+     |SI FSalida < 0;
+          aAlfa = "0000Error al abrir:" + aFic + "(APUNTES)";
+          aAlfa = "0000Error al abrir el Fichero de Apuntes Contables";
+          |MENAV aAlfa;
+     |SINO;
+          aFichero = "pu" + Usuario;
+          |NOME_DAT #92 aFichero;
+          |ABRE #92; |CIERRA #92; |DELINDEX #92;  ||en caenlace
+          |ABRE #2;
+          nSwAlguno = 0;
+
+          |PARA; |SI; |HACIENDO;
+
+                 |XLEE handle, 201, canal;   || 201
+                 |SI FSalida ! 201;   |SAL;   |FINSI;       ||era 107
+
+                 |SI #caxsecfi#45 = "N";
+                     |XLEE handle, 187, canal1;
+                     |SI FSalida ! 187;   |SAL;   |FINSI;
+                 |SINO;
+                     |XLEE handle, 185, canal1;
+                     |SI FSalida ! 185;   |SAL;  |FINSI;
+
+                     |XLEE handle, 32, canal2;
+                     |SI FSalida ! 32;    |SAL   |FINSI;
+                 |FINSI;
+
+                 |HAZ sep_apunte;
+          |SIGUE;
+          |CIERRA #2;
+          |XCIERRA handle;
+     |FINSI;
+     Pos = -1;
+
+     |BLIN 4;
+
+     |SI nSwAlguno = 1;
+         nSwPaso = 0;
+         aPasar  = "N";
+         |ABRE #4;
+         |ABRE #92;
+         |BUCLE PasaEnlace;
+         |CIERRA #92;
+         |CIERRA #4;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+  |CLS;
+  |CABEZA "Importacion Secuencial";
+  |HAZ inicio;
+
+  |ABRE #200;
+  |LEE 040#200p;
+  |SI FSalida ! 0;
+     |DDEFECTO #200;
+     |GRABA 020#200n;
+  |FINSI;
+  |CIERRA #200;
+
+  |PINPA #0#0;
+  |SI enEmpImpor ! 0;
+      #0#3 = enEmpImpor;
+  |FINSI;
+  |HAZ BuscaDoc;
+
+  |PINDA #0#0;
+
+  |ENDATOS #1#0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |SI #0#0 ! "SI";  |ACABA;  |FINSI;
+
+  dirfich0 = #1#2; |QBF dirfich0;
+
+  |MENSA "    Preparando Fichero de Clientes/Proveedores ...";
+  aNombre = "encp"; |HAZ nombre;
+  |HAZ SecCliPro;
+
+  dirfich0 = #1#2; |QBF dirfich0;
+
+  |HAZ secuencial;
+  |SI nSwAlguno = 1;
+      nDOCUMENTO = nUltDoc;
+      |HAZ ActContador;
+      enNoModif = 0;
+      |SI #0#41 = "N";
+          enNoModif = 100;  || para que no se modifiquen los apuntes
+      |FINSI;
+      |DFICE aAlfa1; |QBF aAlfa1;
+      aAlfa1 = "dsapunte.tab;" + aAlfa1 + "," + aFichero;
+      |SUB_EJECUTA_NP aAlfa1;
+  |FINSI;
+
+
+  dirfich0 = #1#2; |QBF dirfich0;
+  |SI #0#4 = "S";
+     |DELINDEX #2;
+     |DELINDEX #18;
+     |DELINDEX #92;
+
+     directo = dirfich0;
+     fichero = #0#3;
+     fichero = "0000" + fichero;
+     fichero = fichero % -104;
+     aFic = directo + "enco" + fichero + ".seq";
+     |FBORRA aFic;
+     aFic = directo + "encp" + fichero + ".seq";
+     |FBORRA aFic;
+  |FINSI;
+|FPRO;
+
+|PROCESO BuscaNumero;
+   |SI #200#44 = "N";
+       |ABRE #10;
+       #10#0 = nLibro;
+       |LEE 110#10=;
+       |SI FSalida ! 0;
+          |DDEFECTO #10;
+          #10#0 = nLibro;
+          #10#2 = aTipoIVA;
+          |GRABA 020#10b;
+       |FINSI;
+       NumFactura = #10#4;
+       #10#4 = #10#4 + #10#3;
+       |GRABA 020#10a;
+       |LIBERA #10; |CIERRA #10;
+   |SINO;
+       |ABRE #11;
+       #11#0 = aSerie;
+       #11#1 = aTipoIVA;
+       |LEE 110#11=;
+       |SI FSalida ! 0;
+          |DDEFECTO #11;
+          #11#0 = aSerie;
+          #11#1 = aTipoIVA;
+          |GRABA 020#11b;
+       |FINSI;
+       NumFactura = #11#3;
+       #11#3 = #11#3 + #11#4;
+       |GRABA 020#11a;
+       |LIBERA #11; |CIERRA #11;
+   |FINSI;
+   #2#16 = NumFactura;
+|FPRC;

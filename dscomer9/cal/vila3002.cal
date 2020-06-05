@@ -1,0 +1,128 @@
+     CheqCta0, ConsuCta0
+
+|FICHEROS;
+     agifa142 #142;
+     cacuenta@;
+     canempre@;
+|FIN;
+
+|VARIABLES;
+     &eaCuenta = "";
+     &enErrCta = 0;
+     aAlfa = "";
+     aDef = "";
+     aEmpresa = "";
+     aPeriodo = "";
+     MaximoDigitos = 0;
+     i = 0;
+     aCuenta = "";
+     nNume1 = 0;
+     nPos = 0;
+     aAlfa2 = "";
+     aAlfa3 = "";
+     aAlfa4 = "";
+|FIN;
+
+|PROCESO ConsuCta0;
+     enErrCta = 0;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     aAlfa = #142#151; |QBF aAlfa;
+     aDef = aAlfa + "def/cacuenta";
+     |CARGA_DEF aDef, cacuenta@;
+     |SI FSalida = 0;
+          aAlfa = aAlfa + "fich/" + (("000000" + #142#152) % -106) + "/";
+          |PATH_DAT #cacuenta@#aAlfa#;
+          |ABRE #cacuenta@;
+          #cacuenta@#0 = eaCuenta;
+          |LEE 0000#cacuenta@.];
+          |CONSULTA_CLAVE #1#cacuenta@;
+          |SI FSalida = 0;
+               eaCuenta = #cacuenta@#0;
+          |SINO;
+               enErrCta = 1;
+          |FINSI;
+          |CIERRA #cacuenta@;
+
+          |DESCARGA_DEF #cacuenta@;
+     |SINO;
+          |MENAV "0000Error al cargar 'cacuenta'";
+          enErrCta = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO PorPuntos;
+     aAlfa = #142#151; |QBF aAlfa;
+     aDef = aAlfa + "def/canempre";
+     |CARGA_DEF aDef, canempre@;
+     |SI FSalida ! 0;
+          |MENAV "0000Error al cargar 'canempre'";
+          |ACABA;
+     |FINSI;
+     aAlfa = aAlfa + "fich/";
+     |PATH_DAT #canempre@#aAlfa#;
+     |ABRE #canempre@;
+     aAlfa = ("000000" + #142#152) % -106;
+     aEmpresa = aAlfa % 105;
+     aPeriodo = aAlfa % -101;
+     #canempre@#2 = aEmpresa;
+     #canempre@#3 = aPeriodo;
+     |LEE 020#canempre@.=;
+     |CIERRA #canempre@;
+     MaximoDigitos = 0;
+     |PARA i = 14; |SI i [ 19; |HACIENDO i = i + 1;
+          |SI #canempre@#i# > MaximoDigitos;
+               MaximoDigitos = #canempre@#i#
+          |FINSI;
+     |SIGUE;
+     |DESCARGA_DEF #canempre@;
+
+     aAlfa = aCuenta - ".";
+     nNume1 = FSalida;
+     nPos   = 100 + (((nNume1 / 100) ! 0) -1);
+     aAlfa2 = aCuenta % nPos;   |QBF aAlfa2;
+     nPos   = (((nNume1 / 100) ! 0) * 100) + 199;
+     aAlfa3 = aCuenta % nPos;   |QBF aAlfa3;
+
+     FSalida = nNume1;
+     |PARA; |SI FSalida ! 0; |HACIENDO;
+           aAlfa3 = aAlfa3 - "."; || limpiar mas puntos (los ignoramos)
+     |SIGUE;
+
+     nPos   = MaximoDigitos - ( (A \ aAlfa2 % 0) + (A \ aAlfa3 % 0));
+     aAlfa4 = (A\ "0" * nPos);
+
+    aCuenta  = (A\ aAlfa2 + aAlfa4 + aAlfa3);
+|FPRC;
+
+|PROCESO CheqCta0;
+     enErrCta = 0;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     aCuenta = eaCuenta;
+     aAlfa = aCuenta - ".";
+     |SI FSalida ! 0;
+          |HAZ PorPuntos;
+          eaCuenta = aCuenta;
+     |FINSI;
+
+     aAlfa = #142#151; |QBF aAlfa;
+     aDef = aAlfa + "def/cacuenta";
+     |CARGA_DEF aDef, cacuenta@;
+     |SI FSalida = 0;
+          aAlfa = aAlfa + "fich/" + (("000000" + #142#152) % -106)  + "/";
+          |PATH_DAT #cacuenta@#aAlfa#;
+          |ABRE #cacuenta@;
+          #cacuenta@#0 = eaCuenta;
+          |LEE 0000#cacuenta@.=;
+          |SI FSalida ! 0;
+               |MENAV "0000No existe cuenta contable...";
+               enErrCta = 1;
+          |FINSI;
+          |CIERRA #cacuenta@;
+
+          |DESCARGA_DEF #cacuenta@;
+     |SINO;
+          |MENAV "0000Error al cargar 'cacuenta'";
+          enErrCta = 1;
+     |FINSI;
+|FPRC;

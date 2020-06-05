@@ -1,0 +1,351 @@
+|| Datos de la Contabilidad
+
+|FICHEROS;
+    clapm003 #3;
+
+   &canempr@ #330;  || Empresas
+   &cacuent@ #310;  || Cuentas
+   &caclipr@ #311;  || Cliente y Proveedores
+   &anm0000@ #320;  || Analitica
+   &anm0016@ #326;  || Empresa analiticas
+   &camanba@ #312;  || Bancos
+   &caivaas@ #331;  || caivaasi
+   &dsmo100@ #391;  || Empresas standar
+|FIN;
+
+|VARIABLES;
+  aAlfa1    = "";
+  aAlfa2    = "";
+  aDef      = "";
+  aPath     = "";
+  i1        = 0;
+  {-1}punt1 = 0;
+
+  nEmpresa = 0;
+  nPeriodo = 0;
+  nPara1   = 0;
+  nAny     = 0;
+  nEjer    = 0;
+|FIN;
+
+|INCLUYE dsclap_i;
+
+|PROCESO eSituaLaEmpresa;
+     swerror  = 0;
+     aAlfa1   = eaPathDatos - "fich/";
+     eaPathPan = aAlfa1 + "pan/";
+     eaPathDef = aAlfa1 + "def/";
+     aDef      = eaPathDef + "canempre";
+     |CARGA_DEF aDef, canempr@;
+     |SI FSalida ! 0;
+         |MENAV "    Error Cargado Fichero de Empresas. Proceso Interrumpido";
+         swerror = 1;
+         |ACABA;
+     |FINSI;
+
+     |PATH_DAT #330 eaPathDatos;
+
+     |HAZ eLeeEmpresa;
+
+     |DESCARGA_DEF #canempr@;
+|FPRC;
+
+|PROCESO eLeeEmpresa;
+     nEmpresa = enEmpresa;
+     nPeriodo = enPeriodo;
+
+     |SI enEmpresa = 0;
+         enEmpresa = enEmpGral;
+         enPeriodo = enPerGral;
+     |FINSI;
+
+     |SI enPeriodo = -1;
+         nAny = 0;
+         |ABRE #canempr@;
+         #330#2 = enEmpresa;
+         |PARA nPara1 = 0; |SI nPara1 [ 9; |HACIENDO nPara1 = nPara1 + 1;
+               #330#3 = nPara1;
+               |LEE 000#330=;
+               |SI FSalida = 0;
+                   |SI #330#26 > 80;
+                       nEjer = #330#26 +1900;
+                   |SINO;
+                       nEjer = #330#26 +2000;
+                   |FINSI;
+                   |SI nAny < nEjer; |O nAny = 0;
+                       nAny = nEjer; enPeriodo = #330#3;
+                   |FINSI;
+               |FINSI;
+         |SIGUE;
+         |CIERRA #330;
+     |FINSI;
+
+     |ABRE #canempr@;
+     #330#2 = enEmpresa;
+     #330#3 = enPeriodo;
+     |LEE 000#330=;
+     |SI FSalida ! 0;
+         swerror = 1;
+         |SI enSwSinMen = 0; |MENAV "    NO EXISTE EMPRESA CONTABLE "; |FINSI;
+         |CIERRA #330;
+         enEmpresa = nEmpresa;
+         enPeriodo = nPeriodo;
+         |ACABA;
+     |FINSI;
+     |CIERRA #330;
+
+     |HAZ eVarEmpresa;
+     enEmpresa = nEmpresa;
+     |SI nPeriodo ! -1; enPeriodo = nPeriodo; |FINSI;
+|FPRC;
+
+|PROCESO eVarEmpresa;
+     fec3 = "01.01.0000";
+     aAlfa1 = enEmpresa;  aAlfa1 = ("00000" + aAlfa1) % -105;
+     aAlfa2 = enPeriodo;  aAlfa2 = ("0"     + aAlfa2) % -101;
+
+     eaPathConta = eaPathDatos + aAlfa1 + aAlfa2 + "/";
+
+     dig1 = #330#11;       || desde mes
+     dig3 = #330#13;       || nro. niveles
+     dig4 = #330#14;       || 1 nivel
+     dig5 = #330#15;       || 2 nivel
+     dig6 = #330#16;       || 3 nivel
+     dig7 = #330#17;       || 4 nivel
+     dig8 = #330#18;       || 5 nivel
+     dig9 = #330#19;       || 6 nivel
+     eaNombreEmp = #330#1;  ||Nombre Empresa
+
+     cod2 = #330#26;
+     tra1 = 100 + cod2;
+     clave2 = tra1 % -102;
+     tra1 = 100 + #330#11;
+     mes1 = tra1 % -102;
+     |SI cod2 < 80;
+         work1 = "01." + mes1 + ".20" + clave2;
+         enEjer = 2000 + cod2;
+     |SINO;
+         work1 = "01." + mes1 + ".19" + clave2;
+         enEjer = 1900 + cod2;
+     |FINSI;
+     fec1 = work1;
+     tra1 = 100 + #330#12;
+     mes1 = tra1 % -102;
+     |SI #330#11 > #330#12;
+         cod2 = cod2 + 1;
+         |SI cod2 > 99; cod2 = cod2 - 100;    |FINSI;
+     |FINSI;
+     dia1 = "31";
+     |SI #330#12 = 4; |O #330#12 = 6; |O #330#12 = 9; |O #330#12 = 11;
+         dia1 = "30";
+     |FINSI;
+     |SI #330#12 = 2;
+         dia1 = "28";
+         |SI cod2 = 88; |O cod2 = 92; |O cod2 = 96; |O cod2 = 0; |O cod2 = 4; |O cod2 = 8; |O cod2 = 12;
+             dia1 = "29";
+         |FINSI;
+     |FINSI;
+     tra1 = 100 + cod2;
+     clave2 = tra1 % -102;
+     |SI cod2 < 80;
+         work1 = dia1 + "." + mes1 + ".20" + clave2;
+     |SINO;
+         work1 = dia1 + "." + mes1 + ".19" + clave2;
+     |FINSI;
+     fec2 = work1;
+
+     |SI nConta = 0;     || ... ... Datos de CONTAGEN
+
+         eaMonedaCon = #330#28; ||Moneda
+         eaEstadoEmp = "S";
+         |SI #330#21 = "I"; eaEstadoEmp = "N"; |FINSI;
+
+         fec3 = #330#34;
+
+         eaDepar  = #330#24;
+         eaSubde  = #330#22;
+         eaDfDepC = #330#30;
+         eaDfSubC = #330#31;
+         eaDfDepN = #330#32;
+         eaDfSubN = #330#33;
+
+    |FINSI;
+
+    || Recoger informacion sobre los niveles ...
+    Ipunt1 = dig3<-;
+    Ipunt1 = Ipunt1 + dig3;
+    MaximoDigitos = punt1;
+    DigitosPaseDirecto = dig3;
+|FPRC;
+
+|PROCESO eAnalitica;
+ enSwAna = 0;
+
+ |SI nConta = 1;
+     |SI #330#24 = "S";
+         enSwAna = 2;
+         aDef = eaPathDef + "cactaana";
+         |CARGA_DEF aDef, anm0000@;
+         |SI FSalida = 0;
+             enSwAna = 1;
+            |DESCARGA_DEF #anm0000@;
+         |FINSI;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+ aPath = eaPathDatos + "000000/";
+
+ aDef  = eaPathDef + "anm00000";
+ |CARGA_DEF aDef, anm0000@;
+ |SI FSalida ! 0;
+     |ACABA;
+ |FINSI;
+
+ aDef  = eaPathDef + "anm00016";
+ |CARGA_DEF aDef, anm0016@;
+ |SI FSalida ! 0;
+     |DESCARGA_DEF #anm0000@;
+     |ACABA;
+ |FINSI;
+
+ |PATH_DAT #320 aPath;
+ |PATH_DAT #326 aPath;
+
+ |ABRE #320;
+ |DDEFECTO #320;
+ |LEE 040#320p;
+ |CIERRA #320;
+
+ |SI #320#1 = "S";
+     enSwAna = 1;
+     |SI #320#11 = "E"; |Y enEmpresa ! 0;
+         |ABRE #326;
+         |DDEFECTO #326;
+         #326#0 = enEmpresa;
+         |LEE 040#326=;
+         |SI FSalida ! 0; enSwAna = 0; |FINSI;
+         |CIERRA #326;
+     |FINSI;
+ |FINSI;
+ |SI enSwAna = 0;
+     |SI eaDepar = "S"; enSwAna = 2; |FINSI;
+ |FINSI;
+
+ |DESCARGA_DEF #anm0016@;
+ |DESCARGA_DEF #anm0000@;
+|FPRC;
+|| ///////////////////////////////////////////////////////////////
+
+|PROCESO eQueBanco;
+ eaCtaBanco = "";
+ eaNomBanco = "";
+ enSwLoLeo  = 1;
+ eOpBan     = 0;
+ |SI nConta = 1;
+     aDef  = eaPathDef + "camanban";
+     |CARGA_DEF aDef, camanba@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |PATH_DAT #312  eaPathConta;
+     |ABRE #312;
+     #312#0 = enBanco;
+     |LEE 041#312=;
+     |SI FSalida = 0;
+         eaNomBanco = #312#1;
+         eaCtaBanco = #312#10;
+     |FINSI;
+     |CIERRA #312;
+     |DESCARGA_DEF #camanba@;
+  |SINO;
+
+     aDef  = eaPathDef + "caivaasi";
+     |CARGA_DEF aDef, caivaas@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |PATH_DAT #331 eaPathConta;
+     |ABRE #331;
+     |DDEFECTO #331;
+     |LEE 041#331p;
+     |CIERRA #331;
+     eaPathCartera = #331#56; |QBF eaPathCartera;
+     |DESCARGA_DEF #caivaas@;
+
+     |SI eaPathCartera ! "";
+         |SI #311#23 = "C"; eaVC = "V"; |SINO; eaVC = "C"; |FINSI;
+         |HAZ eLeeBanco;
+     |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO CliPro00;
+ aAlfa1 = #311#21; |QBF aAlfa1;
+ |SI aAlfa1 = ""; |Y #311#28 = 999; |ACABA; |FINSI;
+
+ #3#0 = enEmpresa;
+ #3#1 = enPeriodo;
+ #3#2 = #311#10;
+ |LEE 141#3=;
+ |SI FSalida ! 0;
+     |DDEFECTO #3;
+     #3#0  = enEmpresa;
+     #3#1  = enPeriodo;
+     #3#2  = #311#10;
+     #3#10 = eaNombreEmp;
+     #3#11 = enEjer;
+     |GRABA 020#3b;
+ |FINSI;
+ #3#3 = #311#1;
+ #3#4 = #311#9;
+ #3#5 = #311#21;
+ #3#6 = "";
+ |SI aAlfa1 ! "";
+     |ABRE #310;
+     #310#0 = #311#21;
+     #310#1 = #311#22;
+     |LEE 041#310=;
+     |SI FSalida = 0;
+         #3#6 = #310#2;
+     |FINSI;
+     |CIERRA #310;
+ |FINSI;
+
+ #3#9 = #311#28;
+ |SI #311#28 ! 999;
+     enBanco    = #311#28;
+     |HAZ eQueBanco;
+     #3#7 = eaCtaBanco;
+     #3#8 = eaNomBanco;
+ |FINSI;
+
+ |GRABA 020#3a;
+ |LIBERA #3;
+|FPRC;
+
+|DEFBUCLE CliPro_02;
+ #311#1002;
+ ;
+ " ", aDCuenta;
+ "z", aHCuenta;
+ ;
+ NULL, CliPro00;
+|FIN;
+
+|DEFBUCLE CliPro_03;
+ #311#1003;
+ ;
+ " ", aDCuenta, 0;
+ "z", aHCuenta, 9;
+ ;
+ NULL, CliPro00;
+|FIN;
+
+|PROCESO eCargaRelacion;
+ |ABRE #3;
+ |SI nConta = 0;
+     |BUCLE CliPro_02;
+ |SINO;
+     |BUCLE CliPro_03;
+ |FINSI;
+ |CIERRA #3;
+|FPRC;

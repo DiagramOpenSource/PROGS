@@ -1,0 +1,900 @@
+|FICHEROS;
+    caycosy0 #0;       || Informe comprobacion suma y saldos
+    cacuenta #1;       || Plan contable
+    caycosy1 #2;       || Fichero fantasma de impresion por pantalla
+    caconimp #8;
+    cabucem1 #100;
+
+    camaasic #21;
+    caseslin #110;
+|FIN;
+
+|VARIABLES;
+  nSalgo = 0;
+  &balance = 1;
+  &pathbal = "";
+  &entrada = 1;
+  potra = 0;
+  lin = 0;
+  sw_error = 0;
+  x = 0;
+  aAlfa   = "";
+  informe = "";
+  men1     = "     NO EXISTE EMPRESA !";
+  mes = 0;                  || Variable para saber el mes seleccionado
+  letrames = "";            || Variable para poner el mes en letra
+  varcamp = 0;              || Variable para posicionarse en un campo
+    xxxxfiac = "  ";          || Variables para no modificable
+    xxaponer = "  ";
+    xrelleno = "                              ";
+    error1 = "0000Nivel repetido";
+    error2 = "0000No existe informe";
+    error3 = "0000El numero de nivel no coincide con el numero de nivel de la empresa";
+    swprint = 0;       || Variable para saber si imprimimos o no
+    swsuma = 0;        || Variable para saber si sumamos o no
+    nivel = 0;         || Variable que posee el nivel mas alto
+    saldo = 0;         || Resta entre el debe y el haber;
+    sw = 0;            || sw para nivel anterior
+    nivelact = 0;      || Nivel actual
+    rellenos = "";     || Variable para rellenar el hasta de la cuenta en zetas
+    &i_debe = 0;       || Total del debe por registro
+    &i_haber = 0;      || Total del haber por registro
+    &i_deudor = 0;     || Total saldo deudor por registro
+    &i_acreedor = 0;   || Total saldo acreedor por registro
+    &t_debe = 0;       || Total del debe del informe
+    &t_haber = 0;      || Total del haber del informe;
+    &t_deudor = 0;     || Total saldo deudor por informe
+    &t_acreedor = 0;   || Total saldo acreedor por informe
+    &i_saldoap = 0;    || saldo apertura registro
+    &t_saldoap = 0;    || saldo apertura registro
+    &swlinea = 0;      || Pone o no linea en blanco en informe
+    &swcomen = 0;
+    {-1}menu  = "";           || Variables menu impresora o pantalla
+        menu1 = "2400";
+        menu2 = "1";
+        menu3 = "Elija opcion: ";
+        menu4 = "PI";
+        menu5 = " Pantalla ";
+        menu6 = " Impresora ";
+    {-1}form  = "";           || Variables menu impresora o pantalla
+        form1 = "2400";
+        form2 = "1";
+        form3 = "Elija formato: ";
+        form4 = "123";
+        form5 = " < 1 > ";
+        form6 = " < 2 > ";
+        form7 = " < 3 > ";
+    op_form = 0;
+    men2  = "     Longitud de Cuenta Fuera de Nivel !";
+    long = "  ";
+    cta  = 0;
+    num   = 0;
+    swdig = 0;
+    digito = 0;
+    menor = 0;
+    para1 = 0;
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    Handle = 0;
+    Comodin  = "";
+    Comodin1 = "";
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    dos_ant = "xx";
+    &pagina = 0;
+    sw_pagina = 0;
+    &aparam = "";
+    &enSwOper = 0;
+    &r_emp = 0;
+    &r_per = 0;
+
+    Per1 = -1;
+    Per2 = -1;
+    Empresa = 0;
+    Periodo = 0;
+    Calc = 0;
+    Numeracion = 0;
+
+    &nPagDup = 0;
+    &nSwPagDup = 0;
+    aSistema = "";
+  aAlfa1 = "";
+  nDiario = 0;
+  fFecha = @;
+  nMesAper = 0;
+  nMesCier = 0;
+
+  &eaUltNiv = "";
+  &enBasImp = 0;
+  &eaNomImp = "";
+
+  &eaFicbal = "";
+  &eaNomSes = "";
+  &enNumSes = 0;
+  &eaDepSes = "";
+  &eaDesDep = "";
+  &enMasDep = 0;
+
+  nswPrim  = 0;
+  nSwError = 0;
+  nSwPrint = 0;
+  &eaLegEmp = "";
+  &eaLegPer = "";
+  &efFecLeg = @;
+  vermov    = 0;
+   &eaUnidadBasico = "";
+   &eaUnidadBTmp   = "";
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE digito_i;
+|INCLUYE puntos_i;
+
+|PROCESO mayus;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO nosaldo; |TIPO 7;
+  alfa1 = "S";
+  |SI #0#6 = "S";  alfa1 = "N";  #0#22 = "S"; |FINSI;
+  |CAMPO_MODIFICA #0#22, 1, alfa1;
+  |PINTA #0#22;
+|FPRC;
+
+|PROCESO antesque;
+  aparam = PARAMETRO;
+  |QBF aparam;
+  |SI aparam = "fech";
+      |HAZ AntesSesion;
+      |NOME_DAT #1 eaFicbal;
+  |FINSI;
+|FPRC;
+
+|PROCESO PintoSes;
+  |SI eaNomSes > "";
+      |ATRI I; |PINTA 0505, "SESION: "; |PINTA 0513,eaNomSes;
+      |SI eaDepSes > "";
+          |PINTA 0558, "Departamento: "; |PINTA 0572, eaDepSes;
+      |FINSI;
+      |ATRI 0;
+  |FINSI;
+|FPRC;
+|| ***********************************************************************
+||                       CALCULOS DE PANTALLA
+|| ***********************************************************************
+
+|PROCESO &c_pagina;
+  |SI sw_pagina = 0;
+      pagina = #0#21;
+      sw_pagina = 1;
+
+      nPagDup = #0#21;
+      nSwPagDup = 1;
+  |SINO;
+      pagina = pagina + 1;
+
+      |HAZ PDuplex;
+  |FINSI;
+|FPRC;
+
+|PROCESO mesconta; |TIPO 0;
+
+  varcamp = Campo + 1;                   || Coge el campo del nombre del mes
+  mes = #0Campo;
+  |SI #0Campo ! 0;|Y #0Campo ! 13;
+      mes = #30#11 + (#0Campo - 1);      || Operacion para seber que mes es
+      |SI mes > 12; mes = mes - 12; |FINSI;
+  |FINSI;
+  |HAZ mesletra;                         || Recoge el mes en letra
+  #0varcamp = letrames;
+  potra = Campo;
+  |PINTA #0varcamp;                      || Pinta el nombre del mes
+  Campo = potra;
+
+  |SI Campo = 4;
+      |SI #0#2 > #0#4;
+          |MENAV "    ATENCION!!! Error de Entrada ...";
+          |ERROR;
+          |ACABA; || Si el mes hasta es menor al desde
+      |FINSI;
+  |FINSI;
+
+|FPRC;
+
+|PROCESO mesletra;
+  |SI mes = 0;  letrames = "Apertura  "; |FINSI;
+  |SI mes = 1;  letrames = "Enero     "; |FINSI;
+  |SI mes = 2;  letrames = "Febrero   "; |FINSI;
+  |SI mes = 3;  letrames = "Marzo     "; |FINSI;
+  |SI mes = 4;  letrames = "Abril     "; |FINSI;
+  |SI mes = 5;  letrames = "Mayo      "; |FINSI;
+  |SI mes = 6;  letrames = "Junio     "; |FINSI;
+  |SI mes = 7;  letrames = "Julio     "; |FINSI;
+  |SI mes = 8;  letrames = "Agosto    "; |FINSI;
+  |SI mes = 9;  letrames = "Septiembre"; |FINSI;
+  |SI mes = 10; letrames = "Octubre   "; |FINSI;
+  |SI mes = 11; letrames = "Noviembre "; |FINSI;
+  |SI mes = 12; letrames = "Diciembre "; |FINSI;
+  |SI mes = 13; letrames = "Cierre    "; |FINSI;
+|FPRC;
+
+|PROCESO numnivel;|TIPO 0;
+  |SI #0#8 > #30#13;
+      |MENAV error3;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+|FPRC;
+
+|PROCESO nivel; |TIPO 7;  || Calculo para hacer no modificable
+   |C_M #0Campo,1,"S";
+   |SI Campo = 10; |Y #0#8 < 2; || Si solo hemos seleccionado
+       #0Campo = 0; |PINTA #0Campo;
+       |C_M #0Campo,1,"N";
+   |FINSI;
+   |SI Campo = 11; |Y #0#8 < 3; || Si solo hemos seleccionado
+       #0Campo = 0; |PINTA #0Campo;
+       |C_M #0Campo,1,"N";
+   |FINSI;
+   |SI Campo = 12; |Y #0#8 < 4; || Si solo hemos seleccionado
+       #0Campo = 0; |PINTA #0Campo;
+       |C_M #0Campo,1,"N";
+   |FINSI;
+   |SI Campo = 13; |Y #0#8 < 5; || Si solo hemos seleccionado
+       #0Campo = 0; |PINTA #0Campo;
+       |C_M #0Campo,1,"N";
+   |FINSI;
+   |SI Campo = 14; |Y #0#8 < 6; || Si solo hemos seleccionado
+       #0Campo = 0; |PINTA #0Campo;
+       |C_M #0Campo,1,"N";
+   |FINSI;
+|FPRC;
+
+
+|PROCESO nivelrep;|TIPO 0;  || Para comprobar que no repetimos los niveles
+
+   |SI #0Campo > #canempre#13;
+      |MENAV error3;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+
+   |SI nivel = 0;        || Buscamo el nivel mas alto;
+      nivel = #0#9;
+   |FINSI;
+
+   |SI Campo = 9; |ACABA; |FINSI;
+
+   |SI Campo = 10;
+      |SI #0#10 = #0#9;|Y #0#10 ! 0;    || Si hay dos niveles iguales error
+         |MENAV error1;
+         |ERROR;
+         |ACABA;
+      |SINO;
+          |SI #0#10 > #0#9;  || Busca el nivel mas alto
+              nivel = #0#10;
+          |SINO;
+              nivel = #0#9;
+          |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI Campo = 11; |Y #0#11 ! 0;
+       |SI #0#11 = #0#9; |O #0#11 = #0#10; || Si hay dos niveles iguales error
+          |MENAV error1;
+          |ERROR;
+          |ACABA;
+       |FINSI;
+
+       |SI #0#11 > nivel;  || Busca el nivel mas alto
+           nivel = #0#11;
+       |FINSI;
+   |FINSI;
+
+   |SI Campo = 12; |Y #0#12 ! 0;      || Si hay dos niveles iguales error
+       |SI #0#12 = #0#9; |O #0#12 = #0#10; |O #0#12 = #0#11;
+          |MENAV error1;
+          |ERROR;
+          |ACABA;
+       |FINSI;
+
+       |SI #0#12 > nivel;  || Busca el nivel mas alto
+           nivel = #0#12;
+       |FINSI;
+   |FINSI;
+
+   |SI Campo = 13; |Y #0#13 ! 0;     || Si hay dos niveles iguales error
+       |SI #0#13 = #0#9; |O #0#13 = #0#10; |O #0#13 = #0#11; |O #0#13 = #0#12;
+          |MENAV error1;
+          |ERROR;
+          |ACABA;
+       |FINSI;
+
+       |SI #0#13 > nivel;  || Busca el nivel mas alto
+           nivel = #0#13;
+       |FINSI;
+   |FINSI;
+
+   |SI Campo = 14; |Y #0#14 ! 0;    || Si hay dos niveles iguales error
+       |SI #0#14 = #0#9; |O #0#14 = #0#10; |O #0#14 = #0#11; |O #0#14 = #0#12; |O #0#14 = #0#13;
+          |MENAV error1;
+          |ERROR;
+          |ACABA;
+       |FINSI;
+
+       |SI #0#14 > nivel;  || Busca el nivel mas alto
+           nivel = #0#14;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|| **********************************************************************
+||                       CALCULOS DE IMPRESION
+|| **********************************************************************
+
+|PROCESO condicion;      || Calculo condiciones de impresion
+  |HAZ digitos2;
+  |SI d_error ! 0;  |ACABA;  |FINSI;
+  swprint = 0;         || Variable para saber si imprimimos o no
+  swsuma = 0;          || Variable para saber si sumamos o no
+  i_debe = 0;          || Pone a cero el total debe del registro
+  i_haber = 0;         || Pone a cero el total haber del registro
+  i_saldoap = 0;
+
+  |SI sw = 0;
+      nivelact = #1#55;     || Nivel actual
+      sw = 1;
+  |FINSI;
+
+  |SI #1#55 ! 0;     || Condicion para saber si el nivel esta seleccionado
+      |SI #1#55 = #0#9;|O #1#55 = #0#10;|O #1#55 = #0#11;      || Compara 3 niveles
+          swprint = 1;
+      |SINO;
+          |SI #1#55 = #0#12;|O #1#55 = #0#13;|O #1#55 = #0#14; || Compara 3 niveles
+              swprint = 1;
+          |SINO;
+              swprint = 0;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+|SI swprint = 1; |Y #1#55 = nivel;      || Si es el nivel mas alto entoces
+        swsuma = 1;                     || se suma.
+|FINSI;
+
+|SI #1#3 = "S";|Y #1#55 [ nivel;   || Si el nivel no esta seleccionado
+        swsuma = 1;                || pero tiene en el campo pase una S
+        swprint = 1;               || entonces se imprime y se suma.
+|FINSI;
+
+|SI swprint = 1;    || Si se puede imprimir
+    varcamp = ((#0#2 * 3) + 9);
+    |SI menu2 = 1; |HAZ operapanta; |FINSI; || Si es por pantalla
+    |SI menu2 = 2; |HAZ operaimpre; |FINSI; || Si es por impresora
+|FINSI;
+|FPRC;
+
+|PROCESO operapanta;   || Operaciones por pantalla;
+    #2#2 = 0;
+    #2#3 = 0;
+
+|SI lin > 1200;
+    |HAZ cambiapag;  || Cambia de pagina
+    |SI sw_error = 1; |ACABA; |FINSI;
+|FINSI;
+
+    #2#0 = #1#0;     || Cuenta
+    #2#1 = #1#2;     || Descripcion
+
+vermov = 0;
+|PARA x = #0#2; |SI x [ #0#4; |HACIENDO x = x + 1;  || Bucle de campos
+        #2#2 = #2#2 + #1varcamp;    || Suma el debe
+        |SI #1varcamp ! 0; vermov = 1;  |FINSI;
+
+        varcamp = varcamp + 1;      || Se situa en  el campo del haber
+        #2#3 = #2#3 + #1varcamp;    || Suma el haber
+        |SI #1varcamp ! 0; vermov = 1;  |FINSI;
+
+        varcamp = varcamp + 2;      || Se situa en el campo debe
+|SIGUE;
+
+|SI #0#7 = "S";
+        #2#2 = #2#2 + #1#9;         || Suma saldo debe inicial
+        #2#3 = #2#3 + #1#10;        || Suma saldo haber inicial
+|FINSI;
+
+    #2#4 = #2#2 - #2#3;             || Coge la diferencia
+
+
+    FSalida = 0;
+
+   |SI vermov = 0; |Y #0#6 = "N"; || ctas sin movimientos
+       |ACABA;
+   |FINSI;
+   |SI #2#2 = #2#3; |Y #0#22 = "N"; || cuentas sin saldo
+       |ACABA;
+   |FINSI;
+|SI swsuma = 1;    || Si se puede sumar los totales
+        #2#5 = #2#5 + #2#2;         || Suma el total del debe
+        #2#6 = #2#6 + #2#3;         || Suma el total del haber
+        #2#7 = #2#7 + #2#4;         || Suma total saldo
+|FINSI;
+
+|SI 0 [ FSalida;    || Pinta linea por pantalla
+    |PINTA #2#5; |PINTA #2#6; |PINTA #2#7;  || Pinta los totales
+        Pos = lin;
+    |PINDA #0#2;         || Pinta las lineas
+        Pos = -1;
+        lin = lin + 100;     || Posicionar una linea mas abajo
+|FINSI;
+|FPRC;
+
+|PROCESO cambiapag;
+sw_error = 0;
+lin = 100;
+|PAUSA;
+|SI 1 = FSalida;|O 7 = FSalida;
+    |ERROR10;    || Rompe el bucle y acaba
+    sw_error = 1;
+|SINO;
+   |HAZ PintaPantalla;
+   #2#8 = #2#5; #2#9 = #2#6; #2#10 = #2#7;   || Coge los valores
+   |PINTA #2#8; |PINTA #2#9; |PINTA #2#10;   || Pinta la suma anterior
+   FSalida = 0;
+|FINSI;
+|FPRC;
+
+|PROCESO operaimpre;     || impresora
+  vermov = 0;
+  |PARA x = #0#2; |SI x [ #0#4; |HACIENDO x = x + 1;
+        i_debe = i_debe + #1varcamp;                   || acumula debe
+        |SI #1varcamp ! 0; vermov = 1;  |FINSI;
+        varcamp = varcamp + 1;
+        i_haber = i_haber + #1varcamp;                 || acumula haber
+        |SI #1varcamp ! 0; vermov = 1;  |FINSI;
+        varcamp = varcamp + 2;
+  |SIGUE;
+
+  |SI op_form = 3;                    || acumula saldo inicial
+      i_debe  = i_debe  - #1#9;       || debe
+      i_haber = i_haber - #1#10;      || haber
+      i_saldoap = #1#11;              || Saldo apertura
+  |FINSI;
+
+   i_debe    = i_debe    ! EURODB;
+   i_haber   = i_haber   ! EURODB;
+   i_saldoap = i_saldoap ! EURODB;
+
+   saldo = i_debe - i_haber + i_saldoap;      || saldo
+   aAlfa1 = saldo; |QBF aAlfa1;
+   |SI aAlfa1 = "-0"; |O aAlfa1 = "0";
+       saldo  = 0;
+   |FINSI;
+|SI saldo > 0; i_deudor = saldo; i_acreedor = 0;            |FINSI;
+|SI saldo < 0; i_deudor = 0;     i_acreedor = saldo * (-1); |FINSI;
+|SI saldo = 0; i_deudor = 0;     i_acreedor = 0;            |FINSI;
+
+
+|SI vermov = 0; |Y #0#6 = "N";    || cuentas sin movimientos
+    |ACABA;
+|FINSI;
+|SI saldo = 0; |Y #0#22 = "N";    || cuentas sin saldo
+    |ACABA;
+|FINSI;
+
+|SI nivelact ! #1#55;         || cambio de nivel, linea en blanco
+        swlinea = 1;
+        nivelact = #1#55;
+|SINO;
+        swlinea = 0;
+|FINSI;
+
+|SI #0#8 = 1;  |HAZ artenvas; |FINSI;   || separacion lineas formato ARTENVAS
+
+|PRINT; nSwPrint = 1;
+    swcomen = 1;              || linea suma anterior
+|SI swsuma = 1;     || acumula totales
+        t_saldoap  = (t_saldoap + i_saldoap) ! EURODB;
+        t_debe     = (t_debe + i_debe) ! EURODB;              || debe
+        t_haber    = (t_haber + i_haber) ! EURODB;            || haber
+        t_deudor   = (t_deudor + i_deudor) ! EURODB;          || saldo deudor
+        t_acreedor = (t_acreedor + i_acreedor) ! EURODB;      || saldo acreedor
+|FINSI;
+|FPRC;
+
+|PROCESO artenvas;
+    alfa1 = #1#0;
+    alfa1 = alfa1 % 102;
+
+|SI dos_ant = "xx"; dos_ant = alfa1;    |FINSI;
+
+|SI alfa1 ! dos_ant;
+        dos_ant = alfa1;
+        swlinea = 1;          || cuando solo se ha seleccionado un nivel y
+|SINO;                        ||/cambia en sus dos primeros digitos se
+        swlinea = 0;          ||/imprime una linea en blanco!!!
+|FINSI;
+|FPRC;
+
+|DEFBUCLE caycosy00;      || plan contable (3ra. clave)
+ #1#3;
+ ;
+     #0#0, 1;
+ rellenos, 6;
+ e;
+ NULL, condicion;
+|FIN;
+
+|PROCESO PidoMenu;
+     nSwError = 0;
+     |MENU form;
+     op_form = FSalida;
+     |SI op_form > 0;
+         |SI #0#2 > 0; |Y op_form = 3; op_form = 2; |FINSI;
+
+         |SI op_form = 1;
+             |HAZ los_informes; informe = que_i1;
+         |SINO;
+             |SI op_form = 2;
+                 informe = "caycosz0";
+             |SINO;
+                 informe = "caycosya";
+             |FINSI;
+          |FINSI;
+      |SINO;
+          nSwError = 1;
+          |ACABA;
+      |FINSI;
+
+      Impresora = "Crystal Reports";
+      |IMPRE 0;
+      |SI FSalida ! 0; nSwError = 1; |ACABA; |FINSI;
+
+      |SI Impresora = "CrystalReport";
+         informe = "cc" + (informe % 0306);
+         |SI informe = "ccycosy1"; informe = "ccycosy0"; |FINSI;
+         |SI informe = "ccycosz1"; informe = "ccycosz0"; |FINSI;
+      |FINSI;
+
+      |INFOR informe;
+      |SI FSalida ! 0; nSwError = 1; |FINIMP;|FINSI;
+|FPRC;
+
+|PROCESO impre;
+
+ |SI nswPrim = 0;
+     |HAZ PidoMenu;
+     |SI nSwError = 1;
+         |MENAV "    Proceso abortado ...";
+         |SI enMasDep ! 0; |ERROR10; |FINSI;
+         |ACABA;
+     |FINSI;
+     nswPrim = 1;
+ |FINSI;
+ nSwPrint = 0;
+ |BUCLE caycosy00;
+ |SI nSwPrint = 1; |PIEINF; |FINSI;
+ |SI enMasDep = 0;
+     |FININF;
+     |FINIMP;
+     nswPrim = 0;
+ |FINSI;
+|FPRC;
+
+|PROCESO PintaPantalla;
+  |PINPA #0#2;       || Pinta la pantalla del informe
+  |SI eaNomSes > "";
+      |ATRI I; |PINTA 2305, "SESION: "; |PINTA 02313,eaNomSes;
+      |SI eaDepSes > "";
+          |PINTA 2358, "Departamento: "; |PINTA 2372, eaDepSes;
+      |FINSI;
+      |ATRI 0;
+  |FINSI;
+|FPRC;
+
+|PROCESO panta;
+  lin = 100;
+  |HAZ PintaPantalla;
+  |BUCLE caycosy00;
+  |PAUSA;
+|FPRC;
+
+|PROCESO borrar;
+    |DDEFECTO #2;
+    nivelact = 0;
+    sw = 0;
+    swcomen = 0;
+    t_debe = 0;
+    t_haber = 0;
+    t_deudor = 0;
+    t_acreedor = 0;
+    t_saldoap  = 0;
+|FPRC;
+
+|| ***********************************************************************
+||                       CALCULO ENTRADA DE DATOS
+|| ***********************************************************************
+
+|PROCESO rellena;
+    rellenos = "zzzzzzzzzzzz";
+    menor = -1;
+
+|PARA para1 = 9; |SI para1 [ 14; |HACIENDO para1 = para1 + 1;
+    |SI #0para1 ! 0;
+        |SI menor = -1;  menor = #0para1;  |FINSI;
+        |SI menor > #0para1;  menor = #0para1;  |FINSI;
+    |FINSI;                   || saca el nivel elegido mas peque¤o
+|SIGUE;
+
+|SI menor ! 0;
+    |SI menor = 1;  nume1 = dig4;  |FINSI;
+    |SI menor = 2;  nume1 = dig5;  |FINSI;   || construye el hasta segun
+    |SI menor = 3;  nume1 = dig6;  |FINSI;   ||/el nivel mas bajo elegido
+    |SI menor = 4;  nume1 = dig7;  |FINSI;
+    |SI menor = 5;  nume1 = dig8;  |FINSI;
+    |SI menor = 6;  nume1 = dig9;  |FINSI;
+        nume1 = 100 + nume1;
+        rellenos = #0#1 % nume1;
+        rellenos = rellenos + "zzzzzzzzzzzz";
+        rellenos = rellenos % 112;
+|FINSI;
+
+|SI PARAMETRO = "";
+    |DFICE fich_alta;
+    |HAZ VeoFecAper;
+    |SI nMesAper ! dig1; |Y #0#4 ! 0;
+        |SI #0#4 < nMesAper; #0#2 = #0#4; |FINSI;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO Empresas;
+    #cabucem1#0 = eaLegEmp;
+    #cabucem1#1 = eaLegPer;
+    cod1 = eaLegEmp;
+    cod2 = eaLegPer;
+    emEmp = 1;
+    |HAZ leelo;
+    |SI swerror ! 0;  |ACABA;   |FINSI;
+
+    |DBASE fich_alta; |QBF fich_alta;
+    fich_alta = fich_alta + "fich/" + (("00000" + #cabucem1#0) % -105) + #cabucem1#1 + "/";
+    |PATH_DAT #0 fich_alta; |PATH_DAT #1 fich_alta;
+    |PATH_DAT #2 fich_alta; |PATH_DAT #8 fich_alta;
+
+     aAlfa1 = fec1;
+     aAlfa1 = aAlfa1 % 0402;
+     nMesAper = aAlfa1;
+     |SI nMesAper ! dig1;
+         |SI Per2 ! 0;
+             |SI Per2 < nMesAper; |ACABA; |FINSI;
+         |FINSI;
+     |FINSI;
+
+     Impresora = eaNomImp + "?"+ eaUnidadBTmp + "\tmp1,,,?";
+     |SI Per2 = 0;  Impresora = Impresora + "Apertura"; |FINSI;
+     |SI Per2 = 3;  Impresora = Impresora + "1T"; |FINSI;
+     |SI Per2 = 6;  Impresora = Impresora + "2T"; |FINSI;
+     |SI Per2 = 9;  Impresora = Impresora + "3T"; |FINSI;
+     |SI Per2 = 12; Impresora = Impresora + "4T"; |FINSI;
+
+     |SI enBasImp ! 0;
+         |IMPRE -1;
+         |SI FSalida ! 0;
+             Impresora = Impresora - eaNomImp;
+             |IMPRE 0;
+         |FINSI;
+     |SINO;
+         |IMPRE 0;
+     |FINSI;
+     |SI FSalida ! 0;
+         |MENAV "    No Existe Impresora. Proceso Abortado";
+         |ACABA;
+     |FINSI;
+
+     |DDEFECTO #caycosy0;
+     #caycosy0#0  = "            "; #caycosy0#19 = 1;
+     #caycosy0#1  = "zzzzzzzzzzzz"; #caycosy0#19 = dig3;
+     |SI Per1 ] 0; |O Per2 ] 0;
+          #caycosy0#2  = Per1;          #caycosy0#4  = Per2;
+     |SINO;
+         #caycosy0#2  = #30#11;         #caycosy0#4  = #30#12;
+     |FINSI;
+     Campo = 2; |HAZ mesconta;
+     Campo = 4; |HAZ mesconta;
+
+     #0#15 = efFecLeg;
+     #0#8  = dig3;     || nro.niveles
+     |SI eaUltNiv = "N"; #0#8 = #0#8 - 1; |FINSI;
+     nivel = #0#8;
+     |SI #0#8 ] 1; #0#9  = 1; |FINSI;
+     |SI #0#8 ] 2; #0#10 = 2; |FINSI;
+     |SI #0#8 ] 3; #0#11 = 3; |FINSI;
+     |SI #0#8 ] 4; #0#12 = 4; |FINSI;
+     |SI #0#8 ] 5; #0#13 = 5; |FINSI;
+     |SI #0#8 ] 6; #0#14 = 6; |FINSI;
+     menu2 = 2;
+
+     #caycosy0#21 = 1;
+     |HAZ rellena;
+     |SI FSalida = 0;
+         |HAZ los_informes; informe = que_i1;
+         |INFOR informe;
+         |SI FSalida = 0;
+             |BUCLE caycosy00;
+             |PIEINF;
+             |FININF;
+         |SINO;
+             |MENAV error2;
+          |FINSI;
+     |SINO;
+          |MENAV "    Proceso abortado ...";
+     |FINSI;
+     |FINIMP;
+     |HAZ borrar;
+|FPRC;
+
+/*
+|DEFBUCLE Empresas;
+#cabucem1#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Empresas;
+|FIN;
+*/
+
+|PROCESO HagoTodo;
+ |HAZ rellena;
+ |SI menu2 = 1; |HAZ panta; |FINSI;  || Por pantalla
+ |SI menu2 = 2; |HAZ impre; |FINSI;  || Por impresora
+ |HAZ borrar;
+|FPRC;
+
+|PROCESO PorSesiones;
+   eaDepSes = #110#1;
+   eaDesDep = #110#7;
+
+   alfa1 = #110#6; |QBF alfa1;
+   |SI alfa1 ! "";
+       eaFicbal  = alfa1;
+       |CIERRA #1;
+       |NOME_DAT #1 eaFicbal;
+       |HAZ HagoTodo;
+   |FINSI;
+|FPRC;
+
+
+|DEFBUCLE PorSesiones;
+ #110#1;
+ ;
+ enNumSes, "  ";
+ enNumSes, "zz";
+ ;
+ NULL, PorSesiones;
+|FIN;
+
+
+|PROGRAMA;
+
+  enNumSes = 0;
+  enMasDep = 0;
+  |HAZ antesque;
+
+  |ABRE #8;
+  |LEE 111#8p;
+  |SI #8#2 = "S";  |Y #8#3 = "N";  |Y aparam = "";
+      |DFICE pathbal;
+      balance = 1;
+      |CIERRA #8;
+      |SUB_EJECUTA "careccue.tab";
+  |FINSI;
+  |CIERRA #8;
+
+  |SI aparam = ""; |O aparam = "fech";
+
+     |HAZ inicio;
+     |CLS;
+     |CABEZA "Comp.Sumas y Saldos";
+     |DDEFECTO #0;
+
+      enSwOper = 1;
+      r_emp = empre;
+      r_per = ejerc;
+      |SUB_EJECUTA "carecsig";
+      enSwOper = 0;
+
+     || Bucle menu
+     FSalida = 1;
+     |PARA; |SI 0 < FSalida; |HACIENDO;
+                sw_pagina = 0;
+            |PINPA #0#0;    || Pinta la pantalla del informe
+            |SI aparam = "fech"; |HAZ PintoSes; |FINSI;
+
+            |PINDA #0#0;    || Pinta los datos por defecto del informe
+            |MENU menu;
+            |SI 0 < FSalida;          || Se ha elegido opcion
+                nswPrim = 0;
+                menu2   = FSalida;      || Defecto de la ultima opcion elegida
+                |ENDATOS #1#0;          || Seleccion informe
+                |SI 0 [ FSalida;
+                    |SI enMasDep = 0;
+                        |HAZ HagoTodo;
+                    |SINO;
+                        |BUCLE PorSesiones;
+                        |SI nswPrim = 1; |FININF; |FINIMP; |FINSI;
+                        eaDepSes = "TODOS";
+                    |FINSI;
+                |FINSI;
+                FSalida = 1;
+            |FINSI;
+     |SIGUE;
+  |SINO;
+     Comodin = PARAMETRO;
+     aAlfa = Comodin % -102; Comodin = Comodin - aAlfa;
+     |SI aAlfa = ",S";
+        #caycosy0#22 = "S";
+     |SINO;
+        #caycosy0#22 = "N";
+     |FINSI;
+     Comodin = Comodin - ",";
+     |SI FSalida ! 0;
+        Calc = ((FSalida / 100) ! 0) + 99;
+        Comodin1 = Comodin % 0101;
+        Per1 = Comodin1; Comodin = Comodin - Comodin1;
+        Per2 = Comodin;
+     |FINSI;
+     ||  |ABRE #48; |BUCLE Empresas; |CIERRA #48;
+     |HAZ Empresas;
+  |FINSI;
+|FPRO;
+
+|PROCESO cuenta; |TIPO 6;
+    p_alfa1 = #0Campo;
+    salidas = FSalida;
+|HAZ punto;
+|SI p_error ! 0;  |ERROR;  |ACABA;  |FINSI;
+|SI #0Campo = "            ";  |ERROR;  |ACABA;  |FINSI;
+    digito = Campo + 19;
+    cta  = #0Campo;
+    long = cta % 0;
+    swdig = 0;
+|SI long = #30#14; swdig = 1; #0digito = 1; |FINSI;
+|SI long = #30#15; swdig = 1; #0digito = 2; |FINSI;
+|SI long = #30#16; swdig = 1; #0digito = 3; |FINSI;
+|SI long = #30#17; swdig = 1; #0digito = 4; |FINSI;
+|SI long = #30#18; swdig = 1; #0digito = 5; |FINSI;
+|SI long = #30#19; swdig = 1; #0digito = 6; |FINSI;
+|SI swdig = 0;
+    |MENAV men2;
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO LeeDiario;
+ fFecha = #21#1;
+ |ERROR10;
+|FPRC;
+
+|DEFBUCLE LeeDiario;
+ #21#1;
+ ;
+ nDiario, fec1, 000001;
+ nDiario, fec2, 999999;
+ ;
+ NULL, LeeDiario;
+|FIN;
+
+|PROCESO VeoFecAper;
+  |PATH_DAT #21 fich_alta;
+  fFecha = "01.00.0000"; nDiario = 0;  |BUCLE LeeDiario;
+  aAlfa1 = fFecha; aAlfa1 = aAlfa1 % 402; nMesAper = aAlfa1;
+  fFecha = "01.00.0000"; nDiario = 99; |BUCLE LeeDiario;
+  aAlfa1 = fFecha; aAlfa1 = aAlfa1 % 402; nMesCier = aAlfa1;
+|FPRC;

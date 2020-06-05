@@ -1,0 +1,301 @@
+|FICHEROS;
+     tecaz005 #0;
+     tecam003 #3;
+     tecam004 #4;
+     tecam005 #5;
+     tecam012 #12;
+     agifa104 #104;
+     agifa073 #73;
+     agifa019 #19;
+     agifa017 #17;
+     dsm00020 #20;
+|FIN;
+
+|VARIABLES;
+     &eaLog = "";
+     nSwErr = 0;
+     aPath = "";
+     aParam = "";
+     nLin = 0;
+     aHora = "";
+     nPalm = 0;
+     aFic = "";
+     aAlfa = "";
+     nHandle = 0;
+     aBlanco = 0"";
+     nLon = 0;
+     aValor = "";
+     aLF = "";
+     nPeso = 0;
+     aFicDef = "";
+     nPend = 0;
+     nCalc = 0;
+|FIN;
+
+|PROCESO Graba;
+     aBlanco = " " * nLon;
+     nCalc = (-1 * (nLon + 100)) ! 0; aAlfa = aBlanco + aValor;
+     aAlfa = aAlfa % nCalc;
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+########################################################
+# Fichero agencias que importa el palm                 # PALM <<==
+########################################################
+CÓDIGO AGENCIA   ( N2       ) -> Código de la agencia
+NOMBRE AGENCIA   ( A30      ) -> Nombre de la agencia
+
+|PROCESO dsm00020;
+     nLon = 2; aValor = #20#0; |HAZ Graba;
+     nLon = 30; aValor = #20#1; |HAZ Graba;
+     |XGRABA nHandle, aLF;
+|FPRC;
+
+|DEFBUCLE dsm00020;
+     #20#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, dsm00020;
+|FIN;
+
+|PROCESO EnviaAgencias;
+     aPath = #3#2;  |QBF aPath;
+     |MKDIR aPath;
+     aFic = aPath + "agencias.tmp";
+
+     |XABRE "WB", aFic, nHandle;
+     |SI FSalida ] 0;
+          |BUCLE dsm00020;
+          |XCIERRA nHandle;
+          aFicDef = aFic - ".tmp";
+          aFicDef = aFicDef + ".txt";
+          |RENOMBRA_FICHERO aFic, aFicDef;
+
+          aAlfa = "chmod -R 777 " + aFicDef;
+          |SYSTEM aAlfa;
+     |SINO;
+          aAlfa = "0000[" + aFic + "] inaccesible.";
+          |SI aParam = "auto";
+               |MENSA aAlfa;
+          |SINO;
+               |MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+L                ( letra L  ) -> indica el tipo de datos que van a continuación
+CÓDIGO ARTÍCULO  ( A20      ) -> Código en la gestión del artículo
+DESCRIPCIÓN      ( A50      ) -> Descripción del artículo
+LOCALIZACIÓN     ( A50      ) -> Localización en el almacén del artículo
+UNIDADES PEDIDAS ( N8       ) -> Unidades pedidas de este artículo
+UNIDADES SERVIDAS( N8       ) -> Unidades que ya se han servido
+STOCK            ( N8       ) -> Número de unidades de este artículo disponibles en el almacén
+PESO             ( N8       ) -> Peso especificado en la gestión para el artículo
+CÓDIGO BARRAS    ( A20      ) -> Código de barras que debe tener el artículo
+NÚMERO SERIE     ( A1 S/N   ) -> Si el palm deberá pedir la introducción del número de serie el artículo o no
+
+|PROCESO EnviaLin;
+     nPend = #73#5 - #73#43;
+     |SI nPend = 0; |ACABA; |FINSI;
+
+     |DDEFECTO #19;
+     #19#0 = #73#2;
+     |LEE 000#19=;
+
+     |DDEFECTO #17;
+     #17#0 = #73#2;
+     #17#1 = #73#3;
+     |LEE 000#17=;
+
+     ||nPeso = #73#5 * #19#102;         || total
+     nPeso = #19#102;                   || por unidad
+
+     nLon = 1; aValor = "L"; |HAZ Graba;
+     nLon = 20; aValor = #73#2; |HAZ Graba;
+     nLon = 50; aValor = #73#4; |HAZ Graba;
+     nLon = 50; aValor = #17#2; |HAZ Graba;
+     nLon = 8; aValor = #73#42; |HAZ Graba;
+     nLon = 8; aValor = #73#43; |HAZ Graba;
+     nLon = 8; aValor = #17#5; |HAZ Graba;
+     nLon = 8; aValor = nPeso; |HAZ Graba;
+     nLon = 20; aValor = #19#128; |HAZ Graba;
+     |SI #19#125 = "  ";
+          nLon = 1; aValor = "N"; |HAZ Graba;
+     |SINO;
+          nLon = 1; aValor = "S"; |HAZ Graba;
+     |FINSI;
+     nLon = 3; aValor = #73#1; |HAZ Graba;
+     |XGRABA nHandle, aLF;
+|FPRC;
+
+C                ( letra C  ) -> indica el tipo de datos que van a continuación
+NÚMERO DE PALM   ( A2       ) -> Valor de 00 a 99 que indica el código del palm al que este pedido está asignado
+NÚMERO DE LOTE   ( N5       ) -> Valor de 0 a 7 que indica a que lote está asignado
+NÚMERO DE PEDIDO ( N6       ) -> Valor de 0 a 9 que indica a que pedido del lote está asignado
+CÓDIGO AGENCIA   ( N2       ) -> Código de la agencia si es relevante (este campo se podrá cambiar en el palm)
+FECHA PEDIDO     (DD.MM.AAAA) -> Fecha de emisión del pedido
+CÓDIGO CLIENTE   ( N6       ) -> Código del cliente según está en la gestión
+NOMBRE CLIENTE   ( A30      ) -> Nombre del cliente según está en la gestión
+ALBARÁN ANTERIOR ( A1  S/N  ) -> Si el palm había recibido un albarán como este
+SERIE PEDIDO     ( A5       )
+
+|PROCESO EnviaCab;
+     |DDEFECTO #104;
+     #104#25 = #5#2;
+     #104#0 = #5#3;
+     |LEE 000#104=;
+     |SI FSalida = 0;
+          nLon = 1; aValor = "C"; |HAZ Graba;
+          nLon = 2; aValor = nPalm; |HAZ Graba;
+          nLon = 5; aValor = #5#0; |HAZ Graba;
+          nLon = 6; aValor = #5#1; |HAZ Graba;
+          nLon = 2; aValor = #104#60; |HAZ Graba;
+          nLon = 10; aValor = #104#1; |HAZ Graba;
+          nLon = 6; aValor = #104#4; |HAZ Graba;
+          nLon = 30; aValor = #104#8; |QBF aValor; |HAZ Graba;
+          nLon = 1; aValor = #4#7; |HAZ Graba;
+          nLon = 5; aValor = #5#2; |HAZ Graba;
+          nLon = 6; aValor = #5#3; |HAZ Graba;
+          |XGRABA nHandle, aLF;
+          |BUCLELIN 2 EnviaLin #104;
+     |FINSI;
+|FPRC;
+
+|PROCESO EnviaLote;
+     nSwErr = 1;
+     aPath = #3#2; |QBF aPath;
+     |MKDIR aPath;
+     aAlfa = ("00000" + #4#0) % -106;
+     aFic = aPath + "lot" + aAlfa + ".tmp";
+     |XABRE "WB", aFic, nHandle;
+     |SI FSalida ] 0;
+          |ABRE #73;
+          |ABRE #104;
+          |ABRE #17;
+          |ABRE #19;
+          |BUCLELIN 0 EnviaCab #4;
+          |CIERRA #19;
+          |CIERRA #17;
+          |CIERRA #104;
+          |CIERRA #73;
+          |XCIERRA nHandle;
+          nSwErr = 0;
+
+          aFicDef = aFic - ".tmp";
+          aFicDef = aFicDef + ".txt";
+          |RENOMBRA_FICHERO aFic, aFicDef;
+
+          aAlfa = "chmod -R 777 " + aFicDef;
+          |SYSTEM aAlfa;
+     |SINO;
+          aAlfa = "0000[" + aFic + "] inaccesible.";
+          |SI aParam = "auto";
+               |MENSA aAlfa;
+          |SINO;
+               |MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeePalm;
+     |ABRE #3;
+     #3#0 = nPalm;
+     |LEE 000#3=;
+     |CIERRA #3;
+|FPRC;
+
+|PROCESO Marca;
+     #5#6 = "E";
+     |GRABA 020#5a;
+     |LIBERA #5;
+|FPRC;
+
+|PROCESO tecam004F;
+     |SI nLin ] #12#1; |O #4#7 = "S"; |O aParam = "auto";
+          eaLog = ("00000" + #4#0) % -105;
+          eaLog = "Envio Lote " + eaLog;
+          |HAZ TecaGrabaLog;
+
+          |LEE 121#12p;
+          |HORA aHora;
+          nPalm = #12#5 + 1;
+          |SI nPalm > #12#3; nPalm = 1; |FINSI;
+          #12#5 = nPalm;
+          #12#6 = ~;
+          #12#7 = aHora;
+          |SALVA_FICHA #4;
+          |HAZ LeePalm;
+          |HAZ EnviaLote;
+          |SI aParam = "auto";
+               |HAZ EnviaAgencias;
+          |FINSI;
+          |REPON_FICHA #4;
+          |SI nSwErr = 0;
+               |GRABA 020#12a;
+               |BUCLELIN 0 Marca #4;
+               #4#4 = nPalm;
+               #4#5 = ~;
+               #4#6 = aHora;
+               |GRABA 020#4a;
+               |LIBERA #4;
+          |SINO;
+               eaLog = ("00000" + #4#0) % -105;
+               eaLog = "Error Envio Lote " + eaLog;
+               |HAZ TecaGrabaLog;
+          |FINSI;
+          |LIBERA #12;
+     |FINSI;
+|FPRC;
+
+|PROCESO tecam005;
+     nLin = nLin + 1;
+|FPRC;
+
+|PROCESO tecam004;
+     nLin = 0;
+|FPRC;
+
+|DEFBUCLE tecam004;
+     #4#2;
+     ;
+     "01.01.1900", 000000;
+     "01.01.1900", 999999;
+     be;
+     NULL, tecam004, tecam005, tecam004F;
+|FIN;
+
+|DEFBUCLE tecam004Auto;
+     #4#2;
+     ;
+     "01.01.1900", 000000;
+     "01.01.1900", 999999;
+     be;
+     NULL, tecam004F;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#0 = "SI";
+          |ABRE #12;
+          |LEE 000#12p;
+          |SI FSalida ! 0; |GRABA 020#12n; |FINSI;
+          |SI aParam = "auto";
+               |BUCLE tecam004Auto;
+          |SINO;
+               |BUCLE tecam004;
+          |FINSI;
+          |CIERRA #12;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aLF = &13 + &10;
+     aParam = PARAMETRO; |QBF aParam;
+     |SI aParam = "";
+          |MANTE #0;
+     |SINO;
+          #0#0 = "SI";
+          |HAZ Tipo3;
+     |FINSI;
+|FPRO;

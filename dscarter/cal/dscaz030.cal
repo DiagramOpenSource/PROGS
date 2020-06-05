@@ -1,0 +1,148 @@
+|FICHEROS;
+   dscaz030 #0;
+   dscam055 #1; || Lineas de observaciones
+|FIN;
+
+|VARIABLES;
+   Puntero = 0;
+   DocRecibo = 0;
+   Comodin = "";
+   aAlfa   = "";
+   aAlfa1  = "";
+   nCalc   = 0;
+   nSubDoc = 0;
+
+   nBaffer = 0;
+   nTotalLinea = 0; nTope = 0; nVari1 = 0; nVari2 = 0;
+
+   &enModoEdita  = 0;
+   &enTotalVaria = 0;
+   &enCampoAncho = 0;
+   &eaNombreList = "";
+   &enCuadroIni  = 0;
+   &enCuadroFin  = 0;
+   &eaTitulo     = "";
+
+{100}&epPuntEdita   = "";
+|FIN;
+
+|PROCESO GrabaSecuencial;
+     IepPuntEdita  = epPuntEdita1 <-;
+     |PARA nTotalLinea = 0;  |SI nTotalLinea [ enTotalVaria;  |HACIENDO nTotalLinea = nTotalLinea + 1;
+          |AL_BUF nBaffer, nTotalLinea, epPuntEdita;
+          IepPuntEdita = IepPuntEdita + 1;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Edicion;
+     nTope  = nTotalLinea - 1;
+     nVari1 = 0;
+     nVari2 = 0;
+     enModoEdita = enModoEdita + 100;
+     |EDITA nBaffer, 1, nTope, enCuadroIni, enCuadroFin, enModoEdita, eaNombreList, enCampoAncho, nVari1, nVari2;
+     enModoEdita = enModoEdita $ 100;
+|FPRC;
+
+|PROCESO CogePuntero;
+     IepPuntEdita  = epPuntEdita1 <-;
+     |PARA nTotalLinea = 0;  |SI nTotalLinea [ enTotalVaria;  |HACIENDO nTotalLinea = nTotalLinea + 1;
+          |DEL_BUF nBaffer, nTotalLinea, epPuntEdita;
+          IepPuntEdita = IepPuntEdita + 1;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Edita;
+     |PUSHV 0501 2380;
+     |DIMENSIONA  200, nBaffer, 0;
+
+     |HAZ GrabaSecuencial;
+     |HAZ Edicion;
+     |HAZ CogePuntero;
+
+     |FINDIM nBaffer;
+     |POPV;
+|FPRC;
+
+|PROGRAMA;
+   Comodin = PARAMETRO; |QBF Comodin;
+   aAlfa1 = Comodin - "/";
+   |SI FSalida  = 0;
+      DocRecibo = Comodin;
+      nSubDoc   = 0;
+   |SINO;
+      nCalc = FSalida;
+      nCalc = nCalc + 98;
+      aAlfa = aAlfa1 % nCalc;
+      nSubDoc = aAlfa;
+      aAlfa = "/" + aAlfa;
+      Comodin = Comodin - aAlfa;
+      DocRecibo = Comodin;
+   |FINSI;
+
+   enTotalVaria = 100;    || Lineas del 'buffer'
+   enModoEdita  = 0;      || Modo de edicion. Fijo.
+   enCampoAncho = 60;     || Columnas del cuadro de edicion de texto
+   eaNombreList  = "";    || Titulo del cuadro (para ponerlo encima de la caja de texto)
+   |SI eaTitulo = "";
+      enCuadroIni   = 0601;  || Posicion de inicio de la caja de texto
+      enCuadroFin   = 2060;  || Posicion de fin de la caja de texto
+   |FINSI;
+
+   |ABRE #dscam055;
+   |PARA Puntero = 1; |SI Puntero [ 100; |HACIENDO Puntero = Puntero + 1;
+      IepPuntEdita  = epPuntEdita1 <-;
+      IepPuntEdita = IepPuntEdita + (Puntero - 1);
+
+      #dscam055#0 = DocRecibo;
+      #dscam055#1 = Puntero;
+      #dscam055#3 = nSubDoc;
+      |LEE 101#dscam055.=;
+      |SI FSalida ! 0;
+         epPuntEdita  = "";
+      |SINO;
+         epPuntEdita  = #dscam055#2;
+      |FINSI;
+   |SIGUE;
+   |CIERRA #dscam055;
+
+   |PUSHV  0501 2380;
+   |SI eaTitulo = "";
+      |ATRI R;  |PINTA 0510, " Texto anexo ";  |ATRI 0;
+   |SINO;
+      nCalc = enCuadroIni - 100;
+      |ATRI R;  |PINTA nCalc, eaTitulo;  |ATRI 0;
+   |FINSI;
+
+   |HAZ Edita;
+   |POPV;
+
+   |ABRE #dscam055;
+   |PARA Puntero = 1;  |SI Puntero [ 100;  |HACIENDO Puntero = Puntero + 1;
+      IepPuntEdita  = epPuntEdita1 <-;
+      IepPuntEdita = IepPuntEdita + (Puntero - 1);
+
+      |DDEFECTO #dscam055;
+      #dscam055#0 = DocRecibo;
+      #dscam055#1 = Puntero;
+      #dscam055#3 = nSubDoc;
+      |LEE 101#dscam055.=;
+      |SI FSalida ! 0;
+         Comodin = epPuntEdita; |QBF Comodin;
+         |SI Comodin ! "";
+            #dscam055#2 = epPuntEdita;
+            |GRABA 020#dscam055.n;
+         |FINSI;
+      |SINO;
+         Comodin = epPuntEdita; |QBF Comodin;
+         |SI Comodin ! "";
+            #dscam055#2 = epPuntEdita;
+            |GRABA 020#dscam055.a;
+         |SINO;
+            |BORRA 020#dscam055.a;
+         |FINSI;
+         |LIBERA #dscam055;
+      |FINSI;
+   |SIGUE;
+   |CIERRA #dscam055;
+
+|FPRO;

@@ -1,0 +1,290 @@
+|FICHEROS;
+   caimpocp #0;
+
+   caenlace #10;
+   caconasi #11;
+   camaasic #12;
+   calibros #13;
+   cacuenta #15;
+
+   cacfgimp #20;
+|FIN;
+
+|VARIABLES;
+   aAlfa     = "";
+   aAlfa1    = "";
+   aAlfa2    = "";
+   aAlfa3    = "";
+   aLong     = "";
+   aCuenta   = "";
+   aIP       = "";
+   aHoja     = "";
+
+   nCalc     = 0;
+   nCalc1    = 0;
+   nLong     = 0;
+   nApunte   = 0;
+   nMaxDigit = 0;
+   nCont     = 0;
+   nCont1    = 0;
+   nAntDocum = 0;
+   nNumFra   = 0;
+   nHandle   = 0;
+   nNivel    = 0;
+   nLinea    = 0;
+
+   nDiario    = 0;
+   fFecha     = @;
+   nNumDocum  = 0;
+   aDescrAsto = "";
+   aSigno     = "";
+   aCodigo    = "";
+   nTotalF    = 0;
+   fFechaF    = @;
+
+   nImporte   = 0;
+|FIN;
+
+|PROCESO MiraHoja;
+   aAlfa = #0Campo; |QBF aAlfa;
+   |SI aAlfa = "";
+      aAlfa = "F*.csv";
+      |BROWSE aAlfa;
+      aAlfa = aAlfa % 0299;
+      #caimpocp#Campo# = aAlfa; |PINTA #caimpocp#Campo#;
+   |FINSI;
+
+   aAlfa = #0Campo; |QBF aAlfa;
+   |XABRE "CE", aAlfa, nHandle;
+   |SI FSalida < 0;
+      |MENAV "    Hoja excel de datos de cobros y pagos inexistente";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO Contador;
+   |ABRE #caconasi;
+   |LEE 101#caconasi.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #caconasi;
+      |GRABA 020#caconasi.n;
+      |LEE 101#caconasi.p;
+   |FINSI;
+
+   #caconasi#1 = #caconasi#1 + 1; nNumDocum = #caconasi#1;
+   aAlfa = "|NC"; nCalc = #caconasi#aAlfa#;
+   |SI nCalc > 2; #caconasi#2 = #caconasi#2 + 1; |FINSI;
+
+   |GRABA 020#caconasi.a; |LIBERA #caconasi;
+   |CIERRA #caconasi;
+
+   |ABRE #camaasic;
+   #camaasic#0 = #caenlace#0;
+   #camaasic#1 = #caenlace#1;
+   #camaasic#2 = nNumDocum;
+   |LEE 000#camaasic.=;
+   |SI FSalida = 0; nNumDocum = -1; |FINSI;
+   |CIERRA #camaasic;
+|FPRC;
+
+|PROCESO SacaNivel;
+   nNivel = 0;
+   aLong = aCuenta % 0; nLong = aLong;
+
+   |SI #48#14 = nLong; nNivel = 1; |FINSI;
+   |SI #48#15 = nLong; nNivel = 2; |FINSI;
+   |SI #48#16 = nLong; nNivel = 3; |FINSI;
+   |SI #48#17 = nLong; nNivel = 4; |FINSI;
+   |SI #48#18 = nLong; nNivel = 5; |FINSI;
+   |SI #48#19 = nLong; nNivel = 6; |FINSI;
+|FPRC;
+
+|PROCESO FiltraCeros;
+   aAlfa1 = aAlfa % 0101;
+   |PARA; |SI aAlfa1 = "0"; |HACIENDO;
+      aAlfa  = aAlfa % 0299;
+      aAlfa1 = aAlfa % 0101;
+   |SIGUE;
+|FPRC;
+
+|PROCESO SacaDatosHojaGest;
+   || Recojo los datos de la clave del registro
+   nDiario = #cacfgimp#11;
+   aAlfa = "E" + nLinea;  |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa; fFecha = aAlfa;
+   aAlfa = "D" + nLinea;  |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa; nNumDocum = aAlfa;
+   aAlfa = "F" + nLinea;  |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa; aDescrAsto = aAlfa;
+   aAlfa = "B" + nLinea;  |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa; aSigno  = aAlfa;
+   aAlfa = "H" + nLinea;  |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa; aCodigo = aAlfa;
+   aAlfa = "V" + nLinea;  |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa;
+   aAlfa = "C" + nLinea;  |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa;
+   |HAZ FiltraCeros; nImporte  = aAlfa;
+|FPRC;
+
+|PROCESO GrabaDefectos;
+   |DDEFECTO #caenlace;
+   #caenlace#0 = nDiario;    || Diario
+   #caenlace#1 = fFecha;     || Fecha
+   #caenlace#2 = nNumDocum;  || Documento
+   #caenlace#3 = nApunte;  nApunte = nApunte + 1;  || Asiento
+   #caenlace#7 = aDescrAsto; || Descripcion asiento
+   |SI aSigno = "H";
+      #caenlace#6  = #cacfgimp#15; || Codigo concepto pago
+   |SINO;
+      #caenlace#6  = #cacfgimp#13; || Codigo concepto cobro
+   |FINSI;
+
+   #caenlace#37 = #48#2;   || Empresa destino
+   #caenlace#38 = #48#3;   || Periodo destino
+|FPRC;
+
+|PROCESO GrabaCobroPago;
+   |HAZ SacaDatosHojaGest;
+   nImporte = nImporte ! 2;
+
+   nApunte = 1;
+
+   || Registro del cliente/proveedor
+   |HAZ GrabaDefectos;
+   |SI aSigno = "H";
+      aAlfa = #cacfgimp#16;
+   |SINO;
+      aAlfa = #cacfgimp#14;
+   |FINSI;
+   |QBF aAlfa; aLong = aAlfa % 0; nLong = aLong;
+   aAlfa1 = aCodigo; |QBF aAlfa1; aAlfa1 = aAlfa1 % 0;
+   nCalc  = aAlfa1; nLong = nLong + nCalc;
+   nCalc = nMaxDigit - nLong;
+   aCuenta = aAlfa + ("0" * nCalc) + aCodigo;
+   |HAZ SacaNivel;
+
+   #caenlace#4 = aCuenta;
+   #caenlace#5 = nNivel;
+   #caenlace#9 = nImporte;   || Importe del apunte
+   |SI aSigno = "D";
+      #caenlace#8 = "H";        || Signo del apunte
+      |SI nImporte < 0;
+         #caenlace#9 = - nImporte; || Importe del apunte
+         #caenlace#8 = "D";        || Signo del apunte
+      |FINSI;
+   |SINO;
+      #caenlace#8 = "D";        || Signo del apunte
+      |SI nImporte < 0;
+         #caenlace#9 = - nImporte; || Importe del apunte
+         #caenlace#8 = "H";        || Signo del apunte
+      |FINSI;
+   |FINSI;
+   #caenlace#51 = fFechaF;     || Fecha de Operacion
+   #caenlace#29 = #caenlace#1; || Fecha de Registro
+   |GRABA 020#caenlace.c;
+
+   || Registro de la cuenta de tesoreria
+
+   |HAZ GrabaDefectos;
+
+   nCalc = nMaxDigit - 3;
+   aCuenta = "572" + ("0" * nCalc);
+   |HAZ SacaNivel;
+
+   #caenlace#4 = aCuenta;
+   #caenlace#5 = nNivel;
+   #caenlace#9 = nImporte;        || Importe del apunte
+   |SI aSigno = "D";
+      #caenlace#8 = "D";          || Signo del apunte
+      |SI nImporte < 0;
+         #caenlace#9 = - nImporte;        || Importe del apunte
+         #caenlace#8 = "H";          || Signo del apunte
+      |FINSI;
+   |SINO;
+      #caenlace#8 = "H";          || Signo del apunte
+      |SI nImporte < 0;
+         #caenlace#9 = - nImporte;   || Importe del apunte
+         #caenlace#8 = "D";          || Signo del apunte
+      |FINSI;
+   |FINSI;
+   #caenlace#51 = fFechaF;        || Fecha de Operacion
+   #caenlace#29 = #caenlace#1;    || Fecha de Registro
+   |GRABA 020#caenlace.n;
+|FPRC;
+
+|PROGRAMA;
+   |ABRE #cacfgimp;
+   |LEE 000#cacfgimp.p;
+   |SI FSalida ! 0; |DDEFECTO #cacfgimp; |FINSI;
+   |CIERRA #cacfgimp;
+
+   |ABRE #caimpocp;
+   |LEE 101#caimpocp.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #caimpocp;
+      |GRABA 020#caimpocp.b;
+   |FINSI;
+
+   |CLS;
+   |CABEZA " Importacion datos cobros/pagos IN-LINE ";
+
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#caimpocp;
+   |SI FSalida = 0;
+      |GRABA 020#caimpocp.a;
+
+      |CARGADLL "agixl97.dll";
+      |SI FSalida < 0;
+         |MENAV "    No se puede usar agixl97.dll";
+      |SINO;
+         nMaxDigit = 0;
+         |PARA nCont = 14; |SI nCont [ 19; |HACIENDO nCont = nCont + 1;
+            |SI #48nCont ] nMaxDigit; nMaxDigit = #48nCont; |FINSI;
+         |SIGUE;
+
+         |MENSA "    Recogiendo datos de cobros/pagos";
+         aAlfa = "pu" + Usuario; |NOME_DAT #caenlace#aAlfa#;
+         |DELINDEX #caenlace;
+         |ABRE #caenlace; |ABRE #caconasi; |ABRE #calibros;
+
+         aAlfa = #0#1; |QBF aAlfa;
+         |PARA; |SI aAlfa1 ! "/"; |Y aAlfa1 ! "\"; |HACIENDO;
+            aAlfa1 = aAlfa % -101; aAlfa = aAlfa % -299;
+            |SI aAlfa1 ! "/"; |Y aAlfa1 ! "\";
+               aAlfa2 = aAlfa1 + aAlfa2;
+            |FINSI;
+         |SIGUE;
+         aAlfa = aAlfa2; aAlfa2 = "";
+         |PARA; |SI aAlfa1 ! "."; |HACIENDO;
+            aAlfa1 = aAlfa % 0101; aAlfa = aAlfa % 0299;
+            |SI aAlfa1 ! "."; aAlfa2 = aAlfa2 + aAlfa1; |FINSI;
+         |SIGUE;
+         aHoja = aAlfa2;
+
+         aAlfa = #0#1; |QBF aAlfa;
+         |ALFACALLDLL "agixl97.dll", "carga_book", aAlfa;
+         |ALFACALLDLL "agixl97.dll", "selecciona_hoja", aHoja;
+
+         nCont1 = 0;
+         |PARA nLinea = 2; |SI nCont1 [ 10; |HACIENDO nLinea = nLinea + 1;
+            || Compruebo si la linea est  vacia
+            aAlfa = "A" + nLinea; |ALFACALLDLL "agixl97.dll", "peek_dato", aAlfa;
+            |QBF aAlfa;
+            |SI aAlfa = "";
+               nCont1 = nCont1 + 1;
+            |SINO;
+               nCont1 = 0;
+               |HAZ GrabaCobroPago;
+            |FINSI;
+         |SIGUE;
+
+         |ALFACALLDLL "agixl97.dll", "fin_book", "salva";
+         |DESCARGADLL "agixl97.dll";
+
+         |DFICE aAlfa; |QBF aAlfa;
+         aAlfa = "dsapunte.tab;" + aAlfa + ",pu" + Usuario;
+         |SUB_EJECUTA aAlfa;
+         |CIERRA #caenlace; |DELINDEX #caenlace;
+         |CIERRA #caconasi; |CIERRA #calibros;
+
+         |MENSA "    Recalculando saldos";
+         |SUB_EJECUTA "carecupe.tab;F";
+      |FINSI;
+   |FINSI;
+
+   |LIBERA #caimpocp; |CIERRA #caimpocp;
+|FPRO;

@@ -1,0 +1,392 @@
+|FICHEROS;
+   cageco01;
+   cacuenta;
+
+   ca8cumay;
+   ca8m0002;
+   cacuebal;
+   caivaasi;
+   caclipro;
+   cafantas;
+
+   caforpag;
+   :/modelos/def/dsmom030;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+
+|VARIABLES;
+   &entrada = 1;
+   aAlfa1 = "";
+   aAlfa2 = "";
+   nNume1 = 0;
+   ModoEntrada = 0;
+   swpcta      = 0;
+   swmalo      = 0;
+   aFich1      = "";
+   aAntesDes0  = "";
+   nAnterior   = 0;
+   Calc        = 0;
+   nFPago      = 0;
+   ConceptoAnt = 0;
+   CuentaAnt   = "";
+   DescAnt     = "";
+   aCamp13     = "";
+   ConceptoAntG = 0;
+   CuentaAntG   = "";
+   DescAntG    = "";
+   aCamp13G    = "";
+   aCampo2     = "";
+   fCampo5     = @;
+
+   aCPartida   = "";
+   nCTiva      = 0;
+   nInkey      = 0;
+   BaseAnt     = 0;
+   nYaCrea     = 0;
+|FIN;
+
+|| **********************************************************************
+|PROCESO Tipo7C0; |TIPO 7;
+   #cageco01#2 = "C";
+   ModoEntrada = (FEntrada / 100) ! 0;
+   |SI ModoEntrada [ 1;
+       aAlfa1 = " " * 36;
+       aAlfa2 = " " * 36;
+   |SINO;
+       eaCuenta = #cageco01#1;  |HAZ LeeCuenta; aAlfa1 = #cacuenta#2;
+       eaCuenta = #cageco01#13; |HAZ LeeCuenta; aAlfa2 = #cacuenta#2;
+   |FINSI;
+   #cafantas#19 = aAlfa1; |PINTA 0736, #cafantas#19;
+   #cafantas#19 = aAlfa2; |PINTA 1436, #cafantas#19;
+|FPRC;
+
+|PROCESO Tipo7C1; |TIPO 7;
+   #cageco01#2 = "C";
+   ModoEntrada = (FEntrada / 100) ! 0;
+   |SI ModoEntrada ! 1; |ACABA; |FINSI;
+
+   |SI fCampo5 [ "01.01.2000"; fCampo5 = ~;   |FINSI;
+   aCampo2     = "C";
+   |SI swpcta = 0
+       #cageco01#5 = fCampo5;|PINTA #cageco01#5;
+   |FINSI;
+|FPRC;
+
+|PROCESO DatosAnterior;
+   aCampo2 = #cageco01#2;
+   fCampo5 = #cageco01#5;
+   CuentaAnt   = #cageco01#1;
+   ConceptoAnt = #cageco01#3;
+   DescAnt     = #cageco01#4; dDesc1 = aAntesDes0;
+   aCamp13     = #cageco01#13;
+   nAnterior   = 0;
+|FPRC;
+
+|PROCESO ConfirmaLinea; |TIPO 3;          ||Desde Campo Linea
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   swpcta = 0;
+   swmalo = 0;
+   || ... Para Comprobar que todo es correcto
+   |SI #cageco01#1 = doce;
+       swmalo = 1;
+       aAlfa1 = "    Error. Registro no valido. No Existe Cuenta Pago";
+   |FINSI;
+   |SI #cageco01#13 = doce;
+       swmalo = 1;
+       aAlfa1 = "    Error. Registro no valido. No Existe Cuenta Contrapartida";
+   |FINSI;
+   |SI #cageco01#5 < fec1; |O #cageco01#5 > fec2;
+       swmalo = 1;
+       aAlfa1 = "    Error. Registro no valido. Fecha Incorrecta";
+   |FINSI;
+   |SI swmalo = 1;
+       |MENAV aAlfa1;
+       |ERROR;
+       |ACABA;
+   |FINSI;
+   |HAZ DatosAnterior;
+|FPRC;
+
+
+|CALCULO TrasConcepto1;  |TIPO 0;     ||Concepto Factura
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   aAlfa1 = Contenido;
+   nNume1 = aAlfa1;
+   |SI FSalida = 10; ||  |Y #cageco01#2 = "C";
+       eaFiCon = aFich1;
+       enConcepto = #cageco01#3;
+       |HAZ VerConcepto;
+       #cageco01#3 = enConcepto; |PINTA #cageco01#3;
+   |FINSI;
+
+   enLibIVA   = dLibro;
+   enFilConc  = 2;          || Concepto de IVA
+   enConcepto = #cageco01#3;
+   eaReperc   = " ";
+   |HAZ FiltroConcepto;  |SI eswLect ! 0; |ACABA; |FINSI;
+
+   |SI #cageco01#3 = dConc1; |Y ModoEntrada = 1;
+       #dsmom030#1 = dDesc1;
+   |FINSI;
+
+   |SI ModoEntrada = 1; |O nNume1 ! #cageco01#3;
+       #cageco01#4 = #dsmom030#1; |PINTA #cageco01#4;
+       |SI aCPartida = "";
+           #cageco01#13 = #dsmom030#22;
+           |PINTA #cageco01#13;
+       |FINSI;
+   |FINSI;
+
+   aAntesDes0 = #dsmom030#1; |QBF aAntesDes0;
+   nAnterior  = #cageco01#3;
+|FCAL;
+
+|CALCULO PonloAlFinal; |TIPO 7;
+   |C_M #cageco01#Campo#,0,aAlfa1;
+   |SI aAlfa1 = "S";
+       |SI eaSobreEs ! "S";
+           |PTEC 816;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO AntesCIVA1; |TIPO 7;
+ aAlfa1 = #caivaasi#87;
+ |SI #cageco01#8 = 0; aAlfa1 = "N"; |FINSI;
+ |C_M #cageco01#10,1,aAlfa1;
+|FCAL;
+
+|CALCULO AntesCRec1; |TIPO 7;
+ aAlfa1 = #caivaasi#88;
+ |SI #cageco01#9 = 0; aAlfa1 = "N"; |FINSI;
+ |C_M #cageco01#11,1,aAlfa1;
+|FCAL;
+
+||----------------------------------------------------
+|CALCULO TrasTipoIVA; |TIPO 0;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   |SI FSalida = 10;
+       efFechaIVA = #cageco01#5;  |HAZ SelecTipoIVA;
+       #cageco01#7 = enLineaIVA; |PINTA #cageco01#7;
+       |ERROR;
+   |SINO;
+       efFechaIVA = #cageco01#5; enLineaIVA = #cageco01#7;
+       |HAZ SacaIVA;
+   |FINSI;
+
+   ModoEntrada = (FEntrada / 100) ! 0;
+   |SI ModoEntrada = 1; |O #cageco01#7 ! Contenido;
+
+       |SI enLineaIVA < 0;
+           |MENAV "     Control de cuentas no definido";
+           |ERROR;
+           |ACABA;
+       |FINSI;
+
+       #cageco01#8 = enPorcIVA;  |PINTA #cageco01#8;
+       #cageco01#9 = enPorcREC;  |PINTA #cageco01#9;
+
+       Calc = #cageco01#6 * #cageco01#8 / 100; #cageco01#10 = Calc ! EURODB;
+       Calc = #cageco01#6 * #cageco01#9 / 100; #cageco01#11 = Calc ! EURODB;
+   |FINSI;
+|FCAL;
+
+|PROCESO MirCta;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   |SI FSalida = 10;
+       |SI Campo = 10;
+           #cageco01#10  = (#cageco01#6 % #cageco01#8) ! EURODB; |PINTA #cageco01#10;
+       |FINSI;
+       |SI Campo = 11;
+           #cageco01#11  = (#cageco01#6 % #cageco01#9) ! EURODB; |PINTA #cageco01#9;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|| ***********************************************************************
+|CALCULO Trasdes; |TIPO 0;
+   |SI FSalida = 15;
+       #cageco01#4 = DescAnt; |PINTA #cageco01#4;
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO AntesCuenta; |TIPO 7;
+   swpcta = 1;
+   ModoEntrada = (FEntrada / 100) ! 0;
+   |SI ModoEntrada ! 1; |ACABA; |FINSI;
+   aAlfa1 = #cageco01#Campo#; |QBF aAlfa1;
+   |SI aAlfa1 = "";
+       aAlfa1 = "400.";
+       #cageco01#Campo# = aAlfa1;
+       |PTEC 816;
+   |FINSI;
+|FCAL;
+
+|CALCULO AntesCtaC; |TIPO 7;
+   ModoEntrada = (FEntrada / 100) ! 0;
+   |SI ModoEntrada ! 1; |ACABA; |FINSI;
+   |SI #cageco01#13 = doce; |Y aCPartida ! "";
+       #cageco01#13 = aCPartida;
+       |PINTA #cageco01#13;
+   |FINSI;
+|FCAL;
+
+|CALCULO Cuenta; |TIPO 6;             || Cuenta Cli/Pro y Contrapartida
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   |SI FSalida = 15;
+       |SI Campo = 1;
+           #cageco01#Campo# = CuentaAnt;
+       |FINSI;
+       |SI Campo = 13;
+           #cageco01#Campo# = aCamp13;
+       |FINSI;
+       |PINTA #cageco01#Campo#;
+   |FINSI;
+
+   eaCuenta = #cageco01#Campo#;
+   salidas  = FSalida;
+   |HAZ FiltraPuntos;
+   #cageco01#Campo# = eaCuenta;
+   |PINTA #cageco01#Campo#;
+
+   |SI #cageco01#Campo# = "            ";
+       |MENAV "0000Introduzca una cuenta";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO TrasCuenta; |TIPO 0;
+   emCta    = 1;
+   eaCuenta = #cageco01#Campo#;
+   |HAZ SacaNivel;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   |HAZ LeeCuenta;
+   |SI eswCta ! 0; |ACABA; |FINSI;
+
+   enConcepto = #cageco01#3;
+   |SI Campo = 1;
+       |HAZ FiltraCtaCP;
+       |SI eswLect = 0;
+           |ABRE #caclipro;
+           #caclipro#23 = "P";
+           aCPartida = "";
+           nCTiva    = 0;
+           #caclipro#10 = #cageco01#1;
+           |LEE 000#caclipro.=;
+           |SI FSalida = 0;
+               aCPartida = #caclipro#21; |QBF aCPartida;
+               nCTiva    = #caclipro#42;
+           |FINSI;
+           |CIERRA #caclipro;
+       |FINSI;
+       |PINTA 0736, #cacuenta#2;
+   |SINO;
+       |HAZ FiltraCtaIG;
+       |PINTA 1436, #cacuenta#2;
+   |FINSI;
+|FCAL;
+
+|CALCULO TrasFecha; |TIPO 0;   || Desde Fecha
+   |SI #cageco01#5 < fec1; |O #cageco01#5 > fec2;
+       |MENAV "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+       |ERROR;
+   |SINO;
+       |SI #cageco01#5 [ fec3;
+           |MENAV "0000ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+           |ERROR;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO AntesBase; |TIPO 7;
+   |C_M #cageco01#Campo#, 0, aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI eaIntBN = "N";
+       |MENSA "    Introduzca Importe Neto. <F2> Cambiar para introducir Bases";
+   |SINO;
+       |MENSA "    Introduzca Base. <F12> considerar liquido, <F2> Cambiar para introducir Netos";
+   |FINSI;
+|FCAL;
+
+|CALCULO PintaCalB;  |TIPO 0;
+   |C_M #cageco01#Campo#, 0, aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   nInkey = FSalida;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   |SI nInkey = 10;   || falta cambiar esto 07.03.2017
+       |HAZ eAcActualiza;
+       eaIntBN = #caivaasi#110;
+   |FINSI;
+
+   |SI eaIntBN = "N"; nInkey = 9; |FINSI;
+   |SI #cageco01#6 = Contenido; |Y nInkey ! 9; |ACABA; |FINSI;
+
+   |SI nInkey  = 9;
+       BaseAnt = #cageco01#6;
+       #cageco01#6 = #cageco01#6 * (100 / (#cageco01#8 + #cageco01#9 + 100));
+   |FINSI;
+
+   Calc = #cageco01#6 * #cageco01#8 / 100; #cageco01#10 = Calc ! EURODB;
+   Calc = #cageco01#6 * #cageco01#9 / 100; #cageco01#11 = Calc ! EURODB;
+
+   |SI nInkey  = 9;
+       #cageco01#6 = #cageco01#6 + (BaseAnt - (#cageco01#6 + #cageco01#10 + #cageco01#11));
+       |HAZ PintaCalD;
+   |FINSI;
+|FCAL;
+
+|CALCULO PintaCalD;
+   #cageco01#12 = #cageco01#6 + #cageco01#10 + #cageco01#11;
+
+   |PINTA #cageco01#6;
+   |PINTA #cageco01#10;
+   |PINTA #cageco01#11;
+   |PINTA #cageco01#12;
+|FCAL;
+
+|CALCULO Tipo6C19; |TIPO 6;
+   nInkey = FSalida;
+   |ABRE #caforpag;
+   #caforpag#0 = #cageco01#19;
+   |LEE 040#caforpag.=;
+   |SI FSalida ! 0; |Y #cageco01#19 = 0;
+       |DDEFECTO #caforpag;
+       #caforpag#0 = 00;
+       |GRABA 020#caforpag.n;
+   |FINSI;
+   |CIERRA #caforpag;
+|FCAL;
+|| **********************************************************************
+|CALCULO TrasId; |TIPO 0;
+    |SI nYaCrea = 0;
+        aTipoIVA = "S";
+        |HAZ LeeDefIVA;
+
+        enLibIVA  = dLibro;
+        enFilConc = 2;          || Conceptos de IVA
+        |HAZ CreaConcepto;
+        aFich1 = eaFiCon;
+        nYaCrea = 1;
+    |FINSI;
+
+    ModoEntrada = (FEntrada / 100) ! 0;
+    |SI ModoEntrada ! 1; |ACABA; |FINSI;
+
+    aCampo2     = "C";
+    |SI fCampo5 [ "01.01.2000"; fCampo5 = ~;   |FINSI;
+    #cageco01#5 = fCampo5; |PINTA #cageco01#5;
+    #cageco01#3 = dConc1;  |PINTA #cageco01#3;
+    #cageco01#4 = dDesc1;  |PINTA #cageco01#4;
+|FCAL;

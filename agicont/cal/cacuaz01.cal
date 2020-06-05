@@ -1,0 +1,585 @@
+|FICHEROS;
+  cacuaz01 #0;
+
+  cacuam01 #101;
+  camaasic #1;
+  camaasil #2;
+  caivarep #3;
+  caivasop #13;
+  caratios #4;
+  cacuenta #5;
+  canempre #30;
+
+  :/cmi/def/manm0009 #901;    ||Definiciones informes cmi
+|FIN;
+
+|VARIABLES;
+     aDirBase = "";
+     aPath = "";
+ aParam = "";
+ aAlfa1 = "";
+ aAlfa2 = "";
+ nNume1 = 0;
+ nNume2 = 0;
+ nPara1 = 0;
+ nCampo = 0;
+ fFecha = @;
+
+ &enDSel1  = 0;  || Diario
+ &enHSel1  = 0;
+ &efDSel2  = @;  || fecha
+ &efHSel2  = @;
+ &enDSel3  = 0;  || documento
+ &enHSel3  = 0;
+ &enDSel4  = 0;  || asiento
+ &enHSel4  = 0;
+ &eaDSel5  = ""; || cuenta
+ &eaHSel5  = "";
+ &enDSel6  = 0;  || concepto
+ &enHSel6  = 0;
+ &eaDSel7  = ""; || departamento
+ &eaHSel7  = "";
+ &eaDSel8  = ""; || subdepartamento
+ &eaHSel8  = "";
+ &enDSel9  = 0;  || libro
+ &enHSel9  = 0;
+ &eaDSel10 = ""; || serie
+ &eaHSel10 = "";
+ &enDSel11 = 0;  || periodo
+ &enHSel11 = 0;
+ &efDSel12 = @;  || fecha factura
+ &efHSel12 = @;
+ &enTInf   = 0;  || tipo agrupacion
+ &enVAgr1  = 0;  || valor agrupacion 1
+ &enVAgr2  = 0;  || valor agrupacion 2
+ &enVAgr3  = 0;  || valor agrupacion 3
+ &enNRatio = 0;  || numero de ratio
+ aDRatio   = ""; || Descripcion
+
+ nSwError  = 0;
+ nEstado   = 0;
+ nLibro    = 0;
+ aSerie    = "";
+ nPerIVA   = 0;
+ fFecFra   = @;;
+ aTipAcum  = "";
+ aValorAgr = "";
+
+ nTip      = 0;
+ nNivel    = 0;
+ nImporte  = 0;
+
+ &enEjercicio = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE puntos_i;
+
+|CALCULO defectos; |TIPO 7;
+   #0#2 = fec1; |PINTA #0#2;
+   #0#3 = fec2; |PINTA #0#3;
+|FCAL;
+
+|CALCULO Fecha; |TIPO 0;
+   |SI #0Campo > fec2;|O #0Campo < fec1;
+      |MENAV "    Fecha fuera de Periodo ...";
+      |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO cuenta; |TIPO 0;
+     p_alfa1 = #0Campo;
+     salidas = FSalida;
+     |HAZ punto;
+|FCAL;
+
+|CALCULO no_dep; |TIPO 7;
+   |C_M #0#12, 1, eaDepar;
+   |C_M #0#13, 1, eaDepar;
+|FCAL;
+
+|CALCULO no_subd; |TIPO 7;
+   || ... |C_M #0#14, 1, eaSubde;
+   || ... |C_M #0#15, 1, eaSubde;
+|FCAL;
+
+|CALCULO LibroH;
+   |SI #0#16 = 0; |Y #0#17 = 0;
+       |C_M #0#18, 1, "N"; |C_M #0#19, 1, "N";
+       |C_M #0#20, 1, "N"; |C_M #0#21, 1, "N";
+       |C_M #0#22, 1, "N"; |C_M #0#23, 1, "N";
+       |PDEFECTO #0,18,24;
+       |PINTA #0#18; |PINTA #0#19;
+       |PINTA #0#20; |PINTA #0#21;
+       |PINTA #0#22; |PINTA #0#23;
+   |SINO;
+        |C_M #0#18, 1, "S"; |C_M #0#19, 1, "S";
+        |C_M #0#20, 1, "S"; |C_M #0#21, 1, "S";
+        |C_M #0#22, 1, "S"; |C_M #0#23, 1, "S";
+   |FINSI;
+|FCAL;
+
+|CALCULO tipoagrupa; |TIPO 0;
+  |SI #0#24 = 1;
+      |C_M #0#25,1,"S";
+      |C_M #0#26,1,"S";
+      |C_M #0#27,1,"S";
+      |C_M #0#28,1,"N";
+      #0#28 = 0; |PINTA #0#28;
+  |SINO;
+      |C_M #0#25,1,"N"; #0#25 = 0; |PINTA #0#25;
+      |C_M #0#26,1,"N"; #0#25 = 0; |PINTA #0#26;
+      |C_M #0#27,1,"N"; #0#25 = 0; |PINTA #0#27;
+      |C_M #0#28,1,"S";
+  |FINSI;
+|FCAL;
+
+|CALCULO Cuadro; |TIPO 0;
+ |C_M #0Campo,0,aAlfa1;
+ |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+ |SI Campo ! 25; |Y #0Campo = 10;
+     |MENAV "    Agrupacion Erronea";
+     |ERROR;
+ |FINSI;
+
+ |SI #0Campo ] 4; |Y #0Campo [ 9;
+     nSwError = 0;
+     |SI #0Campo = 4; |Y dig3 < 1; nSwError = 1; |FINSI;
+     |SI #0Campo = 5; |Y dig3 < 2; nSwError = 1; |FINSI;
+     |SI #0Campo = 6; |Y dig3 < 3; nSwError = 1; |FINSI;
+     |SI #0Campo = 7; |Y dig3 < 4; nSwError = 1; |FINSI;
+     |SI #0Campo = 8; |Y dig3 < 5; nSwError = 1; |FINSI;
+     |SI #0Campo = 9; |Y dig3 < 6; nSwError = 1; |FINSI;
+     |SI nSwError = 1;
+         |MENAV "    Error. Agrupacion de Nivel Erroneo";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+ |FINSI;
+
+ |SI #0Campo = 12; |Y eaDepar = "N";
+     |MENAV "    Agrupacion Erronea. No hay Departamentos";
+     |ERROR;
+ |FINSI;
+
+||  |SI #0Campo = 13; |Y eaSubde = "N";
+||      |MENAV "    Agrupacion Erronea. No hay Subdepartamentos";
+||      |ERROR;
+||  |FINSI;
+
+  |SI #0Campo = 13;
+      |MENAV "    Agrupacion No Activada. No hay Subdepartamentos";
+      |ERROR;
+  |FINSI;
+
+ |C_M #0#26,1,"S";
+ |C_M #0#27,1,"S";
+ |SI Campo = 25; |Y  #0Campo = 10;
+     |C_M #0#26,1,"N"; #0#26 = 0; |PINTA #0#26;
+     |C_M #0#27,1,"N"; #0#27 = 0; |PINTA #0#27;
+ |FINSI;
+ |SI #0Campo = 0;
+     |SI Campo = 25;
+         |C_M #0#26,1,"N"; #0#26 = 0; |PINTA #0#26;
+         |C_M #0#27,1,"N"; #0#27 = 0; |PINTA #0#27;
+     |FINSI;
+     |SI Campo = 26;
+         |C_M #0#27,1,"N"; #0#27 = 0; |PINTA #0#27;
+     |FINSI;
+ |FINSI;
+|FCAL;
+
+|CALCULO LeeRatio; |TIPO 6;
+   |C_M #0#28,0,aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI #0#28 ! 0;
+       |ABRE #4;
+       #4#0 = #0#28;
+       |LEE 001#4=;
+       |SI FSalida ! 0;
+           |MENAV "    Atencion!. Ratio Inexistente !!!";
+           |ERROR;
+       |FINSI;
+       |CIERRA #4;
+   |SINO;
+       |MENAV "    Atencion!. Introduzca el Codigo de Ratio !!!";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|| ///////////////////////////////////////////////////////////////////
+|| ///////////////////////////////////////////////////////////////////
+|| ///////////////////////////////////////////////////////////////////
+|PROCESO Especial;
+ #101#23 = #101#13;  || Activo / Pasivo   Debe / Haber
+ aAlfa1 = #101#13;
+ aAlfa2 = #101#14; aAlfa2 = ("00" + aAlfa2) % -102;
+ aAlfa1 = aAlfa1 + aAlfa2;
+ #101#24 = aAlfa1;
+ aAlfa2 = #101#15; aAlfa2 = ("00" + aAlfa2) % -102;
+ aAlfa1 = aAlfa1 + aAlfa2;
+ #101#25 = aAlfa1;
+|FPRC;
+
+|PROCESO ValorAgr;
+ aValorAgr = "";
+ nTip = #0nCampo;
+ |SI nTip = 0; |ACABA; |FINSI;
+
+ |SI nTip = 1; aValorAgr = #101#0; |FINSI; || Diario
+
+ |SI nTip = 2; aValorAgr = #101#1; |FINSI; || Fecha Dia
+
+ |SI nTip = 3;
+     aAlfa1 = #101#1;
+     aAlfa1 = (aAlfa1 % 402) + (aAlfa1 % -104)
+     aValorAgr = aAlfa1;                   || Fecha Mes
+ |FINSI;
+
+ |SI nTip ] 4; |Y nTip [ 9;
+     aAlfa1 = #101#6;
+     |SI nTip = 4; nNivel = dig4; |FINSI;
+     |SI nTip = 5; nNivel = dig5; |FINSI;
+     |SI nTip = 6; nNivel = dig6; |FINSI;
+     |SI nTip = 7; nNivel = dig7; |FINSI;
+     |SI nTip = 8; nNivel = dig8; |FINSI;
+     |SI nTip = 9; nNivel = dig9; |FINSI;
+     |SI nNivel ! 0;
+         nNivel = 100 + nNivel;
+         aAlfa2 = nNivel;
+         aAlfa1 = aAlfa1 % aAlfa2;
+     |SINO;
+         aAlfa1 = "";
+     |FINSI;
+     aValorAgr = aAlfa1;                   || Documento;
+ |FINSI;
+
+ |SI nTip = 10;
+     |HAZ Especial;
+ |FINSI;
+
+ |SI nTip = 11;
+     aAlfa1 = #101#7; aAlfa1 = ("000" + aAlfa1) % -103;
+     aValorAgr = aAlfa1;
+ |FINSI; || Concepto
+
+ |SI nTip = 12; aValorAgr = #101#9; |FINSI; || Departamento
+ |SI nTip = 13; aValorAgr = #101#10;|FINSI; || Subdepartamento
+ |SI nTip = 14; aValorAgr = #101#17;|FINSI; || Libro
+ |SI nTip = 15; aValorAgr = #101#18;|FINSI; || Serie
+ |SI nTip = 16; aValorAgr = #101#19;|FINSI; || Periodo
+
+ |SI nTip = 17; |O nTip = 18;
+     |SI #101#20 > "01.01.1900";
+         aAlfa1 = #101#20;
+         |SI nTip = 18; aAlfa1 = (aAlfa1 % 402) + (aAlfa1 % -104); |FINSI;
+         aValorAgr = aAlfa1;
+     |FINSI;
+ |FINSI;                             || Fecha Factura
+
+|FPRC;
+
+|| /////////////////////////////////
+
+|PROCESO LeeFra;
+ |SI #2#12 = "C"; |O #2#12 = "P";
+     |ACABA;
+ |FINSI;
+
+ |SI #2#12 = "R";
+     |ABRE #3;
+     #3#0  = #2#13;
+     #3#27 = #2#15;
+     #3#2  = #2#14;
+     |LEE 001#3=;
+     |SI FSalida = 0;
+         nLibro  = #3#0;
+         aSerie  = #3#27;
+         nPerIVA = #3#44;
+         fFecFra = #3#3;
+         aTipAcum = #2#19;
+     |FINSI;
+     |CIERRA #3;
+ |FINSI;
+ |SI #2#12 = "S";
+     |ABRE #13;
+     #13#0  = #2#13;
+     #13#27 = #2#15;
+     #13#2  = #2#14;
+     |LEE 001#13=;
+     |SI FSalida = 0;
+         nLibro  = #13#0;
+         aSerie  = #13#27;
+         nPerIVA = #13#44;
+         fFecFra = #13#3;
+         aTipAcum = #2#19;
+     |FINSI;
+     |CIERRA #13;
+ |FINSI;
+
+|FPRC;
+
+|PROCESO LeeAstosLins;
+ nLibro    = #2#13;
+ aSerie    = #2#15;
+ nPerIVA   = 0;
+ fFecFra   = "01.01.0000";
+ aTipAcum  = #2#19;
+
+ |SI #2#13 ! 0;
+     |HAZ LeeFra;
+     nSwError = 1; |SI nLibro ] #0#16;  |Y nLibro [ #0#17; nSwError = 0; |FINSI;
+     |SI nSwError = 1;
+         |ACABA;
+     |FINSI;
+     nSwError = 1; |SI aSerie ] #0#18;  |Y aSerie [ #0#19; nSwError = 0; |FINSI;
+     |SI nSwError = 1;
+         |ACABA;
+     |FINSI;
+     nSwError = 1; |SI nPerIVA ] #0#20; |Y nPerIVA [ #0#21; nSwError = 0; |FINSI;
+     |SI nSwError = 1;
+         |ACABA;
+    |FINSI;
+    |SI fFecFra > "01.01.0000";
+        nSwError = 1;
+        |SI fFecFra ] #0#22; |Y fFecFra [ #0#23; nSwError = 0; |FINSI;
+        |SI nSwError = 1;
+            |ACABA;
+        |FINSI;
+    |FINSI;
+ |FINSI;
+
+ |DDEFECTO #5;
+ #5#0 = #2#4;
+ #5#1 = #2#5;
+ |LEE 001#5=;
+
+ |DDEFECTO #101;
+ #101#0  = #1#0;
+ #101#1  = #1#1;
+ #101#2  = #1#2;
+ #101#4  = #2#3;
+ |LEE 001#101=;
+ nEstado = FSalida;
+
+ #101#0  = #1#0;
+ #101#1  = #1#1;
+ #101#2  = #1#2;
+ #101#3  = #1#3;
+ #101#4  = #2#3;
+ #101#5  = #2#8;
+ #101#6  = #2#4;
+ #101#7  = #2#6;
+ #101#8  = #2#7;
+ #101#9  = #2#21;
+ #101#10 = "   "; || No hay subdepartamento
+ #101#11 = #2#9;
+
+ #101#12 = #5#4;
+ #101#13 = #5#5;
+ #101#14 = #5#6;
+ #101#15 = #5#7;
+ #101#16 = #5#8;
+
+ #101#17 = nLibro;
+ #101#18 = aSerie;
+ #101#19 = nPerIVA;
+ #101#20 = fFecFra;
+ #101#21 = aTipAcum;
+
+ #101#22 = "       "; ||  no existe Cuenta Analitica #2#29;
+
+ |SI #0#25 ! 10;
+     nCampo = 25; |HAZ ValorAgr; #101#23 = aValorAgr;
+     nCampo = 26; |HAZ ValorAgr; #101#24 = aValorAgr;
+     nCampo = 27; |HAZ ValorAgr; #101#25 = aValorAgr;
+ |SINO;
+     nCampo = 25; |HAZ ValorAgr;
+ |FINSI;
+
+
+ |SI nEstado = 0; |GRABA 020#101a; |FINSI;
+ |SI nEstado ! 0; |GRABA 020#101n; |FINSI;
+|FPRC;
+
+|DEFBUCLE LeeAstosLins;
+ #2#1;
+ 4,6,21,13,15;
+ #1#0, #1#1, #1#2, 0001, #0#8, #0#10, #0#12, #0#16, #0#18;
+ #1#0, #1#1, #1#2, 9999, #0#9, #0#11, #0#13, #0#17, #0#19;
+ e;
+ NULL, LeeAstosLins;
+|FIN;
+
+|PROCESO LeeAstosCabs;
+ |BUCLE LeeAstosLins;
+|FPRC;
+
+|DEFBUCLE LeeAstosCabs;
+ #1#1;
+ 3;
+ #0#0, #0#2, #0#4, #0#6;
+ #0#1, #0#3, #0#5, #0#7;
+ e;
+ NULL, LeeAstosCabs;
+|FIN;
+
+|| ///////////////////////////////////////////////////////////////////
+|| ///////////////////////////////////////////////////////////////////
+|PROCESO GrabaRatio;
+
+ nNume1 = nPara1 + 2;
+
+ aAlfa2 = enEjercicio;
+ aAlfa1 = nPara1;
+ aAlfa1 = ("00" + aAlfa1) % -102;
+ aAlfa1 = "01." + aAlfa1 + "." + aAlfa2;
+ fFecha = aAlfa1;
+
+ |DDEFECTO #101;
+ #101#0  = 01;
+ #101#1  = fFecha;
+ #101#2  = enNRatio;
+ #101#4  = nPara1;
+ |LEE 001#101=;
+ nEstado = FSalida;
+
+ #101#0  = 01;
+ #101#1  = fFecha;
+ #101#2  = enNRatio;
+ #101#3  = enNRatio;
+ #101#4  = nPara1;
+ #101#8  = #4#1;     || Descripcion del Ratio
+
+ nImporte = #4nNume1 - nImporte;
+ #101#11  = nImporte; || Importe
+ nImporte = #4nNume1;
+
+ #101#23 = nPara1;  || Mes
+ |SI nPara1 [ 3;                  nNume1 = 1; nNume2 = 1; |FINSI;
+ |SI nPara1 ] 4;  |Y nPara1 [ 6;  nNume1 = 2; nNume2 = 1; |FINSI;
+ |SI nPara1 ] 7;  |Y nPara1 [ 9;  nNume1 = 3; nNume2 = 2; |FINSI;
+ |SI nPara1 ] 10; |Y nPara1 [ 12; nNume1 = 4; nNume2 = 2; |FINSI;
+ #101#24 = nNume1;
+ #101#25 = nNume2;
+
+ |SI nEstado = 0; |GRABA 020#101a; |FINSI;
+ |SI nEstado ! 0; |GRABA 020#101n; |FINSI;
+|FPRC;
+
+|| ///////////////////////////////////////////////////////////////////
+|| ///////////////////////////////////////////////////////////////////
+|| ///////////////////////////////////////////////////////////////////
+
+|CALCULO Tipo3z01; |TIPO 3;
+||  aFichero = "cm" + Usuario;
+||  |NOME_DAT #101 aFichero;
+  |DELINDEX #101;
+
+  |SI #0#24 = 1;
+      |ABRE #101;
+      |ABRE #5;
+      |BUCLE LeeAstosCabs;
+      |CIERRA #5;
+      |CIERRA #101;
+  |SINO;
+      enDSel1  = #0#0;  enHSel1  = #0#1;
+      efDSel2  = #0#2;  efHSel2  = #0#3;
+      enDSel3  = #0#4;  enHSel3  = #0#5;
+      enDSel4  = #0#6;  enHSel4  = #0#7;
+      eaDSel5  = #0#8;  eaHSel5  = #0#9;
+      enDSel6  = #0#10; enHSel6  = #0#11;
+      eaDSel7  = #0#12; eaHSel7  = #0#13;
+      eaDSel8  = #0#14; eaHSel8  = #0#15;
+      enDSel9  = #0#16; enHSel9  = #0#17;
+      eaDSel10 = #0#18; eaHSel10 = #0#19;
+      enDSel11 = #0#20; enHSel11 = #0#21;
+      efDSel12 = #0#22; efHSel12 = #0#23;
+
+      enNRatio = #0#28;
+      |SUB_EJECUTA_NP "cacalrat;MANDOS";
+
+      |ABRE #101;
+      |ABRE #4;
+      #4#0 = enNRatio;
+      |LEE 001#4=;
+      |SI FSalida ! 0;
+          |MENAV "    Error. No existe Ratio";
+          |CIERRA #4;
+          |ACABA;
+      |FINSI;
+      nImporte = 0;
+      |PARA nPara1 = 1; |SI nPara1 [ 12; |HACIENDO nPara1 = nPara1 + 1;
+            |HAZ GrabaRatio;
+      |SIGUE;
+      |CIERRA #101;
+  |FINSI;
+|FCAL;
+
+|PROGRAMA;
+
+  aParam = PARAMETRO; |QBF aParam;
+
+  |HAZ inicio;
+  eaDepar = #30#24;
+  |SI #30#26 < 80;
+      enEjercicio = 2000 + #30#26;
+  |SINO;
+      enEjercicio = 1900 + #30#26;
+  |FINSI;
+
+  |SI aParam = "";
+      |MANTE #0;
+  |SINO;
+     |DBASS aDirBase;    |QBF aDirBase;
+     aPath = aDirBase + "cmi/fich/";
+
+     |PATH_DAT #901 aPath;
+     |ABRE #901;
+     #901#0 = aParam;
+     |LEE 000#901=;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+      || ... Igualar Variables
+      |DDEFECTO #0;
+
+      #0#0  = #901#2;  || Diario
+      #0#1  = #901#3;
+      #0#2  = #901#4;  || fecha
+      #0#3  = #901#5;
+      #0#4  = #901#6;  || documento
+      #0#5  = #901#7;
+      #0#6  = #901#8;  || asiento
+      #0#7  = #901#9;
+      #0#8  = #901#10; || cuenta
+      #0#9  = #901#11;
+      #0#10 = #901#12;  || concepto
+      #0#11 = #901#13;
+      #0#12 = #901#14; || departamento
+      #0#13 = #901#15;
+      #0#14 = #901#16; || subdepartamento
+      #0#15 = #901#17;
+      #0#16 = #901#18;  || libro
+      #0#17 = #901#19;
+      #0#18 = #901#20; || serie
+      #0#19 = #901#21;
+      #0#20 = #901#22;  || periodo
+      #0#21 = #901#23;
+      #0#22 = #901#24;  || fecha factura
+      #0#23 = #901#25;
+
+      #0#24 = #901#26;  || tipo agrupacion
+      #0#25 = #901#27;  || valor agrupacion 1
+      #0#26 = #901#28;  || valor agrupacion 1
+      #0#27 = #901#29;  || valor agrupacion 1
+      #0#28 = #901#30;  || Codigo Ratio
+
+      |SI #0#24 = 0; #0#24 = 1; |FINSI;
+      |SI #0#24 = 2; #0#25 = 0; #0#26 = 0; #0#27 = 0; |FINSI;
+      |SI #0#24 = 1; #0#28 = 0; |FINSI;
+      |SI #0#25 = 10; #0#26 = 0; #0#27 = 0; |FINSI;
+      |HAZ Tipo3z01;
+  |FINSI;
+
+|FPRO;

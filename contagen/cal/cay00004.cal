@@ -1,0 +1,399 @@
+|FICHEROS;
+   cay00004 #0;
+
+   camaniva #1;
+   caivalin #2;
+   calibros #3;
+   caconimp #8;
+   :/basica/def/agitab99 #199;
+   :/modelos/def/dsmom030 #300;
+
+   canempre #30;
+   modelo@  #912;
+   caselem1 #998;
+   cawdatos #900;
+   caivaasi #200;
+|FIN;
+
+|VARIABLES;
+   nPerLiq = 0;
+   nModelo = 0;
+   nModImp = 0;
+   nDPer = 0;
+   nHPer = 0;
+
+   &nT1  = 0;
+   &nT2  = 0;
+   &TotalBases   = 0;
+   &TotalCuotas  = 0;
+   swAlgun = 0;
+   &nLibro  = 0;
+   &aDesLib = "";
+   &NumPag  = 0;
+   &swInf   = 0;
+   aAlfa1   = "";
+   aAlfa2   = "";
+   aAlfa3   = "";
+   aAlfa4   = "";
+   &nIngresa = 0;
+   &nDeduce  = 0;
+   swCalcul = 0;
+   nM1      = 0;
+
+   aMulDep  = "";
+   nOpMdep  = 0;
+   nAlSi    = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ====================================================================
+|CALCULO LeeModelo; |TIPO 0;
+ |HAZ DirAplicSt;
+ |SI Haybasica = 0; |ACABA; |FINSI;
+
+ |ABRE #199;
+ #199#0 = #0#13;
+ |LEE 001#199=;
+ |SI FSalida ! 0;
+     |DDEFECTO #199;
+     |ERROR;
+ |FINSI;
+ #0#14 = #199#1;
+ |PINTA #0#14;
+ |CIERRA #199;
+|FCAL;
+
+|PROCESO DatosEmp; |TIPO 7;
+ |ABRE #8;
+ |DDEFECTO #8;
+ #8#0 = 1;
+ |LEE 011#8=;
+ |CIERRA #8;
+ #0#15 = #8#7; |PINTA #0#15;
+ aAlfa1 = #8#8; |C_M #0#15,1,aAlfa1;
+|FPRC;
+
+|CALCULO defectos; |TIPO 7;
+ |HAZ eParaModelos;
+ #0#11 = fec1; |PINTA #0#11;
+ #0#12 = fec2; |PINTA #0#12;
+|FCAL;
+
+|CALCULO PerLiq; |TIPO 0;
+ |SI #0#2 = 0;
+     |C_M #0#11,1,"S";
+     |C_M #0#12,1,"S";
+     #0#8 = "RELACION DE REGISTROS PENDIENTES DE LIQUIDAR";
+ |SINO;
+     |C_M #0#11,1,"N";
+     |C_M #0#12,1,"N";
+     #0#8 = "REGISTROS DE IRPF LIQUIDADOS EN EL TRIMESTRE ";
+ |FINSI;
+ |PINTA #0#8;
+|FCAL;
+
+|CALCULO fecha;  |TIPO 0;
+
+  |SI #0Campo < fec1; |O #0Campo > fec2;
+      |MENAV "    ERROR, Fecha incorrecta";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI Campo = 12; |Y #0#12 < #0#11;
+      |MENAV "    ERROR, Fecha incorrecta";
+      |ERROR;
+  |FINSI;
+|FCAL;
+
+|CALCULO no_dep; |TIPO 7;
+    |CAMPO_MODIFICA #0#3, 1, eaDepar;
+    |CAMPO_MODIFICA #0#4, 1, eaDepar;
+|FCAL;
+
+|CALCULO nosubde; |TIPO 7;
+    |CAMPO_MODIFICA #0#5, 1, eaSubde;
+    |CAMPO_MODIFICA #0#6, 1, eaSubde;
+|FCAL;
+
+|| *********************************************************************
+
+|PROCESO LineasFacturas;
+
+  |SI #caivalin#22 = 0;   |ACABA; |FINSI;
+
+  aAlfa1 = #caivalin#30; |QBF aAlfa1;
+  |SI aAlfa1 = "";
+      #caivalin#30 = #camaniva#10;
+      aAlfa1 = #caivalin#31; |QBF aAlfa1; |SI aAlfa1 = ""; #caivalin#31 = #camaniva#11; |FINSI;
+  |FINSI;
+  |SI aMulDep = "S";
+      |SI Haybasica = 0
+           |SI #caivalin#30 < #0#3; |O #caivalin#30 > #0#4;
+               |ACABA;
+           |FINSI;
+      |SINO;
+           nDepar = #caivalin#30; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+           |SI nDepar < #0#3; |O nDepar > #0#4;  ||desde/hasta actividad
+               |ACABA;
+           |FINSI;
+       |FINSI;
+       |SI #caivalin#31 < #0#5; |O #caivalin#31 > #0#6; |ACABA; |FINSI;
+ |FINSI;
+ nAlSi = 1;
+
+ |SI nOpMdep = 0;
+
+     #dsmom030#0 = #caivalin#18;
+     |LEE 000#dsmom030.=;
+     |SI FSalida ! 0;        |ACABA; |FINSI;
+     |SI #dsmom030#5  = "N"; |ACABA; |FINSI;
+     |SI #dsmom030#38 ! nModelo; |ACABA; |FINSI;
+
+     nT1 = nT1 + #caivalin#20;
+     nT2 = nT2 + #caivalin#22;
+     |PRINT;
+     swInf = 1;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE LineasFacturas;
+ #caivalin#1;
+ ;
+ #camaniva#0,#camaniva#1,01;
+ #camaniva#0,#camaniva#1,99;
+ ;
+ NULL,LineasFacturas;
+|FIN;
+
+|| ......................................
+|PROCESO totalParcial;
+ |SI swAlgun = 1;
+     |HAZ elCalModelo;
+     |PIEINF;
+ |FINSI;
+ TotalBases   = 0;
+ TotalCuotas  = 0;
+ swInf        = 0;
+|FPRC;
+
+|PROCESO Facturas;
+  |SI aMulDep ! "S";
+      |SI Haybasica = 0
+          |SI #camaniva#10 < #0#3; |O #camaniva#10 > #0#4;
+              |ACABA;
+          |FINSI;
+      |SINO;
+          nDepar = #camaniva#10; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+          |SI nDepar < #0#3; |O nDepar > #0#4;  ||desde/hasta actividad
+              |ACABA;
+          |FINSI;
+      |FINSI;
+      |SI #camaniva#11 < #0#5; |O #camaniva#11 > #0#6; |ACABA; |FINSI;
+  |SINO;
+       nOpMdep = 1;
+       nAlSi   = 0;
+       |BUCLE LineasFacturas;
+       |SI nAlSi = 0; |ACABA; |FINSI;
+  |FINSI;
+
+   swInf = 0;
+   nT1   = 0;
+   nT2   = 0;
+   nOpMdep = 0;
+   |BUCLE LineasFacturas;
+
+|SI nT1 ! 0; |O nT2 ! 0;
+   swAlgun = 1;
+   TotalBases   = TotalBases   + nT1;
+   TotalCuotas  = TotalCuotas  + nT2;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE Facturas;
+ #camaniva#5;
+ 5;
+ #0#11, #0#0, 0000000000, nDPer;
+ #0#12, #0#1, 9999999999, nHPer;
+ ;
+ NULL,Facturas,NULL,NULL,totalParcial;
+|FIN;
+
+|PROCESO HazTodo;
+   |ABRE #200;
+   |DDEFECTO #200;
+   |LEE 000#200p;
+   |CIERRA #200;
+   aMulDep = #200#132;
+
+    eaIa = #30#21;
+    |SI #0#2 ! 0;
+        |SI #200#149 = "T";
+            |SI enEjercicio [ 2009;
+                nDPer = #0#2;
+                nHPer = #0#2;
+                nPerLiq = nDPer;
+                |SI nDPer = 1; nM1 = 1;  nPerLiq = 3;  |FINSI;
+                |SI nDPer = 2; nM1 = 4;  nPerLiq = 6;  |FINSI;
+                |SI nDPer = 3; nM1 = 7;  nPerLiq = 9;  |FINSI;
+                |SI nDPer = 4; nM1 = 10; nPerLiq = 12; |FINSI;
+            |SINO;
+                |SI #0#2 = 1;  |O #0#2 = 2;  |O #0#2 = 3;  nDPer = 1;  nHPer = 3;  |FINSI;
+                |SI #0#2 = 4;  |O #0#2 = 5;  |O #0#2 = 6;  nDPer = 4;  nHPer = 6;  |FINSI;
+                |SI #0#2 = 7;  |O #0#2 = 8;  |O #0#2 = 9;  nDPer = 7;  nHPer = 9;  |FINSI;
+                |SI #0#2 = 10; |O #0#2 = 11; |O #0#2 = 12; nDPer = 10; nHPer = 12; |FINSI;
+                nM1 = nDPer; nPerLiq = nHPer;
+            |FINSI;
+        |SINO;
+            nDPer = #0#2; nHPer = #0#2;
+            nPerLiq = nDPer;
+            nM1   = #0#2;
+        |FINSI;
+        enM1 = nM1;
+        enM2 = nPerLiq;
+    |SINO;
+        aAlfa1 = #0#11; aAlfa1 = aAlfa1 % 0402; enM1 = aAlfa1;
+        aAlfa1 = #0#12; aAlfa1 = aAlfa1 % 0402; enM2 = aAlfa1;
+    |FINSI;
+    |HAZ LeeDatosEmpresa;
+    |SI #0#2 = 0;
+        #900#13 = #0#11; #900#14 = #0#12;
+    |FINSI;
+
+    |ABRE #dsmom030;
+    NumPag       = 0;
+    nLibro       = 0;
+    swAlgun      = 0;
+    TotalBases   = 0;
+    TotalCuotas  = 0;
+    swInf        = 0;
+    |BUCLE Facturas;
+    |CIERRA #dsmom030;
+|FPRC;
+
+|| *********************************************************************
+|CALCULO impre; |TIPO 3;
+   |SI Haybasica = 1;
+       |SI #0#4 = "zz"; #0#4 = "99"; |FINSI;
+   |FINSI;
+   nModelo = #0#13;
+   swCalcul = 0;
+   |SI #0#2 ! 0;
+       #0#11 = "01.01.0000";
+       #0#12 = "31.12.2090";
+       nDPer = #0#2;
+       nHPer = #0#2;
+       nPerLiq = nDPer;
+       |SI nDPer = 1; nM1 = 1;  nPerLiq = 3;  |FINSI;
+       |SI nDPer = 2; nM1 = 4;  nPerLiq = 6;  |FINSI;
+       |SI nDPer = 3; nM1 = 7;  nPerLiq = 9;  |FINSI;
+       |SI nDPer = 4; nM1 = 10; nPerLiq = 12; |FINSI;
+
+       swCalcul = 1;
+       |HAZ CargaModelo;
+   |SINO;
+       nDPer = 0; nHPer = 99;
+   |FINSI;
+
+   enDatos = 0; |SI #0#15 = "S"; enDatos = 1; |FINSI;
+   |IMPRE 0;
+   |SI FSalida < 0; |ACABA; |FINSI;
+
+   |INFOR "cay00004";
+   |SI FSalida < 0; |FINIMP; |ACABA; |FINSI;
+
+   |SI #48#27 = "S";
+       |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+   |FININF;
+   |FINIMP;
+   |SI swCalcul = 1;
+       |DESCARGA_DEF #912;
+   |FINSI;
+|FCAL;
+
+|| ////////////////////////////////////
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #200 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 001;
+ 999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+
+|| ---------------------------- Calculos de Modelos
+|PROCESO CargaModelo;
+ |SI nModelo = 190;
+     aAlfa1 = "dsmod110";
+     nModImp = 110;
+ |SINO;
+     aAlfa1 = "dsmod115";
+     nModImp = 115;
+ |FINSI;
+
+ aAlfa2 = aPModelo + "def/" + aAlfa1 + ".mas";
+ aAlfa3 = aPModelo + "fich/";
+
+ |CARGA_DEF aAlfa2, modelo@;
+ |SI FSalida = 0;
+     |PATH_DAT #912 aAlfa3;
+ |SINO;
+     |DESCARGA_DEF #912;
+     swCalcul = 0;
+ |FINSI;
+|FPRC;
+
+|PROCESO SImpModelo;
+  |SI nModImp = 110;
+      nIngresa = nIngresa + #912#29;
+      nDeduce  = nDeduce  + #912#28;
+  |SINO;
+      nIngresa = nIngresa + #912#10;
+      nDeduce  = nDeduce  + #912#9;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE Modelo110;
+ #912#1006;
+ ;
+ enEmpresa, enEjercicio, nPerLiq, nModImp, 00, 00;
+ enEmpresa, enEjercicio, nPerLiq, nModImp, 99, 99;
+ e;
+ NULL, SImpModelo;
+|FIN;
+
+|PROCESO elCalModelo;
+ nIngresa = 0;
+ nDeduce  = 0;
+ |SI swCalcul = 1
+     |BUCLE Modelo110;
+ |FINSI;
+|FPRC;

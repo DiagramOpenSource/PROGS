@@ -1,0 +1,312 @@
+|FICHEROS;
+     gotrdpob #0;
+     gomantca #1;        ||Expedientes (CAB)
+     gomantli #2;        ||Expedientes (LIN)
+     gotmpdep #3,MANTE;  ||Temporal Desviaciones MO.Partidas
+     gopartia #4;        ||Adjudicacion Partidas
+     goparame #5;        ||Parametros Generales Obras
+     gopre001 #6;        ||Presupuestos
+     gopre002 #7;        ||Presupuestos
+     gopre003 #8;        ||Presupuestos
+     gopre004 #9;        ||Presupuestos
+     gosubive #10;       ||Subfamilias IVE
+     goartive #11;       ||Articulos IVE
+|FIN;
+-----------------------------------------------------------------------------
+|VARIABLES;
+     &Tempo = "";
+     aTmp3 = "";
+     &cCodMonBase   = "";
+     &cDesMonBase   = "";
+     &cCodMonTrab   = "";
+     &cDesMonTrab   = "";
+     &nDeci_PBase   = 0;
+     &nDeci_TBase   = 0;
+     &nDeci_PTrab   = 0;
+     &nDeci_TTrab   = 0;
+     &nDeci_TotVis  = 0;
+     &nEurComTrab   = 0;
+     &nEurComBase   = 0;
+     &nEurVenTrab   = 0;
+     &nEurVenBase   = 0;
+     nHay           = 0;
+     nError         = 0;
+     nLinea         = 0;
+     cTipo          = "";
+     nTotCosPre     = 0;
+     nTotVenPre     = 0;
+     nTotCosRea     = 0;
+     nTotVenRea     = 0;
+     nHoras         = 0;
+     cTPresu        = "";
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO GrabaTmp;
+     |SI #4#29 = "T";
+          nTotCosRea = nTotCosRea + #4#14;  ||Importe Coste Real
+          nTotVenRea = nTotVenRea + #4#13;  ||Importe Venta Real
+          nHoras     = nHoras + #4#10;      ||Horas
+          nHay = 1;
+     |FINSI;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE AdjPar;
+     #4#3;
+     ;
+     "     ", 000001, #2#3, #2#4,"                    ", #8#4;
+     "zzzzz", 999999, #2#3, #2#4,"zzzzzzzzzzzzzzzzzzzz", #8#4;
+     ;
+     NULL,GrabaTmp;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO MiraMO;
+     |SI cTipo = #9#14;
+          nTotCosPre = nTotCosPre + (#9#12 * #8#7); ||Mano de Obra Coste
+          nTotVenPre = nTotVenPre + (#9#11 * #8#7); ||Mano de Obra Venta
+          nHay = 1;
+     |FINSI;
+|FPRC;
+------------------------------------------------------------------------------
+|DEFBUCLE MiraMOPar;
+     #9#1;
+     ;
+     #2#3,#2#4,#7#12,#0#6,1;
+     #2#3,#2#4,#7#12,#0#7,999;
+     ;
+     NULL, MiraMO;
+|FIN;
+------------------------------------------------------------------------------
+|PROCESO MiraMOPar;
+     |ABRE #6;
+     #6#0 = #2#3;
+     #6#1 = #2#4;
+     |LEE 000#6=;
+     |SI FSalida = 0;
+          cTPresu = #6#18;
+     |FINSI;
+     |BUCLE MiraMOPar;
+     |BUCLE AdjPar;
+     |SI nHay = 1;
+          nLinea = nLinea + 1;
+          #3#0 = #2#0;             ||Serie Expediente
+          #3#1 = #2#1;             ||Numero Expediente
+          #3#2 = #2#3;             ||Serie Presupuesto
+          #3#3 = #2#4;             ||Numero Presupuesto
+          #3#4 = #7#12;            ||Capitulo
+          #3#6 = #8#4;             ||Partida
+          #3#8 = nLinea;           ||Linea
+          |LEE 010#3=;
+          |SI FSalida ! 0;
+               #3#5  = #7#13;           ||Descripcion del Capitulo
+               #3#7  = #8#5;            ||Descripcion de la Partida
+               #3#9  = nTotCosPre;      ||Mano de Obra Coste Presupuestado
+               #3#10 = nTotVenPre;      ||Mano de Obra Venta Presupuestado
+               #3#11 = nTotCosRea;      ||Mano de Obra Coste Real
+               #3#12 = nTotVenRea;      ||Mano de Obra Venta Real
+               #3#13 = #3#9 - #3#11;    ||Desviaciones Coste
+               #3#14 = #3#10 - #3#12;   ||Desviaciones Venta
+               #3#15 = (#3#13 / #3#9) * 100;      ||% Desviacion Coste
+               #3#16 = (#3#14 / #3#10) * 100;     ||% Desviacion Venta
+               #0#9  = #0#9 + #3#9;     ||Total Coste M.O. Presupuestado
+               #0#10 = #0#10 + #3#10;   ||Total Venta M.O. Presupuestado
+               #0#11 = #0#11 + #3#11;   ||Total Coste M.O. Real
+               #0#12 = #0#12 + #3#12;   ||Total Venta M.O. Real
+               #0#13 = #0#9 - #0#11;    ||Total Desviaciones Coste
+               #0#14 = #0#10 - #0#12;   ||Total Desviaciones Venta
+               |SI cTPresu = "P";
+                    #3#17 = nHoras;     ||Horas Presupuesto
+               |FINSI;
+               |SI cTPresu = "A";
+                    #3#18 = nHoras;     ||Horas Administracion
+               |FINSI;
+               |SI cTPresu = "E";
+                    #3#19 = nHoras;     ||Horas Extras
+               |FINSI;
+               |GRABA 010#3n;
+               nTotCosPre = 0;
+               nTotVenPre = 0;
+               nTotCosRea = 0;
+               nTotVenRea = 0;
+               nHay       = 0;
+               nHoras     = 0;
+               #3#17      = 0;
+               #3#18      = 0;
+               #3#19      = 0;
+          |FINSI;
+     |FINSI;
+|FPRC;
+------------------------------------------------------------------------------
+|DEFBUCLE MiraMOCap;
+     #8#1;
+     ;
+     #2#3,#2#4,#7#12,1;
+     #2#3,#2#4,#7#12,999;
+     ;
+     NULL, MiraMOPar;
+|FIN;
+------------------------------------------------------------------------------
+|PROCESO MiraMOCap;
+     |BUCLE MiraMOCap;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE MiraMOPre;
+     #7#6;
+     ;
+     #2#3,#2#4,#0#4;
+     #2#3,#2#4,#0#5;
+     ;
+     NULL, MiraMOCap;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO Presu;
+     |BUCLE MiraMOPre;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MiraMOPre;
+     |QBF cCodMonTrab;
+     |SI cCodMonTrab ! ""; |Y #1#6 ! cCodMonTrab;
+          |MENAV "0000HAY EXPEDIENTES CON DISTINTA MONEDA";
+          |ERROR10;
+          nError = 1;
+          |ACABA;
+     |FINSI;
+     |HAZ MonTraTmp;
+     |BUCLELIN 2 Presu #1;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE Busca;
+     #1#1;
+     ;
+     #0#0,#0#2;
+     #0#1,#0#3;
+     ;
+     NULL,MiraMOPre;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO BuscaPar; |TIPO 3;
+     nHay = 0;
+     nLinea = 0;
+     |HAZ CreaTempo; aTmp3 = Tempo;
+     |NOME_DAT #3 aTmp3; |DELINDEX #3;
+
+     |ABRE #1;
+     |ABRE #3;
+     |ABRE #4;
+     |HAZ MiraTipo;
+     |BUCLE Busca;
+     |SI nError = 1; |ACABA; |FINSI;
+     |SI #0#8 = "P";
+          |ENTLINEAL #1#3,7,4,15,1,min,max;
+     |SINO;
+          |HAZ Impresion;
+     |FINSI;
+     |CIERRA #1;
+     |CIERRA #3;
+     |CIERRA #4;
+     Tempo = aTmp3; |HAZ BoraTempo; |DELINDEX #3;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MiraTipo;
+     |ABRE #5;
+     |LEE 010#5p;
+     |SI FSalida = 0;
+          cTipo = #5#5;
+     |FINSI;
+     |CIERRA #5;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MonTraTmp;
+     cCodMonTrab = #1#6;
+     |HAZ MonBas;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO min;
+     #3#0 = "     ";
+     #3#1 = 1;
+     #3#2 = "     ";
+     #3#3 = 1;
+     #3#4 = " "*20;
+     #3#6 = " "*20;
+     #3#8 = 1;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO max;
+     #3#0 = "zzzzz";
+     #3#1 = 999999;
+     #3#2 = "zzzzz";
+     #3#3 = 999999;
+     #3#4 = "z"*20;
+     #3#6 = "z"*20;
+     #3#8 = 999;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO ImpTmp;
+     |PRINT;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE ImpTmp;
+     #3#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, ImpTmp;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO Impresion;
+     |SUB_EJECUTA_NP "goinform;IMPgotrdpob";
+     |INFOR "gotrdpob";
+     |BUCLE ImpTmp;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgotrdpob";
+     |SUB_EJECUTA_NP "goinform;RUNMO. PARTIDAS";
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO Posicion; |TIPO 7;
+     |ABRE #10;
+     |LEE 010#10p;
+     |SI FSalida = 0;
+          #0#4 = #10#0;
+          #0#15 = #10#1;
+     |FINSI;
+     |LEE 010#10u;
+     |SI FSalida = 0;
+          #0#5 = #10#0;
+          #0#16 = #10#1;
+     |FINSI;
+     |CIERRA #10;
+     |ABRE #11;
+     |LEE 010#11p;
+     |SI FSalida = 0;
+          #0#6 = #11#0;
+          #0#17 = #11#1;
+     |FINSI;
+     |LEE 010#11u;
+     |SI FSalida = 0;
+          #0#7 = #11#0;
+          #0#18 = #11#1;
+     |FINSI;
+     |CIERRA #11;
+     |ABRE #1;
+     |LEE 000#1p;
+     |SI FSalida = 0;
+          #0#0 = #1#0;
+          #0#2 = #1#1;
+     |FINSI;
+     |LEE 000#1u;
+     |SI FSalida = 0;
+          #0#1 = #1#0;
+          #0#3 = #1#1;
+     |FINSI;
+     |CIERRA #1;
+     |PINDA #0#0;
+|FPRC;
+-----------------------------------------------------------------------------
+
+|PROCESO Tipo13; |TIPO 13;
+     |ABRE #5; |LEE 000#5p; |CIERRA #5;
+     |SI #5#141 = "O";
+          |ATRI R; |PINTA 1005, " O.T.      "; |ATRI 0;
+     |FINSI;
+|FPRC;

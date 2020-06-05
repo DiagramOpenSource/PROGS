@@ -1,0 +1,403 @@
+|FICHEROS;
+     || pdfimtmp #200;
+     web20001@ #2001;
+     || agifa019;
+|FIN;
+
+|VARIABLES;
+     aAlfa1 = "";
+     nSwNumer = 0;
+     aValor = "";
+     || aCadena = "";
+     aCadenaSal = "";
+     || aCaracter = "";
+     aCaracterSal = "";
+     aLong = "";
+     nLong = 0;
+     aLongitud = "";
+     nLongitud = 0;
+     nAscii = 0;
+     nTipo = 0;
+     nPos = 0;
+     nBusca = 0;
+     aAlfa2 = "";
+     aCampo = "";
+     &aArchivo = "";
+     &swCopia = 0;
+     &swDesdeWeb = 1;
+     &enWeb = 1;
+     &aProcedencia = "";
+     aDirOri = "";
+     aRuta = "";
+     nCanal = 0;
+     &eaWebArchivo = "";
+     &eaWebDirDes = "";
+     &eaWebDirPDF = "";
+
+     aSerie = "";
+     aFactura = "";
+     nFactura = 0;
+     aCabecera = "";
+     nNume = 0;
+     aBase = "";
+     aPathFich = "";
+     aPathDef = "";
+     nLinea = 0;
+     aLinea = "";
+|FIN;
+
+|PROCESO BuscaArchivo;
+     aArchivo = "factura.pdf";
+|FPRC;
+
+|PROCESO ImpresionPDF_Antes;
+     |HAZ LeeParam;
+     |HAZ LeeOrigen;
+     eaWebArchivo = PARAMETRO;
+     |HAZ PasaParametros;
+     ||HAZ prepara_impresion;
+     swDesdeWeb = 1;
+     enWeb = 1;
+     aProcedencia = "factura";
+|FPRC;
+
+|PROCESO LeeParam;
+     |DBASE aBase;
+     |DFICE aPathFich;
+     aPathDef = aBase + "def/";
+
+     aAlfa = aPathDef + "web20001.mas";
+     |CARGA_DEF aAlfa, web20001@;
+     |PATH_DAT #2001 aPathFich;
+     |SI FSalida ! 0;
+          aAlfa = "    ATENCION: Referencia erronea en fichero " + aAlfa;
+          |MENAV aAlfa;
+          |ACABA;
+     |FINSI;
+
+     |ABRE #2001;
+     |LEE 000#2001p;
+     |SI FSalida = 0;
+          aDirOri = "c:\remoto\";       |QBF eaWebDirDes;
+          eaWebDirDes = "c:\remoto\";   |QBF eaWebDirDes;
+          |QBF aDirOri;
+          |QBF eaWebDirDes;
+     |FINSI;
+     |CIERRA #2001;
+     |DESCARGA_DEF #web20001@;
+|FPRC;
+
+|PROCESO LeeOrigen;
+     eaWebArchivo = PARAMETRO;
+     |QBF eaWebArchivo;
+     aRuta = aDirOri + eaWebArchivo;
+
+     |XABRE "U", aRuta, nCanal;
+     |SI FSalida ] 0;
+          |XLEE nCanal, 100, aCabecera;
+          |XLEE nCanal,   10, aSerie;
+          |XLEE nCanal,   10, aFactura;
+          |QBF aSerie;
+          |QBF aFactura;
+          nFactura = aFactura;
+          |QBF aCabecera;
+     |FINSI;
+     |XCIERRA nCanal;
+|FPRC;
+
+|PROCESO PasaParametros;
+     eaWebDirPDF = aCabecera;
+     #0#9 = aSerie;                || desde serie
+     #0#2 = nFactura;              || desde factura
+     #0#10 = aSerie;               || hasta serie
+     #0#3 = nFactura;              || hasta factura
+     #0#6 = "S";                   || Reimprimir Facturas
+|FPRC;
+
+/*
+|PROCESO sustituye2;
+     nAscii = & aCaracter;
+     aCaracterSal = aCaracter;
+     |SI nAscii = 160;             || el caracter  
+          aCaracterSal = "\341";
+     |FINSI;
+     |SI nAscii = 130;             || el caracter ‚
+          aCaracterSal = "\351";
+     |FINSI;
+     |SI nAscii = 161;             || el caracter ¡
+          aCaracterSal = "\355";
+     |FINSI;
+     |SI nAscii = 162; |O nAscii = 243;            || el caracter ¢
+          aCaracterSal = "\363";
+     |FINSI;
+     |SI nAscii = 163;             || el caracter £
+          aCaracterSal = "\372";
+     |FINSI;
+     |SI nAscii = 164;             || el caracter ¤
+          aCaracterSal = "\361";
+     |FINSI;
+     |SI nAscii = 241;             || el caracter ¤ (otro codigo ¨?)
+          aCaracterSal = "\361";
+     |FINSI;
+     |SI nAscii = 165;             || el caracter ¥
+          aCaracterSal = "\321";
+     |FINSI;
+     |SI nAscii = 129;
+          aCaracterSal = "\374";   || el caracter u con dieresis
+     |FINSI;
+     |SI nAscii = 154;
+          aCaracterSal = "\334";   || el caracter U (mayuscula) con dieresis
+     |FINSI;
+     |SI nAscii = 167;
+          aCaracterSal = "\272";   || el caracter §
+     |FINSI;
+     |SI nAscii = 166;
+          aCaracterSal = "\252";   || el caracter ¦
+     |FINSI;
+     |SI aCaracter = "(";
+          aCaracterSal = "\(";
+     |FINSI;
+     |SI aCaracter = ")";
+          aCaracterSal = "\)";
+     |FINSI;
+|FPRC;
+
+|PROCESO sustituye;
+     aCadenaSal = "";
+     aLongitud = aCadena % 0;
+     nLongitud = aLongitud;
+     |PARA nPos = 1; |SI nPos [ nLongitud; |HACIENDO nPos = nPos + 1;
+          nBusca = (nPos * 100) + 1;
+          aCaracter = aCadena % nBusca;
+          |HAZ sustituye2;
+          aCadenaSal = aCadenaSal + aCaracterSal;
+     |SIGUE;
+|FPRC;
+
+|PROCESO GrabaTemporal;
+     |SI nSwNumer = 1;|Y aValor = "0";  aValor = "";   |FINSI;
+
+     aAlfa1 = aValor % 101;
+     |SI aAlfa1 = ".";
+          aValor = "";
+     |FINSI;
+     |QBF aValor;
+     aCadena = aValor;
+     |HAZ sustituye;
+     aValor = aCadenaSal;
+
+     aLong = aValor % 0;
+     nLong = aLong;
+
+     |SI nLong ] 238;
+          aAlfa = aValor % 199;
+          aValor = aValor - aAlfa;
+          aAlfa2 = aValor % 199;
+          aAlfa = aAlfa + aAlfa2;
+          aValor = aValor - aAlfa2;
+          aAlfa2 = aValor % 140;
+          aAlfa = aAlfa + aAlfa2;
+          aValor = aAlfa;
+     |FINSI;
+     #pdfimtmp#0 = aCampo;
+     #pdfimtmp#1 = aValor;
+     #pdfimtmp#2 = nTipo;
+
+     |GRABA 020#pdfimtmp.n;
+|FPRC;
+
+|PROCESO CargaCampos;
+     aValor = "";
+     aCampo = "";
+     nSwNumer = 0;
+     nTipo = 0;
+
+     aCampo = "tipofactura";
+     |SI #agifa134#31 ] 0;
+          aValor = "FACTURA DE CARGO";
+     |SINO;
+          aValor = "FACTURA DE ABONO";
+     |FINSI;
+     |HAZ GrabaTemporal;
+
+     aCampo = "serieynumero";
+     |SI #agifa134#31 ] 0;
+          aAlfa1 = #agifa134#49;
+          |QBF aAlfa1; aAlfa1 = aAlfa1 + "  "; aAlfa1 = aAlfa1 % 102;
+          aAlfa2 = #agifa134#0;
+          |QBF aAlfa2; aAlfa2 = "000000" + aAlfa2; aAlfa2 = aAlfa2 % -106;
+          aValor = aAlfa1 + "/" + aAlfa2;
+     |FINSI;
+     |HAZ GrabaTemporal;
+
+     aCampo = "empresa";           aValor = #agifa134#3;      |HAZ GrabaTemporal;
+     aCampo = "literal_fecha";     aValor = "FECHA:";   |HAZ GrabaTemporal;
+     aCampo = "fecha_fra";         aValor = #agifa134#1;      |HAZ GrabaTemporal;
+     aCampo = "literal_cliente";   aValor = "CODIGO CLIENTE:";    |HAZ GrabaTemporal;
+     aCampo = "clienteydir";
+
+     aAlfa1 = #agifa134#2;
+     |QBF aAlfa1; aAlfa1 = "000000" + aAlfa1; aAlfa1 = aAlfa1 % -106;
+     aAlfa2 = #agifa134#115;
+     |QBF aAlfa2; aAlfa2 = "0000" + aAlfa2; aAlfa2 = aAlfa2 % -104;
+     aValor = aAlfa1 + "/" + aAlfa2;
+     |HAZ GrabaTemporal;
+
+     aCampo = "nombre_cliente";    aValor = #agifa134#3;      |HAZ GrabaTemporal;
+     aCampo = "direccion_obras";   aValor = #5000#17;     |HAZ GrabaTemporal;
+     aCampo = "direccion2_obras";  aValor = #5000#27;     |HAZ GrabaTemporal;
+     aCampo = "codpos_obras";      aValor = #5000#26;     |HAZ GrabaTemporal;
+     aCampo = "poblacion_obras";   aValor = #5000#18;     |HAZ GrabaTemporal;
+     aCampo = "provincia_obras";   aValor = #5000#19;     |HAZ GrabaTemporal;
+     aCampo = "pedido";            aValor = #5000#2;      |HAZ GrabaTemporal;
+     aCampo = "ref";               aValor = #5000#11;     |HAZ GrabaTemporal;
+     aCampo = "agente";            aValor = #agifa134#7;      |HAZ GrabaTemporal;
+     aCampo = "cod_formapago";     aValor = #agifa134#11;     |HAZ GrabaTemporal;
+     aCampo = "des_formapago";     aValor = #agifa091#1;      |HAZ GrabaTemporal;
+
+     aCampo = "importe_bruto";     aValor = #agifa134#18;     |HAZ GrabaTemporal;
+     nNume = (#agifa134#18 % #agifa134#4) ! EURODB;
+     aCampo = "dto_com"; aValor = nNume;      |HAZ GrabaTemporal;
+     nNume = (#agifa134#18 % #agifa134#4) ! EURODB;
+     nNume = ((#agifa134#18 - nNume) % #agifa134#6) ! EURODB;
+     aCampo = "dto_pp";            aValor = nNume;     |HAZ GrabaTemporal;
+     aCampo = "base_iva";          aValor = #agifa134#24;     |HAZ GrabaTemporal;
+     nNume = #agifa134#24 ! 0;
+     aCampo = "porc_iva";          aValor = iva2;      |HAZ GrabaTemporal;
+     aCampo = "impor_iva";         aValor = #agifa134#29;     |HAZ GrabaTemporal;
+     aCampo = "liquido_fra";       aValor = #agifa134#31;     |HAZ GrabaTemporal;
+
+     aCampo = "literal_vtos";      aValor = "VENCIMIENTOS:";     |HAZ GrabaTemporal;
+     aCampo = "literal_importes";  aValor = "IMPORTES:";         |HAZ GrabaTemporal;
+     aCampo = "literal_dompago";   aValor = "DOMICILIO PAGO:";   |HAZ GrabaTemporal;
+     aCampo = "literal_abono";     aValor = "ABONO EN CUENTA:";  |HAZ GrabaTemporal;
+     aCampo = "barrita";           aValor = "/";       |HAZ GrabaTemporal;
+
+     |SI i1 ! 0;
+          aCampo = "fv1";          aValor = f1;        |HAZ GrabaTemporal;
+          aCampo = "ii1";          aValor = i1;        |HAZ GrabaTemporal;
+     |FINSI;
+     |SI i2 ! 0;
+          aCampo = "fv2";          aValor = f2;        |HAZ GrabaTemporal;
+          aCampo = "ii2";          aValor = i2;        |HAZ GrabaTemporal;
+     |FINSI;
+     |SI i3 ! 0;
+          aCampo = "fv3";          aValor = f3;        |HAZ GrabaTemporal;
+          aCampo = "ii3";          aValor = i3;        |HAZ GrabaTemporal;
+     |FINSI;
+     |SI i4 ! 0;
+          aCampo = "fv4";          aValor = f4;        |HAZ GrabaTemporal;
+          aCampo = "ii4";          aValor = i4;        |HAZ GrabaTemporal;
+     |FINSI;
+     |SI i5 ! 0;
+          aCampo = "fv5";          aValor = f5;        |HAZ GrabaTemporal;
+          aCampo = "ii5";          aValor = i5;        |HAZ GrabaTemporal;
+     |FINSI;
+
+     aCampo = "dompago";           aValor = #agifa134#9;      |HAZ GrabaTemporal;
+     aCampo = "literal_ccc";       aValor ="C.C.C.:";  |HAZ GrabaTemporal;
+     aAlfa = #agifa024#32 + "-" + #agifa024#33 + "-" + #agifa024#31 + "-" +#agifa024#30;
+     aCampo = "ccc";               aValor = aAlfa;     |HAZ GrabaTemporal;
+
+     aAlfa2 = #agifa134#0;
+     |QBF aAlfa2; aAlfa2 = "000000" + aAlfa2; aAlfa2 = aAlfa2 % -106;
+     aCampo = "num_fra";           aValor = aAlfa2;    |HAZ GrabaTemporal;
+
+     aAlfa1 = #agifa134#2;
+     |QBF aAlfa1; aAlfa1 = "000000" + aAlfa1; aAlfa1 = aAlfa1 % -106;
+     aCampo = "cod_cliente";       aValor = aAlfa1;    |HAZ GrabaTemporal;
+
+     aCampo = "literal_dniocif";   aValor = "D.N.I. O C.I.F.";   |HAZ GrabaTemporal;
+     aCampo = "dniocif_cliente";   aValor = #agifa024#15;     |HAZ GrabaTemporal;
+     aCampo = "direccion_cliente"; aValor = #agifa024#8;      |HAZ GrabaTemporal;
+     aCampo = "codpos_cliente";    aValor = #agifa024#183;    |HAZ GrabaTemporal;
+     aCampo = "poblacion_cliente"; aValor = #agifa024#9;      |HAZ GrabaTemporal;
+     aCampo = "provincia_cliente"; aValor = #agifa024#10;     |HAZ GrabaTemporal;
+
+     aCampo = "sigue";             aValor = "sigue ...";      |HAZ GrabaTemporal;
+     || aCampo = "";      aValor = ;      |HAZ GrabaTemporal;
+|FPRC;
+
+|PROCESO GrabaLinea;
+     nLinea = nLinea + 1;
+     |SI nLinea > 20;
+          |ACABA;
+     |FINSI;
+     #agifa019#0 = codigo;
+     |LEE 000#agifa019.=;
+     aLinea = nLinea;
+     aCampo = "albaran" + aLinea;       aValor = #agifa059#2; |HAZ GrabaTemporal;
+     aCampo = "referencia" + aLinea;    aValor = codigo;      |HAZ GrabaTemporal;
+     aCampo = "concepto" + aLinea;      aValor = descrip;     |HAZ GrabaTemporal;
+     nNume = unid / #agifa019#119;
+     aCampo = "cantidad" + aLinea;      aValor = nNume;       |HAZ GrabaTemporal;
+     nNume = precio * #agifa019#119;
+     aCampo = "precio" + aLinea;        aValor = nNume;       |HAZ GrabaTemporal;
+     aCampo = "importe" + aLinea;       aValor = imptot;      |HAZ GrabaTemporal;
+|FPRC;
+
+|PROCESO ImpresionPDF_Antes;
+     aAlfa1 = Usuario; |QBT aAlfa1;    aAlfa1 = ("c" + aAlfa1) % 108;
+     |NOME_DAT #200 aAlfa1;
+     |DELINDEX #pdfimtmp;
+     |ABRE #pdfimtmp;
+     |ABRE #agifa019;
+
+     swCopia = 1;
+     |HAZ BuscaArchivo;     ||asigna a aArchivo el nombre del pdf
+     ||HAZ CargaTemporal;    ||mira a ver si esta el pdf en el mantenimiento
+
+     |HAZ LeeParam;
+     |HAZ LeeOrigen;
+     eaWebArchivo = PARAMETRO;
+     |HAZ PasaParametros;
+     ||HAZ prepara_impresion;
+     swDesdeWeb = 1;
+     enWeb = 1;
+     aProcedencia = "factura";
+|FPRC;
+
+|PROCESO malpe001;
+     |ABRE #agifa134;
+     #agifa134#0 = nFactura;
+     #agifa134#49 = aSerie;
+     |LEE 000#agifa134.=;
+     |CIERRA #agifa134;
+
+     |DBASE aBase;
+     |DFICE aPathFich;
+     aPathDef = aBase + "def/";
+
+     aAlfa = aPathDef + "malpe001.mas";
+     |CARGA_DEF aAlfa, malpe001@;
+     |PATH_DAT #5000 aPathFich;
+     |SI FSalida ! 0;
+          aAlfa = "    ATENCION: Referencia erronea en fichero " + aAlfa;
+          |MENAV aAlfa;
+          |ACABA;
+     |FINSI;
+     |ABRE #5000;
+     #5000#0 = #agifa134#2;
+     #5000#1 = #agifa134#115;
+     |LEE 000#5000=;
+     |CIERRA #5000;
+
+     |ABRE #agifa091;
+     #agifa091#0 = #agifa134#11;
+     |LEE 000#agifa091.=;
+     |CIERRA #agifa091;
+|FPRC;
+
+|PROCESO ImpresionPDF_Despues;
+     |HAZ malpe001;
+     |HAZ CargaCampos;
+
+     |CIERRA #pdfimtmp;
+
+     |SUB_EJECUTA "pdfgraba";
+     |SUB_EJECUTA "pdfimpre";
+
+     |CIERRA #agifa019;
+     |DESCARGA_DEF #malpe001@;
+|FPRC;
+*/

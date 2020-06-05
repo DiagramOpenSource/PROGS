@@ -1,0 +1,760 @@
+|FICHEROS;
+   dsboez01 #0;
+   dsboem01 #1;
+   dsboem02 #10;
+   dsboem00 #11;
+
+   dsboem00@ #100;
+   dsboem01@ #101;
+   dsboem02@ #102;
+|FIN;
+
+|VARIABLES;
+   aConta  = "";
+   aAlfa   = "";
+   aAlfa1  = "";
+   aAlfa2  = "";
+   aAlfa3  = "";
+   aUltChar = "";
+   aReg    = "";
+   aReg1   = "";
+   aTab    = "";
+   aMensaje = "";
+   aNumRegistro = "";
+   aIP  = "";
+
+   nHandle  = 0;
+   nHandle1 = 0;
+   nHanErr = 0;
+   nCalc   = 0;
+   nCalc1  = 0;
+   nCont   = 0;
+   nCont1  = 0;
+   nDato   = 0;
+   nLong   = 0;
+   nProc   = 0;
+   nNumChars = 0;
+   nSwErr = 0;
+   nRetardo = 0;
+   nNumVacios = 0;
+
+   aRefer   = "";
+   aDir     = "";
+   aOrigen  = "";
+   aDestino = "";
+   FEstado  = "";
+   nEstado  = 0;
+   nNumCorreos = 0;
+   aPuntos  = "";
+
+   nIni = 0;
+   aIni = "";
+   {-1}aSerie = "";
+   {1}aContiene = "";
+
+   aIPDsCorreo = "";
+   aSmtp       = "";
+   aPop3       = "";
+   aUsuario    = "";
+   aPassword   = "";
+   aAsunto     = "";
+   aPath       = "";
+   aFicheros   = "";
+   aDirOrigen  = "";
+   aDirDestino = "";
+   aTexto      = "";
+
+   fFecha      = @;
+
+     &eaUnidadBasico = "";
+|FIN;
+
+|PROCESO MiraRef;
+   aAlfa = #dsboez01#1; |QBT aAlfa;
+   aAlfa1 = #dsboez01#1; |QBF aAlfa1;
+   |SI aAlfa ! aAlfa1;
+      #dsboez01#1 = aAlfa;
+      |MENAV "    Espacios en la referencia no permitidos";
+      |ERROR; |ACABA;
+   |FINSI;
+
+   #dsboem00#0 = #dsboez01#1;
+   |LEE 000#dsboem00.=;
+   |SI FSalida = 0;
+      aAlfa = "    La referencia ya existe [" + #dsboem00#0; |QBF aAlfa;
+      aAlfa = aAlfa + "/" + #dsboem00#1; |QBF aAlfa;
+      aAlfa = aAlfa + "]";
+      |MENAV aAlfa; |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO Selecc;
+   |C_M #dsboez01#2, 0, aAlfa; |SI aAlfa = "N"; |ACABA; |FINSI;
+
+   aAlfa = #0#0; |QBF aAlfa;
+   |SI aAlfa = "";
+      aAlfa = "F*.pdf"; |BROWSE aAlfa;
+      aAlfa = aAlfa % 0299;
+      #dsboez01#0 = aAlfa; |ERROR;
+   |FINSI;
+
+   |XABRE "CE", aAlfa, nHandle;
+   |SI FSalida < 0; |MENAV "    Fichero inexistente"; |ERROR; |FINSI;
+|FPRC;
+
+|PROCESO Procesado;
+   aAlfa1 = aReg % 0; nLong = aAlfa1; nLong = nLong + 1;
+
+   |DDEFECTO #dsboem01;
+   #dsboem01#0 = #dsboem00#0;
+   nCont = 1; aAlfa1 = aReg;
+   |PARA nDato = 1; |SI nDato [ 6; |HACIENDO nDato = nDato + 1;
+|ET OtraVez;
+      aAlfa1 = aAlfa1 - aTab;
+      |SI FSalida ! 0;
+         nCalc = ((FSalida / 100) ! 0) + 99; aAlfa2 = aAlfa1 % nCalc;
+         aAlfa1 = aAlfa1 - aAlfa2;
+      |SINO;
+         aAlfa2 = aAlfa1;
+      |FINSI;
+
+      |SI nDato = 4;
+         |QBF aAlfa2;
+         |SI aAlfa2 = "-"; |O aAlfa2 = "";
+            |VETE OtraVez;
+         |FINSI;
+      |FINSI;
+
+      aAlfa3 = aAlfa2 % 0101;
+      |PARA; |SI aAlfa3 = " "; |HACIENDO;
+         aAlfa2 = aAlfa2 % 0299;
+         aAlfa3 = aAlfa2 % 0101;
+      |SIGUE;
+
+      #dsboem01#nDato# = aAlfa2;
+      |SI nDato = 2;
+         |SI nRetardo ] 150;
+            nRetardo = 0;
+            aMensaje = #dsboem01#1; |QBF aMensaje;
+            aMensaje = aMensaje + " " + #dsboem01#2; |QBF aMensaje;
+            |BLIN 23; |ATRI I; |PINTA 2302, aMensaje; |ATRI N;
+            |PULSATECLA;
+         |SINO;
+            nRetardo = nRetardo + 1;
+         |FINSI;
+      |FINSI;
+   |SIGUE;
+   |GRABA 000#dsboem01.n;
+
+   |SI FSalida ! 0; |Y nHanErr ] 0;
+      |SI nSwErr = 0;
+         aMensaje = " ************************************************************************* " + &13 + &10;
+         |XGRABA nHanErr, aMensaje;
+         aMensaje = " *****              LISTADO DE ERRORES DE PROCESADO                  ***** " + &13 + &10;
+         |XGRABA nHanErr, aMensaje;
+         aMensaje = " ************************************************************************* " + &13 + &10;
+         |XGRABA nHanErr, aMensaje;
+         aMensaje = " " + &13 + &10;
+         |XGRABA nHanErr, aMensaje;
+         nSwErr = 1;
+      |FINSI;
+      aMensaje = "Error al grabar registro NIF [" + #dsboem01#0 + "/" + #dsboem01#1 + "/" + #dsboem01#4 + "]" + &13 + &10;
+      |XGRABA nHanErr, aMensaje;
+   |FINSI;
+|FPRC;
+
+|PROCESO Indexado;
+   |PINTA 2302, "Procesando...";
+
+   nSwErr = 0;
+   |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "boecom/errores.txt";
+   |XABRE "W", aAlfa, nHanErr;
+   |SI FSalida < 0; nHanErr = -1; |FINSI;
+
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "boecom/" + aNumRegistro + ".txt";
+   aTab = &9;
+   |XABRE "", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      nNumChars = 1;
+      |PARA; |SI nNumChars > 0; |HACIENDO;
+         |XLEE nHandle, 240, aReg;
+         nNumChars = FSalida;
+         |SI nNumChars > 0; |HAZ Procesado; |FINSI;
+      |SIGUE;
+   |FINSI;
+   |XCIERRA nHandle;
+
+   |SI nHanErr ] 0;
+      |XCIERRA nHanErr;
+      |SI nSwErr ! 0;
+         aIPDsCorreo = #dsboez01#3 + "." + #dsboez01#4 + "." + #dsboez01#5 + "." + #dsboez01#6;
+         aSmtp       = #dsboez01#10; |QBF aSmtp;
+         aDirOrigen  = "boecom." + aIni + "@diagram.es";
+         aDirDestino = "boecom@diagram.es";
+         aAsunto     = " Errores en procesado de correo BoeCom";
+         |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "boecom/errores.txt";
+         aTexto      = "$$$$" + aAlfa;
+         |DSCORREO_ENVIA aIPDsCorreo, aSmtp, aDirOrigen, aDirDestino, aAsunto, aTexto, aAlfa;
+      |FINSI;
+   |FINSI;
+
+   |BLIN 23;
+|FPRC;
+
+|PROCESO Comienzo;
+      aAlfa = aNumRegistro + ".txt";
+      #dsboem00#4 = aAlfa;
+      |GRABA 020#dsboem00.a;
+
+      |LEE 000#dsboem02.u;
+      |SI FSalida ! 0;
+         |DDEFECTO #dsboem02;
+      |SINO;
+         #dsboem02#0 = #dsboem02#0 + 1;
+      |FINSI;
+
+      |GRABA 020#dsboem02.b;
+      #dsboem02#1 = ~;
+      |HORA aAlfa; |QBF aAlfa; aAlfa = aAlfa % 0105;
+      #dsboem02#2 = aAlfa;
+      #dsboem02#3 = Usuario % 0810;
+      #dsboem02#4 = #dsboez01#1;
+      |GRABA 020#dsboem02.a; |LIBERA #dsboem02;
+
+      |HAZ Indexado;
+|FPRC;
+
+|PROCESO AveriguaINI;
+   aSerie = "";
+   |ESPECIFICA "SERIALIZACION", aSerie;
+   ||aSerie = aSerie % 1906;          ||Esto es el numero de ORO
+   aSerie = aSerie % 106;          ||Esto es el numero de ORO
+   nIni = aSerie;
+   aIni = ("000000" + nIni) % -106;
+|FPRC;
+
+|PROCESO BorraNifs;
+   |BORRA 020#dsboem01.a;
+|FPRC;
+
+|DEFBUCLE BorraNifs;
+#dsboem01#1;
+;
+#dsboem00#0, "               ", "             ";
+#dsboem00#0, "zzzzzzzzzzzzzzz", "zzzzzzzzzzzzz";
+be;
+NULL, BorraNifs;
+|FIN;
+
+|PROCESO BorraReferencia;
+   |BUCLE BorraNifs;
+   |BORRA 020#dsboem00.a;
+|FPRC;
+
+|PROCESO ProcesaRecepcion;
+   aDir = aPath + "*";
+   |_PDIR aDir;
+   |PARA; |SI FSalida = 0; |HACIENDO;
+      aAlfa = aDir;
+      aAlfa2 = aAlfa % -101; aAlfa1 = "";
+      |PARA; |SI aAlfa2 ! "/"; |Y aAlfa2 ! "\"; |HACIENDO;
+         aAlfa1 = aAlfa2 + aAlfa1; aAlfa = aAlfa % -0299;
+         aAlfa2 = aAlfa % -101;
+      |SIGUE;
+      |SI aAlfa1 ! "_cuerpo_.txt";
+         aAlfa2 = aAlfa1 - ".gz";
+         |SI FSalida ! 0;
+            aAlfa2 = aDir;
+            |DESCOMPRIME aAlfa2;
+            aAlfa1 = aAlfa1 - ".gz";
+            aAlfa2 = aAlfa + aAlfa1;
+            aAlfa1 = aAlfa + aAlfa1 + ".txt";
+            |RENOMBRA_FICHERO aAlfa2, aAlfa1;
+         |FINSI;
+         aRefer = aAlfa1 - ".txt"; aRefer = aRefer - aAlfa;
+         |SI FSalida ! 0;
+            #dsboez01#1 = aRefer;
+            #dsboez01#2 = aAsunto;
+            |LEE 000#dsboem02.u;
+            |SI FSalida ! 0;
+               |DDEFECTO #dsboem02;
+            |SINO;
+               #dsboem02#0 = #dsboem02#0 + 1;
+            |FINSI;
+            nCalc = #dsboem02#0; aAlfa2 = (("0" * 12) + nCalc); aAlfa2 = aAlfa2 % -112;
+            aOrigen  = aAlfa + aRefer + ".txt";
+
+            |DBASE aDestino; |QBF aDestino;
+            aDestino = aDestino + "boecom/"; |MKDIR aDestino;
+
+            aDestino = aDestino + aAlfa2 + ".txt";
+            |COPIA_FICHERO aOrigen, aDestino;
+            |SI FSalida = 0;
+               #dsboem00#0 = #dsboez01#1;
+               |LEE 101#dsboem00.=;
+               |SI FSalida = 0;
+                  aMensaje = "    Eliminando referencia anterior " + #dsboez01#1;
+                  |BLIN 23; |ATRI I; |PINTA 2302, aMensaje; |ATRI N; |PULSATECLA;
+                  |HAZ BorraReferencia;
+                  |LIBERA #dsboem00;
+                  |BLIN 23;
+               |FINSI;
+
+               |DDEFECTO #dsboem02;
+               #dsboem02#0 = nCalc;
+               |GRABA 020#dsboem02.b;
+
+               aAlfa = aAlfa + ".txt";
+
+               |DDEFECTO #dsboem00;
+               #dsboem00#0 = #dsboez01#1;
+               #dsboem00#1 = #dsboez01#2;
+               #dsboem00#2 = ~;
+               aAlfa = Usuario % 0810;
+               #dsboem00#3 = aAlfa;
+               |HORA aAlfa; |QBF aAlfa; aAlfa = aAlfa % 0105;
+               #dsboem00#5 = aAlfa;
+               #dsboem00#4 = aAlfa;
+               |GRABA 020#dsboem00.n;
+
+               #dsboem02#1 = ~;
+               |HORA aAlfa; |QBF aAlfa; aAlfa = aAlfa % 0105;
+               #dsboem02#2 = aAlfa;
+               #dsboem02#3 = Usuario % 0810;
+               #dsboem02#4 = #dsboez01#1;
+               |GRABA 020#dsboem02.a; |LIBERA #dsboem02;
+
+               |HAZ Indexado;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      aAlfa = aDir;
+      aAlfa = aAlfa - ".gz";
+      |SI FSalida ! 0;
+         aAlfa = aAlfa + ".txt"; |FBORRA aAlfa;
+      |FINSI;
+      |FBORRA aDir; |_SDIR aDir;
+   |SIGUE;
+|FPRC;
+
+|PROCESO RecogeCorreo;
+   aIPDsCorreo = #dsboez01#3 + "." + #dsboez01#4 + "." + #dsboez01#5 + "." + #dsboez01#6;
+   || El asterisco le indica al DSCORREO que descargue todos los ficheros ...
+   ||    que vengan adjuntos en los correos. Si no, solo descarga el ultimo
+   aPop3     = #dsboez01#7; |QBF aPop3;
+   aUsuario  = #dsboez01#8; |QBF aUsuario;
+   aPassword = #dsboez01#9; |QBF aPassword;
+
+   |DBASE aPath; |QBF aPath;
+   aPath = aPath + "boecom/"; |MKDIR aPath;
+   aPath = aPath + "tmp/";    |MKDIR aPath;
+
+   |BLIN 22; |ATRI I; |PINTA 2202, "    Recibiendo correos ....."; |ATRI N;
+   |PULSATECLA;
+
+   |DSCORREO_RECIBE aIPDsCorreo, aPop3, aUsuario, aPassword, aPath, aFicheros;
+   FEstado = FSalida;
+   || Quitamos del FSalida el numero de version del DSCorreo
+   aAlfa = FEstado - "[";
+   |SI FSalida ! 0;
+      nCalc = FSalida; nCalc = nCalc + 9;
+      aAlfa = FEstado % nCalc;
+      FEstado = FEstado - aAlfa;
+
+      aAlfa = FEstado % 0101; aAlfa1 = "";
+      |PARA; |SI aAlfa ! " "; |Y FSalida ! 0; |HACIENDO;
+         aAlfa1 = aAlfa1 + aAlfa; FEstado = FEstado % 0299;
+         aAlfa = FEstado % 0101;
+      |SIGUE;
+      aAsunto = FEstado;
+      aAlfa = aAsunto % 0101;
+      |PARA; |SI aAlfa = " "; |HACIENDO;
+         aAsunto = aAsunto % 0299;
+         aAlfa = aAsunto % 0101;
+      |SIGUE;
+      nEstado = aAlfa1;
+   |SINO;
+      nEstado = FSalida;
+   |FINSI;
+
+   |SI nEstado = 0;
+      aMensaje = "    Procesando correo " + aAsunto;
+      |BLIN 22; |ATRI I; |PINTA 2202, aMensaje; |ATRI N;
+      |PULSATECLA;
+      |HAZ ProcesaRecepcion;
+   |FINSI;
+|FPRC;
+
+|PROCESO PantCorreo;
+   |CUADRO 1619 2167;
+   |PINTA 1721, "IP DsCorreo      .   .   .   ";
+   |PINTA 1821, "Servidor POP 3";
+   |PINTA 1921, "Usuario";
+   |PINTA 2021, "Contrase¤a";
+   |C_M #dsboez01#0, 1, "N";
+   |C_M #dsboez01#1, 1, "N";
+   |C_M #dsboez01#2, 1, "N";
+   |C_M #dsboez01#3, 1, "S"; |C_V #dsboez01#3, 1, "S"; |C_P #dsboez01#3, 1, 1736;
+   |C_M #dsboez01#4, 1, "S"; |C_V #dsboez01#4, 1, "S"; |C_P #dsboez01#4, 1, 1740;
+   |C_M #dsboez01#5, 1, "S"; |C_V #dsboez01#5, 1, "S"; |C_P #dsboez01#5, 1, 1744;
+   |C_M #dsboez01#6, 1, "S"; |C_V #dsboez01#6, 1, "S"; |C_P #dsboez01#6, 1, 1748;
+   |C_M #dsboez01#7, 1, "S"; |C_V #dsboez01#7, 1, "S"; |C_P #dsboez01#7, 1, 1836;
+   |C_M #dsboez01#8, 1, "S"; |C_V #dsboez01#8, 1, "S"; |C_P #dsboez01#8, 1, 1936;
+   |C_M #dsboez01#9, 1, "S"; |C_V #dsboez01#9, 1, "S"; |C_P #dsboez01#9, 1, 2036;
+
+   #dsboez01#8 = "boecom." + aIni + "@diagram.es";
+   #dsboez01#9 = aIni;
+
+   |SI PARAMETRO ! "";
+      |PINDA #0#0;
+      |ENDATOS #1#0;
+   |SINO;
+      |PINDA #0#0;
+   |FINSI;
+   |BLANCO 2021 2066;
+|FPRC;
+
+|PROCESO FiltraDatos;
+   |BLIN 23; aPuntos = ""; nRetardo = 0;
+
+   aOrigen  = eaUnidadBasico + "/DOCUMENTOS/TMP/XPDF/" + #dsboez01#1; |QBF aOrigen;
+   aOrigen = aOrigen + ".txt";
+   |DBASE aDestino; |QBF aDestino;
+   aDestino = aDestino + "tmp/"; |MKDIR aDestino;
+   aDestino = aDestino + #dsboez01#1; |QBF aDestino;
+   aDestino = aDestino + ".txt";
+   aIP = ""; |IP_REMOTO aIP;
+   |SI aIP ! "";
+      |RECIBE_FICHERO aOrigen, aDestino;
+   |SINO;
+      |COPIA_FICHERO aOrigen, aDestino;
+   |FINSI;
+   |RFBORRA aOrigen;
+
+   aAlfa = aDestino;
+   |XABRE "", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |LEE 000#dsboem02.u;
+      |SI FSalida ! 0;
+         |DDEFECTO #dsboem02;
+      |SINO;
+         #dsboem02#0 = #dsboem02#0 + 1;
+      |FINSI;
+      nCalc = #dsboem02#0; aAlfa = (("0" * 12) + nCalc); aAlfa = aAlfa % -112;
+      aNumRegistro = aAlfa;
+
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "boecom/"; |MKDIR aAlfa;
+      aAlfa = aAlfa + aNumRegistro; |QBF aAlfa;
+      aAlfa = aAlfa + ".txt";
+      |XABRE "W", aAlfa, nHandle1;
+      |SI FSalida ] 0;
+         nNumChars = 240;
+         |PARA; |SI nNumChars ] 0; |Y nNumVacios < 80; |HACIENDO;
+            |XLEE nHandle, 240, aReg;
+            nNumChars = FSalida;
+            |SI nNumChars > 0;
+               nNumVacios = 0;
+               aAlfa2 = ""; aReg1 = ""; aTab = &9;
+               aAlfa = aReg; |QBF aAlfa; aAlfa1 = aAlfa % 0101;
+               |PARA; |SI aAlfa1 = " "; |HACIENDO;
+                  aAlfa3 = aAlfa % 20099;
+                  aAlfa2 = aAlfa % 10199;
+                  aAlfa = aAlfa % 0299; aAlfa = aAlfa + aAlfa2 + aAlfa3;
+                  aAlfa1 = aAlfa % 0101;
+               |SIGUE;
+               aAlfa1 = aAlfa % 0101; aAlfa2 = "";
+               |PARA; |SI aAlfa1 ! " "; |Y aAlfa ! ""; |HACIENDO;
+                  aAlfa2 = aAlfa2 + aAlfa1;
+                  aAlfa = aAlfa % 0299; aAlfa1 = aAlfa % 0101;
+               |SIGUE;
+               aAlfa = aAlfa2; aAlfa2 = "";
+
+               aAlfa = aAlfa % 0207; nCalc = aAlfa;
+               aAlfa1 = ("0000000" + nCalc) % -107;
+               |SI aAlfa = aAlfa1;
+                  |SI nCalc ] 0; |Y nCalc [ 9999999;
+                     aAlfa = aReg % 0; nCalc = aAlfa;
+                     |PARA nCont = 1; |SI nCont[ nCalc; |HACIENDO nCont = nCont + 1;
+                        nCalc1 = (nCont * 100) + 1;
+                        aAlfa1 = aReg % nCalc1;
+                        |SI aAlfa1 = " ";
+                           |SI aReg1 = "";
+                              aAlfa1 = "";
+                           |SINO;
+                              aAlfa2 = aAlfa2 + aAlfa1;
+                              |SI aAlfa2 = "   "; |Y aReg1 ! "";
+                                 aAlfa1 = &9; aAlfa2 = "";
+                                 |SI aUltChar = aAlfa1; aAlfa1 = ""; |FINSI;
+                              |SINO;
+                                 aAlfa1 = "";
+                              |FINSI;
+                           |FINSI;
+                        |SINO;
+                           |SI aUltChar = aTab; |QBF aAlfa2; |FINSI;
+                           |SI aAlfa2 ! ""; aAlfa1 = aAlfa2 + aAlfa1; |FINSI;
+                           aAlfa2 = "";
+                        |FINSI;
+                        aReg1 = aReg1 + aAlfa1;
+                        |SI aAlfa1 ! ""; aUltChar = aReg1 % -101; |FINSI;
+                     |SIGUE;
+                     |XGRABA nHandle1, aReg1;
+                  |FINSI;
+               |FINSI;
+            |SINO;
+               nNumVacios = nNumVacios + 1;
+            |FINSI;
+
+            |SI nRetardo ] 100;
+               nRetardo = 0;
+               |SI aPuntos = "......"; aPuntos = ""; |FINSI;
+               aPuntos = aPuntos + ".";
+               |PINTA 2355, "       ";
+               aAlfa2 = " Desechando partes inservibles ..... espere por favor " + aPuntos;
+               |ATRI I; |PINTA 2302, aAlfa2; |ATRI N;
+               |PULSATECLA;
+            |SINO;
+               nRetardo = nRetardo + 1;
+            |FINSI;
+         |SIGUE;
+         |XCIERRA nHandle1;
+      |FINSI;
+      |XCIERRA nHandle;
+   |FINSI;
+   |BLIN 23;
+|FPRC;
+
+|PROCESO Purgam01;
+   aAlfa = "|NC"; aAlfa = #dsboem01@#aAlfa#; nCalc = aAlfa;
+   |DDEFECTO #dsboem01@;
+   |PARA nCont = 0; |SI nCont < nCalc; |HACIENDO nCont = nCont + 1;
+      #dsboem01@#nCont# = #dsboem01#nCont#;
+   |SIGUE;
+   |GRABA 020#dsboem01@.n;
+|FPRC;
+
+|DEFBUCLE Purgam01;
+#dsboem01#1;
+;
+#dsboem00#0, "            ","             ";
+#dsboem00#0, "zzzzzzzzzzzz","zzzzzzzzzzzzz";
+be;
+NULL, Purgam01;
+|FIN;
+
+|PROCESO PurgaRefs;
+   |BUCLE Purgam01;
+
+   |DDEFECTO #dsboem00@;
+   aAlfa = "|NC"; aAlfa = #dsboem00@#aAlfa#; nCalc = aAlfa;
+   |PARA nCont = 0; |SI nCont < nCalc; |HACIENDO nCont = nCont + 1;
+      #dsboem00@#nCont# = #dsboem00#nCont#;
+   |SIGUE;
+   |GRABA 020#dsboem00@.n;
+|FPRC;
+
+|DEFBUCLE PurgaRefs;
+#dsboem00#1;
+2;
+"               ", fFecha;
+"zzzzzzzzzzzzzzz", "31.12.9999";
+be;
+NULL, PurgaRefs;
+|FIN;
+
+|PROCESO PurgaHist;
+   |DDEFECTO #dsboem02@;
+   aAlfa = "|NC"; aAlfa = #dsboem02@#aAlfa#; nCalc = aAlfa;
+   |PARA nCont = 0; |SI nCont < nCalc; |HACIENDO nCont = nCont + 1;
+      #dsboem02@#nCont# = #dsboem02#nCont#;
+   |SIGUE;
+   |GRABA 020#dsboem02@.n;
+|FPRC;
+
+|DEFBUCLE PurgaHist;
+#dsboem02#1;
+1;
+000000000001, fFecha;
+999999999999, "31.12.9999";
+be;
+NULL,PurgaHist;
+|FIN;
+
+|PROCESO PurgaDatos;
+   |BLIN 23; |ATRI I; |PINTA 2302, " Purgando referencias con datos de hace mas de un a¤o ...."; |ATRI N;
+
+   fFecha = ~; aAlfa1 = fFecha; |QBF aAlfa1;
+   aAlfa = aAlfa1 % -104;
+   nCalc = aAlfa; nCalc = nCalc - 1; aAlfa = nCalc;
+   aAlfa = ("0000" + aAlfa) % -104;
+   aAlfa1 = aAlfa1 % 0106 + aAlfa; fFecha = aAlfa1;
+
+   |ABRE #dsboem00;
+   |SELECT #2#dsboem00;
+   |LEE 000#dsboem00.p;
+   |SI FSalida = 0;
+      |SI #dsboem00#2 ] fFecha;
+         |SELECT #1#dsboem00; |CIERRA #dsboem00;
+         |ACABA;
+      |FINSI;
+   |SINO;
+      |SELECT #1#dsboem00; |CIERRA #dsboem00;
+      |ACABA;
+   |FINSI;
+   |SELECT #1#dsboem00; |CIERRA #dsboem00;
+
+   |DDEF aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dsboem00.mas";
+   |CARGA_DEF aAlfa, dsboem00@;
+   |SI FSalida = 0;
+      |DDEF aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dsboem01.mas";
+      |CARGA_DEF aAlfa, dsboem01@;
+      |DDEF aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dsboem02.mas";
+      |CARGA_DEF aAlfa, dsboem02@;
+
+      aAlfa = "00" + Usuario; |NOME_DAT #dsboem00@#aAlfa#; |DELINDEX #dsboem00@;
+      aAlfa = "01" + Usuario; |NOME_DAT #dsboem01@#aAlfa#; |DELINDEX #dsboem01@;
+      aAlfa = "02" + Usuario; |NOME_DAT #dsboem02@#aAlfa#; |DELINDEX #dsboem02@;
+      |ABRE #dsboem00@; |ABRE #dsboem01@; |ABRE #dsboem02@;
+      |BUCLE PurgaRefs; |BUCLE PurgaHist;
+      |CIERRA #dsboem02@; |DESCARGA_DEF #dsboem02@;
+      |CIERRA #dsboem01@; |DESCARGA_DEF #dsboem01@;
+      |CIERRA #dsboem00@; |DESCARGA_DEF #dsboem00@;
+
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "00" + Usuario + ".dat";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem00.dat"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "00" + Usuario + ".ddx";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem00.ddx"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "00" + Usuario + ".ixx";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem00.ixx"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "01" + Usuario + ".dat";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem01.dat"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "01" + Usuario + ".ddx";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem01.ddx"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "01" + Usuario + ".ixx";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem01.ixx"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "02" + Usuario + ".dat";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem02.dat"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "02" + Usuario + ".ddx";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem02.ddx"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+      |DFICE aAlfa;  aAlfa  = aAlfa  + "02" + Usuario + ".ixx";
+      |DFICE aAlfa1; aAlfa1 = aAlfa1 + "dsboem02.ixx"; |COPIA_FICHERO aAlfa, aAlfa1; |FBORRA aAlfa;
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+   |HAZ LeeUnidadBasico;
+
+   aIni = "";
+   |HAZ AveriguaINI;
+   |SI aIni = "";
+      aAlfa = "0000Problemas al obtener el numero INI [" + aIni + "]";
+      |MENAV aAlfa;
+      |ACABA;
+   |FINSI;
+
+   |CLS;
+   |CABEZA " Indexado fichero TXT";
+   |PINPA #0#0; |PINDA #0#0;
+
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      || Primero miro si hay datos de hace mas de un a¤o. Si es asi, los purgo
+      ||HAZ PurgaDatos;
+
+      || Luego me traigo al puesto el pdftotext.exe
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "plantillas/pdftotext.tgz";
+      |XABRE "E", aAlfa, nHandle;
+      |SI FSalida < 0;
+         |MENAV "    No se encuentra el paquete pdftotext.tgz para la conversion del PDF";
+         |ACABA;
+      |FINSI;
+      aOrigen = aAlfa;
+      aDestino = eaUnidadBasico + "/DOCUMENTOS/";          |RMKDIR aDestino;
+      aDestino = eaUnidadBasico + "/DOCUMENTOS/TMP/";      |RMKDIR aDestino;
+      aDestino = eaUnidadBasico + "/DOCUMENTOS/TMP/XPDF/"; |RMKDIR aDestino;
+      aDestino = aDestino + "pdftotext.tgz";
+      aAlfa = ""; |IP_REMOTO aAlfa;
+      |SI aAlfa ! "";
+         |ENVIA_FICHERO aOrigen, aDestino;
+      |SINO;
+         |COPIA_FICHERO aOrigen, aDestino;
+      |FINSI;
+      aAlfa = aDestino; aAlfa = aAlfa - ".tgz";
+      |RDESCOMPRIME aAlfa;
+      aAlfa1 = eaUnidadBasico + "/DOCUMENTOS/TMP/XPDF/"; aAlfa = aAlfa + ".tar";
+      |RDETAR aAlfa, aAlfa1;
+      |RFBORRA aDestino; aDestino = aDestino - ".tgz";
+      aDestino = aDestino + ".tar"; |RFBORRA aDestino;
+      aAlfa = "cmd " + &34 + "/c START " + eaUnidadBasico + "/DOCUMENTOS/TMP/XPDF/pdftotext.exe -layout " + #0#0; |QBF aAlfa;
+      aAlfa = aAlfa + " " + eaUnidadBasico + "/DOCUMENTOS/TMP/XPDF/" + #dsboez01#1; |QBF aAlfa;
+      aAlfa = aAlfa + ".txt" + &34;
+      |RSYSTEM aAlfa;
+      nRetardo = 0; aPuntos = "";
+      aContiene1 = eaUnidadBasico + "/DOCUMENTOS/TMP/XPDF/" + #dsboez01#1; |QBF aContiene1;
+      aContiene1 = aContiene1 + ".txt";
+      |ESPECIFICA "REMOTOMD5", aContiene; aAlfa = FSalida;
+      |PARA; |SI nRetardo < 4; |HACIENDO;
+         |SI aPuntos = "......"; aPuntos = ""; |FINSI;
+         aPuntos = aPuntos + ".";
+         |PINTA 2349, "       ";
+         aAlfa2 = " Convirtiendo PDF a TXT ..... espere por favor " + aPuntos;
+         |ATRI I; |PINTA 2302, aAlfa2; |ATRI N;
+         |PULSATECLA;
+         |SLEEP 1;
+         aContiene1 = eaUnidadBasico + "/DOCUMENTOS/TMP/XPDF/" + #dsboez01#1; |QBF aContiene1;
+         aContiene1 = aContiene1 + ".txt";
+         |ESPECIFICA "REMOTOMD5", aContiene; aAlfa1 = FSalida;
+         |QBF aAlfa; |QBF aAlfa1;
+         |SI aAlfa = aAlfa1;
+            nRetardo = nRetardo + 1;
+         |SINO;
+            aAlfa = aAlfa1; nRetardo = 0;
+         |FINSI;
+      |SIGUE;
+
+      |ABRE #dsboem02;
+      |HAZ FiltraDatos;
+
+      |ABRE #dsboem00;
+      #dsboem00#0 = #dsboez01#1;
+      |LEE 101#dsboem00.=;
+      |SI FSalida = 0;
+         aMensaje = "    Eliminando referencia anterior " + #dsboez01#1;
+         |BLIN 22; |ATRI I; |PINTA 2202, aMensaje; |ATRI N; |PULSATECLA;
+         |HAZ BorraReferencia;
+         |LIBERA #dsboem00;
+      |FINSI;
+
+      |SELECT #3#dsboem00;
+      |DDEFECTO #dsboem00;
+      |LEE 000#dsboem00.u;
+      |SI FSalida ! 0; |DDEFECTO #dsboem00; |FINSI;
+      nCalc = #dsboem00#6;
+      |SELECT #1#dsboem00;
+
+      nCalc = nCalc + 1; aAlfa = "00000000" + nCalc;
+      aAlfa = aAlfa % -108;
+
+      |DDEFECTO #dsboem00;
+      #dsboem00#0 = #dsboez01#1;
+      #dsboem00#1 = #dsboez01#2;
+      #dsboem00#2 = ~;
+      #dsboem00#6 = aAlfa;
+      aAlfa = Usuario % 0810;
+      #dsboem00#3 = aAlfa;
+      |HORA aAlfa; |QBF aAlfa; aAlfa = aAlfa % 0105;
+      #dsboem00#5 = aAlfa;
+      |GRABA 020#dsboem00.b;
+
+      aAlfa = #dsboem00#6; |QBF aAlfa;
+      |SI aAlfa ! ""; |NOME_DAT #dsboem01#aAlfa#; |FINSI;
+      |ABRE #dsboem01;
+      |HAZ Comienzo;
+      |LIBERA #dsboem00;
+      |CIERRA #dsboem02; |CIERRA #dsboem01; |CIERRA #dsboem00;
+   |FINSI;
+|FPRO;

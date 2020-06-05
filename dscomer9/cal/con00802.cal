@@ -1,0 +1,246 @@
+|FICHEROS;
+     con00802 #802;
+     con00625 #0;
+     con00626 #1;
+     con00642 #67; || Lineas Fra. O.R.
+     agifa065 #12; || Historico
+     agifa019 #11; || articulos
+     agifa059 #55;
+     agifa134 #56;
+     con00637 #20 ; || facturas
+     agifa024 #30; || clientes
+     con00674 #80; || Lineas or vo
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     mes_margen = 0;
+     mes_importe = 0;
+     aParam = "";
+     puedo_borrar = "S";
+     mensaje = "";
+     lineas_fra = 0;
+     mes = 0;
+     fmes ="";
+     imneto = 0;
+|FIN;
+|PROCESO BorraFactu;
+|FPRC;
+|PROCESO quita_VNVO;
+|SI #0#7 = "VO";
+     |ABRE #80;
+     #80#0 = #0#3;
+     #80#5 = #0#13;
+     #80#1 = #0#14;
+     |LEE 021#80=;
+     |SI FSalida = 0;
+          #80#4 = 0;
+          |GRABA 021#80a;
+     |FINSI;
+     |LIBERA #80;
+     |CIERRA #80;
+|SINO;
+
+|FINSI;
+|FPRC;
+
+|PROCESO quita_cliente;
+          #30#0 = #0#11;
+          |LEE 121#30=;
+          |SI 0 = FSalida;
+               fmes = #0#17 % A402;
+               mes = ((fmes - 1) * 4) + 54;
+               imneto = #20#6 + #20#7;
+               || #30#50 = #30#50 -. imneto;        || pendiente de facturar
+               #30mes = #30mes - imneto;
+               mes = mes + 1;
+               ||#30mes = #30mes + imneto;
+               mes = mes + 1;
+               ||#30mes = #30mes +. #0#46;
+               #30#102 = #30#102 - imneto;
+               ||#30#103 = #30#103 + #0#17;
+               ||#30#104 = #30#104 +. #0#46;
+               #30#49  = #30#49  - #20#11;        || riesgo
+
+               #30#46  = 0;
+               #30#110 = #30#110 - imneto;
+               |GRABA 020#30a;
+
+               enImpCliCom = -imneto;
+               enImpCliFac = -imneto;
+               eaCliente = #0#11;
+               efFecha = #0#17;
+               |HAZ AcumulaCli;
+/*
+||*************** CALCULO DEL RIESGO;
+*/
+          |FINSI;
+          |LIBERA #30;
+|FPRC;
+
+|PROCESO borra_fra_standard;
+|ABRE #55;
+|ABRE #56;
+#55#14 = #0#15;
+#55#0 = #0#16;
+|BORRA 021#55c;
+
+#56#0 = #0#16;
+#56#49 = #0#15;
+|HAZ BorraRecVenta;
+#56#0 = #0#16;
+#56#49 = #0#15;
+|BORRA 021#56c;
+|LIBERA #55;
+|LIBERA #56;
+|CIERRA #55;
+|CIERRA #56;
+|FPRC;
+
+|PROCESO borra_lin_fr;
+|FPRC;
+
+|PROCESO borra_fra;
+|ABRE #20;
+#20#0 = #0#15;
+#20#1 = #0#16;
+|LEE 001#20=;
+|SI FSalida = 0;
+     |SI #0#7 = "VN" ; |O #0#7 = "VO";
+          |HAZ quita_VNVO;
+     |SINO;
+          |ABRE #30;
+          |HAZ quita_cliente;
+          |GRABA 021#30a;
+          |LIBERA #30;
+          |CIERRA #30;
+     |FINSI;
+     |BORRA 021#20a;
+     |BUCLELIN 1borra_lin_fr#20;
+     |HAZ borra_fra_standard;
+     #0#15 = "";
+     #0#16 = 0;
+     #0#17 = "01.01.1900";
+     |PINTA #0#15;
+     |PINTA #0#16;
+     |PINTA #0#17;
+     |GRABA 001#0a;
+
+|FINSI;
+|LIBERA #0;
+|LIBERA #20;
+|CIERRA #20;
+|FPRC;
+
+|PROCESO quita_histo;
+     |ABRE #12;
+     |DDEFECTO #12;
+     #12#0 = #1#2;||articulo
+     #12#11= #1#0;||Serie
+     #12#1 = #1#22;||FECHA
+     #12#2 = "OR";|| tipo operacion
+     #12#3 = #1#1;|| documento
+     #12#4 = #1#11;|| linea
+     #12#5 = 01;        || almacen
+     ||\\ es bueno#12#15 = #0#3;
+     |BORRA 021#12c;
+     |LIBERA #12;
+     |CIERRA #12;
+|FPRC;
+
+|PROCESO quita_arti;
+      #11#104 = #11#104 + #1#4;
+      #11#6 = #11#6 + #1#4;
+      |SI #11#6 > 0;
+           #11#10 = #11#6 * #11#9;
+      |SINO;
+           #11#10 = 0;
+      |FINSI;
+      #11#11 = #11#15 + #11#7 - #11#16 - #11#104 - #11#17 - #11#13 - #11#12 ;
+      fmes = #0#2 % A402;
+      mes = fmes - 1;
+      mes = mes * 5;
+      mes = mes + 34;
+      mes_importe = mes + 1;
+      mes_margen = mes + 2;
+      #11mes = #11mes - #1#4;
+      |SI #1#14 = "G"; |O #1#14 = "S";
+           #11mes_margen  = #11mes_margen + #1#17;||\\ sumo el coste
+           enImpMar = #1#17;
+      |SINO;
+           #11mes_importe = #11mes_importe - #1#8; || resto la venta
+           #11mes_margen  = #11mes_margen - (#1#8 - #1#17);||\\ resto el coste
+           enImpMar = -(#1#8 - #1#17);
+           enImpVta = -#1#8;
+      |FINSI;
+      #11#94 = #11#94 - #1#4;
+      |GRABA 021#11a;
+      |LIBERA #11;
+
+      enUniVta = -#1#4;
+      efFecha = #0#2;
+      eaArticulo = #1#2;
+      |HAZ AcumulaArt;
+|FPRC;
+
+|PROCESO baja_histo;
+     |ABRE #11;
+     #11#0 = #1#2;
+     |LEE 021#11=;
+     |SI FSalida = 0; || \\ falta preguntar por el almacen
+          |HAZ quita_arti;
+          |HAZ quita_histo;
+     |FINSI;
+     |LIBERA #11;
+     |CIERRA #11;
+|FPRC;
+
+|PROCESO borra_li;
+     |SI #1#9 = 2 ; |O #1#9 = 4;
+          |HAZ baja_histo;
+     |FINSI;
+     |BORRA 020#1a;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE borra_lin;
+     #1#1;
+     ;
+     #0#0 , #0#1 ,  1;
+     #0#0 , #0#1 ,9999;
+     ;
+     NULL , borra_li;
+|FIN;
+
+|PROCESO mod_baja;
+     |SI #0#16 ! 0;
+          |HAZ borra_fra;
+     |FINSI;
+     |BUCLE borra_lin;
+     |BORRA 020#0a;
+|FPRC;
+
+|DEFBUCLE con00625;
+     #0#1;
+     ;
+     #802#0, #802#1;
+     #802#0, #802#1;
+     be;
+     NULL, mod_baja;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     |BUCLE con00625;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     |SI aParam = "";
+          |MANTE #802;
+     |SINO;
+          #802#0 = aParam % 105;
+          #802#1 = aParam % 606;
+          |HAZ Tipo3;
+     |FINSI;
+|FPRO;

@@ -1,0 +1,500 @@
+|FICHEROS;
+   dsarz900 #0;
+
+   dsarm001 #10;
+   dsarm002 #11;
+   dsarm003 #12;
+   dsarm004 #13;
+   dsarm005 #14;
+
+   dsarw041 #50;
+   dsarm100 #100;        ||Contador Reg.Doc.
+|FIN;
+
+|VARIABLES;
+   nCada100 = 0;
+   nContadorCCC = 0;
+   aIPRemoto = "";
+   aCarpeta2 = "";       ||Al hacer el tipo15 del dsarm005, se pierden
+   aCarpeta3 = "";
+   aCliente = "";
+   nCliente = 0;
+   nUltimoDoc = 0;          ||Contador
+   nHandle   = 0;
+   nHandle1  = 0;
+   nFinal    = 0;
+   nSubGrupo = 0;
+   nTipo     = 0;
+   nNumDocum = 0;
+   nNumLinea = 0;
+   nVent     = 0;
+   nPant     = 0;
+   nLabel1   = 0;
+   nLabel2   = 0;
+   nPos1     = 0;
+   nPos2     = 0;
+   nCont     = 0;
+   nCont1    = 0;
+   nCalc     = 0;
+   nParte1   = 0;
+   nParte2   = 0;
+
+   aAlfa     = "";
+   aAlfa1    = "";
+   aAlfa2    = "";
+   aAlfa3    = "";
+   aExt      = "";
+   aEmpresa  = "";
+   aCentro   = "";
+   aParte1   = "";
+   aParte2   = "";
+   aCadena   = "";
+   aOrigen   = "";
+   aDestino  = "";
+
+   aDirBase         = "";
+   aDirBaseOriginal = "";
+
+   fFecha  = @;
+   aHora   = "";
+   aLong   = "";
+   aNombre = "";
+
+   {-1}aVent      = "";
+       aVent1     = 0;
+       aVent2     = 0;
+       aVent3     = 0;
+       aVent4     = 0;
+       aVent5     = "";
+
+     &enSoyDESPANET = 0;
+|FIN;
+
+|PROCESO tipo80; |TIPO 80;
+     FSalida = 2599;
+|FPRC;
+
+|PROCESO CambiaBarras;
+   |SI #dsarz900#33 = "N";
+      aCadena = aCadena - "\";
+      |PARA; |SI FSalida ! 0; |HACIENDO;
+         nParte1 = ((FSalida / 100) ! 0) + 99;
+         nParte2 = FSalida + 98;
+         aParte1 = aCadena % nParte1;
+         aParte2 = aCadena % nParte2;
+         aCadena = aParte1 + "/" + aParte2;
+         aCadena = aCadena - "\";
+      |SIGUE;
+   |FINSI;
+|FPRC;
+
+|PROCESO CompruebaDir;
+   aCadena = #0#32; |HAZ CambiaBarras; #0#32 = aCadena; |PINTA #dsarz900#32;
+
+   aAlfa1 = #0#32; |QBF aAlfa1;
+   |SI #dsarz900#33 = "N";
+       |_PDIR aAlfa1;
+   |SINO;
+       |R_PDIR aAlfa1;
+   |FINSI;
+   |SI FSalida < 0;
+      |MENAV "    El camino indicado no existe";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO CompruebaTxt;
+   aAlfa = #0#32; |QBF aAlfa;
+   |SI aAlfa = "";
+      aAlfa = #0#0; |QBF aAlfa;
+      |SI #dsarz900#33 = "N";
+           |XABRE "", aAlfa, nHandle;
+      |SINO;
+           |XABRE "C", aAlfa, nHandle;
+      |FINSI;
+      |SI FSalida < 0;
+         |MENAV "    Fichero inexistente";
+         |ERROR;
+      |SINO;
+         nCont1 = 0;
+         |PARA; |SI FSalida ] 0; |Y nCont1 < 10; |HACIENDO;
+            |XLEE nHandle, 250, aAlfa;
+            aAlfa1 = aAlfa - " Directorio de ";
+            |SI FSalida ! 0;
+               |SAL;
+            |SINO;
+               aAlfa1 = "";
+            |FINSI;
+         |SIGUE;
+         |XCIERRA nHandle;
+         |SI aAlfa1 ! "";
+            aCadena = aAlfa1; |HAZ CambiaBarras; aAlfa1 = aCadena;
+            #dsarz900#32 = aAlfa1; |PINTA #dsarz900#32;
+         |FINSI;
+      |FINSI;
+   |SINO;
+      aAlfa = #0#0; |QBF aAlfa;
+      |SI #dsarz900#33 = "N";
+           |XABRE "E", aAlfa, nHandle;
+      |SINO;
+           |XABRE "CE", aAlfa, nHandle;
+      |FINSI;
+      |SI FSalida < 0;
+         |MENAV "    Fichero inexistente";
+         |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Importa;
+   #dsarm002#0 = #dsarz900#1;
+   |LEE 000#dsarm002.=;
+   |SI FSalida ! 0; |DDEFECTO #dsarm002; |FINSI;
+
+   |DFICE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "log.txt"; |FBORRA aAlfa;
+
+   aAlfa = #0#0; |QBF aAlfa;
+   |SI #dsarz900#33 = "N";
+        |XABRE "", aAlfa, nHandle;
+   |SINO;
+        |XABRE "C", aAlfa, nHandle;
+   |FINSI;
+   |SI FSalida ] 0;
+      FSalida = 0;
+
+      nCont1 = 0;
+      |PARA; |SI; |HACIENDO;
+         |XLEE nHandle, 250, aAlfa; |SI FSalida < 0; |SAL; |FINSI;
+
+/*
+         ||No hace falta en el PLB del tipo15, ya hay un PULSATECLA
+         nCont1 = nCont1 + 1;
+         |SI nCont1 > 100; |PULSATECLA; nCont1 = 0; |FINSI;
+*/
+
+         |DFICE aAlfa1; |QBF aAlfa1;
+         aAlfa1 = aAlfa1 + "log.txt";
+         |XABRE "A", aAlfa1, nHandle1;
+         |SI FSalida ] 0;
+            |XGRABA nHandle1, aAlfa;
+            |XCIERRA nHandle1;
+         |FINSI;
+
+         aAlfa1 = aAlfa - " Directorio de ";
+         |SI FSalida ! 0;
+            aCadena = aAlfa1; |HAZ CambiaBarras; aAlfa1 = aCadena;
+            |SI aDirBaseOriginal = ""; aDirBase = aAlfa1; |FINSI;
+            aDirBaseOriginal = aAlfa1;
+            aAlfa1 = aDirBaseOriginal - aDirBase;
+            aDirBaseOriginal = #dsarz900#32; |QBF aDirBaseOriginal;
+            aDirBaseOriginal = aDirBaseOriginal + aAlfa1;
+         |SINO;
+            aAlfa1 = aAlfa - "<DIR>";
+            |SI FSalida = 0;
+               aAlfa1 = aAlfa % 1501;
+               |SI aAlfa1 = ":"
+                  aAlfa1 = aAlfa % 0110; fFecha  = aAlfa1;
+                  aAlfa1 = aAlfa % 1305; aHora   = aAlfa1;
+                  aAlfa1 = aAlfa % 1818; aLong   = aAlfa1;
+                  aAlfa1 = aAlfa % 3799; aNombre = aAlfa1;
+
+                  nCada100 = nCada100 + 1;
+                  |SI nCada100 > 100; nCada100 = 1; |FINSI;
+
+                  |SI nCada100 = 1;          ||SOLO MUESTRA EL MENSAJE CADA 100 registros
+                       |SI nLabel2 ! -1; |FIN_CONTROL_WINDOWS nLabel2; |FINSI;
+                       aAlfa3 = "LABEL,{{2}}Procesando fichero ... " + aNombre; |QBF aAlfa3;
+                       nPos1 = 0706; nPos2 = 0780;
+                       |CONTROL_SIMPLE nPant, aAlfa3, nPos1, nPos2, NULL;
+                       nLabel2 = FSalida;
+                  |FINSI;
+
+                  aExt = ""; aAlfa2 = "";
+                  aAlfa1 = aNombre; |QBF aAlfa1;
+                  aAlfa3 = aAlfa1 % -101; aAlfa1 = aAlfa1 % -299;
+                  |PARA; |SI aAlfa3 ! "."; |HACIENDO;
+                     aAlfa2 = aAlfa3 + aAlfa2;
+                     aAlfa3 = aAlfa1 % -101; aAlfa1 = aAlfa1 % -299;
+                  |SIGUE;
+                  aExt = aAlfa2;
+                  |SI aExt = aNombre; aExt = ""; |FINSI;
+
+                  aAlfa1 = aDirBaseOriginal; |QBF aAlfa1;
+                  aAlfa1 = aAlfa1 - "EMP_";
+                  |SI FSalida ! 0;
+                     aAlfa1 = aAlfa1 - "Ct_";
+                     |SI FSalida ! 0;
+                        nSubGrupo = 0; nTipo = 0;
+                        aAlfa1 = aAlfa1 - "EstErgonomicos";
+                        |SI FSalida ! 0;
+                           nSubGrupo = #dsarz900#3; nTipo = #dsarz900#17;
+                        |FINSI;
+                        aAlfa1 = aAlfa1 - "EstHigienicos";
+                        |SI FSalida ! 0;
+                           nSubGrupo = #dsarz900#5; nTipo = #dsarz900#19;
+                        |FINSI;
+                        aAlfa1 = aAlfa1 - "Formacion";
+                        |SI FSalida ! 0;
+                           nSubGrupo = #dsarz900#7; nTipo = #dsarz900#21;
+                        |FINSI;
+                        aAlfa1 = aAlfa1 - "InfEvaluacion";
+                        |SI FSalida ! 0;
+                           nSubGrupo = #dsarz900#9; nTipo = #dsarz900#23;
+                        |FINSI;
+                        aAlfa1 = aAlfa1 - "InfPlanificacion";
+                        |SI FSalida ! 0;
+                           nSubGrupo = #dsarz900#11; nTipo = #dsarz900#25;
+                        |FINSI;
+                        aAlfa1 = aAlfa1 - "PlanesSeguridad";
+                        |SI FSalida ! 0;
+                           nSubGrupo = #dsarz900#13; nTipo = #dsarz900#27;
+                        |FINSI;
+                        |SI nSubGrupo = 0; |Y nTipo = 0;
+                           nSubGrupo = #dsarz900#15; nTipo = #dsarz900#29;
+                        |FINSI;
+
+                        #dsarm003#0 = #dsarz900#1;
+                        #dsarm003#1 = nSubGrupo;
+                        |LEE 000#dsarm003.=;
+                        |SI FSalida ! 0; |DDEFECTO #dsarm003; |FINSI;
+
+                        #dsarm004#0 = #dsarz900#1;
+                        #dsarm004#1 = nSubGrupo;
+                        #dsarm004#2 = nTipo;
+                        |LEE 000#dsarm004.=;
+                        |SI FSalida ! 0; |DDEFECTO #dsarm004; |FINSI;
+
+                        aCarpeta2 = #dsarm002#2;
+                        aCarpeta3 = #dsarm003#3;
+
+                        |SELECT #2#dsarm005;
+                        #dsarm005#1 = #dsarz900#1;
+                        #dsarm005#2 = nSubGrupo;
+                        #dsarm005#3 = nTipo;
+                        #dsarm005#0 = 999999999;
+                        |LEE 000#dsarm005.];
+                        |SI FSalida = 0;
+                           |LEE 000#dsarm005.a;
+                        |SINO;
+                           |LEE 000#dsarm005.u;
+                        |FINSI;
+
+                        nNumDocum = 0; nNumLinea = 0;
+                        |SI FSalida = 0; |Y #dsarm005#1 = #dsarz900#1; |Y #dsarm005#2 = nSubGrupo;
+                         |Y #dsarm005#3 = nTipo;
+                           nNumDocum = #dsarm005#47;
+                        |FINSI;
+                        |SELECT #1#dsarm005;
+
+                        |LEE 000#dsarm005.u;
+                        |SI FSalida ! 0;
+                           |DDEFECTO #dsarm005;
+                           #dsarm005#0 = 0;
+                        |FINSI;
+                        nNumLinea = #dsarm005#0 + 1;
+                        nNumDocum = nNumDocum + 1;
+
+                        |ABRE #dsarm100;
+                        |DDEFECTO #dsarm100;
+                        |LEE 000#dsarm100.p;
+                        |SI FSalida = 0;
+                             nUltimoDoc = #dsarm100#1 + 1;
+                        |SINO;
+                             nUltimoDoc = 1;
+                        |FINSI;
+                        |SI nUltimoDoc > nNumLinea;
+                             nNumLinea = nUltimoDoc;
+                        |FINSI;
+                        #dsarm100#0 = "1";
+                        |LEE 101#dsarm100.=;
+                        |SI FSalida ! 0; |GRABA 020#dsarm100.b; |FINSI;
+                        #dsarm100#1 = nNumLinea;
+                        |GRABA 020#dsarm100.a;
+                        |LIBERA #dsarm100;
+                        |CIERRA #dsarm100;
+
+                        |DDEFECTO #dsarm005;
+                        #dsarm005#0 = nNumLinea;
+                        |GRABA 020#dsarm005.b;
+
+                        #dsarm005#1 = #dsarz900#1;
+                        #dsarm005#2 = nSubGrupo;
+                        #dsarm005#3 = nTipo;
+                        #dsarm005#4 = fFecha;
+                        #dsarm005#5 = aHora;
+                        aAlfa1 = Usuario % 0810;
+                        #dsarm005#6 = aAlfa1;
+                        aAlfa1 = #dsarm001#1; |QBF aAlfa1;
+                        aAlfa1 = aAlfa1 + "/" + aCarpeta2; |QBF aAlfa1;
+                        aAlfa1 = aAlfa1 + "/" + aCarpeta3; |QBF aAlfa1;
+                        aAlfa1 = aAlfa1 + "/" + #dsarm004#4; |QBF aAlfa1;
+                        aAlfa1 = aAlfa1 + "/";
+                        #dsarm005#7 = aAlfa1;
+                        aAlfa1 = #dsarm005#0; |QBF aAlfa1;
+                        aAlfa1 = ("000000000" + aAlfa1) % -109;
+                        aAlfa1 = aAlfa1 + "." + aExt;
+                        #dsarm005#9 = aAlfa1;
+                        #dsarm005#47 = nNumDocum;
+
+                        aAlfa1 = aDirBaseOriginal; |QBF aAlfa1;
+                        aAlfa1 = aAlfa1 - "EMP_";
+                        |SI FSalida ! 0;
+                           aAlfa2 = "EMP_"; nCalc = FSalida - 3;
+                           aAlfa3 = aAlfa1 % nCalc; nCalc = nCalc + 100;
+                           |PARA; |SI aAlfa3 ! "/"; |Y aAlfa3 ! "\"; |HACIENDO;
+                              aAlfa2 = aAlfa2 + aAlfa3;
+                              aAlfa3 = aAlfa1 % nCalc; nCalc = nCalc + 100;
+                           |SIGUE;
+                           aEmpresa = aAlfa2;
+                        |FINSI;
+
+                        aAlfa1 = aDirBaseOriginal; |QBF aAlfa1;
+                        aAlfa1 = aAlfa1 - "Ct_";
+                        |SI FSalida ! 0;
+                           aAlfa2 = "Ct_"; nCalc = FSalida - 2;
+                           aAlfa3 = aAlfa1 % nCalc; nCalc = nCalc + 100;
+                           |PARA; |SI aAlfa3 ! "/"; |Y aAlfa3 ! "\"; |Y aAlfa3 ! ""; |HACIENDO;
+                              aAlfa2 = aAlfa2 + aAlfa3;
+                              aAlfa3 = aAlfa1 % nCalc; nCalc = nCalc + 100;
+                           |SIGUE;
+                           aCentro = aAlfa2;
+                        |FINSI;
+
+                        |PARA nCont = 5; |SI nCont [ 31; |HACIENDO nCont = nCont + 1;
+                           |SI nCont = 10; nCont = 27; |FINSI;
+                           |SI nCont [ 9;
+                              nCalc = nCont + 18;
+                           |SINO;
+                              nCalc = nCont + 1;
+                           |FINSI;
+
+                           aAlfa3 = #dsarm004#nCont#; |QBF aAlfa3;
+                           |SI aAlfa3 = "EMP_"; #dsarm005#nCalc# = aEmpresa; |FINSI;
+                           |SI aAlfa3 = "Ct_";  #dsarm005#nCalc# = aCentro;  |FINSI;
+                        |SIGUE;
+                        #dsarm005#93 = aNombre;
+
+                        aCliente = #dsarm005#23;
+                        |QBT aCliente;
+                        aCliente = aCliente - "EMP_";
+                        nCliente = aCliente;
+                        #dsarm005#8 = nCliente;
+                        |GRABA 020#dsarm005.a; |LIBERA #dsarm005;
+
+
+                        aOrigen = aDirBaseOriginal; |QBF aOrigen;
+                        aOrigen = aOrigen + "/" + aNombre; |QBF aOrigen;
+
+                        |SI #dsarz900#33 = "N";
+                             aDestino = #dsarm001#1;                  |QBF aDestino; |MKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm002#2; |QBF aDestino; |MKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm003#3; |QBF aDestino; |MKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm004#4; |QBF aDestino; |MKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm005#9; |QBF aDestino;
+                        |SINO;
+                             aDestino = #dsarm001#1;                  |QBF aDestino; |RMKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm002#2; |QBF aDestino; |RMKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm003#3; |QBF aDestino; |RMKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm004#4; |QBF aDestino; |RMKDIR aDestino;
+                             aDestino = aDestino + "/" + #dsarm005#9; |QBF aDestino;
+                        |FINSI;
+
+                        |SI #dsarz900#33 = "N";
+                             |COPIA_FICHERO aOrigen, aDestino;
+                        |SINO;
+                             aIPRemoto = "";
+                             |IP_REMOTO aIPRemoto; |QBT aIPRemoto;
+                             |SI aIPRemoto ! "";
+                                  |SI #dsarm001#7 = "N";
+                                       |RECIBE_FICHERO aOrigen, aDestino;
+                                  |SINO;
+                                       |RCOPIA_FICHERO aOrigen, aDestino;
+                                  |FINSI;
+                             |SINO;
+                                  |RCOPIA_FICHERO aOrigen, aDestino;
+                             |FINSI;
+                        |FINSI;
+                        |SI FSalida < 0;
+                           aAlfa = "    Problemas copiando el fichero " + aOrigen + " en " + aDestino;
+                           |MENAV aAlfa;
+                        |FINSI;
+
+                     |FINSI;
+                  |FINSI;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |SIGUE;
+      |XCIERRA nHandle;
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     nContadorCCC = 0;
+
+     |HAZ SoyDESPANET;
+     |SI enSoyDESPANET = 1;  |ACABA;  |FINSI;
+
+   |ABRE #dsarz900;
+   |LEE 000#dsarz900.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dsarz900;
+      |GRABA 020#dsarz900.c;
+   |FINSI;
+
+   |CLS;
+   |CABEZA "Importador masivo 003445";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      |GRABA 020#dsarz900.a;
+
+      |ABRE #dsarm001; |ABRE #dsarm002;
+      |ABRE #dsarm003; |ABRE #dsarm004;
+      |ABRE #dsarm005;
+
+      |LEE 000#dsarm001.p;
+      |SI FSalida ! 0; |DDEFECTO #dsarm001; |FINSI;
+
+      |VENTANA 1210, 1490, 1, 17, ""; nVent = FSalida;
+      aVent1 = -1;
+      aVent2 = -1;
+      aVent3 = 0;
+      aVent4 = nVent;
+      aVent5 = "MODAL";
+      |ESPECIFICA "ESTADO_VENTANA", aVent;
+      |PINPA #0#dsarw041; nPant = FSalida;
+
+      aAlfa = "LABEL,{{1}}Procesando estructura directorios";
+      nPos1 = 0503; nPos2 = 0580;
+      |CONTROL_SIMPLE nPant, aAlfa, nPos1, nPos2, NULL;
+      nLabel1 = FSalida; nLabel2 = -1;
+      |PTEC 802; |PAUSA; |PULSATECLA;
+
+      aAlfa = #dsarm001#1; |QBF aAlfa;
+      |SI aAlfa ! "";
+         |HAZ Importa;
+      |SINO;
+         aAlfa = "    Ubicaci¢n de documentos vac¡a en parametros de la aplicacion. Indiquela antes de hacer la importacion. Proceso cancelado.";
+         |MENAV aAlfa;
+      |FINSI;
+      aVent4 = nVent;
+      aVent5 = "MODELESS";
+      |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+      |DFICE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "log.txt"; |FBORRA aAlfa;
+
+      |SI nLabel2 ! -1; |FIN_CONTROL_WINDOWS nLabel2; |FINSI;
+      |FIN_CONTROL_WINDOWS nLabel1;
+      |FINVENTANA nVent;
+
+      |CIERRA #dsarm005;
+      |CIERRA #dsarm004; |CIERRA #dsarm003;
+      |CIERRA #dsarm002; |CIERRA #dsarm001;
+   |FINSI;
+   |CIERRA #dsarz900;
+
+     |SUB_EJECUTA "dpntz001;CLI";
+|FPRO;

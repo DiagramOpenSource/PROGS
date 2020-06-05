@@ -1,0 +1,650 @@
+|FICHEROS;
+   reespdfc #20;
+   reespdfl #21;
+   reespdfm #22;
+   reespdfn #23;
+   reespdfo #24;
+   pdfimtmp #30;
+
+   pdfimtmp #1000;
+   rew00106 #1001;
+   rew00107 #1002;
+|FIN;
+
+|VARIABLES;
+   &aArchivo  = "";
+
+   aModelo    = "";
+   aNomeDat   = "";
+
+   aAlfa      = "";
+   aAlfa1     = "";
+   aAlfa2     = "";
+   aAlfa3     = "";
+   aAlfa3a    = "";
+   aAlfa4     = "";
+   aAlfa5     = "";
+   aCadena    = "";
+   aTipo1     = "";
+   aTipo2     = "";
+   aOperando1 = "";
+   aOperando2 = "";
+   aOperador  = "";
+   aCom       = "";
+   aChar      = "";
+   aResultado = "";
+   aResul     = "";
+   aParte1    = "";
+   aParte2    = "";
+
+   nParte1    = 0;
+   nParte2    = 0;
+   nNegOp1    = 0;
+   nNegOp2    = 0;
+
+   nCalc      = 0;
+   nCalc1     = 0;
+   nCalc2     = 0;
+   nCalc3     = 0;
+   nCalc4     = 0;
+   nCampo     = 0;
+   nResultado = 0;
+   nAnyo      = 0;
+
+   fFechaOp1  = @;
+   fFechaOp2  = @;
+|FIN;
+
+|PROCESO ResolExp;
+   aAlfa = aCadena;
+   aOperando1 = ""; aOperando2 = ""; aOperador  = "";
+   nNegOp1    = 0;  nNegOp2    = 0;
+   aTipo1     = "N"; aTipo2    = "N";
+   aCom       = &34;
+
+   aResul = aAlfa; aAlfa2 = "";
+   aAlfa1 = aAlfa % 0101; aAlfa = aAlfa % 0299;
+   |PARA; |SI aAlfa ! ""; |HACIENDO;
+      || Compruebo operadores operacionales
+      |SI aAlfa1 = "+"; |O aAlfa1 = "-"; |O aAlfa1 = "*"; |O aAlfa1 = "/";
+       |O aAlfa1 = "%"; |O aAlfa1 = "="; |O aAlfa1 = "!"; |O aAlfa1 = "<";
+       |O aAlfa1 = ">"; |O aAlfa1 = "["; |O aAlfa1 = "]"; |O aAlfa1 = aCom;
+       |O aAlfa1 = "{"; |O aAlfa1 = "}"; |O aAlfa1 = "|";
+          |SI aOperador = "";
+             |SI aAlfa1 = "-";
+                |SI aAlfa2 = "";
+                   nNegOp1 = 1; aAlfa1 = "";
+                |SINO;
+                   nNegOp1 = 0;
+                |FINSI;
+             |FINSI;
+             |SI aAlfa1 = aCom; aTipo1 = "A"; aAlfa1 = ""; |FINSI;
+          |SINO;
+             |SI aAlfa1 = "-";
+                |SI aAlfa2 = "";
+                   nNegOp2 = 1; aAlfa1 = "";
+                |SINO;
+                   nNegOp2 = 0;
+                |FINSI;
+             |FINSI;
+             |SI aAlfa1 = aCom; aTipo2 = "A"; aAlfa1 = ""; |FINSI;
+          |FINSI;
+
+          |SI aAlfa1 ! "";
+             |SI aOperando1 = "";
+                |SI aAlfa2 = ""; aAlfa2 = " "; |FINSI;
+                aOperando1 = aAlfa2; aOperador = aAlfa1;
+                aAlfa2 = ""; aAlfa1 = "";
+             |SINO;
+                aOperando2 = aAlfa2; nResultado = 0;
+                |SI aTipo1 = "A";
+                   aAlfa5 = aOperando1; |QBF aOperando1;
+                   aAlfa3 = aOperando1 % 0; nCalc = aAlfa3;
+                   aAlfa3 = aOperando1 % 0301; aAlfa4 = aOperando1 % 0601;
+                   |SI aAlfa3 = "."; |Y aAlfa4 = "."; |Y nCalc = 10;
+                      aTipo1 = "F";
+                   |FINSI;
+                   |SI aTipo1 = "A"; aOperando1 = aAlfa5; |FINSI;
+                |FINSI;
+                |SI aTipo2 = "A";
+                   aAlfa5 = aOperando2;
+                   |SI aOperando2 ! " "; |QBF aOperando2; |FINSI;
+                   aAlfa3 = aOperando2 % 0; nCalc = aAlfa3;
+                   aAlfa3 = aOperando2 % 0301; aAlfa4 = aOperando2 % 0601;
+                   |SI aAlfa3 = "."; |Y aAlfa4 = "."; |Y nCalc = 10;
+                      aTipo2 = "F";
+                   |FINSI;
+                   |SI aTipo2 = "A"; aOperando2 = aAlfa5; |FINSI;
+                |FINSI;
+
+                |SI aTipo1 = "N"; |Y aTipo2 = "A"; aTipo1 = "A"; |FINSI;
+                |SI aOperador = "{"; |O aOperador = "}"; |O aOperador = "%";
+                   aTipo1 = "A"; aTipo2 = "N";
+                |FINSI;
+
+                || Relleno de un caracter por la izquierda "{" o por la derecha "}"
+                || Le sigue el caracter y dos cifras para el n§ de caracteres totales
+                || Ejemplo : [rem00003][062]}*04
+                |SI aTipo1 = "A"; |Y aTipo2 = "N";
+                   |SI aOperador = "{";
+                      aChar = aOperando2 % 0101; aOperando2 = aOperando2 % 0299;
+                      aAlfa3 = aOperando1; nCalc3 = aOperando2;
+                      nCalc4 = -100 - nCalc3;
+                      aResultado = aCom + (((aChar * nCalc3) + aOperando1) % nCalc4) + aCom;
+                      aOperando1 = aResultado; aOperador = aAlfa1;
+                      aOperando2 = ""; aAlfa1 = "";
+                   |FINSI;
+                   |SI aOperador = "}";
+                      aChar = aOperando2 % 0101; aOperando2 = aOperando2 % 0299;
+                      aAlfa3 = aOperando1; nCalc3 = aOperando2;
+                      nCalc4 = 100 + nCalc3;
+                      aResultado = aCom + ((aOperando1 + (aChar * nCalc3)) % nCalc4) + aCom;
+                      aOperando1 = aResultado; aOperador = aAlfa1;
+                      aOperando2 = ""; aAlfa1 = "";
+                   |FINSI;
+                   |SI aOperador = "%";
+                      aAlfa3 = aOperando1; nCalc3 = aOperando2;
+                      aResultado = aOperando1 % nCalc3;
+                      aOperando1 = aResultado; aOperador = aAlfa1;
+                      aOperando2 = ""; aAlfa1 = "";
+                   |FINSI;
+                |FINSI;
+
+                |SI aTipo1 = "A"; |Y aTipo2 = "A";
+                   aAlfa3 = aOperando1; aAlfa4 = aOperando2;
+                   aResultado = 0;
+                   |SI aOperador = "=";
+                      |SI aAlfa3 = aAlfa4; aResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "<";
+                      |SI aAlfa3 < aAlfa4; aResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = ">";
+                      |SI aAlfa3 > aAlfa4; aResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "[";
+                      |SI aAlfa3 [ aAlfa4; aResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "]";
+                      |SI aAlfa3 ] aAlfa4; aResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "!";
+                      |SI aAlfa3 ! aAlfa4; aResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "+";
+                      aResultado = aAlfa3 + aAlfa4;
+                   |FINSI;
+                   aOperando1 = aResultado; aOperador = aAlfa1;
+                   aOperando2 = ""; aAlfa1 = "";
+                |FINSI;
+                |SI aTipo1 = "F";
+                   fFechaOp1 = aOperando1;
+                   |SI aTipo2 = "N";
+                      nCalc2 = aOperando2;
+                      |SI aOperador = "%"; aResultado = fFechaOp1 % nCalc2; aTipo1 = "A"; |FINSI;
+                   |FINSI;
+                   |SI aTipo2 = "F";
+                      fFechaOp2 = aOperando2;
+                      aResultado = 0;
+                      |SI aOperador = "=";
+                         |SI fFechaOp1 = fFechaOp2; aResultado = 1; |FINSI;
+                      |FINSI;
+                      |SI aOperador = "<";
+                         |SI fFechaOp1 < fFechaOp2; aResultado = 1; |FINSI;
+                      |FINSI;
+                      |SI aOperador = ">";
+                         |SI fFechaOp1 > fFechaOp2; aResultado = 1; |FINSI;
+                      |FINSI;
+                      |SI aOperador = "[";
+                         |SI fFechaOp1 [ fFechaOp2; aResultado = 1; |FINSI;
+                      |FINSI;
+                      |SI aOperador = "]";
+                         |SI fFechaOp1 ] fFechaOp2; aResultado = 1; |FINSI;
+                      |FINSI;
+                      |SI aOperador = "!";
+                         |SI fFechaOp1 ! fFechaOp2; aResultado = 1; |FINSI;
+                      |FINSI;
+                      aTipo1 = "N";
+                   |FINSI;
+                   aOperando1 = aResultado; aOperador = aAlfa1;
+                   aOperando2 = ""; aAlfa1 = "";
+                   || aAlfa = aResultado + " " + aAlfa;
+                |FINSI;
+                |SI aTipo1 = "N"; |Y aTipo2 = "N";
+                   nCalc1 = aOperando1; nCalc2 = aOperando2;
+                   |SI nNegOp1 = 1; nCalc1 = 0 - nCalc1; |FINSI;
+                   |SI nNegOp2 = 1; nCalc2 = 0 - nCalc2; |FINSI;
+                   |SI aOperador = "=";
+                      |SI nCalc1 = nCalc2; nResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "!";
+                      |SI nCalc1 ! nCalc2; nResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "<";
+                      |SI nCalc1 < nCalc2; nResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = ">";
+                      |SI nCalc1 > nCalc2; nResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "[";
+                      |SI nCalc1 [ nCalc2; nResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "]";
+                      |SI nCalc1 ] nCalc2; nResultado = 1; |FINSI;
+                   |FINSI;
+                   |SI aOperador = "+"; nResultado = nCalc1 + nCalc2; |FINSI;
+                   |SI aOperador = "-"; nResultado = nCalc1 - nCalc2; |FINSI;
+                   |SI aOperador = "*"; nResultado = nCalc1 * nCalc2; |FINSI;
+                   |SI aOperador = "/"; nResultado = nCalc1 / nCalc2; |FINSI;
+                   |SI aOperador = "|"; nResultado = nCalc1 ! nCalc2; |FINSI;
+                   aResultado = nResultado;
+                   aOperando1 = aResultado; aOperador = aAlfa1;
+                   aOperando2 = ""; aAlfa1 = "";
+                |FINSI;
+                aAlfa2 = "";
+             |FINSI;
+         |FINSI;
+      |FINSI;
+
+      aAlfa2 = aAlfa2 + aAlfa1;
+      aResul = aAlfa;
+      aAlfa1 = aAlfa % 0101; aAlfa = aAlfa % 0299;
+   |SIGUE;
+
+   |SI aAlfa1 = aCom; aAlfa1 = ""; |FINSI;
+
+   aAlfa2 = aAlfa2 + aAlfa1;
+   |SI aAlfa2 ! "";
+      aOperando2 = aAlfa2; nResultado = 0;
+      |SI aTipo1 = "A";
+         aAlfa5 = aOperando1;
+         |QBF aOperando1;
+         aAlfa3 = aOperando1 % 0; nCalc = aAlfa3;
+         aAlfa3 = aOperando1 % 0301; aAlfa4 = aOperando1 % 0601;
+         |SI aAlfa3 = "."; |Y aAlfa4 = "."; |Y nCalc = 10;
+            aTipo1 = "F"; |QBF aAlfa5;
+         |FINSI;
+         aOperando1 = aAlfa5;
+      |FINSI;
+      |SI aTipo2 = "N";
+         nCalc1 = aOperando2; aAlfa3 = nCalc1;
+         aAlfa4 = aOperando2; |QBF aAlfa4;
+         |SI aAlfa3 ! aAlfa4;
+            aTipo2 = "A";
+         |FINSI;
+      |FINSI;
+      |SI aTipo2 = "A";
+         |QBF aOperando2;
+         aAlfa3 = aOperando2 % 0; nCalc = aAlfa3;
+         aAlfa3 = aOperando2 % 0301; aAlfa4 = aOperando2 % 0601;
+         |SI aAlfa3 = "."; |Y aAlfa4 = "."; |Y nCalc = 10;
+            aTipo2 = "F";
+         |FINSI;
+      |FINSI;
+
+      |SI aTipo1 = "N"; |Y aTipo2 = "A"; aTipo1 = "A"; |FINSI;
+      |SI aOperador = "{"; |O aOperador = "}"; |O aOperador = "%";
+         aTipo1 = "A"; aTipo2 = "N";
+      |FINSI;
+
+      || Relleno de un caracter por la izquierda "{" o por la derecha "}"
+      || Le sigue el caracter y dos cifras para el n§ de caracteres totales
+      || Ejemplo : [rem00003][062]}*04
+      |SI aTipo1 = "A"; |Y aTipo2 = "N";
+         |SI aOperador = "{";
+            aChar = aOperando2 % 0101; aOperando2 = aOperando2 % 0299;
+            aAlfa3 = aOperando1; nCalc3 = aOperando2;
+            nCalc4 = -100 - nCalc3;
+            aResultado = aCom + (((aChar * nCalc3) + aOperando1) % nCalc4) + aCom;
+         |FINSI;
+         |SI aOperador = "}";
+            aChar = aOperando2 % 0101; aOperando2 = aOperando2 % 0299;
+            aAlfa3 = aOperando1; nCalc3 = aOperando2;
+            nCalc4 = 100 + nCalc3;
+            aResultado = aCom + ((aOperando1 + (aChar * nCalc3)) % nCalc4) + aCom;
+         |FINSI;
+         |SI aOperador = "%";
+            aAlfa3 = aOperando1; nCalc3 = aOperando2;
+            aResultado = aOperando1 % nCalc3;
+         |FINSI;
+      |FINSI;
+
+      |SI aTipo1 = "A"; |Y aTipo2 = "A";
+         aAlfa3 = aOperando1; aAlfa4 = aOperando2;
+         aResultado = 0;
+         |SI aOperador = "=";
+            |SI aAlfa3 = aAlfa4; aResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "<";
+            |SI aAlfa3 < aAlfa4; aResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = ">";
+            |SI aAlfa3 > aAlfa4; aResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "[";
+            |SI aAlfa3 [ aAlfa4; aResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "]";
+            |SI aAlfa3 ] aAlfa4; aResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "!";
+            |SI aAlfa3 ! aAlfa4; aResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "+";
+            aResultado = aAlfa3 + aAlfa4;
+         |FINSI;
+         |SI aOperador = "";
+            aResultado = aAlfa2;
+         |FINSI;
+      |FINSI;
+      |SI aTipo1 = "F";
+         fFechaOp1 = aOperando1;
+         |SI aTipo2 = "N";
+            nCalc2 = aOperando2;
+            |SI aOperador = "%"; aResultado = fFechaOp1 % nCalc2; |FINSI;
+         |FINSI;
+         |SI aTipo2 = "F";
+            fFechaOp2 = aOperando2;
+            aResultado = 0;
+            |SI aOperador = "=";
+               |SI fFechaOp1 = fFechaOp2; aResultado = 1; |FINSI;
+            |FINSI;
+            |SI aOperador = "<";
+               |SI fFechaOp1 < fFechaOp2; aResultado = 1; |FINSI;
+            |FINSI;
+            |SI aOperador = ">";
+               |SI fFechaOp1 > fFechaOp2; aResultado = 1; |FINSI;
+            |FINSI;
+            |SI aOperador = "[";
+               |SI fFechaOp1 [ fFechaOp2; aResultado = 1; |FINSI;
+            |FINSI;
+            |SI aOperador = "]";
+               |SI fFechaOp1 ] fFechaOp2; aResultado = 1; |FINSI;
+            |FINSI;
+            |SI aOperador = "!";
+               |SI fFechaOp1 ! fFechaOp2; aResultado = 1; |FINSI;
+            |FINSI;
+         |FINSI;
+         aAlfa = aResultado + " " + aAlfa;
+      |FINSI;
+      |SI aTipo1 = "N"; |Y aTipo2 = "N";
+         nCalc1 = aOperando1; nCalc2 = aOperando2;
+         |SI nCalc1 = 0; |Y nNegOp1 = 1; |Y nNegOp2 = 0;
+            nNegOp2 = 1;
+         |FINSI;
+         |SI nNegOp1 = 1; nCalc1 = 0 - nCalc1; |FINSI;
+         |SI nNegOp2 = 1; nCalc2 = 0 - nCalc2; |FINSI;
+         |SI aOperador = "";
+            nResultado = nCalc1;
+            |SI nResultado = 0; |Y nCalc2 ! 0;
+               nResultado = nCalc2;
+            |FINSI;
+            aOperador = "a";
+         |FINSI;
+         |SI aOperador = "=";
+            |SI nCalc1 = nCalc2; nResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "!";
+            |SI nCalc1 ! nCalc2; nResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "<";
+            |SI nCalc1 < nCalc2; nResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = ">";
+            |SI nCalc1 > nCalc2; nResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "[";
+            |SI nCalc1 [ nCalc2; nResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "]";
+            |SI nCalc1 ] nCalc2; nResultado = 1; |FINSI;
+         |FINSI;
+         |SI aOperador = "+"; nResultado = nCalc1 + nCalc2; |FINSI;
+         |SI aOperador = "-"; nResultado = nCalc1 - nCalc2; |FINSI;
+         |SI aOperador = "*"; nResultado = nCalc1 * nCalc2; |FINSI;
+         |SI aOperador = "/"; nResultado = nCalc1 / nCalc2; |FINSI;
+         |SI aOperador = "|"; nResultado = nCalc1 ! nCalc2; |FINSI;
+         aResultado = nResultado;
+      |FINSI;
+      |SI aOperador = ""; aResultado = aAlfa2; |FINSI;
+      aAlfa2 = "";
+   |SINO;
+      |SI aOperador ! ""; aResultado = aOperando1; |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO ResolCmps;
+   aAlfa = aCadena;
+   aAlfa1 = aAlfa - "][";   || Valor de campo de un fichero
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      nCalc = FSalida; nCalc = ((((nCalc / 100) ! 0) - 8) * 100) + 8; aAlfa2 = aAlfa % nCalc;
+      nCalc = FSalida; nCalc = ((((nCalc / 100) ! 0) + 2) * 100) + 3; aAlfa3 = aAlfa % nCalc;
+      aAlfa4 = "[" + aAlfa2 + "][" + aAlfa3 + "]"; aAlfa = aAlfa - aAlfa4;
+      nCalc = FSalida;
+      nParte1 = ((nCalc / 100) ! 0) + 99; aParte1 = aAlfa % nParte1;
+      nParte2 = nCalc + 84;               aParte2 = aAlfa % nParte2;
+
+      nCalc = aAlfa3;
+      #rew00106#0 = aAlfa2;
+      #rew00106#1 = nCalc;
+      |LEE 000#rew00106.=;
+      |SI FSalida ! 0; |DDEFECTO #rew00106; |FINSI;
+      aAlfa4 = #rew00106#2; aAlfa2 = #rew00106#3;
+
+      |QBF aAlfa4;
+      |SI aAlfa2 = "A"; |O aAlfa2 = "F";
+         aAlfa4 = &34 + aAlfa4 + &34;
+      |FINSI;
+
+      aAlfa = aParte1 + aAlfa4 + aParte2;
+
+      aAlfa1 = aAlfa - "][";
+   |SIGUE;
+
+   || Ahora resuelvo otras posibles memorias
+   aAlfa5 = aAlfa;
+   aAlfa1 = aAlfa; aAlfa1 = aAlfa1 - "#"; aAlfa = aAlfa - "#";
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      nParte1 = FSalida; aAlfa1 = aAlfa1 - "#"; aAlfa = aAlfa - "#";
+      |SI FSalida = 0;
+         || Repongo lo que habia ....
+         aAlfa = aAlfa5; |SAL;
+      |FINSI;
+      nParte2 = FSalida;
+      nCalc = nParte1 + (((nParte2 / 100) ! 0) - (((nParte1 / 100) ! 0) + 1));
+      aAlfa1 = aAlfa1 % nCalc;
+
+      nParte1 = ((nParte1 / 100) ! 0) + 99; aParte1 = aAlfa % nParte1;
+      nParte2 = nParte2 + 98;               aParte2 = aAlfa % nParte2;
+
+      #rew00107#0 = aAlfa1;
+      |LEE 000#rew00107.=;
+      |SI FSalida ! 0; |DDEFECTO #rew00107; |FINSI;
+      aAlfa1 = #rew00107#1; aResultado = #rew00107#1; |QBF aResultado;
+
+      aAlfa = aParte1 + aResultado + aParte2;
+
+      aAlfa5 = aAlfa;
+      aAlfa1 = aAlfa; aAlfa1 = aAlfa1 - "#"; aAlfa = aAlfa - "#";
+   |SIGUE;
+
+   || Ahora resuelvo los parentesis
+
+   aAlfa1 = aAlfa; aAlfa1 = aAlfa1 - "("; aAlfa = aAlfa - "(";
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      nParte1 = FSalida; aAlfa1 = aAlfa1 - ")"; aAlfa = aAlfa - ")";
+      nParte2 = FSalida;
+      nCalc = nParte1 + (((nParte2 / 100) ! 0) - (((nParte1 / 100) ! 0) + 1));
+      aAlfa1 = aAlfa1 % nCalc;
+
+      nParte1 = ((nParte1 / 100) ! 0) + 99; aParte1 = aAlfa % nParte1;
+      nParte2 = nParte2 + 98;               aParte2 = aAlfa % nParte2;
+
+      aCadena = aAlfa1; |HAZ ResolExp; aAlfa1 = aCadena;
+
+      aAlfa = aParte1 + aResultado + aParte2;
+      aAlfa1 = aAlfa; aAlfa1 = aAlfa1 - "("; aAlfa = aAlfa - "(";
+   |SIGUE;
+
+   aCadena = aAlfa;
+|FPRC;
+
+|PROCESO ResuelveTodo;
+   |HAZ ResolCmps; aResultado = aCadena;
+   |HAZ ResolExp;  |QBF aResultado;
+   aResultado = aResultado - aCom;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aResultado = aResultado - aCom;
+   |SIGUE;
+|FPRC;
+
+|PROCESO Resultados;
+   aResultado = aResultado + #reespdfo#5; |QBF aResultado;
+|FPRC;
+
+|DEFBUCLE Resultados;
+#reespdfo#1;
+;
+#reespdfn#0, #reespdfn#1, #reespdfn#2, #reespdfn#3, 01;
+#reespdfn#0, #reespdfn#1, #reespdfn#2, #reespdfn#3, 99;
+;
+NULL,Resultados;
+|FIN;
+
+|PROCESO MemoCond;
+   aCadena = #reespdfn#4; |QBT aCadena; |HAZ ResuelveTodo;
+   |SI aResultado = "1"; |O aResultado = "S"; |ERROR10; |FINSI;
+|FPRC;
+
+|DEFBUCLE MemoCond;
+#reespdfn#1;
+;
+#reespdfm#0, #reespdfm#1, #reespdfm#2, 01;
+#reespdfm#0, #reespdfm#1, #reespdfm#2, 99;
+;
+NULL,MemoCond;
+|FIN;
+
+|PROCESO ResolMemo;
+   |ABRE #reespdfm; |ABRE #reespdfn; |ABRE #reespdfo;
+
+   #reespdfm#0 = #reespdfl#0;
+   #reespdfm#1 = #reespdfl#1;
+   #reespdfm#2 = #reespdfl#6;
+   |LEE 000#reespdfm.=;
+   |SI FSalida = 0;
+      |BUCLE MemoCond;  || Leo las condiciones a ver cual se cumple y cojo el resultado
+      |SI aResultado = "1"; |O aResultado = "S";
+         aResultado = ""; |BUCLE Resultados;
+         aCadena = aResultado; |QBF aCadena; |HAZ ResuelveTodo;
+      |FINSI;
+   |SINO;
+      aResultado = "";
+   |FINSI;
+   |CIERRA #reespdfm; |CIERRA #reespdfn; |CIERRA #reespdfo;
+|FPRC;
+
+|PROCESO DatosModeloL;
+   |SI #reespdfl#3 = "        "; || Es una memoria
+      |HAZ ResolMemo;
+
+      aAlfa = #reespdfl#7; |QBF aAlfa;
+      |SI aAlfa ! "";
+         |DDEFECTO #pdfimtmp;
+         #pdfimtmp#0 = #reespdfl#7;
+         #pdfimtmp#1 = aResultado;
+         |GRABA 020#pdfimtmp.n;
+      |FINSI;
+
+      #rew00107#0 = #reespdfl#6;
+      |LEE 000#rew00107.=;
+      |SI FSalida ! 0;
+         |DDEFECTO #rew00107;
+         #rew00107#0 = #reespdfl#6;
+         |GRABA 020#rew00107.c;
+      |FINSI;
+      #rew00107#1 = aResultado;
+      |GRABA 020#rew00107.a;
+   |SINO;
+      |DDEFECTO #pdfimtmp;
+      #pdfimtmp#0 = #reespdfl#7;
+
+      nCampo = #reespdfl#4;
+
+      #rew00106#0 = #reespdfl#3;
+      #rew00106#1 = nCampo;
+      |LEE 000#rew00106.=;
+      |SI FSalida = 0;
+         #pdfimtmp#1 = #rew00106#2;
+      |SINO;
+         #pdfimtmp#1 = "";
+      |FINSI;
+      |GRABA 020#pdfimtmp.n;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE DatosModeloL;
+#reespdfl#1;
+;
+#reespdfc#0, #reespdfc#1, 001;
+#reespdfc#0, #reespdfc#1, 999;
+;
+NULL, DatosModeloL;
+|FIN;
+
+|PROGRAMA;
+   aAlfa = PARAMETRO; |QBF aAlfa;
+   aAlfa1 = aAlfa - ",";
+   nCalc = FSalida + 98; aModelo = aAlfa1 % nCalc;
+   aAlfa1 = "," + aModelo; aAlfa = aAlfa - aAlfa1; aNomeDat = aAlfa;
+
+   |NOME_DAT #rew00106#aNomeDat#; |ABRE #rew00106;
+   aAlfa1 = "c3" + Usuario; |NOME_DAT #rew00107#aAlfa1#;
+   |DELINDEX #rew00107; |ABRE #rew00107;
+
+   aAlfa1 = Usuario; |QBT aAlfa1;
+   aAlfa1 = ("c" + aAlfa1) % 108;
+   |NOME_DAT #pdfimtmp#aAlfa1#;
+   |DELINDEX #pdfimtmp; |ABRE #pdfimtmp;
+   |ABRE #reespdfc; |ABRE #reespdfl;
+
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa - "/ren";
+   |SI FSalida ! 0;
+      nCalc = FSalida; aAlfa = aAlfa % nCalc;
+   |FINSI;
+
+   #reespdfc#0 = aModelo;
+   #reespdfc#1 = aAlfa;
+   |LEE 000#reespdfc.=;
+   |SI FSalida = 0;
+      |BUCLE DatosModeloL;
+   |SINO;
+      nAnyo = -1;
+
+      #reespdfc#0 = aModelo;
+      #reespdfc#1 = 0;
+      |LEE 000#reespdfc.];
+      |PARA; |SI FSalida = 0; |Y #reespdfc#0 = aModelo; |HACIENDO;
+         nAnyo = #reespdfc#1;
+         |LEE 000#reespdfc.s;
+      |SIGUE;
+
+      |SI nAnyo ] 0;
+         #reespdfc#0 = aModelo;
+         #reespdfc#1 = nAnyo;
+         |LEE 000#reespdfc.=;
+         |SI FSalida = 0;
+            |BUCLE DatosModeloL;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   aArchivo = "mod" + aModelo + ".pdf";
+   |SUB_EJECUTA_NP "pdfimpre";
+
+   |CIERRA #reespdfc; |CIERRA #reespdfl;
+   |CIERRA #pdfimtmp; |DELINDEX #pdfimtmp;
+   |CIERRA #rew00107; |DELINDEX #rew00107;
+   |CIERRA #rew00106;
+|FPRO;

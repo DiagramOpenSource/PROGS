@@ -1,0 +1,967 @@
+|FICHEROS;
+    asrecges #0;
+    ascabmin #1;
+    aslinmin #2;
+    asempres #3;
+    ascontro #4;
+    ascontrt #450;
+    asclient #5;
+    ascabfdi #8;
+    aslinfdi #9;
+    ascontfd #12;
+    ascontft #451;
+    asconcli #13;
+
+    ashismic #90;
+    ashismil #91;
+    asw00050 #900;
+
+    &fopagos@ #712;
+|FIN;
+
+|VARIABLES;
+    &eaPath  = "";
+    cab      = "Control";
+    informe  = "";
+    vacio    = "                                        ";
+    cero     = 0;
+    i        = 0;
+    j        = 0;
+    em       = 0;
+
+    fechav     = @;
+    conta_indi = 0;
+    conta_hono = 7;
+    conta_supl = 0;
+    recibo_esp = 0;
+    pagos      = 0;
+    cliente    = 0;
+    banco      = 0;
+    irpf       = "";
+    aAlfa      = "";
+
+    &d_viene   = 0;
+
+    &indihono  = 0;
+    &fech      = @;
+    &fechv     = "";  ||Estaba como fechas
+    &serie     = "  "
+    &factura   = 0;
+    &ret       = 0;
+    &tret      = 0;
+    &dto       = 0;
+    &tdto      = 0;
+    &tpagar    = 0;
+    &hono      = 0;
+    &acue      = 0;
+    &supli     = 0;
+    &ivabo     = 0;
+    &tiva      = 0;
+    &base      = 0;
+    &tfac      = 0;
+
+    &tipo_d    = 0;
+    &cliente_d = 0;
+    &serie_d   = "";
+    &factura_d = 0;
+
+    &d_serie    = "";
+    &h_serie    = "";
+    &d_factu    = 0;
+    &h_factu    = 0;
+    &d_fecha    = @;
+    &h_fecha    = @;
+    &d_banco    = 0;
+    &h_banco    = 0;
+    &d_forma    = 0;
+    &h_forma    = 0;
+    &d_canti    = 0;
+    &eaParrilla = "";
+    &empresa    = 0;
+    &observa    = "";
+    &TipoCon    = "";
+    &Unidad     = 0;
+    &EURODB     = 0;
+
+    &enCodBanco  = 0;
+    &enCodPago   = 0;
+    &eaDForPago = "";
+    &enSwDeDonde = 0;
+
+    &saldo_n     = 0;
+    &saldo_a     = 0;
+
+    {-1}&des   = "                                        ";
+        &des0  = "                                        ";
+        &des1  = "                                        ";
+        &des2  = "                                        ";
+        &des3  = "                                        ";
+        &des4  = "                                        ";
+        &des5  = "                                        ";
+        &des6  = "                                        ";
+        &des7  = "                                        ";
+        &des8  = "                                        ";
+        &des9  = "                                        ";
+        &des10 = "                                        ";
+        &des11 = "                                        ";
+        &des12 = "                                        ";
+        &des13 = "                                        ";
+        &des14 = "                                        ";
+        &des15 = "                                        ";
+        &des16 = "                                        ";
+        &des17 = "                                        ";
+        &des18 = "                                        ";
+        &des19 = "                                        ";
+        &des20 = "                                        ";
+        &des21 = "                                        ";
+
+    {-1}&imp   = 0;
+        &imp0  = 0;
+        &imp1  = 0;
+        &imp2  = 0;
+        &imp3  = 0;
+        &imp4  = 0;
+        &imp5  = 0;
+        &imp6  = 0;
+        &imp7  = 0;
+        &imp8  = 0;
+        &imp9  = 0;
+        &imp10 = 0;
+        &imp11 = 0;
+        &imp12 = 0;
+        &imp13 = 0;
+        &imp14 = 0;
+        &imp15 = 0;
+        &imp16 = 0;
+        &imp17 = 0;
+        &imp18 = 0;
+        &imp19 = 0;
+        &imp20 = 0;
+        &imp21 = 0;
+
+    {-1}parada  = "";
+        parada1 = "2400";
+        parada2 = "1";
+        parada3 = "  PAUSA por cada Recibo : ";
+        parada4 = "NS";
+        parada5 = "  No  ";
+        parada6 = "  Si  ";
+
+      &enErrorFac = 0;
+      &enTipo     = 0;
+      &enCliente  = 0;
+|FIN;
+
+|INCLUYE i_lletre;
+
+|| ***********************************************************************
+||                    PROCESOS COMUNES
+|| ***********************************************************************
+
+|PROCESO pagos;
+
+     enCodPago = pagos;
+     |HAZ LeeFormaDePago;
+     eaDForPago = #712#1;
+     |SI pagos = 99;
+          fechv = "A LA VISTA";
+     |SINO;
+          fechav = fech;
+          fechv = fechav;
+
+          |SI #712#5 ! 0;
+              |SI #712#2 = "D"; em = 1; |SINO; em = 1000; |FINSI;
+              j      = #712#5 / em;
+              fechav = fech + j;
+              fechv  = fechav;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO calcula;
+     tdto = (hono % dto) ! EURODB;
+     base = hono - tdto;
+     tiva = (base % ivabo) ! EURODB;
+     tret = 0;
+     |SI irpf = "S"; tret = (base % ret) ! EURODB; |FINSI;
+
+     tfac = base + supli + tiva;
+     tpagar = (tfac - acue) - tret;
+
+     rlecan = tpagar;
+     |HAZ lletres;
+|FPRC;
+
+|PROCESO borra;
+     Ides = des0 <-;
+     Iimp = imp0 <-;
+     |PARA i = 0;|SI i < conta_indi;|HACIENDO i = i + 1;
+         des = vacio;
+         imp = cero;
+         Ides = Ides + 1;
+         Iimp = Iimp + 1;
+     |SIGUE;
+|FPRC;
+
+|PROCESO escribe;
+     |SI parada2 = 2;
+        |ATRI R;
+        |ATRI P;
+        |PINTA 2130, " Introduzca Recibo en impresora ";
+        |ATRI 0;
+        |PAUSA;
+        |PINTA 2130, "                                ";
+     |FINSI;
+
+     |ABRE #5;
+     #5#0 = cliente;
+     |LEE 040#5=;
+     |SI FSalida ! 0; |DDEFECTO #5; |FINSI;
+     |CIERRA #5;
+
+     enCodBanco = banco;
+     |HAZ LeeBancoPropio;
+
+     |PRINT;
+     |PIEINF;
+     |HAZ borra;
+
+     indihono   = 0;
+     conta_hono = 7;
+     conta_supl = 0;
+|FPRC;
+
+|PROCESO anula;
+     hono  = 0;
+     supli = 0;
+     acue  = 0;
+     tret  = 0;
+     tdto  = 0;
+     base  = 0;
+|FPRC;
+
+
+|| ***********************************************************************
+||                      IMPRESION RECIBOS DESDE MINUTAS NORMALES
+|| ***********************************************************************
+
+|PROCESO imprelin_n;
+     |SI indihono < conta_indi;
+         |SI recibo_esp = 0;
+             Ides = des1 <-;
+             Ides = Ides + indihono;
+             des  = #2#6;
+
+             Iimp = imp1 <-;
+             Iimp = Iimp + indihono;
+             imp  = #2#13;
+         |FINSI;
+
+         |SI recibo_esp = 1;
+             |SI #2#10 = "H";
+                 conta_hono = conta_hono + 1;
+                 |SI conta_hono < 15;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_hono;
+                     des = #2#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_hono;
+                     imp = #2#13;
+                |FINSI;
+             |FINSI;
+
+             |SI #2#10 ! "H";
+                 conta_supl = conta_supl + 1;
+                 |SI conta_supl < 8;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_supl;
+                     des = #2#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_supl;
+                     imp = #2#13;
+                |FINSI;
+             |FINSI;
+         |FINSI;
+
+         |SI recibo_esp = 2;
+             |SI #2#10 = "A";
+                 |SI #2#13 ] 0;
+                     saldo_n = saldo_n + #2#13;
+                 |SINO;
+                     saldo_a = saldo_a + (-#2#13);
+                 |FINSI;
+             |FINSI;
+
+             Ides = des1 <-;
+             Ides = Ides + indihono;
+             des  = #2#7;
+
+             Iimp = imp1 <-;
+             Iimp = Iimp + indihono;
+             |SI #2#10 = "A";
+                 |SI #2#13 < 0;
+                     imp = -#2#13;
+                 |SINO;
+                     imp = #2#13;
+                 |FINSI;
+             |SINO;
+                 imp = #2#13;
+             |FINSI;
+         |FINSI;
+
+         |SI recibo_esp = 3;
+             |SI #2#10 = "H";
+                 conta_hono = conta_hono + 1;
+                 |SI conta_hono < 15;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_hono;
+                     des = #2#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_hono;
+                     imp = #2#13;
+                |FINSI;
+             |FINSI;
+
+             |SI #2#10 = "S";
+                 conta_supl = conta_supl + 1;
+                 |SI conta_supl < 8;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_supl;
+                     des = #2#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_supl;
+                     imp = #2#13;
+                |FINSI;
+             |FINSI;
+
+             |SI #2#10 = " ";
+                 Ides = des20 <-;
+                 des = #2#6;
+             |FINSI;
+         |FINSI;
+
+         indihono = indihono + 1;
+     |FINSI;
+
+     |SI #2#10 = "H"; hono  = hono  + #2#13; |FINSI;
+     |SI #2#10 = "S"; supli = supli + #2#13; |FINSI;
+     |SI #2#10 = "A"; acue  = acue  + #2#13; |FINSI;
+
+     |SI TipoCon = "";
+         |ABRE #13;
+         #13#0 = #2#1;
+         #13#1 = #2#4;
+         #13#2 = #2#5;
+         |LEE 040#13=;
+         |SI FSalida = 0;
+             TipoCon = #13#5;
+             Unidad  = 0;
+             |SI TipoCon = "U";  Unidad = #2#11;  |FINSI;
+         |FINSI;
+         |CIERRA #13;
+     |FINSI;
+|FPRC;
+
+|PROCESO lineafac_n;
+     |SI #1#28 = 0; |ACABA; |FINSI;
+
+     |HAZ borra;
+     ret = 0;
+     |SI #1#12 = "S"; ret   = #4#31; |FINSI;
+
+     |ABRE #450;
+     #450#0 = #1#0;
+     |LEE 000#450=;
+     |SI FSalida ! 0; |DDEFECTO #450; |FINSI;
+     |CIERRA #450;
+
+     ivabo   = #450#3;
+     serie   = #1#27;
+     factura = #1#28;
+     #0#4    = #1#29;
+     fech    = #1#29;
+     pagos   = #1#10;
+     dto     = #1#20;
+     irpf    = #1#12;
+     cliente = #1#1;
+     banco   = #1#11;
+     saldo_a = 0;
+     saldo_n = 0;
+     observa = #1#30;
+     TipoCon = "";
+
+     |HAZ pagos;
+
+     |BUCLELIN 0imprelin_n#1;
+
+     |HAZ calcula;
+     |HAZ escribe;
+     |HAZ anula;
+|FPRC;
+
+|DEFBUCLE asrecges;
+     #1#1;
+     11, 10, 26, 27, 28;
+     #0#0, #0#2, #0#6, #0#8,       #0#10, #0#11, #0#13;
+     #0#1, #0#3, #0#7, #0#9, 99999999999, #0#12, #0#14;
+     ;
+     NULL, lineafac_n;
+|FIN;
+
+|PROCESO desde_normal;
+     parada2 = "1";
+     |SI PARAMETRO ! "SOLOUNAMINUTA";
+         |MENU parada;
+         parada2 = FSalida;
+         |SI parada2 < 1; |O parada2 > 2; |ACABA; |FINSI;
+     |FINSI;
+
+     |IMPRE 0;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |ABRE #3;
+     #3#0 = #0#5;
+     |LEE 040#3=;
+     |SI FSalida ! 0; |DDEFECTO #3; |FINSI;
+     |CIERRA #3;
+
+     informe     = #3#9;    |QBF informe;
+     recibo_esp  = 0;
+     conta_indi  = 20;
+
+     |SI informe = "asrecsal"; recibo_esp = 1; |FINSI;
+     |SI informe = "ASRECSAL"; recibo_esp = 1; |FINSI;
+     |SI informe = "asrecalf"; recibo_esp = 2; |FINSI;
+     |SI informe = "ASRECALF"; recibo_esp = 2; |FINSI;
+     |SI informe = "asrecfed"; recibo_esp = 3; |FINSI;
+     |SI informe = "ASRECFED"; recibo_esp = 3; |FINSI;
+
+     |INFOR informe;
+     |SI FSalida ! 0;  |FINIMP;  |ACABA; |FINSI;
+
+     |ABRE #4;
+     |LEE 000#4p;
+     |SI FSalida = 0;
+         ret = #4#31;
+         |BUCLE asrecges;
+     |SINO;
+         |MENAV " ***  ATENCION  ***  FICHERO DE CONTROL INEXISTENTE";
+     |FINSI;
+     |CIERRA #4;
+
+     |FININF;
+     |FINIMP;
+|FPRC;
+
+|| ***********************************************************************
+||                      IMPRESION RECIBOS DESDE MINUTAS DIRECTAS
+|| ***********************************************************************
+
+|PROCESO imprelin_d;
+     |SI indihono < conta_indi;
+         |SI recibo_esp = 0;
+             Ides = des1 <-;
+             Ides = Ides + indihono;
+             des  = #9#6;
+
+             Iimp = imp1 <-;
+             Iimp = Iimp + indihono;
+             imp = #9#13;
+         |FINSI;
+
+         |SI recibo_esp = 1;
+             |SI #9#10 = "H";
+                 conta_hono = conta_hono + 1;
+                 |SI conta_hono < 15;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_hono;
+                     des = #9#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_hono;
+                     imp = #9#13;
+                |FINSI;
+             |FINSI;
+             |SI #9#10 ! "H";
+                 conta_supl = conta_supl + 1;
+                 |SI conta_supl < 8;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_supl;
+                     des = #9#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_supl;
+                     imp = #9#13;
+                |FINSI;
+             |FINSI;
+         |FINSI;
+
+         |SI recibo_esp = 2;
+             |SI #9#10 = "A";
+                 |SI #9#13 ] 0;
+                     saldo_n = saldo_n + #9#13;
+                 |SINO;
+                     saldo_a = saldo_a + (-#9#13);
+                 |FINSI;
+             |FINSI;
+
+             Ides = des1 <-;
+             Ides = Ides + indihono;
+             des  = #9#7;
+
+             Iimp = imp1 <-;
+             Iimp = Iimp + indihono;
+             |SI #9#10 = "A";
+                 |SI #9#13 < 0;
+                     imp = -#9#13;
+                 |SINO;
+                     imp = #9#13;
+                 |FINSI;
+             |SINO;
+                 imp = #9#13;
+             |FINSI;
+         |FINSI;
+
+         |SI recibo_esp = 3;
+             |SI #9#10 = "H";
+                 conta_hono = conta_hono + 1;
+                 |SI conta_hono < 15;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_hono;
+                     des = #9#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_hono;
+                     imp = #9#13;
+                |FINSI;
+             |FINSI;
+
+             |SI #9#10 = "S";
+                 conta_supl = conta_supl + 1;
+                 |SI conta_supl < 8;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_supl;
+                     des = #9#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_supl;
+                     imp = #9#13;
+                |FINSI;
+             |FINSI;
+
+             |SI #9#10 = " ";
+                 Ides = des20 <-;
+                 des = #9#6;
+             |FINSI;
+         |FINSI;
+
+         indihono = indihono + 1;
+     |FINSI;
+
+     |SI #9#10 = "H"; hono  = hono  + #9#13; |FINSI;
+     |SI #9#10 = "S"; supli = supli + #9#13; |FINSI;
+     |SI #9#10 = "A"; acue  = acue  + #9#13; |FINSI;
+
+     |SI TipoCon = "";
+         |ABRE #13;
+         #13#0 = #9#1;
+         #13#1 = #9#4;
+         #13#2 = #9#5;
+         |LEE 040#13=;
+         |SI FSalida = 0;
+             TipoCon = #13#5;
+             Unidad  = 0;
+             |SI TipoCon = "U";  Unidad = #9#11;  |FINSI;
+         |FINSI;
+         |CIERRA #13;
+     |FINSI;
+|FPRC;
+
+|PROCESO lineafac_d;
+     |HAZ borra;
+     ret = 0;
+     |SI #8#12 = "S"; ret   = #12#31; |FINSI;
+
+     |ABRE #451;
+     #451#0 = #8#0;
+     |LEE 000#451=;
+     |SI FSalida ! 0; |DDEFECTO #451; |FINSI;
+     |CIERRA #450;
+
+     ivabo   = #451#3;
+     serie   = #8#27;
+     factura = #8#28;
+     #0#4    = #8#29;
+     fech    = #8#29;
+     pagos   = #8#10;
+     dto     = #8#20;
+     irpf    = #8#12;
+     cliente = #8#1;
+     banco   = #8#11;
+     saldo_a = 0;
+     saldo_n = 0;
+     observa = #8#31;
+     TipoCon = "";
+
+     |HAZ pagos;
+
+     |BUCLELIN 0imprelin_d#8;
+
+     |HAZ calcula;
+     |HAZ escribe;
+     |HAZ anula;
+|FPRC;
+
+|PROCESO desde_directa;
+     |ABRE #8;
+     #8#0  = tipo_d;
+     #8#1  = cliente_d;
+     #8#27 = serie_d;
+     #8#28 = factura_d;
+     |LEE 040#8=;
+     |SI FSalida ! 0; |CIERRA #8; |ACABA; |FINSI;
+     |CIERRA #8;
+
+     |IMPRE 0;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |ABRE #3;
+     #3#0 = #8#30;
+     |LEE 040#3=;
+     |SI FSalida ! 0; |DDEFECTO #3; |FINSI;
+     |CIERRA #3;
+
+     informe     = #3#13; |QBF informe;
+     recibo_esp  = 0;
+     conta_indi  = 20;
+
+     |SI informe = "asrecsal"; recibo_esp = 1; |FINSI;
+     |SI informe = "ASRECSAL"; recibo_esp = 1; |FINSI;
+     |SI informe = "asrecalf"; recibo_esp = 2; |FINSI;
+     |SI informe = "ASRECALF"; recibo_esp = 2; |FINSI;
+     |SI informe = "asrecfed"; recibo_esp = 3; |FINSI;
+     |SI informe = "ASRECFED"; recibo_esp = 3; |FINSI;
+
+     |INFOR informe;
+     |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+
+     |ABRE #12;
+     |LEE 121#12p;
+     |SI FSalida = 0;
+         ret = #12#31;
+         |HAZ lineafac_d;
+     |SINO;
+         |MENAV " ***  ATENCION  ***  FICHERO DE CONTROL INEXISTENTE";
+     |FINSI;
+     |CIERRA #12;
+     |FININF;
+     |FINIMP;
+|FPRC;
+
+|| ***********************************************************************
+||                      IMPRESION RECIBOS DESDE MINUTAS HISTORICO
+|| ***********************************************************************
+
+|PROCESO imprelin_h;
+     |SI indihono < conta_indi;
+         |SI recibo_esp = 0;
+             Ides = des1 <-;
+             Ides = Ides + indihono;
+             des  = #91#6;
+
+             Iimp = imp1 <-;
+             Iimp = Iimp + indihono;
+             imp = #91#13;
+         |FINSI;
+
+         |SI recibo_esp = 1;
+             |SI #91#10 = "H";
+                 conta_hono = conta_hono + 1;
+                 |SI conta_hono < 15;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_hono;
+                     des = #91#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_hono;
+                     imp = #91#13;
+                |FINSI;
+             |FINSI;
+             |SI #91#10 ! "H";
+                 conta_supl = conta_supl + 1;
+                 |SI conta_supl < 8;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_supl;
+                     des = #91#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_supl;
+                     imp = #91#13;
+                |FINSI;
+             |FINSI;
+         |FINSI;
+
+         |SI recibo_esp = 2;
+             |SI #91#10 = "A";
+                 |SI #91#13 ] 0;
+                     saldo_n = saldo_n + #91#13;
+                 |SINO;
+                     saldo_a = saldo_a + (-#91#13);
+                 |FINSI;
+             |FINSI;
+
+             Ides = des1 <-;
+             Ides = Ides + indihono;
+             des  = #91#7;
+
+             Iimp = imp1 <-;
+             Iimp = Iimp + indihono;
+             |SI #91#10 = "A";
+                 |SI #91#13 < 0;
+                     imp = -#91#13;
+                 |SINO;
+                     imp = #91#13;
+                 |FINSI;
+             |SINO;
+                 imp = #91#13;
+             |FINSI;
+         |FINSI;
+
+         |SI recibo_esp = 3;
+             |SI #91#10 = "H";
+                 conta_hono = conta_hono + 1;
+                 |SI conta_hono < 15;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_hono;
+                     des = #91#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_hono;
+                     imp = #91#13;
+                |FINSI;
+             |FINSI;
+
+             |SI #91#10 = "S";
+                 conta_supl = conta_supl + 1;
+                 |SI conta_supl < 8;
+                     Ides = des0 <-;
+                     Ides = Ides + conta_supl;
+                     des = #91#6;
+
+                     Iimp = imp0 <-;
+                     Iimp = Iimp + conta_supl;
+                     imp = #91#13;
+                |FINSI;
+             |FINSI;
+
+             |SI #91#10 = " ";
+                 Ides = des20 <-;
+                 des = #91#6;
+             |FINSI;
+         |FINSI;
+
+         indihono = indihono + 1;
+     |FINSI;
+
+     |SI #91#10 = "H"; hono  = hono  + #91#13; |FINSI;
+     |SI #91#10 = "S"; supli = supli + #91#13; |FINSI;
+     |SI #91#10 = "A"; acue  = acue  + #91#13; |FINSI;
+
+     |SI TipoCon = "";
+         |ABRE #13;
+         #13#0 = #90#3;
+         #13#1 = #91#4;
+         #13#2 = #91#5;
+         |LEE 040#13=;
+         |SI FSalida = 0;
+             TipoCon = #13#5;
+             Unidad  = 0;
+             |SI TipoCon = "U";  Unidad = #91#11;  |FINSI;
+         |FINSI;
+         |CIERRA #13;
+     |FINSI;
+|FPRC;
+
+|PROCESO lineafac_h;
+     |HAZ borra;
+
+     ret     = #90#46;
+     ivabo   = #90#45;
+     serie   = #90#0;
+     factura = #90#1;
+     #0#4    = #90#29;
+     fech    = #90#29;
+     pagos   = #90#12;
+     dto     = #90#22;
+     irpf    = #90#14;
+     cliente = #90#3;
+     banco   = #90#13;
+     saldo_a = 0;
+     saldo_n = 0;
+     observa = #90#34;
+     TipoCon = "";
+
+     |HAZ pagos;
+
+     |BUCLELIN 0imprelin_h#90;
+
+     |HAZ calcula;
+     |HAZ escribe;
+     |HAZ anula;
+|FPRC;
+
+|DEFBUCLE ashismic;
+     #90#1;
+     29, 13, 12, 28;
+     d_serie, d_factu, d_fecha, d_banco, d_forma,     d_canti;
+     h_serie, h_factu, h_fecha, h_banco, h_forma, 99999999999;
+     ;
+     NULL, lineafac_h;
+|FIN;
+
+|PROCESO asw00050;
+     #90#0 = #900#1;
+     #90#1 = #900#2;
+     |LEE 000#90=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |HAZ lineafac_h;
+|FPRC;
+
+|DEFBUCLE asw00050;
+     #900#1;
+     ;
+     001;
+     999;
+     ;
+     NULL, asw00050;
+|FIN;
+
+|PROCESO LeeHistorico;
+     |SI eaParrilla ! "P";
+         |BUCLE ashismic;
+     |SINO;
+         aAlfa = ("f5" + Usuario + "zzzzzzzz") % 108; |NOME_DAT #900 aAlfa;
+
+         |ABRE #90;
+         |BUCLE asw00050;
+         |CIERRA #90;
+     |FINSI;
+|FPRC;
+
+|PROCESO desde_histori;
+     |SI d_viene ! 3;
+         parada2 = "1";
+         |SI PARAMETRO ! "SOLOUNAMINUTA";
+             |MENU parada;
+             parada2 = FSalida;
+             |SI parada2 < 1; |O parada2 > 2; |ACABA; |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |IMPRE 0;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |ABRE #3;
+     #3#0 = empresa;
+     |LEE 040#3=;
+     |SI FSalida ! 0; |DDEFECTO #3; |FINSI;
+     |CIERRA #3;
+
+     informe     = #3#10; |QBF informe;
+     recibo_esp  = 0;
+     conta_indi  = 20;
+
+     |SI informe = "asrecsal"; recibo_esp = 1; |FINSI;
+     |SI informe = "ASRECSAL"; recibo_esp = 1; |FINSI;
+     |SI informe = "asrecalf"; recibo_esp = 2; |FINSI;
+     |SI informe = "ASRECALF"; recibo_esp = 2; |FINSI;
+     |SI informe = "asrecfed"; recibo_esp = 3; |FINSI;
+     |SI informe = "ASRECFED"; recibo_esp = 3; |FINSI;
+
+     |INFOR informe;
+     |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+
+     |ABRE #4;
+     |LEE 000#4p;
+     |SI FSalida = 0;
+         ret = #4#31;
+
+         |HAZ LeeHistorico;
+     |SINO;
+         |MENAV " ***  ATENCION  ***  FICHERO DE CONTROL INEXISTENTE";
+     |FINSI;
+     |CIERRA #4;
+
+     |FININF;
+     |FINIMP;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ PreparaInformes;
+
+     |SI PARAMETRO = "SOLOUNAMINUTA";
+         #0#0  = enTipo;
+         #0#1  = enTipo;
+         #0#2  = enCliente;
+         #0#3  = enCliente;
+         #0#10 = 0;
+
+         |C_M #0#0,  1, "N";
+         |C_M #0#1,  1, "N";
+         |C_M #0#2,  1, "N";
+         |C_M #0#3,  1, "N";
+         |C_M #0#6,  1, "N";
+         |C_M #0#7,  1, "N";
+         |C_M #0#8,  1, "N";
+         |C_M #0#9,  1, "N";
+         |C_M #0#10, 1, "N";
+         |C_M #0#11, 1, "N";
+         |C_M #0#12, 1, "N";
+         |C_M #0#13, 1, "N";
+         |C_M #0#14, 1, "N";
+     |FINSI;
+
+     |SI d_viene = 0;
+         |CLS;
+         |CABEZA "Impresion Recibos";
+         |PINPA #0#0;
+         |PINDA #0#0;
+         |ENDATOS #1#0;
+         |SI FSalida = 0;
+             enErrorFac = 0;
+             |HAZ desde_normal;
+         |FINSI;
+         |ACABA;
+     |FINSI;
+
+     |SI d_viene = 1;
+         |HAZ desde_directa;
+         |ACABA;
+     |FINSI;
+
+     |SI d_viene = 2;
+         |HAZ desde_histori;
+         |ACABA;
+     |FINSI;
+
+     |SI d_viene = 3;
+         |PATH_DAT #1 eaPath;
+         |PATH_DAT #2 eaPath;
+         |PATH_DAT #3 eaPath;
+         |PATH_DAT #4 eaPath;
+         |PATH_DAT #5 eaPath;
+         |PATH_DAT #8 eaPath;
+         |PATH_DAT #9 eaPath;
+         |PATH_DAT #12 eaPath;
+         |PATH_DAT #13 eaPath;
+         |PATH_DAT #90 eaPath;
+         |PATH_DAT #91 eaPath;
+         |PATH_DAT #450 eaPath;
+         |HAZ desde_histori;
+    |FINSI;
+|FPRO;

@@ -1,0 +1,394 @@
+|FICHEROS;
+     guerw201 #0;     ||Este
+     guerm205 #1;     ||Cabeceras
+     guerm206 #2;     ||Lineas
+     guerm200 #5;     ||Control
+     guerm202 #9;     ||CLietes Obras
+     agifa010 #10;    ||Albaranes Venta Cabecera
+     guerm204 #11;    ||Articulo Clientes Obras;
+     agifa019 #19;    ||Articulos
+     agifa024 #24;    ||Clientes
+     agifa071 #71;    ||Albaranes Lineas
+     agifa084 #84;    ||Facturas Directas Cabe
+     agifa069 #69;    ||Facturas Directas Lineas
+
+     guerz201 #100;   ||Temporal para las OBRAS
+|FIN;
+
+|VARIABLES;
+     nError    = 0;
+     nIva      = 0;
+     &aDivisa  = "";
+     &aMoneda  = "";
+     &enForma  = 0;
+     &eaProgVta= "";
+     nLin      = 0;
+     nAlma     = 1;
+     nNume     = 0;
+     nImpDiv   = 0;
+     nMult     = 0;
+     aSerie    = "";
+     aAlfa    = "";
+     nPrecio   = 0;
+  total = 0;
+  descu = 0;
+  sumalin = 0;
+|FIN;
+
+|PROCESO LeeCli;
+     |ABRE #24;
+     #24#0 = #1#3;
+     |LEE 000#24=;
+     |CIERRA #24;
+|FPRC;
+
+|PROCESO LeeArti;
+     |ABRE #19;
+     #19#0 = #2#2;
+     |LEE 000#19=;
+     |CIERRA #19;
+|FPRC;
+
+|PROCESO TipoIva;
+     aAlfa = aSerie > "";
+     |SI aAlfa = aSerie;
+          nIva = 2;
+     |SINO;
+          nIva = 0;
+     |FINSI;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO LinFac;
+     |HAZ LeeArti;
+
+     |SI #1#15 = "T";
+          nPrecio = #2#5 / (1+(#5#3/100));
+     |SINO;
+          nPrecio = #2#5;
+     |FINSI;
+
+     |DDEFECTO #69;
+     #69#20 = #84#48;
+     #69#0 = #84#0;
+     #69#1 = nLin;
+     #69#2 = #2#2;
+     #69#3 = #2#3;
+     #69#4 = nAlma;
+     #69#5 = #2#7;
+     #69#6 = nPrecio;
+     #69#7 = #69#5 * #69#6;
+     #69#8 = #2#8;
+     #69#9 = #69#5 * #69#6;
+     #69#11 = nIva;        ||#5#8;      || T.IVA
+     #69#13 = #19#2;
+     #69#15 = #84#3;
+     #69#16 = #84#34;
+     #69#17 = #84#35;
+
+     |SI #84#67 = "D";                   || Si mon. de trabajo es divisa ...
+          #69#6 = #69#26 / #84#66 * #84#69; || Recalculo precio en mon. base
+          #69#28 = #69#6;                 || Precio visual, en mon. base
+     |SINO;                             || Si mon. de trabajo es mon. base
+          #69#26 = #69#6 / #84#69 * #84#66; || Recalculo precio en divisa
+          #69#28 = #69#26;                || Precio visual, en divisa
+     |FINSI;
+
+     #69#7    = #69#5 * #69#6;
+     nImpDiv = #69#5 * #69#26;
+
+     || nMult corrige el error del redondeo para negativos
+     |SI #69#7 < 0; nMult = -1; |SINO; nMult = 1; |FINSI;
+
+     #69#7    = #69#7    * nMult;
+     nImpDiv = nImpDiv * nMult;
+
+     #69#9  = (#69#7 < #69#8) < #69#21;
+     #69#27 = (nImpDiv < #69#8) < #69#21;
+
+     #69#7  = #69#7   * nMult;
+     #69#9  = #69#9   * nMult;
+     #69#27 = #69#27  * nMult;
+
+     |SI #84#67 = "D";     || Si mon. de trabajo es divisa ...
+          #69#29 = #69#9;   || Importe visual, en mon. base
+     |SINO;               || Si mon. de trabajo es mon. base ...
+          #69#29 = #69#27;  || Importe visual, en divisa
+     |FINSI;
+     |GRABA 020#69n;
+
+     enForma = 1;
+     eaProgVta = "agifa084";
+     |HAZ AcumulaFC;
+|FPRC;
+
+|PROCESO CabFac;
+     |HAZ TipoIva;
+     |HAZ LeeCli;
+     |DDEFECTO #84;
+     #84#48 = aSerie;
+     #84#0 = nNume;
+     #84#1 = #1#1;
+     #84#3 = #1#3;
+     #84#4 = #1#4;
+     #84#6 = "05";
+     #84#7 = #1#4;
+     #84#29 = #1#4;
+     #84#30 = #1#5;
+     #84#31 = #1#9;
+     #84#35 = #24#4;
+     #84#40 = #24#16;
+     #84#60 = #1#10;
+     #84#65 = "EUR";     ||Divi
+     #84#66 = 1;         ||Cambio
+     #84#67 = "B";       ||Moneda Traba
+     #84#68 = "EUR";     ||Moneda Base
+     #84#69 = 1;         ||Cambio
+     #84#78 = #1#27;
+     |GRABA 000#84b;
+     nError = FSalida;
+     |SI nError ! 0; |ACABA; |FINSI;
+
+     aDivisa = #84#65;
+     aMoneda = #84#67;
+     |HAZ Divisas010;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO LinAlb;
+     |HAZ LeeArti;
+     |DDEFECTO #71;
+     #71#29 = #10#52;
+     #71#0 = #10#0;
+     #71#1 = nLin;
+     #71#2 = #2#2;
+     #71#3 = nAlma;
+     #71#4 = #2#3;
+     #71#5 = #2#7;
+     #71#6 = #2#5;
+     #71#7 = (#71#5 * #71#6) ! 2;
+     #71#8 = #2#8;
+     #71#9 = (#71#5 * #71#6) ! 2;
+     #71#11 = nIva;        || #5#8;           ||T.IVA
+     #71#13 = #19#2;
+     #71#15 = #10#3;
+     #71#16 = #10#34;
+     #71#17 = #10#35;
+
+     |SI #10#70 = "D";                    || Si mon. de trabajo es divisa ...
+          #71#6  = #71#36 / #10#69 * #10#74; || Recalculo precio en mon. base
+          #71#38 = #71#6;                  || Precio visual, en mon. base
+     |SINO;                              || Si mon. de trabajo es mon. base
+          #71#36 = #71#6 / #10#74 * #10#69;  || Recalculo precio en divisa
+          #71#38 = #71#36;                 || Precio visual, en divisa
+     |FINSI;
+
+     #71#7    = (#71#5 * #71#6) ! 2;
+     nImpDiv = #71#5 * #71#36;
+
+     || nMult corrige el error del redondeo para negativos
+     |SI #71#7 < 0; nMult = -1; |SINO; nMult = 1; |FINSI;
+
+     #71#7    = (#71#7    * nMult) ! 2;
+     nImpDiv = nImpDiv * nMult;
+
+     #71#9  = (((#71#7 < #71#8) < #71#33)) ! 2;
+     #71#37 = (((nImpDiv < #71#8) < #71#33));
+
+     #71#7  = (#71#7 * nMult) ! 2;
+     #71#9  = (#71#9 * nMult) ! 2;
+     #71#37 = #71#37 * nMult;
+
+     |SI #10#70 = "D";     || Si la moneda de trabajo es la divisa ...
+          #71#39 = #71#9;   || el campo visualiz. es el importe en moneda base
+     |SINO;               || Si la moneda de trabajo es la moneda base ...
+          #71#39 = #71#37;  || el campo visualiz. es el importe en divisa
+     |FINSI;
+
+
+     #71#7 = #71#7 ! 2;
+
+     |GRABA 020#71n;
+
+     enForma = 1;
+     eaProgVta = "agifa010";
+     |HAZ AcumulaAV;
+|FPRC;
+
+|PROCESO CabAlb;
+     |SI nNume = 0;
+          nError = 1;
+          |ACABA;
+     |FINSI;
+
+     |HAZ TipoIva;
+     |HAZ LeeCli;
+     |DDEFECTO #10;
+     #10#52 = aSerie;
+     #10#0 = nNume;
+     #10#1 = #1#1;
+     #10#3 = #1#3;
+     #10#4 = #1#4;
+     #10#5 = #24#37;
+     #10#6 = "05";                 ||representante
+     #10#7 = #24#38;
+     #10#8 = #24#20;
+     #10#29 = #1#4;
+     #10#30 = #1#5;
+     #10#31 = #1#9;
+     #10#33 = #1#8;
+     #10#35 = #24#4;
+     #10#40 = #24#41;        ||Tipo facturacion
+     #10#50 = #24#40;
+     aAlfa = (("00" + #1#6) % -102) + ("000" + #1#7) % -103;
+     #10#62 = aAlfa;
+     #10#63 = #1#10;
+     #10#68 = "EUR"; ||Div
+     #10#69 = 1;     ||Camb
+     #10#70 = "B";   ||Moneda
+     #10#71 = "A";   ||Camb pepe
+     #10#73 = "EUR"; ||Base
+     #10#74 = 1;     ||Camb
+     #10#91 = #24#206;
+     |GRABA 000#10b;
+     nError = FSalida;
+     |SI nError ! 0; |ACABA; |FINSI;
+
+     aDivisa = #10#68;
+     aMoneda = #10#70;
+     |HAZ Divisas010;
+
+     |ABRE #guerz201;
+     |DDEFECTO #guerz201;
+     #guerz201#0 = #agifa010#52;
+     #guerz201#1 = #agifa010#0;
+     |LEE 101#guerz201.=;
+     |SI FSalida ! 0;
+        |DDEFECTO #guerz201;
+        #guerz201#0 = #agifa010#52;
+        #guerz201#1 = #agifa010#0;
+        |GRABA 020#guerz201.b;
+     |FINSI;
+     #guerz201#2 = #guerm205#29;
+     |GRABA 020#guerz201.a; |LIBERA #guerz201;
+     |CIERRA #guerz201;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO guerm002;
+     nLin = nLin + 1;
+     |SI #1#15 = "T"; |O #1#15 = "F";
+          |HAZ LinFac;
+     |SINO;
+          |HAZ LinAlb;
+     |FINSI;
+|FPRC;
+
+|PROCESO guerm205;
+     |SI #1#47 = "S";                              || Si es de pedido
+          |SI #1#51 ! "S"; |ERROR; |ACABA; |FINSI; || Si no esta finalizada
+     |FINSI;
+
+     |ABRE #10;
+     |ABRE #71;
+     |ABRE #84;
+     |ABRE #69;
+
+     nLin = 0;
+     nNume = 0;
+     nError = 0;
+     nNume = #1#18;
+     aSerie = #1#40;
+     |HAZ CabAlb;
+
+     |SI nError ! 0;
+          aAlfa = "0000Albaran Existente " +&13+ aSerie + "-" + (("000000" + nNume)%-106);
+          |ERROR;
+          |ACABA;
+     |FINSI;
+
+     |SI nNume = 0;
+          |ERROR;
+     |SINO;
+          #1#37 = "S";
+          |GRABA 020#1a;
+          |LIBERA #1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Fin;
+     |SI #1#15 = "T"; |O #1#15 = "F";
+          |HAZ LimCabAgifa084;
+          |BUCLELIN 0 CalCabAgifa084 #84;
+          |GRABA 020#84a;
+     |SINO;
+          |HAZ LimCabAgifa010;
+          |BUCLELIN 0 CalCabAgifa010 #10;
+          |GRABA 020#10a;
+     |FINSI;
+
+     |CIERRA #69;
+     |CIERRA #84;
+     |CIERRA #71;
+     |CIERRA #10;
+|FPRC;
+
+|DEFBUCLE guerm205;
+     #1#1;
+     1, 3, 37, 29, 36, 53;
+     #0#0, #0#2, #0#4, "N", #0#9,  "S", "N";
+     #0#1, #0#3, #0#5, "N", #0#10, "S", "N";
+     be;
+     NULL, guerm205, guerm002, Fin;
+|FIN;
+
+|PROCESO guerm102;
+/*             Thu Jul  8 09:45:54 CEST 2004
+  #11#0 = #1#3;
+  #11#1 = #1#29;
+  #11#2 = #2#2;
+  |LIBERA #11;
+  |LEE 101#11=;
+  |SI FSalida = 0;
+      #2#5 = #11#6;
+      #2#8 = #11#7;
+  |FINSI;
+*/
+  total = (#2#7 * #2#5) ! 2;   ||Pasando de EURODB
+  descu = (total % #2#8) ! 2;           ||PASANDO de EURODB
+  #2#6 = total - descu;
+  |GRABA 101#2a;
+  sumalin = sumalin + #2#6;
+|FPRC;
+
+|PROCESO guerm101;
+  sumalin = 0;
+  |BUCLELIN 0guerm102#1;
+  #1#20 = sumalin;
+  #1#22 = #1#20 - #1#21;
+  #1#23 = ((#1#22 * #1#14) / 100) ! 2;       ||Pasando de EURODB
+  #1#24 = #1#22 + #1#23;
+  #1#36 = "S";
+  |GRABA 101#1a;
+|FPRC;
+
+|DEFBUCLE guerm101;
+#1#9;
+36;
+#0#2, #0#4, #0#9,  "S";
+#0#3, #0#5, #0#10, "S";
+e;
+NULL,guerm101;
+|FIN;
+
+|PROCESO verifica;
+  |ABRE #9;
+  |ABRE #11;
+  |BUCLE guerm101;
+  |CIERRA #9;
+  |CIERRA #11;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |HAZ verifica;
+     |ABRE #5; |LEE 000#5p; |CIERRA #5;
+
+     |BUCLE guerm205;
+|FPRC;

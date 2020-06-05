@@ -1,0 +1,236 @@
+|FICHEROS;
+    clapm001 #1;
+|FIN;
+
+|VARIABLES;
+     aBase      = "";
+     aAlfa      = "";
+     aAlfa1     = "";
+     aAlfa2     = "";
+     nCanal     = 0;
+
+     aFiche     = "";
+     nHadle     = 0;
+     aVarAlfa1  = "";
+     aIPRemoto  = "";
+     aContenido = "";
+     nError     = 0;
+
+     nCopio     = 0;
+     nHandle    = 0;
+
+     aOriSeg    = "";
+     aDesSeg    = "";
+|FIN;
+
+|INCLUYE dsclap_i;
+
+|| *************************************************************************
+|PROCESO eLeePathFich;
+
+   eswError = 0;
+   |ABRE #1;
+   |LEE 040#1p;
+   |SI FSalida ! 0;
+       |MENAV "    ERROR. NO EXISTE CONTROL DE LA APLICACION";
+       eswError = 1;
+       |CIERRA #1;
+       |ACABA;
+   |FINSI;
+   |CIERRA #1;
+
+   eaPathLapiz = #1#3; |QBF eaPathLapiz; |SI eaPathLapiz = ""; eaPathLapiz = "C:\Archivo de programas\LAPIZ\"; |FINSI;
+   eaPathExImp = #1#1; |QBF eaPathExImp; |SI eaPathExImp = ""; eaPathExImp = "C:\Archivo de programas\LAPIZ\Datos\"; |FINSI;
+   eaPathDatos = #1#2; |QBF eaPathDatos;
+   eaFichPara  = #1#4; |QBF eaFichPara;  |SI eaFichPara = ""; eaFichPara = "Lapiz.cfg";       |FINSI;
+   eaPathEjec  = #1#8; |QBF eaPathEjec;  |SI eaPathEjec = ""; eaPathEjec = "C:\ds\contalap\"; |FINSI;
+   eaFichEmps  = #1#5; |QBF eaFichEmps;  |SI eaFichEmps = ""; eaFichEmps = "Empresas.dat";    |FINSI;
+   eaFichCtas  = #1#6; |QBF eaFichCtas;  |SI eaFichCtas = ""; eaFichCtas = "Importados.dat";  |FINSI;
+   eaFichAsto  = #1#7; |QBF eaFichAsto;  |SI eaFichAsto = ""; eaFichAsto = "Exportados.dat";  |FINSI;
+   enEmpGral   = #1#9;
+   enPerGral   = #1#10;
+
+   aAlfa1 = #1#12; aAlfa1 = ("00" + aAlfa1) % -102;
+   aAlfa2 = #1#13; eaVerSion = aAlfa1 + aAlfa2;
+   enVer = 0; |SI eaVerSion ] "052006"; enVer = 1; |FINSI;
+
+   eaPathM = "";
+   nConta  = 0;
+   aAlfa   = eaPathDatos - "contagen";
+   |SI FSalida = 0; nConta = 1; |FINSI;
+   |SI nConta = 0;
+       aAlfa   = eaPathDatos - "contagen/fich/";
+       eaPathM = aAlfa + "modelos/fich/";
+   |FINSI;
+|FPRC;
+
+|PROCESO GraboLinea;
+  aContenido = nHadle + " " + aVarAlfa1 + &013 + &010;
+  |FGRABA aContenido;
+|FPRC;
+
+|PROCESO eCrearCfg;
+
+  |DFICB aBase;
+
+  aFiche = "wb  " + aBase + eaFichPara;  |QBF aFiche;
+  nError = 0;
+  |FABRE aFiche;
+  nHadle = FSalida;
+  |SI FSalida ] 0;
+      aVarAlfa1 = "[DATOS]";       |HAZ GraboLinea;
+      aVarAlfa1 = "Concepto=30";   |HAZ GraboLinea;
+      aVarAlfa1 = "[EJECUTABLES]"; |HAZ GraboLinea;
+      aVarAlfa1 = eaPathEjec + "Exporta1.exe"; |HAZ GraboLinea;
+      aVarAlfa1 = eaPathEjec + "Exporta2.exe"; |HAZ GraboLinea;
+      aVarAlfa1 = eaPathEjec + "Importa1.exe"; |HAZ GraboLinea;
+  |SINO;
+      nError = 1;
+  |FINSI;
+
+  FSalida = nHadle;
+  |FCIERRA FSalida;
+
+  |RMKDIR eaPathLapiz;
+  |RMKDIR eaPathExImp;
+
+  eaOrigen   = aBase + eaFichPara;   |QBF eaOrigen;
+  eaDestino  = eaPathExImp + eaFichPara;   |QBF eaDestino;
+  |HAZ eEnvioFich;
+
+  |RMKDIR eaPathEjec;
+
+  |DBASS aBase;
+  eaOrigen   = aBase + "Exporta1.exe";     |QBF eaOrigen;
+  eaDestino  = eaPathEjec + "Exporta1.exe";|QBF eaDestino;
+  |HAZ eEnvioFich;
+
+  eaOrigen   = aBase + "Exporta2.exe";     |QBF eaOrigen;
+  eaDestino  = eaPathEjec + "Exporta2.exe";|QBF eaDestino;
+  |HAZ eEnvioFich;
+
+  eaOrigen   = aBase + "Importa1.exe";     |QBF eaOrigen;
+  eaDestino  = eaPathEjec + "Importa1.exe";|QBF eaDestino;
+  |HAZ eEnvioFich;
+
+|FPRC;
+
+|PROCESO eEnvioFich;
+  enErrPas = 0;
+  aIPRemoto = "";
+  |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+  |SI aIPRemoto ! "";
+      |ENVIA_FICHERO eaOrigen, eaDestino;
+  |SINO;
+      |COPIA_FICHERO eaOrigen, eaDestino;
+  |FINSI;
+  |SI FSalida ! 0;  enErrPas = 1;  |FINSI;
+|FPRC;
+
+|PROCESO eReciboFich;
+  enErrPas = 0;
+  aIPRemoto = "";
+  |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+  |SI aIPRemoto ! "";
+      |RECIBE_FICHERO eaDestino, eaOrigen;
+  |SINO;
+      |COPIA_FICHERO eaDestino, eaOrigen;
+  |FINSI;
+  |SI FSalida ! 0;  enErrPas = 1;  |FINSI;
+|FPRC;
+
+|PROCESO eNombre;  || nombre del fichero
+
+    nCopio = 0;
+    |XABRE "UB", eaFichLocal, nHandle;
+    |SI FSalida < 0;
+        |XABRE "CUB", eaFichLocal, nHandle;
+        |SI FSalida = 0; nCopio = 1; |FINSI;
+    |FINSI;
+    |XCIERRA nHandle;
+
+    |SI nCopio = 1;
+        aOriSeg = eaOrigen;
+        aDesSeg = eaDestino;
+
+        |DFICE aBase;
+        eaDestino = eaFichLocal;
+        eaOrigen  = aBase + eaFicnombre;
+        |HAZ eReciboFich;
+        |SI enErrPas = 0; eaFichLocal = eaOrigen; |FINSI;
+
+        eaOrigen  = aOriSeg;
+        eaDestino = aDesSeg;
+    |FINSI;
+|FPRC;
+
+|PROCESO eBuscaAplic; ||Directorios Aplicaciones Standar
+
+     eaPathBasica    = "";
+     eaPathContagen  = "";
+     eaPathContanex  = "";
+     eaPathContasoc  = "";
+     eaPathAgicont   = "";
+     eaPathFacturar  = "";
+     eaPathLaboral   = "";
+     eaPathIntegral  = "";
+     eaPathDsmodelo  = "";
+
+     |DBASS aBase;   |QBF aBase;
+
+     aAlfa = aBase + "basica/def/agifigen.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathBasica = aBase + "basica/";
+     |FINSI;
+
+     aAlfa = aBase + "contagen/def/canempre.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathContagen = aBase + "contagen/";
+     |SINO;
+         aAlfa = aBase + "agicont/def/canempre.mas";
+         |XABRE "E", aAlfa, nCanal;
+         |SI FSalida ] 0;
+             eaPathAgicont = aBase + "contagen/";
+         |FINSI;
+     |FINSI;
+
+     aAlfa = aBase + "contanex/def/vamanpax.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathContanex = aBase + "contanex/";
+     |FINSI;
+
+     aAlfa = aBase + "contasoc/def/maempr10.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathContasoc = aBase + "contasoc/";
+     |FINSI;
+
+     aAlfa = aBase + "facturar/def/asclient.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathFacturar  = aBase + "facturar/";    || Cambiar por facturar
+     |FINSI;
+
+     aAlfa = aBase + "laboral/def/labempre.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathLaboral   = aBase + "laboral/";
+     |FINSI;
+
+     aAlfa = aBase + "integral/def/dsam0000.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathIntegral  = aBase + "integral/";
+     |FINSI;
+
+     aAlfa = aBase + "modelos/def/dsmom001.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathDsmodelo  = aBase + "modelos/";
+     |FINSI;
+
+     eaPathAgitool = aBase + "agitool/";
+|FPRC;

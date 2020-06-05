@@ -1,0 +1,143 @@
+|FICHEROS;
+   dscam042 #0;
+   dscam043 #1;
+
+   canempr@ #2;
+|FIN;
+
+|VARIABLES;
+   &Fichero = ""; &Tipo = ""; &Cmp = ""; &CmpNum = 0;
+   &eaUsuario = ""; &enImpAnt = 0;  &enImpAct = 0;  &eaDescr = "";
+   &eaTipoReg = ""; &eaNumero = ""; &eaTipoOp = "";  &eaFicher = ""; &eaClave = "";
+
+   Tecla = 0;
+   ModoEntrada = 0;
+
+   Comodin = ""; Comodin1 = "";
+   aLong = "";  nLong = 0;
+   Calc = 0;
+|FIN;
+
+|PROCESO MiraPath;
+   Comodin = #dscam042#2; |QBF Comodin;
+   aLong = Comodin % 0;
+   nLong = aLong;
+   Calc = (nLong * 100) + 1;
+   Comodin = Comodin % Calc;
+   |SI Comodin ! "/";
+      Comodin = #dscam042#2; |QBF Comodin;
+      Comodin = Comodin + "/";
+      #dscam042#2 = Comodin; |PINTA #dscam042#2;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraEmpresas;
+   Tecla = FSalida;
+   |SI Tecla = 2; |ACABA; |FINSI;
+   |SI Tecla = 11;
+      |DBASS Comodin; |QBF Comodin;
+      Comodin = Comodin + "contagen/";
+      #dscam042#2 = Comodin;
+      |PINTA #dscam042#2;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   Comodin = #dscam042#2; |QBF Comodin;
+   ||Comodin1 = Comodin + "def/canempre.mas";
+   Fichero = "Empresas"; Tipo = "C"; Cmp = ""; |HAZ ObtenFich;
+   Comodin1 = Comodin + "def/" + Fichero + ".mas";
+   |CARGA_DEF Comodin1 , canempr@;
+   |SI FSalida = 0;
+      Comodin1 = Comodin + "fich/";
+      |PATH_DAT #2 Comodin1;
+      |ABRE #canempr@;
+      |SI Tecla = 10;
+         |CONSULTA_CLAVE #1#canempr@;
+         |SI FSalida ] 0;
+            Fichero = "Empresas"; Tipo = "C"; Cmp = "Codigo Empresa"; |HAZ ObtenDato;
+            #dscam042#0 = #canempr@#CmpNum#; |PINTA #dscam042#0;
+            Fichero = "Empresas"; Tipo = "C"; Cmp = "Periodo"; |HAZ ObtenDato;
+            #dscam042#1 = #canempr@#CmpNum#; |PINTA #dscam042#1;
+         |FINSI;
+      |SINO;
+         Fichero = "Empresas"; Tipo = "C"; Cmp = "Codigo Empresa"; |HAZ ObtenDato;
+         #canempr@#CmpNum# = #dscam042#0;
+         Fichero = "Empresas"; Tipo = "C"; Cmp = "Periodo"; |HAZ ObtenDato;
+         #canempr@#CmpNum# = #dscam042#1;
+         |LEE 010#canempr@.=;
+         |SI FSalida ! 0;
+            |MENAV "    No existe empresa";
+            |ERROR;
+         |FINSI;
+      |FINSI;
+      Fichero = "Empresas"; Tipo = "C"; Cmp = "Nombre Comercial"; |HAZ ObtenDato;
+      #dscam042#3 = #canempr@#CmpNum#; |PINTA #dscam042#3;
+      ||PINTA 0721, #canempr@#CmpNum#;
+      |CIERRA #canempr@;
+      |DESCARGA_DEF #canempr@;
+   |SINO;
+      |MENAV "    No puedo abrir el fichero de empresas";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO NombreDoc;
+   |SI #dscam043#3 = "V"; #dscam043#4 = "VENTAS "; |FINSI;
+   |SI #dscam043#3 = "C"; #dscam043#4 = "COMPRAS"; |FINSI;
+   |PINTA #dscam043#4;
+|FPRC;
+
+|PROCESO CogePath; |TIPO 88;
+   |DBASE Comodin;
+   Comodin = Comodin + "fich/";
+   |PATH_DAT #0 Comodin;
+   |PATH_DAT #1 Comodin;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 1;
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "ALTA CONTROL RECIBOS CONTABILIDAD (" + (("00000" + #dscam042#0) % -105) + "/" + #dscam042#1 + ")";
+      eaTipoReg = "CA";  eaNumero = ("00000" + #dscam042#0) % -105;
+      eaTipoOp  = "A";   enImpAnt = 0; enImpAct = 0;
+      eaFicher = "dscam042"; eaClave = #dscam042#0;
+      |HAZ GrabaAudit;
+   |FINSI;
+   |SI ModoEntrada = 2;
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "MODIFICACION CONTROL RECIBOS CONTABILIDAD (" + (("00000" + #dscam042#0) % -105) + "/" + #dscam042#1 + ")";
+      eaTipoReg = "CA";  eaNumero = ("00000" + #dscam042#0) % -105;
+      eaTipoOp  = "M";   enImpAnt = 0; enImpAct = 0;
+      eaFicher = "dscam042"; eaClave = #dscam042#0;
+      |HAZ GrabaAudit;
+   |FINSI;
+|FPRC;
+
+|PROCESO BorraLin;
+   |BORRA 020#dscam043.a;
+|FPRC;
+
+|DEFBUCLE BorraLin;
+#dscam043#1;
+;
+#dscam042#0,#dscam042#1,001;
+#dscam042#0,#dscam042#1,999;
+be;
+NULL,BorraLin;
+|FIN;
+
+|PROCESO Tipo1; |TIPO 1;
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 3;
+      |BUCLE BorraLin;
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "BAJA CONTROL RECIBOS CONTABILIDAD (" + (("00000" + #dscam042#0) % -105) + "/" + #dscam042#1 + ")";
+      eaTipoReg = "CA";  eaNumero = ("00000" + #dscam042#0) % -105;
+      eaTipoOp  = "B";   enImpAnt = 0; enImpAct = 0;
+      eaFicher = "dscam042"; eaClave = #dscam042#0;
+      |HAZ GrabaAudit;
+   |FINSI;
+|FPRC;

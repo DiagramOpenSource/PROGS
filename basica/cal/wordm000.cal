@@ -1,0 +1,1930 @@
+|FICHEROS;
+     wordm000 #0;
+|FIN;
+
+|VARIABLES;
+     nWord        = 0;
+     nLinea       = 0;
+
+     aBase        = "";
+     aDirPatron   = "";
+     aDirWord     = "";
+     aFichero     = "";
+     aNombreFich  = "";
+     aAlfa        = "";
+     aCadena1     = "";
+     aCadena2     = "";
+     aOrigen      = "";
+     aDestino     = "";
+     aAplica      = "";
+     aPrograma    = "";
+     aNombTexto   = "";
+     aIPRemoto    = "";
+     aDocum       = "";
+     aDescri      = "";
+     aDuplicar    = "";
+     aParametro   = "";
+     aDAplica     = "";
+     aHAplica     = "";
+     aDPrograma   = "";
+     aHPrograma   = "";
+     nSw          = 0;
+     nOperacion   = 0;
+     aNombreBusca = "";
+
+     &eaAplica       = "";
+     &eaPrograma     = "";
+     &eaDocumento    = "";
+     &eaNomDocumento = "";
+     &eaUnidadBasico = "";
+|FIN;
+
+|PROCESO Edicion;
+     aAlfa = (#0#2 % 104) > " ";
+     |SI aAlfa = "EXCE";
+         |MENAV "     Documento no Editable";
+         |ACABA;
+     |FINSI;
+
+     |DBASE aBase;   |QBF aBase;
+
+     aAlfa = eaUnidadBasico + "/MODELOS";                   |RMKDIR aAlfa;
+     aAlfa = eaUnidadBasico + "/MODELOS/DOCUMENTOS";        |RMKDIR aAlfa;
+     nWord = 1;
+
+     aOrigen   = aDirWord + "/" + #0#2;            |QBF aOrigen;
+     aDestino  = eaUnidadBasico + "/MODELOS/DOCUMENTOS/" + #0#2;  |QBF aDestino;
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+     |SI aIPRemoto ! "";
+         |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+         |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+
+     |MENSA "     Abriendo el Documento, Espere un momento ";
+
+     |WORD_ABRE nWord, aDestino;
+
+     |MENSA "     Documento Abierto              ";
+
+     |WORD_PROPIEDADES nWord, "Visible", "SI";
+
+     FSalida = "NO";
+     |PARA;  |SI FSalida = "NO";  |HACIENDO;
+             |PULSATECLA;
+             |WORD_PROPIEDADES nWord, "Quit", "";
+     |SIGUE;
+
+     |MENSA "     Cerrando el Documento, Espere un momento ";
+
+     |SI aIPRemoto ! "";
+         |RECIBE_FICHERO aDestino, aOrigen;
+     |SINO;
+         |COPIA_FICHERO aDestino, aOrigen;
+     |FINSI;
+
+     |RFBORRA aDestino;
+|FPRC;
+
+|PROCESO Alta;
+     |SI #0#4 = "N";
+         |MENAV "     No se puede Duplicar este Documento, Editelo y cambie lo que desee.";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |SALVA_DATOS #0;
+
+     |SELECT #2#0;
+     |LEE 040#0u;
+     aDocum = #0#2 % 504;
+     nLinea = aDocum;
+     |SI nLinea < 1000;
+         nLinea = 1000;
+     |FINSI;
+     nLinea = nLinea + 1;
+
+     |SELECT #1#0;
+     |REPON_DATOS #0;
+
+     aOrigen  = aDirWord + "/" + #0#2;  |QBF aOrigen;
+     #0#2     = "word" + (("0000" + nLinea) % -104) + ".doc";
+     aDestino = aDirWord + "/" + #0#2;  |QBF aDestino;
+     |GRABA 020#0n;
+     |LIBERA #0;
+
+     |COPIA_FICHERO aOrigen, aDestino;
+
+     |PONCONTROL 23, "SI";
+     |PTEC 816;
+|FPRC;
+
+|PROCESO Baja;
+     |CONFI "0000NEsta seguro de la Baja ";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |LEE 101#0=;
+
+     |BORRA 020#0a;
+     |LIBERA #0;
+
+     aOrigen   = aDirWord + "/" + #0#2;  |QBF aOrigen;
+     |FBORRA aOrigen;
+
+     |PONCONTROL 23, "SI";
+|FPRC;
+
+
+|PROCESO Descripcion;
+     aDescri = #0#3;
+     |PUSHV 0501 2380;
+     |BLANCO 1108 1479;
+     |CUADRO 1108 1479;
+     |ATRI S;  |PINTA 1216, "Introduzca la Descripcion ";
+     E_inf  = "";
+     E_sup  = "60";
+
+     aDescri = 1309 ? 1;
+     |POPV;
+
+     |LEE 101#0=;
+     #0#3 = aDescri;
+     |GRABA 020#0a;
+     |LIBERA #0;
+
+     |PONCONTROL 23, "SI";
+|FPRC;
+
+|PROCESO Copia;
+     |CONFI "0000NEsta seguro de Carga el Patron ";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |LEE 101#0=;
+
+     nSw   = 0;
+     nOperacion = 1;
+     aNombreBusca = #0#2; |QBF aNombreBusca;
+     |HAZ DesFichero;
+     |SI nSw = 0;
+         |MENAV "    Este Documento no existe en Patrones";
+     |SINO;
+         |MENAV "    Documento copiado correctamente";
+     |FINSI;
+     |LIBERA #0;
+
+     |PONCONTROL 23, "SI";
+|FPRC;
+
+|PROCESO Fuera;
+     |SI aParametro = "";  |ACABA;  |FINSI;
+
+     eaDocumento    = #0#2;
+     eaNomDocumento = #0#3;
+     |PTEC 807;
+|FPRC;
+
+|PROCESO Tipo11;  |TIPO 11;
+     |SI FSalida = 10;  |HAZ Edicion;      |FINSI;
+     |SI FSalida = 11;  |HAZ Alta;         |FINSI;
+     |SI FSalida = 12;  |HAZ Baja;         |FINSI;
+     |SI FSalida = 13;  |HAZ Descripcion;  |FINSI;
+     |SI FSalida = 14;  |HAZ Copia;        |FINSI;
+|FPRC;
+
+|PROCESO GrabaPatron;
+     |SI nOperacion = 1;
+         aAlfa = aNombreFich % 112;
+         |SI aAlfa = aNombreBusca;
+             aDestino = aDirWord + "/" + aNombreFich;
+             |COPIA_FICHERO aOrigen, aDestino;
+             nSw = 1;
+         |FINSI;
+     |SINO;
+         #0#0 = aAplica;
+         #0#1 = aPrograma;
+         #0#2 = aNombreFich;
+         |LEE 101#0=;
+         |SI FSalida ! 0;
+             |DDEFECTO #0;
+             #0#0 = aAplica;
+             #0#1 = aPrograma;
+             #0#2 = aNombreFich;
+             #0#3 = aNombTexto;
+             #0#4 = aDuplicar;
+             |GRABA 020#0n;
+
+             aDestino = aDirWord + "/" + aNombreFich;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |SINO;
+              |SI aPrograma = "dsmoy096";
+                  aDestino = aDirWord + "/" + aNombreFich;
+                  |COPIA_FICHERO aOrigen, aDestino;
+              |FINSI;
+         |FINSI;
+         |LIBERA #0;
+     |FINSI;
+
+     |FBORRA aOrigen;
+|FPRC;
+
+|PROCESO LeeTexto;
+     aNombreFich = aNombreFich < "";
+
+     |SI aNombreFich = "word0001.doc";
+         aAplica    = "basica";
+         aPrograma  = "agiy0032";
+         aNombTexto = "CERTIFICADO EURO COOPERATIVAS";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0002.doc";
+         aAplica    = "basica";
+         aPrograma  = "agiy0032";
+         aNombTexto = "CERTIFICADO EURO SOCIEDADES LIMITADAS";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0003.doc";
+         aAplica    = "basica";
+         aPrograma  = "agiy0032";
+         aNombTexto = "CERTIFICADO EURO SOCIEDADES ANONIMAS";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0004.doc";
+         aAplica    = "basica";
+         aPrograma  = "agiy0032";
+         aNombTexto = "CERTIFICADO EURO SOCIEDADES ANONIMAS LABORALES";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0005.doc";
+         aAplica    = "basica";
+         aPrograma  = "agiy0032";
+         aNombTexto = "CERTIFICADO EURO SOCIEDADES LIMITADAS LABORALES";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0012.doc";
+         aAplica    = "basica";
+         aPrograma  = "agiy0032";
+         aNombTexto = "CERTIFICADO EURO SOCIEDADES AGRARIAS DE TRANSFORMACION";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0006.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy004";
+         aNombTexto = "CARTA REGULARIZACION DEL IVA MODULOS FINAL DEL EJERCICIO";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0007.doc";
+         aAplica    = "ren2000";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2000 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0008.doc";
+         aAplica    = "ren2000";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2000 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0009.doc";
+         aAplica    = "ren2000";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2000 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0010.doc";
+         aAplica    = "ren2000";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2000 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0011.doc";
+         aAplica    = "ren2000";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2000 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0013.doc";
+         aAplica    = "ren2001";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2001 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0014.doc";
+         aAplica    = "ren2001";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2001 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0015.doc";
+         aAplica    = "ren2001";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2001 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0016.doc";
+         aAplica    = "ren2001";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2001 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0017.doc";
+         aAplica    = "ren2001";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2001 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0018.doc";
+         aAplica    = "ren2001";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0019.doc";
+         aAplica    = "ren2001";
+         aPrograma  = "rem05001";
+         aNombTexto = "CARTA DEVOLUCION AGRICOLA B.O.E. 19.06.2002";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0020.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy023";
+         aNombTexto = "CARTA CAMBIOS DE LOS MINIMOS DE IVA MODULOS EJERCICIO 2002";
+         aDuplicar  = "S";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0021.doc";
+         aAplica    = "ren2002";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2002 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0022.doc";
+         aAplica    = "ren2002";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2002 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0023.doc";
+         aAplica    = "ren2002";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2002 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0024.doc";
+         aAplica    = "ren2002";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2002 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0025.doc";
+         aAplica    = "ren2002";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2002 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0026.doc";
+         aAplica    = "ren2002";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0027.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2003 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0028.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2003 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0029.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2003 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0030.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2003 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0031.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2003 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0032.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0033.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2003";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0034.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2003";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0035.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy055";
+         aNombTexto = "CARTA OTORGAMIENTO DE REPRESENTACION";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0036.doc";
+         aAplica    = "ren2003";
+         aPrograma  = "rem05001";
+         aNombTexto = "CARTA DEVOLUCION AGRICOLA B.O.E. 29.05.2004";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0037.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2004 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0038.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2004 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0039.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2004 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0040.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2004 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0041.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2004 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0042.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0043.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2004";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0044.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2004";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0045.doc";
+         aAplica    = "ren2004";
+         aPrograma  = "rem05001";
+         aNombTexto = "CARTA DEVOLUCION AGRICOLA B.O.E. 04.06.2005";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0047.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2005 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0048.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2005 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0049.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2005 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0050.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2005 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0051.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2005 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0052.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0053.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2005";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0054.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2005";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0055.doc";
+         aAplica    = "ren2005";
+         aPrograma  = "rem05001";
+         aNombTexto = "CARTA DEVOLUCION AGRICOLA B.O.E. .........";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0056.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2006 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0057.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2006 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0058.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2006 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0059.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2006 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0060.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2006 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0061.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0062.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2006";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0063.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2006";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0064.doc";
+         aAplica    = "ren2006";
+         aPrograma  = "rem05001";
+         aNombTexto = "CARTA DEVOLUCION AGRICOLA B.O.E. .........";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0066.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2007 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0067.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2007 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0068.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2007 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0069.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2007 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0070.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2007 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0071.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0072.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2007";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0073.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2007";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0074.doc";
+         aAplica    = "ren2007";
+         aPrograma  = "rem05001";
+         aNombTexto = "CARTA DEVOLUCION AGRICOLA B.O.E. .........";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0078.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2008 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0079.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2008 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0080.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2008 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0081.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2008 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0082.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2008 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0083.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0084.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2008";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0085.doc";
+         aAplica    = "ren2008";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2008";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0086.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2009 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0087.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2009 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0088.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2009 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0089.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2009 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0090.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2009 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0091.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0092.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2009";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0093.doc";
+         aAplica    = "ren2009";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2009";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0094.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2010 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0095.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2010 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0096.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2010 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0097.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2010 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0098.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2010 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0099.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0100.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2010";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0101.doc";
+         aAplica    = "ren2010";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2010";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0102.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2011 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0103.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2011 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0104.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2011 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0105.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2011 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0106.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2011 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0107.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0108.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2011";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0109.doc";
+         aAplica    = "ren2011";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2011";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0111.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2012 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0112.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2012 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0113.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2012 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0114.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2012 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0115.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2012 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0116.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0117.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2012";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0118.doc";
+         aAplica    = "ren2012";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2012";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0119.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2013 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0120.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2013 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0121.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2013 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0122.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2013 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0123.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2013 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0124.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0125.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2013";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0126.doc";
+         aAplica    = "ren2013";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2013";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0127.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2014 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0128.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2014 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0129.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2014 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0130.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2014 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0131.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2014 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0132.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0133.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2014";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0134.doc";
+         aAplica    = "ren2014";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2014";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0135.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2015 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0136.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2015 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0137.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2015 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0138.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2015 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0139.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2015 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0140.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0141.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2015";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0142.doc";
+         aAplica    = "ren2015";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2015";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0143.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2016 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0144.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2016 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0145.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2016 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0146.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2016 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0147.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2016 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0148.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0149.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2016";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0150.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2016";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0151.doc";
+         aAplica    = "ren2016";
+         aPrograma  = "reinfnrc";
+         aNombTexto = "CARTA SOLICITUD NRC RENTA 2016";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0152.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2017 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0153.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2017 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0154.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2017 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0155.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2017 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0156.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2017 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0157.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0158.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2017";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0159.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2017";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0160.doc";
+         aAplica    = "ren2017";
+         aPrograma  = "reinfnrc";
+         aNombTexto = "CARTA SOLICITUD NRC RENTA 2017";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0161.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2018 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0162.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2018 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0163.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2018 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0164.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2018 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0165.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2018 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0166.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0167.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2018";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0168.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2018";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0169.doc";
+         aAplica    = "ren2018";
+         aPrograma  = "reinfnrc";
+         aNombTexto = "CARTA SOLICITUD NRC RENTA 2018";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0170.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2019 ";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0171.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "reinfcmp";
+         aNombTexto = "CARTA DE NECESIDADES RENTA 2019 (ANEXOS)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0172.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2019 (AYUDA)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0173.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2019 (DATOS PERSONALES)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0174.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "rey00005";
+         aNombTexto = "INFORME DE COMPROBACION RENTA 2019 (RESTO)";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0175.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "reinfint";
+         aNombTexto = "CARTA REPRESENTACION MEDIOS TELEMATICOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0176.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO DOMICILIADOS RENTA 2019";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0177.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "reinfplz";
+         aNombTexto = "CARTA 2 PLAZO NO DOMICILIADOS RENTA 2019";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0178.doc";
+         aAplica    = "ren2019";
+         aPrograma  = "reinfnrc";
+         aNombTexto = "CARTA SOLICITUD NRC RENTA 2019";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0046.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy056";
+         aNombTexto = "CERTIFICADO 2009 IMPUTACIONES A MIEMBROS COMUNIDADES BIENES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word1046.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy056";
+         aNombTexto = "CERTIFICADO 2010 IMPUTACIONES A MIEMBROS COMUNIDADES BIENES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word2046.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy056";
+         aNombTexto = "CERTIFICADO 2013 IMPUTACIONES A MIEMBROS COMUNIDADES BIENES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word1546.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy056";
+         aNombTexto = "CERTIFICADO 2015 IMPUTACIONES A MIEMBROS COMUNIDADES BIENES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word1646.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy056";
+         aNombTexto = "CERTIFICADO 2016 IMPUTACIONES A MIEMBROS COMUNIDADES BIENES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0065.doc";
+         aAplica    = "contasoc";
+         aPrograma  = "isy00002";
+         aNombTexto = "CARTA PAGO DECLARACION IMPUESTO SOCIEDADES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0075.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy073";
+         aNombTexto = "CARTA PREAVISO DOMICILIACIONES Y ADEUDOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0076.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy073";
+         aNombTexto = "CARTA AVISO DE DOMICILIACIONES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0077.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy073";
+         aNombTexto = "CARTA SOLICITUD A BANCOS MODELOS CON NRC";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "word0110.doc";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy073";
+         aNombTexto = "CARTA PREAVISO DEVOLUCIONES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exce0001.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy015";
+         aNombTexto = "INFORME DEL PLANING MODELOS POR REGIMENES";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exce0151.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy015";
+         aNombTexto = "INFORME DEL PLANING MODELOS POR REGIMENES DICIEMBRE/ANUAL";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exce0002.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy022";
+         aNombTexto = "INFORME DEL PLANING POR MODELOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exce0003.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy015";
+         aNombTexto = "INFORME DEL PLANING MODELOS POR CLIENTE";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exce0153.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy015";
+         aNombTexto = "INFORME DEL PLANING MODELOS POR CLIENTE DICIEMBRE/ANUAL";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exce0004.xls";
+         aAplica    = "contagen";
+         aPrograma  = "cadiasim";
+         aNombTexto = "LIBRO DIARIO SIMPLIFICADO";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exce0005.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy022";
+         aNombTexto = "INFORME DEL PLANING POR MODELOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exces003.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy095";
+         aNombTexto = "LIBRO DE FRAS RECIBIDAS PARA REQUERIMIENTOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "excer003.xls";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy095";
+         aNombTexto = "LIBRO DE FRAS EXPEDIDAS PARA REQUERIMIENTOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "excec005.xls";
+        |O aNombreFich = "excec005.xlsx";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy096";
+         aNombTexto = "LIBRO DE FRAS DE I.V.A. PARA REQUERIMIENTOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "exced005.xls";
+        |O aNombreFich = "exced005.xlsx";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy096";
+         aNombTexto = "LIBRO DE I.R.P.F. PARA REQUERIMIENTOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+
+     |SI aNombreFich = "excet005.xls";
+        |O aNombreFich = "excet005.xlsx";
+         aAplica    = "modelos";
+         aPrograma  = "dsmoy096";
+         aNombTexto = "LIBRO DE I.R.P.F. e I.V.A. PARA REQUERIMIENTOS";
+         aDuplicar  = "N";
+         |HAZ GrabaPatron;
+     |FINSI;
+|FPRC;
+
+|PROCESO DesFichero;
+     |DBASE aBase;  |QBF aBase;
+
+     aDirWord   = aBase + "word";   |MKDIR aDirWord;
+
+     aDirPatron = aBase + "patrones/";
+     aFichero   = aDirPatron + "zdocumen.tgz";
+     |DESCOMPRIME aFichero;
+
+     aFichero   = aDirPatron + "zdocumen.tar";
+     |DETAR aFichero, aDirPatron;
+
+     |FBORRA aFichero;
+
+     aOrigen     = aDirPatron;
+
+     |_PDIR aOrigen;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+            aCadena1 = aOrigen    > " ";
+            aAlfa    = aCadena1 - ".DOC";
+            |SI aAlfa ! aCadena1;
+                aCadena1    = aOrigen > " ";
+                aCadena2    = aDirPatron > " ";  |QBF aCadena2
+                aNombreFich = aCadena1 - aCadena2;
+                |HAZ LeeTexto;
+            |FINSI;
+
+            aAlfa    = aCadena1 - ".XLS";
+            |SI aAlfa ! aCadena1;
+                aCadena1    = aOrigen > " ";
+                aCadena2    = aDirPatron > " ";  |QBF aCadena2
+                aNombreFich = aCadena1 - aCadena2;
+                |HAZ LeeTexto;
+            |FINSI;
+
+            |_SDIR aOrigen;
+     |SIGUE;
+
+|FPRC;
+
+|PROCESO BorraExcer1;
+    |ABRE #0;
+    #0#0 = "modelos";
+    #0#1 = "dsmoy095";
+    #0#2 = "excer001.xls";
+    |LEE 141#0=;
+    |SI FSalida = 0;
+        |BORRA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    #0#0 = "modelos";
+    #0#1 = "dsmoy095";
+    #0#2 = "exces001.xls";
+    |LEE 141#0=;
+    |SI FSalida = 0;
+        |BORRA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    #0#0 = "modelos";
+    #0#1 = "dsmoy095";
+    #0#2 = "excer002.xls";
+    |LEE 141#0=;
+    |SI FSalida = 0;
+        |BORRA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    #0#0 = "modelos";
+    #0#1 = "dsmoy095";
+    #0#2 = "exces002.xls";
+    |LEE 141#0=;
+    |SI FSalida = 0;
+        |BORRA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    #0#0 = "modelos";
+    #0#1 = "dsmoy096";
+    #0#2 = "excec004.xls";
+    |LEE 141#0=;
+    |SI FSalida = 0;
+        |BORRA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    #0#0 = "modelos";
+    #0#1 = "dsmoy096";
+    #0#2 = "exced004.xls";
+    |LEE 141#0=;
+    |SI FSalida = 0;
+        |BORRA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    #0#0 = "modelos";
+    #0#1 = "dsmoy096";
+    #0#2 = "excet004.xls";
+    |LEE 141#0=;
+    |SI FSalida = 0;
+        |BORRA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    |CIERRA #0;
+|FPRC;
+
+|RUTINA ClaveBaja0;
+     #0#0 = aDAplica;
+     #0#1 = aDPrograma;
+     #0#2 = "            ";
+|FRUT;
+
+|RUTINA ClaveAlta0;
+     #0#0 = aHAplica;
+     #0#1 = aHPrograma;
+     #0#2 = "zzzzzzzzzzzz";
+|FRUT;
+
+|PROGRAMA;
+     |HAZ LeeUnidadBasico;
+
+     aParametro = PARAMETRO;  |QBT aParametro;
+
+     |HAZ BorraExcer1;
+
+     nOperacion = 0;  || Carga todos los documentos
+     |ABRE #0;
+     |HAZ DesFichero;
+     |CIERRA #0;
+
+     |SI aParametro = "";  |O aParametro = "SACA";
+         aDAplica   = "        ";
+         aHAplica   = "zzzzzzzz";
+         aDPrograma = "        ";
+         aHPrograma = "zzzzzzzz";
+         |SI eaAplica ! "";
+             aDAplica   = eaAplica;
+             aHAplica   = eaAplica;
+             aDPrograma = eaPrograma;
+             aHPrograma = eaPrograma;
+         |FINSI;
+
+         |ENTLINEAL #1#0, -3, 4, 22, 1, ClaveBaja0, ClaveAlta0;
+     |FINSI;
+|FPRO;

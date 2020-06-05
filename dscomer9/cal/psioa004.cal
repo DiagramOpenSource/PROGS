@@ -1,0 +1,241 @@
+|FICHEROS;
+     psioa005 #0;
+     psioa004 #1;
+     agifa024 #3;
+     agifa321 #14;
+     agifa324 #15;
+
+     psioc001 #11,MANTE; || Canon Cepsa
+     psioc002 #12,MANTE; || ''
+|FIN;
+
+|VARIABLES;
+     &enTiva = 0;
+     &efFiva = @;
+     &eaDiva = "";
+     &enIva = 0;
+     &enRec = 0;
+     nTotalDto = 0;
+     nImporDescue1 = 0;
+     nImporDescue2 = 0;
+     nImporDescue3 = 0;
+     nBruto = 0;
+     nError = 0;
+     nCamBase = 0;
+     nCamIva = 0;
+     nCamRec = 0;
+     nBase = 0;
+     i = 0;
+     nForma = 0;
+     nModo = 0;
+|FIN;
+
+|PROCESO RecalLin;
+     enTiva = #0#9;
+     efFiva = #1#3;
+     |HAZ SacaIVA;
+
+||T.Linea
+    #0#10 = (((#0#6 * #0#7) < #0#8) < #0#13) ! #15#7;
+
+||Bruto
+     #1#8 = (#1#8 +. #0#10) ! #15#7;
+
+     ||nBruto = (((#0#10 < #1#11) < #1#13) < #1#12);
+     nBruto = #0#10;
+     nImporDescue1 = (nBruto % #1#11) ! #15#7;
+     nBruto = nBruto - nImporDescue1;
+     nImporDescue2 = (nBruto % #1#13) ! #15#7;
+     nBruto = nBruto - nImporDescue2;
+     nImporDescue3 = (nBruto % #1#12) ! #15#7;
+     nBruto = nBruto - nImporDescue3;
+
+     nTotalDto = nImporDescue1 + nImporDescue2 + nImporDescue3;
+
+     nError = 1;
+     |SI #1#8 < 0; nError = -1; |FINSI;
+     #1#8 = #1#8 * nError;
+
+||Dto
+     ||#1#30 = (((#1#8 < #1#11) < #1#13) < #1#12) ! #15#7;
+     ||#1#30 = #1#8 - #1#30;
+     #1#30 = #1#30 +. nTotalDto;
+
+     #1#30 = #1#30 * nError;
+     #1#8 = #1#8 * nError;
+
+||Ivas
+     |SI #0#9 = 0;
+          #1#14 = (#1#14 +. nBruto) ! #15#7;
+     |SINO;
+          nCamBase = #0#9 - 1 + 15;
+          nCamIva = #0#9 - 1 + 20;
+          nCamRec = #0#9 - 1 + 25;
+          #1nCamBase = (#1nCamBase +. nBruto) ! #15#7;
+          #1nCamIva = (#1nCamBase %  enIva) ! #15#7;
+          |SI #3#47 = "S";
+               #1nCamRec = (#1nCamBase % enRec) ! #15#7;
+          |FINSI;
+     |FINSI;
+
+||T.IVA
+     #1#31 = #1#20+#1#21+#1#22+#1#23+#1#24+#1#25+#1#26+#1#27+#1#28+#1#29;
+     #1#31 = #1#31 ! #15#7;
+||Total
+     #1#9 = (#1#8 - #1#30 + #1#31) ! #15#7;
+|FPRC;
+
+|PROCESO Recalcula; |TIPO 3;
+     |HAZ EsCepsax;
+     |SI FSalida = 0; |ACABA; |FINSI;
+
+     |HAZ LeeDivisa;
+     |ABRE #3;
+
+     #3#0 = #1#4;
+     |LEE 020#3=;
+
+     #1#8 = 0;
+     #1#9 = 0;
+     |PARA i = 14; |SI i [ 31; |HACIENDO i = i + 1;
+          #1#i# = 0;
+     |SIGUE;
+     |BUCLELIN 0RecalLin#1;
+     |CIERRA #3;
+|FPRC;
+
+|PROCESO LeeDivisa;
+     |ABRE #14;
+     |ABRE #15;
+     |LEE 001#14p;
+     #15#0 = #14#9;
+     |LEE 001#15=;
+     |CIERRA #14;
+     |CIERRA #15;
+|FPRC;
+
+|PROCESO Tipo13; |TIPO 13;
+     |HAZ EsCongecar;
+     |SI FSalida = 0;
+          |PINTA 1502, "Hora:";
+          |C_V #1#39, 1, "S";
+     |FINSI;
+     |HAZ EsCepsax;
+     |SI FSalida = 0;
+          |PINTA 2301, "³Dto Euro Kg:          Peso Linea:            ";
+          |PINTA 2347, "                                 ³";
+          |HAZ Linea7;
+     |FINSI;
+     |HAZ EsCoimasa;
+     |SI FSalida = 0;
+          |C_V #1#43, 1, "S";
+          |C_V #1#44, 1, "S";
+          |C_V #1#45, 1, "S";
+          |PINTA 1501, "³Su pedido:                Coleccion:    Completo: ";
+          |PINTA 1552, "                            ³";
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo2Cab; |TIPO 2;
+     nForma = 0 +. 1;
+     nModo = (FEntrada / 100) ! 0;
+     |HAZ EsCepsax;
+     |SI FSalida = 0;
+          |ABRE #11;
+          #11#0 = #1#0;
+          #11#1 = #1#2;
+          #11#2 = #1#1;
+          |LEE 101#11=;
+          |SI nForma = 1; |Y nModo ! 3;
+               |SI FSalida ! 0; |GRABA 020#11b; |FINSI;
+               |PUSHV 0501 2380;
+               |PINPA #0#11;
+               |PINDA #0#11;
+               |ENDATOS #2#11;
+               |SI FSalida = 0; |GRABA 020#11a; |FINSI;
+               |POPV;
+          |FINSI;
+          |SI nModo = 3;
+               |SI FSalida = 0; |BORRA 020#11a; |FINSI;
+          |FINSI;
+          |CIERRA #11;
+     |FINSI;
+|FPRC;
+
+|PROCESO Linea7; |TIPO 7;
+     |HAZ EsCepsax;
+     |SI FSalida = 0;
+          |ABRE #12;
+          #12#0 = #0#0;
+          #12#1 = #0#2;
+          #12#2 = #0#1;
+          #12#3 = #0#3;
+          |LEE 000#12=;
+          |SI FSalida ! 0; |DDEFECTO #12; |FINSI;
+          |CIERRA #12;
+          |ATRI I;
+          |PINTA 2314, #12#4;
+          |PINTA 2335, #12#5;
+     |FINSI;
+|FPRC;
+
+|PROCESO CampoCepsa; |TIPO 0;
+     |SI FSalida = 0;
+          |HAZ EsCepsax;
+          |SI FSalida = 0;
+               |ABRE #12;
+               #12#0 = #0#0;
+               #12#1 = #0#2;
+               #12#2 = #0#1;
+               #12#3 = #0#3;
+               |LEE 101#12=;
+               |SI FSalida ! 0; |GRABA 020#12b; |FINSI;
+               |PINDA #0#12;
+               |ENDATOS #1#12;
+               |SI FSalida = 0;
+                    |GRABA 020#12a;
+               |FINSI;
+               |CIERRA #12;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Mensa; |TIPO 7;
+     |HAZ EsCepsax;
+     |SI FSalida = 0;
+          |MENSA "0000<F5> Consulta Canon";
+     |FINSI;
+|FPRC;
+
+|PROCESO CepsaCanon; |TIPO 0;
+     |SI FSalida = 13;
+          |HAZ EsCepsax;
+          |SI FSalida = 0;
+               |ABRE #11;
+               #11#0 = #1#0;
+               #11#1 = #1#2;
+               #11#2 = #1#1;
+               |LEE 000#11=;
+               |SI FSalida ! 0; |DDEFECTO #11; |FINSI;
+               |PUSHV 0501 2380;
+               |PINPA #0#11;
+               |PINDA #0#11;
+               |PAUSA;
+               |POPV;
+               |CIERRA #11;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo2Lin; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+          |ABRE #12;
+          #12#0 = #0#0;
+          #12#1 = #0#2;
+          #12#2 = #0#1;
+          #12#3 = #0#3;
+          |BORRA 000#12c;
+          |CIERRA #12;
+     |FINSI;
+|FPRC;

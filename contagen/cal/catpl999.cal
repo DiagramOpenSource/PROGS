@@ -1,0 +1,285 @@
+|FICHEROS;
+   camaasic;
+   camaasil;
+   caivaasi;
+
+   camaniva;
+   caivalin;
+
+|FIN;
+
+|VARIABLES;
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   nNume1   = 0;
+   nNume2   = 0;
+
+   &enDiario   = 0;
+   &efFecha    = @;
+   &enDocume   = 0;
+   &enAsto     = 0;
+   &enLinea    = 0;
+   &eaSigno    = "";
+   &enImporte  = 0;
+   &eaDescrip  = "";
+   &enTFich    = 0;
+   &eaReferen  = "";
+
+   &enError   = 0;
+   &enLlegoa9 = 0;
+   &enNum9    = 0;
+
+   aCtaDebe  = "";
+   aCtaHaber = "";
+
+   &Local      = 0;
+   &nLeer      = 0;
+   &eaPath     = "";
+   &eaPathExc  = "";
+   &eaFichero  = "";
+
+   aExcel = "";
+   nCopio = 0;
+   &eaUnidadBasico = "";
+
+   &eaOrigen  = "";
+   &eaDestino = "";
+
+
+   &eaCampo12 = "";
+   &enCampo13 = 0;
+   &enCampo14 = 0;
+   &eaCampo15 = "";
+   &eaCampo19 = "";
+   &enCampo20 = 0;
+|FIN;
+
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+
+|| ************************************************************************
+/*
+|PROCESO BuscaUlt;
+   |SI enLlegoa9 = 0;
+       |SELECT #3#camaasic;
+       |LEE 040#camaasic.u;
+       |SI FSalida = 0;
+           enDocume  = #camaasic#2 + 1;
+           |SI enDocume > 999999;
+              |SI enLlegoa9 = 0;
+                  |HAZ PreguntoSeguir;
+                  |SI enError = 1; |ACABA; |FINSI;
+              |FINSI;
+              enLlegoa9 = 1;
+           |FINSI;
+       |SINO;
+          enDocume  = 1;
+       |FINSI;
+       |SELECT #1#camaasic;
+   |FINSI;
+
+   |SI enLlegoa9 = 1;
+       |PARA; |SI; |HACIENDO;
+              enNum9 = enNum9 + 1;
+              |SI enNum9 > 999999;
+                  |HAZ ErrorNumero;
+                  |SAL;
+              |FINSI;
+              #camaasic#0 = enDiario;
+              #camaasic#1 = efFecha;
+              #camaasic#2 = enNum9;
+              |LEE 001#camaasic.=;
+              |SI FSalida !  0; |SAL; |FINSI;
+       |SIGUE;
+       enDocume = enNum9;
+   |FINSI;
+|FPRC;
+
+|PROCESO PreguntoSeguir;
+  |CONFI "    SSe ha superado el Numero de Documento 999999, Desea empezar por 000001";
+  |SI FSalida ! 0;
+      enError = 1;
+  |FINSI;
+|FPRC;
+
+|PROCESO ErrorNumero;
+  |MENAV "    SNo puedo continuar creando Documentos, superados los 999999";
+  enError = 1;
+|FPRC;
+
+|| ---------------------
+|PROCESO cabecera; || lee la cabecera.
+   enError = 0;
+   |SI enDocume > 999999; |O enLlegoa9 = 1;
+       enNum9 = enNum9 + 1;
+       |SI enLlegoa9 = 0;
+           |HAZ PreguntoSeguir;
+           |SI enError = 1; |ACABA; |FINSI;
+       |FINSI;
+       enLlegoa9 = 1;
+       enDocume = enNum9;
+   |FINSI;
+
+   |DDEFECTO #camaasic;
+   #camaasic#0 = enDiario;
+   #camaasic#1 = efFecha;
+   #camaasic#2 = enDocume;
+   #camaasic#3 = enAsto;
+   enLinea = 1;
+   |LEE 040#camaasic.=;
+   |SI FSalida = 0;
+       |HAZ BuscaUlt;
+       |SI enError = 1; |ACABA; |FINSI;  ||no puedo seguir
+       |DDEFECTO #camaasic;
+   |FINSI;
+   #camaasic#0 = enDiario;
+   #camaasic#1 = efFecha;
+   #camaasic#2 = enDocume;
+   #camaasic#3 = enAsto;
+   enLinea = 1;
+   |HAZ NuevoRegistro;
+   #camaasic#12 = nREGISTRO;
+   #camaasic#13 = enTipoAsto;
+   |GRABA 020#camaasic.n;
+
+   aCtaDebe  = "";
+   aCtaHaber = "";
+|FPRC;
+
+|PROCESO act_cabecera;
+
+   #camaasic#0 = enDiario;
+   #camaasic#1 = efFecha;
+   #camaasic#2 = enDocume;
+   |LEE 101#camaasic.=;
+
+   |SI #camaasil#8 = "D";
+       #camaasic#4 = #camaasic#4 + enImporte;
+   |SINO;
+       #camaasic#5 = #camaasic#5 + enImporte;
+   |FINSI;
+   #camaasic#6  = #camaasic#4 - #camaasic#5;        || saldo
+
+   |SI #camaasic#9 = 0;
+       |SI aCtaDebe ! "";
+           eaCuenta = aCtaDebe; |HAZ SacaNivel;
+           #camaasic#8 = aCtaDebe;
+           #camaasic#9 = enNivel;
+       |FINSI;
+   |FINSI;
+   |SI #camaasic#11 = 0;
+       |SI aCtaHaber ! "";
+           eaCuenta = aCtaHaber; |HAZ SacaNivel;
+           #camaasic#10 = aCtaHaber;
+           #camaasic#11 = enNivel;
+       |FINSI;
+   |FINSI;
+   |SI enTFich = 3; #camaasic#17 = eaReferen; |FINSI;
+
+   |GRABA 020#camaasic.a;
+   |LIBERA #camaasic;
+|FPRC;
+
+|PROCESO adapta1;
+  #camaasil#21 = eaDfDepC;
+  #camaasil#28 = eaDfSubC;
+  #camaasil#27 = (Usuario % 0810)
+  |SI enTFich = 3; #camaasil#26 = eaReferen; |FINSI;
+
+  |SI #camaasil#8 = "D";
+      #camaasil#16 = #camaasil#4;
+      #camaasil#17 = #camaasil#5;
+      #camaasil#10 = "";
+      #camaasil#11 = 0;
+   |SINO;
+      #camaasil#16 = "";
+      #camaasil#17 = 0;
+      #camaasil#10 = #camaasil#4;
+      #camaasil#11 = #camaasil#5;
+   |FINSI;
+
+   |SI #camaasil#8 = "D"; aCtaDebe  = #camaasil#4; |FINSI;
+   |SI #camaasil#8 = "H"; aCtaHaber = #camaasil#4; |FINSI;
+
+   #camaasil#12 = eaCampo12;
+   #camaasil#13 = enCampo13;
+   #camaasil#14 = enCampo14;
+   #camaasil#15 = eaCampo15;
+   #camaasil#19 = eaCampo19;
+   #camaasil#20 = enCampo20;
+|FPRC;
+
+|PROCESO GrabaLinea;
+
+   |DDEFECTO #camaasil;
+   #camaasil#0  = enDiario;
+   #camaasil#1  = efFecha;
+   #camaasil#2  = enDocume;
+   #camaasil#3  = enLinea;
+   #camaasil#4  = eaCuenta;
+   |HAZ SacaNivel;
+   #camaasil#5  = enNivel;
+   #camaasil#6  = enConcepto;
+   #camaasil#7  = eaDescrip;
+   #camaasil#8  = eaSigno;
+   #camaasil#9  = enImporte;
+
+   |SI enImporte ! 0;
+       |HAZ adapta1;
+       |GRABA 020#camaasil.n;
+       |HAZ act_cabecera;
+       |HAZ Actualiza;
+       enLinea = enLinea + 10;
+   |FINSI;
+|FPRC;
+
+|PROCESO Actualiza;
+   MasMenos     = enImporte;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+   nNIVELCUENTA = #camaasil#5;
+
+   |HAZ ActDiario;          || diario
+   |HAZ ActCuenta;          || cuenta
+   |HAZ ActTesteo;          || cuenta
+|FPRC;
+*/
+|| ********************************************************************
+|PROCESO CopioAntes;
+     aExcel = eaPathExc + eaFichero;
+
+     nCopio = 0;
+     |XABRE "CE", aExcel, 0;
+     |SI FSalida < 0;
+          nCopio = 1;
+     |FINSI;
+
+|SI nCopio = 1;
+    aAlfa2 = eaUnidadBasico + "/DOCUMENTOS/";
+
+    eaDestino = aAlfa2 + "tmp/" + (("00000" + enEmpresa) % -105) + enPeriodo;
+    |SI Local = 0;
+        |RMKDIR eaDestino;
+    |SINO;
+        |MKDIR eaDestino;
+    |FINSI;
+
+    eaDestino = eaDestino + "/";
+    eaPathExc = eaDestino;
+
+    eaDestino = eaDestino + (eaOrigen - eaPath);
+    |SI Local = 0;
+        |ENVIA_FICHERO eaOrigen, eaDestino;
+    |SINO;
+        |COPIA_FICHERO eaOrigen, eaDestino;
+    |FINSI;
+
+|FINSI;
+
+|FPRC;

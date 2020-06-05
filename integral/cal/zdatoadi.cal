@@ -1,0 +1,497 @@
+|FICHEROS;
+     dsam0119;
+     dsam0120;
+     dsam0121;
+     dsam0122;
+|FIN;
+
+|VARIABLES;
+     aIPRemoto         = "";
+     aMenav            = "";
+     aOrigen           = "";
+     aDestino          = "";
+     aAlfa             = "";
+     aAbre             = "";
+     aEjecuta          = "";
+     aBase             = "";
+     aTxt              = "";
+     aFicheroAbre      = "";
+     aDocRemoto        = "";
+     aDocServidor      = "";
+
+     nWord             = 0;
+     nHandle           = 0;
+     nPausa            = 0;
+
+     {1}aContiene      = "";
+
+     &enFSalida        = 0;
+     &enCodUbica       = 0;
+     &enTipoDocumento  = 0;
+     &eaRutaDocumento  = "";
+     &eaNombrePrograma = "";
+     &eaNombreRuta     = "";
+     &eaRutaPlanilla   = "";
+     &eaExtension      = "";
+     &eaFicheroEdita   = "";
+     &eaFicheroEditaO  = "";
+     &eaRenta          = "";
+     &eaUnidadBasico   = "";
+     &eaDSMAC          = "";
+     &enCodigo         = 0;
+     &eaParametro1     = "";
+     &eaParametro2     = "";
+     &eaParametro3     = "";
+     &eaRutaLocal      = "";
+|FIN;
+
+|PROCESO LeeUbicaciones;
+     enFSalida = 0;
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;   |QBT aIPRemoto;
+     |SI aIPRemoto = "";  aIPRemoto = "LOCAL";  |FINSI;
+
+     aIPRemoto = (aIPRemoto + (" " * 20)) % 120;
+
+     |ABRE #dsam0121;
+     #dsam0121#0 = enCodUbica;
+     |LEE 040#dsam0121.=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         |MENAV "      No existe Ubicacion ";
+         |CIERRA #dsam0121;
+         |ACABA;
+     |FINSI;
+     |CIERRA #dsam0121;
+
+     |ABRE #dsam0122;
+     enCodigo = #dsam0121#0;
+     |HAZ CambiaAMac122;
+
+     #dsam0122#0 = enCodUbica;
+     #dsam0122#1 = eaDSMAC;
+     |LEE 000#dsam0122.=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         aMenav =  "      No existe Ubicacion en la Maquina : " + eaDSMAC;
+         |MENAV aMenav;
+         |CIERRA #dsam0122;
+         |ACABA;
+     |FINSI;
+     |CIERRA #dsam0122;
+
+     eaRutaDocumento = #dsam0122#3;  |QBF eaRutaDocumento;
+     |SI eaRutaDocumento = "";
+         aMenav = "      No esta configurada la Ruta en la Maquina " + eaDSMAC;
+         |MENAV aMenav;
+         enFSalida = 1;
+         |ACABA;
+     |FINSI;
+
+     |ABRE #dsam0119;
+     #dsam0119#0 = #dsam0121#2;
+     |LEE 040#dsam0119.=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         |MENAV "      No existe Registro del Programa Externo ";
+         |CIERRA #dsam0119;
+         |ACABA;
+     |FINSI;
+     |CIERRA #dsam0119;
+
+     |ABRE #dsam0120;
+
+     enCodigo = #dsam0119#0;
+     |HAZ CambiaAMac120;
+
+     #dsam0120#0 = #dsam0119#0;
+     #dsam0120#1 = eaDSMAC;
+     |LEE 000#dsam0120.=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         aMenav =  "      No existe Programa Externo en la Maquina : " + eaDSMAC;
+         |MENAV aMenav;
+         |CIERRA #dsam0120;
+         |ACABA;
+     |FINSI;
+     |CIERRA #dsam0120;
+
+     |SI #dsam0119#4 = "N";
+         eaNombrePrograma = #dsam0120#3;  |QBF eaNombrePrograma;
+         |SI eaNombrePrograma = "";
+             aMenav = "      No esta configurado el Nombre Programa en la Maquina " + eaDSMAC;
+             |MENAV aMenav;
+             enFSalida = 1;
+             |ACABA;
+         |FINSI;
+     |SINO;
+         eaNombrePrograma = "AUTO";
+     |FINSI;
+
+     eaRutaPlanilla  = #dsam0120#4;  |QBF eaRutaPlanilla;
+     enTipoDocumento = #dsam0119#2;
+     eaExtension     = #dsam0119#3;
+     eaNombreRuta    = #dsam0121#1;
+|FPRC;
+
+|PROCESO TraeDsxml;
+     |DBASS aAlfa;   |QBF aAlfa;
+     aAlfa     = aAlfa + "basica/plantillas/";
+     aOrigen   = aAlfa + "dsxml.exe";
+     aDestino  = eaUnidadBasico + "\MODELOS\DOCUMENTOS\DSXML.EXE";
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     |SI aDocRemoto ! aDocServidor;
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     |XABRE "EC", aDestino, nHandle;
+     |SI FSalida < 0;
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;   |QBT aIPRemoto;
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO TraeDsAbreExtension;
+     |HAZ LeeUnidadBasico;
+
+     |DBASE aAlfa;   |QBF aAlfa;
+     aAlfa     = aAlfa + "plantillas/";
+     aOrigen   = aAlfa + "dsabreextension.exe";
+     aDestino  = eaUnidadBasico + "\MODELOS\DOCUMENTOS\DsAbreExtension.exe";
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     |SI aDocRemoto ! aDocServidor;
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     |XABRE "EC", aDestino, nHandle;
+     |SI FSalida < 0;
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;   |QBT aIPRemoto;
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO AbreDocumento;
+     |HAZ LeeUnidadBasico;
+
+     aAlfa = eaUnidadBasico + "/MODELOS";                   |RMKDIR aAlfa;
+     aAlfa = eaUnidadBasico + "/MODELOS/DOCUMENTOS";        |RMKDIR aAlfa;
+
+     aFicheroAbre = (eaUnidadBasico + "/MODELOS/DOCUMENTOS/" + eaFicheroEdita) < "";
+     |QBF aFicheroAbre;
+
+     eaRutaLocal  = eaUnidadBasico + "/MODELOS/DOCUMENTOS/";
+
+     aOrigen  = eaRutaDocumento + "/" + eaFicheroEdita;  |QBF aOrigen;
+     |SI eaFicheroEditaO ! "";
+        aOrigen  = eaRutaDocumento + "/" + eaFicheroEditaO;  |QBF aOrigen;
+     |FINSI;
+
+     aDestino = eaUnidadBasico + "/MODELOS/DOCUMENTOS/" + eaFicheroEdita;      |QBF aDestino;
+
+     |RCOPIA_FICHERO aOrigen, aDestino;
+     |SI FSalida ! 0;
+         |MENAV "      No se ha podido copiar el Documento al Directorio de Trabajo";
+         |ACABA;
+     |FINSI;
+
+     |SI enTipoDocumento = 1;
+         aTxt = aFicheroAbre - ".doc" + ".txt";
+         |XABRE "WBC", aTxt, nHandle;
+
+         aAlfa = "[FICHERO]#" + aFicheroAbre + &13 + &10;
+         |XGRABA nHandle, aAlfa;
+
+         aAlfa = "[IMPRESORA]#P" + &13 + &10;
+         |XGRABA nHandle, aAlfa;
+
+         |XCIERRA nHandle;
+         eaParametro1 = eaUnidadBasico + "\MODELOS\DOCUMENTOS\dsxml";
+         eaParametro2 = aTxt;
+         eaParametro3 = eaRutaLocal + "~$" + (eaFicheroEdita % 399);  |QBF eaParametro3;
+
+         |HAZ TraeDsxml;
+         |HAZ EjecutaDSXML;
+     |SINO;
+         |SI eaNombrePrograma = "AUTO";
+             |HAZ TraeDsAbreExtension;
+
+             aEjecuta = "START " + eaUnidadBasico + "\MODELOS\DOCUMENTOS\dsabreextension ";
+             aEjecuta = aEjecuta + aFicheroAbre;
+             aEjecuta = aEjecuta + " " + eaUnidadBasico + "\MODELOS\DOCUMENTOS\" + "fin" + Usuario + ".txt";
+
+             aAlfa  = eaUnidadBasico + "\MODELOS\DOCUMENTOS\" + "fin" + Usuario + ".txt";
+             |RFBORRA aAlfa;
+
+             |RSYSTEM aEjecuta;
+
+             aAlfa  = eaUnidadBasico + "\MODELOS\DOCUMENTOS\" + "fin" + Usuario + ".txt";
+             |PARA;  |SI;  |HACIENDO;
+                     |PARA nPausa = 1; |SI nPausa [ 10000; |HACIENDO nPausa = nPausa + 1;
+                     |SIGUE;
+
+                     |XABRE "EC", aAlfa, nHandle;
+                     |SI FSalida ] 0;
+                         |SAL;
+                     |FINSI;
+                     |PULSATECLA;
+              |SIGUE;
+
+              |RFBORRA aAlfa;
+         |SINO;
+             aAlfa = aFicheroAbre % -103;
+             |SI aAlfa ! "eml";
+                 aEjecuta = "cmd " + &34 + "/c START /WAIT " + eaNombrePrograma + " " + aFicheroAbre + &34;
+             |SINO;
+                 aEjecuta = "cmd " + &34 + "/c START /WAIT " + eaNombrePrograma + " " + "/eml:" + aFicheroAbre + &34;
+             |FINSI;
+             |RSYSTEM aEjecuta;
+         |FINSI;
+     |FINSI;
+
+     aOrigen  = eaRutaDocumento + "/" + eaFicheroEdita;  |QBF aOrigen;
+     aDestino = eaUnidadBasico + "/MODELOS/DOCUMENTOS/" + eaFicheroEdita;      |QBF aDestino;
+     |SI eaFicheroEditaO ! "";
+         aOrigen  = eaRutaDocumento + "/" + eaFicheroEditaO;  |QBF aOrigen;
+     |FINSI;
+
+     |RCOPIA_FICHERO aDestino, aOrigen;
+     |SI FSalida ! 0;
+         |MENAV "      No se ha podido copiar el Documento al Directorio del Servidor";
+     |SINO;
+         |RFBORRA aDestino;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaRenta;
+     eaRenta = "";
+     |DBASS aBase;
+
+     aAlfa = aBase + "ren1999/ren1999.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren1999/";  |FINSI;
+
+     aAlfa = aBase + "ren2000/ren2000.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2000/";  |FINSI;
+
+     aAlfa = aBase + "ren2001/ren2001.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2001/";  |FINSI;
+
+     aAlfa = aBase + "ren2002/ren2002.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2002/";  |FINSI;
+
+     aAlfa = aBase + "ren2003/ren2003.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2003/";  |FINSI;
+
+     aAlfa = aBase + "ren2004/ren2004.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2004/";  |FINSI;
+
+     aAlfa = aBase + "ren2005/ren2005.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2005/";  |FINSI;
+
+     aAlfa = aBase + "ren2006/ren2006.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2006/";  |FINSI;
+
+     aAlfa = aBase + "ren2007/ren2007.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2007/";  |FINSI;
+
+     aAlfa = aBase + "ren2008/ren2008.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2008/";  |FINSI;
+
+     aAlfa = aBase + "ren2009/ren2009.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2009/";  |FINSI;
+
+     aAlfa = aBase + "ren2010/ren2010.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2010/";  |FINSI;
+
+     aAlfa = aBase + "ren2011/ren2011.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2011/";  |FINSI;
+
+     aAlfa = aBase + "ren2012/ren2012.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2012/";  |FINSI;
+
+     aAlfa = aBase + "ren2013/ren2013.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2013/";  |FINSI;
+
+     aAlfa = aBase + "ren2014/ren2014.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2014/";  |FINSI;
+
+     aAlfa = aBase + "ren2015/ren2015.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2015/";  |FINSI;
+
+     aAlfa = aBase + "ren2016/ren2016.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2016/";  |FINSI;
+
+     aAlfa = aBase + "ren2017/ren2017.men";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;  eaRenta = aBase + "ren2017/";  |FINSI;
+|FPRC;
+
+
+|| ************************************************************************
+|| ************** RUTINAS PARA LA EDICION DE TABLAS EN TXT ****************
+|| ************************************************************************
+
+|VARIABLES;
+     aAlfa1 = "";
+     Cadena = "";
+     SwNeg  = 0;
+     nCalc  = 0;
+
+     nBaffer     = 0;
+     nOpcion     = 0;
+     nTotalLinea = 0;
+     nConta      = 0;
+     nCogeOpcion = 0;
+     nPos1       = 0;
+     nDesde      = 0;
+     nHasta      = 0;
+
+     aTabla      = "";
+     aAlf        = "";
+
+     &eaDestino  = "";
+     &eaTabla    = "";
+     &eaAlfa     = "";
+     &enError    = 0;
+     &enComp     = 0;
+     &enPosicion = 0;
+|FIN;
+
+|PROCESO CargaTabla;
+     |DFICE aTabla;  |QBF aTabla;
+
+     aTabla      = aTabla + eaTabla;
+     nOpcion     = 1;
+     nTotalLinea = 0;
+     nConta      = -1;
+     nBaffer     = 0;
+     |LEESECUENCIAL aTabla, nBaffer, nTotalLinea, 0, 0;
+|FPRC;
+
+|PROCESO SacaTabla;
+     |PUSHV 0501 2380;
+
+     |SI nTotalLinea [ 400;
+         |PARA; |SI;  |HACIENDO;
+              nOpcion = 1;
+              |BMENUG nBaffer, 0, 1, nTotalLinea, enPosicion, nOpcion;
+              nOpcion     = FSalida;
+              nCogeOpcion = nOpcion - 1;
+              |SI FSalida [ nTotalLinea; |Y FSalida ] 1;
+                  |DEL_BUF nBaffer, nCogeOpcion, eaDestino;
+
+                  |SAL;
+             |FINSI;
+         |SIGUE;
+     |SINO;
+         nDesde  = 0;
+         nHasta  = 400;
+         nOpcion = 1;
+         |PARA; |SI;  |HACIENDO;
+              |BMENUG nBaffer, nDesde, 1, nHasta, enPosicion, nOpcion;
+              nOpcion     = FSalida;
+
+              nCogeOpcion = (nOpcion - 1) + nDesde;
+              |SI FSalida [ nTotalLinea; |Y FSalida ] 1;
+                  |DEL_BUF nBaffer, nCogeOpcion, eaDestino;
+
+                  aAlf = eaDestino;  |QBT aAlfa;
+                  |SI aAlf = "Mas...";
+                      nDesde  = nDesde + 400;
+                      nHasta  = nHasta + 400;
+                      nOpcion = 1;
+                  |FINSI;
+
+                  |SI aAlf = "Menos...";
+                      nDesde  = nDesde - 400;
+                      nHasta  = nHasta - 400;
+                      nOpcion = 1;
+                  |FINSI;
+
+                  |SI aAlf ! "Mas...";  |Y  aAlf ! "Menos...";
+                      |SAL;
+                  |FINSI;
+              |FINSI;
+         |SIGUE;
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO CompruebaTabla;
+     enError = 1;
+     nPos1   = 100 + enComp;
+
+     |LEESECUENCIAL aTabla, nBaffer, nTotalLinea, 0, 0;
+     |PARA nConta = 0;  |SI nConta [ nTotalLinea;  |HACIENDO nConta = nConta + 1;
+         |DEL_BUF nBaffer, nConta, eaDestino;
+         aAlf = eaDestino % nPos1;
+
+         |QBF aAlf;
+         |QBF eaAlfa;
+
+         |SI aAlf = eaAlfa;  enError = 0;  |SAL;  |FINSI;
+     |SIGUE;
+
+     |FINDIM nBaffer;
+|FPRC;
+
+|PROCESO FinTabla;
+     |FINDIM nBaffer;
+|FPRC;

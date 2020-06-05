@@ -1,0 +1,300 @@
+|FICHEROS;
+    rey00104 #0;
+    redatcon #1;    || datos contribuyentes
+    rem00002 #2;    || inmuebles
+    rem00005 #3;    || modelo 214
+    rehacien #4;    || datos hacienda
+    recapinm #5;    || capital inmobiliario
+    retabla3 #6;    || tarifa patrimonio
+
+    rew00009 #11;   || tmp.comprobacion
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    para1 = 0;
+    para2 = 0;
+    para3 = 0;
+    para4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    elsw1 = 0;
+    elsw2 = 0;
+    elsw3 = 0;
+    elsw4 = 0;
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+
+    &Temporal = "";
+    &Cliente01 = 0;
+    &Cliente02 = 0;
+    &Cliente03 = 0;
+    &Cliente04 = 0;
+    &Cliente05 = 0;
+    &Cliente06 = 0;
+    &Cliente07 = 0;
+    &Cliente08 = 0;
+    &Cliente09 = 0;
+    &Cliente10 = 0;
+    &Cliente11 = 0;
+    &Cliente12 = 0;
+    &Cliente13 = 0;
+    &Cliente14 = 0;
+    &Cliente15 = 0;
+    &Cliente16 = 0;
+    &Cliente17 = 0;
+    &Cliente18 = 0;
+
+    &Firma = "";
+    Varios = 0;
+    Ctipo = "";
+    Parte = 0;
+    Familiar = 0;
+    inicio = @;
+    base2 = 0;
+    Empresa = 0;
+|FIN;
+
+|INCLUYE i_consul;
+____________________________________/
+|PROCESO Fichero;
+|DDEFECTO #11;
+    #11#0 = #3#0;
+|SI Ctipo = "T";    #11#8 = 1;     |FINSI;
+|SI Ctipo = "C";    #11#8 = 2;     |FINSI;
+|SI Ctipo = "1";    #11#8 = 3;     |FINSI;
+|SI Ctipo = "2";    #11#8 = 4;     |FINSI;
+|SI Ctipo = "3";    #11#8 = 5;     |FINSI;
+|SI Ctipo = "4";    #11#8 = 6;     |FINSI;
+|LEE 101#11=;
+    FEstado = FSalida;
+
+    #11#1 = Ctipo;  || tipo TC1234
+    #11#2 = #3#6;   || NIF
+    #11#3 = #3#7;   || nombre
+    #11#7 = #3#28;  || cuota 214 patrimonio
+    #11#9 = #3#31;  || cuota 214 irpf
+    #11#12 = #3#58; || impreso S/N
+
+|SI FEstado = 0;    |GRABA 020#11a;     |FINSI;
+|SI FEstado ! 0;    |GRABA 020#11n;     |FINSI;
+|LIBERA #11;
+|FPRC;
+
+|PROCESO Impresora;
+|INFOR "m214h001";  |PRINT;   |PIEINF;  |FININF;
+|FPRC;
+
+|PROCESO CargaTipo;
+|SI Ctipo = "C";
+        #3#6 = #1#29;    || NIF conyuge (1)
+        #3#7 = #1#28;    || nombre conyuge (1)
+|FINSI;
+
+|SI Ctipo ] "1";|Y Ctipo [ "4";
+        Familiar = 0;
+    |SI Ctipo = "1";    Familiar = #1#98;   |FINSI;
+    |SI Ctipo = "2";    Familiar = #1#99;   |FINSI;
+    |SI Ctipo = "3";    Familiar = #1#100;  |FINSI;
+    |SI Ctipo = "4";    Familiar = #1#101;  |FINSI;
+    |SI Familiar ! 0;
+            nume1 = Familiar + 47;      #3#6 = #1nume1;     || nif (1)
+            nume1 = Familiar + 57;      #3#7 = #1nume1;     || nombre (1)
+    |SINO;
+            alfa1 = "    Familiar [" + Ctipo + "] erroneo en [" + #1#0 + "] ...";
+        |MENAV alfa1;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO RecalculaParte;
+    #3#20 = #3#20 % Parte;         || valor (punto 1)
+    #3#21 = #3#21 % Parte;         || deudas (punto 2)
+    #3#22 = #3#22 % Parte;         || base imponible patrimonio (punto 3)
+|PARA para1 = 8; |SI para1 ] 1; |HACIENDO para1 = para1 - 1;
+        para2 = para1 + 8;
+        para3 = para1 + 16;
+    |SI #3#22 > #6para1;
+            #3#23 = #6para1;            || hasta
+            #3#25 = #6para2;            || cuota hasta
+            #3#27 = #6para3;            || porcentaje
+            #3#24 = #3#22 - #3#23;      || resto
+            #3#26 = (#3#24 % #3#27) ! 0;|| cuota resto
+            #3#28 = #3#25 + #3#26;      || cuota integra patrimonio (punto 4)
+        |SAL;
+    |FINSI;
+|SIGUE;
+
+    alfa1 = "01.01." + #3#2;
+    inicio = alfa1;
+|SI inicio < #5#18;                     || fecha de adquisicion posterior
+        nume1 = 365 - (#5#18 - inicio);
+        base2 = ((nume1 * #5#8) / 365) % Parte;
+|SINO;
+        base2 = #5#8 % Parte;
+|FINSI;
+|SI #5#71 = "N";                        || revisado en 1995 S/N
+         #3#29 = base2 % 2;
+|SINO;
+         #3#29 = base2 % 1.1; || base imponible IRPF (punto 5)
+|FINSI;
+
+    #3#30 = 25;               || tipo de gravamen
+    #3#31 = #3#29 % #3#30;    || cuota integra IRPF (punto 6)
+
+|SI #2#2 = "R";     |PDEFECTO #3, 20, 29;    |FINSI;   || solo renta
+|SI #2#2 = "P";     |PDEFECTO #3, 29, 32;    |FINSI;   || solo patrimonio
+
+    #3#32 = #3#28 + #3#31;    || total a ingresar (punto 7)
+|FPRC;
+
+|PROCESO Modelo;
+    #3#0 = #2#0;
+    #3#1 = #2#1;
+|LEE 020#3=;             || vuelve a leer modelo 214 (rem00005)
+
+|HAZ RecalculaParte;
+|HAZ CargaTipo;
+
+    Firma = #3#18;  |QBT Firma;
+    Firma = (#3#18 - Firma) + Firma;         || ajusta a la derecha
+
+|SI Temporal = "";
+    |HAZ Impresora;
+|SINO;
+    |HAZ Fichero;
+|FINSI;
+|FPRC;
+
+|PROCESO Emite1;
+    #3#0 = #2#0;
+    #3#1 = #2#1;
+|LEE 101#3=;             || lee modelo 214 (rem00005)
+|SI FSalida ! 0;
+    |ACABA;
+|SINO;
+    |SI Temporal = "";
+            #3#58 = "S";           || impreso SI
+        |GRABA 020#3a;
+    |FINSI;
+|FINSI;
+|LIBERA #3;
+
+    #5#0 = #2#0;
+    #5#1 = #2#1;
+|LEE 000#5=;             || lee el capital inmobiliario
+|SI FSalida ! 0;
+        alfa1 = "    Ficha de Capital Inmobiliario [" + #2#0 + "-" + #2#1 + "] inaccesible ...";
+    |MENAV alfa1;
+    |ACABA;
+|FINSI;
+
+    seleccio = 1;
+
+|DDEFECTO #4;
+    #4#0 = #1#40;
+    #4#1 = #1#41;
+|LEE 000#4=;        || datos hacienda
+
+|SI #2#3 = "G";                                        || gananciales
+        Ctipo = "T";     Parte = 50;    |HAZ Modelo;
+        Ctipo = "C";     Parte = 50;    |HAZ Modelo;
+|FINSI;
+|SI #2#3 = "V";                                        || varios
+    |PARA Varios = 8; |SI Varios [ 13; |HACIENDO Varios = Varios + 1;
+        |SI #2Varios ! 0;
+                Parte = #2Varios;
+            |SI Varios =  8;   Ctipo = "T";   |HAZ Modelo;   |FINSI;
+            |SI Varios =  9;   Ctipo = "C";   |HAZ Modelo;   |FINSI;
+            |SI Varios = 10;   Ctipo = "1";   |HAZ Modelo;   |FINSI;
+            |SI Varios = 11;   Ctipo = "2";   |HAZ Modelo;   |FINSI;
+            |SI Varios = 12;   Ctipo = "3";   |HAZ Modelo;   |FINSI;
+            |SI Varios = 13;   Ctipo = "4";   |HAZ Modelo;   |FINSI;
+        |FINSI;
+    |SIGUE;
+|FINSI;
+|SI #2#3 ! "G";|Y #2#3 ! "V";                          || resto
+        Ctipo = #2#3;    Parte = 100;   |HAZ Modelo;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE Emite;
+ #2#1;
+ ;
+ #1#0,  1;
+ #1#0, 99;
+ ;
+ NULL, Emite1;
+|FIN;
+
+|PROCESO Tipo3;
+|ABRE #1;       || datos contribuyentes
+|ABRE #3;       || modelo 214
+|ABRE #4;       || datos hacienda
+|ABRE #5;       || capital inmobiliario
+|ABRE #6;       || tarifa patrimonio
+|LEE 000#6p;
+|SI FSalida = 0;
+    |PARA Empresa = 0; |SI Empresa [ 17; |HACIENDO Empresa = Empresa + 1;
+        |SI #0Empresa ! 0;
+                #1#0 = #0Empresa;
+            |LEE 000#1=;
+            |SI FSalida = 0;|Y #1#4 = "N";
+                |BUCLE Emite;
+            |FINSI;
+        |FINSI;
+    |SIGUE;
+    |SI seleccio = 0;|Y Temporal = "";
+        |MENAV "    Seleccion vacia ...";
+    |FINSI;
+|SINO;
+    |MENAV "    Tarifas Patrimonio inaccesibles o inexistentes ...";
+|FINSI;
+|CIERRA #1;
+|CIERRA #3;
+|CIERRA #4;
+|CIERRA #5;
+|CIERRA #6;
+|FPRC;
+
+|PROGRAMA;
+|SI Temporal = "";
+    |CLS;
+    |CABEZA "Impresion 214";
+    |PINPA #0#0;
+    |DDEFECTO #0;
+    |PINDA #0#0;
+    |ENDATOS #1#0;
+    |SI FSalida = 0;
+        |IMPRE 0;
+        |SI FSalida = 0;
+            |HAZ Tipo3;
+        |SINO;
+            |MENAV "    Proceso abortado ...";
+        |FINSI;
+        |FINIMP;
+    |FINSI;
+|SINO;
+        #0#0 = Cliente01;     #0#1 = Cliente02;   #0#2 = Cliente03;
+        #0#3 = Cliente04;     #0#4 = Cliente05;   #0#5 = Cliente06;
+        #0#6 = Cliente07;     #0#7 = Cliente08;   #0#8 = Cliente09;
+        #0#9 = Cliente10;     #0#10 = Cliente11;  #0#11 = Cliente12;
+        #0#12 = Cliente13;    #0#13 = Cliente14;  #0#14 = Cliente15;
+        #0#15 = Cliente16;    #0#16 = Cliente17;  #0#17 = Cliente18;
+    |NOME_DAT #11 Temporal;
+    |ABRE #11;
+    |HAZ Tipo3;
+    |CIERRA #11;
+|FINSI;
+|FPRO;

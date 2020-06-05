@@ -1,0 +1,296 @@
+|FICHEROS;
+     dsm210dp;
+     dsm210dv;
+     dsm210t1;
+     dsm210tr;
+
+     repobla@;
+     rmunici@;
+     &reprovi@;
+     &rpaises@;
+     &haciend@;
+|FIN;
+
+|VARIABLES;
+     nTree0              = 0;
+     nHandle             = 0;
+     nRango              = 0;
+     nBtnAlt             = 0;
+     nBtnBaj             = 0;
+     nBtnVCA             = 0;
+     nBtnCMR             = 0;
+     nBtnEmi             = 0;
+
+     aAlfa               = "";
+     aAlfa1              = "";
+     aEsc1               = "";
+     aEsc2               = "";
+     aRetu               = "";
+     aTecla              = "";
+
+     fFecha              = @;
+
+ {-1}sTree               = 0;
+     sT_nID              = 0;
+     sT_nOper            = 0;
+     sT_aData            = "";
+
+     &enGrid0            = 0;
+     &nEj210tr           = 0;
+     &nTr210tr           = 0;
+     &nTg210tr           = 0;
+     &enSwCod            = 0;
+     &enEmpresa          = 0;
+
+     &eaIP               = "";
+     &eaUnidadBasico     = "";
+     &eaOrigen           = "";
+     &eaDestino          = "";
+
+     &fFecha1            = @;
+|FIN;
+
+|INCLUYE i_pat210;
+
+|PROCESO CalAnyTr;
+     |SI fFecha1 [ "01.01.1000";
+         fFecha1 = ~;
+     |FINSI;
+
+     aAlfa     = fFecha1;
+     aAlfa     = aAlfa % -104;
+     nEj210tr = aAlfa;
+     |SI nEj210tr < 2014;
+         nEj210tr = 2014;
+     |FINSI;
+
+     #dsm210tr#0 = nTr210tr;
+     #dsm210tr#6 = nEj210tr;
+     |LEE 000#dsm210tr.=;
+     |SI FSalida ! 0; |DDEFECTO #dsm210tr; |FINSI;
+
+     eaPaisCCE = #dsm210dp#7; |HAZ PaisCCE_210;
+     |SI eSwPaisCCE = 1;
+         nTg210tr = #dsm210tr#5;   || pais de la CE
+     |SINO;
+         nTg210tr = #dsm210tr#7;   || otros paises
+     |FINSI;
+|FPRC;
+
+|PROCESO BtnAlt;
+     |SUB_EJECUTA "renxz002;ALTA";
+
+     |REFRESCACONTROL enGrid0;
+     |FOCOTECLADO enGrid0;
+|FPRC;
+
+|PROCESO BtnBaj;
+     enEmpresa = #dsm210dp#0;
+     |SUB_EJECUTA "renxz002;BAJA";
+
+     |REFRESCACONTROL enGrid0;
+     |FOCOTECLADO enGrid0;
+|FPRC;
+
+|PROCESO BtnVCA;
+|FPRC;
+
+|PROCESO BtnCMR;
+|FPRC;
+
+|PROCESO BtnEmi;
+|FPRC;
+
+|PROCESO EvtoGrid0;
+|FPRC;
+
+|PROCESO EvtoTree0;
+     |SI FEntrada = 0; |ACABA; |FINSI;
+
+     aAlfa = Contenido;
+     |PULSATECLA;
+
+     enEmpresa = #dsm210dp#0;
+     |SUB_EJECUTA "renxz002;CHEQUEO";
+
+     |REFRESCACONTROL enGrid0;
+
+/*
+     |SI aAlfa = "DATPET";  |HAZ DatosPersonalesT; |FINSI;
+     |SI aAlfa = "DATPEC";  |HAZ DatosPersonalesC; |FINSI;
+     |SI aAlfa = "INMUEB";  |HAZ GestionaInmue;    |FINSI;
+*/
+|FPRC;
+
+|PROCESO PasaMenuArbol;
+     |DBASE aAlfa; |QBF aAlfa;
+
+     aAlfa  = aAlfa + "tmp/";
+     aAlfa1 = aAlfa + "tree" + Usuario + ".tar tree" + Usuario + ".txt";
+     |ATAR aAlfa1, aAlfa;
+
+     aAlfa1 = aAlfa + "tree" + Usuario + ".tar";
+     |COMPRIME aAlfa1;
+
+     eaOrigen = aAlfa + "tree" + Usuario + ".tgz";
+
+     aAlfa1 = aAlfa + "tree" + Usuario + ".tar"; |FBORRA aAlfa1;
+     aAlfa1 = aAlfa + "tree" + Usuario + ".txt"; |FBORRA aAlfa1;
+
+     |PULSATECLA;
+
+     eaDestino = eaUnidadBasico + "/documentos/modelos/tmp/tree" + Usuario + ".tgz";
+     |HAZ EnviaFicheroMD5;
+
+     |FBORRA eaOrigen;
+
+     aAlfa  = eaDestino;
+     aAlfa1 = "tree" + Usuario + ".tgz"; aAlfa1 = aAlfa - aAlfa1;
+     |RDESCOMPRIME aAlfa;
+     |RDETAR aAlfa, aAlfa1;
+
+     aAlfa  = aAlfa1 + "tree" + Usuario + ".tgz"; |RFBORRA aAlfa;
+     aAlfa  = aAlfa1 + "tree" + Usuario + ".tar"; |RFBORRA aAlfa;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |CABEZA "Impuesto sobre la renta de no residentes";
+
+     |HAZ LeeUnidadBasico;
+
+     eaIP = "";
+     |IP_REMOTO eaIP;
+
+     aAlfa = eaUnidadBasico + "/documentos/"; |RMKDIR aAlfa;
+     aAlfa = aAlfa + "/modelos";              |RMKDIR aAlfa;
+     aAlfa = aAlfa + "/tmp";                  |RMKDIR aAlfa;
+
+     eaDestino = eaUnidadBasico + "/documentos/modelos/tmp/tree" + Usuario + ".txt";
+     |DBASE aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + "tmp/"; |MKDIR aAlfa;
+     aAlfa = aAlfa + "tree" + Usuario + ".txt"; eaOrigen = aAlfa;
+     |XABRE "W", aAlfa, nHandle;
+     |SI FSalida ] 0;
+         aAlfa = "1:Datos personales                  "; |XGRABA nHandle, aAlfa;
+         aAlfa = "1,1:Titular               {{DATPET}}"; |XGRABA nHandle, aAlfa;
+         aAlfa = "1,2:Conyuge               {{DATPEC}}"; |XGRABA nHandle, aAlfa;
+         aAlfa = "2:Inmuebles {{INMUEB}}";               |XGRABA nHandle, aAlfa;
+         aAlfa = "3:Modelo 210 {{MOD210}}";              |XGRABA nHandle, aAlfa;
+         aAlfa = "4:Modelo 211 {{MOD211}}";              |XGRABA nHandle, aAlfa;
+         aAlfa = "5:Modelo 213 {{MOD213}}";              |XGRABA nHandle, aAlfa;
+        |XCIERRA nHandle;
+     |FINSI;
+     |HAZ PasaMenuArbol;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{193}}&Alta contribuyente", 2461, 2478, BtnAlt;
+     nBtnAlt = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{199}}&Baja contribuyente", 2480, 2498, BtnBaj;
+     nBtnBaj = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{193}}Valores catastrales por a¤o", 3502, 3525, BtnVCA;
+     nBtnVCA = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{193}}Creaci¢n masiva rentas imputadas", 3527, 3555, BtnCMR;
+     nBtnCMR = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{193}}Emisi¢n masiva", 3557, 3573, BtnEmi;
+     nBtnEmi = FSalida;
+
+     |CONTROL_SIMPLE 0, "LABEL,{{16}}IMPUESTO DE LA RENTA NO RESIDENTES", 0502, 0550, NULL;
+
+     nRango = 4 + 8 + 16 + 32;
+     |LINEAL_SIMPLE #1#dsm210dp, nRango, 0602, 2398, NULL, NULL, EvtoGrid0;
+     enGrid0 = FSalida;
+
+     aAlfa = "TREECTRL, Impuesto de la renta no residentes : Modelos oficiales{{" + eaUnidadBasico + "/documentos/modelos/tmp/tree" + Usuario + ".txt}}";
+     |CONTROL_SIMPLE 0, aAlfa, 2602, 3398, EvtoTree0;
+     nTree0 = FSalida;
+
+     sT_nID   = nTree0;
+     sT_nOper = 2;
+     sT_aData = "1:";
+     |ESPECIFICA "COMMANDCONTROL", sTree;
+
+     |LEE 000#dsm210dp.p;
+     |SI FSalida ! 0;
+         |ESTADO_CONTROL nTree0, "DISABLE";
+     |FINSI;
+
+     |PULSATECLA;
+
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+          FSalida = "::{{001}}Salir," + enGrid0;
+          |LEETECLA aTecla;
+          |SI aTecla = aEsc1; |SAL; |FINSI;
+          |SI aTecla = aEsc2; |SAL; |FINSI;
+          |SI aTecla = aRetu; |SAL; |FINSI;
+     |SIGUE;
+
+     |FIN_CONTROL_WINDOWS nBtnAlt;
+     |FIN_CONTROL_WINDOWS nBtnBaj;
+     |FIN_CONTROL_WINDOWS nBtnVCA;
+     |FIN_CONTROL_WINDOWS nBtnCMR;
+     |FIN_CONTROL_WINDOWS nBtnEmi;
+
+     |FIN_CONTROL_WINDOWS nTree0;
+     |DESTRUYECONTROL enGrid0;
+|FPRO;
+
+|PROCESO T80;  |TIPO 80;
+     |ABRE #dsm210dp;
+     |ABRE #dsm210tr;
+
+     |DBASS aBase;   |QBT aBase;
+     aAlfa = aBase + "basica/def/agimunic.mas";
+     |CARGA_DEF aAlfa, rmunici@;
+
+     aAlfa = aBase + "basica/fich/";
+     |PATH_DAT #rmunici@#aAlfa#;
+     |ABRE #rmunici@;
+
+     aAlfa = aBase + "integral/def/dsam0000.mas";
+     |XABRE "E", aAlfa, 0;
+     |SI FSalida ] 0;
+         aAlfa  = aBase + "integral/def/dsam0101.mas";  |CARGA_DEF aAlfa, repobla@;
+         aAlfa  = aBase + "integral/def/dsam0100.mas";  |CARGA_DEF aAlfa, reprovi@;
+         aAlfa  = aBase + "integral/def/dsam0104.mas";  |CARGA_DEF aAlfa, rpaises@;
+         aAlfa  = aBase + "integral/def/dsam0102.mas";  |CARGA_DEF aAlfa, haciend@;
+
+         aAlfa = aBase + "integral/fich/";
+         enSwCod = 1;
+     |SINO;
+         aAlfa = aBase + "basica/def/agipobla.mas";  |CARGA_DEF aAlfa, repobla@;
+         aAlfa = aBase + "basica/def/agiprovi.mas";  |CARGA_DEF aAlfa, reprovi@;
+         aAlfa = aBase + "basica/def/agim0016.mas";  |CARGA_DEF aAlfa, rpaises@;
+         aAlfa = aBase + "basica/def/agihacie.mas";  |CARGA_DEF aAlfa, haciend@;
+         aAlfa = aBase + "basica/fich/";
+         enSwCod = 2;
+     |FINSI;
+
+     |PATH_DAT #repobla@#aAlfa#;
+     |PATH_DAT #reprovi@#aAlfa#;
+     |PATH_DAT #rpaises@#aAlfa#;
+     |PATH_DAT #haciend@#aAlfa#;
+
+     |ABRE #repobla@;
+     |ABRE #reprovi@;
+     |ABRE #rpaises@;
+     |ABRE #haciend@;
+
+     FSalida = 3599;
+|FPRC;
+
+|PROCESO T90;  |TIPO 90;
+     |CIERRA #haciend@; |DESCARGA_DEF #haciend@;
+     |CIERRA #rpaises@; |DESCARGA_DEF #rpaises@;
+     |CIERRA #reprovi@; |DESCARGA_DEF #reprovi@;
+     |CIERRA #repobla@; |DESCARGA_DEF #repobla@;
+     |CIERRA #rmunici@; |DESCARGA_DEF #rmunici@;
+
+     |CIERRA #dsm210dp; |CIERRA #dsm210tr;
+|FPRC;

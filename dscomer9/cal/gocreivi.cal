@@ -1,0 +1,226 @@
+|FICHEROS;
+   goimpau1;
+|FIN;
+
+
+|VARIABLES;
+  &aNomTempIve = "";
+  i = 0;
+  &nHandleIve = 0;
+  nSw = 0; || Control de interpretacion del registro
+  aValor = "";
+  aTipoRegistro = "";
+  aCodReg = "";
+  nItem = 0;
+  nSubItem = 0;
+  nFraccion = 0;
+  aValorDato = "";
+  nMaxLenDato = 0;
+  nParteDato = 0;
+  nParteResto = 0;
+  aReturn = "";
+  aSalto = "";
+  aTab = "";
+  aTmp = "";
+  aAlfa = "";
+  aBeta = "";
+  aGamma = "";
+  aAntValor = "";
+|FIN;
+
+|PROGRAMA;
+   |CIERRAT #goimpau1;
+   |SI aNomTempIve ! "";
+       |NOME_DAT #goimpau1#aNomTempIve#;
+   |FINSI;
+   |DELINDEX #goimpau1;
+   |ABRE #goimpau1;
+   |HAZ ImportaAuxIve;
+
+   ||CONSULTA_CLAVE #1#goimpau1;
+   |CIERRA #goimpau1;
+|FPRO;
+
+
+
+|RUTINA ImportaAuxIve;
+
+  aReturn = &13;
+  aSalto = &10;
+  aTab = &9;
+  || Saber de cuanto disponemos para el dato ... sino cabe fraccionaremos
+  |CAMPO_ANCHO #goimpau1#5,0,nMaxLenDato;
+  nParteDato = 100 + nMaxLenDato;
+  nParteResto= ((nMaxLenDato+1)*100)+99;
+
+  aTmp = "";
+  aAntValor = "";
+  |ET IveImporta_LEE;
+       || Leer de uno en uno es lento ... pero facil :-) De todos modos los ficheros no
+       || son 'tan' grandes ... y se importa de uno en uno ...
+       || PERO: Anulado una vez comprobado que va mejorado para aprovechar el C/S:
+       || Si leo de uno en uno el trafico C/S es enorme y teniendo en cuenta que
+       || el servidor es rapido lo haremos trabajar a el.
+
+       |SI aTmp = "";
+            |XLEE nHandleIve, 200, aTmp;
+            |SI 1 > FSalida;
+                |ACABA;
+            |FINSI;
+       |FINSI;
+
+       aAntValor = aValor;
+       aValor = aTmp % 101;
+       |SI aTmp = aValor; || Bug: si el substring esta fuera de rango deberia tornar vacio ...
+          aTmp = "";
+       |SINO;
+          aTmp = aTmp % 2;
+       |FINSI;
+
+       |SI aValor = aReturn;|O aValor = aSalto; || Irrelevantes
+           |VETE IveImporta_LEE;
+       |FINSI;
+
+       ||**** Modificacion de Caracteres
+       |SI aValor = "²"; aValor = "2"; |FINSI;
+       |SI aValor = "³"; aValor = "3"; |FINSI;
+       |SI aValor = aTab; aValor = " "; |FINSI;
+       ||****
+
+       |SI aValor = "~";
+           |SI nSw ] 5;
+               |SI aValorDato ! "";
+
+               |FINSI;
+           |FINSI;
+           nSw = 1;
+           |VETE IveImporta_LEE;
+       |FINSI;
+       |SI nSw = 0;
+           |VETE IveImporta_LEE;
+       |FINSI;
+       |SI nSw = 1;
+           nSw = 2;
+           aTipoRegistro = aValor;
+           |VETE IveImporta_LEE;
+       |FINSI;
+       |SI nSw = 2;
+           |SI aValor ! "|";
+              nSw = 0;
+           |SINO;
+              aCodReg = "";
+              |SI aTipoRegistro = "K";|O aTipoRegistro = "V"; || Registros generales
+                 nSw = 4;
+                 aValorDato = "";
+                 nItem = 0;
+                 nSubItem = 0;
+                 nFraccion = 0;
+              |SINO;
+                  nSw = 3;
+              |FINSI;
+           |FINSI;
+           |VETE IveImporta_LEE;
+       |FINSI;
+       |SI nSw = 3; |O nSw = 4;
+           |SI aValor ! "|";
+              aCodReg = aCodReg + aValor;
+           |SINO;
+              |SI nSw = 3;|Y aTipoRegistro = "M"; || Las mediciones incluyen la posicion como clave
+                 aCodReg = aCodReg + aValor;
+                 nSw = 4;
+              |SINO;
+                 |SI aAntValor = "\"
+                     i = (A\ aCodReg % 0) + 99;
+                     aCodReg = aCodReg % i;
+                 |FINSI;
+                 nSw = 5;
+                 aValorDato = "";
+                 nItem = 0;
+                 nSubItem = 0;
+                 nFraccion = 0;
+              |FINSI;
+           |FINSI;
+           |VETE IveImporta_LEE;
+       |FINSI;
+       |SI nSw ] 5;
+           |SI aValor = "|";
+               |SI aAntValor ! "\";|O aValorDato ! "";
+                  |HAZ GrabaDato;
+               |FINSI;
+               nItem = nItem + 1;
+               nSubItem = 0;
+               nFraccion = 0;
+               aValorDato = "";
+               |VETE IveImporta_LEE;
+           |FINSI;
+           |SI aValor = "\";
+               |HAZ GrabaDato;
+               nSubItem = nSubItem + 1;
+               nFraccion = 0;
+               aValorDato = "";
+               |VETE IveImporta_LEE;
+           |FINSI;
+
+           || solo cortamos la descripcion si supera nMaxLenDato y aTipoRegistro = "C";
+           i = (A\ aValorDato % 0) + 1;
+           |SI i ] nMaxLenDato; |Y aTipoRegistro = "C";
+               |VETE IveImporta_LEE;
+           |FINSI;
+
+           aValorDato = aValorDato + aValor;
+           || Determinar incremento fraccion !!!!
+           i = (A\ aValorDato % 0);
+           |SI i ] nMaxLenDato;
+               |SI aTipoRegistro = "T"
+                   aGamma = "";
+                   i = i * 100 + 1;
+                   aBeta = aValorDato % i;
+                   |PARA;|SI aBeta ! " ";|Y i > 101;|HACIENDO i = i - 100;
+                       aBeta = aValorDato % i;
+                       aGamma = aBeta + aGamma;
+                   |SIGUE;
+                   |SI aGamma ! "";
+                       aBeta = aGamma % 101;
+                       |SI aBeta = " ";
+                           aGamma = aGamma % 2;
+                       |FINSI;
+                   |FINSI;
+                   i = 100 + ((i - 1)/100);
+                   aValorDato = aValorDato % i;
+               |FINSI;
+               |HAZ GrabaDato;
+               nFraccion = nFraccion + 1;
+               |SI aTipoRegistro = "T"
+                  aValorDato = aGamma;
+               |SINO;
+                  aValorDato = "";
+               |FINSI;
+           |FINSI;
+           |VETE IveImporta_LEE;
+       |FINSI;
+  |VETE IveImporta_LEE;
+|FRUT;
+
+|RUTINA GrabaDato;
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = aTipoRegistro;
+   |SI aTipoRegistro = "C";
+       aAlfa = aCodReg - "##";
+       |SI aAlfa ! aCodReg;
+           #goimpau1#0 = "C##";
+       |SINO;
+           aAlfa = aCodReg - "#";
+           |SI aAlfa ! aCodReg;
+               #goimpau1#0 = "C#";
+           |FINSI;
+       |FINSI;
+   |FINSI;
+   #goimpau1#1 = aCodReg;
+   #goimpau1#2 = nItem;
+   #goimpau1#3 = nSubItem;
+   #goimpau1#4 = nFraccion;
+   #goimpau1#5 = aValorDato;
+   |GRABA 040#goimpau1.n;
+   || Bueno falta el tratamiento de los registros ~Y| que si pueden duplicar ...
+   || Tanto para este como para las mediciones seguramente es suficiente añadir a nItem
+|FRUT;

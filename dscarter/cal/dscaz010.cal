@@ -1,0 +1,204 @@
+|FICHEROS;
+   dscaz010 #0;
+   dscam051 #1;
+
+   dscam003 #10;
+   &cacuent@;
+|FIN;
+
+|VARIABLES;
+   &HayConta   = 0;
+   &MaxDigit = 0;
+   &efFechaDoc = @;
+   &efFechaUlt = @;
+   &eaCodEnlace = "";
+   &efFecha     = @;
+   &enDocum     = 0;
+   &eaFichClas = "";
+   &eaTipoClas = "";
+
+   &eaResult   = "";
+   aAntClas   = "";
+   aDespClas  = "";
+   nAntTRec   = 0;
+   nSwError   = 0;
+
+   Comodin = "";
+   Parte   = "";
+   Part1   = "";
+   Part2   = "";
+   Parte1  = 0;
+   Parte2  = 0;
+   Long    = 0;
+   LongAlfa = "";
+
+   aAlfa    = "";
+|FIN;
+
+|PROCESO MiraFecha;
+   |SI #dscaz010#1 < efFechaUlt;
+      aAlfa = "    Fecha erronea. Fecha ultimo movimiento del documento : " + efFechaUlt;
+      |MENAV aAlfa; |ERROR;
+   |FINSI;
+   |SI #dscaz010#1 < efFechaDoc;
+      aAlfa = "    Fecha erronea. Fecha del documento : " + efFechaDoc;
+      |MENAV aAlfa; |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraImporte;
+   |SI #dscaz010#3 > 0;
+      |SI #dscaz010#4 > #dscaz010#3;
+         |AVISO;
+         |MENAV "    Importe sobrepasado";
+         |ERROR;
+      |FINSI;
+   |SINO;
+      |SI #dscaz010#4 < #dscaz010#3;
+         |AVISO;
+         |MENAV "    Importe sobrepasado";
+         |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Cuenta1; |TIPO 6;
+   Comodin = #dscaz010#0;
+   Comodin = Comodin - ".";
+   |SI FSalida ! 0;
+      Parte = FSalida;
+      Parte1 = 100 + (((Parte / 100) ! 0) - 1);
+      Parte2 = ((((Parte / 100) ! 0) + 1) * 100) + 99;
+      Part1 = #dscaz010#0 % Parte1;
+      Part2 = #dscaz010#0 % Parte2;
+      |QBF Part2;
+      Comodin = Part1 + Part2;
+      LongAlfa = Comodin % 0;
+      Long = MaxDigit - LongAlfa;
+      LongAlfa = "0" * Long;
+      Comodin = Part1 + LongAlfa + Part2;
+      #dscaz010#0 = Comodin;
+      |PINTA #dscaz010#0;
+   |FINSI;
+|FPRC;
+
+|PROCESO Calculo;
+   |SI #dscam051#31 ! 0;
+      #dscaz010#9 = (#dscaz010#4 % #dscam051#31) - #dscaz010#5;
+      |PINTA #dscaz010#9;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraEmpCont;
+   eaCodEnlace = #dscaz010#10; efFecha = #dscaz010#1;
+   |HAZ ComprEmpContable;
+|FPRC;
+
+|PROCESO AntesTR; |TIPO 7;
+   #dscam003#40 = enDocum;
+   |LEE 000#dscam003.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam003; |FINSI;
+
+   eaFichClas = "dscam003"; eaTipoClas = #dscam003#12; |HAZ CompruebaClas;
+   aAntClas = eaTipoClas; nAntTRec = #dscam003#12;
+|FPRC;
+
+|PROCESO DespuesTR;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |SI #dscaz010#7 = Contenido; eaResult = ""; |ACABA; |FINSI;
+
+   #dscam003#40 = enDocum;
+   |LEE 000#dscam003.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam003; |FINSI;
+
+   eaFichClas = "dscam003"; eaTipoClas = #dscaz010#7; |HAZ CompruebaClas;
+   aDespClas = eaTipoClas;
+   |SI aAntClas = aDespClas; |O eaFichClas = ""; |ACABA; |FINSI;
+
+   nSwError = 1;
+
+   |SI aAntClas = "C";
+      |SI aDespClas = "R"; |O aDespClas = "F"; |O aDespClas = "P";
+       |O aDespClas = "A"; |O aDespClas = "O";
+         nSwError = 0;
+      |FINSI;
+   |FINSI;
+   |SI aAntClas = "F";
+      |SI aDespClas = "C"; |O aDespClas = "P"; |O aDespClas = "A";
+         |O aDespClas = "R";
+         |SI #dscam003#90 = "N"; nSwError = 0; |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI aAntClas = "R";
+      |SI aDespClas = "C"; |O aDespClas = "P"; |O aDespClas = "A";
+         |O aDespClas = "F";
+         |SI #dscam003#90 = "N"; nSwError = 0; |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI aAntClas = "P";
+      |SI aDespClas = "C"; |O aDespClas = "R"; |O aDespClas = "F";
+       |O aDespClas = "O"; |O aDespClas = "A";
+         |SI #dscam003#14 = "I";
+            nSwError = 0;
+         |SINO;
+            |SI #dscam003#70 = "          "; |Y #dscam003#72 = "    ";
+               nSwError = 0;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI aAntClas = "A";
+      |SI aDespClas = "C"; |O aDespClas = "R"; |O aDespClas = "F";
+       |O aDespClas = "O"; |O aDespClas = "P";
+         |SI #dscam003#29 = "N"; nSwError = 0; |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI aAntClas = "O";
+      |SI aDespClas = "C"; |O aDespClas = "R"; |O aDespClas = "F";
+       |O aDespClas = "A"; |O aDespClas = "P";
+         |SI #dscam003#97 = "N"; nSwError = 0; |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwError ! 0;
+      |MENAV "    No es posible el cambio de tipo de recibo";
+      |ERROR;
+      #dscaz010#7 = nAntTRec;
+   |SINO;
+      eaResult = aDespClas;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraParam; |TIPO 7;
+   |ABRE #dscam051;
+   |LEE 000#dscam051.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam051;
+      |GRABA 020#dscam051.n;
+      |LEE 000#dscam051.p;
+   |FINSI;
+   |CIERRA #dscam051;
+
+   |SI #dscam051#1 = "S";
+      Comodin = #dscam051#61;
+      |C_M #dscaz010#10,1,Comodin;
+   |SINO;
+      |C_M #dscaz010#10,1,"N";
+   |FINSI;
+|FPRC;
+
+
+|PROCESO ConsultaCuenta1; |TIPO 66;
+     |SI HayConta = 0; |ACABA; |FINSI;
+     |HAZ Cuenta1;
+
+     #cacuent@#0 = #dscaz010#0;
+     |LEE 000#cacuent@.];
+
+     |CONSULTA_CLAVE #1#cacuent@;
+     |SI FSalida = 0;
+           #dscaz010#0 = #cacuent@#0; |PINTA #dscaz010#0;
+     |SINO;
+          |ERROR;
+     |FINSI;
+|FPRC;

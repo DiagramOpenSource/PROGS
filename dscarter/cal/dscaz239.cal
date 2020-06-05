@@ -1,0 +1,166 @@
+|FICHEROS;
+     dscaz239 #0;
+     dscam008 #8;
+     dscam049 #49;
+     dscam050 #50;
+     dscam053 #53;
+     dsm00225@ #100;
+     caclipro@ #101;
+     dsam0104@ #102;
+|FIN;
+
+|VARIABLES;
+     aPrv = "";
+     aAlfa = "";
+     nSalGes = -1;
+     nSalConta = -1;
+     nSalIntegral = -1;
+     aPath = "";
+     aEmp = "";
+     &eaPais = "";
+     &eaAlfa = "";
+     &enTotal = 0;
+|FIN;
+
+|PROCESO dscam050;
+     #8#40 = #50#13;
+     |LEE 020#8=;
+
+     |SI #8#46 = 0; || No es de gestion
+          |SI nSalConta = 0;
+               #caclipro@#23 = "P";
+               #caclipro@#10 = #8#5;
+               |LEE 020#caclipro@.=;
+
+               || solo los campos que se imprimen
+               #53#1 = #caclipro@#1;    ||N.Fiscal
+               #53#101 = #caclipro@#44; ||Dir envio
+               #53#107 = #caclipro@#50; ||Cp
+               #53#105 = #caclipro@#48; ||Pobla
+               #53#104 = #caclipro@#47; ||Prov
+          |SINO;
+               |DDEFECTO #53;
+          |FINSI;
+     |SINO;
+          #53#0 = #8#32;
+          |LEE 020#53=;
+     |FINSI;
+
+     aAlfa = #8#5 + #8#32;
+     |SI aPrv ! aAlfa; |Y aPrv ! "";
+          |PIEINF;
+          enTotal = 0;
+     |FINSI;
+     aPrv = aAlfa;
+
+     |SI nSalGes = 0; |Y #8#46 ! 0;
+          #dsm00225@#0 = #53#89;
+          |LEE 000#dsm00225@.=;
+          |SI FSalida ! 0; |DDEFECTO #dsm00225@; |FINSI;
+          eaPais = #dsm00225@#1; |QBF eaPais;
+     |FINSI;
+     |SI nSalConta = 0; |Y nSalIntegral = 0; |Y #8#46 = 0;
+          #dsam0104@#0 = #caclipro@#24;
+          |LEE 000#dsam0104@.=;
+          |SI FSalida ! 0; |DDEFECTO #dsam0104@; |FINSI;
+          eaPais = #dsam0104@#1; |QBF eaPais;
+     |FINSI;
+
+     |SI eaPais = "";
+          eaPais = "ESPAÑA";
+     |FINSI;
+     eaAlfa = eaPais; |HAZ QuitaRarosExp; eaPais = eaAlfa;
+
+     enTotal = enTotal + #50#7;
+
+     |PRINT;
+|FPRC;
+
+|PROCESO Recibo;
+     #8#40 = #50#13;
+     |LEE 020#8=;
+|FPRC;
+
+|DEFBUCLE dscam050;
+     #50#1;
+     ;
+     #49#0, 001;
+     #49#0, 999;
+     ;
+     NULL, Recibo, NULL, NULL, NULL, dscam050;
+     #8#5, #8#32;
+|FIN;
+
+|PROCESO T3; |TIPO 3;
+     aPath = #48#17; |QBF aPath;
+     |SI aPath ! "";
+          aEmp = ("00000" + #48#15) % -105;
+          aAlfa = aPath + "def/dsm00225.mas";
+          |CARGA_DEF aAlfa, dsm00225@;
+          nSalGes = FSalida;
+          |SI nSalGes = 0;
+               aAlfa = aPath + "fich/" + aEmp + "/";
+               |PATH_DAT #dsm00225@#aAlfa#;
+               |ABRE #dsm00225@;
+          |FINSI;
+     |FINSI;
+
+     aPath = #48#16; |QBF aPath;
+     |SI aPath ! "";
+          aEmp = ("00000" + #48#14) % -105;
+          aEmp = aEmp + #48#19;
+          aAlfa = aPath + "def/caclipro.mas";
+          |CARGA_DEF aAlfa, caclipro@;
+          nSalConta = FSalida;
+          |SI FSalida = 0;
+               aAlfa = aPath + "fich/" + aEmp + "/";
+               |PATH_DAT #caclipro@#aAlfa#;
+               |ABRE #caclipro@;
+          |FINSI;
+
+          aPath = aPath - "contagen/";
+          aPath = aPath + "integral/";
+          aAlfa = aPath + "def/dsam0104.mas";
+          |CARGA_DEF aAlfa, dsam0104@;
+          nSalIntegral = FSalida;
+          |SI FSalida = 0;
+               aAlfa = aPath + "fich/";
+               |PATH_DAT #dsam0104@#aAlfa#;
+               |ABRE #dsam0104@;
+          |FINSI;
+     |FINSI;
+
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR "dscaz239";
+          |SI FSalida = 0;
+               |ABRE #8;
+               |ABRE #53;
+               |ABRE #49;
+               #49#0 = #0#0;
+               |LEE 020#49=;
+               |SI FSalida = 0;
+                    |BUCLE dscam050;
+               |FINSI;
+               |CIERRA #49;
+               |CIERRA #53;
+               |CIERRA #8;
+               |PIEINF;
+               |FININF;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+
+     |SI nSalIntegral = 0;
+          |CIERRA #dsam0104@;
+          |DESCARGA_DEF #dsam0104@;
+     |FINSI;
+     |SI nSalConta = 0;
+          |CIERRA #caclipro@;
+          |DESCARGA_DEF #caclipro@;
+     |FINSI;
+     |SI nSalGes = 0;
+          |CIERRA #dsm00225@;
+          |DESCARGA_DEF #dsm00225@;
+     |FINSI;
+|FPRC;

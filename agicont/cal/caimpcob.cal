@@ -1,0 +1,181 @@
+|FICHEROS;
+    caimpcob #0;
+    camancob #1;
+    caclipro #2;
+    caprovin #3;
+    camanban #4;
+    caremesc #5;
+    caremesl #6;
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    FEstado = 0;
+    seleccio = 0;
+    &fec_emi = "";
+    &fec_ven = "";
+    &pro_cli = "";
+    &pro_ban = "";
+    no_esta = 0;
+    sw_ar = 0;
+    guar1 = "";
+    guar2 = "";
+    guar3 = "";
+    guar4 = "";
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE puntos_i;
+
+|PROCESO mayus;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+_____________________________________________________________________________
+|PROCESO cuenta; |TIPO 0;               || CALCULOS DESDE CAMPOS
+    p_alfa1 = #0Campo;
+     salidas = FSalida;
+|HAZ punto;
+|SI p_error ! 0;  |ERROR;  |FINSI;
+|FPRC;
+_____________________________________________________________________________
+|PROCESO fechas;                        || CALCULOS AUXILIARES DE DETALLE
+    fech1 = #1#6 % 2;
+    alfa1 = fech1;
+    fec_emi = alfa1 % 11;     || fecha emision
+
+    fech1 = #1#7 % 2;
+    alfa1 = fech1;
+    fec_ven = alfa1 % 11;     || fecha vencimiento
+|FPRC;
+
+|PROCESO cliente;
+  |DDEFECTO #2;
+  |ABRE #2;
+  #2#23 = "C";
+  #2#10 = #1#4;   || cuenta
+  #2#11 = #1#5;   || digito
+  |LEE 001#2=;
+  |CIERRA #2;
+|FPRC;
+
+|PROCESO provincia;
+|ABRE #3;
+|DDEFECTO #3;
+    #3#0 = #2#3;
+|LEE 001#3=;
+    pro_cli = #3#1;                || provincia cliente
+
+|DDEFECTO #3;
+    #3#0 = #2#15;
+|LEE 001#3=;
+    pro_ban = #3#1;                || provincia banco
+|CIERRA #3;
+|FPRC;
+
+|PROCESO busca_cobro1;
+|ABRE #5;
+|DDEFECTO #5;
+    #5#0 = #6#0;         || lee cabecera de remesas para el cod. de banco
+|LEE 001#5=;
+|CIERRA #5;
+    no_esta = 0;
+|ERROR10;
+|FPRC;
+
+|DEFBUCLE busca_cobro;
+ #6#1;
+ 2, 3, 4, 5;
+     1,   1, #1#0, #1#1, #1#2, #1#3;
+ 99999, 999, #1#0, #1#1, #1#2, #1#3;
+ e;
+ NULL, busca_cobro1;
+|FIN;
+
+|PROCESO banco;
+    no_esta = 1;
+|BUCLE busca_cobro;
+|DDEFECTO #4;
+|SI no_esta = 0;
+    |ABRE #4;
+        #4#0 = #5#2;
+    |LEE 001#4=;
+    |CIERRA #4;
+|SINO;
+        alfa1 = "    ATENCION!!! Cobro " + #1#0 + #1#1 + #1#2 + #1#3 + " NO remesado ...";
+    |MENAV alfa1;
+|FINSI;
+
+    sw_ar = 0;
+    alfa1 = #1#15;
+|QBF alfa1;
+|SI alfa1 = "SIN BANCO"; || para ARTENVAS, pone los datos del
+        sw_ar = 1;       || /cliente cuando es 'SIN BANCO'
+
+        guar1 = #1#15;
+        guar2 = #1#17;        || las guarda para reponerlas luego
+        guar3 = #1#18;
+        guar4 = #1#21;
+
+        #1#15 = #2#2;         || direccion
+        #1#17 = #2#3;         || cod.1
+        #1#18 = #2#4;         || cod.2
+        #1#21 = #2#6;         || poblacion
+|FINSI;
+|FPRC;
+_____________________________________________________________________________
+|PROCESO lee_cobros1;                   || LECTURA E IMPRESION DE COBROS
+    seleccio = 1;
+|HAZ fechas;
+|HAZ cliente;
+|HAZ provincia;
+|HAZ banco;
+|INFOR "caimpcob";
+|PRINT;
+|PIEINF;
+|FININF;
+    #1#13 = "S";
+|SI sw_ar = 1;
+        #1#15 = guar1;
+        #1#17 = guar2;        || repone valores alterados en 'SIN BANCO'
+        #1#18 = guar3;
+        #1#21 = guar4;
+|FINSI;
+|GRABA 020#1a;
+|LIBERA #1;
+|FPRC;
+
+|DEFBUCLE lee_cobros;
+ #1#1;
+ 4, 11, 12, 13;
+ #0#0, "  ", #0#2, #0#4, #0#11, #0#6, #0#8, #0#10;
+ #0#1, "zz", #0#3, #0#5, #0#12, #0#7, #0#9, #0#10;
+ be;
+ NULL, NULL, NULL, NULL, NULL, lee_cobros1;
+ #1#12, #1#7, #1#0, #1#1, #1#2, #1#3;
+|FIN;
+
+|PROCESO impresion; |TIPO 3;
+|IMPRE 0;
+|SI FSalida = 0;
+    |BUCLE lee_cobros;
+    |SI seleccio = 0;
+        |MENAV "    ATENCION!!! Seleccion vacia ...";
+    |FINSI;
+|SINO;
+    |MENAV "    Proceso Abortado ...";
+|FINSI;
+|FINIMP;
+|FPRC;

@@ -1,0 +1,261 @@
+|FICHEROS;
+   dsmoz054 #0;
+   dsmom044 #44,MANTE;
+
+   dsmom041 #41;
+   dsmom042 #42;
+   dsmow123 #123;
+
+   :/contagen/def/cacuenta #300;
+   :/contagen/def/cacuebal #305;
+   :/contagen/def/caparbal #306;
+   :/contagen/def/caparexp #307;
+   :/contagen/def/caagrupa #308;
+   :/contagen/def/caepigra #309;
+   :/contagen/def/cafanta1 #310;
+   :/contagen/def/caclipro #311;
+   :/contagen/def/camoauxc #312;
+
+   :/basica/def/agicen14 #114;
+   :/basica/def/agifigen #1000;
+|FIN;
+
+|VARIABLES;
+  &enAny    = 0;
+  inkey     = 0;
+  &errconta = 0;
+  &entrada  = 1;
+  alfa1     = "";
+  alfa2     = "";
+  alfa3     = "";
+  &aParam   = "";
+  &enDiaCon = 0;
+  &efFecCon = @;
+  &enDocCon = 0;
+  aFichero  = "";
+   nSwFec = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;  || Variables de Contabilidad
+|INCLUYE i_numamo;  || Variables de Contabilidad
+
+
+**************************************************************************
+LLAMADAS DESDE Amortizaciones Cabecera
+**************************************************************************
+|PROCESO ElProvisional;
+
+  |SI #44#9 [ "            "; |O #44#10 [ "01.01.1900";
+      |ACABA;
+  |FINSI;
+
+  aFichero = ("3w" + Usuario) % 108;
+  |NOME_DAT #123 aFichero;
+  |ABRE #123;  |CIERRA #123;  |DELINDEX #123;
+  eaFAsiento = aFichero;
+
+  |ABRE #123;
+  |DDEFECTO #123;
+  #123#0 = enEmpresa;
+  #123#1 = enPerConta;
+  #123#2 = 1;
+  #123#3 = #44#12;
+  #123#4 = #44#13;
+  #123#5 = 1;
+  #123#6  = #44#5;   || Cuenta Contable
+  #123#7  = #44#6;   || digito control
+  #123#8  = #0#5;    || concepto
+  #123#9  = #0#4;    || Descripcion
+  #123#10 = "D";     || Signo
+  #123#11 = #44#8;  || Importe
+  #123#12 = #44#1;
+  |GRABA 020#123n;
+  #123#2  = 2;
+  #123#5  = 11;      || apunte cuenta nueva al Haber
+  #123#6  = #44#9;   || Cuenta Contable
+  #123#7  = enNivel;
+  #123#10 = "H";     || Signo
+  |GRABA 020#123n;
+  |CIERRA #123;
+
+  enDocCon = -1;  || uno nuevo
+  enDiaCon = #44#12;
+  efFecCon = #44#13;
+  |SUB_EJECUTA_NP ":modelos/dsmoz034";
+
+  |DELINDEX #123;
+|FPRC;
+
+|| ***********************************************************************
+|CALCULO MiroFecha;
+   nSwFec = 0;
+   |SI #44Campo [ fec3;
+       |MENAV "    ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+       nSwFec = 1;
+   |FINSI;
+|FCAL;
+
+
+|CALCULO numamo_m44; |TIPO 6;
+   x_entra = entrada;
+   x_alfa1 = #44Campo;
+  |QBF x_alfa1; |SI x_alfa1 = ""; |ERROR; |ACABA; |FINSI;
+
+   x_alfa1 = #44Campo;
+   |HAZ x_punto;
+   #44Campo = x_alfa1;
+   |PINTA #44Campo;
+|FCAL;
+
+|| ///////////////////////////
+|PROCESO NoEnCurso;
+ |ENCAMPO #5#44;
+|FPRC;
+
+|PROCESO SiEnCurso;
+ |ENCAMPO #9#44;
+
+ |ET otravez;
+ nSwFec = 0;
+ |ENCAMPO #10#44;
+ |SI nSwFec = 1; |VETE otravez; |FINSI;
+
+ |ENCAMPO #12#44;
+ #44#13 = #44#10;
+|FPRC;
+
+|PROCESO NoEnCursoBaja;
+ #44#5= ""; |PINTA #44#5;
+|FPRC;
+
+|PROCESO SiEnCursoBaja;
+ #44#9  = "";           |PINTA #44#9;
+ #44#10 = "01.01.0000"; |PINTA #44#10;
+|FPRC;
+
+|| ++++++++++++++++++++++++++++++++++++++++++
+
+|CALCULO Tipo11m44; |TIPO 11;
+  inkey = FSalida;
+
+  |SI inkey = 10; |O inkey = 11;
+
+      |LEE 101#44=;
+      |SI inkey = 10;
+          |SI aParam = "N";
+              |HAZ NoEnCursoBaja;
+          |SINO;
+              |HAZ SiEnCursoBaja;
+          |FINSI;
+          |GRABA 020#44a;
+      |FINSI;
+
+      |SI inkey = 11;
+          |SI aParam = "N";
+              efFechaSit = #44#13;
+              |HAZ EntraAlaLinea
+              enDiaCon = #44#12;
+              efFecCon = #44#13;
+              enDocCon = #44#14;
+              |SUB_EJECUTA_NP ":modelos/dsmoz034";
+          |SINO;
+              |HAZ ElProvisional;
+          |FINSI;
+          |ERROR;
+      |FINSI;
+ |FINSI;
+|FCAL;
+
+|CALCULO Tipo0m44; |TIPO 0;
+      |LEE 101#44=;
+      |SI aParam = "N";
+          |HAZ NoEnCurso;
+      |SINO;
+          |HAZ SiEnCurso;
+      |FINSI;
+      |GRABA 020#44a;
+|FCAL;
+
+
+|CALCULO cuenta1; |TIPO 6;   || Desde Campo Cuenta
+     emCta = 1;        || Dar mensajes de error
+
+     eaCuenta = #44Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #44Campo = eaCuenta;
+     |PINTA #44Campo;
+|FCAL;
+
+|CALCULO refresca1; |TIPO 0;
+   emCta = 0;        || Dar mensajes de error
+   eaCuenta = #44Campo;
+   |HAZ LeeCuenta;
+   |SI eswCta = 1;
+        |ERROR;
+        |CONFI "    SError.! No existe Cuenta. Desea darla de alta ";
+        |SI FSalida = 0;
+            |SUB_EJECUTA_NP "dsmoz030";
+            #44Campo = eaCuenta;
+            |PINTA #44Campo;
+        |FINSI;
+   |SINO;
+        |SI eswCta = 2;
+            |MENAV "0000Esta Cuenta NO tiene Pase Directo.";
+            |ERROR;
+        |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO comp;
+   alfa3 = #44#1; |QBF alfa3;
+   alfa3 = ("00" + alfa3) % -102;
+   |ABRE #camoauxc;
+   #camoauxc#0 = #44#9;
+   #camoauxc#6 = alfa3;
+   |LEE 001#camoauxc.=;
+   |SI FSalida = 0;
+      |MENAV "0000Esta Cuenta YA existe en el Desglose";
+      |ERROR;
+   |FINSI;
+   |CIERRA #camoauxc;
+|FCAL;
+
+|| **********************************************************************
+
+|PROCESO EntraAlaLinea;  |TIPO 5;
+  enPerConta = -1;
+  enEjer     = enAny;
+  enSwSinMen = 1;
+  |HAZ SituaContagen;
+  |SI swerror = 1;
+     |HAZ SituaMaestra;
+     |SI swerror = 1;
+          errconta = 1;
+          |PTEC 807;
+          |ACABA;
+     |FINSI;
+  |FINSI;
+  || Lee Empresa
+    |ABRE #1000;
+    #1000#0 = enEmpresa;
+    |LEE 041#1000=;
+    |SI FSalida ! 0;
+        |MENAV "     Empresa Inexistente";
+        |CIERRA #1000;
+        |ACABA;
+    |FINSI;
+    |CIERRA #1000;
+
+    |PATH_DAT #300 #aPathConta#; |PATH_PAN #300 #aPathPanConta#;
+    |PATH_DAT #305 #aPathConta#; |PATH_PAN #305 #aPathPanConta#;
+    |PATH_DAT #306 #aPathConta#; |PATH_PAN #306 #aPathPanConta#;
+    |PATH_DAT #307 #aPathConta#; |PATH_PAN #307 #aPathPanConta#;
+    |PATH_DAT #308 #aPathConta#; |PATH_PAN #308 #aPathPanConta#;
+    |PATH_DAT #309 #aPathConta#; |PATH_PAN #309 #aPathPanConta#;
+    |PATH_DAT #310 #aPathConta#; |PATH_PAN #310 #aPathPanConta#;
+    |PATH_DAT #311 #aPathConta#; |PATH_PAN #311 #aPathPanConta#;
+    |PATH_DAT #312 #aPathConta#; |PATH_PAN #312 #aPathPanConta#;
+|FPRC;
+|| ***************************************************************************

@@ -1,0 +1,331 @@
+|FICHEROS;
+     albz0027 #0;
+
+     albm0046 #46;       ||Art./Alm./PartidaCAB
+     albm0047 #47;       ||Art./Alm./PartidaLIN
+     agifa019 #19;       ||Articulos
+     agifa017 #17;       ||Articulo/Almacen
+
+     dsm00056 #56;       ||Entrada Valorada (C)
+     dsm00057 #57;       ||Entrada Valorada (L)
+|FIN;
+
+|VARIABLES;
+     &enNoModCab = 0;
+     nSwPrimera = 0;     ||Meto todos lo movimientos en el mismo Moviento R/XXXXXX
+     nLinea = 0;
+     &enForma  = 0;
+     &enCodigo = 0;
+     &eaDocExt = "";
+     &eaSerExt = "";
+     &enNumExt = 0;
+
+
+     nSwEntrada = 0;          ||Indica si es una Entrada (1) o Salida (0)
+     nDocum = 0;
+     aValor = "";
+     aAlmacen = "";
+
+     aMovimiento = "";
+     aPartida = "";
+     nExiste = 0;
+     aMensaje = "";
+     aRespuesta = "";
+     aParDesde = "";
+
+     nEntrada1 = 0;           ||Diferencias entre CAB - LIN
+     nEntrada2 = 0;
+     nSalida1 = 0;
+     nSalida2 = 0;
+
+     nCabEnt1 = 0;            ||Valores CABECERA
+     nCabEnt2 = 0;
+     nCabSal1 = 0;
+     nCabSal2 = 0;
+
+     nLinEnt1 = 0;            ||Valores LINEAS
+     nLinEnt2 = 0;
+     nLinSal1 = 0;
+     nLinSal2 = 0;
+
+     aSerieEV = "";
+     aArticulo = "";
+     aLinea = "";
+|FIN;
+
+|PROGRAMA;
+     aSerieEV = "R    ";
+     |CLS;
+     |ABRE #0;
+     |DDEFECTO #0;
+     |LEE 101#0p;
+     nExiste = FSalida;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          aRespuesta = #albz0027#7;
+          #albz0027#7 = "NO";
+          |SI nExiste = 0;
+               |GRABA 020#0a;
+          |SINO;
+               |GRABA 020#0n;
+          |FINSI;
+          |SI aRespuesta = "SI";
+               |HAZ Principal;
+          |FINSI;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+|FPRO;
+
+|PROCESO albm0047;
+     |SI #albm0047#8 > 0; |Y #albm0047#9 < 0;
+          aMovimiento = #albm0047#7;
+          |QBF aMovimiento;
+          |SI aMovimiento = "ENTRADA"; |O aMovimiento = "SALIDA";
+               |SI aMovimiento = "SALIDA";
+                    nLinSal1 = nLinSal1 + (#albm0047#8 * -1);
+                    nLinSal2 = nLinSal2 + (#albm0047#9 * -1);
+               |SINO;
+                    nLinEnt1 = nLinEnt1 + (#albm0047#8 * -1);
+                    nLinEnt2 = nLinEnt2 + (#albm0047#9 * -1);
+               |FINSI;
+          |SINO;
+               |HAZ AcumulaLin;
+          |FINSI;
+     |SINO;
+          |SI #albm0047#8 < 0; |Y #albm0047#9 > 0;
+               aMovimiento = #albm0047#7;
+               |QBF aMovimiento;
+               |SI aMovimiento = "ENTRADA"; |O aMovimiento = "SALIDA";
+                    |SI aMovimiento = "SALIDA";
+                         nLinSal1 = nLinSal1 + (#albm0047#8 * -1);
+                         nLinSal2 = nLinSal2 + (#albm0047#9 * -1);
+                    |SINO;
+                         nLinEnt1 = nLinEnt1 + (#albm0047#8 * -1);
+                         nLinEnt2 = nLinEnt2 + (#albm0047#9 * -1);
+                    |FINSI;
+               |SINO;
+                    |HAZ AcumulaLin;
+               |FINSI;
+          |SINO;
+               |HAZ AcumulaLin;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO AcumulaLin;
+     |SI #albm0047#8 ] 0;
+          nLinEnt1 = nLinEnt1 + #albm0047#8;
+     |SINO;
+          nLinSal1 = nLinSal1 + (#albm0047#8 * -1);
+     |FINSI;
+     |SI #albm0047#9 ] 0;
+          nLinEnt2 = nLinEnt2 + #albm0047#9;
+     |SINO;
+          nLinSal2 = nLinSal2 + (#albm0047#9 * -1);
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albm0047;
+ #albm0047#1;
+ ;
+ #albm0046#1, #albm0046#2, 001;
+ #albm0046#1, #albm0046#2, 999;
+ ;
+ NULL, albm0047;
+|FIN;
+
+|PROCESO MiraLineas;
+     nEntrada1 = 0;
+     nEntrada2 = 0;
+     nSalida1 = 0;
+     nSalida2 = 0;
+
+     nCabEnt1 = #albm0046#9;
+     nCabEnt2 = #albm0046#10;
+     nCabSal1 = #albm0046#11;
+     nCabSal2 = #albm0046#12;
+
+     nLinEnt1 = 0;
+     nLinEnt2 = 0;
+     nLinSal1 = 0;
+     nLinSal2 = 0;
+     |BUCLE albm0047;
+
+     aPartida = #albm0046#2;
+     nEntrada1 = nCabEnt1 - nLinEnt1;
+     nEntrada1 = nEntrada1 ! 2;              ||Para evitar el "-0" en una resta
+     nEntrada2 = nCabEnt2 - nLinEnt2;
+     nEntrada2 = nEntrada2 ! 2;
+     nSalida1 = nCabSal1 - nLinSal1;
+     nSalida1 = nSalida1 ! 2;
+     nSalida2 = nCabSal2 - nLinSal2;
+     nSalida2 = nSalida2 ! 2;
+     |SI nEntrada1 = nSalida1; |Y nEntrada2 = nSalida2;
+          |ACABA;        ||Es correcto
+     |SINO;
+          |SI nEntrada1 ! 0; |O nEntrada2 ! 0;
+               |HAZ StockValoradoE;
+          |FINSI;
+          |SI nSalida1 ! 0; |O nSalida2 ! 0;
+               |HAZ StockValoradoS;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO albm0046;
+     aArticulo = #albm0046#0;
+     |QBF aArticulo;
+     |SI aArticulo ! "";
+          |DDEFECTO #agifa019;
+          #agifa019#0 = #albm0046#0;
+          |LEE 000#agifa019.=;
+
+          aLinea = #agifa019#125;
+          |SI aLinea = #albz0027#6;
+               |HAZ MiraLineas;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albm0046;
+ #albm0046#1;
+ ;
+ #albz0027#1, #albz0027#4;
+ #albz0027#1, #albz0027#5;
+ ;
+ NULL, albm0046;
+|FIN;
+
+|PROCESO Principal;
+     aAlmacen = #albz0027#1;
+     nSwPrimera = 1;
+     |ABRE #agifa019;
+     |BUCLE albm0046;
+     |CIERRA #agifa019;
+|FPRC;
+
+|PROCESO StockValoradoS;
+     |SI nSalida1 < 0; |O nSalida2 < 0;
+          aMensaje = "0000 Revise las Salidas de la Partida: " + aAlmacen + "/" + aPartida + &10 + " Descuadres : " + nSalida1 + " | " + nSalida2;
+          |MENAV aMensaje;
+     |SINO;
+          nSwEntrada = 0;
+          |HAZ Regularizacion;
+     |FINSI;
+|FPRC;
+
+|PROCESO StockValoradoE;
+     |SI nEntrada1 < 0; |O nEntrada2 < 0;
+          aMensaje = "0000 Revise las Entradas de la Partida: " + aAlmacen + "/" + aPartida + &10 + " Descuadres: " + nEntrada1 + " | " + nEntrada2;
+          |MENAV aMensaje;
+     |SINO;
+          nSwEntrada = 1;
+          |HAZ Regularizacion;
+     |FINSI;
+     ||Mete Una Entrada/Salida de Stock Valorado de la serie R.
+|FPRC;
+
+|PROCESO Hasta; |TIPO 0;
+     aParDesde = #albz0027#4;
+     |QBF aParDesde;
+     |SI aParDesde ! "";
+          #albz0027#5 = #albz0027#4;
+          |PINTA #albz0027#5;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO Regularizacion;
+|| Entrada del producto terminado
+
+
+
+   |ABRE #dsm00056;
+   |ABRE #dsm00057;
+
+   |SI nSwPrimera = 1;
+          nSwPrimera = 0;
+
+          nDocum = 0;
+          |DDEFECTO #dsm00056;
+          #dsm00056#2 = aSerieEV;
+          #dsm00056#0 = 999999;
+          |LEE 000#dsm00056.];
+          |SI FSalida = 0;
+             |LEE 000#dsm00056.a;
+             |SI FSalida = 0;
+                |SI #dsm00056#2 = aSerieEV;
+                   nDocum = #dsm00056#0 + 1;
+                |SINO;
+                   nDocum = 1;
+                |FINSI;
+             |SINO;
+                nDocum = 1;
+             |FINSI;
+          |SINO;
+             |LEE 000#dsm00056.u;
+             |SI FSalida = 0;
+                |SI #dsm00056#2 = aSerieEV;
+                   nDocum = #dsm00056#0 + 1;
+                |SINO;
+                   nDocum = 1;
+                |FINSI;
+             |SINO;
+                nDocum = 1;
+             |FINSI;
+          |FINSI;
+          |DDEFECTO #dsm00056;
+          #dsm00056#0 = nDocum;
+          #dsm00056#1 = "31.12.2004";
+          #dsm00056#2 = aSerieEV;
+          |GRABA 020#dsm00056.n;
+          nLinea = 1;
+   |FINSI;
+
+
+   |ABRE #agifa017;
+   #agifa017#0 = #albm0046#0;
+   #agifa017#1 = #albm0046#1;
+   |LEE 101#agifa017.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa017; |FINSI;
+   |CIERRA #agifa017;
+
+
+   |DDEFECTO #dsm00057;
+   #dsm00057#0  = #albm0046#0;
+   #dsm00057#1  = #albm0046#1;
+   #dsm00057#2  = #agifa019#1;
+   #dsm00057#3  = #agifa017#39;
+   |SI nSwEntrada = 1;
+        #dsm00057#4  = nEntrada1;
+        #dsm00057#21 = nEntrada2;           ||Unidades 2.
+   |SINO;
+        #dsm00057#4  = (nSalida1 * -1);
+        #dsm00057#21 = (nSalida2 * -1);     ||Unidades 2.
+   |FINSI;
+   #dsm00057#5  = #albm0046#3;
+   #dsm00057#6  = 0;
+   #dsm00057#11 = 0;
+   #dsm00057#12 = "31.12.2004";
+   #dsm00057#13 = #agifa019#104;
+   #dsm00057#14 = nLinea; nLinea = nLinea + 1;
+   #dsm00057#18 = "EUR";
+   #dsm00057#19 = 0;
+   #dsm00057#22 = #albm0046#2;
+   #dsm00057#27 = nDocum;
+   #dsm00057#28 = aSerieEV;
+
+   enNoModCab = 1;
+   enForma = 1; enCodigo = nDocum;
+   |HAZ AcumulaEV;
+   enNoModCab = 0;
+
+   #dsm00057#3  = #agifa017#39;
+   #dsm00057#13 = #agifa017#5;
+   |GRABA 020#dsm00057.n;
+
+   |CIERRA #dsm00056; |CIERRA #dsm00057;
+|FPRC;

@@ -1,0 +1,340 @@
+|FICHEROS;
+  frigw001 #0;    || Pantalla importacion
+
+  impfich  #1;    || Fichero de control path
+
+  encopcbo #2;    || fichero de apuntes enlace gestion
+
+  caivarep #5;    || iva Repercutido, Ventas
+  caivasop #6;    || Iva soportado compras
+  calibros #8;    || libros de iva
+
+  encorec  #12;   || Fichero de Cobros Enlace Gesion
+  imptmp1  #18;   || temporal nuevos numeros de IVA
+||  contabi0 #50;   || formato importacion indexado
+
+  caivaasi #200;  || Control de Iva y Asientos.
+|FIN;
+
+|VARIABLES;
+    nNum = 0;
+    aAlfa1 = "";
+    aSigno = "";
+    nDebe  = 0;
+    nHaber = 0;
+    nImporte = 0;
+
+     aDocu = "";
+{100}C = "";
+     nDocumento = 0;
+     nLinea = 0;
+     nDiario = 0;
+     fFecha = @;
+     aAlfa = "";
+     aReg1 = "";
+     aReg2 = "";
+     aFic = "";
+     nHandle = 0;
+     &EURODB = 0;
+
+
+  alfa333  = "";
+  alfa222  = "";
+  &directo = "";
+  &fichero = "";
+  &alfa1   = "";
+  &alfa2   = "";
+  &handle  = "";
+  &canal   = "";
+  &canal1  = "";
+  &dir_fich1 = "";
+  &sw_sop = 0;
+  &sw_rep = 0;
+  &fra_sop = 0;
+  &fra_rep = 0;
+  &anter = 0;
+  &mas = 0;
+  &antnum = 0;
+  &nume1 = 0;
+  &feini = @;
+  &fefin = @;
+
+   aLong    = "";
+   eaCuenta = "";
+   nLong    = 0;
+   enNivel  = 0;
+
+   &dig3 = 0;
+   &dig4 = 0;
+   &dig5 = 0;
+   &dig6 = 0;
+   &dig7 = 0;
+   &dig8 = 0;
+   &dig9 = 0;
+|FIN;
+
+_________________________________/ RENUMERA APUNTES SEGUN TEMPORAL
+|PROCESO lee_apuntes1;
+  #2#16 = #18#4;
+  |GRABA 020#2a;
+  |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE lee_apuntes;
+ #2#1;
+ 13, 14, 16, 17;
+ 00, feini,      0,     0, #18#0, #18#1, #18#2, #18#3;
+ 99, fefin, 999999, 99999, #18#0, #18#1, #18#2, #18#3;
+ be;
+ NULL, lee_apuntes1;
+|FIN;
+
+|PROCESO lee_tempo1;
+  feini = "01.01.0001";
+  fefin = "31.12.8999";
+  |BUCLE lee_apuntes;
+|FPRC;
+
+|DEFBUCLE lee_tempo;
+ #18#1;
+ ;
+ "R",  0,      0, "  ";
+ "S", 99, 999999, "zz";
+ e;
+ NULL, lee_tempo1;
+|FIN;
+_________________________________/RENUMERA APUNTES SEGUN HISTORICO IVAS
+|PROCESO ren_rep;
+  |SI sw_rep ! 0;
+      fra_rep = fra_rep + 1;
+      #2#16 = fra_rep;
+      |ACABA;
+  |FINSI;
+  sw_rep = 1;
+  #5#0 = #2#14;        || libro
+  |ABRE #5;
+  mas = 1;
+  anter = #5#0;
+  #5#2 = 999999;
+  |LEE 001#5];
+  |SI FSalida = 0;
+     |LEE 001#5a;
+     |SI FSalida ! 0; |O anter ! #5#0;
+         mas = 0;
+         |DDEFECTO #5;
+     |FINSI;
+     antnum = #5#2;
+  |SINO;
+     |LEE 001#5u;
+     |SI FSalida ! 0; |O anter ! #5#0;
+         mas = 0;
+         |DDEFECTO #5;
+     |FINSI;
+     antnum = #5#2;
+  |FINSI;
+  |DDEFECTO #5;
+  #5#0 = anter;
+  #5#2 = antnum + mas;
+  |CIERRA #5;
+  fra_rep = #5#2;
+  #2#16 = fra_rep;
+|FPRC;
+
+|PROCESO ren_sop;
+  |SI sw_sop ! 0;
+      fra_sop = fra_sop + #8#3;
+      #2#16 = fra_sop;
+      |ACABA;
+  |FINSI;
+  sw_sop = 1;
+  #6#0 = #2#14;        || libro
+  |ABRE #6;
+  anter = #6#0;
+  #6#2 = 999999;
+  |LEE 040#6>;
+  |SI FSalida = 0;
+      |LEE 040#6a;
+      antnum = #6#2;
+  |SINO;
+      |LEE 040#6u;
+      |SI FSalida ! 0;
+          |DDEFECTO #6;
+          #6#2 = 0;
+      |FINSI;
+      antnum = #6#2;
+  |FINSI;
+  |DDEFECTO #6;
+  #6#0 = anter;
+  #6#2 = antnum + #8#3;
+|ET sientrada;
+  nume1 = #6#2 $ #8#3;
+  |SI nume1 ! 0;
+      #6#2 = #6#2 - 1;
+      |VETE sientrada;
+  |FINSI;
+  |CIERRA #6;
+  fra_sop = #6#2;
+  #2#16 = fra_sop;
+|FPRC;
+
+
+|PROCESO sep_apunte;
+
+     |SI nDocumento ! C1;
+          nLinea = 0;
+     |FINSI;
+     nDiario = #0#12;
+     nDocumento = C1;
+     nLinea = nLinea + 1;
+     alfa2 =(C2 % -102) +"."+ (C2 % 502) +"."+ (C2 % 104);
+     fFecha = alfa2;
+
+     |DDEFECTO #2;
+     #2#0 = nDiario;              || diario
+     #2#1 = fFecha;               || fecha
+     #2#2 = nDocumento;           || documento
+     #2#3 = C1;                   || asiento
+     #2#4 = nLinea;               || apunte
+
+     nDebe  = 0; nHaber = 0; aSigno = "";
+     |SI C27 = 1;
+         nDebe  = C5; nHaber = C7;  ||Pesetas
+         #2#22 = C9;                || base imp. 1
+     |SINO;
+         nDebe = C28; nHaber = C29; ||Euros
+         #2#22 = C30;               || base imp. 1
+     |FINSI;
+
+     nImporte = nDebe + nHaber;
+     |SI nDebe = 0; |Y nHaber = 0;
+         aAlfa1 = C3 % 103;
+         aSigno = "H";
+         |SI aAlfa1 = "430"; |O aAlfa1 = "440"; |O aAlfa1 = "600"; aSigno = "D"; |FINSI;
+     |SINO;
+         |SI nDebe ! 0;
+             aSigno = "D";
+         |SINO;
+             aSigno = "H";
+         |FINSI;
+     |FINSI;
+
+     |SI aSigno = "D";
+         #2#5 = C3;           ||Cuenta al Debe
+         #2#6 = ""; #2#8 = 0;
+         aSigno = "D";
+         aAlfa1   = #2#5 % 103;
+         eaCuenta = #2#5; |HAZ SacaNivel;
+         #2#7 = enNivel;
+     |SINO;
+         #2#6 = C3;  ||Cuenta al Haber
+         #2#5 = "";  #2#7 = 0;
+         aSigno = "H";
+         aAlfa1   = #2#6 % 103;
+         eaCuenta = #2#6; |HAZ SacaNivel;
+         #2#8 = enNivel;
+     |FINSI;
+
+     #2#9  = 1;                || Concepto
+     #2#10 = C6;               || descripcion
+     #2#11 = aSigno;           || signo
+     #2#12 = nImporte;         || importe
+
+     #2#16 = C8;               || factura/orden
+     #2#25 = C10;              || (%) iva 1
+     #2#31 = C11;              || (%) rec 1
+
+     |GRABA 020#2n;
+|FPRC;
+
+|PROCESO LeeTxtMovi;
+     nDiario = 0;
+     nDocumento = 0;
+     nLinea = 0;
+
+     aFic = #1#2; |QBF aFic;
+
+     |XABRE "UB", aFic, nHandle;
+     |SI FSalida < 0;
+          |XABRE "CUB", aFic, nHandle;
+     |FINSI;
+     |SI FSalida < 0;
+          aAlfa = "0000Error al abrir:" + aFic;
+          |MENAV aAlfa;
+     |SINO;
+          |PARA; |SI; |HACIENDO;
+
+               |XLEE nHandle, 178, aReg1;   || 190
+               |SI FSalida ! 178; |SAL; |FINSI;
+
+               |XLEE nHandle, 111, aReg2;   || 95
+               |SI FSalida ! 111; |SAL; |FINSI;
+
+               |HAZ RegistrosMovi;
+
+               |HAZ sep_apunte;
+
+          |SIGUE;
+          |XCIERRA nHandle;
+     |FINSI;
+|FPRC;
+
+|PROCESO RegistrosMovi;
+
+     C1  = aReg1 % 106;   ||Asiento
+     C2  = aReg1 % 708;   ||Fecha Asiento
+     C3  = aReg1 % 1512;  ||Sucuenta
+     C4  = aReg1 % 2712;  ||Contrapartida
+     C5  = aReg1 % 3916;  ||Debe
+     C6  = aReg1 % 5525;  ||Concepto
+     C7  = aReg1 % 8016;  ||Haber
+     C8  = aReg1 % 9608;  ||Factura IVA
+     C9  = aReg1 % 10416; ||Base imponible
+     C10 = aReg1 % 12005; || %IVA
+     C11 = aReg1 % 12505; || %REC
+
+     C12 = aReg1 % 13010; ||Documento
+     C13 = aReg1 % 14003; ||Departamento
+     C14 = aReg1 % 14306; ||Proyecto
+     C15 = aReg1 % 14901; ||Interno
+     C16 = aReg1 % 15006; ||Interno
+     C17 = aReg1 % 15601; ||Interno
+     C18 = aReg1 % 15706; ||Numero Pago
+     C19 = aReg1 % 16316; ||Cambio
+
+     C27 = aReg2 %  6001;  ||1ptas 2 euro
+     C28 = aReg2 %  6116;  ||Debe EURO
+     C29 = aReg2 %  7716;  ||Haber EURO
+     C30 = aReg2 %  9316;  ||Base iva
+     C31 = aReg2 % 10901;  ||Interno
+|FPRC;
+
+____________________________________/ CALCULOS DE LECTURA DE SECUENCIALES
+|PROCESO secuencial;
+
+     |DELINDEX #18;
+
+     |MENSA "    Preparando Fichero de Apuntes ...";
+     |ABRE #2;
+     |ABRE #12;
+     |HAZ LeeTxtMovi;
+     |CIERRA #2;
+     |CIERRA #12;
+
+     |BLIN 4;
+     |DELINDEX #18;
+|FPRC;
+
+
+|PROCESO SacaNivel;
+   aLong = eaCuenta;
+   |QBF aLong;
+   aLong = aLong % 0;
+   nLong = aLong;
+   enNivel = 0;
+   |SI nLong = dig4; |Y dig4 ! 0; enNivel = 1; |FINSI;
+   |SI nLong = dig5; |Y dig5 ! 0; enNivel = 2; |FINSI;
+   |SI nLong = dig6; |Y dig6 ! 0; enNivel = 3; |FINSI;
+   |SI nLong = dig7; |Y dig7 ! 0; enNivel = 4; |FINSI;
+   |SI nLong = dig8; |Y dig8 ! 0; enNivel = 5; |FINSI;
+   |SI nLong = dig9; |Y dig9 ! 0; enNivel = 6; |FINSI;
+|FPRC;

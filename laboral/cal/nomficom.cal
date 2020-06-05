@@ -1,0 +1,142 @@
+|FICHEROS;
+   nomficom #0;
+   nomfilin #1; || Lineas de observaciones
+
+|FIN;
+
+|VARIABLES;
+     Puntero = 0;
+     DocRecibo = 0;
+     Comodin = "";
+
+     nBaffer = 0;
+     nTotalLinea = 0; nTope = 0; nVari1 = 0; nVari2 = 0;
+
+     &enModoEdita  = 0;
+     &enTotalVaria = 0;
+     &enCampoAncho = 0;
+     &eaNombreList  = "";
+     &enCuadroIni   = 0;
+     &enCuadroFin   = 0;
+
+{100}&epPuntEdita   = "";
+
+     &aAlojamiento = "";
+     aAlfa = "";
+     aCodigo = "";
+     nCodigo = 0;
+     aAny = "";
+|FIN;
+
+|PROCESO GrabaSecuencial;
+     IepPuntEdita  = epPuntEdita1 <-;
+     |PARA nTotalLinea = 0;  |SI nTotalLinea [ enTotalVaria;  |HACIENDO nTotalLinea = nTotalLinea + 1;
+          |AL_BUF nBaffer, nTotalLinea, epPuntEdita;
+          IepPuntEdita = IepPuntEdita + 1;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Edicion;
+     nTope  = nTotalLinea - 1;
+     nVari1 = 0;
+     nVari2 = 0;
+     enModoEdita = enModoEdita + 100;
+     |EDITA nBaffer, 1, nTope, enCuadroIni, enCuadroFin, enModoEdita, eaNombreList, enCampoAncho, nVari1, nVari2;
+     enModoEdita = enModoEdita $ 100;
+|FPRC;
+
+|PROCESO CogePuntero;
+     IepPuntEdita  = epPuntEdita1 <-;
+     |PARA nTotalLinea = 0;  |SI nTotalLinea [ enTotalVaria;  |HACIENDO nTotalLinea = nTotalLinea + 1;
+          |DEL_BUF nBaffer, nTotalLinea, epPuntEdita;
+          IepPuntEdita = IepPuntEdita + 1;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Edita;
+     |PUSHV 0501 2380;
+     |DIMENSIONA  200, nBaffer, 0;
+
+     |HAZ GrabaSecuencial;
+     |HAZ Edicion;
+     |HAZ CogePuntero;
+
+     |FINDIM nBaffer;
+     |POPV;
+|FPRC;
+
+|PROGRAMA;
+   Comodin = PARAMETRO; |QBF Comodin; DocRecibo = Comodin;
+
+   enTotalVaria = 100;
+   enModoEdita  = 0;
+   enCampoAncho = 60;
+   eaNombreList  = "";
+   enCuadroIni   = 1118;
+   enCuadroFin   = 2279;
+
+   |ABRE #nomfilin;
+   |PARA Puntero = 1; |SI Puntero [ 100; |HACIENDO Puntero = Puntero + 1;
+      IepPuntEdita  = epPuntEdita1 <-;
+      IepPuntEdita = IepPuntEdita + (Puntero - 1);
+
+      aAlfa = PARAMETRO;
+      |QBF aAlfa;
+      aCodigo = aAlfa % 103;
+      aAny = aAlfa % 404;
+      nCodigo = aCodigo;
+
+      #nomfilin#0 = nCodigo;
+      #nomfilin#1 = aAny;
+      #nomfilin#2 = Puntero;
+      |LEE 101#nomfilin.=;
+      |SI FSalida ! 0;
+         epPuntEdita  = "";
+      |SINO;
+         epPuntEdita  = #nomfilin#3;
+         |BORRA 020#nomfilin.a;
+         |LIBERA #nomfilin;
+      |FINSI;
+   |SIGUE;
+   |CIERRA #nomfilin;
+
+   |PUSHV  0501 2080;
+||   |BLANCO 0811 2071;
+   |ATRI R;  |PINTA 0919, " Comentario ";  |ATRI 0;
+   ||ATRI R;  |PINTA 0610, " Alojamiento: "; |ATRI 0;
+   ||COLOR 0,7;
+   ||aAlfa = "000000" + PARAMETRO;
+   ||aAlfa = aAlfa % -106;
+   ||aAlfa = aAlfa + " " + aAlojamiento ;
+   ||PINTA 0626, aAlfa;
+
+   |HAZ Edita;
+   |POPV;
+
+   |ABRE #nomfilin;
+   |PARA Puntero = 1;  |SI Puntero [ 100;  |HACIENDO Puntero = Puntero + 1;
+      IepPuntEdita  = epPuntEdita1 <-;
+      IepPuntEdita = IepPuntEdita + (Puntero - 1);
+
+      |DDEFECTO #nomfilin;
+      #nomfilin#0 = nCodigo;
+      #nomfilin#1 = aAny;
+      #nomfilin#2 = Puntero;
+      |LEE 101#nomfilin.=;
+      |SI FSalida ! 0;
+         Comodin = epPuntEdita; |QBF Comodin;
+         |SI Comodin ! "";
+            #nomfilin#3 = epPuntEdita;
+            |GRABA 020#nomfilin.n;
+         |FINSI;
+      |SINO;
+         Comodin = epPuntEdita; |QBF Comodin;
+         |SI Comodin ! "";
+            #nomfilin#3 = epPuntEdita;
+            |GRABA 020#nomfilin.a;
+         |FINSI;
+      |FINSI;
+   |SIGUE;
+   |CIERRA #nomfilin;
+
+|FPRO;

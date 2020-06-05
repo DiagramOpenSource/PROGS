@@ -1,0 +1,356 @@
+|FICHEROS;
+     malpe142 #0;
+     dsw00078 #1;
+     malpe141 #2;
+|FIN;
+
+|VARIABLES;
+     aTipFic = "";
+     nCampo = 0;
+     nHandle   = 0;
+     nBoton1   = 0;
+     aFic      = "";
+     aAlfa     = "";
+     aRuta     = "";
+     nVersion = 0;
+     aReg = "";
+     nOK = 0;
+
+     fUltimo = @;
+     nNumCam = 0;
+     nNumReg = 0;
+     nLonCab = 0;
+     nLonReg = 0;
+
+     regis = 0;
+     sw_seleccio = 0;
+     campoalf = "";
+     any = 0;
+     mes = 0;
+     dia = 0;
+     campo = 0;
+     alfa1 = "";
+     alfa2 = "";
+     alfa3 = "";
+     alfa4 = "";
+     alfa5 = "";
+     nume1 = 0;
+     field = "";
+     bytes = 0;
+     para1 = 0;
+     nhexa = "";
+     ndeci = 0;
+     nalfa1 = "";
+     nalfa2 = "";
+     nnume1 = 0;
+     nnume2 = 0;
+     npara1 = 0;
+     npara2 = 0;
+     npara3 = 0;
+     nlongi = 0;
+
+     vuelt0 = "";
+     vuelt1 = "";
+     vuelt2 = "";
+     longa = "";
+     longn = 0;
+     vuelta = 0;
+     coger = 0;
+     flg_bor = 0;
+|FIN;
+
+|PROCESO lee_campos;
+     |XLEE nHandle, 1, field;
+     alfa5 = field % 0;  nume1 = alfa5;
+     |SI nume1 > 1;
+          field = " ";     || caracter cero (lo transforma a 2 bytes)
+     |FINSI;
+     campoalf = campoalf + field;
+|FPRC;
+
+|PROCESO quita_cabecera;
+     |PARA para1 = 1; |SI para1 [ nLonCab; |HACIENDO para1 = para1 + 1;
+          |XLEE nHandle, 1, field;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Datos;
+     |ABRE #1;
+     |ABRE #2;
+
+     |XABRE aTipFic, aFic, nHandle;
+     |SI FSalida < 0;
+          |MENAV "0000ERROR al abrir el Fichero...";
+     |SINO;
+          |HAZ quita_cabecera;
+          |PARA regis = 1;|SI regis [ nNumReg;|HACIENDO regis = regis + 1;
+               sw_seleccio = 0;
+               campoalf = "";
+               |HAZ lee_campos;
+               flg_bor = &campoalf;
+               |DDEFECTO #2;
+               |PARA campo = 1;|SI campo [ nNumCam;|HACIENDO campo = campo + 1;
+                    #1#0 = campo;
+                    |LEE 020#1=;
+                    |SI FSalida = 0;
+                         campoalf = "";
+                         |PARA longn = 1;|SI longn [ #1#2;|HACIENDO longn = longn + 1;
+                              |HAZ lee_campos;
+                         |SIGUE;
+                         |SI #1#4 = "FECHA     ";
+                              campoalf = (campoalf % 7) + "." + (campoalf % 502) + "." + (campoalf % 104);
+                         |FINSI;
+                         nCampo = campo - 1;
+                         #2nCampo = campoalf;
+                    |FINSI;
+               |SIGUE;
+               |SI flg_bor = 32;
+                    |LEE 000#2=;
+                    |SI FSalida ! 0;
+                         |GRABA 020#2n;
+                         nOK = nOK + 1;
+                         aAlfa = "Importando registro: " + nOK;
+                         |SI nOK = 1; |BLIN 22; |FINSI;
+                         |PINTA 2202, aAlfa;
+                    |FINSI;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #1;
+     |CIERRA #2;
+|FPRC;
+
+|PROCESO Campos;
+     |ABRE #1;
+
+     |XLEE nHandle, 20, field; || espacio reservado DBase I
+
+     alfa1 = Usuario;     |QBF alfa1;
+     |PARA campo = 1; |SI campo [ nNumCam; |HACIENDO campo = campo + 1;
+          |DDEFECTO #1;
+          #1#0 = campo;                   || nro.campo
+          bytes = 11; |HAZ LeeAsc;
+          #1#1 = vuelt1;                  || descripcion
+          bytes = 1;  |HAZ LeeAsc;
+          |SI vuelt1 = "C";    #1#4 = "ALFANUMERI"; |FINSI;
+          |SI vuelt1 = "N";    #1#4 = "NUMERICO  "; |FINSI;  || tipo de campo
+          |SI vuelt1 = "L";    #1#4 = "LOGICO    "; |FINSI;
+          |SI vuelt1 = "D";    #1#4 = "FECHA     "; |FINSI;
+          |SI vuelt1 = "M";    #1#4 = "MEMORIA   "; |FINSI;
+          bytes = 4;  |HAZ LeeAsc;   || (basura)
+          bytes = 1;  |HAZ LeeHex;
+          #1#2 = ndeci;                   || longitud campo
+          bytes = 1;  |HAZ LeeHex;
+          #1#3 = ndeci;                   || nro. decimales
+          bytes = 14;  |HAZ LeeAsc;  || (basura)
+          |GRABA 020#1n;
+     |SIGUE;
+
+     ||CONSULTA_CLAVE #1#1;
+
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO deci_hexa;
+    nhexa = "";
+    |PARA npara1 = 2; |SI npara1 ] 1; |HACIENDO npara1 = npara1 - 1;
+        |SI npara1 = 1; nnume1 = ndeci $ 16;          |FINSI;
+        |SI npara1 = 2; nnume1 = (ndeci / 16) $ 16;   |FINSI;
+
+        |SI nnume1 < 10;     nhexa = nhexa + nnume1;  |FINSI;
+        |SI nnume1 = 10;     nhexa = nhexa + "A";     |FINSI;
+        |SI nnume1 = 11;     nhexa = nhexa + "B";     |FINSI;
+        |SI nnume1 = 12;     nhexa = nhexa + "C";     |FINSI;
+        |SI nnume1 = 13;     nhexa = nhexa + "D";     |FINSI;
+        |SI nnume1 = 14;     nhexa = nhexa + "E";     |FINSI;
+        |SI nnume1 = 15;     nhexa = nhexa + "F";     |FINSI;
+    |SIGUE;
+|FPRC;
+
+|PROCESO hexa_deci;
+    nalfa1 = nhexa % 0;
+    nlongi = nalfa1;
+    ndeci = 0;
+    |PARA npara1 = nlongi; |SI npara1 ] 1; |HACIENDO npara1 = npara1 - 1;
+
+        nnume1 = (((nlongi - npara1) + 1) * 100) + 1; || pos.en la cadena
+        nalfa2 = nhexa % nnume1;    || contenido de esa posicion
+        nnume2 = nalfa2;            || contenido numerico
+        |SI nalfa2 = "A";     nnume2 = 10;   |FINSI;
+        |SI nalfa2 = "B";     nnume2 = 11;   |FINSI;
+        |SI nalfa2 = "C";     nnume2 = 12;   |FINSI;
+        |SI nalfa2 = "D";     nnume2 = 13;   |FINSI;
+        |SI nalfa2 = "E";     nnume2 = 14;   |FINSI;
+        |SI nalfa2 = "F";     nnume2 = 15;   |FINSI;
+
+        nnume1 = 1;
+        npara3 = npara1 - 1;
+        |PARA npara2 = 1; |SI npara2 [ npara3; |HACIENDO npara2 = npara2 + 1;
+            nnume1 = nnume1 * 16;
+        |SIGUE;
+        ndeci = ndeci + (nnume1 * nnume2);
+
+     |SIGUE;
+|FPRC;
+
+|PROCESO da_vuelta;
+    longa = vuelt1 % 0;   longn = longa;
+    longn = longn - 1;
+    vuelt2 = "";
+    |PARA vuelta = longn; |SI vuelta ] 1; |HACIENDO vuelta = vuelta - 2;
+        coger = (vuelta * 100) + 2;
+        vuelt0 = vuelt1 % coger;
+        vuelt2 = vuelt2 + vuelt0;
+    |SIGUE;
+|FPRC;
+
+|PROCESO LeeHex;
+     vuelt1 = "";
+     |PARA para1 = 1; |SI para1 [ bytes; |HACIENDO para1 = para1 + 1;
+          |XLEE nHandle, 1, field;
+          alfa5 = field % 0;
+          nume1 = alfa5;
+          |SI nume1 > 1;
+               ndeci = 0;        || caracter cero (lo transforma a 2 bytes)
+          |SINO;
+               ndeci = &field;
+          |FINSI;
+          |HAZ deci_hexa;
+           vuelt1 = vuelt1 + nhexa;
+     |SIGUE;
+     |HAZ da_vuelta;
+     nhexa = vuelt2;
+     |HAZ hexa_deci;
+|FPRC;
+
+|PROCESO LeeAsc;
+     vuelt1 = "";
+     |PARA para1 = 1; |SI para1 [ bytes; |HACIENDO para1 = para1 + 1;
+          |XLEE nHandle, 1, field;
+          alfa5 = field % 0;
+          nume1 = alfa5;
+          |SI nume1 = 1;                      || el caracter cero lo desprecia
+               vuelt1 = vuelt1 + field;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO UltimoAcceso;
+     |XLEE nHandle, 1, field; any = &field;  || lee a¤o
+     |XLEE nHandle, 1, field; mes = &field;  || lee mes
+     |XLEE nHandle, 1, field; dia = &field;  || lee dia
+
+     alfa1 = dia;    alfa1 = ("00" + alfa1) % -102;
+     alfa2 = mes;    alfa2 = ("00" + alfa2) % -102;
+     |SI any < 80;  any = any + 2000;   |SINO;    any = any + 1900;   |FINSI;
+     alfa3 = alfa1 + "." + alfa2 + "." + any;
+     fUltimo = alfa3;
+|FPRC;
+
+|PROCESO LonRegistro;
+      bytes = 2; |HAZ LeeHex;
+      nLonReg = ndeci;
+|FPRC;
+
+|PROCESO LonCabeza;
+     bytes = 2; |HAZ LeeHex;
+     nLonCab = ndeci;
+     nNumCam = (nLonCab - 33) /  32;
+|FPRC;
+
+|PROCESO NumRegistro;
+     bytes = 4; |HAZ LeeHex;
+     nNumReg = ndeci;
+|FPRC;
+
+|PROCESO Version;
+     |XLEE nHandle, 1, aReg;
+     nVersion = &aReg;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     aAlfa = Usuario; |NOME_DAT #1 aAlfa; |DELINDEX #1;
+
+     |SI #0#2 = "C"; aTipFic = "CB"; |FINSI;
+     |SI #0#2 = "S"; aTipFic = "B"; |FINSI;
+     aFic = #0#1; |QBF aFic;
+
+     |XABRE aTipFic, aFic, nHandle;
+     |SI FSalida ] 0;
+          |HAZ Version;
+          |SI nVersion = 3;
+               |PINTA 2202, "Calculando estructura...";
+               |HAZ UltimoAcceso;
+               |HAZ NumRegistro;
+               |HAZ LonCabeza;
+               |HAZ LonRegistro;
+               |HAZ Campos;
+               |XCIERRA nHandle;
+
+               |HAZ Datos;
+               aAlfa = "0000Grabados: " + nOK + " de " + nNumReg + " registros";
+               |MENAV aAlfa;
+          |SINO;
+               |XCIERRA nHandle;
+               aAlfa = "0000Version incorrecta, version DBF: " + nVersion;
+               |MENAV aAlfa;
+          |FINSI;
+     |SINO;
+          |MENAV "0000ERROR al abrir el Fichero...";
+     |FINSI;
+
+     |DELINDEX #1;
+|FPRC;
+
+|PROCESO Browser;
+     |SI FSalida ! 10; |ACABA; |FINSI;
+     |SI #0#2 = "S";
+          |MENAV "0000Opcion solo cuando el fichero esta en el cliente...";
+          |ERROR; |ACABA;
+     |FINSI;
+
+     aRuta = #0#0;  |QBF aRuta;
+     |SI aRuta = "";
+         aRuta = "*.*";
+     |FINSI;
+     aRuta = "F" + aRuta;
+
+     |BROWSE aRuta;
+
+     aRuta = aRuta % 2;
+
+     #0#1 = aRuta;
+     |PINTA #0#1;
+|FPRC;
+
+|PROCESO Boton1;
+     |PTEC 824;
+|FPRC;
+
+|PROCESO Quita; |TIPO 0;
+     |ESTADO_CONTROL nBoton1, "DISABLE";
+|FPRC;
+
+|PROCESO Pone; |TIPO 7;
+     |ESTADO_CONTROL nBoton1, "ENABLE";
+|FPRC;
+
+|PROGRAMA;
+     |CONTROL_SIMPLE 0, "BOTON,Fichero:", 1320, 1327, Boton1;
+     nBoton1 = FSalida;
+
+     |CLS;
+     |ABRE #0;
+     |LEE 101#0=;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |GRABA 020#0a;
+     |FINSI;
+     |CIERRA #0;
+
+     |FIN_CONTROL_WINDOWS nBoton1;
+     |PULSATECLA;
+|FPRO;

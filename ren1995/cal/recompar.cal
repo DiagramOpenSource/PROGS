@@ -1,0 +1,503 @@
+|FICHEROS;
+    recompar #0;  ||  Seleccion de empresas comparacion rendimientos.
+    retmpcom #1;  ||  Temporal Comparativa rendimientos.
+    redatcon #2;  ||  Datos del contribuyente 1995.
+    retotren #3;  ||  Liquidacion Renta 1995.
+    retotrea #4;  ||  Extension liquidacion de Renta 1995.
+    regrinfl #6;  ||  Lineas Campos Renta por grupos.
+    redefin2 #7;  ||  Cabec. Definidor de informe.
+    redefin3 #8;  ||  Lineas Grupos Definidor de informe.
+    redefin4 #9;  ||  Lineas Campos Definidor de informe.
+    retmpco1 #10; ||  Def de impresion de linea de temporal.
+    m2datcon #12; ||  Datos del contribuyente 1992.
+    m2totren #13; ||  Liquidacion Renta 1992.
+    m2totrea #14; ||  Extension liquidacion de Renta 1992.
+|FIN;
+
+|VARIABLES;
+    &programa = 0;
+    &numinfor = 0;
+    xxxxfiac = "  ";
+    xxaponer = "  ";
+    xrelleno = "                              ";
+    existe_emp = 0;
+    existe_ren = 0;
+    campo      = 0;
+    path     = "";
+    path95    = "";
+    path94    = "";
+    informe = "recompar";
+    sw_grabatmp = 0;
+    lin_tmp = 0;
+    suma  = 0;
+    suma1 = 0;
+    suma2 = 0;
+    camgrl_campo = 0;
+    camgrl_casil = 0;
+    camtmp = 0;
+    camren = 0;
+    ejercicio = 0;
+    tmpnum = 0;
+    tmpnu1 = 0;
+    bucle  = 0;
+    tmpalf = "";
+    fichero = "";
+    filtro = 0;
+    opera = 0;
+    txt_def = "";
+    pag_def = 0;
+    fec_def = @;
+    filtro_def = 0;
+    tmpfec_def = @;
+    tmpalf_def = "";
+    tmpnum_def = "";
+    long_tmp = 0;
+    relleno_def = "                                                            ";
+    sw_activo = 0;
+    sw_ctrlimp = 0;
+    numcasi   = 0;
+ {-1}atriimp = "";
+     atriimp1 = "DESACT";
+     atriimp2 = "ACOMPR";
+     atriimp3 = "DCOMPR";
+     atriimp4 = "AEXPAN";
+     atriimp5 = "DEXPAN";
+     atriimp6 = "ANEGRI";
+     atriimp7 = "DNEGRI";
+     titulo = "";
+|FIN;
+
+|CAMPOS;
+    #1#1 descrip;
+|FIN;
+
+|| ---------------------------- PROCESOS VARIOS -----------------------------
+
+|PROCESO situ_col;
+         |SI #9#9 > 0;
+             filtro_def = (long_tmp + 1) - (long_tmp - #9#9);
+             tmpalf_def = relleno_def % filtro_def;
+             tmpalf_def = tmpalf_def + txt_def
+         |SINO;
+             tmpalf_def = txt_def;
+         |FINSI;
+         descrip = tmpalf_def;
+         |HAZ graba_tmp;
+|FPRC;
+
+|PROCESO graba_tmp;
+         lin_tmp = lin_tmp + 1;
+         #1#0 = lin_tmp;
+         |GRABA 020#1n;
+|FPRC;
+
+|| --------------------- PROCESOS DE CONTROL DE IMPRESORA -------------------
+
+|PROCESO ctrl_impr;
+         |SI sw_activo > 0; |O numcasi = 0;
+             |SI #6#2 = 950; txt_def = "";       |HAZ avance; |FINSI;
+             |SI #6#2 = 951; txt_def = "PIEINF"; |HAZ avance; |FINSI;
+             |SI #6#2 = 952; txt_def = "PAGINA"; |HAZ avance; |FINSI;
+             |SI #6#2 > 952; |Y #6#2 < 957; |HAZ imprim_fec; |FINSI;
+             |SI #6#2 > 956; |Y #6#2 < 964; |HAZ activ_atri; |FINSI;
+         |FINSI;
+|FPRC;
+
+|PROCESO avance;
+         |DDEFECTO #1;
+         |PARA bucle = 1; |SI bucle [ #9#9; |HACIENDO bucle = bucle + 1;
+               descrip = txt_def;
+               |HAZ graba_tmp;
+         |SIGUE;
+|FPRC;
+
+|PROCESO imprim_fec;
+          fec_def = ~;
+         |SI #6#2 > 953;
+             filtro_def = #6#2 - 954;
+             tmpfec_def = fec_def % filtro_def;
+             tmpalf_def = tmpfec_def;
+             txt_def    = tmpalf_def % 11;
+         |SINO;
+             txt_def = fec_def;
+         |FINSI;
+         |HAZ situ_col;
+|FPRC;
+
+|PROCESO activ_atri;
+         tmpnum_def = #6#2 - 957;
+         Iatriimp = atriimp1 <-;
+         Iatriimp = Iatriimp + tmpnum_def;
+         descrip = atriimp;
+         |HAZ graba_tmp;
+|FPRC;
+
+|| -------------------------- PROCESOS DE IMPRESION -------------------------
+
+|PROCESO print;
+         sw_ctrlimp = 0;
+         tmpalf_def = #1#1;
+         |QBF tmpalf_def;
+         |SI tmpalf_def = "PIEINF";
+             |PIEINF;
+             sw_ctrlimp = 1;
+         |SINO;
+             |SI tmpalf_def = "PAGINA";
+                 FSalida = "PAGINA"; |PRINT;
+                 sw_ctrlimp = 1;
+             |SINO;
+                 |PARA bucle = 0; |SI bucle < 7; |HACIENDO bucle = bucle + 1;
+                       Iatriimp = atriimp1 <-;
+                       Iatriimp = Iatriimp + bucle;
+                       |SI tmpalf_def = atriimp;
+                           |CIMPR bucle;
+                           sw_ctrlimp = 1;
+                           |SAL;
+                       |FINSI;
+                 |SIGUE;
+             |FINSI;
+         |FINSI;
+         |SI sw_ctrlimp = 0;
+             |PARA camtmp = 1; |SI camtmp < 14; |HACIENDO camtmp = camtmp + 1;
+                   #10camtmp = #1camtmp;
+             |SIGUE;
+             |PRINT;
+         |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_tmp;
+          #1#1;
+          ;
+          001;
+          999;
+          e;
+          NULL,print;
+|FIN;
+
+|PROCESO imprime;
+  |BUCLE lee_tmp;
+  |PIEINF;
+|FPRC;
+
+|| --------------------- PROCESOS DE CREACION DE TEMPORAL -------------------
+
+|PROCESO carga_tempo;
+         |SI #3#141 = "A"; camtmp = 2 + ejercicio; |FINSI;
+         |SI #3#141 = "T"; camtmp = 5 + ejercicio; |FINSI;
+         |SI #3#141 = "C"; camtmp = 8 + ejercicio; |FINSI;
+         |SI #3#141 ] "1"; |Y #3#141 [ "4"; camtmp = 11 + ejercicio; |FINSI;
+         suma = 0;
+         opera = 1;
+         |SI #6#2 > 0;
+             camren = #6#3;
+             |HAZ suma;
+         |SINO;
+             |PARA camgrl_campo = 12; |SI camgrl_campo < 19; |HACIENDO camgrl_campo = camgrl_campo + 1;
+                   camgrl_casil = camgrl_campo - 7;
+                   camren = #6camgrl_campo;
+                   |SI #6camgrl_casil < 0; opera = -1; |FINSI;
+                   |HAZ suma;
+             |SIGUE;
+         |FINSI;
+         |SI camren ! 39;
+             suma  = suma / 1000;
+             suma1 = suma ! 0;
+             |SI suma ! suma1;
+                 suma2 = 1 - (suma1 - suma);
+                 |SI suma2 > 0.5;
+                     suma = suma1;
+                 |SINO;
+                     suma = suma - suma2;
+                 |FINSI;
+             |FINSI;
+         |FINSI;
+         filtro = -107;
+         |HAZ suma_alf;
+         sw_grabatmp = 1;
+|FPRC;
+
+|PROCESO suma;
+         |SI camren > 0;
+             |SI camren > 250;
+                 camren = camren - 250;
+                 |SI ejercicio = 0;
+                     suma = suma + (#4camren * opera);
+                 |SINO;
+                     suma = suma + (#14camren * opera);
+                 |FINSI;
+             |SINO;
+                 |SI ejercicio = 0;
+                     suma = suma + (#3camren * opera);
+                 |SINO;
+                     suma = suma + (#13camren * opera);
+                 |FINSI;
+             |FINSI;
+         |FINSI;
+|FPRC;
+
+|PROCESO suma_alf;
+         |SI suma ! 0;
+             tmpnum = #1camtmp;
+             tmpnum = tmpnum + suma;
+             tmpalf = tmpnum;
+             tmpalf = "      " + tmpalf;
+             #1camtmp = tmpalf % filtro;
+         |FINSI;
+|FPRC;
+
+|PROCESO retotrea;
+         |SI ejercicio = 0;
+             #4#0 = #3#0;   ||  Codigo de empresa.
+             #4#1 = #3#141; ||  Tipo.
+             |LEE 001#4=;
+             |SI FSalida ! 0; |DDEFECTO #4; |FINSI;
+         |SINO;
+             #14#0 = #13#0;   ||  Codigo de empresa.
+             #14#1 = #13#141; ||  Tipo.
+             |LEE 001#14=;
+             |SI FSalida ! 0; |DDEFECTO #14; |FINSI;
+             #3#141 = #13#141;
+         |FINSI;
+|FPRC;
+
+|DEFBUCLE m2totren;
+          #13#1;
+          ;
+          #2#0,"1";
+          #2#0,"T";
+          e;
+          NULL,retotrea,NULL,carga_tempo;
+|FIN;
+
+|DEFBUCLE retotren;
+          #3#1;
+          ;
+          #2#0,"1";
+          #2#0,"T";
+          e;
+          NULL,retotrea,NULL,carga_tempo;
+|FIN;
+
+|| -------------------- PROCESOS DE TRATAMIENTO DE FICHEROS -----------------
+
+|PROCESO lee_liqui;
+         |SI ejercicio = 0;
+             |ABRE #4;
+             |BUCLE retotren;
+             |CIERRA #4;
+         |SINO;
+             |ABRE #14;
+             |BUCLE m2totren;
+             |CIERRA #14;
+         |FINSI;
+|FPRC;
+
+|PROCESO datliquid;
+         |DDEFECTO #1;
+         |PARA ejercicio = 0; |SI ejercicio < 2; |HACIENDO ejercicio = ejercicio + 1;
+               |HAZ lee_liqui;
+         |SIGUE;
+         |SI sw_grabatmp = 1;
+             lin_tmp = lin_tmp + 1;
+             #1#0  = lin_tmp;
+             #1#1  = #9#6;  ||  Descripcion.
+             |PARA bucle = 2; |SI bucle < 14; |HACIENDO bucle = bucle + 3;
+                   tmpnu1 = bucle + 1;
+                   camtmp = bucle + 2;
+                   suma1 = #1bucle;
+                   suma2 = #1tmpnu1;
+                   suma = suma1 - suma2;
+                   filtro = -106;
+                   |HAZ suma_alf;
+             |SIGUE;
+             |GRABA 020#1n;
+         |FINSI;
+|FPRC;
+
+|PROCESO datcontri;
+         |SI sw_activo > 0; |O numcasi = 0;
+             camren = #6#3;
+             descrip = #2camren;
+             |HAZ graba_tmp;
+         |FINSI;
+|FPRC;
+
+|PROCESO regrinfl;
+         |SI #9#5 > 0;
+             |DDEFECTO #1;
+             #6#0 = #9#4;  ||  Grupo.
+             #6#1 = #9#5;  ||  Campo.
+             |LEE 001#6=;
+             |SI FSalida = 0;
+                 |SI #6#2 < 100;                |HAZ datliquid; |FINSI;
+                 |SI #6#2 > 499; |Y #6#2 < 751; |HAZ datcontri; |FINSI;
+                 |SI #6#2 > 949;                |HAZ ctrl_impr; |FINSI;
+             |FINSI;
+        |SINO;
+             |SI sw_activo > 0; |O numcasi = 0;
+                 |DDEFECTO #1;
+                 descrip = #9#6;
+                 |HAZ graba_tmp;
+             |FINSI;
+         |FINSI;
+|FPRC;
+
+|DEFBUCLE redefin4;
+          #9#1;
+          ;
+          #8#0,#8#1,#8#2,001;
+          #8#0,#8#1,#8#2,999;
+          e;
+          NULL,regrinfl;
+|FIN;
+
+|PROCESO redefin3;
+         |DDEFECTO #1;
+         |SI #8#5 = "S";
+             lin_tmp = lin_tmp + 1;
+             #1#0  = lin_tmp;
+             #1#1  = #8#4;  ||  Descripcion.
+             |GRABA 020#1n;
+         |FINSI;
+         |BUCLE redefin4;
+|FPRC;
+
+|PROCESO crea_tmp;
+         lin_tmp = 0;
+         sw_grabatmp = 0;
+         |BUCLELIN 2redefin3#7;
+|FPRC;
+
+|PROCESO redatcon;
+         existe_emp = 0;
+         |PARA; |SI existe_emp = 0; |Y #0#1 [ #0#2; |HACIENDO;
+                |ABRE #12;
+                #12#0 = #0#1;
+                |LEE 001#12];
+                existe_emp = FSalida;
+                |CIERRA #12;
+                |SI existe_emp = 0; |Y #12#0 [ #0#2;
+                    #0#1 = #12#0;
+                    |ABRE #2;
+                    #2#0 = #0#1;
+                    |LEE 001#2=;
+                    existe_emp = FSalida;
+                    |CIERRA #2;
+                    |SI existe_emp = 0;
+                        |ABRE #3;
+                        #3#0   = #2#0;
+                        #3#141 = "1";
+                        |LEE 001#3];
+                        existe_ren = FSalida;
+                        |CIERRA #3;
+                        |SI existe_ren = 0; |Y #3#0 = #2#0;
+                            |ABRE #1;
+                            |HAZ crea_tmp;
+                            |CIERRA #1;
+                            |HAZ imprime;
+                            |DELINDEX #1;
+                        |FINSI;
+                    |FINSI;
+                    existe_emp = 0;
+                |FINSI;
+                #0#1 = #0#1 + 1;
+         |SIGUE;
+|FPRC;
+
+|PROCESO redefin2;
+         |ABRE #7;
+         |DDEFECTO #7;
+         #7#0 = programa;
+         #7#1 = numinfor;
+         |LEE 001#7=;
+         |CIERRA #7;
+|FPRC;
+
+|PROCESO cambia_paths;
+         |PATH_DAT #12 path94;
+         |PATH_DAT #13 path94;
+         |PATH_DAT #14 path94;
+         |NOME_DAT #12 "redatcon";
+         |NOME_DAT #13 "retotren";
+         |NOME_DAT #14 "retotrea";
+|FPRC;
+
+|PROCESO fichero;
+         fichero = Usuario; |QBT fichero;
+         fichero = (fichero + "zzzzzzzz") % 106;
+         fichero = "cm" + fichero;
+|FPRC;
+
+|PROCESO inicio; |TIPO 10;
+         |HAZ redefin2;
+         titulo = #7#2;
+         |QBF titulo;
+         |SI titulo ! "";
+             titulo = " " + titulo + " ";
+         |SINO;
+             titulo = " COMPARATIVA DE RENDIMIENTOS ENTRE EJERCICIOS ";
+         |FINSI;
+         tmpalf = titulo % 0;
+         tmpnum = 7100911;
+         tmpnum = tmpnum + tmpalf;
+         |CUADRO tmpnum;
+         |ATRI R;
+         |PINTA 0811,titulo;
+         |ATRI r;
+|FPRC;
+
+|PROCESO final; |TIPO 3;
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+  |HAZ directorio;
+  |HAZ cambia_paths;
+  |HAZ fichero;
+  |NOME_DAT #1 fichero;
+  |ABRE #1; |CIERRA #1; |DELINDEX #1;
+  |ABRE #6;
+  |SI #0#0 = "S";
+      |HAZ redatcon;
+  |SINO;
+      |PARA campo = 3; |SI campo < 33; |HACIENDO campo = campo + 1;
+            |SI #0campo > 0;
+                #0#1 = #0campo;
+                #0#2 = #0campo;
+                |HAZ redatcon;
+            |FINSI;
+      |SIGUE;
+  |FINSI;
+  |CIERRA #6;
+  |FININF;
+  |FINIMP;
+|FPRC;
+
+|| ---------------------- PROCESOS DE ENTRADA DE DATOS -----------------------
+
+|PROCESO empresas; |TIPO 7;
+         |SI #0#0 = "N"; |HAZ nomodi; |FINSI;
+|FPRC;
+
+|PROCESO parrilla; |TIPO 7;
+         |SI #0#0 = "S"; |HAZ nomodi; |FINSI;
+|FPRC;
+
+|PROCESO directorio;
+         tmpalf = #0#34;  ||  Ejercicio anterior.
+         |DBASS path94;
+         path94 = path94 + "ren19" + tmpalf + "/fich/";
+
+         tmpalf = #0#33;  ||  Ejercicio actual
+         |DBASS path95;
+         path95 = path95 + "ren19" + tmpalf + "/fich/";
+|FPRC;
+
+|PROCESO nomodi;
+         xxaponer = Anono;
+         xxxxfiac = Control % A1001;
+         Control = Control + xxxxfiac;
+         Control = Control + xrelleno;
+         Control = Control % A120;
+         Control = Control + xxaponer;
+|FPRC;

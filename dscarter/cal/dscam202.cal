@@ -1,0 +1,109 @@
+|FICHEROS;
+   dscam202 #0;
+   dscam203 #1;
+
+   &cacuent@ #100;
+|FIN;
+
+|VARIABLES;
+   &MaxDigit = 0;
+
+   aAlfa  = "";
+   aAlfa1 = "";
+   aAlfa2 = "";
+
+   nCalc  = 0;
+
+   nTecla = 0;
+|FIN;
+
+|PROCESO MiraEstado202;
+   aAlfa = "";
+   |SI #dscam202#0 = "V";
+      |SI #dscam202#1 = "C"; aAlfa = "Parcialmente cobrado     "; |FINSI;
+      |SI #dscam202#1 = "e"; aAlfa = "Entrega pdte.compensar   "; |FINSI;
+      |SI #dscam202#1 = "E"; aAlfa = "Compensado parcialmente  "; |FINSI;
+      |SI #dscam202#1 = "F"; aAlfa = "Recepcionado Confirme    "; |FINSI;
+      |SI #dscam202#1 = "I"; aAlfa = "Impagado                 "; |FINSI;
+      |SI #dscam202#1 = "L"; aAlfa = "Recibo Liquidado         "; |FINSI;
+      |SI #dscam202#1 = "M"; aAlfa = "Gestionado por cobrador  "; |FINSI;
+      |SI #dscam202#1 = "P"; aAlfa = "Pendiente de cobro       "; |FINSI;
+      |SI #dscam202#1 = "p"; aAlfa = "Entrega pdte.cobro       "; |FINSI;
+      |SI #dscam202#1 = "R"; aAlfa = "Remesado                 "; |FINSI;
+      |SI #dscam202#1 = "T"; aAlfa = "Pagare/Talon de cliente  "; |FINSI;
+      |SI #dscam202#1 = "V"; aAlfa = "Recibo enviado al cliente"; |FINSI;
+   |FINSI;
+   |SI #dscam202#0 = "C";
+      |SI #dscam202#1 = "C"; aAlfa = "Parcialmente pagado      "; |FINSI;
+      |SI #dscam202#1 = "e"; aAlfa = "Pendiente de compensar   "; |FINSI;
+      |SI #dscam202#1 = "E"; aAlfa = "Englobado en documento   "; |FINSI;
+      |SI #dscam202#1 = "H"; aAlfa = "Parcialmente compensada  "; |FINSI;
+      |SI #dscam202#1 = "L"; aAlfa = "Recibo Liquidado         "; |FINSI;
+      |SI #dscam202#1 = "P"; aAlfa = "Pendiente de pago        "; |FINSI;
+   |FINSI;
+
+   #dscam202#2 = aAlfa; |PINTA #dscam202#2;
+
+   |SI #dscam202#1 = "R";
+      |C_M #dscam202#3, 1, "S";
+   |SINO;
+      #dscam202#3 = 0; |PINTA #dscam202#3;
+      |C_M #dscam202#3, 1, "N";
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraTipoDias;
+   |SI #dscam203#5 = "L";
+      |C_M #dscam203#6, 1, "S";
+   |SINO;
+      #dscam203#6 = 0;  |PINTA #dscam203#6;
+      #dscam203#7 = ""; |PINTA #dscam203#7;
+      |C_M #dscam203#6, 1, "N";
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraCuenta;
+   || Convierto los puntos de la cuenta contable ...
+   aAlfa = #dscam203#2; |QBF aAlfa;
+   aAlfa = aAlfa - ".";
+   |SI FSalida ! 0;
+      |PARA; |SI FSalida ! 0; |HACIENDO;
+         nCalc = ((FSalida / 100) ! 0) + 99; aAlfa1 = aAlfa % nCalc;
+         nCalc = FSalida + 98;               aAlfa2 = aAlfa % nCalc;
+         aAlfa = aAlfa1 + aAlfa2; aAlfa = aAlfa % 0; nCalc = aAlfa;
+         nCalc = MaxDigit - nCalc;
+         aAlfa = aAlfa1 + ("0" * nCalc) + aAlfa2;
+
+         aAlfa = aAlfa - ".";
+      |SIGUE;
+      #dscam203#2 = aAlfa; |PINTA #dscam203#2;
+   |FINSI;
+
+   |SI nTecla = 10;
+      #cacuent@#0 = #dscam203#2;
+      |LEE 000#cacuent@.];
+      |CONSULTA_CLAVE #1#cacuent@;
+      |SI FSalida = 0;
+         #dscam203#2 = #cacuent@#0; |PINTA #dscam203#2;
+         #dscam203#3 = #cacuent@#2; |PINTA #dscam203#3;
+      |FINSI;
+      |ERROR; |ACABA;
+   |FINSI;
+
+   #cacuent@#0 = #dscam203#2;
+   |LEE 000#cacuent@.=;
+   |SI FSalida ! 0;
+      |MENAV "    No existe la cuenta contable indicada";
+      |ERROR; |ACABA;
+   |SINO;
+      #dscam203#3 = #cacuent@#2; |PINTA #dscam203#3;
+   |FINSI;
+|FPRC;
+
+|PROCESO Tipo11203; |TIPO 11;
+   nTecla = FSalida; |HAZ MiraCuenta;
+|FPRC;
+
+|PROCESO Tipo00203;
+   nTecla = FSalida; |HAZ MiraCuenta;
+|FPRC;

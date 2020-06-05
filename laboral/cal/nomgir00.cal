@@ -1,0 +1,676 @@
+|FICHEROS;
+     nomgir00 #0;        || pantalla calculo mes
+     nomgruec;           || grupos de empresas Cabs.
+     nomgruel;           || grupos de empresas Lins.
+     labtraba #2;
+     nomcalca;
+     nomgirca;
+     nomgirli;
+     nomgirhi;
+     nomgirtm #100,MANTE;
+     nomgirco;
+     nomgirma;
+
+     copcalcu@ #200;     || copia del def del calculo de nominas
+                         || (normal o agrario)
+     copiadef@ #500;
+|FIN;
+
+|VARIABLES;
+    avisa_mes = 0;
+    htipo = 0;
+    &runnom = "";
+    meses = "ENERO     FEBRERO   MARZO     ABRIL     MAYO      JUNIO     JULIO     AGOSTO    SEPTIEMBREOCTUBRE   NOVIEMBRE DICIEMBRE ";
+    salte_1 = 0;
+    salte_2 = 0;
+
+    &nElMesIRPF = 0;         || para 'nomir008'
+    &nElAnyIRPF = 0;         || para 'nomir008'
+    &nDiferencias = 0;   || para 'nomir008'
+    &nElMes = 0;         || para la nomina
+    &nElAny = 0;         || para la nomina
+    swActiva = 0;
+    swPorGrupos = 0;
+    nGrupo = 0;
+    nCampoG = 0;
+     &eaVengoDe = "";
+
+     &nEmpAUTO = 0;
+     &nEmpAUTO_D = 0;
+     &nEmpAUTO_H = 0;
+     &nTraAUTO = 0;
+     &nTraAUTO_D = 0;
+     &nTraAUTO_H = 0;
+     &nMesAUTO = 0;
+     &nAnyAUTO = 0;
+     &aParam = "";
+     &nEnEmpresa = 0;
+     &nPaso = 0;
+     &swCompAjuste = 0;
+     &swSegPasada = 0;
+     &nRetEstAnu = 0;    || retencion estimada anual
+     &swCalPagas = "S";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     alfa1 = "";
+     alfa2 = "";
+     nume1 = 0;
+     nume2 = 0;
+     para1 = 0;
+     swfuera = 0;
+     &nMes = 0;
+     &nAny = 0;
+     &nDesdeEmp = 0;
+     &nHastaEmp = 0;
+     &nDesdeTra = 0;
+     &nHastaTra = 0;
+     seleccio = 0;
+     aAlfa = "";
+     p_mes = "";
+     fecsys = @;
+     mesnum = 0;
+     anynum = 0;
+     guarda = 0;
+     topemes = 0;
+     aFabre = "";
+     aBase = "";
+     aMas = "";
+     aFich = "";
+     &nTopemes = 0;
+     &nEmp = 0;
+     &nTra = 0;
+     &aHora = "";
+     aDef = "";
+     FCargaDef = "";
+     nCampo1 = 0;
+     &swEdicion = 0;
+
+     nOpcion = 0;
+     {-1}menu = "";
+     menu1 = "2400";
+     menu2 = "1";
+     menu3 = "";
+     menu4 = "VACI";
+     menu5 = "Volver a incid.";
+     menu6 = "Aceptar y continuar";
+     menu7 = "Cancelar proceso";
+     menu8 = "Imprimir informe";
+
+     aEstadoNomgirli = "";
+     nNroIncid = 0;
+     &swStopIRPF = 0;
+     nNume1 = 0;
+     &nIRPFMes = 0;
+     &swBajaEsteMes = 0;
+     nMesBaja = 0;
+     nAnyBaja = 0;
+     FEstado = 0;
+     swStop = 0;
+|FIN;
+
+|INCLUYE nomcal_4;
+
+||****************************************************************************
+||                  LLAMADAS DESDE EL MANTENIMIENTO
+||****************************************************************************
+
+|PROCESO pintames; |TIPO 0;
+    nume1 = ((((#0Campo - 1) * 10) + 1) * 100) + 10;
+    p_mes = meses % nume1;
+|ATRI I;
+|PINTA 0748, p_mes;
+|ATRI 0;
+|FPRC;
+
+|PROCESO mirames; |TIPO 7; ||calcula el mes por defecto segun fecha sistema
+|SI #0Campo = 0;
+        fecsys = ~;
+        alfa1 = fecsys;
+        alfa1 = alfa1 % 402;
+        #0Campo = alfa1;
+    |PINTA #0Campo;
+|FINSI;
+|HAZ pintames;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7; ||calcula el a¤o por defecto segun fecha sistema
+|SI #0Campo = "    ";
+        fecsys = ~;
+        alfa1 = fecsys;
+        alfa1 = alfa1 % -104;
+        #0Campo = alfa1;
+    |PINTA #0Campo;
+|FINSI;
+|FPRC;
+
+|PROCESO lib_0; |TIPO 0;   || halla ultimo dia natural del mes
+    nMes = #0#8;
+    nAny = #0#9;
+    |HAZ topemes_plb;
+    guarda = nTopemes;      || cambia de variable para no perderlo
+|FPRC;
+
+|PROCESO Valida; |TIPO 0;
+     nume1 = #0#9;
+     |SI nume1 < 1980;
+          |MENAV "0000Error de entrada ...";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO activasino;
+     swActiva = 1;
+
+     |ABRE #1;
+     #1#0 = #2#0;
+     |LEE 000#1=;
+     |SI #1#50 = "S";
+          swActiva = 0;  || empresa no activa
+     |FINSI;
+     |CIERRA #1;
+
+     |SI swActiva = 0;
+          |ACABA;
+     |FINSI;
+
+     aFabre = "";
+     |DIRECTORIO aFabre;
+     aFabre = "rt  " + aFabre + "integral/bin/dsam0000.tab";
+     |FABRE aFabre;
+     |SI FSalida ] 0;
+          |FCIERRA FSalida;
+          |DBASS aBase;  |QBF aBase;
+          aMas  = aBase + "integral/def/dsam0000.mas";
+          aFich = aBase + "integral/fich/";
+
+          |CARGA_DEF aMas, copiadef@;
+          |SI FSalida ! 0;
+              aAlfa = "0000 No puedo cargar el Def " + aMas;
+              |MENAV aAlfa;
+              |ACABA;
+          |FINSI;
+
+          |ABRE #500;
+          #500#0 = #2#0;
+          |LEE 000#500=;
+          |SI FSalida = 0;
+               |SI #500#85 = "I";
+                    swActiva = 0;  || empresa no activa
+               |FINSI;
+          |FINSI;
+          |CIERRA #500;
+          |DESCARGA_DEF #copiadef@;
+     |FINSI;
+|FPRC;
+
+/* ************************************************************************ */
+
+|PROCESO CuentaInc;
+     nNroIncid = nNroIncid + 1;
+|FPRC;
+
+|DEFBUCLE CuentaInc;
+     #nomgirtm#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, CuentaInc;
+|FIN;
+
+|PROCESO imprime;
+     #labempre#0 = #nomgirtm#0;
+     |LEE 000#labempre.=;
+
+     #labtraba#0 = #nomgirtm#0;
+     #labtraba#1 = #nomgirtm#5;
+     |LEE 000#labtraba.=;
+
+     #nomgirma#0 = #nomgirtm#6;
+     |LEE 000#nomgirma.=;
+
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE informe;
+     #nomgirtm#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, imprime;
+|FIN;
+
+|PROCESO nomgirtm;
+     #nomgirli#0 = #nomgirtm#0;
+     #nomgirli#1 = #nomgirtm#1;
+     #nomgirli#2 = #nomgirtm#2;
+     #nomgirli#3 = #nomgirtm#3;
+     |LEE 101#nomgirli.=;
+     |SI FSalida = 0;
+          |SI #nomgirli#9 ! #nomgirtm#9;
+               aEstadoNomgirli = #nomgirli#9;
+               #nomgirli#9 = #nomgirtm#9;
+               |GRABA 020#nomgirli.a;
+               |LIBERA #nomgirli;
+
+               || grabo registro en el nomgirhi
+
+               || primero busco el ultimo registro de este trabajador,
+               || periodo
+
+               #nomgirhi#0 = #nomgirtm#0;
+               #nomgirhi#1 = #nomgirtm#1;
+               #nomgirhi#2 = #nomgirtm#2;
+               #nomgirhi#3 = #nomgirtm#3;
+               #nomgirhi#4 = 999;
+               #nomgirhi#9 = aEstadoNomgirli;
+               |LEE 000#nomgirhi.];
+               |SI FSalida = 0;
+                    |LEE 000#nomgirhi.a;
+                    || no voy a llegar nunca a la 999, siempre sera
+                    || la anterior
+               |SINO;
+                    |LEE 000#nomgirhi.u;
+                    || estoy en la ultima curiosamente
+               |FINSI;
+
+               #nomgirhi#4 = #nomgirhi#4;
+               aAlfa = aParam % 405;
+               aAlfa = "man" + aAlfa;
+               #nomgirhi#9 = #nomgirtm#9;
+               #nomgirhi#11 = aAlfa;
+
+               |GRABA 000#nomgirhi.n;
+               |LIBERA #nomgirhi;
+          |FINSI;
+     |FINSI;
+     |LIBERA #nomgirli;
+|FPRC;
+
+|DEFBUCLE nomgirtm;
+     #nomgirtm#1;
+     ;
+     00001, 1999, 01, "         ", " ";
+     99999, 2999, 12, "zzzzzzzzz", "z";
+     ;
+     NULL, nomgirtm;
+|FIN;
+
+|PROCESO Actualiza;
+     |ABRE #nomgirli;
+     |ABRE #nomgirhi;
+
+     |BUCLE nomgirtm;
+
+     |CIERRA #nomgirhi;
+     |CIERRA #nomgirli;
+|FPRC;
+
+|PROCESO inferior;
+     #100#0 = 00001;
+     #100#1 = 1999;
+     #100#2 = 01;
+     #100#3 = "         ";
+     #100#9 = "F";
+|FPRC;
+
+|PROCESO superior;
+     #100#0 = 99999;
+     #100#1 = 2999;
+     #100#2 = 12;
+     #100#3 = "zzzzzzzzz";
+     #100#9 = "S";
+|FPRC;
+
+|PROCESO Edicion;
+     aAlfa = Usuario;         |QBF aAlfa;
+     aAlfa = "t" +  aAlfa;
+     |NOME_DAT #100 aAlfa;
+     |ABRE #100;
+
+     |PARA; |SI; |HACIENDO;
+          |ENTLINEAL #1#nomgirtm, -1, 4, 18, 1, inferior, superior;
+
+          || para que no se me borre la pantalla, que queda feo
+          nNume1 = #100#0;
+          aAlfa1 = #100#3;
+          aAlfa2 = #100#9;
+          |ENTLINEAL #1#nomgirtm, -1, 7, 18, 1, inferior, superior;
+
+          #100#0 = nNume1;
+          #100#3 = aAlfa1;
+          #100#9 = aAlfa2;
+          |LEE 000#100=;
+
+          |PINTA #nomgirtm#1;
+          |PINTA #nomgirtm#2;
+          |PINTA #nomgirtm#10;
+          |PINTA #nomgirtm#11;
+          |PINTA #nomgirtm#12;
+          |PINTA #nomgirtm#13;
+
+          |MENU menu;
+          nOpcion = FSalida;
+          |SI FSalida = 1;
+               || continuo editando el lineal
+          |FINSI;
+          |SI FSalida = 2;
+               || acepto cambios
+               |HAZ Actualiza;
+               swStopIRPF = 0;
+               |SAL;
+          |FINSI;
+          |SI FSalida = 3;
+               || no acepto cambios
+               swStopIRPF = 1;
+               |SAL;
+          |FINSI;
+          |SI FSalida = 4;
+
+               |SUB_EJECUTA "nomgirin;nomgir00";
+
+               || lanzo informe, despues vuelvo al menu
+          |FINSI;
+     |SIGUE;
+
+     nNroIncid = 0;
+     |BUCLE CuentaInc;
+
+     |CIERRA #100;
+|FPRC;
+
+|PROCESO FechaBaja;
+     swBajaEsteMes = 0;
+
+     aAlfa = #nomcalca#5;
+     aAlfa = aAlfa % 402;
+     nMesBaja = aAlfa;
+     aAlfa = #nomcalca#5;
+     aAlfa = aAlfa % -104;
+     nAnyBaja = aAlfa;
+
+     |SI nMes = nMesBaja; |Y nAny = nAnyBaja;
+          swBajaEsteMes = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaFiniq;
+     #nomcalca#0 = nEmp;
+     #nomcalca#1 = nTra;
+     #nomcalca#2 = nMes;
+     #nomcalca#3 = 2;
+     |LEE 000#nomcalca.=;
+     |SI FSalida = 0;
+          nIRPFMes = #nomcalca#13;
+     |FINSI;
+|FPRC;
+
+|PROCESO SelCentros;
+     || solo para seleccion desde-hasta !!!
+     |SI #0#21 = 0; |Y #0#63 = 0;
+          |ABRE #labtraba;
+          #labtraba#0 = #nomcalca#0;
+          #labtraba#1 = #nomcalca#1;
+          |LEE 000#labtraba.=;
+          |SI FSalida = 0;
+               |SI #labtraba#77 < #0#71; |O #labtraba#77 > #0#72;
+                    swStop = 1;
+               |FINSI;
+          |FINSI;
+          |CIERRA #labtraba;
+     |FINSI;
+|FPRC;
+
+|PROCESO proceso;
+     swStop = 0;
+     |HAZ SelCentros;
+     |SI swStop = 1;
+          |ACABA;
+     |FINSI;
+
+     nEmp = #nomcalca#0;
+     nTra = #nomcalca#1;
+     nMes = #0#8;
+     nAny = #0#9;
+     nIRPFMes = #nomcalca#13;
+
+     |SALVA_FICHA #nomcalca;
+
+     || busco tipo 2 ya que es la nomina final del mes con la que tengo que
+     || comparar el IRPF
+     |HAZ BuscaFiniq;
+     |REPON_FICHA #nomcalca;
+     |LEE 000#nomcalca.=;
+
+     |HAZ FechaBaja;
+
+     |HAZ Estudio;
+
+     seleccio = 1;
+|FPRC;
+
+|PROCESO salteada_nomgir;
+     |PARA salte_1 = 21; |SI salte_1 [ 41; |HACIENDO salte_1 = salte_1 + 1;
+          salte_2 = salte_1 + 21;
+          #nomcalca#0 = #0salte_1;   || empresa
+          #nomcalca#1 = #0salte_2;   || trabajador
+          #nomcalca#2 = #0#8;        || mes
+          #nomcalca#3 = 0;           || TIPO 0
+          |LEE 000#nomcalca.=;
+          |SI FSalida = 0;
+               |HAZ proceso;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|DEFBUCLE nomcalc0;
+     #nomcalca#1;
+     ;
+     #0#0, #0#2, #0#8, 0;
+     #0#1, #0#3, #0#8, 0;
+     ;
+     NULL, proceso;
+|FIN;
+
+|DEFBUCLE nomcalcg;
+     #nomcalca#1
+     ;
+     #nomgruel#1, 00001, #0#8, 0;
+     #nomgruel#1, 99999, #0#8, 0;
+     ;
+     NULL, proceso;
+|FIN;
+
+|PROCESO CalGrupo;       || para cada una hace el proceso de siemrpe
+     |BUCLE nomcalcg;
+|FPRC;
+
+|DEFBUCLE Grupo;         || lee empresas del grupo
+     #nomgruel#1;
+     ;
+     nGrupo, 00001;
+     nGrupo, 99999;
+     ;
+     NULL, CalGrupo;
+|FIN;
+
+|PROCESO PorGrupos;
+     swPorGrupos = 1;
+     |PARA nCampoG = 63; |SI nCampoG [ 70; |HACIENDO nCampoG = nCampoG + 1;
+          nGrupo = #0nCampoG;
+          |BUCLE Grupo;
+     |SIGUE;
+|FPRC;
+
+|PROCESO lectura;             || INICIO DEL CALCULO
+     nMes = #0#8;
+     nAny = #0#9;
+
+     |ABRE #nomcalca;
+     |SI #0#21 = 0;
+          |SI #0#63 = 0;
+               |BUCLE nomcalc0;
+          |SINO;
+               |HAZ PorGrupos;
+          |FINSI;
+     |SINO;
+          |HAZ salteada_nomgir;
+     |FINSI;
+     |CIERRA #nomcalca;
+
+     |SI seleccio = 0; |Y aParam = "nomgir00";
+          |ATRI P;
+          |MENAV "    Seleccion vacia ...";
+          |ATRI 0;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |HORA aHora;
+     |QBF aHora;
+     aHora = aHora % 105;
+     swEdicion = 0;
+
+     |DDEFECTO #nomgirco;
+     |ABRE #nomgirco; |LEE 000#nomgirco.p;  |CIERRA #nomgirco;
+
+     |SI aParam = "nomactca"; |O aParam = "nomrecib";
+          |SI #nomgirco#1 ! "S";
+               ||ACABA;
+               || las incidencias las graba siempre
+          |FINSI;
+     |FINSI;
+     |SI aParam = "nomcalcu"; |O aParam = "gomcalcu";
+          |SI #nomgirco#2 ! "S";
+               ||ACABA;
+               || las incidencias las graba siempre
+          |FINSI;
+     |FINSI;
+
+     aAlfa = Usuario;         |QBF aAlfa;
+     aAlfa = "m" +  aAlfa;
+     |NOME_DAT #0 aAlfa;
+
+     aAlfa = Usuario;         |QBF aAlfa;
+     aAlfa = "t" +  aAlfa;
+     |NOME_DAT #100 aAlfa;
+     |DELINDEX #100;
+
+     aParam = PARAMETRO;
+     |QBF aParam;
+
+     |SI aParam ! "";
+          |SI aParam = "nomcalcu"; |O aParam = "gomcalcu";
+               |DDEF aDef;
+               aDef = aDef + aParam;
+               |CARGA_DEF aDef, copcalcu@;
+               FCargaDef = FSalida;
+
+               aAlfa = Usuario;         |QBF aAlfa;
+               aAlfa = "n" +  aAlfa;
+               |NOME_DAT #copcalcu@#aAlfa#;
+
+               |SI FCargaDef ! 0;
+                    |ACABA;
+               |FINSI;
+
+               |ABRE #copcalcu@;
+               |ABRE #0;
+               |LEE 000#200.p;
+
+               |PARA nCampo = 0; |SI nCampo [ 72; |HACIENDO nCampo = nCampo + 1;
+                    #0nCampo = #200nCampo;
+               |SIGUE;
+
+               |CIERRA #copcalcu@;
+               |DESCARGA_DEF #copcalcu@;
+
+               |CIERRA #0;
+          |FINSI;
+          |SI aParam = "nomrecib";
+               |ABRE #0;
+               |LEE 000#0p;
+               |CIERRA #0;
+          |FINSI;
+          |SI aParam = "nomactca";
+               |DDEFECTO #0;
+               #0#0 = nDesdeEmp;
+               #0#1 = nHastaEmp;
+               #0#2 = nDesdeTra;
+               #0#3 = nHastaTra;
+               #0#8 = nMes;
+               #0#9 = nAny;
+          |FINSI;
+     |SINO;
+          || PINTO PANTALLA Y PIDO DATOS, DESDE EL MENU
+
+          runnom = "nomgir00";
+          eaVengoDe = "nomgir00";
+          aParam = "nomgir00";
+
+          |HAZ LeeEURODB;
+          |CLS;
+          |CABEZA "Gestor incidencias IRPF";
+          |PINPA #0#0;
+          |ABRE #0;
+          |DDEFECTO #0;
+          |LEE 000#0p;
+          |SI FSalida = 0;  |BORRA 020#0a;  |FINSI;
+          |CIERRA #0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+     |FINSI;
+
+     |SI FSalida = 0;
+          nElMes = #0#8;
+          nElAny = #0#9;
+          |HAZ lectura;
+          |ABRE #0;
+          |GRABA 000#0n;
+          |CIERRA #0;
+     |SINO;
+          |ABRE #0;
+          |GRABA 000#0n;
+          |CIERRA #0;
+     |FINSI;
+
+     |SI aParam = "nomrecib"; |O aParam = "nomactca";
+          |SI #nomgirco#1 ! "S";
+               swEdicion = 0;
+          |FINSI;
+     |FINSI;
+
+     |SI aParam = "nomcalcu"; |O aParam = "gomcalcu";
+          |SI #nomgirco#2 ! "S";
+               swEdicion = 0;
+          |FINSI;
+     |FINSI;
+
+     |SI aParam = "nomgir00";
+          |SI #nomgirco#3 ! "S";
+               swEdicion = 0;
+          |FINSI;
+     |FINSI;
+
+     |SI swEdicion = 1;
+          aAlfa = "    ATENCION: se han detectado incidencias que afectan ";
+          aAlfa = aAlfa + "al IRPF de los trabajadores seleccionados.";
+          |MENAV aAlfa;
+
+          aAlfa = "    Los trabajadores cuyo estado sea 'N' en el tipo de incidencia";
+          |SI aParam = "nomrecib";
+               aAlfa = aAlfa + " no se emitirán. Revise sus datos.";
+          |FINSI;
+          |SI aParam = "nomactca";
+               aAlfa = aAlfa + " no se actualizarán. Revise sus datos.";
+          |FINSI;
+          |SI aParam ! "nomrecib"; |Y aParam ! "nomactca";
+               aAlfa = aAlfa + " no se emitirán o actualizarán. Revise sus datos.";
+          |FINSI;
+
+          |MENAV aAlfa;
+
+          |HAZ Edicion;
+     |FINSI;
+|FPRO;

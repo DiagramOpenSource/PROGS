@@ -1,0 +1,405 @@
+|FICHEROS;
+     preinf04 #0;
+     premvtol #1;
+     prerectl #2;
+     prejorna #3;
+     preimxls #4;
+     prequiva #5;
+     precadml #6;
+     preintmp #10;
+     pretmp01 #50;
+     :laboral/labtraba #100;
+     :laboral/nomfical #101;
+|FIN;
+
+|VARIABLES;
+     &enAnyo = 0;
+     &enMes  = 0;
+     &enDTarj = 0; &enHTarj = 0;
+     &enDEmpr = 0; &enHEmpr = 0;
+     &enDTrab = 0; &enHTrab = 0;
+     &enDTerm = 0; &enHTerm = 0;
+     fHoy = @;
+     aAlfa = "";
+     fDFec = "";
+     fHFec = "";
+     aBase = "";
+     aDiaLaborable = "";
+     f = @;
+     i = 0;
+     fFecha = @;
+     nCampo = 0;
+     aDesde = "";
+     aHasta = "";
+     nResto = 0;
+     nMinu = 0;
+     nHora = 0;
+     nNume = 0;
+     aJornada = "";
+|FIN;
+
+|PROCESO HoraMinu;
+     |SI #100#47 = 0;
+          nHora = 8;
+          nMinu = 0;
+     |SINO;
+          nMinu = #100#47 * 60;
+          nResto = nMinu $ 60;
+          nHora = (nMinu - nResto) / 60;
+          nMinu = nResto;
+     |FINSI;
+|FPRC;
+
+|PROCESO LaborableConv;
+     aDiaLaborable = "N";
+
+     |DDEFECTO #101;
+     #101#0 = #6#5;      || busco calendario en laboral
+     #101#1 = #6#6;
+     |LEE 000#101=;
+     |SI FSalida = 0;
+          fFecha = f % A1;
+          aAlfa = fFecha % 1102;
+          |SI aAlfa = "Lu"; nCampo = 2; |FINSI;
+          |SI aAlfa = "Ma"; nCampo = 3; |FINSI;
+          |SI aAlfa = "Mi"; nCampo = 4; |FINSI;
+          |SI aAlfa = "Ju"; nCampo = 5; |FINSI;
+          |SI aAlfa = "Vi"; nCampo = 6; |FINSI;
+          |SI aAlfa = "Sa"; nCampo = 7; |FINSI;
+          |SI aAlfa = "Do"; nCampo = 8; |FINSI;
+
+          |SI #101nCampo = 0; aDiaLaborable = "S"; |FINSI;
+
+          aAlfa = (fFecha % 102) + (fFecha % 402);
+          |PARA i = 9; |SI i [ 96; |HACIENDO i = i + 3;
+               |SI #101i ! "    ";
+                    aDesde = #101i;
+                    nCampo = i + 1;
+                    aHasta = #101nCampo;
+                    nCampo = i + 2;
+                    |SI aAlfa ] aDesde; |Y aAlfa [ aHasta;
+                         |SI #101nCampo = 0;
+                              aDiaLaborable = "S";
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO EsLaborable;
+     aDiaLaborable = "N";
+
+     #4#0 = #10#0;       || calendario me ha venido por la excel
+     #4#1 = #100#0;      || y lo han importado a este fichero
+     #4#2 = #100#1;      || el registro lleva una "E" en el campo 7
+     #4#3 = #10#1;       || una "E" de "Excel"
+     |LEE 000#4=;
+     |SI FSalida = 0;
+          #10#7 = "E";         || calendario por cuadrante excel
+          aJornada = #4#4;  || tipo de jornada
+     |SINO;
+          |SELECT #2#6;
+          #6#0 = #100#0;      || busco primero en el fichero donde le
+          #6#1 = #100#87;     || digo el calendario por centro, bien
+          #6#2 = #100#17;
+          #6#4 = #100#77;
+          |LEE 000#6=;
+          |SI FSalida = 0;
+               #10#7 = "C";         || calendario del trabajador en laboral
+               |HAZ LaborableConv;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO RellenoDias;
+     |PARA f = fDFec; |SI f [ fHFec; |HACIENDO f = f + 1;
+          || para cada uno de los dias que pido
+
+          #10#0 = #5#0;       || leo temporal que me he ido fabricando
+          #10#1 = f;          || para el informe
+          #10#2 = 0;
+          |LEE 000#10];
+          |SI FSalida ! 0; |O #10#0 ! #5#0; |O #10#1 ! f;
+               || o no existe el codigo de tarjeta en los registros
+               || o existe pero no en la fecha que busco
+               |DDEFECTO #10;
+               #10#0 = #5#0;       || grabo esta fecha
+               #10#1 = f;
+               #10#2 = 1;
+               #10#3 = #100#2;
+               aAlfa = #10#1 % 102; #10#4 = aAlfa;
+               aAlfa = #10#1 % 402; #10#5 = aAlfa;
+               aAlfa = #10#1 % 704; #10#6 = aAlfa;
+               || #10#7 = "C"; (no, esto aqui no)
+                                   || compruebo si el dia es laborable
+               |HAZ EsLaborable;
+
+               |SI #10#7 = "E";
+                    #3#0 = aJornada;    || busco el tipo de jornada
+                    |LEE 000#3=;        || computable o no segun el tipo
+                    |SI FSalida = 0;    || definido en el prejorna #3
+                         #10#8 = #3#2;
+                    |FINSI;
+               |FINSI;
+               |SI #10#7 = "C";
+                    |SI aDiaLaborable = "S";
+                         #10#8 = "0";
+                    |SINO;
+                         #10#8 = "1";
+                    |FINSI;
+/*
+                         |HAZ HoraMinu;
+                         #10#13 = nHora;
+                         #10#14 = nMinu;
+*/
+               |FINSI;
+               #10#16 = #5#1;           || grabo codigos de empresa y
+               #10#17 = #5#2;           || de trabajador
+               |GRABA 020#10n;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO GraTraba;
+     |LEE 000#100p;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          || leo TODOS los trabajadores del labtraba
+          || ?????????
+
+          |DDEFECTO #5;       || saco el nro. de tarjeta
+          |SELECT #2#5;
+          #5#1 = #100#0;
+          #5#2 = #100#1;
+          |LEE 000#5=;        || a ver, si el trabajador no tiene tarjeta
+          |SI FSalida = 0;    || no tengo que seguir con esto
+               |HAZ RellenoDias;
+          |FINSI;
+
+          |LEE 000#100s;
+     |SIGUE;
+|FPRC;
+
+|PROCESO BuscaEnTmp;
+     |HAZ RellenoDias;   || si encuentro algun registro hago esto para el
+     |ERROR10;           || relleno, luego ya me salgo, lo hago solo una vez
+|FPRC;
+
+|DEFBUCLE BuscaEnTmp;              || aqui busco si hay algun registro
+     #10#1;                        || en el temporal donde tengo grabados
+     ;                             || de momento los movimientos
+     #5#0, fDFec, 000000;
+     #5#0, fHFec, 999999;
+     ;
+     NULL, BuscaEnTmp;
+|FIN;
+
+|PROCESO Tarjetas;
+     #100#0 = #5#1;
+     #100#1 = #5#2;
+     |LEE 000#100.=;
+
+     |BUCLE BuscaEnTmp;
+|FPRC;
+
+|DEFBUCLE Tarjetas;      || busco si el codigo de tarjeta tiene
+     #prequiva#1;        || aunque sea un registro
+     ;                   || Primero leo todas las tarjetas
+     #0#6;
+     #0#7;
+     ;
+     NULL, Tarjetas;
+|FIN;
+
+|PROCESO pretmp01;
+     #10#0 = #50#17;
+     #10#1 = #50#18;
+     #10#2 = #50#14;
+     aAlfa = #10#1 % 102; #10#4 = aAlfa;
+     aAlfa = #10#1 % 402; #10#5 = aAlfa;
+     aAlfa = #10#1 % 704; #10#6 = aAlfa;
+     #10#7 = " ";
+     #10#8 = " ";
+
+     |DDEFECTO #5;            || leo la tarjeta
+     #5#0 = #10#0;
+     |LEE 000#5=;
+
+     #10#16 = #5#1;           || extraigo de la tarjeta el codigo de la empresa
+     #10#17 = #5#2;           || y el del trabajador
+
+     |DDEFECTO #4;            || si encuentro el dia aqui es que el
+     #4#0 = #10#0;            || calendario me ha venido por la excel
+     #4#1 = #5#1;             || y lo han importado a este fichero
+     #4#2 = #5#2;             || el registro lleva una "E" en el campo 7
+     #4#3 = #10#1;            || una "E" de "Excel"
+     |LEE 000#4=;
+     |SI FSalida = 0;
+          #10#7 = "E";
+
+          #3#0 = #4#4;
+          |LEE 000#3=;
+          |SI FSalida = 0;
+               #10#8 = #3#2;
+          |FINSI;
+     |FINSI;
+
+     |DDEFECTO #100;
+     #100#0 = #4#1;
+     #100#1 = #4#2;
+     |LEE 000#100=;
+     #10#3 = #100#2;
+
+     |SI #10#7 ! "E";         || si no me ha venido el calendario por la excel
+          |SELECT #2#6;       || la categoria ha de estar aqui en este mantenimiento
+          #6#0 = #100#0;      || para buscar el calendario en el calendario laboral
+          #6#1 = #100#87;     || del trabajador
+          #6#2 = #100#17;     || si es asi le pongo una "C" de "Calendario"
+          #6#4 = #100#77;
+          |LEE 000#6=;
+          |SI FSalida = 0;
+               #10#7 = "C";
+               f = #10#1;
+               |HAZ LaborableConv;
+               |SI aDiaLaborable = "S";
+                    #10#8 = "0";
+               |SINO;
+                    #10#8 = "1";
+               |FINSI;
+          |FINSI;
+     |FINSI;
+/*
+*/
+     #10#9 = #50#20;
+     aAlfa = (("00"+#50#5)%-102) + ":" + (("00"+#50#6)%-102);
+     #10#10 = aAlfa;
+     #10#11 = #50#21;
+     aAlfa = (("00"+#50#7)%-102) + ":" + (("00"+#50#8)%-102);
+     #10#12 = aAlfa;
+     #10#13 = #50#10;
+     #10#14 = #50#11;
+     #10#15 = #50#19;
+     aAlfa = #10#15; |QBF aAlfa;
+     |SI aAlfa ! "";
+          #10#13 = 0;
+          #10#14 = 0;
+     |FINSI;
+     |GRABA 020#10n;
+|FPRC;
+
+|DEFBUCLE pretmp01;
+     #50#1;
+     ;
+     0000, fDFec, 000000;
+     9999, fHFec, 999999;
+     ;
+     NULL, pretmp01;
+|FIN;
+
+|PROCESO Tmp;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE Tmp;
+     #10#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp;
+|FIN;
+
+|PROCESO Dia; |TIPO 0;
+     aAlfa = "01."+(("00"+#0#1)%-102)+"."+(("00"+#0#0)%-104);
+     f = aAlfa;
+     f = f + 0.001;
+     nNume = f;
+     nNume = nNume - 1;
+     f = nNume;
+     aAlfa = f % 102;
+     |SI #0Campo > aAlfa;
+          |MENAV "0000Dia incorrecto...";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Defec; |TIPO 7;
+     |SI #0#0 = 0;
+          fHoy = ~;
+          aAlfa = fHoy % 704;
+          #0#0 = aAlfa; |PINTA #0#0;
+          aAlfa = fHoy % 402;
+          #0#1 = aAlfa; |PINTA #0#1;
+
+          aAlfa = "01."+(("00"+#0#1)%-102)+"."+(("00"+#0#0)%-104);
+          f = aAlfa;
+          f = f + 0.001;
+          nNume = f;
+          nNume = nNume - 1;
+          f = nNume;
+          aAlfa = f % 102;
+          #0#3 = aAlfa; |PINTA #0#3;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |DBASS aBase;
+     aAlfa = aBase + "laboral/fich/";
+     |PATH_DAT #100 aAlfa;
+     |PATH_DAT #101 aAlfa;
+
+     Impresora = "Crystal Reports";
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR "preinf04";
+          |SI FSalida = 0;
+               enAnyo = #0#0;
+               enMes  = #0#1;
+               enDTerm = #0#4; enHTerm = #0#5;
+               enDTarj = #0#6; enHTarj = #0#7;
+               enDEmpr = #0#8; enHEmpr = #0#9;
+               enDTrab = #0#10; enHTrab = #0#11;
+               |SUB_EJECUTA_NP "preinfor;NUEVO";
+
+               aAlfa = (("00"+#0#2)%-102)+"."+(("00"+#0#1)%-102)+"."+(("00"+#0#0)%-104);
+               fDFec = aAlfa;
+               aAlfa = (("00"+#0#3)%-102)+"."+(("00"+#0#1)%-102)+"."+(("00"+#0#0)%-104);
+               fHFec = aAlfa;
+
+               aAlfa = "tm" + Usuario;
+               |NOME_DAT #50#aAlfa#;
+||ABRE #50;
+||CONSULTA_CLAVE #1#50;
+               aAlfa = Usuario;
+               |NOME_DAT #10 aAlfa; |DELINDEX #10;
+
+               |ABRE #101;
+               |ABRE #100;
+               |ABRE #10;
+               |ABRE #6;
+               |ABRE #5;
+               |ABRE #4;
+               |ABRE #3;
+               |BUCLE pretmp01;
+               |BUCLE Tarjetas;
+               ||HAZ GraTraba;
+               |CIERRA #3;
+               |CIERRA #4;
+               |CIERRA #5;
+               |CIERRA #6;
+               |CIERRA #10;
+               |CIERRA #100;
+               |CIERRA #101;
+
+               |BUCLE Tmp;
+               |PIEINF;
+               |FININF;
+
+               |DELINDEX #10;
+               |DELINDEX #50;
+          |SINO;
+               |MENAV "0000Error informe 'preinf04'";
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+|FPRC;

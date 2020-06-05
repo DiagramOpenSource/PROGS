@@ -1,0 +1,694 @@
+|FICHEROS;
+   cactapre #0;       || Informe suma y saldos comparacion
+
+   cacuenta #1;       || Plan contable
+   cactapr1 #2;       || Fichero fantasma de impresion por pantalla
+   caconimp #8;
+   cacuentm #100;
+
+   caratios #103;       || Fichero de Ratios
+   caformul #104;
+
+   cacuepre #11;
+
+   canempre #30;
+   caselem1 #998;
+   cacreano #260;
+|FIN;
+
+|VARIABLES;
+  &r_emp    = 0;
+  &r_per    = 0;
+   &pathbal = "";
+   &balance = 1;
+   &entrada = 1;
+   lin = 0;
+   sw_error = 0;
+   x = 0;
+   y = 0;
+   z = 0;
+   informe = "";
+   mes = 0;                  || Variable para saber el mes seleccionado
+   letrames = "";            || Variable para poner el mes en letra
+   error1 = "0000Nivel repetido";
+   error2 = "0000No existe informe";
+   error3 = "0000El numero de nivel no coincide con el numero de nivel de la empresa";
+   swprint = 0;       || Variable para saber si imprimimos o no
+   swsuma = 0;        || Variable para saber si sumamos o no
+   saldo = 0;         || Resta entre el debe y el haber;
+   sw = 0;            || sw para nivel anterior
+   nivelact = 0;      || Nivel actual
+   rellenos = "";     || Variable para rellenar el hasta de la cuenta en zetas
+   &i_debe = 0;       || Total del debe por registro
+   &i_haber = 0;      || Total del haber por registro
+   &i_deudor = 0;     || Total saldo deudor por registro
+   &i_acreedor = 0;   || Total saldo acreedor por registro
+   &t_debe = 0;       || Total del debe del informe
+   &t_haber = 0;      || Total del haber del informe;
+   &t_deudor = 0;     || Total saldo deudor por informe
+   &t_acreedor = 0;   || Total saldo acreedor por informe
+   &t_salpre = 0;     || Total saldo presupuestado
+   &saldo_pre  = 0;   || Saldpo presupuestado
+   &tan100     = 0;
+   &tan100_pre = 0;
+   &swlinea    = 0;      || Pone o no linea en blanco en informe
+   &swcomen    = 0;
+   {-1}menu     = "";           || Variables menu impresora o pantalla
+   menu1 = "2400";
+   menu2 = "1";
+   menu3 = "Elija opcion: ";
+   menu4 = "PI";
+   menu5 = " Pantalla ";
+   menu6 = " Impresora ";
+
+   digito = 0;
+   menor = 0;
+   para1 = 0;
+   nume1 = 0;
+   nume2 = 0;
+   nume3 = 0;
+   nume4 = 0;
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+   alfa4 = "";
+   dos_ant = "xx";
+   &pagina = 0;
+   sw_pagina = 0;
+   &cmcta = "";
+   &cmnom = "";
+   &cmsal = 0;
+   &deac = "";
+   &titulo = "";
+   dif = 0;
+   &aparam = "";
+
+   Comodin  = "";
+   Comodin1 = "";
+
+   Empresa = 0;
+   Periodo = 0;
+   aNomCta = "";
+   aNomPre = "";
+
+   t_agrupa = 0;
+   aFichero = "";
+   nSwClave = 0;
+
+   nSw      = 0;
+   &eaTexto = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE digito_i;
+|INCLUYE calrat_i;
+
+|PROCESO antesque;
+   aNomPre = "cacuepre";
+   aNomCta = "cacuenta";
+   aparam = PARAMETRO;
+   |QBF aparam;  |SI aparam = " N"; aparam = ""; |FINSI;
+   |SI aparam = "fech";
+       aNomCta = "cabalano";
+       aNomPre = "cabalpre";
+   |FINSI;
+   |NOME_DAT #1  aNomCta;
+   |NOME_DAT #11 aNomPre;
+
+   |SI aparam = "fech";
+        |ABRE #260;
+        |DDEFECTO #260;
+        |LEE 041#260p;
+        |SI FSalida = 0;
+            alfa1 = #260#2;  alfa1 = alfa1 % 402;  enM1f = alfa1;
+            alfa1 = #260#3;  alfa1 = alfa1 % 402;  enM2f = alfa1;
+            |SI #0#2 ! 00;
+                |SI #0#2 < enM1f;
+                    NumMes = enM1f; |HAZ NombreMes; #0#3 = NombreMes;
+                |FINSI;
+            |SINO;
+                |SI #260#0 ! 00; |O fec1 ! #260#2;
+                    NumMes = enM1f; |HAZ NombreMes; #0#3 = NombreMes;
+                |FINSI;
+            |FINSI;
+            |SI #0#4 ! 13;
+                |SI #0#4 > enM2f;
+                    NumMes = enM2f; |HAZ NombreMes; #0#5 = NombreMes;
+                |FINSI;
+            |SINO;
+                |SI #260#1 ! 99; |O fec2 ! #260#3;
+                    NumMes = enM2f; |HAZ NombreMes; #0#5 = NombreMes;
+                |FINSI;
+            |FINSI;
+        |FINSI;
+        |CIERRA #260;
+
+   |FINSI;
+|FPRC;
+
+|| ***********************************************************************
+||                       CALCULOS DE PANTALLA
+|| ***********************************************************************
+|PROCESO inicio_y; |TIPO 8;
+  |HAZ inicial;
+  |SI swerror = 2; |PTEC 807; |ACABA; |FINSI;
+  |SI swerror = 3; |PTEC 831; |PTEC 807; |ACABA; |FINSI;
+|FPRC;
+
+|PROCESO &c_pagina;
+   |SI sw_pagina = 0;
+      pagina = 1;
+      sw_pagina = 1;
+   |SINO;
+      pagina = pagina + 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO mayor;
+   |SI Campo = 17;
+      |SI #0Campo = "C";
+         |C_M #0#8, 1,"S";
+         |C_M #0#18,1,"N";
+         #0#18 = 0; |PINTA #0#18;
+         |PINTA 1621, "                                    ";
+         #0#16 = "* BALANCE PRESUPUESTARIO SUMAS Y SALDOS COMPARTIVO CUENTA *";
+         |PINTA #0#16;
+      |SINO;
+         |C_M #0#8, 1,"N";
+         |C_M #0#18,1,"S";
+         #0#8 = "            "; |PINTA #0#8;
+         |PINTA 1529, "                                    ";
+         #0#16 = "* BALANCE PRESUPUESTARIO SUMAS Y SALDOS COMPARADO RATIO *";
+         |PINTA #0#16;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO cuenta; |TIPO 6;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |SI #0#17 = "R"; |Y Campo = 8; |ACABA; |FINSI;
+
+    eaCuenta = #0Campo;
+    salidas  = FSalida;
+    |HAZ FiltraPuntos;
+    #0Campo = eaCuenta;
+    |PINTA #0Campo;
+
+   |SI #0Campo = "            "; |Y Campo = 8;   |ERROR;  |ACABA;  |FINSI;
+   digito = Campo + 14;
+   |SI Campo = 8;  digito = 9; |FINSI;
+   eaCuenta = #0Campo;
+   |HAZ SacaNivel;
+   #0digito = enNivel;
+|FPRC;
+
+|PROCESO nomcuenta; || leer la cuenta a comparar.
+   |SI #0#17 = "R"; |ACABA; |FINSI;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   sw_error = 1;
+   |ABRE #1;
+   |DDEFECTO #1;
+   #1#0 = #0#8;
+   |LEE 001#1=;
+   |PINTA 1529, #1#2;
+   |CIERRA #1;
+|FPRC;
+
+|PROCESO leeratio; || Lee el ratio
+
+   |SI #0#17 = "C"; |ACABA; |FINSI;
+   |ABRE #103;
+   #caratios#0 = #0#18;
+   |LEE 001#103=;
+   |SI FSalida = 0;
+      |PINTA 1621, #103#1;
+   |SINO;
+      |MENAV "    Atencion!. Ratio Inexistente !!!";
+      |ERROR;
+   |FINSI;
+   |CIERRA #103;
+|FPRC;
+
+|PROCESO mesconta; |TIPO 0;
+   y = Campo + 1;                || Coge el campo del nombre del mes
+   NumMes = #0Campo;
+   |SI #0Campo ! 0;|Y #0Campo ! 13;
+       NumMes = dig1 + (#0Campo - 1);
+       |SI NumMes > 12; NumMes = NumMes - 12; |FINSI;
+   |FINSI;
+   |HAZ NombreMes;
+   #0y = NombreMes;
+   |PINTA #0y;
+   |SI Campo = 4; |Y #0#2 > #0#4;
+       |MENAV "    ATENCION!!! Error de Entrada ...";
+       |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO numnivel;|TIPO 0;
+   |SI #0#7 > dig3;
+      |MENAV error3;
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO LeeAgrupa;
+    |SI t_agrupa ! #0#19; |O nSw = 0;
+        #0#20 = "M";
+        |ABRE #11;
+        #11#19 = #0#19;
+        #11#0  = doce;
+        #11#1  = 0;
+        |LEE 041#11];
+        |SI FSalida = 0; |Y #11#19 = #0#19;
+            #0#20 = #11#3;
+        |FINSI;
+        |CIERRA #11;
+        |PINTA #0#20;
+        nSw = 1;
+        t_agrupa = #0#19;
+    |FINSI;
+|FPRC;
+|| **********************************************************************
+||                       CALCULOS DE IMPRESION
+|| **********************************************************************
+
+|PROCESO presup2;    || si no esta como ficha presupuestaria no sale SI
+
+   |DDEFECTO #11;
+   #11#19 = t_agrupa;
+   #11#0 = #1#0;
+   #11#1 = #1#1;
+   |LEE 001#11=;
+   |PARA nume1 = 0; |SI nume1 [ 58; |HACIENDO nume1 = nume1 + 1;
+         #100nume1 = #1nume1;
+   |SIGUE;
+   |PARA nume1 = 59; |SI nume1 [ 70; |HACIENDO nume1 = nume1 + 1;
+         nume2 = nume1 - 55;
+         #100nume1 = #11nume2;
+   |SIGUE;
+   #100#71 = #11#02;  || signo
+   |GRABA 020#100n;
+|FPRC;
+
+|DEFBUCLE bu_pres2;   || balances situacion y explotacion
+   #1#1;
+   ;
+   #0#0;
+   #0#1;
+   e;
+   NULL, presup2;
+|FIN;
+
+|PROCESO presup0;
+   |SI FSalida = 0;
+      |HAZ pre_aviso;
+      aFichero = "1p" + Usuario;
+      |NOME_DAT #100 aFichero;
+      |DELINDEX #100;
+
+      |ABRE #100;
+      |ABRE #11;
+      |BUCLE bu_pres2;
+      |CIERRA #11;
+      |CIERRA #100;
+      |POPV;
+   |FINSI;
+|FPRC;
+
+|PROCESO pre_aviso;
+   |PUSHV 11181760;
+   |ATRI P;
+   |CUADRO 11 18 15 60;
+   |ATRI R;
+   |CUADRO 12 19 14 59;
+   |ATRI 0;
+   |ATRI R;
+   |ATRI I;
+   |PINTA 1320, " Procesando Fichas Presupuestarias ... ";
+   |ATRI 0;
+|FPRC;
+|| **********************************************************************
+
+|PROCESO condicion;      || Calculo condiciones de impresion
+   |HAZ digitos2;
+   |SI d_error ! 0;  |ACABA;  |FINSI;
+   swprint = 0;         || Variable para saber si imprimimos o no
+   swsuma = 0;          || Variable para saber si sumamos o no
+
+   |SI #100#55 = #0#7; swprint = 1; swsuma = 1; |FINSI;
+
+   |SI #100#3 = "S"; |Y #100#55 [ #0#7;    || Si el nivel no esta seleccionado
+      swsuma = 1;                          || pero tiene en el campo pase una S
+      swprint = 1;                         || entonces se imprime y se suma.
+   |FINSI;
+
+   |SI swprint = 1;    || Si se puede imprimir
+      |SI sw = 0;
+         nivelact = #100#55;     || Nivel actual
+         sw = 1;
+      |FINSI;
+      |HAZ suma_pre;
+      |SI i_debe = 0; |Y i_haber = 0; |Y saldo_pre = 0; |Y #0#6 = "N"; || cuentas sin mov.
+         |ACABA;
+      |FINSI;
+      |HAZ tanto100;
+      |SI menu2 = 1; |HAZ operapanta; |FINSI; || Si es por pantalla
+      |SI menu2 = 2; |HAZ operaimpre; |FINSI; || Si es por impresora
+   |FINSI;
+|FPRC;
+
+|PROCESO operapanta;   || Operaciones por pantalla;
+   #2#0 = #100#0;     || Cuenta
+   #2#1 = #100#2;     || Descripcion
+   #2#2 = i_debe;   || debe
+   #2#3 = i_haber;   || debe
+   #2#4 = #2#2 - #2#3;             || saldo
+   #2#11 = tan100;
+   #2#15 = saldo_pre;
+   #2#18 = tan100_pre;
+
+   #2#8  = #2#5;
+   #2#9  = #2#6;
+   #2#10 = #2#7;
+   #2#17 = #2#16;
+   |SI swsuma = 1;    || Si se puede sumar los totales
+       #2#5  = #2#5  + #2#2;         || Suma el total del debe
+       #2#6  = #2#6  + #2#3;         || Suma el total del haber
+       #2#7  = #2#7  + #2#4;         || Suma total saldo
+       #2#16 = #2#16 + #2#15;        || Suma total saldo presupuesto
+   |FINSI;
+
+   |PINTA #2#7; |PINTA #2#16;
+
+   |GRABA 020#2n;
+|FPRC;
+
+|PROCESO operaimpre;     || impresora
+
+   |SI nivelact ! #100#55;         || cambio de nivel, linea en blanco
+      swlinea = 1;
+      nivelact = #100#55;
+   |SINO;
+      swlinea = 0;
+   |FINSI;
+
+   |PRINT;
+   swcomen = 1
+   |SI swsuma = 1;     || acumula totales
+      t_debe     = t_debe     + i_debe;         || debe
+      t_haber    = t_haber    + i_haber;        || haber
+      t_deudor   = t_deudor   + i_deudor;       || saldo deudor
+      t_acreedor = t_acreedor + i_acreedor;     || saldo acreedor
+      t_salpre   = t_salpre   + saldo_pre;      || saldo presupuestado
+   |FINSI;
+|FPRC;
+
+
+|DEFBUCLE caycosy00;      || plan contable (3ra. clave)
+   #100#3;
+   ;
+   #0#0, 1;
+   rellenos, 6;
+   e;
+   NULL, condicion;
+|FIN;
+
+|PROCESO impre;
+   |BUCLE caycosy00;
+   |PIEINF;
+|FPRC;
+
+|PROCESO min;
+    #2#0 = "             ";
+|FPRC;
+
+|PROCESO max;
+    #2#0 = "zzzzzzzzzzzzz";
+|FPRC;
+
+|PROCESO panta;
+   aFichero = "a" + Usuario;
+   |NOME_DAT #2 aFichero;
+   |DELINDEX #2;
+
+   |PINPA #0#2;       || Pinta la pantalla del informe
+   |ATRI R; |PINTA 0602, titulo; |ATRI 0;
+
+   |DDEFECTO #2;
+   #2#12 = cmcta;
+   #2#13 = cmnom;
+   #2#14 = saldo;
+   |PINTA #2#12; |PINTA #2#13; |PINTA #2#14;   || Cuenta
+
+   sw_error = 0;
+   |ABRE #2;
+   |BUCLE caycosy00;
+   |SI sw_error = 1;
+       |CIERRA #2;
+       |ACABA;
+   |FINSI;
+   |CIERRA #2;
+
+   |C_V #2#12, 1, "N";  |C_V #2#13, 1, "N"; |C_V #2#14, 1, "N";
+   |C_V #2#7,  1, "N";  |C_V #2#16, 1, "N";
+   |ENTLINEAL #1#2, -1, 5, 20, 0, min, max;
+|FPRC;
+
+
+|PROCESO borrar;
+   |DDEFECTO #2;
+   sw = 0;
+   swcomen = 0;
+   t_debe = 0;
+   t_haber = 0;
+   t_deudor = 0;
+   t_acreedor = 0;
+   t_salpre   = 0;
+   cmsal = 0;
+|FPRC;
+
+|PROCESO suma;
+   i_debe = 0;
+   i_haber = 0;
+   i_deudor = 0;
+   i_acreedor = 0;
+   saldo = 0;
+   y = ((#0#2 * 3) + 9);
+   |PARA x = #0#2; |SI x [ #0#4; |HACIENDO x = x + 1;
+      i_debe = i_debe + #1y;                   || acumula debe
+      y = y + 1;
+      i_haber = i_haber + #1y;                 || acumula haber
+      y = y + 2;
+   |SIGUE;
+   saldo = i_debe - i_haber;      || saldo
+   |SI saldo > 0; i_deudor = saldo; i_acreedor = 0;            |FINSI;
+   |SI saldo < 0; i_deudor = 0;     i_acreedor = saldo * (-1); |FINSI;
+   |SI saldo = 0; i_deudor = 0;     i_acreedor = 0;            |FINSI;
+|FPRC;
+
+|PROCESO suma_pre;
+   i_debe = 0;
+   i_haber = 0;
+   i_deudor = 0;
+   i_acreedor = 0;
+   saldo = 0;
+   saldo_pre = 0;
+   y = ((#0#2 * 3) + 9);
+
+   |PARA x = #0#2; |SI x [ #0#4; |HACIENDO x = x + 1;
+      i_debe = (i_debe + #100y) ! 2;                   || acumula debe
+      y = y + 1;
+      i_haber = (i_haber + #100y) ! 2;                 || acumula haber
+      y = y + 2;
+      |SI #0#20 = "M";
+          |SI x ! 0;
+              z = x + 58;
+              saldo_pre = (saldo_pre + #100z) ! 2;
+          |FINSI;
+      |FINSI;
+   |SIGUE;
+   |SI #0#20 = "A";
+       |PARA x = 59; |SI x [ 70; |HACIENDO x = x + 1;
+             saldo_pre = (saldo_pre + #100x) ! 2;
+       |SIGUE;
+   |FINSI;
+
+   saldo = i_debe - i_haber;      || saldo
+   |SI saldo > 0; i_deudor = saldo; i_acreedor = 0;            |FINSI;
+   |SI saldo < 0; i_deudor = 0;     i_acreedor = saldo * (-1); |FINSI;
+   |SI saldo = 0; i_deudor = 0;     i_acreedor = 0;            |FINSI;
+|FPRC;
+
+|PROCESO tanto100;
+   tan100     = 0;
+   tan100_pre = 0;
+
+   |SI cmsal ! 0; |O saldo ! 0;
+
+       |SI saldo > 0; dif = saldo;   |FINSI;
+       |SI saldo < 0; dif = - saldo; |FINSI;
+
+       tan100 = (dif * 100) / cmsal;
+       |SI tan100 < 0; tan100 = - tan100; |FINSI;
+   |FINSI;
+
+   |SI cmsal ! 0; |O saldo_pre ! 0;
+
+       |SI saldo_pre > 0; dif = saldo_pre;   |FINSI;
+       |SI saldo_pre < 0; dif = - saldo_pre; |FINSI;
+
+       tan100_pre = (dif * 100) / cmsal;
+       |SI tan100_pre < 0; tan100_pre = - tan100_pre; |FINSI;
+   |FINSI;
+
+|FPRC;
+
+|| ***********************************************************************
+||                       CALCULO ENTRADA DE DATOS
+|| ***********************************************************************
+
+|PROCESO rellena;
+   rellenos = "zzzzzzzzzzzz";
+   menor = #0#7;
+   |SI menor = 1;  nume1 = dig4;  |FINSI;
+   |SI menor = 2;  nume1 = dig5;  |FINSI;   || construye el hasta segun
+   |SI menor = 3;  nume1 = dig6;  |FINSI;   ||/el nivel seleccionado
+   |SI menor = 4;  nume1 = dig7;  |FINSI;
+   |SI menor = 5;  nume1 = dig8;  |FINSI;
+   |SI menor = 6;  nume1 = dig9;  |FINSI;
+   nume1 = 100 + nume1;
+   rellenos = #0#1 % nume1;
+   rellenos = rellenos + "zzzzzzzzzzzz";
+   rellenos = rellenos % 112;
+|FPRC;
+
+|PROCESO lecturas; || Leer el saldo de la cuenta o el ratio
+   |SI #0#17 = "C"; |HAZ lectura_cta; |FINSI;
+   |SI #0#17 = "R"; |HAZ lectura_ratio; |FINSI;
+|FPRC;
+
+|PROCESO lectura_cta; || leer la cuenta a comparar.
+   titulo = "CUENTA";
+   sw_error = 1;
+   |ABRE #1;
+   #1#0 = #0#8;
+   |LEE 001#1=;
+   |SI FSalida = 0;
+      sw_error = 0;
+      cmcta = #1#0;
+      cmnom = #1#2;
+      cmsal = 0;
+      |HAZ suma;
+      |SI saldo ] 0; cmsal = saldo;   deac = "DEUDOR";   |FINSI;
+      |SI saldo < 0; cmsal = - saldo; deac = "ACREEDOR"; |FINSI;
+   |FINSI;
+   |CIERRA #1;
+|FPRC;
+
+|PROCESO lectura_ratio; || leer el ratio a comparar.
+   titulo = "RATIO ";
+   sw_error = 1;
+   |ABRE #103;
+   #caratios#0 = #0#18;
+   |LEE 001#103=;
+   |SI FSalida = 0;
+      sw_error = 0;
+      deac = " RATIO";
+      cmcta = "0000" + #0#18;
+      cmcta = cmcta % -104;
+      cmnom = #caratios#1;
+      |HAZ calculo_ratio;
+      |SI error = 0;
+         x = #0#4 + 2; |SI #0#4 = 0; x = 3; |FINSI;
+         cmsal = #caratios#x#;
+         saldo = #caratios#x#;
+      |SINO;
+         sw_error = 1;
+      |FINSI;
+   |FINSI;
+   |CIERRA #103;
+|FPRC;
+
+|PROCESO HazTodo;
+  |CIERRAT #1;
+  |HAZ antesque;
+
+  |HAZ FecApeCie;
+  |SI enMAper ! dig1;
+      |SI #0#4 < enMAper; |Y #0#4 ! 0;
+          |ACABA;
+       |FINSI;
+  |FINSI;
+
+   enSwOper = 1;
+   r_emp = empre;
+   r_per = ejerc;
+   |SUB_EJECUTA "carecsig";
+   enSwOper = 0;
+
+   |ABRE #8;
+   |DDEFECTO #8;
+   #8#0 = 1;
+   |LEE 000#8=;
+   |CIERRA #8;
+   |SI #8#2 = "S";  |Y #8#3 = "N";  |Y aparam = "";
+       pathbal = dirfich0;
+       balance = 1;
+       |SI #8#10 = "S";
+           enSwOper = 2;
+           |SUB_EJECUTA "carecsig";
+           enSwOper = 0;
+           |SI enECuadre = 1; |ACABA; |FINSI;
+           |NOME_DAT #1 eaNomFCta;
+       |SINO;
+           |SUB_EJECUTA "careccue";
+       |FINSI;
+   |FINSI;
+
+   t_agrupa = #0#19;
+   |HAZ presup0;
+
+   sw_pagina = 0;
+   |HAZ rellena;
+   |HAZ lecturas;
+   |SI sw_error = 1; |ACABA; |FINSI;
+
+   |SI menu2 = 1; |HAZ panta; |FINSI;  || Por pantalla
+   |SI menu2 = 2;                      || Por impresora
+       |HAZ impre;
+   |FINSI;
+   |HAZ borrar;
+|FPRC;
+
+|PROCESO imprimir; |TIPO 3;
+   eaTexto = "Presupuesto Mensual";
+   |SI #0#20 = "A";
+       eaTexto = "Presupuesto Anual";
+   |FINSI;
+
+   |MENU menu;
+   |SI FSalida > 0;          || Se ha elegido opcion
+       menu2 = FSalida;      || Defecto de la ultima opcion elegida
+
+       |SI menu2 = 2;
+
+           |MENAV "0000 Recuerde de seleccionar el papel de la impresora en Horizontal";
+
+           |IMPRE 0;
+           |SI FSalida ! 0; |ACABA; |FINSI;
+
+           informe = "cactapre";
+           |INFOR informe;
+           |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+       |FINSI;
+
+       |DFICE dirfich0;
+       |HAZ HazTodo;
+       |SI menu2 = 2;
+           |FININF;
+           |FINIMP;
+       |FINSI;
+   |FINSI;
+|FPRC;
+|| *************************************************************************

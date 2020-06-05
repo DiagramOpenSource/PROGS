@@ -1,0 +1,197 @@
+|FICHEROS;
+   eosamoau #0;
+   eosamorc #1;
+   eosamorl #2;
+|FIN;
+
+|VARIABLES;
+   SwHacer   = 0;
+   nDiasAnyo = 0;
+   nAnyo     = 0;
+
+   anyonum   = 0;
+   nLinea    = 0;
+   mesnum    = 0;
+   amort_n   = 0;
+   amort_d   = 0;
+   amortiza  = 0;
+   amortiza1 = 0;
+   anyo1     = "";
+   mes       = "";
+   mensaje   = "";
+
+   Fecha   = @;
+   Comodin = "";
+   aAlfa   = "";
+   nNume1  = 0;
+   NumDias = 0;
+   nT600   = 0;
+   &EURODB = 0;
+   ultFecha = @;
+
+|FIN;
+
+|CALCULO defecto; |TIPO 7;
+  |SI #0#1 ] 80;
+      nNume1 = 1900 + #0#1;
+  |SINO;
+      nNume1 = 2000 + #0#1;
+  |FINSI;
+  aAlfa = nNume1;
+  aAlfa = "31.12." + aAlfa;
+  #0#2 = aAlfa;
+  |PINTA #0#2;
+|FCAL;
+
+|CALCULO anyo; |TIPO 0;
+  anyo1 = #0#2;
+  anyo1 = anyo1 % -102;
+  anyonum = anyo1;
+  |SI anyonum ! #0#1;
+      |MENAV "     El a¤o de la fecha es distinto al a¤o seleccionado.";
+      |ERROR;
+  |FINSI;
+|FCAL;
+
+|| ********************************************************************
+|PROCESO  grabalin;
+  |ABRE #2;
+  |DDEFECTO #2;
+  nLinea = nLinea + 1;
+  #2#0 = #1#0;
+  #2#1 = #1#1;
+  #2#2 = #1#2;
+  #2#3 = nLinea;
+  #2#4 = #0#1;
+  #2#5 = #0#2;
+  #2#6 = "A";
+  #2#7 = #0#3;
+  #2#8 = 0;
+  #2#9 = 0;
+  #2#10 = 0;
+  #2#11 = amortiza;
+  #2#12 = "N";
+  |GRABA 020#2n;
+  |LIBERA #2;
+  |CIERRA #2;
+|FPRC;
+
+|PROCESO BuscaLinea;
+||   |SI #2#4 = #0#1; |Y #2#6 = "A";  || no mirar a¤o, sino fecha
+||       SwHacer = 0;
+||   |FINSI;
+   |SI #2#5 ] #0#2; |Y #2#6 = "A";
+       SwHacer = 0;
+   |FINSI;
+   nLinea   = #2#3;
+   |SI ultFecha < #2#5; ultFecha = #2#5; |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaLinea;
+ #2#1;
+ ;
+ #1#0,#1#1,#1#2,001;
+ #1#0,#1#1,#1#2,999;
+ e;
+ NULL, BuscaLinea;
+|FIN;
+
+|PROCESO cabecera;
+
+   |SI #1#10 > #0#2; || bien comprado despues
+       |ACABA;
+   |FINSI;
+
+   nLinea   = 0;
+   ultFecha = "01.01.0000";
+   SwHacer = 1;
+   |BUCLE BuscaLinea;
+   |SI SwHacer = 0;
+       |ACABA;
+   |FINSI;
+
+   mes    = #1#10;
+   mes    = mes % 402;
+   mesnum = mes;
+   mes    = #1#10 % -102;
+
+   |SI #1#13 ! 0;
+       |SI #0#1 = mes;
+           NumDias  = #0#2;
+           |SI ultFecha ] #1#10;
+               NumDias = NumDias - ultFecha;
+           |SINO;
+               NumDias = NumDias - #1#10;
+           |FINSI;
+           amort_n = (#1#5 * NumDias) / nDiasAnyo;
+           amort_d = (#1#6 * NumDias) / nDiasAnyo;
+           |SI #1#20 = "N"; |Y #1#11 [ nT600;
+               |SI #1#5 = 100;
+                   amort_n = 100;
+               |FINSI;
+               |SI #1#6 = 100;
+                   amort_d = 100;
+               |FINSI;
+           |FINSI;
+       |SINO;
+            aAlfa   = nAnyo;
+            Comodin = "01.01." + aAlfa;
+            Fecha   = Comodin;
+            Fecha   = ultFecha + 1;
+            NumDias = #0#2;
+            NumDias = (NumDias - Fecha) + 1;
+            amort_n = (#1#5 * NumDias) / nDiasAnyo;
+            amort_d = (#1#6 * NumDias) / nDiasAnyo;
+       |FINSI;
+
+       |SI #1#4 = "N";
+           amortiza = (#1#11 * amort_n) / 100;
+           |SI amortiza ] #1#13; amortiza = #1#13; |FINSI;
+       |SINO;
+            amortiza = (#1#13 * amort_d) / 100;
+            amortiza1 =  (#1#11 * amort_n) / 100;
+            |SI amortiza1 > amortiza;
+                amortiza = amortiza1;
+            |FINSI;
+            |SI amortiza ] #1#13; amortiza = #1#13; |FINSI;
+       |FINSI;
+
+       |HAZ grabalin;
+       #1#12 = #1#12 + amortiza;
+       #1#13 = #1#11 - #1#12;
+
+       |GRABA 020#1a;
+       |LIBERA #1;
+   |SINO;
+        mensaje = "0000Amortizacion : " + #1#0 +  " Terminada";
+       |MENAV mensaje;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE eosamoau0;
+  #1#1;
+  ;
+  #0#0, 00, 00001;
+  #0#0, 99, 99999;
+  be;
+  NULL, cabecera;
+|FIN;
+
+|CALCULO pasar; |TIPO 3;
+  nT600 = 100000;
+  |SI EURODB = 2;
+      nT600 = (nT600 / 166.386) ! EURODB;
+  |FINSI;
+
+  aAlfa = #0#2 % 0704;
+  nAnyo = aAlfa;       || A¤o amortizacion
+
+  nDiasAnyo = 365;
+  |SI nAnyo = 1980; |O nAnyo = 1984; |O nAnyo = 1988; |O nAnyo = 1992; |O nAnyo = 1996;
+       |O nAnyo = 2000; |O nAnyo = 2004; |O nAnyo = 2008; |O nAnyo = 2012; |O nAnyo = 2016;
+       |O nAnyo = 2020; |O nAnyo = 2024; |O nAnyo = 2028; |O nAnyo = 2032; |O nAnyo = 2036;
+          nDiasAnyo = 366;
+  |FINSI;
+
+  |BUCLE eosamoau0;
+|FCAL;

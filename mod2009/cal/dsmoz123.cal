@@ -1,0 +1,1286 @@
+|| ----->   swSinFich   0 = Sin Fichero Auxiliar Empresas
+|| ----->   eaFEmpresa  Nombre del Fichero Temporal Empresas
+|| ----->   eaFAsiento  Nombre del Fichero Temporal Asientos
+
+|| ----->   swSinCheq   1 = NO Chequear Cuadre, 2 = Crear registro
+|| ----->   enRelaIVA   0 = No existe IVA /  1 = IVA Relacionado
+
+|| ----->   enEmprEos   = Numero Empresa Eos Anterior
+|| ----->   eaEmprEos   = "";
+|| ----->   enTipoEos   = Tipo Pase Eos 1 = Libros, 2 = Amortizaciones
+
+|| ----->  enTipoAct = Parametro para la Actualizacion
+||       1) Diario, Fecha y Documento de las Lineas
+||       2) Diario y Fecha de las Lineas, varios documentos Cuadrando
+||       3) Diario y Fecha de las Lineas, un documento
+||       4) Un solo Asiento por Fichas Recibidas
+||       5) Diario, Fecha, Documento y libro de las Lineas
+||              ------> siempre recoge el N§ documento de la Contabilidad
+
+|FICHEROS;
+   dsmoz123 #0;      || Pantalla
+   dsmow043 #999;    || Auxiliar de Empresas Modelos
+   dsmow123 #123;    || Auxiliar de Apuntes Modelos
+
+   :/contagen/def/camaasic #1;    || Apuntes Cabs
+   :/contagen/def/camaasil #2;    || Apuntes Lins
+   :/contagen/def/calicont #3;    || Lineas de Contrapartidas Asientos
+   :/contagen/def/camandia #10;   || Diario
+   :/contagen/def/cacuenta #11;   || Cuentas
+   :/contagen/def/caconasi #20;
+   :/contagen/def/camaniva #21;
+   :/contagen/def/caivalin #22;
+   :/contagen/def/calibros #23;
+   :/contagen/def/caclipro #24;
+
+   :/contagen/def/cacuiv2c #25;
+   :/contagen/def/cacuiv2l #26;
+
+   :/contagen/def/caivaasi #27;
+   :/contagen/def/camandep #28;
+   :/contagen/def/caivases #29;
+
+   :/contagen/def/anm00012 #112;
+   :/contagen/def/anm00013 #113;
+   :/contagen/def/anm00014 #114;
+   :/contagen/def/anm00015 #115;
+
+   :/contagen/def/cam00014 #124;
+   :/contagen/def/cam00015 #125;
+
+   &Puente@ #18;
+   :/modelos/def/dsmom030 #30;
+   :/modelos/def/dsmom033 #33;
+
+   :/basica/def/agicen14  #40;
+   :/basica/def/agicen17  #41;
+
+   &regisnif@ #709;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   cam      = 0;
+   alfa1    = "";
+   alfa2    = "";
+   nume1    = 0;
+   nume2    = 0;
+   estado   = 0;
+
+   diario   = 0;
+   fecha    = @;
+   docume   = 0;
+   asient   = 0;
+   linea    = 0;
+   debe     = 0;
+   haber    = 0;
+   entdia  = 0;
+   entfec  = @;
+   entdoc  = 0;
+   entlib  = 0;
+   swnuevo  = 1;
+   sw_error = 0;
+   swcuadre = 0; || 0 = cuadrado; Descuadres -> 1 = pasar a Asientos
+   ||                             2 = Salir de Actualizacion
+   &aEmpresa = "";
+   &antdia  = 0;
+   &antfec  = @;
+   &antdoc  = 0;
+   &numero  = 0;
+   &error   = "";
+   &enDesdeOtra = 0;
+
+   LineasIVA = 0;
+   aTipoIVA  = "";
+   nPerio    = 0;
+
+   FEstado   = 0;
+   NumDocum  = 0;
+   aElProgr  = "";
+   nCanal    = 0;
+   FlagActiv = 0;
+   nArrend   = 0;
+   nTipoTribut = 0;
+   nRedondeo = 0;
+   aPath     = "";
+
+   traba     = "";
+   nFactura  = 0;
+
+   aElDeC    = "";
+   aElDeN    = "";
+   aElSuC    = "";
+   aElSuN    = "";
+   aAlfa1    = "";
+
+   nLinRep   = 0;
+   nEsReCa   = 0;
+   nEsReLi   = 0;
+   nSwFBlo   = 0;
+
+   &enEmprEos      = 0;
+   &enTipoEos      = 0;
+   &eaEmprEos      = "";
+   &aPathAnterior = "";
+   aError         = "";
+
+   notro1 = 0;
+   notro2 = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+|| **************************************************************************
+|PROCESO Empresas;
+ enEmpresa  = #999#1;   || Empresa
+ enPerConta = #999#2;   || Periodo Contable
+ enEjer     = #999#3;   || A¤o
+ dig1       = #999#4;   || Desde Mes
+ dig3       = #999#5;   || N§ Digitos
+ dig4       = #999#6;   || Digitos Nivel 1
+ dig5       = #999#7;   || Digitos Nivel 2
+ dig6       = #999#8;   || Digitos Nivel 3
+ dig7       = #999#9;   || Digitos Nivel 4
+ dig8       = #999#10;  || Digitos Nivel 5
+ dig9       = #999#11;  || Digitos Nivel 6
+ eaEstadoEmp = #999#12; || Activa / Inactiva
+ eaMonedaCon = #999#13; || Moneda
+ eaNombreEmp = #999#14; || Nombre Empresa
+ aPathConta  = #999#15; || Path
+ eaDepar     = #999#17; || s/n departamento
+ eaSubde     = #999#18; || s/n subdepartamento
+ eaDfDepC    = #999#19;
+ eaDfSubC    = #999#20;
+ eaDfDepN    = #999#21;
+ eaDfSubN    = #999#22;
+ fec3        = #999#23;  || fecha bloqueo apuntes
+
+  || Recoger informacion sobre los niveles ...
+  |SI dig3 = 1; MaximoDigitos = dig4; |FINSI;
+  |SI dig3 = 2; MaximoDigitos = dig5; |FINSI;
+  |SI dig3 = 3; MaximoDigitos = dig6; |FINSI;
+  |SI dig3 = 4; MaximoDigitos = dig7; |FINSI;
+  |SI dig3 = 5; MaximoDigitos = dig8; |FINSI;
+  |SI dig3 = 6; MaximoDigitos = dig9; |FINSI;
+  DigitosPaseDirecto = dig3;
+
+  |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE LeeEmpresas;
+ #999#2;
+ ;
+ 00000,0;
+ 99999,9;
+ e;
+ NULL, Empresas;
+|FIN;
+
+|| **************************************************************************
+|PROGRAMA;
+   |PINPA #0#0;
+   |NOME_DAT #123 eaFAsiento;
+
+   |SI enTipoAct = 0; enTipoAct = 1; |FINSI;
+   |SI swSinFich = 1;
+       |NOME_DAT #999 eaFEmpresa;
+       |BUCLE LeeEmpresas;  ||Por el Fichero de Empresas
+       |DELINDEX #999;
+   |SINO;
+       |HAZ LeeEmpConta;        || Puesto por Manolo
+       |HAZ HazTodo;
+   |FINSI;
+   |DELINDEX #123;
+|FPRO;
+|| **************************************************************************
+
+|| **************************************************************************
+|| ............................... Crear Asientos
+|PROCESO impresora;
+   |SI sw_error = 0;
+      |SI swSinCheq ! 2;
+          |IMPRE 0;
+          |SI FSalida ! 0;  |ACABA;  |FINSI;
+          |INFOR "dsmoz123";
+          |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+      |FINSI;
+      sw_error = 1;
+   |FINSI;
+   aEmpresa = enEmpresa; |QBT aEmpresa;
+   aEmpresa = ("00000" + aEmpresa) % -105;
+
+   |HAZ VerError;
+|FPRC;
+
+|PROCESO VerError;
+   numero = numero + 1;
+   antdia = #camaasil#0;
+   antfec = #camaasil#1;
+   antdoc = #camaasil#2;
+   |SI swSinCheq ! 2;
+       |PRINT;
+   |SINO;
+       |HAZ GrabaErrores;
+   |FINSI;
+|FPRC;
+
+|PROCESO haycambio;
+   |SI debe ! haber;
+       error = "Descuadre.";
+       |HAZ impresora;
+   |FINSI;
+
+   |SI swSinCheq = 2;
+       |SI notro1 ! 0;
+           error = "Hay cuentas en blanco"; |HAZ VerError;
+       |FINSI;
+       |SI notro2 ! 0;
+           error = "Hay conceptos 000";
+           |HAZ VerError;
+       |FINSI;
+       |HAZ GrabaError1;
+   |FINSI;
+
+   |HAZ nuevoAsi;
+|FPRC;
+
+|PROCESO nuevoAsi;
+   notro1 = 0;
+   notro2 = 0;
+   debe   = 0;
+   haber  = 0;
+   entdia = #dsmow123#3;
+   entfec = #dsmow123#4;
+   entdoc = #dsmow123#5;
+   entlib = #dsmow123#15;
+   swnuevo = 0;
+   linea = -9;
+   |SI enTipoAct = 1; |O enTipoAct = 5;  || misma diario, fecha y documento
+       diario = #dsmow123#3;
+       fecha  = #dsmow123#4;
+       docume = #0#6;  #0#6 = #0#6 + 1;
+   |FINSI;
+   |SI enTipoAct = 2; |O enTipoAct = 3; || mismo diario y fecha
+       diario = #dsmow123#3;
+       fecha  = #dsmow123#4;
+       docume = #0#6;  #0#6   = #0#6 + 1;
+   |FINSI;
+   |SI enTipoAct = 4;  || Un solo asiento
+       |SI cam = 0;
+           #0#3 = #dsmow123#3;
+           #0#4 = #dsmow123#4;
+           #0#5 = #0#6;
+       |FINSI;
+       diario = #0#3;
+       fecha  = #0#4;
+       docume = #0#5;
+   |FINSI;
+|FPRC;
+
+|| -------------------------------------------------------------------------
+|PROCESO apuntes;
+
+   |SI #dsmow123#11 = 0; |ACABA; |FINSI;
+   |SI #dsmow123#4  [ fec3;
+       |SI nSwFBlo = 0;
+           |CUADRO 1817 2257;
+           |ATRI I;
+           |PINTA 1918, " Existen Asientos con Fecha Inferior o ";
+           |PINTA 2018, " Igual a la Fecha de Bloqueo de Datos. ";
+           |PINTA 2118, " ESTOS ASIENTOS NO SE ACTUALIZARAN     ";
+           |ATRI 0;
+           nSwFBlo = 1;
+           |PAUSA;
+       |FINSI;
+       |ACABA;
+   |FINSI;
+
+   |SI cam = 0;
+       |HAZ nuevoAsi;
+       |SI docume = #caconasi#1; swActContador = 1; |FINSI;
+       cam = 1;
+   |FINSI;
+
+   |SI enTipoAct !  4;
+      |SI entdoc ! #dsmow123#5;
+          |SI enTipoAct = 1; |O enTipoAct = 5;
+              |HAZ haycambio;
+          |FINSI;
+      |FINSI;
+      |SI entdia ! #dsmow123#3; |O entfec ! #dsmow123#4;
+         |HAZ haycambio;
+      |FINSI;
+      |SI enTipoAct = 2;
+         |SI linea > 1;
+            |SI debe = haber; |HAZ nuevoAsi; |FINSI;
+         |FINSI;
+      |FINSI;
+      |SI entlib ! #dsmow123#15; |Y enTipoAct = 5;
+         |HAZ haycambio;
+      |FINSI;
+
+   |FINSI;
+
+   || .............................. PROCESO grabalinea;
+   |SI #dsmow123#11 = 0; |ACABA; |FINSI;
+
+   |SI swnuevo = 0;
+      |HAZ cabecera;
+      swnuevo = 1;
+   |FINSI;
+   |SI #0#3 ! #dsmow123#3; aError = ""; |FINSI;
+
+   #0#3 = #dsmow123#3; |PINTA #0#3;
+   #0#4 = #dsmow123#4; |PINTA #0#4;
+   #0#5 = #dsmow123#5; |PINTA #0#5;
+   #0#7 = debe;  |PINTA #0#7;
+   #0#8 = haber; |PINTA #0#8;
+   #0#9 = debe - haber; |PINTA #0#9;
+
+   |DDEFECTO #2;
+   #camaasil#0  = diario;
+   #camaasil#1  = fecha;
+   #camaasil#2  = docume;
+   linea = linea + 10;
+   #camaasil#3  = linea;
+   #camaasil#4  = #dsmow123#6;        || Cuenta Contable
+   #camaasil#5  = #dsmow123#7;        || digito control
+   #camaasil#6  = #dsmow123#8;        || concepto
+   #camaasil#7  = #dsmow123#9;        || Descripcion
+   #camaasil#8  = #dsmow123#10;       || Signo
+   #camaasil#9  = (#dsmow123#11 * enConversor) ! enRedonPaYa;  || Importe
+   |HAZ adapta;
+   #camaasil#12 = #dsmow123#14;         || Rep/Sop/Cobro/Pago/N
+   #camaasil#13 = #dsmow123#15;         || Libro
+   #camaasil#14 = #dsmow123#16;         || Factura
+   #camaasil#15 = #dsmow123#17;         || serie
+   #camaasil#22 = #dsmow123#18;         || N§ recibo
+   #camaasil#19 = #dsmow123#19;         || Tipo Acumulador
+
+   |SI eaDepar = "S";
+       aAlfa1 = #dsmow123#12; |QBF aAlfa1;
+       |SI aAlfa1 = ""; #dsmow123#12 = aElDeC; |FINSI;
+   |FINSI;
+   |SI eaSubde = "S";
+       aAlfa1 = #dsmow123#13; |QBF aAlfa1;
+       |SI aAlfa1 = ""; #dsmow123#13 = aElSuC; |FINSI;
+   |FINSI;
+
+   #camaasil#21 = #dsmow123#12;         || Departamento
+   #camaasil#28 = #dsmow123#13;         || SubDepartamento
+   #camaasil#29 = #dsmow123#28;         || Cuenta Analitica
+
+   #camaasil#24 = #camaasic#12;         || Registro
+
+   |GRABA 020#2n;
+   |SI FSalida = 0;
+      |SI #camaasil#8 = "D";
+         debe  = debe + (#camaasil#9 ! enRedonPaYa);
+         debe  = debe ! enRedonPaYa;
+      |SINO;
+         haber = haber + (#camaasil#9 ! enRedonPaYa);
+         haber = haber ! enRedonPaYa;
+      |FINSI;
+      |HAZ act_cabecera;
+      |SI #camaasil#12 ! " "; |HAZ Ivas; |FINSI;
+      |HAZ Actualizar;
+      |HAZ a_contrapart;
+      |HAZ a_RepartoGr;
+      |LIBERA #dsmow123;
+
+      aAlfa1 = #camaasil#4; |QBF aAlfa1; |SI aAlfa1 = ""; notro1 = notro1 + 1; |FINSI;
+      |SI #camaasil#6 = 0; notro2 = notro2 + 1; |FINSI;
+
+   |FINSI;
+   |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE contabiliza1;
+   #dsmow123#2;
+   ;
+   enEmpresa, enPerConta, 00, "01.01.1900", 000001;
+   enEmpresa, enPerConta, 99, "31.12.2100", 999999;
+   e;
+   NULL, apuntes;
+|FIN;
+
+|DEFBUCLE contabiliza4;
+   #dsmow123#1;
+   ;
+   enEmpresa, enPerConta, 00000001;
+   enEmpresa, enPerConta, 99999999;
+   e;
+   NULL, apuntes;
+|FIN;
+
+|| **************************************************************************
+|| ............................... Comprobar Cuadre
+|PROCESO cbloque;
+   |SI cam = 0;
+       cam = 1;
+       diario = #dsmow123#3;
+       fecha  = #dsmow123#4;
+       docume = #dsmow123#5;
+       debe   = 0;
+       haber  = 0;
+   |FINSI;
+
+   |SI docume ! #dsmow123#5;
+       |SI enTipoAct = 1; |O enTipoAct = 5;
+           |SI debe ! haber;
+               swcuadre = 1;
+               |ERROR10;
+               |ACABA;
+           |SINO;
+               diario = #dsmow123#3;
+               fecha  = #dsmow123#4;
+               docume = #dsmow123#5;
+               debe   = 0;
+               haber  = 0;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SI diario ! #dsmow123#3; |O fecha ! #dsmow123#4;
+      |SI debe ! haber;
+         swcuadre = 1;
+         |ERROR10;
+         |ACABA;
+      |SINO;
+         diario = #dsmow123#3;
+         fecha  = #dsmow123#4;
+         docume = #dsmow123#5;
+         debe   = 0;
+         haber  = 0;
+      |FINSI;
+   |FINSI;
+
+   |SI #dsmow123#10 = "D";
+       debe   = debe + (#dsmow123#11 ! enRedonPaYa);
+       debe   = debe ! enRedonPaYa;
+   |SINO;
+       haber = haber + (#dsmow123#11 ! enRedonPaYa);
+       haber = haber ! enRedonPaYa;
+   |FINSI;
+|FPRC;
+
+|PROCESO fincomblo;
+   |SI debe ! haber;
+      swcuadre = 1;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE comcuablo;
+   #dsmow123#2;
+   ;
+   enEmpresa, enPerConta, 00, "01.01.1900", 000001;
+   enEmpresa, enPerConta, 99, "31.12.2100", 999999;
+   e;
+   NULL, cbloque, NULL, NULL, fincomblo;
+|FIN;
+
+|PROCESO comcuadre;
+   |ATRI I;
+   |PINTA 1822, "Comprobando Cuadre ...";
+   |ATRI 0;
+   cam      = 0;
+   debe     = 0;
+   haber    = 0;
+   swcuadre = 0;
+
+  |BUCLE comcuablo;
+  |SI swcuadre ! 0; |Y swSinCheq ! 2;
+      |CONFI "1810NAsientos de esta Empresa con Descuadres. ¨ Desea Continuar ? ";
+      |SI FSalida ! 0;
+         swcuadre = 2;
+      |FINSI;
+   |FINSI;
+   |POPV;
+   |PINTA 1822, "                      ";
+|FPRC;
+
+|| **************************************************************************
+|| **** Procesos para crear registro de Error
+|PROCESO BorError2;
+ |BORRA 020#125a;
+ |LIBERA #125;
+|FPRC;
+
+|DEFBUCLE BorError2;
+ #125#1;
+ ;
+ enEmpresa, enPerConta, enTipoEos, 00, 000001;
+ enEmpresa, enPerConta, enTipoEos, 99, 999999;
+ be;
+ NULL, BorError2;
+|FIN;
+
+|PROCESO BorError1;
+ |BORRA 020#124a;
+ |LIBERA #124;
+|FPRC;
+
+|DEFBUCLE BorError1;
+ #124#1;
+ ;
+ enEmpresa, enPerConta, enTipoEos, 00;
+ enEmpresa, enPerConta, enTipoEos, 99;
+ be;
+ NULL, BorError1;
+|FIN;
+
+|PROCESO GrabaError1;
+ |ABRE #124;
+ #124#0  = enEmpresa;
+ #124#1  = enPerConta;
+ #124#11 = enTipoEos;
+ #124#13 = entdia;
+ |LEE 101#124=;
+ |SI FSalida ! 0;
+     |DDEFECTO #124;
+     #124#0  = enEmpresa;
+     #124#1  = enPerConta;
+     #124#2  = eaNombreEmp;
+     #124#3  = enEjer;
+     #124#4  = eaLaMonEmp;
+     #124#5  = enEmprEos;
+     #124#7  = eaEmprEos;
+     #124#8  = enEjer;
+     #124#9  = eaLaMonEmp;
+     #124#10 = aPathAnterior;
+     #124#11 = enTipoEos;
+     #124#12 = "Astos.Libros"; |SI enTipoEos = 2; #124#12 = "Asto.Amor.Co"; |FINSI;
+     #124#13 = entdia;
+     #124#20 = 0;
+     |GRABA 020#124b;
+ |FINSI;
+ #124#14 = #124#14 + debe;
+ #124#15 = #124#15 + haber;
+ #124#16 = #124#14 - #124#15;
+ #124#19 = aError;
+ #124#20 = #124#20 + 1;
+ |GRABA 020#124a;
+ |LIBERA #124;
+ |CIERRA #124;
+|FPRC;
+
+|PROCESO GrabaErrores;
+ |ABRE #125;
+ #125#0  = enEmpresa;
+ #125#1  = enPerConta;
+ #125#2  = enTipoEos;
+ #125#3  = antdia;
+ #125#4  = numero;
+ |LEE 101#125=;
+ |SI FSalida ! 0;
+     |DDEFECTO #125;
+     #125#0  = enEmpresa;
+     #125#1  = enPerConta;
+     #125#2  = enTipoEos;
+     #125#3  = antdia;
+     #125#4  = numero;
+     |GRABA 020#125b;
+ |FINSI;
+ #125#5 = antfec;
+ #125#6 = antdoc;
+ #125#7 = debe;
+ #125#8 = haber;
+ #125#9 = #125#7 - #125#8;
+ #125#10 = #camaasil#7;
+ #125#11 = error;
+ aError  = "X";
+ |GRABA 020#125a;
+ |LIBERA #125;
+ |CIERRA #125;
+|FPRC;
+
+|| **************************************************************************
+|PROCESO HazTodo;
+ |DDEFECTO #0;
+ #0#0 = enEmpresa;  |PINTA #0#0;
+ #0#1 = enPerConta; |PINTA #0#1;
+ #0#2 = eaNombreEmp;|PINTA #0#2;
+
+ eaLaMonEmp = eaMonedaCon;
+ |HAZ EnConversor;
+ |SI enDesdeOtra = 1;
+     enConversor = 1;
+ |FINSI;
+
+ |SI swSinCheq = 0;
+     cam = 0;
+     |HAZ comcuadre;
+     |SI swcuadre = 2; |ACABA; |FINSI;
+     |SI cam = 0; |ACABA; |FINSI;
+ |FINSI;
+
+ nSwFBlo = 0;
+ |QBT aPathConta;
+ |SI aPathConta = "";
+     alfa1 = enEmpresa;  alfa1 = ("00000" + alfa1) % -105;
+     alfa2 = enPerConta; alfa2 = ("0" + alfa2) % -101;
+     |DBASS aPath; |QBT aPath;
+     aPathConta = aPath + "contagen/fich/" + alfa1 + alfa2 + "/";
+ |FINSI;
+
+ |PATH_DAT #1  aPathConta;
+ |PATH_DAT #2  aPathConta;
+ |PATH_DAT #10 aPathConta;
+ |PATH_DAT #11 aPathConta;
+ |PATH_DAT #3  aPathConta;
+ |PATH_DAT #20 aPathConta;
+ |PATH_DAT #21 aPathConta;
+ |PATH_DAT #22 aPathConta;
+ |PATH_DAT #23 aPathConta;
+ |PATH_DAT #24 aPathConta;
+ |PATH_DAT #27 aPathConta;
+ |PATH_DAT #29 aPathConta;
+ |PATH_DAT #112 aPathConta;
+ |PATH_DAT #113 aPathConta;
+
+ |ABRE #27;
+ |DDEFECTO #27;
+ |LEE 000#27p;
+ |CIERRA #27;
+ eaPaCTA1 = #27#135;  ||permitir alta no estructuras 2008
+ eaPaCTA2 = #27#136;  ||Aviso 1990
+
+ aError   = "";
+ |SI swSinCheq = 2;
+     |BUCLE BorError1;
+     |BUCLE BorError2;
+ |FINSI;
+
+   aElDeC    = "";  aElDeN    = "";
+   aElSuC    = "";  aElSuN    = "";
+   |SI eaDepar ! "N";
+       aElDeC = eaDfDepC;
+       aElDeN = eaDfDepN;
+   |FINSI;
+   |SI eaSubde ! "N";
+       aElSuC = eaDfSubC;
+       aElSuN = eaDfSubN;
+   |FINSI;
+
+ |HAZ NuevoDoc;      || Sin incrementar documento ni registro
+ #0#6 = #caconasi#1;
+ swActContador = 1;
+
+ |ABRE #1;
+ |ABRE #2;
+
+ cam = 0;
+ |SI enTipoAct = 4;
+     |BUCLE contabiliza4;
+ |SINO;
+     |BUCLE contabiliza1;
+ |FINSI;
+
+ |SI cam ! 0;
+     |HAZ haycambio;
+ |FINSI;
+
+ |SI sw_error = 1;
+     |SI swSinCheq ! 2;
+         |PIEINF;
+         |FININF;
+         |FINIMP;
+     |FINSI;
+ |FINSI;
+
+ |CIERRA #1;
+ |CIERRA #2;
+
+ || ............... Terminar
+
+ || ... Actualiza numero de Documento
+    |SI swActContador = 1;
+        nDOCUMENTO = docume;
+        |HAZ ActContador;
+    |FINSI;
+|FPRC;
+
+|| **************************************************************************
+
+|| ............ Subrutina de Asientos
+|PROCESO adapta;
+   |SI #camaasil#8 = "D";
+      #camaasil#16 = #camaasil#4;
+      #camaasil#17 = #camaasil#5;
+      #camaasil#10 = "";
+      #camaasil#11 = 0;
+   |SINO;
+      #camaasil#16 = "";
+      #camaasil#17 = 0;
+      #camaasil#10 = #camaasil#4;
+      #camaasil#11 = #camaasil#5;
+   |FINSI;
+|FPRC;
+
+|PROCESO BuscaUlt;
+   |SELECT #3#1;
+   |LEE 010#1u;
+   |SI FSalida = 0;
+       docume  = #1#2 + 1;
+   |SINO;
+       docume  = 1;
+   |FINSI;
+   |SELECT #1#1;
+|FPRC;
+
+|PROCESO cabecera; || lee la cabecera.
+
+   |DDEFECTO #1;
+   #1#0 = diario;
+   #1#1 = fecha;
+   #1#2 = docume;
+   #1#3 = docume;
+   linea = -9;
+   |LEE 040#1=;
+   |SI FSalida = 0;
+       |HAZ BuscaUlt;
+       #0#9 = docume;
+   |FINSI;
+   #1#0 = diario;
+   #1#1 = fecha;
+   #1#2 = docume;
+   #1#3 = docume;
+   linea = -9;
+   |HAZ NuevoRegistro;
+   #camaasic#12 = nREGISTRO;
+   |GRABA 020#1n;
+|FPRC;
+
+|PROCESO act_cabecera;
+   #camaasic#0 = diario;
+   #camaasic#1 = fecha;
+   #camaasic#2 = docume;
+   |LEE 101#1=;
+   |SI #camaasil#12 = "R";
+       #camaasic#13 = 1;
+   |FINSI;
+   |SI #camaasil#12 = "S";
+       #camaasic#13 = 2;
+   |FINSI;
+   |SI #camaasil#8 = "D";
+       #camaasic#4 = #camaasic#4 + #camaasil#9;
+       |SI #camaasic#09 = 0;
+           #camaasic#08 = #camaasil#4;
+           #camaasic#09 = #camaasil#5;
+       |FINSI;  || contrp.HABER
+   |SINO;
+      #camaasic#5 = #camaasic#5 + #camaasil#9;
+      |SI #camaasic#11 = 0;
+          #camaasic#10 = #camaasil#4;
+          #camaasic#11 = #camaasil#5;
+      |FINSI;  || contrp.DEBE
+   |FINSI;
+   #camaasic#6 = #camaasic#4 - #camaasic#5;        || saldo
+   |GRABA 020#1a;
+   |LIBERA #1;
+|FPRC;
+
+|PROCESO Actualizar;
+   MasMenos     = #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+   nNIVELCUENTA = #camaasil#5;
+
+   |HAZ ActDiario;          || diario
+   eswCuenta = 1;
+   eaTitCuenta = #dsmow123#25;
+   |HAZ ActCuenta;          || cuenta
+|FPRC;
+
+|PROCESO a_contrapart;
+|FPRC;
+
+|PROCESO a_RepartoGr;
+   alfa1 = #camaasil#29;
+   alfa1 = alfa1 % 103;
+   |SI alfa1 = "GRU";
+       alfa1 = #dsmow123#29; |QBF alfa1;  ||elemento
+       |SI alfa1 ! "";
+           |ABRE #114;
+           #114#0 = enEmpresa;
+           #114#1 = #dsmow123#29;
+           #114#2 = #dsmow123#30;
+           |LEE 001#114=;
+           |SI FSalida = 0;
+               |HAZ Elreparto;
+           |FINSI;
+           |CIERRA #114;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|| .... TODO EL REPARTO
+|PROCESO SumoUlt;
+ |ABRE #113;
+ #113#0 = #112#0;
+ #113#1 = #112#1;
+ #113#2 = #112#2;
+ #113#3 = #112#3;
+ #113#4 = #112#4;
+ #113#5 = nLinRep;
+ |LEE 000#113=;
+ |SI FSalida ! 0;
+     |CIERRA #113;
+     |ACABA;
+ |FINSI;
+ nume1  = #112#7 - #112#8;
+ #113#9 = #113#9 + nume1;
+ #112#7 = #112#7 + nume1;
+ |GRABA 020#113a;
+ |CIERRA #113;
+|FPRC;
+
+|PROCESO LineaGrupo;
+ nLinRep = nLinRep + 1;
+ #113#0 = #112#0;
+ #113#1 = #112#1;
+ #113#2 = #112#2;
+ #113#3 = #112#3;
+ #113#4 = #112#4;
+ #113#5 = nLinRep;
+ #113#6 = #115#4;
+ #113#7 = #115#5;
+ #113#8 = #115#6;
+
+ #113#9 = (#112#7 % #113#8) ! enRedonPaYa;
+ |GRABA 020#113n;
+ #112#6 = #112#6 + #113#8;
+ #112#8 = #112#8 + #113#9;
+|FPRC;
+
+|DEFBUCLE LineaGrupo;
+ #115#1;
+ ;
+ #114#0, #114#1, #114#2, 001;
+ #114#0, #114#1, #114#2, 999;
+ e;
+ NULL, LineaGrupo;
+|FIN;
+
+|PROCESO Elreparto;
+
+  |ABRE #112;
+  |DDEFECTO #112;
+  nLinRep = 0;
+  #112#0 = #camaasil#0;
+  #112#1 = #camaasil#1;
+  #112#2 = #camaasil#2;
+  #112#3 = #camaasil#3;
+  #112#4 = #camaasil#29;
+  #112#5 = #114#4;
+  #112#6 = 0;
+  #112#7 = #camaasil#9;
+  #112#8 = 0;
+
+  |ABRE #113;
+  |BUCLE LineaGrupo;
+  |CIERRA #113;
+
+  |SI nLinRep ! 0;
+      |SI #112#7 ! #112#8;
+          |HAZ SumoUlt;
+      |FINSI;
+      |GRABA 020#112n;
+  |FINSI;
+  |LIBERA #112;
+  |CIERRA #112;
+|FPRC;
+
+|| ******************* PROCESO DE CREAR FACTURAS *************************
+
+|PROCESO GrabaLibro;
+   |SI #caivaasi#44 = "N";
+       |ABRE #calibros;
+       #calibros#0 = #camaniva#0;
+       |LEE 110#calibros.=;
+       |SI FSalida = 0;
+           nFactura = #camaniva#3 + #calibros#3;
+           |SI #calibros#4 < nFactura;
+               #calibros#4 = nFactura;
+               |GRABA 020#calibros.a;
+           |FINSI;
+           |LIBERA #calibros;
+       |FINSI;
+       |CIERRA #calibros;
+   |SINO;
+       |ABRE #caivases;
+       #caivases#0 = #camaniva#2;
+       #caivases#1 = aTipoIVA;
+       |LEE 110#caivases.=;
+       |SI FSalida = 0;
+           nFactura = #camaniva#3 + #caivases#4;
+           |SI #caivases#3 < nFactura;
+               #caivases#3 = nFactura;
+               |GRABA 020#caivases.a;
+           |FINSI;
+           |LIBERA #caivases;
+      |FINSI;
+      |CIERRA #caivases;
+   |FINSI;
+|FPRC;
+
+|PROCESO BuscaTipoIva;
+   |SI #cacuiv2l#2 = #caivalin#7; |Y #cacuiv2l#4 = #caivalin#9;
+       #caivalin#16 = #cacuiv2l#1;
+       |SI #cacuiv2l#3 = #caivalin#13; |Y #cacuiv2l#5 = #caivalin#14;
+           |ERROR10;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaTipoIva;
+ #cacuiv2l#1;
+ ;
+ #camaniva#36, enEjer, 01;
+ #camaniva#36, enEjer, 99;
+ ;
+ NULL,BuscaTipoIva;
+|FIN;
+
+|PROCESO Ivas;
+  |SI #camaasil#12 = "C"; |O #camaasil#12 = "P";
+      |ACABA;
+  |FINSI;
+
+  |ABRE #calibros;
+  #calibros#0 = #dsmow123#15; || Libro de IVA
+  |LEE 001#calibros.=;
+  |SI FSalida ! 0;
+      |CIERRA #calibros;
+      |ACABA;
+  |FINSI;
+  aTipoIVA = #calibros#2;
+  |CIERRA #calibros;
+
+  |ABRE #cacuiv2c;
+  |DDEFECTO #cacuiv2c;
+  #cacuiv2c#20 = enEjer;
+  #cacuiv2c#0  = aTipoIVA;
+  |LEE 010#cacuiv2c.=;
+  |CIERRA #cacuiv2c;
+
+  |ABRE #caivaasi;
+  |DDEFECTO #caivaasi;
+  |LEE 010#caivaasi.p;
+  aMulDep = #caivaasi#132;
+  |CIERRA #caivaasi;
+
+  nPerio = #dsmow123#27;
+  |SI nPerio = 0;
+      alfa1 = #dsmow123#4;
+      alfa1 = alfa1 % 402;
+      nume1 = alfa1; nPerio = nume1;
+      |SI #caivaasi#46 = "T";
+          nPerio = 1;
+          |SI nume1 ] 4; nPerio = 2; |FINSI;
+          |SI nume1 ] 7; nPerio = 3; |FINSI;
+          |SI nume1 ] 10;nPerio = 4; |FINSI;
+      |FINSI;
+  |FINSI;
+
+   |ABRE #camaniva;
+
+   |SELECT #3#camaniva;
+   #camaniva#0 = #dsmow123#15;
+   #camaniva#2 = #dsmow123#17;
+   #camaniva#3 = #dsmow123#16;
+   |LEE 010#camaniva.=;
+   |SI FSalida ! 0;
+
+       |SELECT #1#camaniva;
+       #camaniva#0 = #dsmow123#15;
+       #camaniva#1 = 9999999999;
+       |LEE 010#camaniva.];
+       |SI FSalida = 0;
+           |LEE 040#camaniva.a;
+       |SINO;
+           |LEE 040#camaniva.u;
+       |FINSI;
+       NumDocum = 1;
+       |SI FSalida = 0; |Y #camaniva#0 = #dsmow123#15;
+           NumDocum = #camaniva#1 + 1;
+       |FINSI;
+
+       |DDEFECTO #camaniva;
+       #camaniva#0  = #dsmow123#15;      || Libro
+       #camaniva#1  = NumDocum;          || N§ de registro
+       #camaniva#2  = #dsmow123#17;      || Serie
+       #camaniva#3  = #dsmow123#16;      || Factura
+       #camaniva#4  = #dsmow123#4;       || Fecha factura
+       #camaniva#5  = nPerio;            || Periodo
+       #camaniva#7  = diario;            || Diario
+       #camaniva#8  = fecha;             || Fecha contable
+       #camaniva#9  = docume;            || Documento
+       LineasIVA = 0;
+       |GRABA 020#camaniva.b;
+   |FINSI;
+
+   |SI #dsmow123#19 = "F";
+       #camaniva#10 = #dsmow123#12;      || Departamento (Actividad)
+       #camaniva#11 = #dsmow123#13;      || SubDepartamento (Ref.Catastral/Cultivo)
+       |HAZ Departamento;
+
+       #camaniva#12 = #dsmow123#6;      || Cuenta Cli/Pro
+       eaTitCuenta  = #dsmow123#25; |QBT eaTitCuenta;
+       eaCodNif     = #dsmow123#26; |QBT eaCodNif;
+       |SI eaTitCuenta = ""; |O eaCodNif = "";
+          |HAZ LeeCliPro;
+       |FINSI;
+       |HAZ GrabaCliPro;
+       #camaniva#13 = #dsmow123#25;
+       #camaniva#14 = #dsmow123#26;
+       #camaniva#22 = #dsmow123#21;     || N§ Factura Proveedor
+       #camaniva#27 = #dsmow123#8;      || Concepto Cli/Pro
+       #camaniva#28 = #dsmow123#9;      || Descripcion Cli/Pro
+       #camaniva#31 = #cacuiv2c#2;
+       #camaniva#32 = #cacuiv2c#4;
+       #camaniva#33 = #cacuiv2c#16;
+       #camaniva#34 = #cacuiv2c#17;
+       #camaniva#36 = aTipoIVA;
+       #camaniva#38 = #dsmow123#22;     || Numero de Facturas
+  |FINSI;
+  |SI #dsmow123#19 = "I";
+      #camaniva#29 = #dsmow123#8;      || Concepto IVA
+      #camaniva#30 = #dsmow123#9;      || Descripcion IVA
+  |FINSI;
+
+  |GRABA 020#camaniva.a;
+  |LIBERA #camaniva;
+
+  |HAZ GrabaLibro;
+
+  |SI #dsmow123#19 = "F";
+      |CIERRA #camaniva;
+      |ACABA;
+  |FINSI;
+
+  #camaniva#0  = #dsmow123#15;      || Libro
+  #camaniva#1  = NumDocum;          || N§ de registro
+  |LEE 101#camaniva.=;
+
+  |ABRE #caivalin;
+  #caivalin#0 = #camaniva#0;
+  #caivalin#1 = #camaniva#1;
+  #caivalin#2 = #dsmow123#23;
+  |LEE 010#caivalin.=;
+  |SI FSalida ! 0;
+      |DDEFECTO #caivalin;
+      #caivalin#0 = #camaniva#0;  || Libro
+      #caivalin#1 = #camaniva#1;  || Documento
+      #caivalin#2 = #dsmow123#23; || Linea
+      |GRABA 020#caivalin.b;
+  |FINSI;
+
+  |SI #dsmow123#19 = "B";
+      #caivalin#3  = #dsmow123#8;                  || Concepto
+      #caivalin#4  = #dsmow123#9;                  || Descripcion
+      #caivalin#6  = #caivalin#6 + ((#dsmow123#11 * enConversor) ! enRedonPaYa);
+                                                   || Base imponible
+      #caivalin#12 = #dsmow123#6;                  || Contrapartida
+      #caivalin#17 = #dsmow123#24;                 || Inversion
+      #camaniva#19 = #camaniva#19 + #caivalin#6;
+      #camaniva#15 = #camaniva#15 + #caivalin#6;
+      #caivalin#30 = #dsmow123#12;                 || Departamento (Actividad)
+      #caivalin#31 = #dsmow123#13;                 || SubDepartamento (Ref.Catastral/Cultivo)
+  |FINSI;
+
+  |SI #dsmow123#19 = "I";
+      #caivalin#7  = #dsmow123#20;                 || Tipo de IVA
+      #caivalin#8  = #caivalin#8 + ((#dsmow123#11 * enConversor) ! enRedonPaYa);
+                                                   || Cuota de IVA
+      #caivalin#13 = #dsmow123#6;                  || Cuenta de IVA
+      #camaniva#23 = #camaniva#23 + #caivalin#8;
+  |FINSI;
+
+  |SI #dsmow123#19 = "R";
+      #caivalin#9  = #dsmow123#20;                 || Tipo de recargo
+      #caivalin#10 = #caivalin#10 + ((#dsmow123#11 * enConversor) ! enRedonPaYa);
+                                                   || Cuota de recargo
+      #caivalin#14 = #dsmow123#6;                  || Cuenta de recargo
+      #camaniva#23 = #camaniva#23 + #caivalin#10;
+  |FINSI;
+
+  |SI #dsmow123#19 = "D";
+      #caivalin#11 = #caivalin#11 + ((#dsmow123#11 * enConversor) ! enRedonPaYa);
+                                                   || Descuento
+      #caivalin#15 = #dsmow123#6;                  || Cuenta de descuento
+      #camaniva#26 = #camaniva#26 + #caivalin#11;
+  |FINSI;
+
+  |SI #dsmow123#19 = "P";
+      #caivalin#18 = #dsmow123#8;                  || Concepto IRPF
+      #caivalin#19 = #dsmow123#9;                  || Descripcion concepto IRPF
+      #caivalin#21 = #dsmow123#20;                 || Tipo IRPF
+      #caivalin#22 = #caivalin#22 + ((#dsmow123#11 * enConversor) ! enRedonPaYa);
+                                                   || Cuota IRPF
+      #caivalin#20 = ((100 * #caivalin#22) / #caivalin#21) ! enRedonPaYa; || Base IRPF
+      #caivalin#23 = #dsmow123#6;                  || Cuenta IRPF
+      #camaniva#20 = #camaniva#20 + #caivalin#22;
+  |FINSI;
+
+   #camaniva#17 = #camaniva#15 %  #camaniva#16;
+   #camaniva#21 = #camaniva#19 + #camaniva#23 - #camaniva#26 - #camaniva#20;
+   #caivalin#28 = #dsmow123#28;
+
+   |BUCLE BuscaTipoIva;
+
+   |GRABA 020#caivalin.a;
+   |GRABA 020#camaniva.a;
+   |LIBERA #camaniva;
+   |LIBERA #caivalin;
+
+   |HAZ GrabaLibro;
+
+|| .... Falta actualizacion de Lineas de IVA
+  |CIERRA #caivalin;
+  |CIERRA #camaniva;
+|FPRC;
+
+|PROCESO Departamento;
+
+  |DBASS alfa1;|QBF alfa1;
+  aElProgr = alfa1 + "basica/def/agifigen.mas";
+  |XABRE "E", aElProgr, nCanal;
+  |SI FSalida ] 0;
+      FlagActiv = 1;
+  |SINO;
+      FlagActiv = 0;
+  |FINSI;
+  |XCIERRA nCanal;
+
+  |SI FlagActiv = 0;
+      |ABRE #camandep;
+      |DDEFECTO #camandep;
+      #camandep#0 = enEmpresa;
+      #camandep#1 = #camaniva#10;
+      |LEE 010#camandep.=;
+      #camaniva#24 = #camandep#2;
+      |CIERRA #camandep;
+  |SINO;
+      |ABRE #agicen14;
+      |DDEFECTO #agicen14;
+      #agicen14#0 = enEmpresa;
+      #agicen14#1 = #camaniva#10;
+      |LEE 010#agicen14.=;
+      |SI FSalida = 0;
+          #camaniva#24 = #agicen14#4;
+          nTipoTribut  = #agicen14#9;
+      |FINSI;
+      |CIERRA #agicen14;
+
+      nArrend = 0;
+      |SI aTipoIVA ! "N";
+          |ABRE #dsmom030;
+          #dsmom030#0 = #dsmow123#8;
+          |LEE 010#dsmom030.=;
+          |SI FSalida = 0;
+              |SI #dsmom030#20 = "X"; nArrend = 1; |SINO; nArrend = 0; |FINSI;
+          |FINSI;
+          |CIERRA #dsmom030;
+      |FINSI;
+
+      |HAZ Cultivo;
+      |HAZ RefCatastral;
+  |FINSI;
+|FPRC;
+
+|PROCESO Cultivo;
+  |SI nTipoTribut = 6; |O nTipoTribut = 7;
+      |O nTipoTribut = 11; |O nTipoTribut = 12;
+      nArrend = 0;
+      |ABRE #dsmom033;
+      #33#0 = #camaniva#11;
+      |LEE 040#dsmom033.=;
+      |SI FSalida = 0;
+          #camaniva#25 = #dsmom033#1;
+      |FINSI;
+      |CIERRA #dsmom033;
+  |FINSI;
+|FPRC;
+
+|PROCESO RefCatastral;
+   |SI nArrend = 0;  |ACABA;  |FINSI;
+   |ABRE #agicen17;
+   #agicen17#0 = enEmpresa;
+   #agicen17#1 = #camaniva#10;
+   #agicen17#2 = #camaniva#11;
+   |LEE 040#agicen17.=;
+   |SI FSalida = 0;
+       #camaniva#25 = #agicen17#3;
+   |FINSI;
+   |CIERRA #agicen17;
+|FPRC;
+
+|| ---------------- Proceso Lectura i actualizacion de Clientes y Proveedores
+|PROCESO LeeCliPro;
+  |ABRE #caclipro;
+  #caclipro#23 = "P";
+  alfa1 = #dsmow123#6 % 0102; |QBF alfa1;
+  |SI alfa1 = "43"; |O alfa1 = "44"; #caclipro#23 = "C"; |FINSI;
+  #caclipro#10 = #dsmow123#6;
+  #caclipro#11 = #dsmow123#7;
+  |LEE 010#caclipro.=;
+  |SI FSalida = 0;
+      #dsmow123#25 = #caclipro#1;
+      #dsmow123#26 = #caclipro#9;
+  |FINSI;
+  |CIERRA #caclipro;
+|FPRC;
+
+|PROCESO GrabaCliPro;
+  |ABRE #caclipro;
+  #caclipro#23 = "P";
+  alfa1 = #dsmow123#6 % 0102; |QBF alfa1;
+  |SI alfa1 = "43"; |O alfa1 = "44"; #caclipro#23 = "C"; |FINSI;
+  #caclipro#10 = #dsmow123#6;
+  #caclipro#11 = #dsmow123#7;
+  |LEE 110#caclipro.=;
+  |SI FSalida ! 0;
+      #caclipro#1 = #dsmow123#25;
+      #caclipro#9 = #dsmow123#26;
+      alfa1 = #dsmow123#26; |QBF alfa1;
+      |SI alfa1 ! "";
+          eaCodNif = #dsmow123#26;
+          |HAZ LeeNifs;
+          |SI eswNif = 0; |HAZ igualdad; |FINSI;
+      |FINSI;
+      |GRABA 020#caclipro.n;
+  |FINSI;
+  |LIBERA #caclipro;
+  |CIERRA #caclipro;
+|FPRC;
+
+|PROCESO igualdad;
+  #caclipro#9 = #709#0;
+  #caclipro#1 = #709#1;
+  traba = #709#9;
+  |QBF traba;
+  |SI traba = "";
+      #caclipro#2 = #709#2;
+  |SINO;
+      #caclipro#2 = traba + " " + #709#2;
+  |FINSI;
+  traba = #caclipro#2; |QBF traba;
+  #caclipro#2 = traba + ", " + #709#3;
+  traba = #caclipro#2; |QBF traba;
+  #caclipro#2 = traba + " " + #709#10;
+  traba = #caclipro#2; |QBF traba;
+  #caclipro#2 = traba + " " + #709#11;
+
+  #caclipro#3 = #709#4;
+  #caclipro#4 = #709#5;
+  #caclipro#5 = #709#7;
+  #caclipro#6 = #709#6;
+  #caclipro#7 = #709#8;
+  #caclipro#24 = #709#12;
+|FPRC;

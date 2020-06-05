@@ -1,0 +1,491 @@
+|FICHEROS;
+     friez002 #0;
+     friew001 #1;
+     fries003 #3;
+     agifa010 #10;
+     fries016 #16;
+     agifa019 #19;
+     dsm00020 #20;
+     agifa024 #24;
+     agifa025 #25;
+     fries027 #27;
+     agifa071 #71;
+     agifa321 #321;
+     agifa324 #324;
+|FIN;
+
+|VARIABLES;
+     aHora = "";
+     aSerie = "";
+     &Tempo = "";
+     aTmp1 = "";
+     aRuta = "";
+     nBoton1 = 0;
+     aFecha = "";
+     aFic = "";
+     aFicDes = "";
+     aPath = "";
+     nHandle = 0;
+     nConta = 0;
+     aAlfa = "";
+     aDato = "";
+     aCli = "";
+     aCliAnt = "";
+     nContaAlb = 0;
+     nLin = 0;
+     imneto = 0;
+     importe = 0;
+     cant = 0;
+     &enSwMenu = 0;
+     &aDivisa = "";
+     &aMoneda = "";
+     &eaTag = "";
+     &aProceso = "agifa071";
+     &n_dec = 0;
+     &uni_dt = 0;   || Unidades
+     &fed_dt = @;   || Fecha....
+     &art_dt = "";  || Articulo.
+     &cli_dt = "";  || Cliente..
+     &fam_dt = "";  || Familia.
+     &iva_dt = 0;   || Tipo Iva.
+     &dtos_2 = 0;   || Descuento 2.
+     &dto_pt = 0;   || Descuento Ptas.
+     &dtos_1 = 0;   || Descuento 1.
+     &pvp_ve = 0;   || Precio Venta.
+     &tarifa = 0;   || Tarifa Cliente.
+     &quedto = 0;   || 1=cli./art, 2=cli./familia, 3=cli./subfam.
+     &gru_dt = "";  || Grupo Cliente.
+     &nPromo = 0;
+     &enMensaje = 0;
+     &aParam    = "";
+     &enDescuento1 = 0;
+     &enDescuento2 = 0;
+     &eaTComision = "";
+     &enComision   = 0;
+|FIN;
+
+|INCLUYE i_varart;
+
+|PROCESO acttl;
+     |ABRE #19;
+     #19#0 = #71#2;
+     |LEE 000#19=;
+     |CIERRA #19;
+
+     |HAZ TotalLin71;
+     |GRABA 020#71a;
+
+     |HAZ CalCabAgifa010;
+
+     |HAZ ModiHistoAV;
+
+     |LIBERA #71;
+
+     |GRABA 020#10a;
+|FPRC;
+
+|DEFBUCLE agifa071;
+     #71#1;
+     ;
+     #10#52, #10#0, 001;
+     #10#52, #10#0, 999;
+     be;
+     NULL, acttl;
+|FIN;
+
+|PROCESO actpf;
+     |SI #10#15 ] 0;
+          importe = 1;
+     |SINO;
+          importe = -1;
+          #10#15 = -#10#15;
+     |FINSI;
+     cant = #10#15 < #10#5;
+     cant = cant < #10#32;
+     cant = cant < #10#7;
+     cant = cant * importe;
+     #10#15 = #10#15 * importe;
+     |ABRE #24;
+     #24#0 = #10#3;
+     |LEE 101#24=;
+     |SI FSalida = 0;
+        |SI #10#43 = AN;
+           #24#50 = #24#50 + cant;    || es albaran
+        |SINO;
+           #24#50 = #24#50 - cant;    || es abono
+        |FINSI;
+        |GRABA 020#24a;
+     |FINSI;
+     |CIERRA #24;
+
+     |SI #10#43 = "N";
+          enImpCliPen = cant;
+     |SINO;
+          enImpCliPen =  -cant;
+     |FINSI;
+     eaCliente = #10#3;
+     efFecha = #10#1;
+     |HAZ AcumulaCli;
+
+     eaTag = "AV";  |HAZ Riesgos;
+|FPRC;
+
+|PROCESO precio_divisa;
+     #71#36 = #71#6 / #10#74 * #10#69;
+     |SI #10#70 = "D";  || Si la moneda de trabajo es la divisa ...
+        #71#6 = #71#36 / #10#69 * #10#74;  || ... recalculo en funcion de la divisa
+     |SINO;
+        #71#36 = #71#6 / #10#74 * #10#69; || .. recalculo en funcion de la moneda base
+     |FINSI;
+     |SI #10#70 = "D";  || Si la moneda de trabajo es la divisa ...
+       #71#38 = #71#6;   || ... el campo visualiz. es el precio en moneda base
+     |SINO;            || Si la moneda de trabajo es la moneda base ...
+       #71#38 = #71#36;  || ... el campo visual. es el precio en divisa
+     |FINSI;
+|FPRC;
+
+|PROCESO PrecioComi;          || ahora trae el precio en el fichero
+/*
+     fed_dt = #10#1;   || Fecha....
+     art_dt = #71#2;   || Articulo.
+     cli_dt = #71#15;  || Cliente..
+     fam_dt = #71#13;  || Familia.
+     iva_dt = #19#30;  || Tipo Iva.
+     dtos_2 = 0;      || Descuento 2.
+     dto_pt = 0;      || Descuento Ptas.
+     dtos_1 = 0;      || Descuento 1.
+     pvp_ve = 0;      || Precio Venta.
+     tarifa = #24#39;  || Tarifa Cliente....
+     gru_dt = #24#158; || Grupo Cliente.
+     nPromo = #10#89;
+     |SI #71#35 ! 0;
+          uni_dt = #71#35;
+     |SINO;
+          uni_dt = #71#5;
+     |FINSI;
+     aParam = "";
+     eaSerie = #71#29;
+     enDirEnt = #10#84;
+     enAlmacen = #71#3;
+
+     enInterno = tarifa;
+     |HAZ calcdtos;              || Calculo Dtos.....
+
+     #71#6 = pvp_ve - dto_pt;   || Precio Venta. sin iva.
+     #71#8 = dtos_1;            || 1¦ Dto.
+     #71#33 = dtos_2;            || 2§ Dto.
+
+     |HAZ precio_divisa;  ||Convierte el precio en divisa
+*/
+     enDescuento1 = #71#8;
+     enDescuento2 = #71#33;
+     eaTComision  = #71#16;
+     eaCliente    = #10#3;
+     eaArticulo   = #71#2;
+     eaRepre      = #10#6;
+     efFecha      = #10#1;
+     enDirEnt = #10#84;
+     enAlmacen = #71#3;
+     |HAZ Comisiones;
+
+||     #71#8 = enDescuento1;
+     #71#10 = enComision;
+||     #71#6 = pvp_ve - dto_pt;   || Precio Venta. sin iva.
+
+     |HAZ precio_divisa;       ||Convierte el precio en divisa
+|FPRC;
+
+|PROCESO CreaLin;
+     enForma = 1;
+
+     |DDEFECTO #19;
+     |ABRE #19;
+     #19#0 = #1#1;
+     |LEE 000#19=;
+     |CIERRA #19;
+
+     nLin = nLin + 1;
+     |DDEFECTO #71;
+     #71#29 = #10#52;
+     #71#0 = #10#0;
+     #71#1 = nLin;
+     #71#2 = #19#0;
+     #71#3 = 1;
+     #71#4 = #19#1;
+     #71#5 = #1#2;
+     #71#6 = #1#7;  #71#26 = #1#7;
+     #71#11 = #19#30;
+     #71#13 = #19#2;
+     #71#15 = #10#3;
+     #71#16 = #25#7;
+     #71#17 = #24#4;
+
+     |HAZ AcumulaAV;
+     #71#14 = enCoste;
+
+     |HAZ PrecioComi;
+     |HAZ TotalLin71;
+     |HAZ CalCabAgifa010_2;
+     |GRABA 020#71n;
+
+     imneto  = ((((#71#9  < #10#5) < #10#32) < #10#7));
+     #10#37 = #10#37 + (imneto - enCoste);
+     |GRABA 020#10a;
+|FPRC;
+
+|PROCESO CreaCab;
+     |LIBERA #10;
+
+     nContaAlb = nContaAlb + 1;
+     nLin = 0;
+
+     aSerie = #0#6;
+     |SI #0#5 = "S";
+          #27#0 = aCli;
+          |LEE 000#27=;
+          |SI FSalida = 0;
+               aSerie = #27#2;
+          |FINSI;
+     |FINSI;
+
+     |DDEFECTO #24;
+     |ABRE #24;
+     #24#0 = aCli;
+     |LEE 000#24=;
+     |CIERRA #24;
+
+     |DDEFECTO #25;
+     |ABRE #25;
+     #25#0 = #24#25;
+     |LEE 000#25=;
+     |CIERRA #25;
+
+     |DDEFECTO #20;
+     #20#0 = #24#202;
+     |LEE 000#20=;
+
+     |LIBERA #10;
+     |DDEFECTO #10;
+     #10#52 = aSerie;
+     enSwMenu = 1;
+     |HAZ ContaAV7;
+     |GRABA 020#10b;
+     #10#1 = #1#6;
+     #10#3 = #24#0;
+     #10#4 = #24#2;
+     #10#5 = #24#37;
+     #10#6 = #25#0;
+     #10#7 = #24#38;
+     #10#8 = #24#20;
+     #10#9 = #20#1;
+     #10#29 = #24#2;
+     #10#30 = #24#5;
+     #10#31 = #24#6;
+     #10#32 = #24#156;
+     #10#33 = #24#7;
+     #10#40 = #24#41;
+     #10#50 = #24#40;
+     #10#62 = #24#180;
+     #10#63 = #24#15;
+     #10#64 = #24#208;
+     #10#68 = #24#192;
+     #10#69 = #324#2;
+     #10#70 = #24#193;
+     #10#73 = "EUR";
+     #10#74 = #324#2;
+     #10#88 = #20#0;
+     #10#91 = #24#206;
+
+
+     aDivisa = #10#68;
+     aMoneda = #10#70;
+     |HAZ Divisas010;
+
+     |HAZ LimCabAgifa010;
+|FPRC;
+
+|PROCESO CreaAlba;
+     aCli = #1#5; |QBT aCli;
+     |SI aCli = ""; |ACABA; |FINSI;
+     aCli = ("000000" + aCli) % -106;
+     |SI aCli ! aCliAnt; |O aCli = "";
+          |SI aCli ! "";
+               |HAZ AltaCarnicasAV;
+               |HAZ LimCabAgifa010;
+               |BUCLE agifa071;
+               |HAZ actpf;
+          |FINSI;
+          aCliAnt = aCli;
+          |HAZ CreaCab;
+     |FINSI;
+     |HAZ CreaLin;
+
+     #16#0 = #71#29;
+     #16#1 = #71#0;
+     #16#2 = #71#1;
+     |LEE 101#16=;
+     |SI FSalida ! 0; |GRABA 020#16b; |FINSI;
+     #16#3 = #1#3;
+     #16#4 = #1#4;
+     |GRABA 020#16a;
+     |LIBERA #16;
+|FPRC;
+
+|DEFBUCLE CreaAlba;
+     #1#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, CreaAlba;
+|FIN;
+
+|PROCESO Importa;
+     |XABRE "C", aFic, nHandle;
+     |SI FSalida ] 0;
+          |HAZ CreaTempo; aTmp1 = Tempo; |NOME_DAT #1 Tempo; |DELINDEX #1;
+          |ABRE #1;
+          |PARA; |SI; |HACIENDO;
+               |XLEE nHandle, 250, aDato;
+               |SI FSalida < 0; |SAL; |FINSI;
+               nConta = nConta + 1;
+               #1#0 = nConta;
+               aAlfa = aDato % 0120; #1#1 = aAlfa;
+               aAlfa = aDato % 2109; #1#2 = aAlfa;
+               aAlfa = aDato % 3009; #1#3 = aAlfa;
+               aAlfa = aDato % 3908; #1#4 = aAlfa;
+               aAlfa = aDato % 4708; #1#5 = aAlfa;
+               aAlfa = aDato % 5510;
+               aAlfa = (aAlfa % 102) +"."+ (aAlfa % 402) +"."+ (aAlfa % 704);
+               #1#6 = aAlfa;
+               aAlfa = aDato % 6509; #1#7 = aAlfa;
+               |GRABA 020#1n;
+          |SIGUE;
+          ||CONSULTA_CLAVE #1#1;
+          |CIERRA #1;
+          |XCIERRA nHandle;
+          |SI #0#3 = "N";
+               |RRENOMBRA_FICHERO aFic, aFicDes;
+          |FINSI;
+
+          |ABRE #10;
+          |ABRE #20;
+          |ABRE #16;
+          |ABRE #71;
+          |ABRE #27;
+          |BUCLE CreaAlba;
+          |SI aCli ! "";
+               |HAZ AltaCarnicasAV;
+               |HAZ LimCabAgifa010;
+               |BUCLE agifa071;
+               |HAZ actpf;
+          |FINSI;
+          |CIERRA #27;
+          |CIERRA #10;
+          |CIERRA #20;
+          |CIERRA #16;
+          |CIERRA #71;
+
+          |SI nContaAlb = 1;
+               aAlfa = "0000Creado 1 albaran...";
+          |SINO;
+               aAlfa = "0000Creados " + nContaAlb + " albaranes...";
+          |FINSI;
+          |SI nContaAlb > 0; |MENAV aAlfa; |FINSI;
+
+          aTmp1 = Tempo; |HAZ BoraTempo; |DELINDEX #1;
+     |SINO;
+          |MENAV "0000No existe fichero....";
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     aFecha = (#0#4 % 704) + (#0#4 % 402) + (#0#4 % 102);
+     aHora = (#0#7 % 102) + (#0#7 % 402) + (#0#7 % 802);
+     aPath = #0#1; |QBF aPath;
+     aAlfa = aPath % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\";
+          aPath = aPath + "/";
+     |FINSI;
+     aFic = aPath + #0#2; |QBF aFic;
+     aFicDes = aPath + aFecha + aHora;
+     |XABRE "CE", aFicDes, 0;
+     |SI #0#3 = "S";
+          |SI FSalida < 0;
+               |MENAV "0000No existe fichero a reimportar...";
+               |ACABA;
+          |FINSI;
+          aFic = aFicDes;
+     |SINO;
+          |SI FSalida ] 0;
+               aAlfa = "0000Ya existe el fichero:" + aFecha;
+               |MENAV aAlfa;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+     |HAZ Importa;
+|FPRC;
+
+|PROCESO Reimpo; |TIPO 0;
+     |SI #0#3 = "S";
+          |C_M #0#2, 1, "N";
+          |C_M #0#4, 1, "S";
+          |C_M #0#7, 1, "S";
+     |SINO;
+          |C_M #0#2, 1, "S";
+          |C_M #0#4, 1, "N";
+          |C_M #0#7, 1, "N";
+     |FINSI;
+|FPRC;
+
+|PROCESO Browser; |TIPO 0;
+     |SI FSalida ! 10; |ACABA; |FINSI;
+
+     aRuta = "D*.*";
+
+     |BROWSE aRuta;
+
+     aRuta = aRuta % 2; |QBF aRuta;
+     |SI aRuta = "D"; aRuta = ""; |FINSI;
+
+     |QBF aRuta;
+     |SI aRuta = "";
+          |ERROR;
+     |SINO;
+          #0#1 = aRuta;
+          |PINTA #0#1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Boton1;
+     |PTEC 824;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #3; |LEE 000#3p; |CIERRA #3;
+     |ABRE #321; |LEE 000#321p; |CIERRA #321;
+     |ABRE #324; #324#0 = "EUR"; |LEE 000#324=; |CIERRA #324;
+
+     |CLS;
+     |CONTROL_SIMPLE 0, "BOTON,Carpeta ", 1016, 1023, Boton1;
+     nBoton1 = FSalida;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     #0#2 = "";
+     #0#3 = "N";
+     #0#4 = ~;
+     #0#5 = "N";
+     #0#6 = #3#1;
+     |HORA aAlfa;
+     #0#7 = aAlfa;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |GRABA 020#0a;
+     |FINSI;
+     |CIERRA #0;
+     |FIN_CONTROL_WINDOWS nBoton1;
+     |PULSATECLA;
+|FPRO;

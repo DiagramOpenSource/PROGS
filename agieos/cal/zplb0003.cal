@@ -1,0 +1,144 @@
+|PROCESO CargaMac;
+     |SI eaDSMAC ! "";  |ACABA;  |FINSI;
+
+     |HAZ LeeUnidadBasico;
+
+     aAlfa = eaUnidad + "\MODELOS";  |RMKDIR aAlfa;
+     aAlfa = aAlfa + "\DSMAC";             |RMKDIR aAlfa;
+
+     |DBASE aAlfa;   |QBF aAlfa;
+     aAlfa     = aAlfa + "plugins/";
+     aOrigen   = aAlfa + "dsmac.exe";
+     aDestino  = eaUnidad + "\MODELOS\DSMAC\DSMAC.EXE";
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+     |SI aDocRemoto ! aDocServidor;
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     |XABRE "EC", aDestino, nHandle;
+     |SI FSalida < 0;
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     aAbre    = eaUnidad + "\MODELOS\DSMAC\DSMAC.TXT";  |RFBORRA aAbre;
+
+     aEjecuta = "cmd " + &34 + "/c START /WAIT " + aDestino + " ";
+     aEjecuta = aEjecuta +  eaUnidad + "\MODELOS\DSMAC\DSMAC.TXT" + &34;
+     |RSYSTEM aEjecuta;
+
+     aAbre    = eaUnidad + "\MODELOS\DSMAC\DSMAC.TXT";
+     |XABRE "EC", aAbre, nHandle;
+     |SI FSalida < 0;
+         aEjecuta = "START "+ aDestino + " ";
+         aEjecuta = aEjecuta +  eaUnidad + "\MODELOS\DSMAC\DSMAC.TXT" + &34;
+         |RSYSTEM aEjecuta;
+
+         |PARA;  |SI;  |HACIENDO;
+                 |PARA nPausa = 1; |SI nPausa [ 10000; |HACIENDO nPausa = nPausa + 1;
+                 |SIGUE;
+
+                 |XABRE "EC", aAbre, nHandle;
+                 |SI FSalida ] 0;
+                     |SAL;
+                 |FINSI;
+
+                 |PULSATECLA;
+         |SIGUE;
+     |FINSI;
+
+     eaDSMAC   = "";
+     aAbre    = eaUnidad + "\MODELOS\DSMAC\DSMAC.TXT";
+     |XABRE "CU", aAbre, nHandle;
+     |SI FSalida < 0;   |ACABA;  |FINSI;
+
+     |XLEE nHandle, 250, eaDSMAC;
+     |SI FSalida < 0
+         eaDSMAC   = "";
+     |FINSI;
+     |XCIERRA nHandle;
+
+     |QBF eaDSMAC;
+|FPRC;
+
+|PROCESO CogeMac;
+     |HAZ CargaMac;
+
+     |ABRE #108;
+     #108#0 = eaDSMAC;
+     |LEE 000#108=;
+     |SI FSalida = 0;
+         |CIERRA #108;
+         |ACABA;
+     |FINSI;
+
+     #108#0 = aIPRemoto;
+     |LEE 000#108=;
+     |SI FSalida = 0;
+         #108#0 = eaDSMAC;
+         |GRABA 020#108n;
+         |LIBERA #108;
+     |FINSI;
+     |CIERRA #108;
+|FPRC;
+
+|PROCESO LocalizaAcrobat;
+     |HAZ CogeMac;
+
+     eaPathAcrobat = #108#1;  |QBF eaPathAcrobat;
+
+     enError  = 0;
+
+     |SI eaPathAcrobat ! "";  |ACABA;  |FINSI;
+
+     version1 = "AcroExch.Document";
+     |ESPECIFICA "VERSION_PROGRAMA",version;
+     |HAZ ExtraePath;
+     |SI eaPathAcrobat = "NO LOCALIZADO";
+          version1 = "AcroExch.App";
+          |ESPECIFICA "VERSION_PROGRAMA",version;
+          |HAZ ExtraePath;
+     |FINSI;
+
+     |SI eaPathAcrobat ! "NO LOCALIZADO";
+          |HAZ CompruebaRuta;
+          |SI enError = 1;          || todo ok
+               |ACABA;              || hay Acrobat pero no lo encuentra
+          |FINSI;
+     |SINO;
+          enError = 1;
+     |FINSI;
+
+     |SI enError = 0;
+         |ABRE #108;
+         #108#0 = eaDSMAC;
+         |LEE 101#108=;
+         |SI FSalida ! 0;
+             |DDEFECTO #108;
+             #108#0 = eaDSMAC;
+             |GRABA 020#108b;
+         |FINSI;
+         #108#1 = eaPathAcrobat;
+         |GRABA 020#108a;
+         |LIBERA #108;
+         |CIERRA #108;
+    |FINSI;
+|FPRC;

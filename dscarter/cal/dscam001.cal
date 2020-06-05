@@ -1,0 +1,191 @@
+|FICHEROS;
+   dscam001 #0;
+   dscam002 #1;
+   dscam044 #10;
+   dscam045 #11;
+   dscam052 #52;
+   agifa024@ #100;
+   referen@;
+|FINSI;
+
+|VARIABLES;
+     aPath = "";
+     nBtnCarga = 0;
+     i = 0;
+     nCampos = 0;
+     nSwError = 0;
+
+     DEmpresa = 0;
+     HEmpresa = 0;
+     aDir  = "";
+     aAlfa = "";
+     aCodBanco = "";
+
+     aNifQbf1   = "";
+     aNifQbf2   = "";
+
+     &eaVarDni  = "";
+     &enCalcCif = 0;
+|FIN;
+
+|PROCESO CalculaDNIm01;
+     |SI FSalida = 10;
+          eaVarDni  = #dscam001#2;
+          |HAZ CalculoDNI;
+          #dscam001#2 = eaVarDni;
+          |PINTA #dscam001#2;
+          |ERROR; |ACABA;
+     |FINSI;
+
+     eaVarDni  = #dscam001#2;
+     |HAZ CalculoDNI;
+
+     aNifQbf1 = #dscam001#2;   |QBF aNifQbf1;
+     aNifQbf2 = eaVarDni;  |QBF aNifQbf2;
+
+     |SI aNifQbf1 ! aNifQbf2; |Y aNifQbf1 ! "";
+          aAlfa = "0000NEl NIF puede ser erróneo."+&13+"¿Desea calcularlo?";
+          |CONFI aAlfa;
+          |SI FSalida = 0;
+               #dscam001#2 = eaVarDni; |PINTA #dscam001#2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Clientes;
+     #agifa024@#29 = #dscam001#1;
+     |GRABA 020#agifa024@.a;
+
+     aAlfa = "|NC";
+     nCampos = (N\(#52aAlfa));
+
+     #52#0 = #agifa024@#0;
+     |LEE 101#52=;
+     |SI FSalida ! 0; |GRABA 020#52b; |FINSI;
+     |PARA i = 1; |SI i < nCampos; |HACIENDO i = i + 1;
+          #52i = #agifa024@#i#;
+     |SIGUE;
+     |GRABA 020#52a;
+     |LIBERA #52;
+|FPRC;
+
+|DEFBUCLE Clientes;
+     #agifa024@#1001;
+     32;
+     "      ",aCodBanco;
+     "zzzzzz",aCodBanco;
+     be;
+     NULL,Clientes;
+|FIN;
+
+|PROCESO Empresas;
+   #dscam044#0 = #dscam045#0;
+   |LEE 000#dscam044.=;
+   |SI FSalida = 0;
+      aDir = #dscam044#1; |QBF aDir;
+      aAlfa = aDir + "def/agifa024.mas";
+      |CARGA_DEF aAlfa , agifa024@;
+      |SI FSalida = 0;
+         aAlfa = aDir + "fich/" + (("00000" + #dscam044#0) % -105) + "/";
+         aCodBanco = (("0000" + #dscam001#0) % -104) + "  ";
+         |PATH_DAT #100 aAlfa;
+         |ABRE #agifa024@;
+         |ABRE #52;
+         |BUCLE Clientes;
+         |CIERRA #52;
+         |CIERRA #agifa024@; |DESCARGA_DEF #agifa024@;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Empresas;
+#dscam045#2;
+;
+DEmpresa;
+HEmpresa;
+;
+NULL,Empresas;
+|FIN;
+
+|PROCESO Cambio;
+   |SI #dscam001#1 ! Contenido;
+      nSwError = 1;
+   |SINO;
+      nSwError = 0;
+   |FINSI;
+|FPRC;
+
+|PROCESO dscam002;
+   #dscam002#2 = #dscam001#1;
+   |GRABA 020#dscam002.a;
+|FPRC;
+
+|DEFBUCLE dscam002;
+#dscam002#1;
+;
+#dscam001#0, "    ";
+#dscam001#0, "zzzz";
+be;
+NULL,dscam002;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 30;
+   |SI nSwError = 1;
+      |BUCLE dscam002;
+
+      |CONFI "    NCambiar en las fichas de los clientes de gestion comercial ? ";
+      |SI FSalida = 0;
+         |DFICB aAlfa; |QBF aAlfa;
+         |PATH_DAT #10 aAlfa; |PATH_DAT #11 aAlfa;
+         |ABRE #dscam044; |ABRE #dscam045;
+         DEmpresa = #48#0; HEmpresa = #48#0;
+         |BUCLE Empresas;
+         |CIERRA #dscam044; |CIERRA #dscam045;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO BtnCarga;
+     aAlfa = "0000NSe perderán los datos actuales. " + &13+ &191 + " Continuar ?";
+     |CONFI aAlfa;
+     |SI FSalida = 0;
+          |DBASE aPath;
+          aAlfa = aPath + "def/dscam001.mas";
+          |CARGA_DEF aAlfa, referen@;
+          |SI FSalida = 0;
+               aAlfa = aPath + "fich/patrones/";
+               |PATH_DAT #referen@#aAlfa#;
+               |ABRE #referen@;
+               |LEE 000#referen@.p;
+               |SI FSalida = 0;
+                    |CIERRAT #0; |DELINDEX #0; |ABRET #0;
+                    aAlfa = "|NC";
+                    aAlfa = #0#aAlfa#;
+                    |PARA; |SI FSalida = 0; |HACIENDO;
+                         |PARA i = 0; |SI i < aAlfa; |HACIENDO i = i + 1;
+                              #0#i# = #referen@#i#;
+                         |SIGUE;
+                         |GRABA 020#0n;
+                         |LEE 000#referen@.s;
+                    |SIGUE;
+                    |LEE 000#0p;
+                    |MENAV "0000Proceso completado";
+               |FINSI;
+               |CIERRA #referen@;
+               |DESCARGA_DEF #referen@;
+          |SINO;
+               |MENAV "0000Error al cargar 'dscam001'...";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO T8_001; |TIPO 8;
+     |CONTROL_SIMPLE 0, "BOTON,{{197}}Recoger entidades del fichero patron", 2055, 2078, BtnCarga;
+     nBtnCarga = FSalida;
+|FPRC;
+
+|PROCESO T9_001; |TIPO 9;
+     |SI nBtnCarga ! 0;
+          |FIN_CONTROL_WINDOWS nBtnCarga;
+     |FINSI;
+|FPRC;

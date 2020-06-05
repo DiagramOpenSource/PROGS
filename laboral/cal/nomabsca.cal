@@ -1,0 +1,376 @@
+|FICHEROS;
+     nomabsca;
+     nomabsli;
+     labtraba;
+     nomhicca;
+     nomabsre;
+|FIN;
+
+|VARIABLES;
+     aAlfa = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     nNume = 0;
+     nModo = 0;
+     fFecha = @;
+     aFecha = "";
+     aMes1 = "";
+     aMes2 = "";
+
+     nEmpAnt = 0;
+     nTraAnt = 0;
+     nDisfrutados = 0;
+     aMesVac = "";
+     nMesVac = 0;
+     &nMes = 0;
+     &nAny = 0;
+     &nTopemes = 0;
+     topemes = 0;
+     aAny = "";
+     nFechaDesdeVac = 0;
+     nFechaHastaVac = 0;
+     nDiasVac = 0;
+     nDesdeEmp = 0;
+     nHastaEmp = 0;
+     nDesdeTra = 0;
+     nHastaTra = 0;
+     nDesdeMes = 0;
+     aDesdeMes = "";
+     nHastaMes = 0;
+     aHastaMes = "";
+     fFechaIni = @;
+     aFechaIni = "";
+     fFechaFin = @;
+     aFechaFin = "";
+     fFechaHoy = @;
+     nAnyVac = 0;
+     aAnyVac = "";
+     nCambiados = 0;
+     aTipo = "";
+     nDec = 0;
+|FIN;
+
+|PROCESO comp1;
+     |SI #nomabsli#2 > #nomabsli#3;
+          aAlfa = "    ATENCION: la fecha de fin no puede ser anterior a la ";
+          aAlfa = aAlfa + "fecha de inicio de la baja";
+          |MENAV aAlfa;
+          |ERROR;
+     |FINSI;
+     aMes1 = #nomabsli#2;
+     aMes1 = aMes1 % 402;
+     aMes2 = #nomabsli#3;
+     aMes2 = aMes2 % 402;
+     |SI aMes1 ! aMes2;
+          aAlfa = "    ATENCION: la fecha inicio y final deben pertenecer al ";
+          aAlfa = aAlfa +  "mismo mes.";
+          |MENAV aAlfa;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO FechaDefecto2; |TIPO 7;
+     |SI #nomabsli#2 = "01.01.0001";
+          fFecha = ~;
+          aFecha = fFecha;
+          aFecha = aFecha % -108;
+          aFecha = "01" + aFecha;
+          fFecha = aFecha;
+          #nomabsli#2 = fFecha;
+          |PINTA #nomabsli#2;
+     |FINSI;
+|FPRC;
+
+|PROCESO FechaDefecto;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          nNume = #nomabsli#2;
+          nNume = nNume + 1;
+          #nomabsli#3 = nNume;
+          |PINTA #nomabsli#3;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaJornada; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          |SI #labtraba#47 ! 0;
+               #nomabsca#2 = #labtraba#47;
+               |PINTA #nomabsca#2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Limite;
+     |SI #nomabsli#6 > #nomabsca#2;
+          aAlfa = "    El numero de horas de baja no puede der superior a ";
+          aAlfa = aAlfa + "la jornada diaria del trabajador";
+          |MENAV aAlfa;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaTrab;
+     aAlfa = #labtraba#37;
+     |QBF aAlfa;
+     |SI aAlfa = "";
+          fFecha = fFechaIni;
+     |SINO;
+          fFecha = aAlfa;
+     |FINSI;
+     |SI FSalida = 0; |Y nDisfrutados ! #labtraba#173; |Y fFecha ] fFechaIni;
+          #labtraba#173 = nDisfrutados;
+          |GRABA 020#labtraba.a;
+          |LIBERA #labtraba;
+          nCambiados = nCambiados + 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecalculoLin;
+     aAlfa = #nomabsli#2;
+     aMesVac = aAlfa % 402;
+     nMesVac = aMesVac;
+     aAnyVac = aAlfa % -104;
+     nAnyVac = aAnyVac;
+
+     #nomhicca#0 = #nomabsli#0;
+     #nomhicca#1 = #nomabsli#1;
+     #nomhicca#2 = nMesVac;
+     #nomhicca#3 = 0;
+     #nomhicca#66 = nAnyVac - 2000;
+     |LEE 000#nomhicca.=;
+     |SI FSalida = 0;
+          nFechaDesdeVac = #nomabsli#2;
+          nFechaHastaVac = #nomabsli#3;
+          nDiasVac = nFechaHastaVac - nFechaDesdeVac + 1;
+          nDisfrutados = nDisfrutados + nDiasVac;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE RecalculoLin;
+     #nomabsli#1;
+     4;
+     #labtraba#0, #labtraba#1, fFechaIni, "V";
+     #labtraba#0, #labtraba#1, fFechaFin, "V";
+     ;
+     NULL, RecalculoLin;
+|FIN;
+
+|PROCESO RecalculoCab;
+     nDisfrutados = 0;
+
+     |BUCLE RecalculoLin;
+
+     |HAZ GrabaTrab;
+|FPRC;
+/*
+|DEFBUCLE RecalculoCab;
+     #nomabsca#1;
+     ;
+     nDesdeEmp, nDesdeTra;
+     nHastaEmp, nHastaTra;
+     ;
+     NULL, RecalculoCab;
+|FIN;
+*/
+|DEFBUCLE labtraba;
+     #labtraba#1;
+     44;
+     nDesdeEmp, nDesdeTra, "A";
+     nHastaEmp, nHastaTra, "A";
+     be;
+     NULL, RecalculoCab;
+|FIN;
+
+|PROCESO VacacLabtraba;
+     |ABRE #labtraba;
+     |ABRE #nomhicca;
+
+     |BUCLE labtraba;
+     ||BUCLE RecalculoCab;
+
+     |CIERRA #nomhicca;
+     |CIERRA #labtraba;
+|FPRC;
+
+|PROCESO Recalculando; |TIPO 0;
+     |SI FSalida = 13;
+          |SALVA_DATOS #nomabsca;
+          aAlfa = "    SDesea efectuar el recálculo de los días de vacaciones ";
+          aAlfa = aAlfa + "disfrutados de los trabajadores?";
+          |CONFI aAlfa;
+          |SI FSalida ! 0;
+               |ACABA;
+          |FINSI;
+
+          nCambiados = 0;
+          nEmpAnt = 0;
+          nTraAnt = 0;
+
+          #nomabsre#0 = #nomabsca#0;
+          #nomabsre#1 = #nomabsca#0;
+          #nomabsre#2 = #nomabsca#1;
+          #nomabsre#3 = #nomabsca#1;
+
+          fFechaHoy = ~;
+          aAlfa = fFechaHoy;
+          aAny = aAlfa % -104;
+          nAny = aAny;
+
+          #nomabsre#4 = nAny;
+
+          |PUSHV 05012380;
+          |PINPA #0#nomabsre;
+          |PINDA #0#nomabsre;
+          |ENDATOS #1#nomabsre;
+
+          |SI FSalida = 0;
+               nDesdeEmp = #nomabsre#0;
+               nHastaEmp = #nomabsre#1;
+               nDesdeTra = #nomabsre#2;
+               nHastaTra = #nomabsre#3;
+               nAny = #nomabsre#4;
+               aAny = nAny;
+               nDesdeMes = 01;
+               aDesdeMes = nDesdeMes; |QBF aDesdeMes;
+               aDesdeMes = ("00" + aDesdeMes) % -102;
+               nHastaMes = 12;
+               aHastaMes = nHastaMes; |QBF aHastaMes;
+               aHastaMes = ("00" + aHastaMes) % -102;
+
+               aFechaIni = "01." + aDesdeMes + "." + aAny;
+               fFechaIni = aFechaIni;
+
+               nMes = nHastaMes;
+               |HAZ topemes_plb;
+               aAlfa = nTopemes;
+               aFechaFin = aAlfa + "." + aHastaMes + "." + aAny;
+               fFechaFin = aFechaFin;
+
+               |HAZ VacacLabtraba;
+
+               |SI nCambiados ! 0;
+                    aAlfa1 = nCambiados;
+                    aAlfa = "    Se ha actualizado el totalizador de días de vacaciones disfrutados";
+                    aAlfa = aAlfa + " en " + aAlfa1 + " trabajadores.";
+                    |SI nCambiados = 1;
+                         aAlfa = aAlfa - "es." + ".";
+                    |FINSI;
+                    |MENAV aAlfa;
+               |SINO;
+                    aAlfa = "    No se han encontrado trabajadores para actualizar.";
+                    |MENAV aAlfa;
+               |FINSI;
+               |ERROR;
+          |FINSI;
+          |POPV;
+          |REPON_DATOS #nomabsca;
+     |FINSI;
+|FPRC;
+
+|PROCESO Activa7; |TIPO 7;
+     |SI #nomabsli#4 = "H";
+          |PINTA 1259, "ÚÄÄÄÄÄÄÄÄÄÄÄÄÄ¿";
+          |PINTA 1359, "³Parte decimal³";
+          |PINTA 1459, "³huelga...    ³";
+          |PINTA 1559, "ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÙ";
+          |SI Campo = 7;
+               |SI #nomabsca#2 = #nomabsli#6; |O #nomabsli#6 = 0;
+                    |CAMPO_MODIFICA #nomabsli#7, 1, "S";
+               |SINO;
+                    |CAMPO_MODIFICA #nomabsli#7, 1, "N";
+                    #nomabsli#7 = 0;
+               |FINSI;
+          |SINO;
+               |CAMPO_MODIFICA #nomabsli#7, 1, "S";
+          |FINSI;
+          |CAMPO_VISUAL #nomabsli#7, 1, "S";
+          |ATRI I;
+          |PINTA 1470, #nomabsli#7;
+          |ATRI 0;
+     |SINO;
+          #nomabsli#7 = 0;
+          |CAMPO_MODIFICA #nomabsli#7, 1, "N";
+          |CAMPO_VISUAL #nomabsli#7, 1, "N";
+          |BLANCO 12591573;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaInc;
+     aTipo = #nomabsli#4;
+     nDec = #nomabsli#7;
+|FPRC;
+
+|DEFBUCLE BuscaInc;
+     #nomabsli#1;
+     ;
+     #nomabsca#0, #nomabsca#1, "29.09.2010";
+     #nomabsca#0, #nomabsca#1, "29.09.2010";
+     ;
+     NULL, BuscaInc;
+|FIN;
+
+|PROCESO ParteDecimal; |TIPO 13;
+     |DDEFECTO #nomabsli;
+     aTipo = "";
+     nDec = 0;
+     |BUCLE BuscaInc;
+
+     aAlfa = #labtraba#2;
+     |QBF aAlfa;
+     |SI aAlfa = "";     || al entrar, si no estoy en ningun trabajador
+          aTipo = "";
+          nDec = 0;
+     |FINSI;
+
+     #nomabsli#4 = aTipo;
+     #nomabsli#7 = nDec;
+     |HAZ Activa7;
+
+/*
+     |DDEFECTO #nomabsli;
+     |ABRE #nomabsli;
+     #nomabsli#0 = #nomabsca#0;
+     #nomabsli#1 = #nomabsca#1;
+     #nomabsli#2 = "29.09.2010";
+     |LEE 000#nomabsli.=;
+     |SI FSalida = 0;
+          |HAZ Activa7;
+     |FINSI;
+     |CIERRA #nomabsli;
+*/
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 4;
+          nDesdeEmp = #nomabsca#0;
+          nHastaEmp = #nomabsca#0;
+          nDesdeTra = #nomabsca#1;
+          nHastaTra = #nomabsca#1;
+
+          fFechaHoy = ~;
+          aAlfa = fFechaHoy;
+          aAny = aAlfa % -104;
+
+          aFechaIni = "01.01." + aAny;
+          fFechaIni = aFechaIni;
+          aFechaFin = "31.12." + aAny;
+          fFechaFin = aFechaFin;
+
+          nDisfrutados = 0;
+
+          |ABRE #labtraba;
+          |ABRE #nomhicca;
+
+          #labtraba#0 = #nomabsli#0;
+          #labtraba#1 = #nomabsli#1;
+          |LEE 101#labtraba.=;
+
+          |BUCLE RecalculoLin;
+          |HAZ GrabaTrab;
+
+          |CIERRA #nomhicca;
+          |CIERRA #labtraba;
+     |FINSI;
+|FPRC;

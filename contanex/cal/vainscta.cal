@@ -1,0 +1,221 @@
+|FICHEROS;
+  vainscta #0;
+  vaticuen #1;
+|FIN;
+
+|VARIABLES;
+  alfa1    = "";
+  alfa2    = "";
+  nume1    = 0;
+  nume2    = 0;
+
+  d_digi = 0;
+  h_digi = 0;
+  d_cuen = "";
+  h_cuen = "";
+  estado = 0;
+
+
+  act_cuent = "";
+  act_nivel = 0;
+  x = 0;
+  y = 0;
+
+  nInkey = 0;
+|FIN;
+
+|INCLUYE dscnex_v;
+
+|| *************************************************************************
+||                         CALCULOS DE PANTALLA
+|| *************************************************************************
+
+|PROCESO tipo8; |TIPO 8;
+ |HAZ vbase;
+ |SI dirfich0 = "*";
+     |MENAV "    NO EXISTE PROGRAMA DE CONTABILIDAD";
+     |PTEC 802;
+     |PTEC 815;
+ |FINSI;
+|FPRC;
+
+|CALCULO DelMayor; |TIPO 0;
+ alfa1 = #0#9;
+ |SI #0#9 = "S";
+     |C_M #0#10, 1, "S";
+     |C_M #0#0,  1, "N";
+     |C_M #0#1,  1, "N";
+     #0#0 = 1; |PINTA #0#0;
+     #0#0 = 1; |PINTA #0#1;
+     #0#2 = 2008; |PINTA #0#2;
+     #0#3 = "CUENTAS DE MAYOR PLAN 2008"; |PINTA #0#3;
+ |SINO;
+     |C_M #0#10, 1, "N";
+     #0#10 = 0;  |PINTA #0#10;
+     #0#11 = ""; |PINTA #0#11;
+     |C_M #0#0,  1, "S";
+     |C_M #0#1,  1, "S";
+ |FINSI;
+|FCAL;
+
+|PROCESO inf400;
+ #400#0 = 00;
+|FPRC;
+
+|PROCESO sup400;
+ #400#0 = 99;
+|FPRC;
+
+|CALCULO descri;  |TIPO 6;
+  nInkey = FSalida;
+  |C_M #0Campo, 0, alfa1;
+  |SI alfa1 = "N"; |ACABA; |FINSI;
+
+  |SI nInkey = 10;
+      #400#0 = #0#10;
+      |ABRE #400;
+      |CONSULTA_F_CLAVE #1#400, inf400, sup400;
+      #0#10 = #400#0;
+      |CIERRA #400;
+  |FINSI;
+
+  |ABRE #400;
+  #400#0 = #0#10;
+  |LEE 001#400=;
+  |SI FSalida ! 0;
+      |MENAV "    No existe Plan Contable";
+      |ERROR;
+  |SINO;
+      #0#11 = #400#1; |PINTA #0#11;
+  |FINSI;
+  |CIERRA #400;
+|FCAL;
+
+
+|CALCULO con_empr; |TIPO 0;
+
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+
+  |C_M #0Campo, 0, alfa1;
+  |SI alfa1 = "N"; |ACABA; |FINSI;
+
+  |SUB_EJECUTA_NP "vaconemp";
+  |ERROR;
+  |SI r_emp = 0; |PTEC 808; |ACABA; |FINSI;
+
+  #0#0 = r_emp; |PINTA #0#0;
+  #0#1 = r_per; |PINTA #0#1;
+  #0#2 = r_eje; |PINTA #0#2;
+||  #0#3 = r_nom; |PINTA #0#3;
+  |PTEC 802;
+|FCAL;
+
+|PROCESO leeregi; |TIPO 0;
+ |SI dirfich0 = "*"; |ACABA; |FINSI;
+ |SI FSalida = 2; |ACABA; |FINSI;
+ |C_M #0Campo, 0, alfa1;
+ |SI alfa1 = "N"; |ACABA; |FINSI;
+
+ cod1 = #0#0;
+ cod2 = #0#1;
+ |HAZ leelo;
+ |SI swerror = 1;
+     |MENAV "     NO Existe la Empresa Contable";
+     |ERROR;
+     |ACABA;
+ |FINSI;
+  |SI #30#26 < 80;
+      #0#2 = 2000 + #30#26;
+  |SINO;
+      #0#2 = 1900 + #30#26;
+  |FINSI;
+ |PINTA #0#2;
+ #0#3 = #30#1; |PINTA #0#3;
+|FPRC;
+
+|| **************************************************************************
+|| ********* CALCULOS PARA CREAR EL FICHERO AUXILIAR (SUMAS Y SALDOS) *******
+
+|PROCESO grabar1;
+ |PINTA 2207, " PASANDO CUENTA: ";
+ |ATRI I;
+ |PINTA 2224, #ca8cumay#0;
+
+ |ATRI 0;
+ #1#2  = enPlan;
+ #1#0  = #ca8cumay#0;
+ |LEE 101#1=;
+ estado = FSalida;
+
+ #1#0 = #ca8cumay#0;
+ #1#1 = #ca8cumay#9;  ||descripcion abreviada
+
+ |SI estado ! 0; |GRABA 020#1n; |FINSI;
+ |SI estado = 0; |Y #0#4 = "S"; |GRABA 020#1a; |FINSI;
+ |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE vainscta1;
+ #ca8cumay#1;
+ ;
+ enEjerBal, #0#10, d_cuen;
+ enEjerBal, #0#10, h_cuen;
+ e;
+ NULL, grabar1;
+|FIN;
+
+|PROCESO grabar;
+ |PINTA 2207, " PASANDO CUENTA: ";
+ |ATRI I;
+ |PINTA 2224, #cacuenta#0;
+ |ATRI 0;
+ #1#2 = enPlan;
+ #1#0 = #cacuenta#0;
+ |LEE 101#1=;
+ estado = FSalida;
+
+ #1#0 = #cacuenta#0;
+ #1#1 = #cacuenta#2;
+ |SI estado ! 0; |GRABA 020#1n; |FINSI;
+ |SI estado = 0; |Y #0#4 = "S"; |GRABA 020#1a; |FINSI;
+ |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE vainscta0;
+ #cacuenta#1;
+ 1;
+ d_cuen, d_digi;
+ h_cuen, h_digi;
+ e;
+ NULL, grabar;
+|FIN;
+
+|| **************************************************************************
+|| ********* CALCULOS PARA CREAR LOS FICHEROS DE BALANCE ********************
+
+|PROCESO pase; |TIPO 3
+  |SI dirfich0 = "*"; |ACABA; |FINSI;
+
+  alfa1 = #0#0; alfa1 = "00000" + alfa1; alfa1 = alfa1 % -105;
+  alfa2 = #0#1; alfa2 = "0"     + alfa2; alfa2 = alfa2 % -101;
+  dirfich = dirfich0 + alfa1 + alfa2 + "/";
+
+  d_cuen = #0#5;  d_digi = #0#7;
+  h_cuen = #0#6;  h_digi = #0#8;
+
+  enPlan = 2008;
+  |SI #0#2 < 2008; enPlan = 1990; |FINSI;
+
+ |SI #0#9 = "N";
+     |PATH_DAT #20 dirfich;
+     |ABRE #1;
+     |BUCLE vainscta0;
+     |CIERRA #1;
+ |SINO;
+      d_cuen = d_cuen % 105;
+      h_cuen = h_cuen % 105;
+     |ABRE #1;
+     |BUCLE vainscta1;
+     |CIERRA #1;
+ |FINSI;
+|FPRC;

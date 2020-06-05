@@ -1,0 +1,178 @@
+|FICHEROS;
+     referen@ #0;
+|FIN;
+
+|VARIABLES;
+     nSal = 0;
+     aLon = "";
+     nPos = 0;
+     aDir = "";
+     aNom = "";
+     aCar = "";
+     aFic = "";
+     i = 0;
+
+     &PRMNT_enVer = 2;
+     &ser_alb = "";
+     &num_alb = 0;
+
+     aExiste = "";
+     aDef = "";
+     aTipo = "";
+     aAlfa = "";
+     nGuarda = 0;
+     enSw = 0;
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aPath = "";
+     aDes = "";
+     aOrg = "";
+     nHandle0 = 0;
+     nHandle1 = 0;
+|FIN;
+
+|PROCESO Version41; |TIPO 80;
+     nGuarda = FSalida;
+     enSw = 0;
+     |VERSIONRTME aAlfa1;
+     aAlfa2 = aAlfa1 % 101;
+     |SI aAlfa2 = "8";                       || diagram8
+          enSw = 1;
+     |FINSI;
+     |SI aAlfa2 = "9";|Y aAlfa1 < "9.09V";   || diagram9 inferior a 9.09V-1
+          enSw = 1;
+     |FINSI;
+     |SI enSw = 1;
+          |MENAV "      Version de Basico inferior a la requerida (9.09V-1)";
+     |FINSI;
+
+     aTipo = "E";
+     FSalida = nGuarda;
+|FPRC;
+
+|PROCESO Moneda41; |TIPO 90;
+     nGuarda = FSalida;
+     aTipo = "S";
+     aAlfa = "zmonedas;" + (("00000" + #48#0) % -105);
+     |SUB_EJECUTA_NP aAlfa;
+
+     aAlfa = "dsz00109;" + (("00000" + #48#0) % -105);  || IVAS
+     |SUB_EJECUTA_NP aAlfa;
+
+     aAlfa = "dsz00131;" + (("00000" + #48#0) % -105);  || IBAN
+     |SUB_EJECUTA_NP aAlfa;   || IBAN
+
+     |DBASE aPath;
+     aAlfa = aPath + "def/goparame";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          aAlfa = aPath + "fich/" + (("00000" + #48#0) % -105) + "/";
+          |PATH_DAT #referen@#aAlfa#;
+          |ABRE #referen@;
+          |LEE 000#referen@.p;
+          |SI FSalida = 0;
+               |HAZ CambiaMenu;
+          |FINSI;
+          |CIERRA #referen@;
+     |FINSI;
+
+     FSalida = nGuarda;
+|FPRC;
+
+|PROCESO CambiaMenu;
+     |DBASE aAlfa;
+     aDes = aAlfa + "dsmodulo.men";
+     |SI #referen@#141 = "P";
+          aOrg = aAlfa + "plugins/000con.men";
+     |SINO;
+          aOrg = aAlfa + "plugins/001con.men";
+     |FINSI;
+     |XABRE "", aDes, nHandle0;
+     |SI FSalida ] 0;
+          |XLEE nHandle0, 250, aAlfa;   || coge 1§ linea, la version actual
+          |XCIERRA nHandle0;
+          |XABRE "", aOrg, nHandle1;
+          |SI FSalida ] 0;
+               |XABRE "W", aDes, nHandle0;
+               |SI FSalida ] 0;
+                    |XGRABA nHandle0, aAlfa;    || graba la version
+                    |XLEE nHandle1, 250, aAlfa; || desprecia la version del nuevo
+                    |XLEE nHandle1, 250, aAlfa;
+                    |PARA; |SI FSalida ] 0; |HACIENDO;
+                         |XGRABA nHandle0, aAlfa;|| graba el nuevo
+                         |XLEE nHandle1, 250, aAlfa;
+                    |SIGUE;
+                    |XCIERRA nHandle0;
+                    |XCIERRA nHandle1;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO T8; |TIPO 8;
+     |DBASE aPath;
+     aAlfa = aPath + "def/agifa041";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          |LEE 000#referen@.p;
+          nSal = FSalida;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+     |SI nSal ! 0;
+          |HAZ RestauraTar;
+          |SI nSal ! 0;
+               |HAZ RestauraDir;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO SacaNom;
+     aLon = aDir % A0;
+     aNom = "";
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = -(i * 100 + 1)
+          aCar = aDir % nPos;
+          |SI aCar = "\"; |O aCar = "/"; |SAL; |FINSI;
+          aNom = aCar + aNom;
+     |SIGUE;
+|FPRC;
+
+|PROCESO RestauraDir;
+     |DBASE aPath;
+     aAlfa = aPath + "def/agifa041";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          aDir = aPath + "fich/";
+          |_PDIR aDir;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               |HAZ SacaNom;
+               aLon = aNom % A0;
+               |SI aLon = 5;
+                    aAlfa = aNom - ".";
+                    |SI aAlfa = aNom; |Y aNom > 0;
+                         aAlfa = "Empresa " + aNom;
+                         #referen@#0 = aNom;
+                         #referen@#1 = aAlfa;
+                         #referen@#8 = "~~~~~~~~~~";
+                         |GRABA 020#referen@.n;
+                    |FINSI;
+               |FINSI;
+               |_SDIR aDir;
+          |SIGUE;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+|FPRC;
+
+|PROCESO RestauraTar;
+     aFic = aPath + "fich/copia41.tgz";
+     |XABRE "E", aFic, 0;
+     |SI FSalida = 0;
+          aAlfa = aPath + "fich/";
+          |DETAR aFic, aAlfa;
+          nSal = FSalida;
+     |FINSI;
+|FPRC;

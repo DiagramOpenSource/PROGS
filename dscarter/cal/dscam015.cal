@@ -1,0 +1,190 @@
+|FICHEROS;
+     dscam015 #0;
+     dsm00225@;
+|FIN;
+
+|VARIABLES;
+     aPath = "";
+     aEmp = "";
+     aAlfa = "";
+     &eaIBANant  = "";
+     &eaCta      = "";
+     &eaIBAN     = "";
+     &eaPais     = "";
+     &eaEntidad  = "";
+     &eaSucursal = "";
+     &eaCuenta   = "";
+     &eaDC       = "";
+
+     aNifQbf1   = "";
+     aNifQbf2   = "";
+
+     &eaVarDni  = "";
+     &enCalcCif = 0;
+     nSwC       = 0;
+|FIN;
+
+|PROCESO CalculaNif;
+     |SI FSalida = 10;
+         eaVarDni   = #0Campo;
+         enCalcCif  = 1;
+         |HAZ CalculoDNI;
+         #0Campo = eaVarDni;
+         |PINTA #0Campo;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #0Campo;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+
+     aNifQbf1 = #0Campo;   |QBF aNifQbf1;
+     aNifQbf2 = eaVarDni;  |QBF aNifQbf2;
+
+     |SI aNifQbf1 ! aNifQbf2; |Y aNifQbf1 ! "";
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #0Campo = eaVarDni;  |PINTA #0Campo;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CalculaDC;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   |SI #0#8 = "    "; |Y #0#9 = "    "; |Y #0#11 = "          ";
+       #0#10 = "  "; |PINTA #0#10;
+       |ACABA;
+   |FINSI;
+
+   eaEntidad  = #0#8;
+   eaSucursal = #0#9;
+   eaCuenta   = #0#11;
+   |HAZ CalculoDC;
+   |SI #0#10 ! eaDC;
+      |MENAV "    Numero de cuenta incorrecto";
+      |CONFI "0000SCalcular el Digito de Control";
+      |SI FSalida = 0;
+          #0#10 = eaDC; |PINTA #0#10;
+      |FINSI;
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO VerSwC; |TIPO 0;
+   aAlfa = Contenido;
+   |SI aAlfa ! #0Campo;
+       nSwC = 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO Iban; |TIPO 0;
+     |SI #0Campo ! Contenido;
+||          |HAZ CalculaIBAN;
+     |FINSI;
+|FPRC;
+
+/*
+|PROCESO CalculaIBAN;
+     eaCta  = (#0#8 % 104) + (#0#9 % 104) + #0#10 + (#0#11 % 110);
+     eaPais = #0#31;
+     |HAZ CalcuIBAN;
+     |QBF eaIBAN;
+     |SI eaIBAN ! "";
+         #0#30 = eaIBAN; |PINTA #0#30;
+     |FINSI;
+|FPRC;
+*/
+
+|PROCESO Iban7; |TIPO 7;
+     aAlfa = #0#30; |QBF aAlfa;
+
+     |SI aAlfa ! "";  |Y nSwC = 0; |ACABA;  |FINSI;
+
+     |SI nSwC = 1; |Y aAlfa ! "";
+         |CONFI "0000SSe han modificado los datos de la Cuenta Corriente. Recalcular el IBAN?";
+         |SI FSalida ! 0;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     eaIBANant = "";
+     eaCta     = (#0#8 % 104) + (#0#9 % 104) + #0#10 + (#0#11 % 110);
+     eaPais    = #0#31;
+     |HAZ CalcuIBAN;
+
+     #0#30 = eaIBAN;
+     |PINTA #0#30;
+     nSwC = 0;
+|FPRC;
+
+|PROCESO Iban0; |TIPO 0;
+     |SI FSalida = 2; |ACABA; |FINSI;
+
+     eaCta = (#0#8 % 104) + (#0#9 % 104) + #0#10 + (#0#11 % 110);
+     eaPais = #0#31;
+     eaIBANant = #0#30;
+     |HAZ CheqIBAN;
+
+     aAlfa = eaIBANant; |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |SI aAlfa = "";
+             #0#30 = eaIBAN;
+             |PINTA #0#30;
+         |SINO;
+             |CONFI "0000SEl codigo IBAN puede ser erroneo, quiere calcularlo.";
+             |SI FSalida = 0;
+                 #0#30 = eaIBAN;
+                 |ERROR;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Pais66; |TIPO 66;
+     aPath = #48#17; |QBF aPath;
+     |SI aPath ! ""; |Y #48#15 ! 0;
+          aEmp = ("00000" + #48#15) % -105;
+          aAlfa = aPath + "def/dsm00225";
+          |CARGA_DEF aAlfa, dsm00225@;
+          |SI FSalida = 0;
+               aAlfa = aPath + "fich/" + aEmp + "/";
+               |PATH_DAT #dsm00225@#aAlfa#;
+               |ABRE #dsm00225@;
+               #dsm00225@#0 = #0#31;
+               |LEE 000#dsm00225@.];
+               |CONSULTA_CLAVE #1#dsm00225@;
+               |SI FSalida = 0;
+                    #0#31 = #dsm00225@#0; |PINTA #0#31;
+               |SINO;
+                    |ERROR;
+               |FINSI;
+               |CIERRA #dsm00225@;
+               |DESCARGA_DEF #dsm00225@;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Pais0; |TIPO 0;
+     aPath = #48#17; |QBF aPath;
+     |SI aPath ! ""; |Y #48#15 ! 0;
+          aEmp = ("00000" + #48#15) % -105;
+          aAlfa = aPath + "def/dsm00225";
+          |CARGA_DEF aAlfa, dsm00225@;
+          |SI FSalida = 0;
+               aAlfa = aPath + "fich/" + aEmp + "/";
+               |PATH_DAT #dsm00225@#aAlfa#;
+               |ABRE #dsm00225@;
+               #dsm00225@#0 = #0#31;
+               |LEE 000#dsm00225@.=;
+               |SI FSalida ! 0;
+                    |MENAV "0000No existe código de pais...";
+                    |ERROR;
+               |FINSI;
+               |CIERRA #dsm00225@;
+               |DESCARGA_DEF #dsm00225@;
+          |FINSI;
+     |FINSI;
+|FPRC;

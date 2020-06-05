@@ -1,0 +1,361 @@
+|FICHEROS;
+     defmacrl #0;  || Lineas de Macros
+     defmacrc #1;  || Macros cab.
+     macrotmp #2;  || Temporal
+|FIN;
+
+|VARIABLES;
+   acortar = "";
+   ncortar = 0;
+   atmp="";
+   adigito = "";
+   descri="";
+   aorden="";
+   aancho = "";
+   avacio = "";
+   mensaje="";
+   npulsaciones=0;
+   atipo="";
+   ntotpulsa=0;
+   apulsaciones="";
+   {42}explica="";
+   atecla="";
+   ntecla="";
+   &entradalineal=0;  || Para que no se ejecuten los calculos que lleva asociado
+                      || cada campo desde la entrada lineal de agifa902 controlaremos
+                      || si se deben ejecutar o no cada uno de los procesos.
+   nancho=0;
+   i=0;
+   numvar      = 0;
+   ncampo      = 0;
+   modo        = 0;
+   nbuffer    = 0;
+   tmp         = "";
+   norden      = 0;
+|FIN;
+
+
+
+|| En caso de que lo deje en blanco. Forzar un RETURN
+|PROCESO return;
+ |SI entradalineal=0;
+   descri= #0#2;
+   |QBF descri;
+   |SI descri = "";
+      #0#2= "[802]";
+      |PINTA #0#2;
+   |FINSI;
+
+   || Fuerzo a que sea la descripcion no modificable por si viniera de la
+   || linea anterior con modificable.
+   |CAMPO_MODIFICA #0#3,1,"N";
+   |CAMPO_MODIFICA #0#4,1,"N";
+   |CAMPO_MODIFICA #0#7,1,"N";
+ |FINSI;
+|FPRC;
+
+|| Si se trata de una tecla especial se debe controlar que este en un rango
+|| entre 801 y 842
+|PROCESO teclarango;
+ |SI entradalineal=0;
+    atecla = #0#2 % "101";
+    |SI atecla ="[";
+        atecla = #0#2 % "203";
+        ntecla = atecla;
+        |SI ntecla < 801;|O ntecla > 842;
+            mensaje="0000Los valores de las teclas especiales deben estar entre 801 y 842";
+            |MENAV mensaje;
+            |ERROR;
+        |FINSI;
+    |FINSI;
+ |FINSI;
+|FPRC;
+
+
+|PROCESO pulsaciones;|TIPO 2;
+ |SI entradalineal=0;
+     npulsaciones= 0;
+     aorden= #0#2;
+     |QBF aorden;
+     atipo = aorden % "101";
+     |SI atipo ! "$";|Y atipo ! "[";|Y atipo ! "?";
+        || Es una cadena.
+        apulsaciones= aorden % 0;
+        npulsaciones=apulsaciones;
+     |SINO;
+        |SI atipo = "[";           || Tecla especial [802]
+            npulsaciones = 1;
+        |FINSI;
+        |SI atipo = "?";           || Peticion de datos
+            npulsaciones = #0#4;   || Longitud que hayamos determinado para la
+                                   || peticion de datos
+        |FINSI;
+         atipo = aorden % "102";
+         || Dia, mes o año
+         |SI atipo = "$D";|O atipo = "$M";|O atipo = "$A";
+               npulsaciones = 2;
+         |FINSI;
+         || Fecha completa
+         |SI atipo = "$T";
+               npulsaciones = 6;
+         |FINSI;
+         |SI atipo ="$C";   || Contador
+               npulsaciones = 6;
+         |FINSI;
+     |FINSI;
+     #1#3 = #1#3 +.npulsaciones;
+     |PINTA #1#3;
+     |SI #1#3 > 200;
+         mensaje = "0000ATENCION Por encima de las 200 pulsaciones por macro estas seran ignoradas";
+         |MENAV mensaje;
+     |SINO;
+         |PINTA #1#3;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+
+|| Si es una orden de pregunta ?. El campo de explicacion sera la pregunta
+|| que la maquina le hara a la hora de ejecutar la macro. Generalmente pondremos
+|| el nombre del campo que vamos a rellenar
+|PROCESO pregunta;
+ |SI entradalineal=0;
+     atecla = #0#2 % "101";
+
+     |SI atecla = "?";
+          |CAMPO_MODIFICA #0#3,1,"S";
+          |CAMPO_MODIFICA #0#4,1,"S";
+          |CAMPO_MODIFICA #0#7,1,"S";   || Numero de memoria
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|| Este proceso limpia la explicacion si se ha cambiado el contenido de PULSACION
+|| De esta manera evitamos arrastres al modificar
+|PROCESO limpia;|TIPO 0;
+ |SI entradalineal=0;
+     |SI Contenido ! #0#2;
+        #0#3="";  || Explicacion
+        #0#4=1;   || Longitud
+        #0#5="";  || Entrada de datos
+        |PINDA #0#0;
+    |FINSI;
+ |FINSI;
+|FPRC;
+
+|| Este proceso personaliza la anchura del campo a la anchura indicada
+|| en la macro. Solo si estoy en la entradalineal
+|PROCESO ancho;|TIPO 7;
+|| Se monta una especie de rayita que marcara el final del campo, ya que con
+|| el nuevo basico se pinta una linea entera en reverse y me impide hacerlo
+|| con CAMPO_MODIFICA
+   |SI entradalineal=1;
+        nancho=#0#4;
+        nancho=100 + (nancho);
+        aancho= nancho;
+        avacio = #0#5;
+        avacio = avacio % aancho;
+        avacio = avacio + "|";
+        |QBF avacio;
+        #0#5= avacio;
+        |PINTA #0#5;
+        || Le meto flecha a la derecha y flecha a la izquierda para que no se
+        || me borre la referencia de tope del campo
+        |PTEC 810;
+        |PTEC 811;
+   |FINSI;
+|FPRC;
+
+|| Este proceso vuelve a dejar la anchura como la total del campo porque
+|| hay problemas despues con el repintado
+|PROCESO anchonormal;|TIPO 0;
+ |SI entradalineal=1;
+     nancho=40;
+     |CAMPO_ANCHO #0#5,1,nancho;
+ |FINSI;
+|FPRC;
+
+
+|| Esto lo monto para poder hacer una entradalineal en modo consulta para que
+|| no me meta lineas nuevas y que se pueda hacer una entrada
+|PROCESO entrada;
+ |SI entradalineal = 1;
+    |ENCAMPO #5#0;
+ |FINSI;
+|FPRC;
+
+
+|| Carga en las memorias globales las introducciones por parte de usuario
+|| para poder ser leidas por alguna otra linea de macro
+|PROCESO cargavar;
+   |SI entradalineal = 1;
+     |HAZ abretemp;
+     numvar = #defmacrl#7;
+     ncampo = numvar +10; || Numero del campo donde se guarda la variables
+
+     || Quito el "|" si lo hubiere
+     atmp = "";
+     |PARA i = 1;|SI i [ #defmacrl#4;|HACIENDO i= i+1;
+          ncortar = i*100 + 1;
+          acortar = ncortar;
+          adigito = #defmacrl#5 % acortar;
+          atmp = atmp + adigito;
+     |SIGUE;
+     #macrotmp#ncampo# = atmp;
+
+     |GRABA 021#macrotmp.a;
+     |LIBERA #macrotmp;
+     |CIERRAT #macrotmp;
+   |FINSI;
+
+|FPRC;
+
+|PROCESO abretemp;
+    |ABRET #macrotmp;
+    #macrotmp#0 ="A";
+    |LEE 101#macrotmp.=;
+    || si no existe lo creo
+    |SI FSalida ! 0;
+        |GRABA 021#macrotmp.b;
+    |FINSI;
+|FPRC;
+
+|| Propone de 10 en diez por si quiere insertar alguna orden que se haya
+|| olvidado
+|PROCESO diez;|TIPO 7;
+  |SI entradalineal = 0;
+     modo = (FEntrada/100) ! 0;
+     |SI modo = 1;|Y FSalida ! 1;|Y FSalida ! 7;|Y #defmacrl#1 ! 1;
+         #defmacrl#1= #defmacrl#1 + 9;
+         |PINTA #defmacrl#1;
+     |FINSI;
+   |FINSI;
+|FPRC;
+
+
+||********* PROCESOS ELECCION DE LAS TECLAS ESPECIALES MEDIANTE F1 *******
+
+|| En funcion de la tecla que ha elegido descargo sobre la orden y la
+|| explicacion lo que le corresponde
+|PROCESO orden;
+     |SI FSalida ] 1;|Y FSalida [ 42;
+           norden = FSalida + 800;
+           aorden = norden;
+           aorden = "[" + aorden + "]";
+           #defmacrl#2 = aorden;
+           |PINTA #defmacrl#2;
+     |FINSI;
+|FPRC;
+
+
+|| Cargo en un buffer numerico las descripciones para poder hacer un
+|| BMENUG.
+|PROCESO cargabuffer;
+     Iexplica=explica1<-;   || Cargo en Iexplica el numero del puntero inicial
+                            || Es necesario hacerlo asi.
+                            || ATENCION . El numero que le asigna no es el numero
+                            || 1 para el elemento 1 sino es un numero que me imagino
+                            || provendra de una tabla interna. Por tanto se debera
+                            || INCREMENTAR o DECREMENTAR pero NUNCA asignar a un
+                            || elemento directamente.
+
+     || Las teclas de funcion empiezan todas por 800 y van hasta el numero ???
+     || por tanto debere restarle 800 para saber el nombre que tiene que descargar
+
+     tmp = explica;
+     |AL_BUF nbuffer,0,tmp;    || 1er. elemento
+
+     || Resto elementos
+     |PARA i = 1;|SI i [41;|HACIENDO i = i +1;
+          Iexplica = Iexplica+1;
+          tmp = explica;
+          |AL_BUF nbuffer,i,tmp;
+     |SIGUE;
+
+
+|FPRC;
+|| Asocia a cada tecla especial una descripcion
+|PROCESO llenaexpli;
+     explica1="VALIDAR CAMPO";
+     explica2="RETURN";
+     explica3="ESPACIO ATRAS";
+     explica4="TAB ADELANTE";
+     explica5="TAB ATRAS";
+     explica6="ESCAPE";
+     explica7="CTRL+C";
+     explica8="ARRIBA";
+     explica9="ABAJO";
+     explica10="IZQUIERDA";
+     explica11="DERECHA";
+     explica12="INICIO";
+     explica13="REPONER ANTIGUO";
+     explica14="PAGINA ARRIBA";
+     explica15="PAGINA ABAJO";
+     explica16="POSICION FINAL";
+     explica17="BORRAR HASTA";
+     explica18="INSERT";
+     explica19="SUPRIMIR";
+     explica20="CONSULTA";
+     explica21="REPONER ANTERIOR";
+     explica22="AYUDA";
+     explica23="FUNCION  1";
+     explica24="FUNCION  2";
+     explica25="FUNCION  3";
+     explica26="FUNCION  4";
+     explica27="FUNCION  5";
+     explica28="FUNCION  6";
+     explica29="FUNCION  7";
+     explica30="FUNCION  8";
+     explica31="FUNCION  9";
+     explica32="FUNCION 10";
+     explica33="FUNCION 11";
+     explica34="FUNCION 12";
+     explica35="FUNCION 13";
+     explica36="FUNCION 14";
+     explica37="FUNCION 15";
+     explica38="FUNCION 16";
+     explica39="FUNCION 17";
+     explica40="FUNCION 18";
+     explica41="FUNCION 19";
+     explica42="FUNCION 20";
+|FPRC;
+
+|PROCESO dimensiona;
+     |VARIABLES;
+          ntipo      = 0;      || 0-> Alfa, 3 -> Numerico, 5-> Fecha
+     |FIN;
+     |DIMENSIONA 42,nbuffer,ntipo;
+|FPRC;
+
+|| Si le da a F1 veremos una lista con las teclas especiales
+|PROCESO elegir;
+ |SI entradalineal = 0;
+   |SI FSalida = 9;      || <F1>
+          |HAZ dimensiona;
+          |HAZ llenaexpli;
+          |HAZ cargabuffer;
+
+          |PUSHV 0501 2380;
+          |BMENUG nbuffer,0,1,42,1000,0;
+          |POPV;
+
+          |HAZ orden;
+
+          |FINDIM nbuffer;
+
+   |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO descri;|TIPO 7;
+     |HAZ llenaexpli;
+     Iexplica=explica1<-;   || Cargo en Iexplica el numero del puntero inicial
+
+     atecla = #defmacrl#2 % "203";
+     ntecla=atecla;
+     |SI ntecla ] 802;|Y ntecla [ 842;
+        Iexplica = Iexplica +(ntecla-800-1); || Posiciono puntero donde le toca
+        #0#3=explica;
+        |PINTA #0#3;
+     |FINSI;
+|FPRC;

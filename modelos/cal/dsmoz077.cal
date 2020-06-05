@@ -1,0 +1,236 @@
+|FICHEROS;
+     dsmoz077;
+     dsmom074;
+     dsmow040,MANTE;
+    :/basica/def/agifigen;
+|FIN;
+
+|VARIABLES;
+     aFichero  = "";
+     nCampo    = 0;
+     nDEmpresa = 0;
+     nHEmpresa = 0;
+     enGraba   = 0;
+     aAlfa1    = "";
+
+     &errconta = 0;
+     &esalta = 0;
+     alfa1 = "";
+     nume1 = 0;
+     nInkey = 0;
+     &enEmpreOri = 0;
+     &enEmpreDes = 0;
+     &swUno      = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+
+|| ////////////////////////////////////////////
+|CALCULO LeelaEmpresa; |TIPO 0;
+
+   errconta = 0;
+   enEmpresa = #dsmow040#0;
+
+|| Lee Empresa
+    |ABRE #agifigen;
+    #agifigen#0 = enEmpresa;
+    |LEE 040#agifigen.=;
+    |SI FSalida ! 0;
+        |MENAV "      Empresa Inexistente";
+        errconta = 1;
+        |CIERRA #agifigen;
+        |ERROR;
+        |ACABA;
+    |SINO;
+        |SI #agifigen#23 = "N";
+            errconta = 1;
+            |MENAV "     Empresa Sin Contabilidad";
+        |FINSI;
+    |FINSI;
+    #dsmow040#1 = #agifigen#1; |PINTA #dsmow040#1;
+    |CIERRA #agifigen;
+
+    |SALVA_DATOS #dsmow040;
+    |LEE 010#dsmow040.=;
+    |SI FSalida ! 0;
+        |REPON_DATOS #dsmow040;
+        |GRABA 000#dsmow040.b;
+        |ERROR;
+        |PTEC 825;
+    |SINO;
+        |REPON_DATOS #dsmow040;
+    |FINSI;
+|FCAL;
+
+|PROCESO BorraGrupo;
+    |BORRA 020#dsmom074.a;
+    |LIBERA #dsmom074;
+|FPRC;
+
+|DEFBUCLE borrarGrupos;
+    #dsmom074#1;
+    ;
+    #dsmow040#0, "            ";
+    #dsmow040#0, "zzzzzzzzzzzz";
+    be;
+    NULL, BorraGrupo;
+|FIN;
+
+|PROCESO Tipo1; |TIPO 1;
+  esalta = (FEntrada / 100) ! 0;
+  |SI esalta = 2;
+      |ERROR;
+      |PTEC 825;
+  |FINSI;
+  |SI esalta = 3;
+     |CONFI "    NEsta Seguro de Borrar todas la tabla de equivalencia de esta Empresa";
+     |SI FSalida ! 0;
+         |ERROR;
+     |SINO;
+         |BUCLE borrarGrupos;
+     |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO leeGrupo;
+  nume1 = 1;
+  |ERROR10;
+|FPRC;
+
+|DEFBUCLE LeeGrupos;
+   #dsmom074#1;
+   ;
+   #dsmow040#0, "            ";
+   #dsmow040#0, "zzzzzzzzzzzz";
+   ;
+   NULL, leeGrupo;
+|FIN;
+
+|PROCESO ComprueboLinea;
+  #dsmow040#0 = enEmpresa;
+  |LEE 040#dsmow040.=;
+  nume1 = 0;
+  |BUCLE LeeGrupos;
+  |SI nume1 = 0;
+      |BORRA 040#dsmow040.c;
+  |FINSI;
+  |LIBERA #dsmow040;
+|FPRC;
+
+|| **********************************************************************
+|RUTINA ClaveBaja40;
+     #dsmom074#8 = #dsmow040#0;
+     #dsmom074#0 = "            ";
+|FRUT;
+
+|RUTINA ClaveAlta40;
+     #dsmom074#8 = #dsmow040#0;
+     #dsmom074#0 = "zzzzzzzzzzzz";
+|FRUT;
+
+|PROCESO Tipo7;  |TIPO 7;
+     |PINTA  #dsmow040#0; |PINTA  #dsmow040#1;
+     enModo = 7;
+     |ENTLINEAL #1#dsmom074, -2, 7, 22, 0, ClaveBaja40, ClaveAlta40;
+|FPRC;
+
+|PROCESO Tipo11;  |TIPO 11;
+     nInkey = FSalida;
+
+    |SI nInkey = 10;         || F2
+        |ERROR;
+        eaElProm = "dsmow040";
+        |HAZ ConsuCliente;
+        #dsmoz077#0 = #dsmow040#0;
+        eaElProm = "";
+        |PTEC 802;
+        |ACABA;
+    |FINSI;
+
+   |SI nInkey =  11;         || F3
+         errconta = 0;
+         enModo = 2;
+         enEmpresa   = #dsmow040#0;
+         enPerConta  = -1;
+         enActividad = #dsmow040#1;
+         |ENTLINEAL #1#dsmom074, -2, 2, 22, 0, ClaveBaja40, ClaveAlta40;
+         |HAZ ComprueboLinea;
+   |FINSI;
+
+|FPRC;
+
+|| /////////////////////// PROCESOS DE TRABAJO \\\\\\\\\\\\\\\\\\\\
+
+|PROCESO GrabaTempo;
+     #dsmow040#0 = #agifigen#0;
+     |LEE 101#dsmow040.=;
+     |SI FSalida ! 0;
+         #dsmow040#0 = #agifigen#0;
+         #dsmow040#1 = #agifigen#1;
+         |GRABA 020#dsmow040.n;
+         enGraba = 1;
+     |FINSI;
+     |LIBERA #dsmow040;
+|FPRC;
+
+|PROCESO GrabaTempo1;
+
+ #dsmom074#8 = #agifigen#0;
+ #dsmom074#0 = "            ";
+ |LEE 041#dsmom074.];
+ |SI FSalida = 0; |Y #dsmom074#8 = #agifigen#0;
+     |HAZ GrabaTempo;
+ |SINO;
+     |SI #agifigen#0 = #dsmoz077#1;
+         |HAZ GrabaTempo;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE dsmom074_f;
+     #agifigen#1;
+     ;
+     nDEmpresa;
+     nHEmpresa;
+     ;
+     NULL, GrabaTempo1;
+|FIN;
+
+
+|RUTINA ClaveBaja999;
+    |SI FSalida = "POSICION";
+        #dsmow040#0 = #dsmoz077#1;
+    |SINO;
+        #dsmow040#0 = 1;
+    |FINSI;
+|FRUT;
+
+|RUTINA ClaveAlta999;
+     #dsmow040#0 = 99999;
+|FRUT;
+
+|PROGRAMA;
+
+    |CLS;
+    #dsmoz077#1 = enEmpresa;
+    |PINPA #0#dsmoz077;
+
+    aFichero = ("40" + Usuario) % 108;
+    |NOME_DAT #dsmow040#aFichero#;
+    |DELINDEX #dsmow040;
+
+    |ABRE #dsmow040;
+    |ABRE #dsmom074;
+    nDEmpresa = 00001;
+    nHEmpresa = 99999;
+    |BUCLE dsmom074_f;
+    |CIERRA #dsmom074;
+    |CIERRA #dsmow040;
+
+    |PINPA #0#dsmom074;
+    |ENTLINEAL #1#dsmow040, -1, 2, 9, 0, ClaveBaja999, ClaveAlta999;
+
+    |DELINDEX #dsmow040;
+|FPRO;

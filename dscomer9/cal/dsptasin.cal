@@ -1,0 +1,473 @@
+||dsptasin.  Conversion a moneda EURO. Para empresas que no usen DIVISAS
+||           es decir que solo usen pesetas.
+
+|FICHEROS;
+     dsptasin #0;
+     fichero@ #1;
+     agifa321 #2;   ||Divisas - Parametros
+     agifa324 #3;   ||Divisas - Divisas
+
+     agifa019 #19;
+     agifa024 #24;  ||Clientes
+     agifa112 #112; ||Proveedores
+     dsptaeu3 #103; ||Auxiliar Def's Euro
+|FIN;
+
+|VARIABLES;
+     i=0;
+     j=0;
+     k=0;
+     nLinea=0;
+     nModo=0;
+     nSeguir=0;
+     nEURO=166.386;
+     nBUSCA="";
+     &EURODB=0;
+
+     aCadena1="";
+     aCadena2="";
+     aCadena3="";
+     aMensaje="";
+     aDirectorio="";
+     aDef="";
+     aPath="";
+
+     nConvertidos=0;
+     nTotalFicheros=0;
+     nNumCampos=0;
+
+|| variables para llenar de ceros
+     aCadena="";
+     r_alfa = "";
+     r_long = "";
+     r_num  = 0;
+     r_masc = "000";
+     aPathBase = "";
+     aPathDatos = "";
+     aPathCadena = "";
+     nSwAcaba = 0;
+     aPathEuro = "";
+     aDivVtas = "";
+     aDivCpas = "";
+     aCodDivisa = "";
+     aBase = "";
+     nSwDivEuro = 0;
+     aDivisaBase = "";
+     aDiviPara = "";
+     aNombre = "";
+     aInfo = "";
+     nSwEurizar = 0;
+     nDivisa = 0;
+     nMoneda = 0;
+     nCambio = 0;
+     aParam  = "";
+|FIN;
+
+|PROCESO F11;|TIPO 66;
+     nSeguir=0;
+     |SI nSeguir=0;
+          |SI aParam = "iber21";
+               FSalida = 0;
+          |SINO;
+               |CONFI "00000Quieres Continuar con el Proceso de Conversion?";
+          |FINSI;
+          |SI FSalida=0;
+               nConvertidos=0;
+               nTotalFicheros=0;
+               |HAZ ConvertirDatos;
+
+               |SI nTotalFicheros ! 0;
+                    |HAZ ActParametros;
+               |FINSI;
+
+               aCadena1=nTotalFicheros;
+               aCadena2=nConvertidos;
+               aMensaje="- Ficheros Examinados: "+aCadena1+"       - Ficheros Convertidos: "+aCadena2;
+               |BLIN 23;
+               |PINTA 2305,aMensaje;
+               |PAUSA;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO llena_ceros;
+     |QBF aCadena;
+     r_alfa= aCadena;
+     |QBF r_alfa;
+     r_long = aCadena % A0;
+     r_alfa = r_masc + r_alfa;
+     r_num = -103;
+     aCadena = r_alfa % r_num;
+|FPRC;
+
+|PROCESO CuantosCampos;
+     aCadena1="|NC";
+     aCadena2=#1#aCadena1#;
+     nNumCampos=aCadena2;    || numero de campos en el def
+|FPRC;
+
+
+|PROCESO BuscaCamposEuro;
+     |PARA j=0;|SI j<nNumCampos; |HACIENDO j=j+1;
+          aCadena=j;
+          |HAZ llena_ceros; || en aCadena esta el resultado
+
+          aCadena1="|C"+aCadena+"TIPO";  || buscamos el tipo
+          aCadena2=#1#aCadena1#;
+          |SI aCadena2="N";
+               aCadena1="|C"+aCadena+"MINIMO";  || buscamos el la cadena EURO
+               aCadena2=#1#aCadena1#;
+               aCadena3=aCadena2-nBUSCA;
+               |SI aCadena2!aCadena3;
+                    nSeguir=0;
+                    |ACABA;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+
+|PROCESO min;
+     #0#0=001;
+|FPRC;
+
+|PROCESO max;
+     #0#0=999;
+|FPRC;
+
+|PROCESO CargaDef;
+     aCadena1=#0#1;
+     |QBF aCadena1;
+     aCadena2=#0#2;
+     |QBF aCadena2;
+
+     aCadena3=aDirectorio-aCadena2;
+     aCadena3=aCadena3-".dat";
+     aDef=aCadena1+"def/"+aCadena3+".mas";
+
+     |CARGA_DEF aDef, fichero@;
+     |SI FSalida ! 0;
+          nSeguir=-1;
+     |FINSI;
+|FPRC;
+
+|PROCESO DescargaDef;
+     |DESCARGA_DEF #fichero@;
+|FPRC;
+
+
+|PROCESO EstableceRutaDatos;
+     aPath=#0#2;
+     |QBF aPath; || ruta para path dat
+
+     |PATH_DAT #1 aPath;
+|FPRC;
+
+
+|PROCESO ConviertePesetasEuros;
+     |PARA j=0;|SI j<nNumCampos; |HACIENDO j=j+1;
+          |SI nSwEurizar = 1;
+               |SI j = nDivisa;
+                    #1j = aCodDivisa;
+                    |GRABA 000#1a;
+               |FINSI;
+               |SI j = nMoneda;
+                    #1j = "B";
+                    |GRABA 000#1a;
+               |FINSI;
+               |SI nCambio ! 0;
+                    |SI j = nCambio;
+                         #1j = 1;            || 1 Euro = 1 Euro (Cambio)
+                         |GRABA 000#1a;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          aCadena=j;
+          |HAZ llena_ceros; || en aCadena esta el resultado
+
+          aCadena1="|C"+aCadena+"TIPO";  || buscamos el tipo
+          aCadena2=#1#aCadena1#;
+          |SI aCadena2="N";
+               aCadena1="|C"+aCadena+"MINIMO";  || buscamos el la cadena EURO
+               aCadena2=#1#aCadena1#;
+               aCadena3=aCadena2-nBUSCA;
+               |SI aCadena2!aCadena3;   || convertir a euros
+                    #1j=#1j / nEURO;
+                    |GRABA 000#1a;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO ConvertirDatos; || funcion principal
+     |PINTA 2320,"Convirtiendo Datos a Euros, Espere un Momento......";
+     aCadena1=#0#2;
+     |QBF aCadena1;
+     aPathCadena = aCadena1;
+     aDirectorio = aCadena1 + "*.dat";
+     |_PDIR aDirectorio;    || extrae el primero directorio
+                            || con |_SDIR aDirectorio cogemos los siguientes
+     |SI FSalida<0;
+          aMensaje="0000El Directorio de Datos " + aCadena1 + " no Existe!";
+          |MENAV aMensaje;
+     |FINSI;
+
+     |ABRE #dsptaeu3;
+     |PARA i=0; |SI FSalida]0; |HACIENDO i=i+1;
+          aNombre = aDirectorio;
+          aNombre = aNombre - aPathCadena;
+          aNombre = aNombre - ".dat";
+          aNombre = aNombre - "/";
+          aInfo = "2313 Procesando fichero de Datos [" + aNombre + "]";
+          |MENSA aInfo;
+
+          nSwEurizar = 0;
+          |QBF aNombre;
+          #dsptaeu3#0 = aNombre;
+          |LEE 000#dsptaeu3.=;
+          |SI FSalida = 0;
+               nDivisa = #dsptaeu3#1;
+               nMoneda = #dsptaeu3#2;
+               nCambio = #dsptaeu3#7;
+               |SI nDivisa ! 0; |Y nMoneda ! 0;
+                    nSwEurizar = 1;
+               |FINSI;
+          |FINSI;
+
+          nTotalFicheros=nTotalFicheros+1;
+          nSeguir=0;
+          |HAZ CargaDef;
+          |SI nSeguir=0;
+               |HAZ EstableceRutaDatos;
+               |HAZ CuantosCampos;  || nNumCampos tiene el numero de campos
+               nSeguir=-1;
+               |HAZ BuscaCamposEuro; || mira si hay campos con Euro o no
+               |SI nSeguir=0;
+                    nConvertidos=nConvertidos+1;
+                    || buscamos en todos los registros
+                    |ABRE #1;
+                    |LEE 000#1p;
+                    |PARA k=1;|SI FSalida=0; |HACIENDO k=k+1;
+                         |HAZ ConviertePesetasEuros;
+                         |LEE 000#1s;
+                    |SIGUE;
+                    |CIERRA #1;
+               |FINSI;
+               |HAZ DescargaDef;
+          |FINSI;
+          |_SDIR aDirectorio;
+     |SIGUE;
+     |CIERRA #dsptaeu3;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO; |QBF aParam;
+
+     nEURO=166.386;
+     EURODB=2;
+     nBUSCA=".?";  || palabra que buscamos
+
+     |HAZ ElPath;
+
+     |CLS;
+     |ABRE #0;
+     |DDEFECTO #0;
+     #0#0 = 001;
+     |LEE 101#dsptasin.=;
+     |SI FSalida ! 0; |GRABA 020#dsptasin.b; |FINSI;
+     |DBASE aPathBase;
+     |QBF aPathBase;
+     #dsptasin#1 = aPathBase;
+     |PINTA #dsptasin#1;
+
+     |DFICE aPathDatos;
+     |QBF aPathDatos;
+     #0#2 = aPathDatos;
+     |PINTA #0#2;
+     |GRABA 020#dsptasin.a;
+     |LIBERA #dsptasin;
+     |PINPA #0#0;
+     |PINDA #0#0;
+
+     |HAZ MiraEuro;
+     |SI nSwAcaba = 1;
+          |ACABA;
+     |FINSI;
+
+     |HAZ F11;
+
+     |CIERRA #0;
+
+     |ET EtInicio;
+|FPRO;
+
+|PROCESO ElPath;
+     |DBASE aPathEuro;
+     |QBF aPathEuro;
+     aPathEuro = aPathEuro + "fich/";
+
+     |PATH_DAT #103 aPathEuro;
+|FPRC;
+
+|PROCESO agifa324;
+     aDiviPara = #agifa324#0;
+     |QBF aDiviPara;
+     |SI #agifa324#2 = 1; |Y #agifa324#3 = 1; |Y aDiviPara ! "";
+          nSwDivEuro = 1;
+          aCodDivisa = #agifa324#0;          ||Divisa Euro
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa324;
+ #agifa324#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, agifa324;
+|FIN;
+
+|PROCESO MiraEuro;
+     |ABRE #agifa321;
+     |LEE 000#agifa321.p;
+     |SI FSalida = 0;
+          aDivVtas = #agifa321#1;
+          aDivCpas = #agifa321#2;
+          aBase = #agifa321#9;
+          |ABRE #agifa324;
+          #agifa324#0 = aBase;
+          |LEE 000#agifa324.=;
+          |SI FSalida = 0;
+               |SI #agifa324#2 = nEURO; |Y #agifa324#3 = nEURO;
+                    aDivisaBase = aBase;
+                    ||Todo correcto.
+               |SINO;
+                    aMensaje = "0000Error: La moneda Base debe ser Pesetas, para poder realizar la conversion a Euros.";
+                    |MENAV aMensaje;
+                    nSwAcaba = 1;
+                    |ACABA;
+               |FINSI;
+          |SINO;
+               aMensaje = "0000Error: La moneda Base debe ser Pesetas, para poder realizar la conversion a Euros.";
+               |MENAV aMensaje;
+               nSwAcaba = 1;
+               |ACABA;
+          |FINSI;
+          |CIERRA #agifa324;
+     |SINO;
+          aMensaje = "0000Error: Parametros Divisa -No- Definidos";
+          |MENAV aMensaje;
+          nSwAcaba = 1;
+          |ACABA;
+     |FINSI;
+     |CIERRA #agifa321;
+
+     |BUCLE agifa324;
+     |SI nSwDivEuro = 0;
+          aCodDivisa = "EUR";
+     |FINSI;
+|FPRC;
+
+|PROCESO ActParametros;
+     ||La idea es que despues de realizar el proceso
+     ||Cambiemos en Parametros Generales y pongamos divisa "EURO".
+     nSwDivEuro = 0;
+     |BUCLE agifa324;
+     |ABRE #agifa321;
+     |SI nSwDivEuro = 1;
+          |DDEFECTO #agifa321;
+          |LEE 101#agifa321.p;
+          |SI FSalida ! 0; |GRABA 020#agifa321.b; |FINSI;
+          #agifa321#9 = aCodDivisa;
+          #agifa321#1 = "N";
+          #agifa321#2 = "N";
+          #agifa321#3 = "N";
+          #agifa321#4 = "N";
+          |GRABA 020#agifa321.a;
+          |LIBERA #agifa321;
+     |SINO;
+          |ABRE #agifa324;
+          |DDEFECTO #agifa324;
+          #agifa324#0 = "EUR";
+          |LEE 101#agifa324.=;
+          |SI FSalida ! 0;
+               |GRABA 020#agifa324.b;
+               #agifa324#1 = "Euro";
+          |FINSI;
+          #agifa324#2 = 1;    ||1 Euro = 1
+          #agifa324#3 = 1;    ||1 Euro = 1
+          #agifa324#7 = 2;    ||2 decimales
+          #agifa324#9 = 2;    ||2 decimales
+          |GRABA 020#agifa324.a;
+          |LIBERA #agifa324;
+          |CIERRA #agifa324;
+          aCodDivisa = #agifa324#0;
+          |DDEFECTO #agifa321;
+          |LEE 101#agifa321.p;
+          |SI FSalida ! 0; |GRABA 020#agifa321.b; |FINSI;
+          #agifa321#9 = aCodDivisa;
+          #agifa321#1 = "N";
+          #agifa321#2 = "N";
+          #agifa321#3 = "N";
+          #agifa321#4 = "N";
+          |GRABA 020#agifa321.a;
+          |LIBERA #agifa321;
+     |FINSI;
+     |CIERRA #agifa321;
+
+     |HAZ CliProArt;   ||Clientes y Proveedores
+|FPRC;
+
+|PROCESO agifa024;
+     #agifa024#191 = "N";           ||Cambio pactado
+     #agifa024#192 = aCodDivisa;    ||Divisa (normalmente EUR)
+     #agifa024#193 = "B";           ||Moneda Base
+     |GRABA 020#agifa024.a;
+|FPRC;
+
+|DEFBUCLE agifa024;
+ #agifa024#1;
+ ;
+ INICIO;
+ FINAL;
+ be;
+ NULL, agifa024;
+|FIN;
+
+|PROCESO agifa112;
+     #agifa112#80 = "N";           ||Cambio pactado
+     #agifa112#81 = aCodDivisa;    ||Divisa (normalmente EUR)
+     #agifa112#82 = "B";           ||Moneda Base
+     |GRABA 020#agifa112.a;
+|FPRC;
+
+|DEFBUCLE agifa112;
+ #agifa112#1;
+ ;
+ INICIO;
+ FINAL;
+ be;
+ NULL, agifa112;
+|FIN;
+
+|PROCESO agifa019;
+     #19#165 = aCodDivisa;
+     |GRABA 020#19a;
+     |LIBERA #19;
+|FPRC;
+
+|DEFBUCLE agifa019;
+     #19#1;
+     ;
+     INICIO;
+     FINAL;
+     be;
+     NULL, agifa019;
+|FIN;
+
+|PROCESO CliProArt;
+     |BUCLE agifa024;         ||Clientes
+     |BUCLE agifa112;         ||Proveedores
+     |BUCLE agifa019;
+|FPRC;

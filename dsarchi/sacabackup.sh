@@ -1,0 +1,1 @@
+tar zcvf /tmp/ccc/dsarchi.cals.tgz cal/*.cal def/*.mas pan/ *.men *.plb vent/ plugins/ dlls/ fich/xsarm* *.txt

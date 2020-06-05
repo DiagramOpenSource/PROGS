@@ -1,0 +1,770 @@
+|FICHEROS;
+   eosmccz3 #0;
+
+   eoscabco #1;
+   eoscabve #11;
+
+   eoslinco #2;
+   eoslinve #12;
+
+   eosactiv #3;
+
+   eosmcc01 #501;
+   eosmcc02 #502;
+   eosmcc1@ #901;
+   eosmcc2@ #902;
+
+   eosmccw1 #991;
+   eosmccw4 #999;
+|FIN;
+
+|VARIABLES;
+    &entrada   = 1;
+    aParam     = "";
+    aParam1    = "";
+
+    nEmpresa   = 0;
+    aPathOrigen  = "";
+    aPathDestino = "";
+    &enPeriodoD = 0;
+    &enPeriodoH = 0;
+
+    aAlfa1   = "";
+    aAlfa2   = "";
+    nNume1   = 0;
+    nNume2   = 0;
+    nPara1   = 0;
+    fechad   = @;
+    fechah   = @;
+    d_act    = 0;
+    h_act    = 0;
+    anyo     = "";
+    fichero  = "";
+    aFichero = "";
+    nCampo   = 0;
+    aMas     = "";
+    aDef     = "";
+    fDFecha  = @;
+    aDTipo   = "";
+    aHTipo   = "";
+    nSwAlgun = 0;
+    nDdepar  = 0;
+    nHdepar  = 0;
+    nSwSel   = 0;
+    nSw      = 0;
+
+    &aCif      = "";
+    &enSwLinea = 0;
+    &enTotal   = 0;
+    &enTBases  = 0;
+    &enTCuotas = 0;
+    &eaTexto   = "";
+    nOp        = 0;
+    nError     = 0;
+    dfec       = @;
+    hfec       = @;
+    &eaError   = "";
+    nImpre     = 0;
+    informe    = "";
+    nSwPrint   = 0;
+    nLibro     = 0;
+
+    nPeriodo   = 0;
+    nEstado    = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcaj;
+|INCLUYE i_consul;
+
+|| ***************** Calculos de Pantalla
+|PROCESO ConsuPro;
+   Campo10020 = #0#14;
+   |SI #0#13 ! "S";
+       Campo10022 = 1;
+   |SINO;
+       Campo10022 = 2;
+   |FINSI;
+   Campo10021 = #0Campo;
+   nCampo     = Campo;
+   |HAZ ConsuCliProv;
+   #0nCampo = Campo10021;  |PINTA #0nCampo;
+|FPRC;
+
+|PROCESO leelibro; |TIPO 0;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   #0#19 = #0#17 + 1; |PINTA #0#19;
+
+   nError = 0;
+   |SI #0#13 = "R";
+       |ABRE #11;
+       #11#0 = #0#14;
+       #11#4 = #0#17;
+       |LEE 040#11=;
+       |SI FSalida ! 0;
+           nError = 1;
+           aAlfa1 = "    No existe Registro de Ventas";
+       |FINSI;
+       |CIERRA #11;
+   |SINO;
+       |ABRE #1;
+       #1#0 = #0#14;
+       #1#4 = #0#17;
+       |LEE 040#1=;
+       |SI FSalida ! 0;
+           nError = 1;
+           aAlfa1 = "    No existe Registro de Compras";
+       |FINSI;
+       |CIERRA #1;
+    |FINSI;
+    |SI nError = 1;
+        |MENAV aAlfa1;
+        |ERROR;
+    |SINO;
+        enEjer = 2000 + #0#17;
+        aAlfa1 = enEjer; aAlfa1 = "01.01." + aAlfa1; fechad = aAlfa1;
+        aAlfa1 = enEjer; aAlfa1 = "31.12." + aAlfa1; fechah = aAlfa1;
+        #0#4 = fechad; |PINTA #0#4;
+        #0#5 = fechah; |PINTA #0#5;
+    |FINSI;
+|FPRC;
+
+|PROCESO activida; |TIPO 0;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+    enDigCaja = 0;
+    |ABRE #3;
+    |SI #0#9 ! 0;
+        #3#0 = #0#14;
+        #3#1 = #0#9;
+        #3#2 = #0#17;
+        |LEE 040#3=;
+        |SI FSalida ! 0;
+            |MENAV "     No existe esta Actividad en la Empresa";
+            |ERROR;
+        |SINO;
+            d_act     = #0#9;
+            h_act     = #0#9;
+            enDigCaja = #3#50;
+        |FINSI;
+    |SINO;
+        d_act = 1;
+        h_act = 6;
+        #3#0 = #0#14;
+        #3#1 = 1;
+        #3#2 = #0#17;
+        |LEE 040#3];
+        |SI FSalida = 0; |Y #3#0 = #0#14; |Y #3#2 = #0#17;
+            enDigCaja = #3#50;
+        |SINO;
+            |MENAV "      No existen actividades con esta empresa.";
+            |ERROR;
+        |FINSI;
+    |FINSI;
+    |CIERRA #3;
+|FPRC;
+
+
+|CALCULO QueIva; |TIPO 0;
+   |SI #0#13 = "R"; eaTexto = "Cobrados"; |FINSI;
+   |SI #0#13 = "S"; eaTexto = "Pagados "; |FINSI;
+   |SI #0#13 = "T"; eaTexto = "Operacion"; |FINSI;
+   aTipoIVA = #0#13;
+|FCAL;
+
+|CALCULO fecha; |TIPO 0;
+   |SI Campo = 5; |Y #0#5 < #0#4;
+       |MENAV "    FECHA ERRONEA ";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|| *************************************************************************
+|PROCESO Pasa502;
+    |SI #0#6 = "I";
+        #502#34 = 0;
+        #502#36 = 0;
+    |SINO;
+        #502#34 = -1;
+        #502#36 = -1;
+    |FINSI;
+
+    |GRABA 020#502a;
+    |LIBERA #502;
+
+    |SI #0#6 = "I";
+        |PARA nPara1 = 0; |SI nPara1 [ 33; |HACIENDO nPara1 = nPara1 + 1;
+              #902nPara1 = #502nPara1;
+        |SIGUE;
+        #902#1  = #0#19;
+        #902#34 = 0;
+        #902#35 = #0#16;
+        #902#36 = 0;
+        |GRABA 020#902n;
+    |FINSI;
+|FPRC;
+
+|DEFBUCLE Pasa502;
+    #502#1;
+    ;
+    #501#0, #501#1, #501#13, #501#17, #501#2, 01;
+    #501#0, #501#1, #501#13, #501#17, #501#2, 99;
+    be;
+    NULL, Pasa502;
+|FIN;
+
+|| *************************************************************************
+|PROCESO Borra902;
+    |BORRA 020#902a;
+    |LIBERA #902;
+|FPRC;
+
+|DEFBUCLE Borra902;
+    #902#1006;
+    ;
+    #901#0, #901#1, #901#13, #901#17, #901#2, 01;
+    #901#0, #901#1, #901#13, #901#17, #901#2, 99;
+    be;
+    NULL, Borra902;
+|FIN;
+
+|PROCESO Borra901;
+    |BUCLE Borra902;
+    |BORRA 020#901a;
+    |LIBERA #901;
+|FPRC;
+
+|| *************************************************************************
+|PROCESO OpImportar;
+
+   |SI #501#5 = "S"; |ACABA; |FINSI; || esta toda pagada/cobrada
+   |SI #501#6 = #999#8; |Y #501#7 = #999#9;
+       |ACABA;
+   |FINSI;
+
+   |SI #501#18 = -1; ||aun no estaba importada
+
+       |DDEFECTO #901;
+       #901#0  = #501#0;
+       #901#1  = #0#19;
+       #901#13 = #501#13;
+       #901#17 = #0#16;      || ejercicio devengo
+       #901#2  = #501#2;
+       |LEE 141#901=;
+       |SI FSalida = 0;
+           nSwSel = 4;
+           eaError = "Ya existe Registro en Ejer. Destino";
+           |ACABA;
+           || |HAZ  Borra901;
+       |FINSI;
+
+       |PARA nPara1 = 0; |SI nPara1 [ 16; |HACIENDO nPara1 = nPara1 + 1;
+             #901nPara1 = #501nPara1;
+       |SIGUE;
+
+       #901#1  = #0#19;
+       #901#17 = #0#16;
+       #901#18 = 0;
+
+       |ABRE #902;
+       |BUCLE Pasa502;
+       |CIERRA #902;
+
+       |GRABA 040#901n;
+       |LIBERA #901;
+
+       #501#18 = 0;
+       |GRABA 020#501a;
+
+       |SI nLibro ! 0; |Y nLibro ! #501#0;
+           |SI nSwPrint = 1; |Y #0#20 = "S";
+               |PIEINF;
+           |FINSI;
+           nSwPrint = 0;
+       |FINSI;
+
+       |SI #501#13 = "R";
+           eaTexto = "Cobrados";
+       |SINO;
+           eaTexto = "Pagados";
+       |FINSI;
+
+       nLibro = #501#0;
+       |SI #0#20 = "S";
+           |PRINT;
+           nSwPrint = 1;
+       |FINSI;
+       nSwAlgun = 1;
+   |FINSI;
+
+   |LIBERA #501;
+|FPRC;
+
+|PROCESO Comprobar902;
+    #502#0  = #902#0;
+    #502#1  = #0#17;
+    #502#2  = #902#2;
+    #502#35 = 0;
+    #502#3  = #902#3;
+    #502#4  = #902#4;
+    |LEE 041#502=;
+    |SI FSalida ! 0;
+        nSw = 1;
+        |ERROR10;
+    |FINSI;
+|FPRC;
+
+|DEFBUCLE Comprobar902;
+    #902#1006;
+    ;
+    #901#0, #901#1, #901#13, #901#17, #901#2, 01;
+    #901#0, #901#1, #901#13, #901#17, #901#2, 99;
+    e;
+    NULL, Comprobar902;
+|FIN;
+
+|PROCESO OpDesImpor;
+
+   |SI #501#18 ! -1; || Ya estaba importada
+       nSw = 0;
+       |DDEFECTO #901;
+       #901#0  = #501#0;
+       #901#1  = #0#19;
+       #901#13 = #501#13;
+       #901#17 = #0#16;      || ejercicio devengo
+       #901#2  = #501#2;
+       |LEE 141#901=;
+       |SI FSalida = 0;
+           |ABRE #502;
+           |BUCLE Comprobar902;
+           |CIERRA #502;
+           |SI nSw = 1;
+               eaError = "Existen movimientos en el Ejer.posterior";
+               nSwSel = 3;
+           |SINO;
+               |HAZ Borra901;
+           |FINSI;
+       |FINSI;
+
+       |SI nSw = 0;
+           |BUCLE Pasa502;
+
+           #501#18 = -1;
+           |GRABA 020#501a;
+
+           |SI nLibro ! 0; |Y nLibro ! #501#0;
+               |SI nSwPrint = 1; |Y #0#20 = "S";
+                   |PIEINF;
+               |FINSI;
+               nSwPrint = 0;
+           |FINSI;
+
+           |SI #501#13 = "R";
+               eaTexto = "Cobrados";
+           |SINO;
+               eaTexto = "Pagados";
+           |FINSI;
+
+           nLibro = #501#0;
+           |SI #0#20 = "S";
+               |PRINT;
+               nSwPrint = 1;
+           |FINSI;
+
+           nSwAlgun = 1;
+       |FINSI;
+   |FINSI;
+   |LIBERA #501;
+|FPRC;
+|| *************************************************************************
+|PROCESO IgualoCampos;
+     |DDEFECTO #999;
+     #999#0  = eEmpreCaja;
+     #999#21 = enEjerCaja;
+     #999#13 = aTipoIVA;
+     #999#1  = eRegisCaja;
+
+     |SI aTipoIVA = "S";
+         #999#2  = #eoslinco#16;
+         #999#3  = #eoslinco#15;
+         #999#4  = #eoslinco#13;
+         #999#5  = #eoslinco#3;
+         |SI enDigCaja = 1;
+             aAlfa1   = ("00" + #eoslinco#5) % -102;
+             #999#6 = aAlfa1;
+         |SINO;
+             #999#6 = #eoslinco#72;
+         |FINSI;
+         #999#7  = #eoslinco#35;
+         #999#8  = #eoslinco#7 + #eoslinco#23 + #eoslinco#24;
+         #999#9  = #eoslinco#9 + #eoslinco#27 + #eoslinco#28;
+         #999#10 = #eoslinco#22;
+         #999#11 = #eoslinco#38;
+         #999#12 = #eoslinco#12;
+         #999#14 = #eoslinco#6;
+         #999#15 = #eoslinco#13;
+         #999#17 = #eoslinco#17;
+
+         #999#26 = #eoslinco#7;
+         #999#27 = #eoslinco#9;
+         #999#28 = #eoslinco#42;
+
+         #999#29 = #eoslinco#23;
+         #999#30 = #eoslinco#27;
+         #999#31 = #eoslinco#43;
+
+         #999#32 = #eoslinco#24;
+         #999#33 = #eoslinco#28;
+         #999#34 = #eoslinco#44;
+    |FINSI;
+    |SI aTipoIVA = "R";
+        #999#2  = #eoslinve#16;
+        #999#3  = #eoslinve#15;
+        #999#4  = #eoslinve#13;
+        #999#5  = #eoslinve#3;
+        |SI enDigCaja = 1;
+            aAlfa1 = ("00" + #eoslinve#5) % -102;
+            #999#6 = aAlfa1;
+        |SINO;
+            #999#6 = #eoslinve#72;
+        |FINSI;
+        #999#7  = #eoslinve#35;
+        #999#8  = #eoslinve#7 + #eoslinve#23 + #eoslinve#24 + #eoslinve#45 + #eoslinve#46 + #eoslinve#47;
+        #999#9  = #eoslinve#9 + #eoslinve#27 + #eoslinve#28 + #eoslinve#51 + #eoslinve#52 + #eoslinve#53;
+        #999#10 = #eoslinve#22;
+        #999#11 = #eoslinve#38;
+        #999#12 = #eoslinve#12;
+        #999#14 = #eoslinve#6;
+        #999#15 = #eoslinve#13;
+        #999#17 = #eoslinve#17;
+
+        #999#26 = #eoslinve#7;
+        #999#27 = #eoslinve#9;
+        #999#28 = #eoslinve#42;
+
+        #999#29 = #eoslinve#23;
+        #999#30 = #eoslinve#27;
+        #999#31 = #eoslinve#43;
+
+        #999#32 = #eoslinve#24;
+        #999#33 = #eoslinve#28;
+        #999#34 = #eoslinve#44;
+
+        #999#35 = #eoslinve#45;
+        #999#36 = #eoslinve#51;
+        #999#37 = #eoslinve#69;
+
+        #999#38 = #eoslinve#46;
+        #999#39 = #eoslinve#52;
+        #999#40 = #eoslinve#70;
+
+        #999#41 = #eoslinve#47;
+        #999#42 = #eoslinve#53;
+        #999#43 = #eoslinve#71;
+    |FINSI;
+
+    #999#22 = enEjer;
+|FPRC;
+
+|PROCESO GrabaAuxiliar;
+
+     #991#0  = #501#0;
+     #991#21 = #501#1;
+     #991#13 = #501#13;
+     #991#44 = #501#17;
+     #991#1  = #501#2;
+     |LEE 041#991=;
+     |SI FSalida ! 0;
+         |DDEFECTO #991;
+         #991#0  = #501#0;
+         #991#21 = #501#1;
+         #991#13 = #501#13;
+         #991#44 = #501#17;
+         #991#1  = #501#2;
+         |GRABA 020#991c;
+     |FINSI;
+
+     |SI nSwSel ! 2;
+         |PARA nPara1 = 2; |SI nPara1 [ 45; |HACIENDO nPara1 = nPara1 + 1;
+               #991nPara1 = #999nPara1;
+         |SIGUE;
+     |FINSI;
+     #991#11 = eaError;
+     |GRABA 020#991a;
+     |LIBERA #991;
+     nError = 1;
+|FPRC;
+
+|| ////////////////////////////////////////
+
+|PROCESO Facturas;
+  |SI aTipoIVA = "S";
+      |SI #2#3  < #0#11; |O #2#3  > #0#12; |ACABA; |FINSI;
+      |SI #2#15 < #0#7;  |O #2#15 > #0#8;  |ACABA; |FINSI;
+      |SI #2#16 < #0#2;  |O #2#16 > #0#3;  |ACABA; |FINSI;
+      |SI #2#13 < #0#4;  |O #2#13 > #0#5;  |ACABA; |FINSI;
+      |SI #2#19 < d_act; |O #2#19 > h_act; |ACABA; |FINSI;
+  |SINO;
+      |SI #12#3  < #0#11; |O #12#3  > #0#12; |ACABA; |FINSI;
+      |SI #12#15 < #0#7;  |O #12#15 > #0#8;  |ACABA; |FINSI;
+      |SI #12#16 < #0#2;  |O #12#16 > #0#3;  |ACABA; |FINSI;
+      |SI #12#13 < #0#4;  |O #12#13 > #0#5;  |ACABA; |FINSI;
+      |SI #12#19 < d_act; |O #12#19 > h_act; |ACABA; |FINSI;
+  |FINSI;
+
+  enSwCaja = 0;
+  |HAZ EsCajaIva;
+  |SI enSwCaja = 0; |ACABA; |FINSI;
+
+  nSwSel = 1;
+  |HAZ IgualoCampos;
+
+    #999#16 = #501#12;
+    #999#17 = #501#8;
+    #999#18 = #501#16;
+    #999#19 = #501#6;
+    #999#20 = #501#7;
+
+    #999#44 = #501#17;
+    #999#45 = #501#18;
+    ||  |GRABA 020#999n;  no graba
+|FPRC;
+
+|PROCESO RegCajaOrigen;
+
+   nSwSel = 0;
+   aTipoIVA   = #501#13;
+   eRegisCaja = #501#2;
+   eDevenCaja = #501#17;
+
+   |SI aTipoIVA = "S";
+       |DDEFECTO #2;
+       #2#0  = #501#0;
+       #2#14 = #501#1;
+       #2#1  = #501#2;
+       |LEE 041#2=;
+       nEstado = FSalida;
+   |SINO;
+       |DDEFECTO #12;
+       #12#0  = #501#0;
+       #12#14 = #501#1;
+       #12#1  = #501#2;
+       |LEE 041#12=;
+       nEstado = FSalida;
+   |FINSI;
+
+   |SI nEstado = 0;
+       |HAZ Facturas;
+   |SINO;
+       nSwSel = 2;
+       eaError = "No existe Factura";
+       |DDEFECTO #999;
+   |FINSI;
+   |SI nSwSel = 1;
+       |SI #0#6 = "I"; |HAZ OpImportar; |FINSI;
+       |SI #0#6 = "D"; |HAZ OpDesImpor; |FINSI;
+   |FINSI;
+   |SI nSwSel ] 2;
+       |HAZ GrabaAuxiliar;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RegCajaOrigen;
+   #501#1;
+   ;
+   eEmpreCaja, enEjerCaja, aDTipo, 0000, 00001;
+   eEmpreCaja, enEjerCaja, aHTipo, 0000, 32000;
+   e;
+   NULL, RegCajaOrigen;
+|FIN;
+
+|| ******************************************************
+|PROCESO MiraErrores;
+   |PRINT;
+   nSwPrint = 1;
+|FPRC;
+
+|DEFBUCLE MiraErrores;
+   #999#1;
+   ;
+   INICIO;
+   FINAL;
+   ;
+   MiraErrores;
+|FIN;
+|| ******************************************************
+
+|CALCULO impre; |TIPO 3;
+
+    aFichero = "x" + Usuario; |NOME_DAT #999 aFichero; |DELINDEX #999;
+    aFichero = "y" + Usuario; |NOME_DAT #991 aFichero; |DELINDEX #991;
+
+    eEmpreCaja  = #0#14;
+    enEjerCaja  = #0#17;
+
+    #0#16 = 2000 + #0#17;
+    #0#18 = 2000 + #0#19;
+
+    fichero = #0#14;
+    fichero = "00000" + fichero;
+    fichero = fichero % -105;
+    anyo    = #0#17;
+    anyo    = ("00" + anyo) % -102;
+    eaNCaja = fichero + anyo;
+
+    aFichero = "c" + fichero + anyo; |NOME_DAT #2   aFichero;
+    aFichero = "v" + fichero + anyo; |NOME_DAT #12  aFichero;
+
+    aFichero = "f" + eaNCaja;        |NOME_DAT #501 aFichero;
+    aFichero = "m" + eaNCaja;        |NOME_DAT #502 aFichero;
+
+    |DBASE aMas;
+    aDef = aMas + "def/eosmcc01";
+    |CARGA_DEF aDef, eosmcc1@;
+    |SI FSalida ! 0;
+        |MENAV "    Error cargando def eosmcc01";
+        |ACABA;
+    |FINSI;
+
+    aDef = aMas + "def/eosmcc02";
+    |CARGA_DEF aDef, eosmcc2@;
+    |SI FSalida ! 0;
+        |DESCARGA_DEF #eosmcc1@;
+        |MENAV "    Error cargando def eosmcc02";
+        |ACABA;
+    |FINSI;
+
+    ePerioCaja = 0; eDevenCaja = #0#19; |HAZ ePathCaja;
+    aFichero = "f" + ePathCaja; |NOME_DAT #901 aFichero;
+    aFichero = "m" + ePathCaja; |NOME_DAT #902 aFichero;
+
+    nSwAlgun = 0;
+    aDTipo = #0#13;
+    aHTipo = #0#13;
+    |SI #0#13 = "T";
+        aDTipo = "R";
+        aHTipo = "S";
+    |FINSI;
+
+    |SI #0#20 = "S";
+
+        |IMPRE 0;
+        |SI FSalida ! 0;
+            |MENAV "    Error en Impresora. Proceso abortado";
+            |ACABA;
+        |FINSI;
+        nImpre = 1;
+
+        |INFOR "eosmccz3";
+        |SI FSalida ! 0;
+            |MENAV "    Error en Informe. Proceso abortado";
+            |FINIMP;
+            |ACABA;
+        |FINSI;
+    |FINSI;
+
+    |SI #0#6 = "D";
+        #0#21 = "INFORME DE FACTURAS EN RECC ANULADAS EL TRASPASO ";
+    |FINSI;
+
+    |ABRE #991;
+    |ABRE #901;
+
+    |ABRE #2;
+    |ABRE #12;
+    nLibro   = 0;
+    nError   = 0;
+    nSwPrint = 0;
+    |BUCLE RegCajaOrigen;
+    |SI nImpre = 1;
+        |SI nSwPrint = 1;  |PIEINF;  |FINSI;
+        |FININF;
+        nSwPrint = 0;
+    |FINSI;
+
+    |SI nSwAlgun = 0; |Y aParam1 = "";
+        aAlfa1 = "0000No hay Facturas RECC para traspasar";
+        |SI #0#6 = "D";
+            aAlfa1 = "0000No hay Facturas traspasadas al ejercicio posterior";
+        |FINSI;
+        |MENAV aAlfa1;
+    |FINSI;
+
+    |CIERRA #12;
+    |CIERRA #2;
+
+    |CIERRA #901;
+    |CIERRA #991;
+
+    |SI nError ! 0;
+        |SI nImpre = 0;
+            |IMPRE 0;
+            |SI FSalida ! 0;
+                |MENAV "    Error en impresora. Proceso abortado";
+                |VETE Salir;
+            |FINSI;
+            nImpre = 1;
+        |FINSI;
+
+        |INFOR "eosmccy3";
+        |SI FSalida ! 0;
+            |MENAV "    Error en informe. Proceso abortado";
+            |VETE Salir;
+        |FINSI;
+
+        nSwPrint = 0;
+        |BUCLE MiraErrores;
+        |PIEINF;
+        |FININF;
+    |FINSI;
+
+|ET Salir;
+    |SI nImpre = 1;
+        |FINIMP;
+        nImpre = 0;
+    |FINSI;
+
+    |DESCARGA_DEF #902;
+    |DESCARGA_DEF #901;
+|FCAL;
+
+|| *********************************************************************
+|PROGRAMA;
+   aParam = PARAMETRO; |QBF aParam;
+
+   |SI aParam = ""; aParam = "I"; |FINSI;
+
+   aParam1 = aParam % 204;
+   aParam  = aParam % 101;
+   #0#6    = aParam;
+
+   |SI aParam1 = "";
+       |CLS;
+       |PINPA #0#0;
+       |SI aParam = "D";
+           |PINTA 0606, "                                                                  ";
+           |ATRI R; |PINTA 0606, "Anular Traspaso de Facturas RECC pendientes"; |ATRI 0;
+           |PINTA 1354, "Anuladas t.: ";
+           |PINTA 2207, "Modificaremos Cobros/Pagos de las Fras en Ejercicio Origen";
+       |FINSI;
+       |PINDA #0#0;
+
+       |ENDATOS #1#0;
+   |FINSI;
+
+   |SI aParam1 ! "";
+       enEjer = aParam1;
+       enEjerCaja = enEjer - 2000;
+       |DDEFECTO #0;
+       #0#6  = aParam;
+       #0#14 = enEmpresa;
+       #0#15 = eaNombreEmp;
+       #0#17 = enEjerCaja;
+       #0#19 = #0#17 + 1;
+       #0#4  = "01.01.2000";
+       #0#5  = "01.01.2099";
+       #0#20 = "N";
+       |HAZ impre;
+   |FINSI;
+|FPRO;

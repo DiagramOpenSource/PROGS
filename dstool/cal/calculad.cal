@@ -1,0 +1,667 @@
+|FICHEROS;
+     calculad #0;
+|FIN;
+
+
+|VARIABLES;
+
+     mascara   = "                ";    || Sirve para pintar operando_alf
+     tecla_alf = "";     || Recoge la tecla pulsada. Es a partir de ella que
+                         || se construye operando_alf.
+
+     operando_alf = "";  || Es la suma de las tecla_alf's pulsadas.
+     operando_num =  0;  || Es una treta para sacar el numero real de operando_alf.
+
+     decimal      = 0;   || (0) no hay decimales (1) si los hay. En caso de
+                         || haberlos ya no se acepta otro "." .
+
+     operando     = 0;   || Flag que nos indica si es o no el primer operando
+     operando1 = 0;      || Contiene el primer operando o el calculo anterior
+     operando2 = 0;      || Contiene siempre el segundo operando para trabajar
+                         || segun la operacion, con el operando1.
+
+     pulsada   = "";     || Contiene el string de la tecla pulsada.
+     longitud  =  0;     || Contiene la longitud de operando_alf controlando
+                         || que no pase de 16.
+
+     long_1    =  0;     || Es la longitud de operando_alf en backspac.
+
+     pinta     = "";     || Variable puente para pintar operando_alf con
+                         || el formato que le da mascara.
+
+     escape    = "806";  || Numeros de la secuencia de escape pertinente
+     ctrl_c    = "807";  || Numeros de la secuencia de escape pertinente
+     return    = "802";  || Numeros de la secuencia de escape pertinente
+     bspace    = "803";  || Backspace (Secuencia escape pertinente)
+
+     numero    = 0; || Numero es el ordinal que ocupa la tecla en posicion
+
+     {40}posicion = 0;   || Contiene la posicion de las diferentes teclas
+                         || de la calculadora y otras posiciones que nos
+                         || puedan hacer falta como la del display. Estas
+                         || posiciones se actualizan cada vez que se mueve
+                         || la pantalla de la calculadora, en el proceso
+                         || "posicion".
+
+     posicion_ant = 0;   || Contiene la posicion de la ultima tecla pulsada.
+                         || Tambien se ha de actualizar cuando se mueva la
+                         || pantalla de la calculadora.
+
+     porciento = 0;      || Contiene el valor de la operacion + (%) por si
+                         || se pide a continuacion.
+
+     arrib     = "808";  ||
+     abajo     = "809";  || Contiene los valores como secuencias de escape
+     derec     = "811";  || definidas en los respectivos terminales.
+     izqui     = "810";  ||
+
+     ventana     = 05501976;  || Valores iniciales de posicion izquierda sup.
+                              || y derecha inf. para hacer el PUSHV y POPV
+
+     venta_si    = 0;    || Sirven para hacer los GRABAVE y PINVE
+     venta_id    = 0;    || como parametros de inicio y final de ventana
+
+     posi_array  = 0;    || La utilizamos en un bucle para recorrer el array
+                         || posicion.
+
+     movi_lat    = 50005;     || Contiene lo que se resta o suma en el
+                              || movimiento lateral a las posiciones en pantalla
+
+     movi_tra    = 3000300;   || Contiene lo que se resta o suma en el
+                              || movimiento transversal a las posiciones
+                              || en pantalla.
+
+     calculadora = "calculad.ora"; || Nombre de la ventana que se graba
+                                   || para moverla por la pantalla
+
+     mover       = 0;    || Contiene 0 si no se ha de mover la pantalla (entrando
+                         || en la rutina de mover pero intentando un movimiento que
+                         || rebase los limites de la pantalla) o, en otro caso,
+                         || la cantidad a mover (de movi_lat o movi_tra)
+
+     fila_sup    = 0;    || Contiene el calculo de la fila_sup de la pantalla
+                         || para ver si entra en el rango util para pintarla.
+
+     fila_inf    = 0;    || Contiene el calculo de la fila_inf de la pantalla
+                         || para ver si entra en el rango util para pintarla.
+
+     columna_izq = 0;    || Contiene el calculo de la columna_izq de la pantalla
+                         || para ver si entra en el rango util para pintarla.
+
+     columna_der = 0;    || Contiene el calculo de la columna_der de la pantalla
+                         || para ver si entra en el rango util para pintarla.
+
+     error       = 0;    || Controla que haya habido error en los calculos
+
+     {10}memoria = 0;    || Son el contenido de las memorias posibles.
+     num_mem     = "";   || Contiene el numero de la memoria elegida.
+     mem_pos     =  0;   || Contiene la posicion en pantalla de dicha memoria
+     mem_pin     = "";   || Contiene "M "+ num_mem. Es lo que se pinta en pantalla
+
+     operacion = 0;
+|FIN;
+
+
+|PROGRAMA;
+
+|| Llenamos la array de posiciones y ponemos valores iniciales.
+
+|HAZ llenapos;
+|HAZ inicio;
+
+|| Cargamos el trozo de pantalla que nos hara falta
+|| y pintamos la ventana de la calculadora.
+
+|ATRI R;
+|BLIN 4;
+|ATRI r;
+
+|PUSHV ventana;
+|PINPA #0#0;
+
+|| Grabamos la ventana en el fichero "calculad.ora" para poder rescatarlo
+|| y moverla por pantalla.
+
+|GRABAVE venta_si,venta_id,calculadora;
+
+     |PARA;|SI tecla_alf ! ctrl_c;|Y tecla_alf ! escape;|HACIENDO;
+
+          |LEETECLA tecla_alf;
+
+          |SI tecla_alf = "0";     ||"0" caso particular ya que todo tecla_alf
+          |O  1 [ tecla_alf;       || no numero seria = 0 como numero.
+          |Y  9 ] tecla_alf;
+          |Y  tecla_alf ! "S";     || tecla_alf ! S por que S(alf) = 1(num)
+          |Y  tecla_alf ! "s";
+                    longitud = (A\ operando_alf % 0);
+                    |SI longitud < 16;
+                         operando_alf = operando_alf + tecla_alf;
+                         numero       = tecla_alf;
+                         |HAZ posicion; || Pinta en Intenso la tecla pulsada;
+                    |SINO;
+                         |AVISO;
+                    |FINSI;
+          |SINO;
+               |SI tecla_alf = ".";
+                    |SI decimal = 0;
+                         operando_alf = operando_alf + ".";
+                         decimal = 1;
+                         numero  = 22;
+                         |HAZ posicion;
+                    |SINO;
+                         |AVISO;
+                    |FINSI;
+               |SINO;
+                    |SI tecla_alf = "+";
+                    |O  tecla_alf = "-";
+                    |O  tecla_alf = "*";
+                    |O  tecla_alf = "/";
+                    |O  tecla_alf = "=";
+                    |O  tecla_alf = return;
+                    |O  tecla_alf = "%";
+                    |O  tecla_alf = "G";
+                    |O  tecla_alf = "g";
+                         |HAZ operacio;
+                    |SINO;
+                         |SI tecla_alf = arrib;
+                         |O  tecla_alf = abajo;
+                         |O  tecla_alf = derec;
+                         |O  tecla_alf = izqui;
+                              |HAZ mover;
+                         |SINO;
+                              |SI tecla_alf = "A";|O tecla_alf = "a";
+                              |O  tecla_alf = "C";|O tecla_alf = "c";
+                                   |HAZ letras;
+                              |SINO;
+                                   |SI tecla_alf = bspace;
+                                        |HAZ backspac;
+                                   |SINO;
+                                        |SI tecla_alf = "M";
+                                        |O  tecla_alf = "m";
+                                        |O  tecla_alf = "R";
+                                        |O  tecla_alf = "r";
+                                        |O  tecla_alf = "B";
+                                        |O  tecla_alf = "b";
+                                             |HAZ memorias;
+                                        |FINSI;
+                                   |FINSI;
+                              |FINSI;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+
+          |HAZ pinta;
+
+          |SI  tecla_alf = "*";    || Ya lo he puesto a proposito para
+               operando_alf = "";  || que borre aqui operando_alf
+               |SI error = 1;
+                    |HAZ inicio;   || En caso de error iniciamos todo
+               |FINSI;
+          |FINSI;
+
+     |SIGUE;
+
+|FPRO;
+
+
+|| Pinta operando_alf tal y como esta en la pantalla.
+
+|PROCESO pinta;
+
+||     |SI operando_alf ! 0;
+||          operando_num = operando_alf;
+||          operando_alf = operando_num;
+||     |FINSI;
+
+     pinta = mascara + operando_alf;
+     pinta = pinta   % -116;
+     |PINTA  posicion11,pinta;
+
+|FPRC;
+
+
+|PROCESO mover;
+
+mover = 0;
+
+|SI tecla_alf = arrib;
+     ventana = ventana - movi_tra;
+     |HAZ filacolu;
+     |SI fila_sup < 1;|O fila_sup > 24;
+          ventana = ventana + movi_tra;
+     |SINO;
+          mover   = - (movi_tra $ 10000);
+     |FINSI;
+|SINO;
+     |SI tecla_alf = abajo;
+          ventana = ventana + movi_tra;
+          |HAZ filacolu;
+          |SI fila_inf > 24;
+               ventana = ventana - movi_tra;
+          |SINO;
+               mover   = movi_tra $ 10000;
+          |FINSI;
+     |SINO;
+          |SI tecla_alf = derec;
+               ventana = ventana + movi_lat;
+               |HAZ filacolu;
+               |SI columna_der > 80;
+                    ventana = ventana - movi_lat;
+               |SINO;
+                    mover = movi_lat $ 100;
+               |FINSI;
+          |SINO;
+               |SI tecla_alf = izqui;
+                    ventana = ventana - movi_lat;
+                    |HAZ filacolu;
+                    |SI columna_izq < 1;|O columna_izq > 80;
+                         ventana = ventana + movi_lat;
+                    |SINO;
+                         mover = - ( movi_lat $ 100) ;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FINSI;
+
+|SI mover ! 0;
+     |POPV;
+     |PUSHV ventana;
+     |HAZ ventana;
+     |PINVE venta_si,venta_id,calculadora;
+
+     Iposicion = posicion1<-;
+
+|| Mover todas las posiciones que nos interesan tal y como se mueve
+|| la pantalla.
+
+     posicion_ant = posicion_ant + mover;    || Muy importante ...
+
+     |PARA     posi_array  = 0;
+     |SI       posi_array  < 40;
+     |HACIENDO posi_array  = posi_array + 1;
+           posicion  = posicion + mover;
+          Iposicion = Iposicion + 1;
+     |SIGUE;
+
+|FINSI;
+
+|FPRC;
+
+
+|PROCESO filacolu;
+
+|| De la variable ventana  tomamos las posiciones iniciales y finales
+|| de los extremos para  compararlos  con  los  maximos y minimos  en
+|| pantalla y asi permitir, o no, que se repinte la calculadora en la
+|| pantalla.
+
+     fila_sup    =  ( ( ventana - (ventana $ 1000000) ) / 1000000 ) ! 0;
+     columna_izq =  ( ( ventana / 10000   ) ! 0 ) $ 100;
+     fila_inf    = (( ( ventana - (ventana $ 100    ) ) / 100     ) ! 0 ) $ 100;
+     columna_der =     ventana $ 100;
+
+|FPRC;
+
+
+|| Operacio toma en operando1 el primer valor o el valor resultado de la
+|| operacion. En operando2 siempre tenemos el valor con el que operar.
+|| operando nos sirve para saber si es la primera vez que entramos en la
+|| rutina (1 o 2).
+
+|PROCESO operacio;
+
+error        = 0;
+
+|SI operando = 1;
+
+     operando1 = operando_alf;
+     operando  = 2;
+
+|SINO;
+
+|| Aqui se hace la operacion dependiendo del numero de operacion elegida
+
+operando2 = operando_alf;
+
+|| No hay operacion => ponemos en operando1 lo que hay en la pantalla
+
+      |SI operacion = 0;
+           operando1 = operando2;
+      |FINSI;
+
+|| (+) Operacion Suma
+
+      |SI operacion = 1;
+           porciento = operando1 > operando2;
+           operando1 = operando1 + operando2;
+      |FINSI;
+
+|| (-) Operacion Resta
+
+      |SI operacion = 2;
+           porciento = operando1 < operando2;
+           operando1 = operando1 - operando2;
+      |FINSI;
+
+|| (*) Operacion Multiplicacion
+
+      |SI operacion = 3;
+           porciento = operando1 * (operando1 % operando2);
+           operando1 = operando1 * operando2;
+      |FINSI;
+
+|| (/) Operacion Division
+
+      || Si intentamos dividir por cero daremos ERROR OVERFLOW
+
+      |SI operacion = 4;
+           porciento = operando1 / (operando1 % operando2);
+           |SI operando2 ! 0;
+               operando1 = operando1 / operando2;
+           |SINO;
+               error     = 1;
+           |FINSI;
+      |FINSI;
+
+|| (G) Operacion Ganancia Comercial
+
+      |SI operacion = 5;
+           operando2 = 100 - operando2;
+           |SI operando2 ! 0;
+               operando1 = operando1 * 100 / operando2;
+           |SINO;
+               error     =  1;
+           |FINSI;
+      |FINSI;
+
+|FINSI;
+
+
+|| Aqui damos el numero de operacion y pintamos en pantalla el string.
+|| tecla_alf = "*" es un truco para que despues de pintar ponga a cero
+|| operando_alf y vuelva a pedir un numero
+
+|SI tecla_alf = "+";
+     numero   = 11;
+     |HAZ posicion;
+     operacion = 1;
+     tecla_alf    = "*";    || (1) .Marca que viene de pulsar operacion
+|SINO;                      || Sirve para pintar el resultado.
+     |SI tecla_alf = "-";
+          numero   = 12;
+          |HAZ posicion;
+          operacion = 2;
+          tecla_alf    = "*";    ||Idem (1)
+     |SINO;
+          |SI tecla_alf = "*";
+               numero   = 13;
+               |HAZ posicion;
+               operacion = 3;
+               tecla_alf    = "*";     || Idem (1)
+          |SINO;
+               |SI tecla_alf = "/";
+                    numero   = 14;
+                    |HAZ posicion;
+                    operacion = 4;
+                    tecla_alf    = "*";    || Idem (1)
+               |SINO;
+                    |SI tecla_alf = "="
+                    |O  tecla_alf = return;   || Caso "=" es igual a return
+                         tecla_alf = "=";
+                         numero   = 15;
+                         |HAZ posicion;
+                         operacion = 0;
+                    |SINO;
+                         |SI tecla_alf = "%";
+                              numero   = 16;
+                              |HAZ posicion;
+                              operando1 = porciento;
+                              operacion = 0;
+                         |SINO;
+                              |SI  tecla_alf = "G";
+                              |O   tecla_alf = "g";
+                                   tecla_alf = "G";
+                                   numero    = 23;
+                                   |HAZ posicion;
+                                   operacion = 5;
+                                   tecla_alf = "*";
+                              |FINSI;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FINSI;
+
+|| El resultado se mete en operando_alf y se ponen los decimales a 0
+|| puesto que empezamos a construir de nuevo un numero.
+
+|SI error  ! 1;|Y operando1 < 10000000000000000;
+    operando_alf = operando1;
+|SINO;
+    operando_alf = "OVERFLOW";
+    tecla_alf    = "*";
+|FINSI;
+
+decimal      =  0;
+
+|FPRC;
+
+
+|PROCESO llenapos;
+
+|| Declaracion de valores iniciales.
+
+escape = &255 + escape;
+ctrl_c = &255 + ctrl_c;
+return = &255 + return;
+bspace = &255 + bspace;
+arrib  = &255 + arrib;
+abajo  = &255 + abajo;
+derec  = &255 + derec;
+izqui  = &255 + izqui;
+
+     posicion1   = 1753; || Posicion del 0
+     posicion2   = 1153; || Posicion del 1
+     posicion3   = 1157; || Posicion del 2
+     posicion4   = 1161; || Posicion del 3
+     posicion5   = 1353; || Posicion del 4
+     posicion6   = 1357; || Posicion del 5
+     posicion7   = 1361; || Posicion del 6
+     posicion8   = 1553; || Posicion del 7
+     posicion9   = 1557; || Posicion del 8
+     posicion10  = 1561; || Posicion del 9
+
+     posicion11  =  756; || Posicion del display;
+
+     posicion12  = 1165; || Posicion del +
+     posicion13  = 1365; || Posicion del -
+     posicion14  = 1565; || Posicion del *
+     posicion15  = 1765; || Posicion del /
+     posicion16  = 1673; || Posicion del =
+     posicion17  = 1769; || Posicion del %
+
+     posicion18  = 1373; || Posicion de la A
+     posicion19  = 1173; || Posicion de la C
+
+     posicion20  = 1369; || Posicion de la M
+     posicion21  = 1569; || Posicion de la R
+     posicion22  = 1169; || Posicion de la B
+
+     posicion23  = 1757; || Posicion del "."
+
+     posicion24  = 1761; || Posicion de la G
+     posicion25  = 0973; || Posicion del backspace "<".
+
+     posicion26  = 0948; || Posicion inicial de las memorias.
+
+posicion_ant = 0;
+
+|HAZ ventana;
+
+|FPRC;
+
+
+|PROCESO posicion;
+
+|| Pinta la tecla pulsada buscandola en el array
+|| y define posicion_ant y pulsada para la siguiente vez
+
+Iposicion    =  posicion1<-;
+Iposicion    = Iposicion + numero;
+
+|SI posicion_ant > 0;
+     |ATRI N;
+     |PINTA posicion_ant,pulsada;
+|FINSI;
+
+|ATRI I;
+|PINTA posicion,tecla_alf;
+|ATRI i;
+
+posicion_ant = posicion ;
+pulsada      = tecla_alf;
+
+|FPRC;
+
+
+|PROCESO ventana ;
+
+|| definir los valores venta_si y venta_id que luego utilizaremos
+
+venta_si = ( ventana / 10000 ) ! 0 ;
+venta_id =   ventana $ 10000 ;
+
+|FPRC;
+
+
+|PROCESO inicio;
+
+|| valores iniciales
+
+operando_alf = "";
+decimal      =  0;
+operando     =  1;
+operando1    =  0;
+operando2    =  0;
+
+|FPRC;
+
+
+|PROCESO letras;
+
+|| Para el caso "A" borramos todos los valores de manera que es como si
+|| empezaramos de nuevo
+
+     |SI tecla_alf = "A";|O tecla_alf = "a";
+          tecla_alf = "A";
+          numero   = 17;
+          |HAZ posicion;
+          |HAZ inicio;
+     |FINSI;
+
+|| El Caso "C" borra solo lo ultimo entrado -> pone operando_alf = "".
+
+     |SI tecla_alf = "C";|O tecla_alf = "c";
+          tecla_alf = "C";
+          numero   = 18;
+          |HAZ posicion;
+          operando_alf = "";
+     |FINSI;
+|FPRC;
+
+
+|PROCESO backspac;
+
+     longitud     = (A\ operando_alf % 0);
+     long_1       = 100 + longitud - 1;
+     operando_alf = operando_alf % long_1;
+     operando1    = operando_alf;
+     longitud     = longitud - 1;
+
+     tecla_alf = "<";
+     numero    = 24;
+     |HAZ posicion;
+
+|FPRC;
+
+
+|PROCESO memorias;
+
+|SI  tecla_alf = "M";
+|O   tecla_alf = "m";
+
+     tecla_alf = "M";
+     numero    = 19;
+     |HAZ posicion;
+
+|SINO;
+     |SI  tecla_alf = "R";
+     |O   tecla_alf = "r";
+
+          tecla_alf = "R";
+          numero    = 20;
+          |HAZ posicion;
+
+     |SINO;
+          |SI  tecla_alf = "B";
+          |O   tecla_alf = "b";
+
+               tecla_alf = "B";
+               numero    = 21;
+               |HAZ posicion;
+
+          |FINSI;
+     |FINSI;
+|FINSI;
+
+num_mem = " ";
+
+|PARA ;|SI num_mem < 1;|O num_mem > 5; |HACIENDO;
+
+|LEETECLA num_mem;
+
+|SI num_mem ] 1;|Y num_mem [ 5;
+
+     Imemoria = memoria1<-;
+     Imemoria = Imemoria + num_mem - 1;
+
+     |SI  tecla_alf = "M";
+
+          memoria   = operando_alf;
+
+          mem_pos   = posicion26 + num_mem * 4;
+          mem_pin   = "M " + num_mem;
+
+          |ATRI R;
+          |PINTA mem_pos,mem_pin;
+          |ATRI r;
+
+     |SINO;
+          |SI  tecla_alf = "R";
+
+               operando_alf = memoria;
+
+          |SINO;
+               |SI  tecla_alf = "B";
+
+                    memoria   =  0;
+
+                    mem_pos   = posicion26 + num_mem * 4;
+                    mem_pin   = "   ";
+
+                    |ATRI R;
+                    |PINTA mem_pos,mem_pin;
+                    |ATRI r;
+
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+|FINSI;
+
+|SIGUE;
+
+|FPRC;

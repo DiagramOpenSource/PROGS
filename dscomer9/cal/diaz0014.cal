@@ -1,0 +1,587 @@
+|FICHEROS;
+     diam0100 #100;
+     diam0101 #101;
+     diam0102 #102;
+     diam0103 #103;
+     agifa112 #112;
+
+     :/dspartes/def/dsparm05 #305;
+     :/dsp/def/dspm0000 #201;
+|FIN;
+
+|VARIABLES;
+     aParametro      = "";
+     aBase           = "";
+     aDirEntrantes   = "";
+     aIPServ         = "";
+     aServCorreo     = "";
+     aFrom           = "";
+     aPwd            = "";
+     aNombre         = "";
+     aAsuntoCorreo   = "";
+     aFichero        = "";
+     aAlfa           = "";
+     aAlfa1          = "";
+     aAlfa2          = "";
+     aCadena         = "";
+     aBusco          = "";
+     aCaracter10     = "";
+     aCaracter13     = "";
+     aCaracter       = "";
+     aFactura        = "";
+     aFecha          = "";
+     aSerie          = "";
+     aImporte1       = "";
+     aImporte2       = "";
+     aCar            = "";
+     aCad            = "";
+     aLong           = "";
+     aBaseBin        = "";
+     aSystem         = "";
+     aOrigen         = "";
+     aDestino        = "";
+     aFicheroPdf     = "";
+     aDirCompras     = "";
+     aFromM          = "";
+     aIPServM        = "";
+     aServCorreoM    = "";
+     aMensajeM       = "";
+     aToM            = "";
+     aAbreM          = "";
+     aAsuntoM        = "";
+     aSalida1        = "";
+     aSalida2        = "";
+     aProveedor      = "";
+
+     nError          = 0;
+     nUnError        = 0;
+     nHandle         = 0;
+     nPos            = 0;
+     nNume1          = 0;
+     nNume2          = 0;
+     nNume3          = 0;
+     nNume4          = 0;
+     nActivaImportes = 0;
+     nLinea          = 0;
+     nLong           = 0;
+     nCar            = 0;
+     nSalida         = 0;
+     nPosProv        = 0;
+     nPosFac         = 0;
+|FIN;
+
+|PROCESO GrabaBandejaHWC;
+     aFactura = (aFactura + (" " * 20)) % 120;
+     #100#0 = #103#0;
+     #100#1 = aFactura;
+     #100#2 = 99;
+     |LEE 000#100];
+     |SI FSalida = 0;
+         |LEE 000#100a;
+     |SINO;
+         |LEE 000#100u;
+     |FINSI;
+     nLinea = 1;
+     |SI FSalida = 0;  |Y #100#0 = #103#0;  |Y #100#1 = aFactura;
+         nLinea = #100#2 + 1;
+     |FINSI;
+
+     |DDEFECTO #100;
+     #100#0  = #103#0;
+     #100#1  = aFactura;
+     #100#2  = nLinea;
+
+     aFicheroPdf = #100#0 + #100#1 + (("00" + #100#2) % -102) + ".pdf";
+     |QBT aFicheroPdf;
+
+     #100#10 = aFicheroPdf;
+     |GRABA 020#100n;
+     |LIBERA #100;
+|FPRC;
+
+|PROCESO QuitaPuntos;
+     aLong = aAlfa % 0;
+     nLong = aLong;
+     aCad  = "";
+     |PARA nCar = 1;  |SI nCar [ nLong;  |HACIENDO nCar = nCar + 1;
+           nPos = (100 * nCar) + 1;
+           aCar = aAlfa % nPos;
+           |SI aCar ! ".";
+               aCad = aCad + aCar;
+           |FINSI;
+     |SIGUE;
+     aAlfa = aCad;
+|FPRC;
+
+|PROCESO RegrabaBandejaHWC;
+     |LEE 101#100=;
+     |SI FSalida = 0;
+         |SI aFecha    ! "";  #100#3 = aFecha;     |FINSI;
+         |SI aImporte1 ! "";
+             aAlfa  = aImporte1;  |HAZ QuitaPuntos;
+             #100#6 = aAlfa;
+         |FINSI;
+         |SI aImporte1 ! "";
+             aAlfa  = aImporte2;  |HAZ QuitaPuntos;
+             #100#7 = aAlfa;
+         |FINSI;
+         #100#13 = (#100#6 > 16) + #100#7;
+         |GRABA 020#100a;
+         |LIBERA #100;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaSerie;
+     #101#0 = #100#0;
+     #101#1 = #100#1;
+     #101#2 = #100#2;
+     #101#3 = aSerie;
+     |LEE 101#101=;
+     |SI FSalida ! 0;
+         |DDEFECTO #101;
+         #101#0 = #100#0;
+         #101#1 = #100#1;
+         #101#2 = #100#2;
+         #101#3 = aSerie;
+         #101#4 = #100#3;
+         #101#5 = #101#4 + 0.000001;
+
+         |GRABA 020#101n;
+     |FINSI;
+     |LIBERA #100;
+|FPRC;
+
+|PROCESO TrataCadena;
+     aCadena = aCadena > "";
+
+     |SI nActivaImportes = 1;
+         aImporte1 = aCadena % 0113;  |QBT aImporte1;
+         aImporte2 = aCadena % 8320;  |QBT aImporte2;
+         |SI aFactura ! "";
+             |HAZ RegrabaBandejaHWC;
+         |FINSI;
+         nActivaImportes = 0;
+         |ACABA;
+     |FINSI;
+
+     |SI aFactura = "";
+         aBusco  = aCadena - "FACTURA..:";
+         |SI FSalida ! 0;
+             aAlfa = FSalida;
+             |SI FSalida [ 999;
+                 aAlfa1 = aAlfa % 101;
+                 aAlfa2 = aAlfa % 202;
+             |SINO;
+                 aAlfa1 = aAlfa % 102;
+                 aAlfa2 = aAlfa % 302;
+             |FINSI;
+             nNume1   = aAlfa1;
+             nNume2   = aAlfa2;
+             nPos     = ((nNume1 + nNume2) * 100) + 10;
+             aFactura = aCadena % nPos;  |QBT aFactura;
+
+             |SI aFactura ! "";
+                 |HAZ GrabaBandejaHWC;
+             |FINSI;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     |SI aFecha = "";
+         aBusco  = aCadena - "FECHA..: ";
+         |SI FSalida ! 0;
+             aAlfa = FSalida;
+             |SI FSalida [ 999;
+                 aAlfa1 = aAlfa % 101;
+                 aAlfa2 = aAlfa % 202;
+             |SINO;
+                 aAlfa1 = aAlfa % 102;
+                 aAlfa2 = aAlfa % 302;
+             |FINSI;
+             nNume1 = aAlfa1;
+             nNume2 = aAlfa2;
+             nPos   = ((nNume1 + nNume2) * 100) + 8;
+             aFecha = aCadena % nPos;
+             |SI aFactura ! "";
+                 aAlfa  = aFecha % 102;  |QBT aAlfa;
+                 aAlfa  = ("00" + aAlfa) % -102;
+                 aFecha = aAlfa + "." + (aFecha % 402) + ".20" + (aFecha % -102);
+                 |HAZ RegrabaBandejaHWC;
+             |FINSI;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     aBusco  = aCadena - "IMP.BRUTO   IVA";
+     |SI FSalida ! 0;
+         nActivaImportes = 1;
+         |ACABA;
+     |FINSI;
+
+     aBusco  = aCadena - "O.F.:";
+     |SI FSalida ! 0;
+         aAlfa = FSalida;
+         |SI FSalida [ 999;
+             aAlfa1 = aAlfa % 101;
+             aAlfa2 = aAlfa % 202;
+         |SINO;
+             aAlfa1 = aAlfa % 102;
+             aAlfa2 = aAlfa % 302;
+         |FINSI;
+         nNume1 = aAlfa1;
+         nNume2 = aAlfa2;
+         nPos   = ((nNume1 + nNume2) * 100) + 40;
+         aSerie = aCadena % nPos;
+         |SI aFactura ! "";  |Y aSerie ! "";
+             |HAZ GrabaSerie;
+         |FINSI;
+         aSerie = "";
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeTxt;
+     aCaracter10   = &10;   ||
+     aCaracter13   = &13;   || Intro
+     |PARA;  |SI  FSalida ] 0;  |HACIENDO;
+             |XLEE nHandle, 1, aCaracter;
+             |SI FSalida [ 0;  |SAL;  |FINSI;
+
+             |SI aCaracter = aCaracter10;
+                 |HAZ TrataCadena;
+                 aCadena = "";
+             |FINSI;
+
+             |SI aCaracter ! aCaracter10; |Y aCaracter ! aCaracter13;
+                 aCadena = aCadena + aCaracter;
+             |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO TrataElTxt;
+     aFactura        = "";
+     aFecha          = "";
+     aSerie          = "";
+     aImporte1       = "";
+     aImporte2       = "";
+     nActivaImportes = 0;
+
+     |ABRE #100;
+     |ABRE #101;
+     |XABRE "AB", aNombre, nHandle;
+     |SI FSalida ] 0;
+         |HAZ LeeTxt;
+     |FINSI;
+     |XCIERRA nHandle;
+     |CIERRA #100;
+     |CIERRA #101;
+
+     |SI aFactura = "";  nError = 1;  |ACABA;  |FINSI;
+
+     |DBASS aBaseBin;  |QBF aBaseBin;
+     aBaseBin = aBaseBin + "bin/topdf.sh ";
+     aSystem  = aBaseBin + aNombre;
+
+     |QUE_SISTEMA aAlfa;
+     |SI aAlfa = "ESDOS";
+          aSystem = "d:\perl\bin\perl.exe d:\perl\bin\dsbin\ascii2pdf.pl -p6 " + aNombre  + " >> d:\dsx\bin\log.log 2>> d:\dsx\bin\log.err";
+     |FINSI;
+
+     |SYSTEM aSystem;
+
+     aOrigen     = aNombre - ".txt" + ".pdf";
+     aFicheroPdf = #100#0 + #100#1 + (("00" + #100#2) % -102) + ".pdf";
+     |QBT aFicheroPdf;
+     aDestino    = aDirCompras + aFicheroPdf;
+     |RENOMBRA_FICHERO aOrigen, aDestino;
+|FPRC;
+
+|PROCESO ReenviaAMaria;
+     |ABRE #201;
+     |LEE 000#201p;
+     |SI FSalida ! 0;  |CIERRA #201;  |ACABA;  |FINSI;
+     |CIERRA #201;
+
+     |ABRE #305;
+     #305#0 = #102#11;
+     |LEE 000#305=;
+     |SI FSalida ! 0;  |DDEFECTO #305;  |FINSI;
+     |CIERRA #305;
+
+     aFromM = #305#3;  |QBF aFromM;
+     |SI aFromM = "";
+         aFromM       = "maria@alma.in";
+     |FINSI;
+
+     aIPServM     = #201#8 + "." + #201#9 + "." + #201#10 + "." + #201#11;
+     aServCorreoM = #201#12;
+     aMensajeM    = "El Asunto de Correo era:" + &13 + &10;
+     aMensajeM    = aMensajeM + aAsuntoCorreo;
+     aToM         = aFromM;
+     aAbreM       = aNombre;
+
+     |QBT aIPServM;
+     |QBF aServCorreoM;
+     |QBF aFromM;
+     |QBF aAsuntoM;
+     |QBF aMensajeM;
+     |QBF aToM;
+
+     |DSCORREO_ENVIA aIPServM, aServCorreoM, aFromM, aToM, aAsuntoM, aMensajeM, aAbreM;
+|FPRC;
+
+|PROCESO RecogeHWC;
+     #103#0 = aParametro;
+     |LEE 000#103=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |DBASE aBase;  |QBF aBase;
+     aDirEntrantes = aBase + "000577";            |MKDIR aDirEntrantes;
+     aDirEntrantes = aDirEntrantes + "/correos";  |MKDIR aDirEntrantes;
+     aDirEntrantes = aDirEntrantes + "/";         |MKDIR aDirEntrantes;
+
+     aDirCompras   = aBase + "000577/pdfcompras";  |MKDIR aDirCompras;
+     aDirCompras   = aDirCompras + "/" + (("00000" + #48#0) % -105); |MKDIR aDirCompras;
+     aDirCompras   = aDirCompras + "/";
+
+     aIPServ     = #102#1 + "." + #102#2 + "." + #102#3 + "." + #102#4;
+     aServCorreo = #102#5;
+     aFrom       = #103#7;  |QBF aFrom;
+     aPwd        = #103#8;  |QBF aPwd;
+     aNombre     = "";
+
+     |QBF aServCorreo;
+
+     nUnError = 0;
+     nError   = 0;
+     |PARA; |SI; |HACIENDO;
+          |DSCORREO_RECIBE aIPServ, aServCorreo, aFrom, aPwd, aDirEntrantes, aNombre;
+          aAsuntoCorreo = FSalida;
+          aAlfa         = FSalida;
+          aAlfa         = aAlfa % 101;
+          |SI aAlfa ! "0";
+              |SI nUnError = 0;
+                  nUnError = 1;
+              |SINO;
+                  |SAL;
+              |FINSI;
+          |SINO;
+              nUnError = 0;
+          |FINSI;
+
+          |SI aAlfa = "0";
+              aAsuntoCorreo = aAsuntoCorreo % 0299;  |QBF aAsuntoCorreo;
+              aAsuntoCorreo = aAsuntoCorreo - "]";
+              |SI FSalida ! 0;
+                  aAlfa = FSalida;
+                  nPos  = FSalida;
+                  |SI nPos > 1000;
+                      aAlfa = aAlfa % 102;
+                  |SINO;
+                      aAlfa = aAlfa % 101;
+                  |FINSI;
+                  nPos = aAlfa;
+                  nPos = nPos + 1;
+                  nPos = (nPos * 100) + 99;
+                  aAsuntoCorreo = aAsuntoCorreo % nPos;
+              |FINSI;
+
+              aFichero = aNombre - aDirEntrantes;  |QBF aFichero;
+              aAlfa = (aFichero % -103) > " ";
+              |SI aAlfa = "TXT";
+                  nError = 0;
+                  |HAZ TrataElTxt;
+                  |SI nError = 1;
+                      aAsuntoM = "DSCRON .- Correo enviado por HOMERWORK con formato erroneo. ";
+                      |HAZ ReenviaAMaria;
+                  |FINSI;
+              |SINO;
+                  aAsuntoM = "DSCRON .- Correo enviado por HOMERWORK con formato erroneo. ";
+                  |HAZ ReenviaAMaria;
+              |FINSI;
+
+              |FBORRA aNombre;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO GrabaBandejaOtros;
+     aFactura = (aFactura + (" " * 20)) % 120;
+
+     |ABRE #100;
+     #100#0 = #112#0;
+     #100#1 = aFactura;
+     #100#2 = 99;
+     |LEE 000#100];
+     |SI FSalida = 0;
+         |LEE 000#100a;
+     |SINO;
+         |LEE 000#100u;
+     |FINSI;
+     nLinea = 1;
+     |SI FSalida = 0;  |Y #100#0 = #112#0;  |Y #100#1 = aFactura;
+         nLinea = #100#2 + 1;
+     |FINSI;
+
+     |DDEFECTO #100;
+     #100#0 = #112#0;
+     #100#1 = aFactura;
+     #100#2 = nLinea;
+
+     aFicheroPdf = #100#0 + #100#1 + (("00" + #100#2) % -102) + (aNombre % -104);
+     |QBT aFicheroPdf;
+     #100#10     = aFicheroPdf;
+     |GRABA 020#100n;
+     |LIBERA #100;
+     |CIERRA #100;
+
+     aOrigen     = aNombre;
+     aDestino    = aDirCompras + aFicheroPdf;
+     |RENOMBRA_FICHERO aOrigen, aDestino;
+|FPRC;
+
+|PROCESO TrataOtros;
+     aBusco   = aAsuntoCorreo - "P:";
+     aSalida1 = FSalida;
+
+     aBusco   = aAsuntoCorreo - "F:";
+     aSalida2   = FSalida;
+
+     |SI aSalida1 = "0";  |O aSalida2 = "0";
+         aAsuntoM = "DSCRON .- Correo enviado a la cuenta ds.prov@diagram.es con formato en el Asunto erroneo. ";
+         nError = 1;
+         |ACABA;
+     |FINSI;
+
+     aAlfa   = aSalida1;
+     nSalida = aAlfa;
+     |SI nSalida [ 999;
+         aAlfa1 = aAlfa % 101;
+         aAlfa2 = aAlfa % 202;
+     |SINO;
+         aAlfa1 = aAlfa % 102;
+         aAlfa2 = aAlfa % 302;
+     |FINSI;
+     nNume1   = aAlfa1;
+     nNume2   = aAlfa2;
+
+     aAlfa   = aSalida2;
+     nSalida = aAlfa;
+     |SI nSalida [ 999;
+         aAlfa1 = aAlfa % 101;
+         aAlfa2 = aAlfa % 202;
+     |SINO;
+         aAlfa1 = aAlfa % 102;
+         aAlfa2 = aAlfa % 302;
+     |FINSI;
+     nNume3   = aAlfa1;
+     nNume4   = aAlfa2;
+
+     |SI nNume1 < nNume3;
+         nPosProv = ((nNume1 + nNume2) * 100) + (nNume3 - (nNume1 + nNume2));
+         nPosFac  = ((nNume3 + nNume4) * 100) + 20;
+     |SINO;
+         nPosProv = ((nNume1 + nNume2) * 100) + 6;
+         nPosFac  = ((nNume3 + nNume4) * 100) + (nNume1 - (nNume3 + nNume4));
+     |FINSI;
+
+     aProveedor = aAsuntoCorreo % nPosProv;  |QBT aProveedor;
+     aProveedor = ("000000" + aProveedor) % -106;
+     aFactura   = aAsuntoCorreo % nPosFac;   |QBT aFactura;
+
+     |ABRE #112;
+     #112#0 = aProveedor;
+     |LEE 000#112=;
+     |SI FSalida ! 0;
+         aAsuntoM = "DSCRON .- Correo enviado a la cuenta ds.prov@diagram.es y no existe el proveedor que viene indicado en el asunto del mensaje. ";
+         nError = 1;
+         |CIERRA #112;
+         |ACABA;
+     |FINSI;
+     |CIERRA #112;
+
+     |HAZ GrabaBandejaOtros;
+|FPRC;
+
+|PROCESO RecogeResto;
+     |DBASE aBase;  |QBF aBase;
+     aDirEntrantes = aBase + "000577";            |MKDIR aDirEntrantes;
+     aDirEntrantes = aDirEntrantes + "/correos";  |MKDIR aDirEntrantes;
+     aDirEntrantes = aDirEntrantes + "/";         |MKDIR aDirEntrantes;
+
+     aDirCompras   = aBase + "000577/pdfcompras";  |MKDIR aDirCompras;
+     aDirCompras   = aDirCompras + "/" + (("00000" + #48#0) % -105); |MKDIR aDirCompras;
+     aDirCompras   = aDirCompras + "/";
+
+     aIPServ     = #102#1 + "." + #102#2 + "." + #102#3 + "." + #102#4;
+     aServCorreo = #102#5;
+     aFrom       = "ds.prov@diagram.es";
+     aPwd        = "ds.prov1";
+     aNombre     = "";
+
+     |QBF aServCorreo;
+
+     nUnError = 0;
+     nError   = 0;
+     |PARA; |SI; |HACIENDO;
+          |DSCORREO_RECIBE aIPServ, aServCorreo, aFrom, aPwd, aDirEntrantes, aNombre;
+          aAsuntoCorreo = FSalida;
+          aAlfa         = FSalida;
+          aAlfa         = aAlfa % 101;
+          |SI aAlfa ! "0";
+              |SI nUnError = 0;
+                  nUnError = 1;
+              |SINO;
+                  |SAL;
+              |FINSI;
+          |SINO;
+              nUnError = 0;
+          |FINSI;
+
+          |SI aAlfa = "0";
+              aAsuntoCorreo = aAsuntoCorreo % 0299;  |QBF aAsuntoCorreo;
+              aAsuntoCorreo = aAsuntoCorreo - "]";
+              |SI FSalida ! 0;
+                  aAlfa = FSalida;
+                  nPos  = FSalida;
+                  |SI nPos > 1000;
+                      aAlfa = aAlfa % 102;
+                  |SINO;
+                      aAlfa = aAlfa % 101;
+                  |FINSI;
+                  nPos = aAlfa;
+                  nPos = nPos + 1;
+                  nPos = (nPos * 100) + 99;
+                  aAsuntoCorreo = aAsuntoCorreo % nPos;
+              |FINSI;
+
+              nError = 0;
+              |HAZ TrataOtros;
+              |SI nError ! 0;
+                  |HAZ ReenviaAMaria;
+              |FINSI;
+
+              |FBORRA aNombre;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROGRAMA;
+    |ABRE #102;
+    |LEE 000#102p;
+    |SI FSalida ! 0;
+        |CIERRA #102;
+        |MENAV "     Acabo.";
+        |ACABA;
+    |FINSI;
+    |CIERRA #102;
+
+    aParametro = PARAMETRO;  |QBF aParametro;
+
+    |ABRE #103;
+    |SI aParametro = "000172";
+        |HAZ RecogeHWC;
+    |SINO;
+        |HAZ RecogeResto;
+    |FINSI;
+    |CIERRA #103;
+|FPRO;

@@ -1,0 +1,525 @@
+||
+|| ESTO QUEDA ANULADO A PARTIR DEL 2010
+||
+
+
+|FICHEROS;
+     eosplan1 #0;                  || Fichero de Planillas
+     eosclien #1;                  || Fichero de Clientes
+     eoscopl1 #3;                  || Control IVA
+     eos349ca #90;                 || Cabeceras 349
+     eos349en #91,MANTE;           || Entlineal del 349
+     eosintra #92;                 || Fichero de Intracomunitarios
+     eosw0052 #98,MANTE;           || Pantalla de IVA
+     eosw0026 #99;                 || Pantalla Fantasmas de Ventas
+|FIN;
+
+|VARIABLES;
+     pepe         = 0;
+     FEstado_349  = 0;
+     sw_349       = 0;
+     sw_trimestre = 0;
+     Borra349     = 0;
+
+     &Base1       = 0;
+     &Base2       = 0;
+     &Base3       = 0;
+     &Base4       = 0;
+     &Porc1       = 0;
+     &Porc2       = 0;
+     &Porc3       = 0;
+     &Porc4       = 0;
+     &Cuot1       = 0;
+     &Cuot2       = 0;
+     &Cuot3       = 0;
+     &Cuot4       = 0;
+
+     nPara1       = 0;
+     nPara2       = 0;
+     nAntIVA      = 0;
+|FIN;
+
+|| ***********************************************************************
+|| Carga del Mantenimiento del 349
+|| ***********************************************************************
+
+|PROCESO mira_349;
+     sw_349 = 1;
+     |SI #90#1 = 0; sw_trimestre = 0; |FINSI;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE eos349ca;
+     #90#1;
+     ;
+     #0#0, #0#1, 0;
+     #0#0, #0#1, 4;
+     ;
+     NULL, mira_349;
+|FIN;
+
+|PROCESO CogeExtra;
+     |SI #91#1 ! #0#2; |Y #91#1 ! 0;  |ACABA;  |FINSI;
+     |SI #91#1 ! 4;    |Y #91#1 = 0;  |ACABA;  |FINSI;
+
+     Borra349 = 1;
+     |SI #91#14 ! #0#2;  |ACABA; |FINSI;
+     |SI #91#15 ! #0#83; |ACABA; |FINSI;
+
+     |SI #91#4 = "E"; #99#38 = #99#38 + #91#8; |FINSI;
+
+     |SI #91#4 = "A";
+         #99#16 = #99#16 + #91#8;
+         #99#34 = #99#34 + #91#18 + #91#21 + #91#24 + #91#27;
+     |FINSI;
+
+     |SI #91#4 = "R";
+         |SI #91#10 = "+"; #99#38 = #99#38 + (#91#8 - #91#28); |FINSI;
+         |SI #91#10 = "-"; #99#38 = #99#38 - (#91#8 - #91#28); |FINSI;
+     |FINSI;
+
+     |SI #91#4 = "X";
+         nAntIVA = 0;
+         |PARA nPara1 = 17; |SI nPara1 [ 26; |HACIENDO nPara1 = nPara1 + 3
+               nPara2 = nPara1 - 1;
+               |SI #91nPara1 ! 0; |Y #91nPara2 ! 0;
+                   nAntIVA = (#91#28 % #91nPara1) ! 2;
+                   |SAL;
+               |FINSI;
+         |SIGUE;
+         |SI #91#10 = "+"; #99#16 = #99#16 + (#91#8 - #91#28); |FINSI;
+         |SI #91#10 = "-"; #99#16 = #99#16 - (#91#8 - #91#28); |FINSI;
+         |SI #91#10 = "+";
+              #99#34 = #99#34 + (#91#18 + #91#21 + #91#24 + #91#27 - nAntIVA);
+         |FINSI;
+         |SI #91#10 = "-";
+             #99#34 = #99#34 - (#91#18 + #91#21 + #91#24 + #91#27- nAntIVA);
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE eos349li;
+     #91#1;
+     ;
+     #0#0, #0#1, 0, 000;
+     #0#0, #0#1, 4, 999;
+     ;
+     NULL, CogeExtra;
+|FIN;
+
+|RUTINA inferior;
+     #91#0  = #90#0;
+     #91#1  = #90#1;
+     #91#2  = #90#2;
+     #91#3  = 1;
+|FRUT;
+
+|RUTINA superior;
+     #91#0  = #90#0;
+     #91#1  = #90#1;
+     #91#2  = #90#2;
+     #91#3  = 999;
+|FRUT;
+
+|PROCESO Haz_349;
+     |ACABA;
+
+     #99#16 = 0;
+     #99#34 = 0;
+     #99#38 = 0;
+     |SI FSalida ! 9;
+         |BUCLE eos349li;
+         |PINTA #99#16;
+         |PINTA #99#38;
+         |ACABA;
+     |FINSI;
+
+  #99#16 = 0;
+  #99#38 = 0;
+
+  |PUSHV 0501 2380;
+
+  sw_trimestre = 1;
+  sw_349       = 0;
+  |BUCLE eos349ca;
+  |SI sw_349 = 0;
+      sw_trimestre = 1;
+      |CONFI "2400SImpreso Trimestral : ";
+      |SI FSalida ! 0; sw_trimestre = 0; |FINSI;
+  |FINSI;
+
+  |ABRET #90;
+  #90#0 = #0#0;
+  #90#1 = #0#2;
+  |SI sw_trimestre = 0; #90#1 = 0; |FINSI;
+  #90#2 = #0#1;
+  |LIBERA #90;
+  |LEE 140#90=;
+  FEstado_349 = FSalida;
+  |SI FSalida ! 0; |CDEFECTO #90, 1; |FINSI;
+  #90#3 = #1#2;
+
+  |PINPA #0#91;
+  |ATRI I;
+  |PINTA 1111, #90#6;
+  |PINTA 1207, #90#7;
+  |PINTA 1131, #90#8;
+  |PINTA 1229, #90#9;
+  |PINTA 1162, #90#10;
+  |PINTA 1168, #90#14;
+  |PINTA 1268, #90#15;
+  |ATRI 0;
+
+  |ENTLINEAL #1#91, 4, 1, 22, 0, inferior, superior;
+
+  Borra349 = 0;
+  |BUCLE eos349li;
+  |SI Borra349 = 0; |Y FEstado_349 = 0; |BORRA 140#90c; |FINSI;
+  |SI Borra349 ! 0;
+      |SI FEstado_349 = 0; |GRABA 140#90a; |SINO; |GRABA 140#90n; |FINSI;
+  |FINSI;
+  |CIERRAT #90;
+  |POPV;
+
+  |PINTA #99#16;
+  |PINTA #99#38;
+|FPRC;
+
+|PROCESO modificar; |TIPO 0;
+  |CAMPO_MODIFICA #91#9,  1, "S";
+  |CAMPO_MODIFICA #91#10, 1, "S";
+  |CAMPO_MODIFICA #91#11, 1, "S";
+  |CAMPO_MODIFICA #91#12, 1, "S";
+  |CAMPO_MODIFICA #91#13, 1, "S";
+  |CAMPO_MODIFICA #91#28, 1, "S";
+
+  |SI #91#4 = "E";
+      |CAMPO_MODIFICA #91#10, 1, "N";
+      |CAMPO_MODIFICA #91#11, 1, "N";
+      |CAMPO_MODIFICA #91#12, 1, "N";
+      |CAMPO_MODIFICA #91#28, 1, "N";
+      #91#10 = "";
+      #91#11 = 0;
+      #91#12 = 0;
+      #91#28 = 0;
+  |FINSI;
+
+  |SI #91#4 = "A";
+      |CAMPO_MODIFICA #91#10, 1, "N";
+      |CAMPO_MODIFICA #91#11, 1, "N";
+      |CAMPO_MODIFICA #91#12, 1, "N";
+      |CAMPO_MODIFICA #91#13, 1, "N";
+      |CAMPO_MODIFICA #91#28, 1, "N";
+      #91#10 = "";
+      #91#11 = 0;
+      #91#12 = 0;
+      #91#13 = "";
+      #91#28 = 0;
+  |FINSI;
+
+  |SI #91#4 = "X";
+      |CAMPO_MODIFICA #91#13, 1, "N";
+      #91#13 = "";
+  |FINSI;
+
+  |PINTA #91#9;
+  |PINTA #91#10;
+  |PINTA #91#11;
+  |PINTA #91#12;
+  |PINTA #91#13;
+  |PINTA #91#28;
+|FPRC;
+
+|PROCESO cabecera; |TIPO 2;
+  |SI #91#14 ! #0#2; |Y #91#14 ! 0;
+      |MENAV "      Apunte 349 no coincide con el periodo de la planilla.";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+
+  |SI #91#15 ! #0#83; |Y #91#15 ! 0;
+      |MENAV "      Apunte 349 no coincide con la Actividad de la planilla.";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+
+  #91#14 = #0#2;
+  #91#15 = #0#83;
+
+  |SI #91#4 = "E";
+      #90#6 = #90#6 +. 1;
+      #90#7 = #90#7 +. #91#8;
+  |FINSI;
+  |SI #91#4 = "A";
+      #90#8 = #90#8 +. 1;
+      #90#9 = #90#9 +. #91#8;
+  |FINSI;
+  |SI #91#4 = "R";
+      #90#10 = #90#10 +. 1;
+      #90#14 = #90#14 +. #91#8;
+  |FINSI;
+  |SI #91#4 = "X";
+      #90#11 = #90#11 +. 1;
+      #90#15 = #90#15 +. #91#8;
+  |FINSI;
+
+  |ATRI I;
+  |PINTA 1111, #90#6;
+  |PINTA 1207, #90#7;
+  |PINTA 1131, #90#8;
+  |PINTA 1229, #90#9;
+  |PINTA 1162, #90#10;
+  |PINTA 1168, #90#14;
+  |PINTA 1268, #90#15;
+  |ATRI 0;
+|FPRC;
+
+|PROCESO PideBase;  |TIPO 7;
+||  |SI #91#4 = "E";  |ACABA;  |FINSI;
+||  |SI #91#4 = "X";  |ACABA;  |FINSI;
+
+  |PUSHV 0501 2380;
+
+                    #98#0  = "ADQUISICIONES";
+  |SI #91#4 = "X";  #98#0  = "RECTIFICACIONES";  |FINSI;
+
+  #98#1  = "";
+  #98#2  = "";
+  #98#3  = "";
+  #98#4  = #91#16;
+  #98#5  = #91#17;
+  #98#6  = #91#18;
+  #98#7  = #91#19;
+  #98#8  = #91#20;
+  #98#9  = #91#21;
+  #98#10 = #91#22;
+  #98#11 = #91#23;
+  #98#12 = #91#24;
+  #98#13 = #91#25;
+  #98#14 = #91#26;
+  #98#15 = #91#27;
+
+  |SI #98#5 = 0;
+      |ABRE #3;
+      |LEE 040#3p;
+      |SI FSalida ! 0;  |DDEFECTO #3;  |FINSI;
+      |CIERRA #3;
+
+      #98#5  = #3#14;
+      #98#8  = #3#15;
+      #98#11 = #3#16;
+      #98#14 = #3#17;
+      #98#8  = #3#15;
+  |FINSI;
+
+  |PINPA #0#98;
+  |PINDA #0#98;
+  |ENDATOS #1#98;
+  |SI FSalida = 0;
+      #91#16 = #98#4;
+      #91#17 = #98#5;
+      #91#18 = #98#6;
+      #91#19 = #98#7;
+      #91#20 = #98#8;
+      #91#21 = #98#9;
+      #91#22 = #98#10;
+      #91#23 = #98#11;
+      #91#24 = #98#12;
+      #91#25 = #98#13;
+      #91#26 = #98#14;
+      #91#27 = #98#15;
+  |FINSI;
+  |POPV;
+
+  #91#8 = #91#16 + #91#19 + #91#22 + #91#25;  |PINTA #91#8;
+|FPRC;
+
+|PROCESO intracom; |TIPO 0;
+  |ABRE #92;
+  #92#0 = #91#5;
+  #92#1 = #91#6;
+  |LIBERA #92;
+  |LEE 110#92=;
+  |SI FSalida ! 0;
+      #92#0 = #91#5;
+      #92#1 = #91#6;
+      #92#2 = #91#7;
+      |GRABA 020#92n;
+  |FINSI;
+  |CIERRA #92;
+|FPRC;
+
+|PROCESO filtro; |TIPO 0;
+     |SI #91#5 = "DE";  |ACABA;  |FINSI;
+     |SI #91#5 = "AT";  |ACABA;  |FINSI;
+     |SI #91#5 = "BE";  |ACABA;  |FINSI;
+     |SI #91#5 = "DK";  |ACABA;  |FINSI;
+     |SI #91#5 = "FI";  |ACABA;  |FINSI;
+     |SI #91#5 = "FR";  |ACABA;  |FINSI;
+     |SI #91#5 = "EL";  |ACABA;  |FINSI;
+     |SI #91#5 = "GB";  |ACABA;  |FINSI;
+     |SI #91#5 = "NL";  |ACABA;  |FINSI;
+     |SI #91#5 = "IT";  |ACABA;  |FINSI;
+     |SI #91#5 = "IE";  |ACABA;  |FINSI;
+     |SI #91#5 = "LU";  |ACABA;  |FINSI;
+     |SI #91#5 = "PT";  |ACABA;  |FINSI;
+     |SI #91#5 = "SE";  |ACABA;  |FINSI;
+     |SI #91#5 = "CY";  |ACABA;  |FINSI;
+     |SI #91#5 = "SI";  |ACABA;  |FINSI;
+     |SI #91#5 = "EE";  |ACABA;  |FINSI;
+     |SI #91#5 = "HU";  |ACABA;  |FINSI;
+     |SI #91#5 = "LV";  |ACABA;  |FINSI;
+     |SI #91#5 = "LT";  |ACABA;  |FINSI;
+     |SI #91#5 = "MT";  |ACABA;  |FINSI;
+     |SI #91#5 = "PL";  |ACABA;  |FINSI;
+     |SI #91#5 = "CZ";  |ACABA;  |FINSI;
+     |SI #91#5 = "SK";  |ACABA;  |FINSI;
+     |SI #91#5 = "HR";  |ACABA;  |FINSI;
+
+     |MENAV "     Codigo de Pais incorrecto. ";
+     |ERROR;
+|FPRC;
+
+|PROCESO CogeIVA;
+  |SI #91#1 ! #0#2;
+     || |SI #0#2 ! 4;  |ACABA;  |FINSI;
+     |ACABA;
+  |FINSI;
+
+  |SI Porc1 = #91#17;  Base1 = Base1 + #91#16;  Cuot1 = Cuot1 + #91#18;  |FINSI;
+  |SI Porc2 = #91#17;  Base2 = Base2 + #91#16;  Cuot2 = Cuot2 + #91#18;  |FINSI;
+  |SI Porc3 = #91#17;  Base3 = Base3 + #91#16;  Cuot3 = Cuot3 + #91#18;  |FINSI;
+  |SI Porc4 = #91#17;  Base4 = Base4 + #91#16;  Cuot4 = Cuot4 + #91#18;  |FINSI;
+
+  |SI Porc1 = #91#20;  Base1 = Base1 + #91#19;  Cuot1 = Cuot1 + #91#21;  |FINSI;
+  |SI Porc2 = #91#20;  Base2 = Base2 + #91#19;  Cuot2 = Cuot2 + #91#21;  |FINSI;
+  |SI Porc3 = #91#20;  Base3 = Base3 + #91#19;  Cuot3 = Cuot3 + #91#21;  |FINSI;
+  |SI Porc4 = #91#20;  Base4 = Base4 + #91#19;  Cuot4 = Cuot4 + #91#21;  |FINSI;
+
+  |SI Porc1 = #91#23;  Base1 = Base1 + #91#22;  Cuot1 = Cuot1 + #91#24;  |FINSI;
+  |SI Porc2 = #91#23;  Base2 = Base2 + #91#22;  Cuot2 = Cuot2 + #91#24;  |FINSI;
+  |SI Porc3 = #91#23;  Base3 = Base3 + #91#22;  Cuot3 = Cuot3 + #91#24;  |FINSI;
+  |SI Porc4 = #91#23;  Base4 = Base4 + #91#22;  Cuot4 = Cuot4 + #91#24;  |FINSI;
+
+  |SI Porc1 = #91#26;  Base1 = Base1 + #91#25;  Cuot1 = Cuot1 + #91#27;  |FINSI;
+  |SI Porc2 = #91#26;  Base2 = Base2 + #91#25;  Cuot2 = Cuot2 + #91#27;  |FINSI;
+  |SI Porc3 = #91#26;  Base3 = Base3 + #91#25;  Cuot3 = Cuot3 + #91#27;  |FINSI;
+  |SI Porc4 = #91#26;  Base4 = Base4 + #91#25;  Cuot4 = Cuot4 + #91#27;  |FINSI;
+
+  |SI #91#17 ! Porc1; |Y #91#17 ! Porc2; |Y #91#17 ! Porc3; |Y #91#17 ! Porc4;
+      |SI Porc1 = 0;
+          Base1 = #91#16;
+          Porc1 = #91#17;
+          Cuot1 = #91#18;
+      |SINO;
+          |SI Porc2 = 0;
+              Base2 = #91#16;
+              Porc2 = #91#17;
+              Cuot2 = #91#18;
+          |SINO;
+              |SI Porc3 = 0;
+                  Base3 = #91#16;
+                  Porc3 = #91#17;
+                  Cuot3 = #91#18;
+              |SINO;
+                  |SI Porc4 = 0;
+                      Base4 = #91#16;
+                      Porc4 = #91#17;
+                      Cuot4 = #91#18;
+                  |FINSI;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI #91#20 ! Porc1; |Y #91#20 ! Porc2; |Y #91#20 ! Porc3; |Y #91#20 ! Porc4;
+      |SI Porc1 = 0;
+          Base1 = #91#19;
+          Porc1 = #91#20;
+          Cuot1 = #91#21;
+      |SINO;
+          |SI Porc2 = 0;
+              Base2 = #91#19;
+              Porc2 = #91#20;
+              Cuot2 = #91#21;
+          |SINO;
+              |SI Porc3 = 0;
+                  Base3 = #91#19;
+                  Porc3 = #91#20;
+                  Cuot3 = #91#21;
+              |SINO;
+                  |SI Porc4 = 0;
+                      Base4 = #91#19;
+                      Porc4 = #91#20;
+                      Cuot4 = #91#21;
+                  |FINSI;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI #91#23 ! Porc1; |Y #91#23 ! Porc2; |Y #91#23 ! Porc3; |Y #91#23 ! Porc4;
+      |SI Porc1 = 0;
+          Base1 = #91#22;
+          Porc1 = #91#23;
+          Cuot1 = #91#24;
+      |SINO;
+          |SI Porc2 = 0;
+              Base2 = #91#22;
+              Porc2 = #91#23;
+              Cuot2 = #91#24;
+          |SINO;
+              |SI Porc3 = 0;
+                  Base3 = #91#22;
+                  Porc3 = #91#23;
+                  Cuot3 = #91#24;
+              |SINO;
+                  |SI Porc4 = 0;
+                      Base4 = #91#22;
+                      Porc4 = #91#23;
+                      Cuot4 = #91#24;
+                  |FINSI;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI #91#26 ! Porc1; |Y #91#26 ! Porc2; |Y #91#26 ! Porc3; |Y #91#26 ! Porc4;
+      |SI Porc1 = 0;
+          Base1 = #91#25;
+          Porc1 = #91#26;
+          Cuot1 = #91#27;
+      |SINO;
+          |SI Porc2 = 0;
+              Base2 = #91#25;
+              Porc2 = #91#26;
+              Cuot2 = #91#27;
+          |SINO;
+              |SI Porc3 = 0;
+                  Base3 = #91#25;
+                  Porc3 = #91#26;
+                  Cuot3 = #91#27;
+              |SINO;
+                  |SI Porc4 = 0;
+                      Base4 = #91#25;
+                      Porc4 = #91#26;
+                      Cuot4 = #91#27;
+                  |FINSI;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE eos349liR;
+     #91#1;
+     ;
+     #0#0, #0#1, 0, 000;
+     #0#0, #0#1, 4, 999;
+     ;
+     NULL, CogeIVA;
+|FIN;
+
+|PROCESO DesgloIvaIntra;
+     |BUCLE eos349liR;
+|FPRC;

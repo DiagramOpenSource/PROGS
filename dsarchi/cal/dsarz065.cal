@@ -1,0 +1,169 @@
+|FICHEROS;
+     dsarm001;
+     dsarm002;
+     dsarm003;
+     dsarm004;
+|FIN;
+
+|VARIABLES;
+     aAlfa                   = "";
+     aPath                   = "";
+     aPathCarp               = "";
+     aFichero                = "";
+     aBuscaCarpeta           = "";
+     aDirBrowse              = "";
+     aLong                   = "";
+     aCarac                  = "";
+     aProg                   = "";
+
+     nLong                   = 0;
+     nCarac                  = 0;
+     nPos                    = 0;
+     nHay                    = 0;
+
+     {1}aContiene            = "";
+
+     {-1}aVent               = "";
+         aVent1              = 0;
+         aVent2              = 0;
+         aVent3              = 0;
+         aVent4              = 0;
+         aVent5              = "";
+
+     &enGrupo                = 0;
+     &enSubGrupo             = 0;
+     &enTipo                 = 0;
+     &eaRuta                 = "";
+     &eaOrigen               = "";
+     &eaDestino              = "";
+     &enSwDesde9             = 0;
+     &eaCarpetaOrigen        = "";
+     &eaDocCaptura           = "";
+     &enPrevisualizar        = 0;
+     &enGrupoTres            = 0;
+     &enSubGTres             = 0;
+     &enTipoTres             = 0;
+     &eaSwBorroOrigen        = "N";
+     &eaUnidad               = "";
+     &eaDocPC                = "";
+|FIN;
+
+|PROCESO RecogeDeCarpeta;
+     |HAZ CargaVarBorrado;
+
+     nHay          = 0;
+     aBuscaCarpeta = aDirBrowse + "\*.*";
+     |R_PDIR aBuscaCarpeta;
+
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          aPath = aBuscaCarpeta;  |QBF aPath;
+          |SI aPath = "";  |SAL;  |FINSI;
+
+          aAlfa    = aPath;
+          aFichero = "";
+          aLong    = aAlfa % 0;
+          nLong    = aLong;
+          eaRuta   = "";
+          |PARA nCarac = 1;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+                nPos   = (nCarac * 100) + 1;
+                aCarac =  aAlfa % nPos;
+                |SI aCarac = "/";  |O aCarac = "\";
+                    aProg = "";
+                |SINO;
+                    aProg = aProg + aCarac;
+                |FINSI;
+
+                eaRuta = eaRuta + aCarac;
+          |SIGUE;
+
+          |SI eaRuta ! ""; |Y aProg ! "";
+              eaCarpetaOrigen = aBuscaCarpeta;
+              eaDocCaptura    = eaRuta;
+              eaDocPC         = eaRuta;
+              enPrevisualizar = 1;
+              |SUB_EJECUTA_NP "dsarz001;CAPTURAESTEDOC";
+              enPrevisualizar = 0;
+              nHay            = 1;
+          |FINSI;
+
+          |R_SDIR aBuscaCarpeta;
+     |SIGUE;
+
+     |SI nHay = 0;
+         |MENAV "0000Carpeta vac¡a.";
+     |FINSI;
+|FPRC;
+
+|PROCESO PideGrupo;
+     |SI #dsarm001#8 = "S";
+          enGrupoTres = #dsarm001#221;
+          enSubGTres  = #dsarm001#222;
+          enTipoTres  = #dsarm001#223;
+          |SUB_EJECUTA_NP ":dsarchi/dsarz003;DAMETRE";
+          |SI enGrupoTres = 0;  |ACABA;  |FINSI;
+
+          enGrupo    = enGrupoTres;
+          enSubGrupo = enSubGTres;
+          enTipo     = enTipoTres;
+     |SINO;
+          |ABRE #dsarm002;
+          |CONSULTA_CLAVE #1#dsarm002;
+          |SI FSalida = 0;
+              enGrupo    = #dsarm002#0;
+              enSubGrupo = 1;
+              enTipoTres = 1;
+          |FINSI;
+          |CIERRA #dsarm002;
+     |FINSI;
+|FPRC;
+
+|PROCESO Archivar;
+     enGrupo    = #dsarm001#221;
+     enSubGrupo = #dsarm001#222;
+     enTipo     = #dsarm001#223;
+     |SI #dsarm001#224 = "S";
+         |HAZ PideGrupo;
+         |SI enGrupoTres = 0;  |ACABA;  |FINSI;
+     |FINSI;
+
+     |MENAV "0000A continuaci¢n seleccione la carpeta que contiene los documentos";
+
+     aPathCarp = "DSeleccione la carpeta con los documentos a capturar";
+     |BROWSE aPathCarp;
+     aPathCarp = aPathCarp % 2;  |QBF aPathCarp;
+
+     |SI aPathCarp = "D";
+         |MENAV "0000Carpeta vac¡a.";
+         |ACABA;
+     |FINSI;
+
+     eaCarpetaOrigen = aPathCarp;
+     aDirBrowse      = aPathCarp;
+
+     |ABRE #dsarm004;
+     |HAZ RecogeDeCarpeta;
+     |CIERRA #dsarm004;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #dsarm001;
+     |LEE 000#dsarm001.p;
+     |SI FSalida ! 0;  |DDEFECTO #dsarm001;  |FINSI;
+     |CIERRA #dsarm001;
+
+     |SI #dsarm001#220 = "N";
+         |ACABA;
+     |FINSI;
+
+     |CONFI "0000SQuiere archivar los documentos bajados en el GAD";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |PARA;  |SI;  |HACIENDO;
+          |HAZ Archivar;
+
+          |CONFI "0000NTiene mas carpetas a procesar";
+          |SI FSalida ! 0;  |SAL;  |FINSI;
+     |SIGUE;
+
+     |SUB_EJECUTA "dpntz001;CLI";
+|FPRO;

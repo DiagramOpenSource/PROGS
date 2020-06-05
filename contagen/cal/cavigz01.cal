@@ -1,0 +1,1221 @@
+|FICHEROS;
+   cavigz01 #0;
+
+   cavigw01 #10;
+   cavigw02 #11;
+   cavigw03 #12;
+
+   cacuenta #100;
+   caclipro #101;
+   caenlace #102;
+   camaasic #103;
+   camaasil #104;
+   caconasi #105;
+   camaniva #106;
+   caivalin #107;
+
+   caivaasi #110;
+   caivases #111;
+   calibros #112;
+|FIN;
+
+|VARIABLES;
+   &efFechaIVA = @;
+   &enEjercicio = 0;
+   &enLineaIVA = 0;
+   &aTipoIVA   = "";
+   &eaDesgIVA  = "";
+   &eaDesgDTO  = "";
+   &enPorcIVA  = 0;
+   &enPorcREC  = 0;
+   &eaCtaIVA   = "";
+   &eaCtaREC   = "";
+   &eaCtaDTO   = "";
+
+   nHandle = 0;
+   nCuentaVeces = 0;
+   nContCli= 0;
+   nCont   = 0;
+   nCalc   = 0;
+   nCalc1  = 0;
+   nCampo  = 0;
+   nImporte = 0;
+   nAntApunte = 0;
+   nSwNum     = 0;
+   nNivel     = 0;
+   nDocAnt    = -1;
+   nDocum     = 0;
+   nContReg   = 0;
+   nContMsg   = 0;
+   nCodLibro  = 0;
+   nNumLinea  = 0;
+
+   aDocumAnt  = "";
+   aTipoAnt = "";
+   aFraAnt  = "";
+   aFactura = "";
+   aAlfa   = "";
+   aAlfa1  = "";
+   aAlfa2  = "";
+   aAlfa3  = "";
+   aAlfa4  = "";
+   aTitulo = "";
+
+   aResultado = "";
+   aCadena    = "";
+
+   aChar1  = "";
+   aChar2  = "";
+   aChar3  = "";
+   aChar4  = "";
+
+   aCuenta = "";
+
+   fFechaAnt = @;
+|FIN;
+
+|PROCESO CambiaChar;
+   aAlfa1 = aAlfa1 - aChar1;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      nCalc = ((FSalida / 100) ! 0) + 99; nCalc1 = FSalida + 98;
+      aAlfa1 = (aAlfa1 % nCalc) + aChar2 + (aAlfa1 % nCalc1);
+      aAlfa1 = aAlfa1 - aChar1;
+   |SIGUE;
+|FPRC;
+
+|PROCESO QuitaRaros;
+   aAlfa1 = aCadena;
+   aChar1 = "º"; aChar2 = "§"; |HAZ CambiaChar;
+   aCadena = aAlfa1;
+|FPRC;
+
+|PROCESO RecogeCampo;
+   aAlfa1 = aAlfa;
+   |PARA nCont = 1; |SI nCont < nCampo; |HACIENDO nCont = nCont + 1;
+      aAlfa1 = aAlfa1 - &9;
+      nCalc = ((FSalida / 100) ! 0) + 99;
+      aAlfa2 = aAlfa1 % nCalc; aAlfa1 = aAlfa1 - aAlfa2;
+   |SIGUE;
+   aAlfa1 = aAlfa1 - &9;
+   |SI FSalida ! 0;
+      nCalc = ((FSalida / 100) ! 0) + 99;
+      aResultado = aAlfa1 % nCalc;
+   |SINO;
+      aResultado = aAlfa1;
+   |FINSI;
+
+   || Compruebo si es una cantidad. Para saber si lo es no puede tener mas
+   ||    caracteres alfanumericos que la coma, el punto y/o el guion. Si es
+   ||    asi cambio las comas por los puntos y los puntos por las comas
+
+   aChar1 = ""; aChar2 = ""; aChar3  = ""; aChar4  = "";
+   aAlfa1 = aResultado; aAlfa2 = "";
+   |PARA; |SI aAlfa1 ! ""; |HACIENDO;
+      aAlfa2 = aAlfa1 % 0101; aAlfa1 = aAlfa1 % 0299;
+      |SI aAlfa2 < "0"; |O aAlfa2 > "9";
+         |SI aChar1 = ""; |O aChar1 = aAlfa2;
+            aChar1 = aAlfa2;
+         |SINO;
+            |SI aChar2 = ""; |O aChar2 = aAlfa2;
+               aChar2 = aAlfa2;
+            |SINO;
+               |SI aChar3 = ""; |O aChar3 = aAlfa2;
+                  aChar3 = aAlfa2;
+               |SINO;
+                  |SI aChar4 = ""; |O aChar4 = aAlfa2;
+                     aChar4 = aAlfa2;
+                  |FINSI;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |SIGUE;
+
+   nSwNum = 0;
+   |SI aChar4 = ""; || Solo hay tres, dos o un caracteres alfanumericos
+      |SI aChar1 = ""; |Y aChar2 = ""; |Y aChar3 = "";
+         nSwNum = 1;
+      |FINSI;
+      |SI aChar1 = ",";
+         |SI aChar2 = "."; |O aChar2 = "-"; |O aChar2 = "";
+            |SI aChar3 = "."; |O aChar3 = "-"; |O aChar3 = ""; || Es un numerico
+               nSwNum = 1;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |SI aChar1 = ".";
+         |SI aChar2 = ","; |O aChar2 = "-"; |O aChar2 = "";
+            |SI aChar3 = ","; |O aChar3 = "-"; |O aChar3 = ""; || Es un numerico
+               nSwNum = 1;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |SI aChar1 = "-";
+         |SI aChar2 = ","; |O aChar2 = "."; |O aChar2 = "";
+            |SI aChar3 = ","; |O aChar3 = "."; |O aChar3 = ""; || Es un numerico
+               nSwNum = 1;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwNum = 1;
+      aAlfa1 = aResultado;
+      || Elimino las comas
+      aChar1 = ","; aChar2 = ""; |HAZ CambiaChar;
+      aResultado = aAlfa1;
+   |SINO;
+      aCadena = aResultado; |HAZ QuitaRaros;
+      aResultado = aCadena;
+   |FINSI;
+|FPRC;
+
+|PROCESO SacaNivel;
+   nNivel = 0; |QBF aCuenta;
+   |SI aCuenta = ""; |ACABA; |FINSI;
+   aCadena = aCuenta % 0; nCalc = aCadena;
+
+   nCalc1 = 0;
+   |SI #48#14 ] nCalc; nNivel = 1; |FINSI;
+   |SI #48#15 ] nCalc; nNivel = 2; |FINSI;
+   |SI #48#16 ] nCalc; nNivel = 3; |FINSI;
+   |SI #48#17 ] nCalc; nNivel = 4; |FINSI;
+   |SI #48#18 ] nCalc; nNivel = 5; |FINSI;
+   |SI #48#19 ] nCalc; nNivel = 6; |FINSI;
+|FPRC;
+
+|PROCESO TrataProveedores;
+   ||Compruebo que la linea tiene informacion
+   aAlfa = aAlfa - &34;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa = aAlfa - &34;
+   |SIGUE;
+   nCampo = 1;  |HAZ RecogeCampo; aAlfa3 = aResultado;
+   |SI nSwNum = 1;
+      |DDEFECTO #cavigw03;
+      nCampo = 1;  |HAZ RecogeCampo; aAlfa3 = aResultado; |QBF aAlfa3;
+      aAlfa3 = "4000" + (("0000" + aAlfa3) % -104);
+      #cavigw03#0 = aAlfa3;
+      nCampo = 2;  |HAZ RecogeCampo; #cavigw03#1 = aResultado;
+      nCampo = 6;  |HAZ RecogeCampo; #cavigw03#2 = aResultado;
+
+      aTitulo = "Proveedor : " + #cavigw03#0 + " " + #cavigw03#1 + " " + #cavigw03#2;
+      |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+      |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+      nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+      nCampo = 3;  |HAZ RecogeCampo; #cavigw03#3 = aResultado;
+      nCampo = 4;  |HAZ RecogeCampo;
+      aAlfa2 = aResultado % 0101;
+      |PARA; |SI aAlfa2 = " "; |HACIENDO;
+         aResultado = aResultado % 0299; aAlfa2 = aResultado % 0101;
+      |SIGUE;
+      aAlfa3 = aResultado;
+      aAlfa2 = aAlfa3 % 0101;
+      |PARA; |SI aAlfa2 = " "; |HACIENDO;
+         aAlfa3 = aAlfa3 % 0299; aAlfa2 = aAlfa3 % 0101;
+      |SIGUE;
+      aAlfa2 = aAlfa3 - "-";
+      |SI FSalida ! 0;
+         aAlfa3 = aAlfa3 % 0105; #cavigw03#4 = aAlfa3;
+
+         aAlfa3 = aResultado % 0699;
+         aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+         |PARA; |SI aAlfa2 = " "; |O aAlfa2 = "-"; |HACIENDO;
+            aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+         |SIGUE;
+         aAlfa3 = aAlfa2 + aAlfa3;
+         #cavigw03#5 = aAlfa3;
+      |SINO;
+         aAlfa2 = aAlfa3 % 0101;
+         |PARA; |SI aAlfa2 = " "; |HACIENDO;
+            aAlfa3 = aAlfa3 % 0299; aAlfa2 = aAlfa3 % 0101;
+         |SIGUE;
+         nSwNum = 1;
+         aAlfa2 = aAlfa3 % 0105; aAlfa1 = aAlfa2 % 0101;
+         |PARA; |SI aAlfa2 ! ""; |HACIENDO;
+            |SI aAlfa1 < "0"; |O aAlfa1 > "9"; nSwNum = 0; |SAL; |FINSI;
+            aAlfa2 = aAlfa2 % 0299; aAlfa1 = aAlfa2 % 0101;
+         |SIGUE;
+         |SI nSwNum = 1;
+            aAlfa2 = aAlfa3 % 0105; #cavigw03#4 = aAlfa2;
+            aAlfa3 = aResultado % 0699;
+            aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+            |PARA; |SI aAlfa2 = " "; |O aAlfa2 = "-"; |HACIENDO;
+               aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+            |SIGUE;
+            aAlfa3 = aAlfa2 + aAlfa3;
+            #cavigw03#5 = aAlfa3;
+         |SINO;
+            #cavigw03#5 = aAlfa3;
+         |FINSI;
+      |FINSI;
+
+      nCampo = 5;  |HAZ RecogeCampo; #cavigw03#7 = aResultado;
+      nContCli = nContCli + 1;  #cavigw03#6 = nContCli;
+      #cavigw03#8 = "P";
+      |GRABA 020#cavigw03.n;
+   |FINSI;
+|FPRC;
+
+|PROCESO Proveedores;
+   nCuentaVeces = 0; nContCli = 0;
+   aAlfa = #cavigz01#5; |QBF aAlfa;
+   |XABRE "T", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |XLEE nHandle, 500, aAlfa;
+      |PARA; |SI nCuentaVeces [ 10; |HACIENDO;
+         |XLEE nHandle, 500, aAlfa;
+         |SI FSalida [ 0;
+            nCuentaVeces = nCuentaVeces + 1;
+         |SINO;
+            nCuentaVeces = 0;
+            |HAZ TrataProveedores;
+         |FINSI;
+      |SIGUE;
+      |XCIERRA nHandle;
+   |FINSI;
+|FPRC;
+
+|PROCESO TrataClientes;
+   ||Compruebo que la linea tiene informacion
+   aAlfa = aAlfa - &34;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa = aAlfa - &34;
+   |SIGUE;
+   nCampo = 1;  |HAZ RecogeCampo; aAlfa3 = aResultado;
+   |SI nSwNum = 1;
+      |DDEFECTO #cavigw03;
+      nCampo = 1;  |HAZ RecogeCampo; aAlfa3 = aResultado; |QBF aAlfa3;
+      aAlfa3 = "4300" + (("0000" + aAlfa3) % -104);
+      #cavigw03#0 = aAlfa3;
+      nCampo = 2;  |HAZ RecogeCampo; #cavigw03#1 = aResultado;
+      nCampo = 3;  |HAZ RecogeCampo; #cavigw03#2 = aResultado;
+
+      aTitulo = "Cliente : " + #cavigw03#0 + " " + #cavigw03#1 + " " + #cavigw03#2;
+      |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+      |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+      nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+      nCampo = 4;  |HAZ RecogeCampo; #cavigw03#3 = aResultado;
+      nCampo = 5;  |HAZ RecogeCampo;
+      aAlfa2 = aResultado % 0101;
+      |PARA; |SI aAlfa2 = " "; |HACIENDO;
+         aResultado = aResultado % 0299; aAlfa2 = aResultado % 0101;
+      |SIGUE;
+      aAlfa3 = aResultado;
+      aAlfa2 = aAlfa3 - "-";
+      |SI FSalida ! 0;
+         aAlfa3 = aAlfa3 % 0105; #cavigw03#4 = aAlfa3;
+
+         aAlfa3 = aResultado % 0699;
+         aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+         |PARA; |SI aAlfa2 = " "; |O aAlfa2 = "-"; |HACIENDO;
+            aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+         |SIGUE;
+         aAlfa3 = aAlfa2 + aAlfa3;
+         #cavigw03#5 = aAlfa3;
+      |SINO;
+         nSwNum = 1;
+         aAlfa2 = aAlfa3 % 0105; aAlfa1 = aAlfa2 % 0101;
+         |PARA; |SI aAlfa2 ! ""; |HACIENDO;
+            |SI aAlfa1 < "0"; |O aAlfa1 > "9"; nSwNum = 0; |SAL; |FINSI;
+            aAlfa2 = aAlfa2 % 0299; aAlfa1 = aAlfa2 % 0101;
+         |SIGUE;
+         |SI nSwNum = 1;
+            aAlfa2 = aAlfa3 % 0105; #cavigw03#4 = aAlfa2;
+            aAlfa3 = aResultado % 0699;
+            aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+            |PARA; |SI aAlfa2 = " "; |O aAlfa2 = "-"; |HACIENDO;
+               aAlfa2 = aAlfa3 % 0101; aAlfa3 = aAlfa3 % 0299;
+            |SIGUE;
+            aAlfa3 = aAlfa2 + aAlfa3;
+            #cavigw03#5 = aAlfa3;
+         |SINO;
+            #cavigw03#5 = aAlfa3;
+         |FINSI;
+      |FINSI;
+
+      nCampo = 6;  |HAZ RecogeCampo; #cavigw03#7 = aResultado;
+      #cavigw03#8 = "C";
+      |GRABA 020#cavigw03.n;
+   |FINSI;
+|FPRC;
+
+|PROCESO Clientes;
+   nCuentaVeces = 0;
+   aAlfa = #cavigz01#4; |QBF aAlfa;
+   |XABRE "T", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |XLEE nHandle, 500, aAlfa;
+      |PARA; |SI nCuentaVeces [ 10; |HACIENDO;
+         |XLEE nHandle, 500, aAlfa;
+         |SI FSalida [ 0;
+            nCuentaVeces = nCuentaVeces + 1;
+         |SINO;
+            nCuentaVeces = 0;
+            |HAZ TrataClientes;
+         |FINSI;
+      |SIGUE;
+      |XCIERRA nHandle;
+   |FINSI;
+|FPRC;
+
+|PROCESO TrataRecibidas;
+   ||Compruebo que la linea tiene informacion
+   aAlfa = aAlfa - &34;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa = aAlfa - &34;
+   |SIGUE;
+   nCampo = 4;  |HAZ RecogeCampo; aAlfa3 = aResultado; aAlfa3 = aAlfa3 % 0301;
+   nCampo = 5;  |HAZ RecogeCampo; aAlfa2 = aResultado; aAlfa2 = aAlfa2 % 0301;
+
+   |SI aAlfa3 = "-"; |Y aAlfa2 = "-"; || Hay informacion y es la primera de la factura
+      |DDEFECTO #cavigw02;
+      #cavigw02#0 = "S";
+      nCampo = 0;  |HAZ RecogeCampo; #cavigw02#1  = aResultado; aFactura = #cavigw02#1;
+      nCampo = 3;  |HAZ RecogeCampo; #cavigw02#23 = aResultado;
+      nCampo = 4;  |HAZ RecogeCampo;
+      aAlfa1 = aResultado % -102; nCalc = aAlfa1;
+      |SI nCalc < 80; aAlfa2 = "20"; |SINO; aAlfa2 = "19"; |FINSI;
+      aAlfa1 = (aResultado % 0102) + "." + (aResultado % 0402) + "." + aAlfa2 + (aResultado % 0702);
+      #cavigw02#2 = aAlfa1;
+      nCampo = 5;  |HAZ RecogeCampo;
+      aAlfa1 = aResultado % -102; nCalc = aAlfa1;
+      |SI nCalc < 80; aAlfa2 = "20"; |SINO; aAlfa2 = "19"; |FINSI;
+      aAlfa1 = (aResultado % 0102) + "." + (aResultado % 0402) + "." + aAlfa2 + (aResultado % 0702);
+      #cavigw02#3 = aAlfa1;
+      nCampo = 7;  |HAZ RecogeCampo; #cavigw02#4 = aResultado;
+      nCampo = 6;  |HAZ RecogeCampo; #cavigw02#5 = aResultado;
+
+      aTitulo = "Factura recibida : " + #cavigw02#23 + " " + #cavigw01#2 + " " + #cavigw01#4 + " " + #cavigw02#5;
+      |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+      |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+      nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+      nCampo = 8;  |HAZ RecogeCampo; #cavigw02#6 = aResultado;
+      nCampo = 9;  |HAZ RecogeCampo; #cavigw02#7 = aResultado;
+      nCampo = 10;  |HAZ RecogeCampo; #cavigw02#8 = aResultado;
+      nCampo = 11; |HAZ RecogeCampo; #cavigw02#21 = aResultado;
+      |GRABA 020#cavigw02.c;
+      |ACABA;
+   |FINSI;
+
+   aAlfa = aAlfa - &34;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa = aAlfa - &34;
+   |SIGUE;
+   nCampo = 8; |HAZ RecogeCampo;
+   |SI aResultado ! "";
+      aAlfa3 = "";
+      nCampo = 1; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 2; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 3; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 4; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 5; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 6; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 7; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      |SI aAlfa3 = "";
+         #cavigw02#0 = "S";
+         #cavigw02#1 = aFactura;
+         |LEE 000#cavigw02.=;
+         |SI FSalida = 0;
+            |SI #cavigw02#11 = 0; |Y #cavigw02#12 = 0; |Y #cavigw02#13 = 0;
+               nCampo = 8;  |HAZ RecogeCampo; #cavigw02#11 = aResultado;
+               nCampo = 9;  |HAZ RecogeCampo; #cavigw02#12 = aResultado;
+               nCampo = 10; |HAZ RecogeCampo; #cavigw02#13 = aResultado;
+            |SINO;
+               nCampo = 8;  |HAZ RecogeCampo; #cavigw02#16 = aResultado;
+               nCampo = 9;  |HAZ RecogeCampo; #cavigw02#17 = aResultado;
+               nCampo = 10; |HAZ RecogeCampo; #cavigw02#18 = aResultado;
+            |FINSI;
+            |GRABA 020#cavigw02.a;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Recibidas;
+   nCuentaVeces = 0;
+   aAlfa = #cavigz01#3; |QBF aAlfa;
+   |XABRE "T", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |XLEE nHandle, 500, aAlfa;
+      |PARA; |SI nCuentaVeces [ 10; |HACIENDO;
+         |XLEE nHandle, 500, aAlfa;
+         |SI FSalida [ 0;
+            nCuentaVeces = nCuentaVeces + 1;
+         |SINO;
+            nCuentaVeces = 0;
+            |HAZ TrataRecibidas;
+         |FINSI;
+      |SIGUE;
+      |XCIERRA nHandle;
+   |FINSI;
+|FPRC;
+
+|PROCESO TrataEmitidas;
+   ||Compruebo que la linea tiene informacion
+   aAlfa = aAlfa - &34;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa = aAlfa - &34;
+   |SIGUE;
+   nCampo = 3;  |HAZ RecogeCampo; aAlfa3 = aResultado; aAlfa3 = aAlfa3 % 0301;
+   nCampo = 4;  |HAZ RecogeCampo; aAlfa2 = aResultado; aAlfa2 = aAlfa2 % 0301;
+
+   |SI aAlfa3 = "-"; |Y aAlfa2 = "-"; || Hay informacion y es la primera de la factura
+      |DDEFECTO #cavigw02;
+      #cavigw02#0 = "R";
+      nCampo = 2;  |HAZ RecogeCampo; #cavigw02#1 = aResultado; aFactura = #cavigw02#1;
+      nCampo = 3;  |HAZ RecogeCampo;
+      aAlfa1 = aResultado % -102; nCalc = aAlfa1;
+      |SI nCalc < 80; aAlfa2 = "20"; |SINO; aAlfa2 = "19"; |FINSI;
+      aAlfa1 = (aResultado % 0102) + "." + (aResultado % 0402) + "." + aAlfa2 + (aResultado % 0702);
+      #cavigw02#2 = aAlfa1;
+      nCampo = 4;  |HAZ RecogeCampo;
+      aAlfa1 = aResultado % -102; nCalc = aAlfa1;
+      |SI nCalc < 80; aAlfa2 = "20"; |SINO; aAlfa2 = "19"; |FINSI;
+      aAlfa1 = (aResultado % 0102) + "." + (aResultado % 0402) + "." + aAlfa2 + (aResultado % 0702);
+      #cavigw02#3 = aAlfa1;
+      nCampo = 6;  |HAZ RecogeCampo; #cavigw02#4 = aResultado;
+      nCampo = 5;  |HAZ RecogeCampo; #cavigw02#5 = aResultado;
+
+      aTitulo = "Factura emitida : " + #cavigw02#1 + " " + #cavigw01#2 + " " + #cavigw01#4 + " " + #cavigw02#5;
+      |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+      |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+      nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+      nCampo = 7;  |HAZ RecogeCampo; #cavigw02#6 = aResultado;
+      nCampo = 8;  |HAZ RecogeCampo; #cavigw02#7 = aResultado;
+      nCampo = 9;  |HAZ RecogeCampo; #cavigw02#8 = aResultado;
+      nCampo = 10; |HAZ RecogeCampo; #cavigw02#9 = aResultado;
+      nCampo = 11; |HAZ RecogeCampo; #cavigw02#10 = aResultado;
+      nCampo = 13; |HAZ RecogeCampo; #cavigw02#21 = aResultado;
+      |GRABA 020#cavigw02.c;
+      |ACABA;
+   |FINSI;
+
+   aAlfa = aAlfa - &34;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa = aAlfa - &34;
+   |SIGUE;
+   nCampo = 7; |HAZ RecogeCampo;
+   |SI aResultado ! "";
+      aAlfa3 = "";
+      nCampo = 1; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 2; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 3; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 4; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 5; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      nCampo = 6; |HAZ RecogeCampo; aAlfa3 = aAlfa3 + aResultado;
+      |SI aAlfa3 = "";
+         #cavigw02#0 = "R";
+         #cavigw02#1 = aFactura;
+         |LEE 000#cavigw02.=;
+         |SI FSalida = 0;
+            |SI #cavigw02#11 = 0; |Y #cavigw02#12 = 0; |Y #cavigw02#14 = 0;
+               nCampo = 7;  |HAZ RecogeCampo; #cavigw02#11 = aResultado;
+               nCampo = 8;  |HAZ RecogeCampo; #cavigw02#12 = aResultado;
+               nCampo = 9;  |HAZ RecogeCampo; #cavigw02#13 = aResultado;
+               nCampo = 10; |HAZ RecogeCampo; #cavigw02#14 = aResultado;
+               nCampo = 11; |HAZ RecogeCampo; #cavigw02#15 = aResultado;
+            |SINO;
+               nCampo = 7;  |HAZ RecogeCampo; #cavigw02#16 = aResultado;
+               nCampo = 8;  |HAZ RecogeCampo; #cavigw02#17 = aResultado;
+               nCampo = 9;  |HAZ RecogeCampo; #cavigw02#18 = aResultado;
+               nCampo = 10; |HAZ RecogeCampo; #cavigw02#19 = aResultado;
+               nCampo = 11; |HAZ RecogeCampo; #cavigw02#20 = aResultado;
+            |FINSI;
+            |GRABA 020#cavigw02.a;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Emitidas;
+   nCuentaVeces = 0;
+   aAlfa = #cavigz01#2; |QBF aAlfa;
+   |XABRE "T", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |XLEE nHandle, 500, aAlfa;
+      |PARA; |SI nCuentaVeces [ 10; |HACIENDO;
+         |XLEE nHandle, 500, aAlfa;
+         |SI FSalida [ 0;
+            nCuentaVeces = nCuentaVeces + 1;
+         |SINO;
+            nCuentaVeces = 0;
+            |HAZ TrataEmitidas;
+         |FINSI;
+      |SIGUE;
+      |XCIERRA nHandle;
+   |FINSI;
+|FPRC;
+
+|PROCESO TrataDiario;
+   ||Compruebo que la linea tiene informacion
+
+   aAlfa1 = aAlfa % 0404;
+   aAlfa2 = aAlfa1 % 0101; aAlfa1 = aAlfa1 % 0401;
+   |SI aAlfa1 = "-"; |Y aAlfa2 = "-"; || Hay informacion
+      aAlfa = aAlfa - &34;
+      |PARA; |SI FSalida ! 0; |HACIENDO;
+         aAlfa = aAlfa - &34;
+      |SIGUE;
+
+      |DDEFECTO #cavigw01;
+      #cavigw01#0 = 1;
+      nCampo = 2; |HAZ RecogeCampo;
+      aAlfa1 = aResultado - ".";
+      nCalc = ((FSalida / 100) ! 0) + 99; nCalc1 = FSalida + 98;
+      aAlfa2 = aAlfa1 % nCalc1; aAlfa1 = aAlfa1 % nCalc;
+      #cavigw01#2 = aAlfa1;
+      #cavigw01#3 = aAlfa2;
+
+      |SI aDocumAnt ! #cavigw01#2;
+         nCampo = 1; |HAZ RecogeCampo;
+         aAlfa1 = aResultado % -102; nCalc = aAlfa1;
+         |SI nCalc < 80; aAlfa2 = "20"; |SINO; aAlfa2 = "19"; |FINSI;
+         aAlfa1 = (aResultado % 0102) + "." + (aResultado % 0402) + "." + aAlfa2 + (aResultado % 0702);
+         #cavigw01#1 = aAlfa1;
+
+         fFechaAnt = #cavigw01#1;
+         aDocumAnt = #cavigw01#2;
+      |SINO;
+         #cavigw01#1 = fFechaAnt;
+      |FINSI;
+
+      #cavigw01#6 = 1;
+      nCampo = 3; |HAZ RecogeCampo; #cavigw01#4 = aResultado;
+      aAlfa1 = aResultado % 0102;
+      |SI aAlfa1 = "70"; #cavigw01#6 = "700"; |FINSI;
+      |SI aAlfa1 = "60"; #cavigw01#6 = "600"; |FINSI;
+      nCampo = 4; |HAZ RecogeCampo; #cavigw01#5 = aResultado;
+      nCampo = 5; |HAZ RecogeCampo; #cavigw01#7 = aResultado;
+
+      aTitulo = (("00" + #cavigw01#0) % -102) + " " + #cavigw01#1 + " " + (("000000" + #cavigw01#2) % -106) + " " + #cavigw01#7;
+      |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+      |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+      nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+      nImporte = 0; #cavigw01#8 = "D";
+      nCampo = 6; |HAZ RecogeCampo; nImporte = aResultado;
+      |SI nImporte = 0;
+         nCampo = 7; |HAZ RecogeCampo; nImporte = aResultado;
+         #cavigw01#8 = "H";
+      |FINSI;
+      #cavigw01#9 = nImporte;
+
+      aAlfa1 = #cavigw01#7; |QBF aAlfa1;
+      aAlfa2 = aAlfa1 - "N/FRA N. ";
+      |SI FSalida ! 0;
+         #cavigw01#10 = "R";
+         #cavigw01#11 = aAlfa2;
+         #cavigw01#12 = #cavigw01#7;
+      |FINSI;
+      nCampo = 8; |HAZ RecogeCampo; #cavigw01#13 = aResultado;
+      |GRABA 020#cavigw01.n;
+   |FINSI;
+|FPRC;
+
+|PROCESO RevisaSoportado;
+   aAlfa = #cavigw01#4; |QBF aAlfa;
+   aAlfa = aAlfa % 0103;
+   |SI aAlfa ! "400"; |Y aAlfa ! "410"; |ACABA; |FINSI;
+
+   aAlfa1 = ""; aAlfa2 = ""; aAlfa3 = ""; aAlfa4 = "";
+
+   |SALVA_FICHA #cavigw01;
+   |SELECT #1#cavigw01;
+   nCalc = #cavigw01#2;
+   |LEE 000#cavigw01.=;
+   |PARA; |SI FSalida = 0; |Y #cavigw01#2 = nCalc; |HACIENDO;
+      aAlfa = #cavigw01#4; |QBF aAlfa;
+      aAlfa3 = aAlfa % 0103; aAlfa2 = aAlfa % 0101;
+      |SI aAlfa3 = "472"; |O aAlfa2 = "6";   || Hay factura
+         aAlfa = #cavigw01#7; |QBF aAlfa;
+         |PARA; |SI aAlfa ! ""; |HACIENDO;
+            aAlfa2 = aAlfa % 0101; aAlfa = aAlfa % 0299;
+            |SI aAlfa2 ] "0"; |Y aAlfa2 [ "9";
+               aAlfa1 = aAlfa1 + aAlfa2;
+            |FINSI;
+         |SIGUE;
+         |SI aAlfa1 ! ""; |SAL; |FINSI;
+      |FINSI;
+      |LEE 000#cavigw01.s;
+   |SIGUE;
+   |SELECT #2#cavigw01;
+   |REPON_FICHA #cavigw01;
+
+   |SI aAlfa1 ! "";
+      #cavigw01#10 = "S";
+      #cavigw01#11 = aAlfa1;
+      #cavigw01#12 = #cavigw01#11;
+      |GRABA 020#cavigw01.a;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RevisaSoportado;
+#cavigw01#2;
+;
+"400         ";
+"410zzzzzzzzz";
+;
+NULL, RevisaSoportado;
+|FIN;
+
+|PROCESO Diario;
+   nCuentaVeces = 0;
+   aAlfa = #cavigz01#1; |QBF aAlfa;
+   |XABRE "T", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |XLEE nHandle, 500, aAlfa;
+      |PARA; |SI nCuentaVeces [ 10; |HACIENDO;
+         |XLEE nHandle, 500, aAlfa;
+         |SI FSalida [ 0;
+            nCuentaVeces = nCuentaVeces + 1;
+         |SINO;
+            nCuentaVeces = 0; |HAZ TrataDiario;
+         |FINSI;
+      |SIGUE;
+      |XCIERRA nHandle;
+   |FINSI;
+
+   || Una vez grabado todo el diario, del temporal tengo que revisar las
+   ||    cuentas de los grupos 400 y 410 y si en el mismo asiento hay
+   ||    un iva soportado, hay factura. Por tanto coger¡a la descripcion
+   ||    del concepto, le quitar¡a los caracteres alfanumericos y grabar¡a
+   ||    el dato en el n§ de factura y marcar¡a el asiento como SOPORTADO
+   |BUCLE RevisaSoportado;
+|FPRC;
+
+|PROCESO AltaCuentas;
+   #cacuenta#0 = #cavigw01#4;
+   |LEE 000#cacuenta.=;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   aTitulo = "Cuenta : " + #cavigw01#4 + " " + #cavigw01#5;
+   |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+   |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+   nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+   aCuenta = #cavigw01#4; |HAZ SacaNivel;
+
+   || Busco el grupo de la cuenta
+   aAlfa = #cavigw01#4; |QBF aAlfa;
+   aAlfa = aAlfa % 0; nCalc = aAlfa;
+
+   aAlfa = #cavigw01#4; |QBF aAlfa;
+   |PARA nCont = nCalc; |SI nCont ] 0; |HACIENDO nCont = nCont - 1;
+      nCalc1 = nCont + 100;
+      aAlfa1 = aAlfa % nCalc1;
+      #cacuenta#0 = aAlfa1;
+      |LEE 000#cacuenta.=;
+      |SI FSalida = 0;
+         |PDEFECTO #cacuenta, 10, 56;
+         |PDEFECTO #cacuenta, 59, 62;
+         #cacuenta#0 = #cavigw01#4;
+         #cacuenta#1 = nNivel;
+         #cacuenta#2 = #cavigw01#5;
+         #cacuenta#3 = "S";
+         |GRABA 020#cacuenta.n;
+         |SAL;
+      |FINSI;
+   |SIGUE;
+|FPRC;
+
+|DEFBUCLE AltaCuentas;
+#cavigw01#1;
+;
+INICIO;
+FINAL;
+;
+NULL, AltaCuentas;
+|FIN;
+
+|PROCESO AltaCliPro;
+   aTitulo = "Ficha Cli/Pro : " + #cavigw03#2 + " " + #cavigw03#1;
+   |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+   |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+   nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+   #caclipro#23 = #cavigw03#8;
+   #caclipro#10 = #cavigw03#0;
+   |LEE 101#caclipro.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #caclipro;
+      #caclipro#23 = #cavigw03#8;
+      #caclipro#10 = #cavigw03#0;
+      |GRABA 020#caclipro.b;
+   |FINSI;
+   #caclipro#1 = #cavigw03#1;
+   #caclipro#2 = #cavigw03#3;
+   |SI #cavigw03#4 ! "     ";
+      aAlfa1 = #cavigw03#4; |QBF aAlfa1;
+      aAlfa2 = aAlfa1 % 0102; aAlfa1 = aAlfa1 % 0303;
+      #caclipro#3 = aAlfa2;
+      #caclipro#4 = aAlfa1;
+      #caclipro#24 = "ESP";
+      #caclipro#25 = #cavigw03#4;
+   |FINSI;
+   #caclipro#6 = #cavigw03#5;
+   #caclipro#9 = #cavigw03#2;
+   |GRABA 020#caclipro.a; |LIBERA #caclipro;
+|FPRC;
+
+|DEFBUCLE AltaCliPro;
+#cavigw03#1;
+;
+INICIO;
+FINAL;
+;
+NULL, AltaCliPro;
+|FIN;
+
+|PROCESO Contador;
+   |ABRE #caconasi;
+   |LEE 101#caconasi.p;
+   |SI FSalida = 0;
+      #caconasi#2 = #caconasi#2 + 1;
+      nDocum = #caconasi#2;
+      |GRABA 020#caconasi.a;
+   |SINO;
+      nDocum = -1;
+      |MENAV "    No encuentro el contador de asientos. No se contabilizara la liquidacion.";
+      |ACABA;
+   |FINSI;
+   |LIBERA #caconasi; |CIERRA #caconasi;
+|FPRC;
+
+|PROCESO ActualizaCab;
+   #camaniva#19 = #camaniva#19 + #caivalin#6;
+   #camaniva#15 = #camaniva#15 + #caivalin#6;
+   #camaniva#17 = #camaniva#15 %  #camaniva#16;
+   #camaniva#20 = #camaniva#20 + #caivalin#22;
+   #camaniva#23 = #camaniva#23 + (#caivalin#8 + #caivalin#10);
+   #camaniva#26 = #camaniva#26 + #caivalin#11;
+   #camaniva#21 = #camaniva#19 + #camaniva#23 - #camaniva#20;
+|FPRC;
+
+|PROCESO GrabaIVA;
+   |SELECT #3#cavigw01;
+   #cavigw01#10 = #cavigw02#0;
+   |SI #cavigw02#0 = "R";
+      #cavigw01#11 = #cavigw02#1;
+   |SINO;
+      #cavigw01#11 = #cavigw02#23;
+   |FINSI;
+   |LEE 000#cavigw01.=;
+   |SI FSalida ! 0; |DDEFECTO #cavigw01; |FINSI;
+   |SELECT #1#cavigw01;
+   |LEE 000#cavigw01.=;
+   |SI FSalida ! 0; |DDEFECTO #cavigw01; |FINSI;
+
+   |SI #cavigw02#0 = "R";
+      nCodLibro = #caivaasi#3;
+   |SINO;
+      nCodLibro = #caivaasi#29;
+   |FINSI;
+   #camaniva#0 = nCodLibro;
+   #camaniva#1 = 9999999999;
+   |LEE 000#camaniva.];
+   |SI FSalida = 0;
+      |SI #camaniva#0 = nCodLibro;
+         nContReg = 1;
+      |SINO;
+         |LEE 000#camaniva.a;
+         |SI #camaniva#0 = nCodLibro;
+            nContReg = #camaniva#1 + 1;
+         |SINO;
+            nContReg = 1;
+         |FINSI;
+      |FINSI;
+   |SINO;
+      |LEE 000#camaniva.u;
+      |SI FSalida = 0;
+         |SI #camaniva#0 = nCodLibro;
+            nContReg = #camaniva#1 + 1;
+         |SINO;
+            nContReg = 1;
+         |FINSI;
+      |SINO;
+         nContReg = 1;
+      |FINSI;
+   |FINSI;
+
+   |DDEFECTO #camaniva;
+   #camaniva#0 = nCodLibro;
+   #camaniva#1 = nContReg;
+   |SI #cavigw02#0 = "R";
+      #camaniva#2 = #caivaasi#63;
+
+      aAlfa = #cavigw02#1; |QBF aAlfa; nCalc = aAlfa;
+      |SI nCalc = 0; || Hay alfanumericos
+         aAlfa1 = aAlfa % 0101; aAlfa = aAlfa % 0299;
+         aAlfa2 = aAlfa1;
+         |PARA; |SI aAlfa1 < "0"; |O aAlfa1 > "9"; |HACIENDO;
+            aAlfa1 = aAlfa % 0101; aAlfa = aAlfa % 0299;
+            aAlfa2 = aAlfa2 + aAlfa1;
+         |SIGUE;
+         aAlfa = aAlfa1 + aAlfa; aAlfa2 = aAlfa2 % -299;
+         #camaniva#2 = aAlfa2;
+         #camaniva#3 = aAlfa;
+      |SINO;
+         #camaniva#3 = nCalc;
+      |FINSI;
+   |FINSI;
+
+   |SI #cavigw02#0 = "S";
+      #camaniva#2 = #caivaasi#65;
+      |SI #caivaasi#44 = "S";
+         |ABRE #caivases;
+         #caivases#0 = #camaniva#2;
+         #caivases#1 = "S";
+         |LEE 101#caivases.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #caivases;
+            #caivases#0 = "";
+            #caivases#1 = "S";
+            |GRABA 020#caivases.b;
+         |FINSI;
+         #camaniva#3 = #caivases#3;
+         #caivases#3 = #caivases#3 + #caivases#4;
+         |GRABA 020#caivases.a; |LIBERA #caivases;
+         |CIERRA #caivases;
+      |SINO;
+         |ABRE #calibros;
+         #calibros#0 = #camaniva#0;
+         |LEE 101#calibros.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #calibros;
+            #calibros#0 = #camaniva#0;
+            #calibros#2 = "S";
+            |GRABA 020#calibros.b;
+         |FINSI;
+         #camaniva#3 = #calibros#4;
+         #calibros#4 = #calibros#3 + #calibros#4;
+         |GRABA 020#calibros.a; |LIBERA #calibros;
+         |CIERRA #calibros;
+      |FINSI;
+   |FINSI;
+   |GRABA 020#camaniva.b;
+
+   aTitulo = "Registro : " + (("00" + #camaniva#0) % -102) + " " + #camaniva#1;
+   aTitulo = aTitulo + " (" + #camaniva#2 + "/" + (("000000" + #camaniva#3) % -106) + ") ";
+   aTitulo = aTitulo + " " + #cavigw01#12;
+   |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+   |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+   nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+   #camaniva#4 = #cavigw02#2;
+
+   aAlfa = #cavigw02#2; |QBF aAlfa;
+   aAlfa = aAlfa % 0402;
+   |SI #cavigw02#2 ] "01.01.2010";
+      #camaniva#5 = aAlfa;
+   |SINO;
+      |SI #caivaasi#46 = "T";
+         |SI aAlfa ] "01"; |Y aAlfa [ "03"; #camaniva#5 = 1; |FINSI;
+         |SI aAlfa ] "04"; |Y aAlfa [ "06"; #camaniva#5 = 2; |FINSI;
+         |SI aAlfa ] "07"; |Y aAlfa [ "09"; #camaniva#5 = 3; |FINSI;
+         |SI aAlfa ] "10"; |Y aAlfa [ "12"; #camaniva#5 = 4; |FINSI;
+      |SINO;
+         #camaniva#5 = aAlfa;
+      |FINSI;
+   |FINSI;
+   #camaniva#7 = #cavigw01#0;
+   #camaniva#8 = #cavigw01#1;
+   #camaniva#9 = #cavigw01#14;
+
+   |SI #48#24 = "S";
+      #camaniva#10 = #48#30;
+      #camaniva#24 = #48#32;
+   |SINO;
+      #camaniva#10 = "01";
+      #camaniva#24 = "";
+   |FINSI;
+   |SI #48#22 = "S";
+      #camaniva#11 = #48#31;
+      #camaniva#25 = #48#33;
+   |SINO;
+      #camaniva#11 = "01";
+      #camaniva#25 = "";
+   |FINSI;
+
+   #camaniva#12 = #cavigw01#4;
+   #camaniva#13 = #cavigw02#5;
+   #camaniva#14 = #cavigw02#4;
+   #camaniva#22 = #cavigw01#12;
+   |SI #cavigw02#0 = "R";
+      #camaniva#29 = "700";
+   |SINO;
+      #camaniva#29 = "600";
+   |FINSI;
+   #camaniva#30 = #cavigw01#7;
+
+   aAlfa = #cavigw02#2; |QBF aAlfa;
+   aAlfa = aAlfa % 0704; enEjercicio = aAlfa;
+   efFechaIVA = #cavigw02#2; aTipoIVA = #cavigw02#0; |HAZ BuscaTipoIVA;
+
+   |SI #cavigw02#22 = "S";
+      #camaniva#35 = "I";
+   |SINO;
+      #camaniva#35 = "N";
+   |FINSI;
+   #camaniva#36 = #cavigw02#0;
+   #camaniva#41 = #cavigw02#3;
+   |GRABA 020#camaniva.a;
+
+   nNumLinea = 1;
+   |SI #cavigw02#6 ! 0;
+      aAlfa = #cavigw02#2; |QBF aAlfa;
+      aAlfa = aAlfa % 0704; enEjercicio = aAlfa;
+      efFechaIVA = #cavigw02#2; aTipoIVA = #cavigw02#0;
+      enPorcIVA = #cavigw02#7; enPorcREC = #cavigw02#9;
+      eaCtaIVA  = "";   eaCtaREC  = "";   eaCtaDTO = "";
+      |HAZ BuscaTipoIVA;
+
+      |DDEFECTO #caivalin;
+      #caivalin#0 = #camaniva#0;
+      #caivalin#1 = #camaniva#1;
+      #caivalin#2 = nNumLinea; nNumLinea = nNumLinea + 1;
+      #caivalin#3 = #camaniva#29;
+      #caivalin#4 = #camaniva#30;
+
+      |SI #cavigw02#0 = "R"; #caivalin#5 = #caivaasi#71; |FINSI;
+      |SI #cavigw02#0 = "S"; #caivalin#5 = #caivaasi#21; |FINSI;
+      #caivalin#6  = #cavigw02#6;
+      #caivalin#7  = #cavigw02#7;
+      #caivalin#8  = #cavigw02#8;
+      #caivalin#9  = #cavigw02#9;
+      #caivalin#10 = #cavigw02#10;
+      #caivalin#16 = enLineaIVA;
+      #caivalin#13 = eaCtaIVA;
+      #caivalin#14 = eaCtaREC;
+      #caivalin#15 = eaCtaDTO;
+      |GRABA 020#caivalin.c;
+
+      |HAZ ActualizaCab;
+      #camaniva#31 = eaDesgIVA;
+      #camaniva#34 = eaDesgDTO;
+      |GRABA 020#camaniva.a;
+   |FINSI;
+
+   |SI #cavigw02#11 ! 0;
+      aAlfa = #cavigw02#2; |QBF aAlfa;
+      aAlfa = aAlfa % 0704; enEjercicio = aAlfa;
+      efFechaIVA = #cavigw02#2; aTipoIVA = #cavigw02#0;
+      enPorcIVA = #cavigw02#12; enPorcREC = #cavigw02#14;
+      eaCtaIVA  = "";   eaCtaREC  = "";   eaCtaDTO = "";
+      |HAZ BuscaTipoIVA;
+
+      |DDEFECTO #caivalin;
+      #caivalin#0 = #camaniva#0;
+      #caivalin#1 = #camaniva#1;
+      #caivalin#2 = nNumLinea; nNumLinea = nNumLinea + 1;
+      #caivalin#3 = #camaniva#29;
+      #caivalin#4 = #camaniva#30;
+
+      |SI #cavigw02#0 = "R"; #caivalin#5 = #caivaasi#71; |FINSI;
+      |SI #cavigw02#0 = "S"; #caivalin#5 = #caivaasi#21; |FINSI;
+      #caivalin#6  = #cavigw02#11;
+      #caivalin#7  = #cavigw02#12;
+      #caivalin#8  = #cavigw02#13;
+      #caivalin#9  = #cavigw02#14;
+      #caivalin#10 = #cavigw02#15;
+      #caivalin#16 = enLineaIVA;
+      #caivalin#13 = eaCtaIVA;
+      #caivalin#14 = eaCtaREC;
+      #caivalin#15 = eaCtaDTO;
+      |GRABA 020#caivalin.c;
+
+      |HAZ ActualizaCab;
+      #camaniva#31 = eaDesgIVA;
+      #camaniva#34 = eaDesgDTO;
+      |GRABA 020#camaniva.a;
+   |FINSI;
+
+   |SI #cavigw02#16 ! 0;
+      aAlfa = #cavigw02#2; |QBF aAlfa;
+      aAlfa = aAlfa % 0704; enEjercicio = aAlfa;
+      efFechaIVA = #cavigw02#2; aTipoIVA = #cavigw02#0;
+      enPorcIVA = #cavigw02#17; enPorcREC = #cavigw02#19;
+      eaCtaIVA  = "";   eaCtaREC  = "";   eaCtaDTO = "";
+      |HAZ BuscaTipoIVA;
+
+      |DDEFECTO #caivalin;
+      #caivalin#0 = #camaniva#0;
+      #caivalin#1 = #camaniva#1;
+      #caivalin#2 = nNumLinea; nNumLinea = nNumLinea + 1;
+      #caivalin#3 = #camaniva#29;
+      #caivalin#4 = #camaniva#30;
+
+      |SI #cavigw02#0 = "R"; #caivalin#5 = #caivaasi#71; |FINSI;
+      |SI #cavigw02#0 = "S"; #caivalin#5 = #caivaasi#21; |FINSI;
+      #caivalin#6  = #cavigw02#16;
+      #caivalin#7  = #cavigw02#17;
+      #caivalin#8  = #cavigw02#18;
+      #caivalin#9  = #cavigw02#19;
+      #caivalin#10 = #cavigw02#20;
+      #caivalin#16 = enLineaIVA;
+      #caivalin#13 = eaCtaIVA;
+      #caivalin#14 = eaCtaREC;
+      #caivalin#15 = eaCtaDTO;
+      |GRABA 020#caivalin.c;
+
+      |HAZ ActualizaCab;
+      #camaniva#31 = eaDesgIVA;
+      #camaniva#34 = eaDesgDTO;
+      |GRABA 020#camaniva.a;
+   |FINSI;
+
+   |LIBERA #camaniva;
+|FPRC;
+
+|DEFBUCLE GrabaIVA;
+#cavigw02#1;
+;
+INICIO;
+FINAL;
+;
+NULL, GrabaIVA;
+|FIN;
+
+|PROCESO GrabaAsientos;
+   |SI nDocAnt ! #cavigw01#2;
+      |SI nDocAnt ] 0;
+         #camaasic#6 = #camaasic#4 - #camaasic#5;
+         |GRABA 020#camaasic.a; |LIBERA #camaasic;
+      |FINSI;
+
+      |HAZ Contador;
+      |SI nDocum = -1; |ACABA; |FINSI;
+
+      |DDEFECTO #camaasic;
+      #camaasic#0 = "01";
+      #camaasic#1 = #cavigw01#1;
+      #camaasic#2 = nDocum;
+      #camaasic#3 = nDocum;
+      #camaasic#13 = 110;
+      |GRABA 020#camaasic.b;
+
+      nDocAnt = #cavigw01#2;
+   |FINSI;
+
+   #cavigw01#14 = #camaasic#2;
+   |GRABA 020#cavigw01.a;
+
+   |DDEFECTO #camaasil;
+   #camaasil#0 = #camaasic#0;
+   #camaasil#1 = #camaasic#1;
+   #camaasil#2 = #camaasic#2;
+   #camaasil#3 = #cavigw01#3;
+   #camaasil#4 = #cavigw01#4;
+   aCuenta = #camaasil#4; |HAZ SacaNivel;
+   #camaasil#5 = nNivel;
+   #camaasil#6 = #cavigw01#6;
+   #camaasil#7 = #cavigw01#7;
+
+   aTitulo = "Asiento : " + (("00" + #camaasil#0) % -102) + " " + #camaasil#1;
+   aTitulo = aTitulo + " " + (("000000" + #camaasic#2) % -106) + " " + #camaasil#7;
+   |QBF aTitulo; aTitulo = (aTitulo + (" " * 67)) % 0167;
+   |ATRI I; |PINTA 1407, aTitulo; |ATRI N;
+   nContMsg = nContMsg + 1; |SI nContMsg > 100; |PULSATECLA; nContMsg = 0; |FINSI;
+
+   #camaasil#8 = #cavigw01#8;
+   #camaasil#9 = #cavigw01#9;
+   |SI #cavigw01#8 = "D";
+      #camaasil#10 = #cavigw01#4;
+      aCuenta = #camaasil#4; |HAZ SacaNivel;
+      #camaasil#11 = nNivel;
+      #camaasic#4 = #camaasic#4 + #camaasil#9;
+      #camaasic#10 = #cavigw01#13;
+      aCuenta = #camaasic#10; |HAZ SacaNivel;
+      #camaasic#11 = nNivel;
+   |SINO;
+      #camaasil#16 = #cavigw01#4;
+      aCuenta = #camaasil#4; |HAZ SacaNivel;
+      #camaasil#17 = nNivel;
+      #camaasic#5 = #camaasic#5 + #camaasil#9;
+      #camaasic#8 = #cavigw01#13;
+      aCuenta = #camaasic#8; |HAZ SacaNivel;
+      #camaasic#9 = nNivel;
+   |FINSI;
+   |GRABA 020#camaasil.n;
+|FPRC;
+
+|DEFBUCLE GrabaAsientos;
+#cavigw01#1;
+;
+INICIO;
+FINAL;
+be;
+NULL, GrabaAsientos;
+|FIN;
+
+|PROCESO Importacion;
+
+   |BLANCO 1205 1575;
+   |CUADRO 1205 1575;
+
+   aAlfa = "ed" + Usuario; |NOME_DAT #cavigw01#aAlfa#;
+   |DELINDEX #cavigw01; |ABRE #cavigw01;
+   aAlfa = "ef" + Usuario; |NOME_DAT #cavigw02#aAlfa#;
+   |DELINDEX #cavigw02; |ABRE #cavigw02;
+   aAlfa = "ec" + Usuario; |NOME_DAT #cavigw03#aAlfa#;
+   |DELINDEX #cavigw03; |ABRE #cavigw03;
+   |ATRI I; |PINTA 1307, "Importando datos diario ...             "; |ATRI N;
+   |HAZ Diario;
+   |ATRI I; |PINTA 1307, "Importando datos facturas emitidas ...        "; |ATRI N;
+   |HAZ Emitidas;
+   |ATRI I; |PINTA 1307, "Importando datos facturas recibidas ...       "; |ATRI N;
+   |HAZ Recibidas;
+   |ATRI I; |PINTA 1307, "Importando datos de clientes ...              "; |ATRI N;
+   |HAZ Clientes;
+   |ATRI I; |PINTA 1307, "Importando datos de proveedores ...           "; |ATRI N;
+   |HAZ Proveedores;
+
+   |ABRE #cacuenta; |ABRE #caclipro;
+   |ATRI I; |PINTA 1307, "Grabando plan contable ...                    "; |ATRI N;
+   |BUCLE AltaCuentas;
+   |ATRI I; |PINTA 1307, "Grabando fichas de clientes y proveedores ... "; |ATRI N;
+   |BUCLE AltaCliPro;
+   |CIERRA #caclipro; |CIERRA #cacuenta;
+
+   |ABRE #caivaasi; |LEE 000#caivaasi.p; |CIERRA #caivaasi;
+   |ABRE #camaasic; |ABRE #camaasil;
+   |ABRE #camaniva; |ABRE #caivalin;
+   |ATRI I; |PINTA 1307, "Grabando diario ...                           "; |ATRI N;
+   |BUCLE GrabaAsientos;
+
+   |ATRI I; |PINTA 1307, "Grabando registro de iva ...                  "; |ATRI N;
+   |BUCLE GrabaIVA;
+   |CIERRA #camaasic; |CIERRA #camaasil;
+   |CIERRA #camaniva; |CIERRA #caivalin;
+
+   |CIERRA #cavigw03; |DELINDEX #cavigw03;
+   |CIERRA #cavigw02; |DELINDEX #cavigw02;
+   |CIERRA #cavigw01; |DELINDEX #cavigw01;
+|FPRC;
+
+|PROGRAMA;
+   |ABRE #cavigz01;
+   |LEE 101#cavigz01.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #cavigz01;
+      |GRABA 020#cavigz01.b;
+   |FINSI;
+
+   |CLS;
+   |CABEZA "Importacion datos contables Vigor";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      |GRABA 020#cavigz01.a;
+
+      |HAZ Importacion;
+
+      |MENSA "    Recalculando saldos";
+      |SUB_EJECUTA "carecupe.tab;F";
+   |FINSI;
+   |LIBERA #cavigz01; |CIERRA #cavigz01;
+|FPRO;

@@ -1,0 +1,190 @@
+ Se actualiza en el 'dsz99977'
+
+|FICHEROS;
+     tecam035 #0;
+     agifa019 #1;
+     agifa112 #2;
+     agifa324 #3; ||Fichero de divisas
+     agifa321 #4; ||Parametros de divisas
+     agifa029 #29;
+     agifa112 #112;
+|FIN;
+
+|VARIABLES;
+     aPrv = "";
+     &eaArticulo = "";
+     &nDeci_PreDiv = 0;
+     &nDeci_Base   = 0;
+     &nDeci_PreBase =0;
+     cambio_div   = 0;
+     cambio_base  = 0;
+     proveedor = "";
+     modo = 0;
+     inkey = 0;
+     aAlfa      = "";
+     nAlmacen = 0;
+|FIN;
+
+|PROCESO Tipo66Alm; |TIPO 66;
+     |ABRE #29;
+     #29#0 = #0#10;
+     |LEE 000#112];
+     |CONSULTA_CLAVE #1#29;
+     |SI FSalida = 0; #0#10 = #29#0; |SINO; |ERROR; |FINSI;
+     |CIERRA #29;
+|FPRC;
+
+|PROCESO Tipo66; |TIPO 66;
+     |ABRE #112;
+     #112#0 = #0#0;
+     |LEE 000#112];
+     |CONSULTA_CLAVE #1#112;
+     |SI FSalida = 0; #0#0 = #112#0; |SINO; |ERROR; |FINSI;
+     |CIERRA #112;
+|FPRC;
+
+|PROCESO Tipo6; |TIPO 6;
+     |SI FSalida = 10;
+          |ABRE #0;
+          |LEE 000#0p;
+          |CONSULTA_CLAVE #1#0
+          |SI FSalida ! 0; |ERROR; |FINSI;
+          |CIERRA #0;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo7; |TIPO 7;
+     |SI inkey = 1; inkey = 0; |PTEC 807; |FINSI;
+|FPRC;
+
+|PROCESO tipo11; |TIPO 11;
+     inkey = FSalida;
+     |SI inkey = 1; |O inkey = 7;
+          inkey = 1;
+     |SINO;
+          inkey = 0;
+     |FINSI;
+|FPRC;
+
+
+|RUTINA min;
+     #0#0 = proveedor;
+     #0#10 = nAlmacen;
+     #0#1 = "            ";
+|FRUT;
+
+|RUTINA max;
+     #0#0 = proveedor;
+     #0#10 = nAlmacen;
+     #0#1 = "zzzzzzzzzzzz";
+|FRUT;
+
+|CALCULO divtp;|TIPO 0;
+     |SI #0Campo ! Contenido; ||Aqui porque debe leer lo anterior
+          |SI Campo = 8;  ||Estoy en campo divisa
+               #0#3 = #0#9 / cambio_base * cambio_div; || Precio (en Div)
+               #0#3 = #0#3 ! nDeci_PreDiv;
+               #0#9 = #0#3 / cambio_div * cambio_base;  || Precio en Mon. Base
+          |FINSI;
+          |SI Campo = 3; ||Estoy en Precio (Divisa)
+               #0#9 = #0#3 / cambio_div * cambio_base;  || Precio en Mon. Base
+          |FINSI;
+          |SI Campo = 9; ||Estoy en Precio (Divisa)
+               #0#3 = #0#9 / cambio_base * cambio_div;  || Precio en Mon. Base
+          |FINSI;
+          |PINTA #0#3;
+          |PINTA #0#9;
+     |FINSI;
+|FCAL;
+
+|PROCESO DivisaPrv; |TIPO 0;
+     |ABRE #2;
+     #2#0 = #0#0;
+     |LEE 020#2=;
+     |CIERRA #2;
+     #0#8 = #2#81;
+     |HAZ decdivtp;
+|FPRC;
+
+|CALCULO decdivtp;|TIPO 0;
+     |ABRE #agifa324;
+     #agifa324#0 = #0#8;
+     |LEE 001#agifa324.=;
+     nDeci_PreDiv = #agifa324#9;
+     cambio_div = #agifa324#3;
+     |ABRE #agifa321;
+     |LEE 001#agifa321.p;
+     #agifa324#0 = #agifa321#9; ||Igualo a moneda base
+     |LEE 001#agifa324.=;
+     nDeci_Base = #agifa324#7;  ||Decimales moneda base
+     nDeci_PreBase = #agifa324#9;  ||Decimales precio de moneda base
+     cambio_base = #agifa324#3;
+     |CIERRA #agifa321;
+     |CIERRA #agifa324;
+     |SI #0#8 = "   ";
+          #0#8 = #agifa321#9; ||Pongo por defecto Divisa Base
+          |SI #agifa321#2 = "N";
+               |CAMPO_MODIFICA #0#8,1,"N";
+          |FINSI;
+          |PINTA #0Campo;
+     |FINSI;
+|FCAL;
+
+|PROCESO LeeDecimBase; |TIPO 8;
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 001#agifa321.p;
+     #agifa324#0 = #agifa321#9; ||Igualo a moneda base
+     |LEE 001#agifa324.=;
+     nDeci_Base = #agifa324#7;  ||Decimales moneda base
+     nDeci_PreBase = #agifa324#9;  ||Decimales precio de moneda base
+     |CIERRA #agifa321;
+     |CIERRA #agifa324;
+|FPRC;
+
+|PROCESO Llena001; |TIPO 6;
+     eaArticulo = #0Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #0Campo = eaArticulo;
+          |PINTA #0Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;
+
+
+|PROGRAMA;
+     |HAZ LeeDecimBase;
+     |CLS;
+     |CABEZA "Tarifas Proveedores";
+
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |PINTA 725, #112#1;
+     |PINTA 825, #29#1;
+     |ENTLINEAL #1#0, 3, 7, 20, 0, min, max;
+
+     #0#0 = "000000";
+     #0#10 = 1;
+     |PARA;  |SI;  |HACIENDO;
+          inkey = 0;
+          |C_M #0#0,1,"S"; |C_V #0#0,1,"S";
+          |C_M #0#10,1,"S"; |C_V #0#10,1,"S";
+       |ET Sigue;
+          |ENCAMPO #0#0;
+          |SI FSalida = 1; |O FSalida = 7; |SAL; |FINSI;
+          |ENCAMPO #10#0;
+          |SI FSalida = 1; |O FSalida = 7; |SAL; |FINSI;
+          |SI FSalida = 2; |VETE Sigue; |FINSI;
+
+          proveedor = #0#0;
+          nAlmacen = #0#10;
+          |PINTA #0#0;
+          |PINTA #0#10;
+          |C_M #0#0,1,"N"; |C_V #0#0,1,"N";
+          |C_M #0#10,1,"N"; |C_V #0#10,1,"N";
+          |ENTLINEAL #1#0, -3, 2, 20, 0, min, max;
+     |SIGUE;
+
+|FPRO;

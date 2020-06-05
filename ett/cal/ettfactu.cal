@@ -1,0 +1,494 @@
+|FICHEROS;
+    ettfactu #0;
+    ettparte #1;         || partes de horas cabs.
+    ettpedi2 #2;         || pedidos lins.
+    ettperso #3;         || personal
+    ettfactm #4;         || tmp. facturas
+    ettpedi1 #5;         || pedidos cabs.
+    ettparli #6;         || partes de horas lins.
+
+    ascabmin #10;        || minutas cabs. FACGES
+    aslinmin #11;        || minutas lins. FACGES
+    asclient #12;        || clientes FACGES
+    ettcontr #13;        || control AGIETT
+    asconcep #14;        || conceptos FACGES
+    ascontro #15;        || control FACGES
+    etttarca #18;        || tarifas cabs. AGIETT
+    etttarli #19;        || tarifas lins. AGIETT
+    nomepigr #21;        || epigrafes AGINOM
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    para1 = 0;
+    para2 = 0;
+    para3 = 0;
+    para4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    elsw1 = 0;
+    elsw2 = 0;
+    elsw3 = 0;
+    elsw4 = 0;
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+
+    horas = 0;
+    seccio = "";
+    codcto = "";
+    unidad = 0;
+    unidad2 = 0;
+    import = 0;
+    import2 = 0;
+    ant_cli = -1;
+    facturas = 0;
+    pfech = 0;
+    phor1 = 0;
+    phor2 = 0;
+    pextr = 0;
+    pnoch = 0;
+    potro = 0;
+    pson1 = "";
+    pson2 = "";
+    linea = 0;
+    desc1 = "";
+    desc2 = "";
+    desc3 = "";
+    iva = 0;
+    sw_otros = 0;
+    sw_actu = 0;
+    ante_cli = 0;
+    ante_tra = 0;
+    sw_fecha = 0;
+    dfec = "";
+    hfec = "";
+    &EURODB = 0;
+|FIN;
+____________________________________/
+|PROCESO tipo8; |TIPO 8;
+|ABRE #13;
+|LEE 000#13p;
+|SI FSalida = 0;
+        alfa1 = #13#1;   |QBF alfa1;    alfa1 = alfa1 + "/fich/";
+        alfa2 = #13#2;   |QBF alfa2;    alfa2 = ("00" + alfa2) % -102;
+        alfa1 = alfa1 + alfa2 + "/";
+    |PATH_DAT #10 alfa1;
+    |PATH_DAT #11 alfa1;
+    |PATH_DAT #12 alfa1;
+    |PATH_DAT #14 alfa1;
+    |PATH_DAT #15 alfa1;
+
+        alfa1 = #13#3;   |QBF alfa1;    alfa1 = alfa1 + "/fich/";
+    |PATH_DAT #21 alfa1;
+|SINO;
+    |MENAV "    Control AGIETT sin definir ...";
+    |PTEC 807;
+|FINSI;
+|CIERRA #13;
+|FPRC;
+____________________________________/ GRABACION FACTURAS DESDE TEMPORAL
+|PROCESO iva;
+|DDEFECTO #15;
+|ABRE #15;
+|LEE 000#15p;
+|CIERRA #15;
+
+    iva = 0;
+|SI #10#0 = 0; iva = #15#21; |FINSI;
+|SI #10#0 = 1; iva = #15#22; |FINSI;
+|SI #10#0 = 2; iva = #15#23; |FINSI;
+|SI #10#0 = 3; iva = #15#24; |FINSI;
+|SI #10#0 = 4; iva = #15#25; |FINSI;
+|SI #10#0 = 5; iva = #15#26; |FINSI;
+|SI #10#0 = 6; iva = #15#27; |FINSI;
+|SI #10#0 = 7; iva = #15#28; |FINSI;
+|SI #10#0 = 8; iva = #15#29; |FINSI;
+|SI #10#0 = 9; iva = #15#30; |FINSI;
+|FPRC;
+
+|PROCESO actualiza_fra;
+|SI #11#10 = "H"; #10#17 = #10#17 + #11#13; |FINSI; || total honorar.
+|SI #11#10 = "S"; #10#18 = #10#18 + #11#13; |FINSI; || total suplidos
+|SI #11#10 = "A"; #10#19 = #10#19 + #11#13; |FINSI; || total a cta.
+    #10#21 = #10#17 % #10#20;                       || total dto.
+    #10#22 = #10#17 - #10#21;                       || base imponible
+|HAZ iva;
+    #10#23 = #10#22 % iva;                          || cuota iva
+    #10#24 = #10#22 + #10#23 + #10#18;              || total factura
+    #10#25 = 0;
+|SI #10#12 = "S"; #10#25 = #10#22 % #15#31; |FINSI; || retencion
+    #10#26 = #10#24 - #10#19 - #10#25;              || total a pagar
+
+|SI FEstado = 0;     |GRABA 020#10a;     |FINSI;
+|SI FEstado ! 0;     |GRABA 020#10n;     |FINSI;
+|SI FSalida = 0;
+    |SI FEstado ! 0;  facturas = facturas + 1; |FINSI;
+|FINSI;
+|LIBERA #10;
+|FPRC;
+
+|PROCESO crea_fra;
+|DDEFECTO #10;
+    #10#0 = #0#9;    || tipo facturacion
+    #10#1 = #12#0;   || cliente
+    #10#2 = #12#1;   || razon social
+    #10#3 = #12#2;   || nombre
+    #10#4 = #12#3;   || direccion
+    #10#5 = #12#4;   || c.p. 1
+    #10#6 = #12#5;   || c.p. 2
+    #10#7 = #12#6;   || poblacion
+    #10#8 = #12#7;   || provincia
+    #10#9 = #12#8;   || cif
+    #10#10= #12#15;  || forma pago
+    #10#11= #12#16;  || banco a remesar
+    #10#12= #12#17;  || retencion S/N
+    #10#13= #12#11;  || banco
+    #10#14= #12#12;  || direccion banco
+    #10#15= #12#13;  || CCC
+    #10#16= #12#14;  || cta.cte.
+    #10#20= #12#23;  || descuento
+    #10#29= #0#8;    || fecha facturacion
+|LEE 101#10=;
+    FEstado = FSalida;
+|SI FEstado = 0;
+        linea = linea + 1;
+|SINO;
+        linea = 1;
+|FINSI;
+|FPRC;
+
+|PROCESO graba_minuta;
+    nume1 = unidad * import;
+|SI nume1 ! 0;
+        #12#0 = #4#0;
+    |LEE 000#12=;
+    |SI FSalida = 0;               || si existe el cliente en FACGES
+            #14#0 = seccio;
+            #14#1 = codcto;
+        |LEE 000#14=;              || si existe el concepto en FACGES
+        |SI FSalida = 0;
+            |ATRI I;
+            |PINTA 2125, #12#0;         || cliente
+            |PINTA 2131, "     ";       || trabajador
+            |PINTA 2137, #12#1;         || nombre cliente
+            |ATRI 0;
+
+            |HAZ crea_fra;
+
+            |DDEFECTO #11;
+                #11#0 = #10#0;               || tipo facturacion
+                #11#1 = #10#1;               || cliente
+                #11#2 = linea;               || linea
+                alfa1 = #10#29;  alfa1 = alfa1 % 102;     nume1 = alfa1;
+                alfa1 = #10#29;  alfa1 = alfa1 % 402;     nume2 = alfa1;
+                #11#3 = (nume1 * 100) + nume2;    || fecha (DDMM)
+                #11#4 = #14#0;               || seccion
+                #11#5 = #14#1;               || concepto
+                #11#6 = #14#2;               || descrip.cto.
+                #11#7 = #14#2;               || desc.ampliada 1 (la abreviada)
+                #11#8 = desc2;               || desc.ampliada 2
+                #11#9 = desc3;               || desc.ampliada 3
+                #11#10= #14#3;               || tipo (honorarios,suplidos,a cta.)
+                #11#11= unidad;              || unidades
+                #11#12= import;              || ptas. unidad
+                #11#13= #11#11 * #11#12;     || importe
+                #11#14= "U";                 || unitario/global
+                #11#15= #10#29;              || fecha
+
+            |GRABA 020#11n;
+            |SI FSalida = 0;
+                |HAZ actualiza_fra;
+            |FINSI;
+        |SINO;
+                alfa1 = "    Concepto [" + #14#0 + #14#1 + "] inexistente en AGIPROF ...";
+            |MENAV alfa1;
+        |FINSI;
+    |SINO;
+            alfa1 = "    Cliente [" + #12#0 + "] inexistente en AGIPROF ...";
+        |MENAV alfa1;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO lee_temporal1;
+    seccio = #4#2;
+    codcto = #4#3;
+    unidad = #4#4;
+    import = #4#5;
+    desc1 = #4#6;
+    desc2 = #4#7;
+    desc3 = #4#8;
+|HAZ graba_minuta;
+|FPRC;
+
+|DEFBUCLE lee_temporal;
+ #4#1;
+ ;
+     1,     1, "    ", "  ";
+ 99999, 99999, "zzzz", "zz";
+ ;
+ NULL, lee_temporal1;
+|FIN;
+____________________________________/ GRABACION TEMPORAL DESDE PARTES
+|PROCESO graba_tmp;
+    nume1 = unidad * import;
+|SI nume1 ! 0;
+    |DDEFECTO #4;
+        #4#0 = #1#2;         || cliente
+        #4#1 = #1#4;         || trabajador
+        #4#2 = seccio;       || seccion
+        #4#3 = codcto;       || concepto
+    |LEE 101#4=;
+        FEstado = FSalida;
+
+    |SI FEstado = 0;
+            unidad2 = #4#4;
+            import2 = #4#5;
+        |SI import2 = import;
+                unidad2 = unidad2 + unidad;
+        |SINO;
+                import2 = (unidad2 * import2) + (unidad * import);
+                unidad2 = 1;
+        |FINSI;
+    |SINO;
+            unidad2 = unidad;
+            import2 = import;
+    |FINSI;
+        #4#4 = unidad2;       || unidades
+        #4#5 = import2;       || importe
+        #4#6 = "";            || (reservado para el titulo del concepto)
+        #4#7 = #3#2;          || nombre trabajador
+    |SI sw_fecha = 0;
+             dfec = #1pfech;
+             sw_fecha = 1;
+    |SINO;
+             hfec = #1pfech;
+    |FINSI;
+        #4#8 = "Facturado: " + dfec + " - " + hfec;    || periodo facturado
+    ||SI #5#6 ! "01.01.1900";
+            ||#4#8 = "Contratado: " + #5#5 + " - " + #5#6;
+    ||SINO;
+            ||#4#8 = "Contratado: " + #5#5 + " - INDEFINIDO";
+    ||FINSI;
+
+    |SI FEstado = 0;|Y #2#37 = "N";     |GRABA 020#4a; |FINSI;
+    |SI FEstado ! 0;                    |GRABA 020#4n; |FINSI;
+    |LIBERA #4;
+|FINSI;
+|FPRC;
+
+|PROCESO pacto;
+    seccio = #13#23;     || seccion
+    codcto = #13#30;     || concepto
+    unidad = 1;
+    import = #2#38;      || importe fijo
+|HAZ graba_tmp;
+|FPRC;
+
+|PROCESO otros;
+    sw_otros = 0;
+|SI pfech = 8;|Y #6#2 = "L";  sw_otros = 1;  |FINSI;
+|SI pfech = 9;|Y #6#2 = "M";  sw_otros = 1;  |FINSI;
+|SI pfech =10;|Y #6#2 = "X";  sw_otros = 1;  |FINSI;
+|SI pfech =11;|Y #6#2 = "J";  sw_otros = 1;  |FINSI;
+|SI pfech =12;|Y #6#2 = "V";  sw_otros = 1;  |FINSI;
+|SI pfech =13;|Y #6#2 = "S";  sw_otros = 1;  |FINSI;
+|SI pfech =14;|Y #6#2 = "D";  sw_otros = 1;  |FINSI;
+|SI sw_otros = 1;
+        seccio = #13#21;
+        codcto = #13#28;
+        unidad = 1;          || unidad fija
+
+        pson1 = "N";                                       || costes no
+        pson2 = #6#6;                                      || margen si/no
+    |SI #6#3 ] 101;|Y #6#3 [ 130; pson1 = "S";   |FINSI;   || costes si
+
+    |SI pson1 = "S";
+        |SI pson2 = "S";
+                import = (#6#4 > (#18#3 + #18#4)) ! EURODB; || costes y margen
+        |SINO;
+                import = (#6#4 > #18#3) ! EURODB;           || solo costes
+        |FINSI;
+    |SINO;
+        |SI pson2 = "S";
+                import = (#6#4 > #18#4) ! EURODB;           || solo margen
+        |SINO;
+                import = #6#4;                             || nada
+        |FINSI;
+    |FINSI;
+    |HAZ graba_tmp;
+|FINSI;
+|FPRC;
+
+|PROCESO noche;
+    seccio = #13#20;     || seccion
+    codcto = #13#27;     || concepto
+    pnoch = pfech + 49;
+    unidad = #1pnoch;
+    import = (#1#53 > #18#6) ! EURODB;       || precio hora noche
+    nume1 = (import % #18#3) ! EURODB;       || costes noche
+    nume2 = (import % #19#8) ! EURODB;       || margen noche
+    nume3 = (import % (#21#1 + #21#2)) ! EURODB;  || costes epigrafe
+    import = import + nume1 + nume2 + nume3; || noche nomina+costes+margen
+|HAZ graba_tmp;
+|FPRC;
+
+|PROCESO extra;
+    seccio = #13#26;     || seccion
+    codcto = #13#33;     || concepto
+    pextr = pfech + 21;
+    unidad = #1pextr;
+    import = (#1#53 > #18#5) ! EURODB;       || precio hora extra (nomina)
+    nume1 = (import % #18#3) ! EURODB;       || costes extras
+    nume2 = (import % #19#8) ! EURODB;       || margen extras
+    nume3 = (import % (#21#1 + #21#2)) ! EURODB;  || costes epigrafe
+    import = import + nume1 + nume2 + nume3; || extra nomina+costes+margen
+|HAZ graba_tmp;
+|FPRC;
+
+|PROCESO las_horas;
+    seccio = #13#23;     || seccion
+    codcto = #13#30;     || concepto
+    unidad = horas;      || numero de horas
+    import = #2#21;      || precio hora fra. (pedidos lins.)
+|HAZ graba_tmp;
+|FPRC;
+
+|PROCESO horas;
+    phor1 = pfech + 14;
+    phor2 = pfech + 28;
+    horas = #1phor1;
+    nume1 = #1phor2;
+    horas = horas - nume1;
+|FPRC;
+
+|PROCESO prepara_minuta;
+    #2#0 = #1#3;    || codigo pedido
+    #2#1 = #1#48;   || linea pedido
+|LEE 101#2=;
+|SI FSalida = 0;
+    |DDEFECTO #5;  #5#0 = #2#0;                  |LEE 000#5=;  ||pedidos cabs.
+    |DDEFECTO #18; #18#0 = #2#16;                |LEE 000#18=; ||tarifa cabs.
+    |DDEFECTO #19; #19#0 = #2#16; #19#1 = #2#17; |LEE 000#19=; ||tarifa lins.
+    |DDEFECTO #21; #21#0 = #2#42;                |LEE 000#21=; ||epigrafe
+    |SI #2#37 = "N";
+        |HAZ horas;           || calcula numero de horas
+        |HAZ las_horas;       || horas normales
+        |HAZ extra;           || horas extras
+        |HAZ noche;           || horas nocturnidad
+        |BUCLELIN 2otros#1;   || otros importes
+    |SINO;
+        |SI #2#39 = #0#10;|O #2#39 = #0#11;|O #2#39 = #0#12;|O #2#39 = #0#13;
+                          |O #2#39 = #0#14;|O #2#39 = #0#15;|O #2#39 = #0#16;
+                          |O #2#39 = #0#17;|O #2#39 = #0#18;|O #2#39 = #0#19;
+            |HAZ pacto;       || importe a facturar pactado
+        |FINSI;
+    |FINSI;
+|FINSI;
+|LIBERA #2;
+|FPRC;
+
+|PROCESO borra_minuta;
+    #10#0 = #0#9;   || tipo facturacion
+    #10#1 = #1#2;   || cliente
+|LEE 000#10=;
+|SI FSalida = 0;
+    |SI #10#28 = 0;
+        |BUCLELIN 1NULL#10;
+        |BORRA 020#10a;
+    |SINO;
+            sw_actu = 1;
+            alfa1 = "    Fra. [" + #10#27 + " " + #10#28 + "] pendiente de actualizar. Cliente [" + #10#1 + "].";
+        |MENAV alfa1;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO lee_partes1;
+    #3#0 = #1#1;
+|LEE 000#3=;        || lee fichero personal
+|SI FSalida = 0;
+    |SI ante_cli ! #1#2;|O ante_tra ! #1#1;
+            sw_fecha = 0;
+            ante_cli = #1#2;
+            ante_tra = #1#1;
+    |FINSI;
+    |PARA pfech = 8; |SI pfech [ 14; |HACIENDO pfech = pfech + 1;
+        |SI #1pfech ] #0#6;|Y #1pfech [ #0#7;
+                seleccio = 1;
+            |ATRI I;
+            |PINTA 2125, #1#3;          || pedido
+            |PINTA 2131, #1#1;          || trabajador
+            |PINTA 2137, #3#2;          || nombre trabajador
+            |ATRI 0;
+            |SI ant_cli ! #1#2;
+                    sw_actu = 0;
+                    ant_cli = #1#2;
+                |HAZ borra_minuta;
+            |FINSI;
+            |SI sw_actu = 0;
+                |HAZ prepara_minuta;
+            |FINSI;
+        |FINSI;
+    |SIGUE;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE lee_partes;
+ #1#3;
+ 3;
+ #0#2, #0#4,            1, #0#0;
+ #0#3, #0#5, 999999999999, #0#1;
+ ;
+ NULL, lee_partes1;
+|FIN;
+
+|PROCESO tipo3; |TIPO 3;
+    alfa1 = Usuario;     |QBT alfa1;
+|NOME_DAT #4 alfa1;
+|DELINDEX #4;
+
+|ABRET #2;
+|ABRET #3;
+|ABRET #5;
+|ABRET #10;
+|ABRET #11;
+|ABRET #12;
+|ABRET #14;
+|ABRET #18;
+|ABRET #19;
+|ABRET #21;
+|ABRET #4;
+|BUCLE lee_partes;
+|CIERRAT #4;
+|SI seleccio = 0;
+    |MENAV "    Seleccion vacia ...";
+|SINO;
+    |BUCLE lee_temporal;
+        alfa1 = "    Preparadas [" + facturas + "] facturas ...";
+    |MENAV alfa1;
+|FINSI;
+|CIERRAT #2;
+|CIERRAT #3;
+|CIERRAT #5;
+|CIERRAT #10;
+|CIERRAT #11;
+|CIERRAT #12;
+|CIERRAT #14;
+|CIERRAT #18;
+|CIERRAT #19;
+|CIERRAT #21;
+
+|DELINDEX #4;
+|FPRC;

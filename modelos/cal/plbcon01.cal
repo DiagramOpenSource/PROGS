@@ -1,0 +1,687 @@
+|| PROCESO PARA RECOGER DATOS DE CONTABILIDAD
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+|FICHEROS;
+   :/contagen/def/canempre #330;  || Empresas
+   :/contagen/def/cafantas #331;  ||
+   :/contagen/def/camandia #310;  || diarios
+   :/contagen/def/ca8accaa #409;  ||
+   dsmom100 #1100;
+   dsmom107 #107;
+|FIN;
+
+|VARIABLES;
+
+    aPath   = "";
+    nume1   = 0;
+    any     = 0;
+    anyMas  = 0;
+    anyMas0 = 0;
+    anyMas1 = 0;
+    period  = 0;
+    period0 = 0;
+    period1 = 0;
+
+    i1 = 0;
+    {-1}punt1 = 0;
+
+    alfa1 = "";
+    alfa2 = "";
+    aEjer = "";
+
+    &enEjercicio = 0;
+    nEjer   = 0;
+    nResPer = 0;
+
+    aAlfa  = "";
+    aAlfa1 = "";
+    aAlfa2 = "";
+    aAlfa3 = "";
+    nNume1 = 0;
+    nNume2 = 0;
+    nAny   = 0;
+    nEste  = 0;
+
+    &enTipOpera  = 0;
+    &efPn10      = @;
+    &efPn11      = @;
+    &enPin12     = 0;
+    &eaPin13     = "";
+    &enEmpres    = 0;
+    &enEjerci    = 0;
+    &enActivi    = 0;
+    &eaCodSub    = "";
+    &enDescuadre = 0;
+    &enParaActua = 0;
+    &eaFecUltimo = "";
+    &eaDocUltimo = "";
+    &enActu1     = 0;
+    &enActu2     = 0;
+    &enActu3     = 0;
+    &enActu4     = 0;
+    &enActu5     = 0;
+    &enActu6     = 0;
+    &enActu7     = 0;
+    &fichpath    = "";
+|FIN;
+
+|PROCESO SituaContagen; |TIPO 8;  ||Situamos los ficheros de Contabilidad
+ any       = 0;
+ anyMas    = 0;  anyMas0 = 0;  anyMas1 = 0;
+ period    = -1; period0 = -1; period1 = -1;
+ fec3      = "01.01.0000";
+ nEste     = enEjer;
+ enEn2008  = 0;
+ swerror   = 0;
+
+ |ABRE #107;
+ |DDEFECTO #107;
+ |LEE 040#107p;
+ |CIERRA #107;
+ |SI enConcreto = 1; |Y #107#20 ! 0;
+     |SI enEjer < #107#20; enEjer = #107#20; |FINSI;
+ |FINSI;
+
+ enSwPartido = 0;
+ |SI enPerConta = -1; || Buscar Empresa Solo con el Numero
+
+     |ABRE #canempre;
+
+     |PARA nume1 = 0; |SI nume1 [ 9; |HACIENDO;
+           #canempre#2 = enEmpresa;
+           #canempre#3 = nume1;
+           |LEE 000#canempre.=;
+           |SI FSalida = 0;
+               |SI #canempre#26  < 80;
+                   any = 2000 + #canempre#26;
+                |SINO;
+                   any = 1900 + #canempre#26;
+               |FINSI;
+               |SI enEjer ! 0;
+                   |SI #canempre#11 = 1;
+                       |SI any = enEjer;
+                           period = nume1; enSwPartido = 0;
+                           |SAL;
+                       |FINSI;
+                   |SINO;
+                       enSwPartido = 1;
+                       |SI efFechaSit [ "01.01.1900";
+                           |SI any = enEjer; period = nume1
+                               |SAL;
+                           |FINSI;
+                       |SINO;
+                           |HAZ LaFecha;
+                           |SI efFechaSit ] fec1; |Y efFechaSit [ fec2;
+                               period = nume1;
+                               |SAL;
+                           |FINSI;
+                       |FINSI;
+                   |FINSI;
+               |FINSI;
+               |SI any > anyMas0; |Y any < 2008;|| El ejercicio mas alto
+                   anyMas0 = any;
+                   period0 = nume1; || Conservo el Periodo
+               |FINSI;
+               |SI any > anyMas1; |Y any ] 2008;
+                   anyMas1 = any;
+                   period1 = nume1; || Conservo el Periodo
+               |FINSI;
+           |FINSI;
+           nume1 = nume1 + 1;
+     |SIGUE;
+     |CIERRA #canempre;
+
+     enEn2008 = 0;
+     |SI period < 0; |Y enConcreto = 1; |Y enEjer ! 0;
+         |SI enEjer < 2008;
+             period = period0;
+             |SI period < 0; period = period1; enEn2008 = 1; |FINSI;  ||el periodo superior
+         |FINSI;
+         |SI enEjer ] 2008; period = period1; enEn2008 = 1; |FINSI;
+     |FINSI;
+     |SI period < 0; |Y enEjer = 0;
+         |SI period1 ! -1;
+             period = period1; enEn2008 = 1;
+         |SINO;
+             |SI period0 ! -1; period = period0; |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |SI period < 0;
+         |SI enSwSinMen = 0; |MENAV "    NO EXISTE EMPRESA CONTABLE "; |FINSI;
+         swerror = 1;
+         |ACABA;
+     |FINSI;
+
+     enPerConta = period;  || Ya tenemos el Periodo de la Empresa
+
+  |FINSI;
+
+|| ==============================================================
+  |HAZ LeeEmpConta;
+  |SI nEste ! 0; enEjer = nEste; |FINSI;
+|FPRC;
+
+|PROCESO EjerCCAA;
+    enEjerBal = #409#0;
+|FPRC;
+
+|DEFBUCLE EjerCCAA;
+    #409#1;
+    ;
+    2008;
+    enEjer;
+    e;
+    NULL, EjerCCAA;
+|FIN;
+
+|PROCESO LeeEmpConta;
+   fec3 = "01.01.0000";
+   swerror = 0;
+   cod_emp1 = enEmpresa;  cod_emp1 = "00000" + cod_emp1;
+   cod_emp2 = enPerConta; cod_emp2 = "0" + cod_emp2;
+   clave1 = cod_emp1 % -105;
+   clave2 = cod_emp2 % -101;
+
+   |DBASS aPath; |QBT aPath;
+   aPathConta    = aPath + "contagen/fich/" + clave1 + clave2 + "/";
+   aPathPanConta = aPath + "contagen/pan/";
+
+   cod1 = clave1;   empre = cod1;
+   cod2 = clave2;   ejerc = cod2;
+
+   |ABRE #canempre;
+   #canempre#2 = cod1;
+   #canempre#3 = cod2;
+   |LEE 000#canempre.=;
+   |SI FSalida ! 0;
+       swerror = 1;
+       |SI enSwSinMen = 0; |MENAV "    NO EXISTE EMPRESA CONTABLE "; |FINSI;
+       |CIERRA #canempre;
+       |ACABA;
+   |FINSI;
+   dig1 = #canempre#11;       || desde mes
+   dig3 = #canempre#13;       || nro. niveles
+   dig4 = #canempre#14;       || 1 nivel
+   dig5 = #canempre#15;       || 2 nivel
+   dig6 = #canempre#16;       || 3 nivel
+   dig7 = #canempre#17;       || 4 nivel
+   dig8 = #canempre#18;       || 5 nivel
+   dig9 = #canempre#19;       || 6 nivel
+   eaMonedaCon = #canempre#28; ||Moneda
+   eaNombreEmp = #canempre#1;  ||Nombre Empresa
+   eaEstadoEmp = "S";
+   |SI #canempre#21 = "I"; eaEstadoEmp = "N"; |FINSI;
+   |CIERRA #canempre;
+
+   cod2 = #canempre#26;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   tra1 = 100 + #canempre#11;
+   mes1 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = "01." + mes1 + ".20" + clave2;
+      enEjer = 2000 + cod2;
+   |SINO;
+      work1 = "01." + mes1 + ".19" + clave2;
+      enEjer = 1900 + cod2;
+   |FINSI;
+   fec1 = work1;
+   tra1 = 100 + #canempre#12;
+   mes1 = tra1 % -102;
+   |SI #canempre#11 > #canempre#12;
+      cod2 = cod2 + 1;
+      |SI cod2 > 99; cod2 = cod2 - 100;    |FINSI;
+   |FINSI;
+   dia1 = "31";
+   |SI #canempre#12 = 4; |O #canempre#12 = 6; |O #canempre#12 = 9; |O #canempre#12 = 11;
+      dia1 = "30";
+   |FINSI;
+   |SI #canempre#12 = 2;
+      dia1 = "28";
+      |SI cod2 = 88; |O cod2 = 92; |O cod2 = 96; |O cod2 = 0; |O cod2 = 4;
+         dia1 = "29";
+      |FINSI;
+   |FINSI;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = dia1 + "." + mes1 + ".20" + clave2;
+   |SINO;
+      work1 = dia1 + "." + mes1 + ".19" + clave2;
+   |FINSI;
+   fec2 = work1;
+   fec3 = #canempre#34;
+
+   eaDepar  = #canempre#24;
+   eaSubde  = #canempre#22;
+   enSubde  = 0; |SI eaSubde = "O"; eaSubde = "S"; enSubde = 1; |FINSI;
+   eaDfDepC = #canempre#30;
+   eaDfSubC = #canempre#31;
+   eaDfDepN = #canempre#32;
+   eaDfSubN = #canempre#33;
+
+  || Recoger informacion sobre los niveles ...
+  Ipunt1 = dig3<-;
+  Ipunt1 = Ipunt1 + dig3;
+  MaximoDigitos = punt1;
+  DigitosPaseDirecto = dig3;
+
+  |HAZ VerEjerBal;
+|FPRC;
+
+|PROCESO VerEjerBal;
+  enEjerBal = 2008;
+  |BUCLE EjerCCAA;
+|FPRC;
+
+|PROCESO inicio; |TIPO 8;
+  |HAZ SituaContagen;
+|FPRC;
+
+|PROCESO SituaMaestra;
+  fec3 = "01.01.0000";
+  |ABRE #1100;
+  |LEE 040#1100p;
+  |SI FSalida ! 0;  |DDEFECTO #1100;  |FINSI;
+  |CIERRA #1100;
+
+  swerror = 0;
+  alfa1 = #1100#1; alfa1 = ("00000" + alfa1) % -105;
+  alfa2 = #1100#2; alfa2 = ("0"     + alfa2) % -101;
+
+  |DBASS aPath; |QBT aPath;
+  aPathConta    = aPath + "contagen/fich/" + alfa1 + alfa2 + "/";
+  aPathPanConta = aPath + "contagen/pan/";
+
+  |ABRE #canempre;
+  #canempre#2 = #1100#1;
+  #canempre#3 = #1100#2;
+  |LEE 000#canempre.=;
+  |SI FSalida ! 0;
+      swerror = 1;
+      |SI enSwSinMen = 0; |MENAV "    NO EXISTE LA EMPRESA MAESTRA DE CONTABILIDAD"; |FINSI;
+      |CIERRA #canempre;
+      |ACABA;
+  |FINSI;
+   dig1 = #canempre#11;       || desde mes
+   dig3 = #canempre#13;       || nro. niveles
+   dig4 = #canempre#14;       || 1 nivel
+   dig5 = #canempre#15;       || 2 nivel
+   dig6 = #canempre#16;       || 3 nivel
+   dig7 = #canempre#17;       || 4 nivel
+   dig8 = #canempre#18;       || 5 nivel
+   dig9 = #canempre#19;       || 6 nivel
+   eaMonedaCon = #canempre#28; ||Moneda
+   |CIERRA #canempre;
+
+  || Recoger informacion sobre los niveles ...
+  Ipunt1 = dig3<-;
+  Ipunt1 = Ipunt1 + dig3;
+  MaximoDigitos = punt1;
+  DigitosPaseDirecto = dig3;
+
+  enEjerBal = 2008;
+  |BUCLE EjerCCAA;
+|FPRC;
+
+
+|PROCESO SituaEmpresa;
+
+     swerror     = 0;
+     enSwPartido = 0;
+
+     aEjer = enEjer;
+     alfa1 = aEjer % -102;
+     nEjer = alfa1;
+
+     |ABRE #canempre;
+     |SELECT #4#canempre;
+     #canempre#2  = enEmpresa;
+     #canempre#26 = nEjer;
+     |LEE 040#canempre.=;
+     |SI FSalida = 0;
+         |SI #canempre#11 ! 1;
+             enPeriodoPar = #canempre#3;
+             enSwPartido = 1;
+         |FINSI;
+     |SINO;
+         swerror = 1;
+         #canempre#2  = enEmpresa;
+         #canempre#26 = nEjer - 1; |SI #canempre#26 < 0; #canempre#26 = 99; |FINSI;
+         |LEE 040#canempre.=;
+         |SI FSalida = 0;
+             |SI #canempre#11 ! 1;
+                 enPeriodoPar = #canempre#3;
+                 enSwPartido = 1;
+                 swerror     = 0;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+     |CIERRA #canempre;
+     |SI swerror = 1; |ACABA; |FINSI;
+
+     |DBASS aPathConta;   |QBT aPathConta;
+     |SI enSwPartido = 0;
+         aPathConta = aPathConta + "contagen/fich/" + (("00000" + #canempre#2) % -105) + #canempre#3 + "/";
+     |SINO;
+         aPathConta = aPathConta + "contagen/fich/" + (("00000" + enEmpresa) % -105) + aEjer + "/";
+         |SI enPartido = 0;
+             enSwOpPar   = 0;
+             nResPer     = enPeriodo;
+             enEjercicio = enEjer;
+             aAlfa = (("00000" + enEmpresa) % -105) + enPeriodoPar;
+             aAlfa = ":contagen/caz00024 canempr1 " + (("00000" + enEmpresa) % -105) + enPeriodoPar;
+
+             |SUB_EJECUTA_NP aAlfa;
+             enPeriodo = nResPer;
+         |FINSI;
+         enPartido = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO FinalPartido;
+         nResPer     = enPeriodo;
+         enEjercicio = enEjer;
+         |SUB_EJECUTA_NP ":contagen/caz00024";
+         enPeriodo = nResPer;
+         enPartido = 0;
+|FPRC;
+
+
+|PROCESO LaFecha;
+  |SI #canempre#26 < 80;
+      nAny = 2000 + #canempre#26;
+  |SINO;
+      nAny = 1900 + #canempre#26;
+  |FINSI;
+
+  aAlfa1 = nAny;
+  aAlfa2 = #canempre#11; |QBF aAlfa2;
+  aAlfa2 = ("00" + aAlfa2) % -102;
+  aAlfa2 = "01." + aAlfa2 + "." + aAlfa1;
+  fec1  = aAlfa2;
+
+  |SI #canempre#11 ! 1;
+      nAny = nAny + 1;
+      aAlfa1 = nAny;
+  |FINSI;
+  aAlfa2 = #canempre#12; |QBF aAlfa2;
+  aAlfa2 = ("00" + aAlfa2) % -102;
+
+  aAlfa3 = "31.";
+  |SI #canempre#12 = 4; |O #canempre#12 = 6; |O #canempre#12 = 9; |O #canempre#12 = 11;
+      aAlfa3 = "30.";
+  |SINO;
+      |SI #canempre#12 = 2;
+          aAlfa3 = "28.";
+          nNume1 = nAny / 4; nNume2 = (nAny / 4) ! 0;
+          |SI nNume1 = nNume2;
+              aAlfa3 = "29.";
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  aAlfa2 = aAlfa3 + aAlfa2 + "." + aAlfa1;
+  fec2 = aAlfa2;
+|FPRC;
+
+|PROCESO inicial; |TIPO 8;              || al principio del.run
+
+   |SI enSwAviso = 0; |ACABA; |FINSI;
+
+   |HAZ ePerContable;
+
+   |SI swerror = 1;
+       |SI enModelo = 110; |Y eaTPase110 = "L";
+           swerror = 0;
+       |SINO;
+           |MENAV "0000No existe Periodo de esta Empresa en Contabilidad";
+       |FINSI;
+       |ACABA;
+   |FINSI;
+
+   enSwSinMen = 1;
+   enPerConta = #canempre#3;
+   |HAZ LeeEmpConta;
+
+   |PUSHV 05012380;
+   |PULSATECLA;
+
+   fichpath    = aPathConta;
+   enTipOpera  = 1;
+   enEmpres    = #canempre#2;
+   nResPer     = enPeriodo;
+   enPeriodo   = enPerConta;
+   enEjercicio = enEjer;
+   enEjerci    = enEjer;
+   enActivi    = #canempre#30;
+   eaCodSub    = #canempre#31;
+
+   |SUB_EJECUTA_NP ":contagen/caz00002;NOMEQUITESQUETECORTOLOSGUEVOS";
+   enPeriodo = nResPer;
+
+   |C_A #cafantas#4, 1, 10;
+   |C_A #cafantas#8, 1, 10;
+   |C_A #cafantas#9, 1, 13;
+   |C_A #cafantas#19,1, 5;
+   #cafantas#7  = enEjercicio;
+   #cafantas#4  = "Activa"; |SI #canempre#21 = "I"; #cafantas#4 = "Inactiva"; |FINSI;
+   #cafantas#10 = efPn10;
+   #cafantas#11 = efPn11;
+   #cafantas#5  = eaPin13;
+   #cafantas#8  = eaFecUltimo;
+   #cafantas#16 = eaDocUltimo;
+   aAlfa1 = ("00" + #canempre#11) % -102 + "-" + ("00" + #canempre#12) % -102;
+   #cafantas#19 = aAlfa1;
+
+   |CLS;
+   |D_CUADRO 0610,1070;
+   |D_CUADRO 0610,1670;
+   |ATRI S;   |PINTA 0511, "ESTA USTED ENTRANDO A LA EMPRESA ";
+   |ATRI R;   |PINTA 0711," EMPRESA   ";
+   |ATRI I;   |PINTA 0723, #canempre#2;   |PINTA 0729, #canempre#1;
+   |ATRI R;   |PINTA 0811," CIF/NIF   ";
+   |ATRI I;   |PINTA 0823, #canempre#8;
+   |ATRI R;   |PINTA 0911," PERIODO   ";
+   |ATRI I;   |PINTA 0923, #canempre#3;
+   |ATRI R;   |PINTA 0929," EJERCICIO ";
+   |ATRI I;   |PINTA 0941, #cafantas#7;
+   |SI #canempre#11 ! 1;
+       |ATRI R; |PINTA 0946, " DESDE/HASTA MES ";
+       |ATRI I; |PINTA 0964, #cafantas#19;
+   |FINSI;
+
+   |ATRI R;   |PINTA 1111," FECHA DE ALTA ";
+   |ATRI I;   |PINTA 1127, #cafantas#10;
+   |SI efPn11 > " 01.01.1900";
+       |ATRI R;   |PINTA 1140," FECHA DE BAJA ";
+       |ATRI I;   |PINTA 1156, #cafantas#11;
+   |FINSI;
+   |ATRI R;   |PINTA 1211," SITUACION     ";
+   |ATRI I;   |PINTA 1227, #cafantas#4;
+   |ATRI R;   |PINTA 1311," TIPO EMPRESA  ";
+   |ATRI I;   |PINTA 1327, #cafantas#5;
+
+   || |ATRI R;   |PINTA 1511, " FECHA ULTIMO ASIENTO ";
+   || |ATRI I;   |PINTA 1534, #cafantas#8;
+   |ATRI R;   |PINTA 1511, " ULTIMO ASIENTO ";
+   |ATRI I;   |PINTA 1528, #cafantas#16;
+   |ATRI R;   |PINTA 1535, " FECHA ";
+   |ATRI I;   |PINTA 1543, #cafantas#8;
+   #cafantas#9 = " DIARIO ";
+   |SI enDescuadre = 1;
+       |ATRI S; |PINTA 1456, #cafantas#9;
+       #cafantas#9 = " DESCUADRADO ";
+       |ATRI S; |PINTA 1556, #cafantas#9;
+   |SINO;
+        |ATRI I; |PINTA 1456, #cafantas#9;
+        #cafantas#9 = " CUADRADO  ";
+        |ATRI I; |PINTA 1556, #cafantas#9; || 1549
+   |FINSI;
+   |ATRI 0;
+
+   |SI enParaActua = 1;
+       nNume2 = 0;
+       nNume1 = enActu1 + enActu2 + enActu3 + enActu4 + enActu5 + enActu6 + enActu7;
+       |SI nNume1 = 7; |D_CUADRO 1610,2170; |FINSI;
+       |SI nNume1 > 3; |Y nNume1 < 7; |D_CUADRO 1610,2070; |FINSI;
+       |SI nNume1 [ 3; |D_CUADRO 1610,1970; |FINSI;
+       |ATRI P; |PINTA 1711, "PLANILLAS CONTABLES PARA ACTUALIZAR: "; |ATRI I;
+       |SI enActu1 = 1; aAlfa1 = "Por Ctas Contables"; |HAZ Poner; |FINSI;
+       |SI enActu2 = 1; aAlfa1 = "Por Caja Efectivo "; |HAZ Poner; |FINSI;
+       |SI enActu3 = 1; aAlfa1 = "Por Nominas       "; |HAZ Poner; |FINSI;
+       |SI enActu4 = 1; aAlfa1 = "Por Bloques       "; |HAZ Poner; |FINSI;
+       |SI enActu5 = 1; aAlfa1 = "Facturas          "; |HAZ Poner; |FINSI;
+       |SI enActu6 = 1; aAlfa1 = "Ventas Englobadas "; |HAZ Poner; |FINSI;
+       |SI enActu7 = 1; aAlfa1 = "Ventas diarias    "; |HAZ Poner; |FINSI;
+   |FINSI;
+   |ATRI 0;
+   |C_A #cafantas#4,1, 80;
+   |C_A #cafantas#8,1, 80;
+   |C_A #cafantas#9,1, 80;
+
+   |PATH_DAT #310 aPathConta;
+   |ABRE #310;
+   #camandia#0 = 99;
+   |LEE 040#310=;
+   |SI FSalida = 0;  |Y #camandia#2 ! 0;  |Y #camandia#3 ! 0;
+       |AVISO;
+       |D_CUADRO 2113,2366;
+       |ATRI R;
+       |PINTA 2114," ATENCION:  Esta empresa puede estar cerrada, tiene ";
+       |PINTA 2214,"            movimientos en el diario 99             ";
+       |ATRI r;
+   |FINSI;
+   |CIERRA #310;
+
+   |PAUSA;
+
+   |POPV;
+|FPRC;
+
+|PROCESO eCtrlActuaFras;
+   swerror = 0;
+   |ABRE #dsmom107;
+   |DDEFECTO #dsmom107;
+   |LEE 040#dsmom107.p;
+   |CIERRA #dsmom107;
+
+   |SI #dsmom107#36 ! "X"; |Y enAnterior = 0;
+       aAlfa1  = enEjer;
+       |HAZ ePerContable;
+
+       |SI swerror = 1;
+           |SI enModelo = 110; |Y eaTPase110 = "L";
+               swerror = 0;
+           |SINO;
+               |SI enAnterior ! 0;
+                   swerror = 0;
+               |SINO;
+                   aAlfa = "0000!!!ATENCION!!! - Empresa: " + enEmpresa;
+                   aAlfa = aAlfa + "/" + eaNombreEmp;  |QBF aAlfa;
+                   |MENAV aAlfa;
+
+                   |MENAV "0000No existe Periodo de esta Empresa en Contabilidad";
+               |FINSI;
+           |FINSI;
+           |ACABA;
+       |FINSI;
+
+       enSwSinMen = 1;
+       enPerConta = #330#3;
+       |HAZ LeeEmpConta;
+
+       fichpath    = aPathConta;
+       enTipOpera  = 2;
+       enEmpres    = #canempre#2;
+       nResPer     = enPeriodo;
+       enPeriodo   = enPerConta;
+       enEjercicio = enEjer;
+       enPeriodo   = nResPer;
+       enEjerci    = enEjer;
+       enActivi    = #canempre#30;
+       eaCodSub    = #canempre#31;
+       |SUB_EJECUTA_NP ":contagen/caz00002;NOMEQUITESQUETECORTOLOSGUEVOS";
+       |SI enParaActua = 1;
+           swerror = 1;
+
+           aAlfa = "0000!!!ATENCION!!! - Empresa: " + #canempre#2;
+           aAlfa = aAlfa + " Periodo: " + #canempre#3;
+           aAlfa = aAlfa + "/" + #canempre#1;  |QBF aAlfa;
+           |MENAV aAlfa;
+
+           aAlfa = "Hay facturas pendientes de actualizar en Introduccion";
+           |SI #dsmom107#36 = "S";
+               aAlfa = "0000" + aAlfa + ". No puede recoger datos";
+               |MENAV aAlfa;
+           |SINO;
+               aAlfa = "0000N" + aAlfa + ". Desea Continuar";
+               |CONFI aAlfa;
+               |SI FSalida = 0;
+                   swerror = 0;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Poner;
+ |SI nNume2 = 0; nNume1 = 1811; |FINSI;
+ |SI nNume2 = 1; nNume1 = 1831; |FINSI;
+ |SI nNume2 = 2; nNume1 = 1851; |FINSI;
+ |SI nNume2 = 3; nNume1 = 1911; |FINSI;
+ |SI nNume2 = 4; nNume1 = 1931; |FINSI;
+ |SI nNume2 = 5; nNume1 = 1951; |FINSI;
+ |SI nNume2 = 6; nNume1 = 2011; |FINSI;
+
+ |PINTA nNume1, aAlfa1;
+ nNume2 = nNume2 + 1;
+|FPRC;
+
+
+|PROCESO ePathCaja;
+   ePathCaja = aPathConta;
+   |SI ePerioCaja ! -1;
+       |DBASS aPath; |QBT aPath;
+       aAlfa = aPath + "contagen/fich/";
+       aAlfa1 = ("00000" + enEmpresa)  % -105;
+       aAlfa2 = ("0"     + ePerioCaja) % -101;
+       ePathCaja = aAlfa + aAlfa1 + aAlfa2 + "/";
+   |FINSI;
+|FPRC;
+
+|PROCESO ePerContable;
+
+   aAlfa1  = enEjer;
+   aAlfa1  = aAlfa1 % -102;
+   nAny    = aAlfa1;
+
+   swerror = 1;
+   |ABRE #canempre;
+   |SELECT #4#canempre;
+   #canempre#2  = enEmpresa;
+   #canempre#26 = nAny;
+   |LEE 041#canempre.=;
+   |SI FSalida = 0;
+       swerror = 0;
+       |SI #canempre#11 ! 1; |Y #canempre#11 > enPeriodo;
+           swerror = 1;
+       |FINSI;
+   |FINSI;
+
+   |SI swerror = 1;
+       #canempre#2  = enEmpresa;
+       #canempre#26 = nAny - 1; |SI #canempre#26 < 0; #canempre#26 = 99; |FINSI;
+       |LEE 041#canempre.=;
+       |SI FSalida = 0;
+           |SI #canempre#11 ! 1; |Y #canempre#11 > enPeriodo;
+               swerror = 0;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SELECT #1#canempre;
+   |CIERRA #canempre;
+|FPRC;

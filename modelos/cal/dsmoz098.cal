@@ -1,0 +1,272 @@
+|FICHEROS;
+     dsmoz098 #98;
+
+     dsmom093 #93;
+     dsmom193@ #193;
+
+     :/basica/def/agifigen #1000;
+     :/basica/def/agicen14 #114;
+
+     dsmom002 #2;
+     dsmom004 #4;
+|FIN;
+
+|VARIABLES;
+     nCampo    = 0;
+     aParam    = "";
+     aBase     = "";
+     aMas      = "";
+     nDEmpresa = 0;
+     nHEmpresa = 0;
+
+     &enElEjer   = 0;
+     &enAlta     = 0;
+     &enDEmpresa = 0;
+     &enHEmpresa = 0;
+     aAlfa1      = "";
+     nModelo     = 0;
+     fFecIni     = @;
+     fFecFin     = @;
+     nSwConPro   = 0;
+     nNoModi     = 0;
+     nEmpresa    = 0;
+
+     &enSwApli = 0;
+     &enModeloAp    = 0;
+     &enEmpresaAp   = 0;
+     &eaNombreAp    = "";
+     &enEjerAp      = 0;
+|FIN;
+
+|INCLUYE i_variar;
+
+|PROCESO NoModificar;
+  |SI #4#9  = "X"; nNoModi = 1; |FINSI;
+  |SI #4#11 = "X"; nNoModi = 1; |FINSI;
+  |SI #4#13 = "X"; nNoModi = 1; |FINSI;
+|FPRC;
+
+|DEFBUCLE NoModificar;
+   #4#1;
+   ;
+   nEmpresa, #98#2, 01, nModelo, 00;
+   nEmpresa, #98#2, 99, nModelo, 99;
+   ;
+   NULL, NoModificar;
+|FIN;
+
+|| .... Mirar si hace el modelo de IRPF
+|PROCESO MiraSiD;
+ |SI #2#8 > "01.01.0000";
+     |SI #2#8 > fFecFin;  |ACABA;  |FINSI;
+ |FINSI;
+ |SI #2#9 > "01.01.0000";
+     |SI #2#9 < fFecIni;  |ACABA;  |FINSI;
+ |FINSI;
+ nSwConPro = 0;
+ |ERROR10;
+|FPRC;
+
+|DEFBUCLE MiraSiModelo;
+ #2#1;
+ ;
+ nEmpresa, 01, nModelo;
+ nEmpresa, 99, nModelo;
+ ;
+ NULL, MiraSiD;
+|FIN;
+
+|PROCESO LaSeleccion;
+    nSwConPro = -1;
+    |BUCLE MiraSiModelo;
+    |SI nSwConPro = -1;  |ACABA; |FINSI;
+
+    aCoBien = "N";
+    #114#0 = nEmpresa;
+    #114#1 = 00;
+    |LEE 041#114];
+    |SI FSalida = 0; |Y #114#0 = nEmpresa;
+        aCoBien = #114#13;  ||Comunidad de Bienes
+    |FINSI;
+    |SI aCoBien = "S"; nSwConPro = -1; |ACABA; |FINSI;
+
+     nNoModi = 0;
+     |BUCLE NoModificar;
+     |SI nNoModi = 1; nSwConPro = -1; |FINSI;
+|FPRC;
+
+|PROCESO agifigen;
+    nEmpresa    = #1000#0;
+    eaNombreEmp = #1000#1;
+    |HAZ LaSeleccion;
+    |SI nSwConPro ! -1;
+        enEmpresaAp   = nEmpresa;
+        enEjerAp      = #98#2;
+        enModeloAp    = nModelo;
+        eaNombreAp    = eaNombreEmp;
+        enSwApli      = 1;
+        |HAZ eGrabadsmom093;
+    |FINSI;
+|FPRC;
+
+|DEFBUCLE agifigen;
+    #1000#1;
+    ;
+    nDEmpresa;
+    nHEmpresa;
+    e;
+    NULL, agifigen;
+|FIN;
+
+|PROCESO CopConfigura;
+    nEmpresa = #193#2;
+
+    #93#0 = #193#0;
+    #93#1 = #98#2;
+    #93#2 = #193#2;
+    |LEE 101#93=;
+    |SI FSalida ! 0;
+
+        |HAZ LaSeleccion;
+        |SI nSwConPro ! -1;
+             |DDEFECTO #93;
+
+             #93#0  = #193#0;
+             #93#1  = #98#2;
+             #93#2  = #193#2;
+             |PARA nCampo = 3; |SI nCampo [ 14; |HACIENDO nCampo = nCampo + 1;
+                   #93nCampo = #193nCampo;
+             |SIGUE;
+
+             #93#15 = 0;
+             enEmpresaAp   = nEmpresa;
+             enEjerAp      = #98#2;
+             enModeloAp    = nModelo;
+             eaNombreAp    = #193#3;
+             enSwApli      = 3;
+             |HAZ eGrabadsmom093;
+             |GRABA 020#93n;
+        |FINSI;
+    |SINO;
+        |PARA nCampo = 3; |SI nCampo [ 14; |HACIENDO nCampo = nCampo + 1;
+              #93nCampo = #193nCampo;
+        |SIGUE;
+        |SI #98#7 = "S";
+             #93#15 = 0;
+             enEmpresaAp   = nEmpresa;
+             enEjerAp      = #98#2;
+             enModeloAp    = nModelo;
+             eaNombreAp    = #193#3;
+             enSwApli      = 3;
+             |HAZ eGrabadsmom093;
+        |FINSI;
+        |GRABA 020#93a;
+    |FINSI;
+    |LIBERA #93;
+|FPRC;
+
+|DEFBUCLE CopConfigura;
+     #193#1003;
+     ;
+     nModelo, #98#1, nDEmpresa;
+     nModelo, #98#1, nHEmpresa;
+     e;
+     NULL, CopConfigura;
+|FIN;
+
+|PROCESO BorrarPrimero;
+     |BORRA 020#93a;
+     |LIBERA #93;
+|FPRC;
+
+|DEFBUCLE BorrarPrimero;
+     #93#1;
+     ;
+     nModelo, #98#2, nDEmpresa;
+     nModelo, #98#2, nHEmpresa;
+     be;
+     NULL, BorrarPrimero;
+|FIN;
+
+|CALCULO Tipo12; |TIPO 12;
+     aAlfa1 = #98#2;
+     aAlfa1 = "01.01." + aAlfa1; fFecIni = aAlfa1;
+     aAlfa1 = #98#2;
+     aAlfa1 = "31.12." + aAlfa1; fFecFin = aAlfa1;
+
+     enElEjer = 0;
+     nModelo   = #98#0;
+     nDEmpresa = #98#4;
+     nHEmpresa = #98#5;
+
+     |SI #98#6 = "SI";
+         |DBASE aBase;  |QBF aBase;
+
+         aMas = aBase + "def/dsmom093.mas";
+         |CARGA_DEF aMas, dsmom193@;
+         |SI FSalida = 0;
+
+             |SI #98#3 = "S";
+                 |BUCLE BorrarPrimero;
+             |FINSI;
+
+             |ABRE #114;
+             |ABRE #93;
+             |SI enAlta = 0;
+                 |BUCLE CopConfigura;
+             |SINO;
+                 |BUCLE agifigen;
+             |FINSI;
+             |CIERRA #93;
+             |CIERRA #114;
+
+             |DESCARGA_DEF #dsmom193@;
+
+             enSwApli   = 4;
+             enElEjer   = #98#2;
+             enDEmpresa = #98#4;
+             enHEmpresa = #98#5;
+             aAlfa1     = #98#0;
+             aAlfa1     = "dsmoz095;" + aAlfa1;
+             |SUB_EJECUTA_NP aAlfa1;
+         |FINSI;
+
+     |FINSI;
+|FCAL;
+
+|PROGRAMA;
+     aParam = PARAMETRO; |QBF aParam;
+     |SI aParam = "";
+         |CLS;
+         |MANTE #98;
+     |SINO;
+         |DDEFECTO #98;
+         |PINPA #0#98;
+         |C_M #98#0, 1, "N";
+
+         #98#0 = aParam;
+         |PINPA #0#98;
+         #98#1 = enElEjer - 1;
+         #98#2 = enElEjer;
+         |SI enAlta = 0;
+             |ATRI R; |PINTA 0709, " Copiar Configuracion Deducciones Modelos 130 y 131 "; |ATRI 0;
+             |SI enElEjer < 2015;
+                 |C_V #98#7, 1, "N"; |C_M #98#7, 1, "N";
+                 #98#7 = "S";
+                 |PINTA 1510, "                                                  ";
+             |FINSI;
+         |SINO;
+             |ATRI R; |PINTA 0709, " Recalcular Rendimiento Ej.Anterior para Deducciones"; |ATRI 0;
+             |C_V #98#1, 1, "N"; |C_M #98#1, 1, "N";
+             |C_V #98#3, 1, "N"; |C_M #98#3, 1, "N";
+             |C_V #98#7, 1, "N"; |C_M #98#7, 1, "N";
+             #98#3 = "N";
+             #98#7 = "S";
+             |PINTA 1010, "                                                  ";
+             |PINTA 1410, "                                                  ";
+             |PINTA 1510, "                                                  ";
+         |FINSI;
+         |PINDA #0#98;
+         |ENDATOS #1#98;
+     |FINSI;
+|FPRO;

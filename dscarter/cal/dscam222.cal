@@ -1,0 +1,114 @@
+|FICHEROS;
+   dscam222 #0;
+
+   dscam030 #10;
+
+   cacuent@ #100;
+   canempr@ #101;
+|FIN;
+
+|VARIABLES;
+   nConsulta = 0;
+   nCont     = 0;
+   nCalc     = 0;
+   nCalc1    = 0;
+
+   aAlfa     = "";
+   aAlfa1    = "";
+|FIN;
+
+|PROCESO PintaDesc;
+   |ABRE #dscam030;
+   #dscam030#0 = #dscam222#Campo#;
+   |LEE 000#dscam030.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam030; |FINSI;
+   |CIERRA #dscam030;
+
+   |SI #dscam222#0 = "C";
+      |SI #dscam030#2 ! "CB";
+         |MENAV "    Debe indicar un enlace de cobros"; |ERROR;
+      |FINSI;
+   |FINSI;
+
+   |SI #dscam222#0 = "P";
+      |SI #dscam030#2 ! "PG";
+         |MENAV "    Debe indicar un enlace de pagos"; |ERROR;
+      |FINSI;
+   |FINSI;
+
+   |PINTA 1215, #dscam030#1;
+
+   |SI #dscam222#Campo# = "    ";
+      nCalc = Campo - 1; |C_M #dscam222#nCalc#, 1, "N";
+      nCalc = nCalc - 1; |C_M #dscam222#nCalc#, 1, "N";
+   |FINSI;
+|FPRC;
+
+|PROCESO BuscaCuenta;
+   aAlfa = #48#16; |QBF aAlfa;
+   aAlfa1 = aAlfa + "def/canempre.mas";
+   |CARGA_DEF aAlfa1, canempr@;
+   |SI FSalida = 0;
+      aAlfa1 = aAlfa + "def/cacuenta.mas";
+      |CARGA_DEF aAlfa1, cacuent@;
+      |SI FSalida = 0;
+         aAlfa1 = aAlfa  + "fich/"; |PATH_DAT #canempr@#aAlfa1#;
+         aAlfa1 = aAlfa1 + (("00000" + #48#14) % -105) + #48#19 + "/"; |PATH_DAT #cacuent@#aAlfa1#;
+         |ABRE #canempr@; |ABRE #cacuent@;
+         #canempr@#2 = #48#14;
+         #canempr@#3 = #48#19;
+         |LEE 000#canempr@.=;
+         |SI FSalida ! 0; |DDEFECTO #canempr@; |FINSI;
+
+         aAlfa = #dscam222#Campo#; |QBF aAlfa;
+         aAlfa = aAlfa - ".";
+         |SI FSalida ! 0;
+            |PARA; |SI FSalida ! 0; |HACIENDO;
+               nCalc = 0;
+               |PARA nCont = 14; |SI nCont [ 19; |HACIENDO nCont = nCont + 1;
+                  |SI #canempr@#nCont# ] nCalc;
+                     nCalc = #canempr@#nCont#;
+                  |FINSI;
+               |SIGUE;
+               aAlfa1 = aAlfa % 0; nCalc1 = aAlfa1;
+               nCalc1 = nCalc - nCalc1; aAlfa1 = "0" * nCalc1;
+
+               nCalc1 = ((FSalida / 100) ! 0) + 99;
+               aAlfa1 = (aAlfa % nCalc1) + aAlfa1;
+               nCalc1 = FSalida + 98;
+               aAlfa1 = aAlfa1 + (aAlfa % nCalc1);
+
+               aAlfa = aAlfa1 - ".";
+            |SIGUE;
+            #dscam222#Campo# = aAlfa1; |PINTA #dscam222#Campo#;
+         |FINSI;
+
+         #cacuent@#0 = #dscam222#Campo#;
+         |SI nConsulta = 1;
+            |LEE 000#cacuent@.];
+            |CONSULTA_CLAVE #1#cacuent@;
+            |SI FSalida = 0;
+               #dscam222#Campo# = #cacuent@#0; |PINTA #dscam222#Campo#;
+               |ERROR;
+            |FINSI;
+         |SINO;
+            |SI #dscam222#Campo# ! "            "; |Y #dscam222#Campo# ! "zzzzzzzzzzzz";
+               |LEE 000#cacuent@.=;
+               |SI FSalida = 0;
+                  |SI #cacuent@#3 = "N";
+                     |MENAV "    La cuenta no tiene pase directo"; |ERROR;
+                  |FINSI;
+               |SINO;
+                  ||MENAV "    Cuenta inexistente"; |ERROR;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+         |CIERRA #cacuent@; |DESCARGA_DEF #cacuent@;
+      |FINSI;
+      |CIERRA #canempr@; |DESCARGA_DEF #canempr@;
+   |FINSI;
+|FPRC;
+
+|PROCESO ConsultaCuenta; |TIPO 66;
+   nConsulta = 1; |HAZ BuscaCuenta; nConsulta = 0;
+|FPRC;

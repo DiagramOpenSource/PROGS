@@ -1,0 +1,169 @@
+|| Para el control de Parametros smtp-cli
+|| para_smtpcli.txt
+
+|FICHEROS;
+     dsarw010 #910;
+|FIN;
+
+|VARIABLES;
+     aMensaje = "";
+     aPathPrincipal = "";
+     aPathTxt = "";
+     nHandle = 0;
+     nHandleDos = 0;
+     aCinco = "";
+     aLinea = "";
+
+     aUsuPara = "";
+     aPassPara = "";
+     aUsuario = "";
+     aPassword = "";
+     nSwGraba = 0;
+
+     aBase = "";
+     nSwEsGeco = 0;
+     aGeco = "";
+
+     aRespuesta = "";
+     aCuatro = "";
+     aEjecuta = "";
+|FIN;
+
+|PROCESO LeeInfoDelTxt;
+     |XABRE "E", aPathTxt, nHandle;
+     |SI FSalida = 0;
+          |XABRE "U", aPathTxt, nHandle;
+          |PARA; |SI; |HACIENDO;
+               |XLEE nHandle, 250, aLinea;
+               |SI FSalida < 0;
+                    |SAL;
+               |FINSI;
+               aCinco = aLinea % 105;
+               |SI aCinco = "USER=";
+                    aUsuario = aLinea % 7;
+                    aUsuario = aUsuario - &34;
+               |FINSI;
+               |SI aCinco = "PASS=";
+                    aPassword = aLinea % 7;
+                    aPassword = aPassword - &34;
+               |FINSI;
+          |SIGUE;
+          |XCIERRA nHandle;
+
+          |SI aUsuario = aUsuPara; |Y aPassword = aPassPara;
+               nSwGraba = 0;
+          |SINO;
+               nSwGraba = 1;
+          |FINSI;
+     |SINO;
+          nSwGraba = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO RegrabaTxt;
+     |SI aUsuPara = ""; |O aPassPara = "";
+          |ACABA;
+     |FINSI;
+
+     ||Para evitar grabaciones, primero miro si existe, en tal caso
+     ||miro si tengo que grabarlo o no.
+     ||Y si no existe: lo tengo que grabar.
+
+     nSwGraba = 0;
+     aUsuario = "";
+     aPassword = "";
+     |HAZ LeeInfoDelTxt;
+
+     |SI nSwGraba = 1;
+          |XABRE "BW", aPathTxt, nHandle;
+          |SI FSalida ] 0;
+               aLinea = "USER=" + &34 + aUsuPara + &34 + &10;
+               |XGRABA nHandle, aLinea;
+               aLinea = "PASS=" + &34 + aPassPara + &34 + &10;
+               |XGRABA nHandle, aLinea;
+          |FINSI;
+          |XCIERRA nHandle;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaUsuPassRegistro;
+     aUsuPara = "";
+     aPassPara = "";
+
+     |LEE 101#dsarw010.p;
+     |SI FSalida = 0;
+          #dsarw010#141 = aUsuario;
+          #dsarw010#142 = aPassword;
+          |GRABA 020#dsarw010.a;
+          |LIBERA #dsarw010;
+
+          aUsuPara = #dsarw010#141;
+          |QBF aUsuPara;
+          aPassPara = #dsarw010#142;
+          |QBF aPassPara;
+     |FINSI;
+|FPRC;
+
+|PROCESO MiraSiEsGeco;
+     aRespuesta = "/tmp/uname.txt";
+     |FBORRA aRespuesta;
+
+     aEjecuta = "uname -n > " + aRespuesta;
+     |SYSTEM aEjecuta;
+
+     |XABRE "U", aRespuesta, nHandleDos;
+     |XLEE nHandle, 250, aLinea;
+     |SI FSalida ] 0;
+          aCuatro = aLinea % 104;
+          |SI aCuatro = "geco";
+               nSwEsGeco = 1;
+               aGeco = aLinea;
+               |QBF aGeco;
+               aGeco = aGeco - ".dv";
+          |FINSI;
+     |FINSI;
+
+     |XCIERRA nHandleDos;
+|FPRC;
+
+|PROCESO ParametrosSMTPCLI;
+     |ABRE #dsarw010;
+     |LEE 000#dsarw010.p;
+     |SI FSalida ! 0;
+          aMensaje = "0000Por favor configure Correo Electr¢nico (DSCORREO) desde Par metros.";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |DBASE aBase;
+     |QBF aBase;
+
+     aPathPrincipal = aBase + "dscorreo/";
+     aPathTxt = aPathPrincipal + "para_smtpcli.txt";
+
+     aUsuPara = #dsarw010#141;
+     |QBF aUsuPara;
+     |SI aUsuPara ! "";
+          aPassPara = #dsarw010#142;
+          |QBF aPassPara;
+          |HAZ RegrabaTxt;
+     |SINO;
+          aUsuario = "";
+          aPassword = "";
+          |HAZ LeeInfoDelTxt;
+
+          |SI aUsuario ! "";
+               |HAZ GrabaUsuPassRegistro;
+          |SINO;
+               nSwEsGeco = 0;
+               |HAZ MiraSiEsGeco;
+               |SI nSwEsGeco = 1;
+                    aUsuario = aGeco + ".smtp@soporte.diagram.net";
+                    aPassword = "Control.Envio";
+                    |HAZ GrabaUsuPassRegistro;
+                    |HAZ RegrabaTxt;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #dsarw010;
+|FPRC;

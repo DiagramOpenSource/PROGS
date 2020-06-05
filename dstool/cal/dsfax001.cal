@@ -1,0 +1,173 @@
+|FICHEROS;
+    :/agitool/def/dsfax001 #0;
+|FIN;
+
+|VARIABLES;
+     aRutaDocfax   = "\ds\winfax_orig\docfax";
+     aAlfa    = "";
+     aFich    = "";
+     aLon     = "";
+     nLon     = 0;
+     aNomFich = "";
+     aLetra   = "";
+     aRutaO   = "";
+     i        = 0;
+     nHandle  = 0;
+     aOrigen  = "";
+     aDestino = "";
+     aCreadir = "";
+     aBarra   = "";
+     nConta   = 0;
+     aConta   = "";
+     nCent    = 0;
+     aRutaFich = "";
+|FIN;
+
+|PROCESO BuscaFich; |TIPO 0;
+     |SI FSalida ! 13;   |ACABA;   |FINSI;        || con F5
+
+     aRutaO = "";
+     aNomFich = "";
+     aFich = " C:\*";
+     #0#11 = "";
+
+     |BROWSE aFich;
+     aFich = aFich - " ";
+     |QBF aFich;
+
+     aLon = aFich % A0;
+     nLon = aLon;
+     nCent = nLon;
+     nLon = nLon * 100 + 1;
+     |PARA i = 101; |SI i [ nLon; |HACIENDO i = i + 100;
+          aLetra = aFich % i;
+          |SI aLetra = "\";
+               aNomFich = "";
+               aLetra = "/";
+          |SINO;
+               aNomFich = aNomFich + aLetra;
+          |FINSI;
+          aRutaO = aRutaO + aLetra;
+
+     |SIGUE;
+     |QBF aFich;
+
+     #0#7 = aNomFich;    |PINTA #0#7;
+     #0#11 = aFich;      |PINTA #0#11;
+|FPRC;
+
+|PROCESO EnviaFax;
+     |HAZ PonBarra;      || es posible salir sin pasar por este campo
+
+     nCent = 0;
+     aAlfa = #0#7;  |QBF aAlfa;
+     |SI aAlfa ! "";
+          nCent = 1;
+     |FINSI;
+
+     #0#10 = #0#10 + 1;
+     aConta = #0#10;
+     aConta = ("00000000" + aConta) % -108;
+     |QBF aConta;
+
+     aCreadir = "\ds\winfax_orig";
+     |RMKDIR aCreadir;
+     aCreadir = "\ds\winfax_orig\adjuntos";
+     |RMKDIR aCreadir;
+
+     aRutaDocfax = aRutaDocfax + aConta + ".txt";
+     |XABRE "CW", aRutaDocfax, nHandle;
+     |SI FSalida < 0;
+          aAlfa = "0000FAX. No puedo crear " + aRutaDocfax;
+          |MENAV aAlfa;
+          |ACABA;
+     |SINO;
+          aAlfa = #0#1; |QBT aAlfa; |XGRABA nHandle, aAlfa;
+          aAlfa = #0#2; |QBT aAlfa; |XGRABA nHandle, aAlfa;
+          aAlfa = #0#3; |QBF aAlfa; |XGRABA nHandle, aAlfa;
+          aAlfa = #0#4; |QBF aAlfa; |XGRABA nHandle, aAlfa;
+          aAlfa = #0#5; |QBF aAlfa; |XGRABA nHandle, aAlfa;
+          aAlfa = #0#6; |QBF aAlfa; |XGRABA nHandle, aAlfa;
+          |SI nCent ! 0;
+               aAlfa ="\ds\winfax_orig\adjuntos\" + #0#7; |QBF aAlfa;
+          |SINO;
+               aAlfa = "";
+          |FINSI;
+          |XGRABA nHandle, aAlfa;
+          aAlfa = #0#8; |QBF aAlfa; |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |FINSI;
+
+     || COPIAMOS EL ADJUNTO QUE ESTA EN LA MQUINA DE USUARIO Y LO PEGAMOS EN WINFAX_TXT  QUE ESTA EN EL SEVIDOR
+     |SI nCent ! 0;
+          aDestino = #0#9;                              |QBF aDestino;
+          aDestino = aDestino + "adjuntos\"
+          |RMKDIR aDestino;
+          aDestino = aDestino + #0#7;                   |QBF aDestino;
+          aFich = #0#11;                                |QBF aFich;
+          |RCOPIA_FICHERO aFich, aDestino;
+          |SI FSalida < 0;
+               |MENAV  "0000No se ha podido copiar el adjunto al servidor.";
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     || COPIAMOS EL DOCFAX.TXT ;   QUE HEMOS GENERADO EN EL CLIENTE Y LO ENVIAMOS AL SERVIDOR;
+
+     aDestino = #0#9;    |QBF aDestino;
+     aDestino = aDestino + "docfax" + aConta + ".txt";
+     |RCOPIA_FICHERO aRutaDocfax, aDestino;
+     |SI FSalida < 0;
+          |MENAV  "0000No se ha podido copiar el txt al servidor.";
+          |ACABA;
+     |FINSI;
+
+     ||BORRAMOS EL TXT QUE HEMOS GENERADO EN NUESTRAMAQUINA UNA VEZ QUE LO HEMOS MANDADO
+
+     |RFBORRA aRutaDocfax;
+     |SI FSalida < 0;
+          |MENAV "0000No se ha borrado el txt.";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |SI PARAMETRO = "";
+          |CLS;
+          |CABEZA "Envio de fax";
+          ||MENAV "0000Es necesario disponer de un servidor de fax con WinFax instalado.";
+          ||MENAV "0000Contactar con su distribuidor para mas informacion";
+          |PINPA #0#0;
+          |ABRE #0;
+          |LEE 101#0p;
+          |SI FSalida ! 0;    |GRABA 020#0b; |FINSI;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0;
+               |HAZ EnviaFax;
+               |GRABA 020#0a;
+          |FINSI;
+          |LIBERA #0;
+          |CIERRA #0;
+     |SINO;
+          |ABRE #0;
+          |LEE 000#0p;
+          |SI FSalida = 0;
+               |HAZ EnviaFax;
+          |SINO;
+               |MENAV "0000Asistente de envio de fax inaccesible.";
+          |FINSI;
+          |CIERRA #0;
+     |FINSI;
+|FPRO;
+
+|PROCESO PonBarra; |TIPO 0;
+     aBarra = #0#9;
+     |QBF aBarra;
+
+     aAlfa = aBarra % -101;
+     |SI aAlfa ! "/";|Y aAlfa ! "\";
+          aBarra = aBarra + "/";
+          #0#9 = aBarra;
+          |PINTA #0#9;
+     |FINSI;
+|FPRC;

@@ -1,0 +1,365 @@
+|FICHEROS;
+     dsorm001 #1;
+     dsorm015 #15,MANTE;
+     dsprem99 #99;
+
+     agiuser1@ #101;
+
+     grupusuo@;
+     grupusud@;
+     grupviso@;
+     grupvisd@;
+|FIN;
+
+|VARIABLES;
+     aBase     = "";
+     aDef      = "";
+     aFich     = "";
+     aAlfa     = "";
+     aAlfa1    = "";
+     aHora     = "";
+     aBaseMas  = "";
+     aMas      = "";
+     aUsuario  = "";
+     aHasta    = "";
+
+     nReg      = 0;
+     nBufUsr   = 0;
+     nEleUsr   = 0;
+     nRegis    = 0;
+     nForma    = 0;
+     nModo     = 0;
+     nHandle   = -1;
+     nCampo    = 0;
+
+     &eaPass         = "";
+     &eaPassDesEnc   = "";
+     &enChequeoUsu   = 0;
+     &enBotonDsArchi = -1;
+     &enHayDsArchi   = -1;
+|FIN;
+
+|PROCESO Baja15;
+     #15#0 = #1#0;
+     #15#1 = "";
+|FPRC;
+
+|PROCESO Alta15;
+     #15#0 = #1#0;
+     #15#1 = "zzzzzzzzzz";
+|FPRC;
+
+|PROCESO dsorm015B;
+     |BORRA 020#15a;
+     |LIBERA #15;
+|FPRC;
+
+|DEFBUCLE dsorm015B;
+     #15#1;
+     ;
+     #1#0, "          ";
+     #1#0, "zzzzzzzzzz";
+     be;
+     NULL, dsorm015B;
+|FIN;
+
+|PROCESO Tipo2;  |TIPO 2;
+     |SI PARAMETRO = "";   |ACABA;  |FINSI;
+
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+         |CONFI "0000NSe borraran todos los usuarios del grupo. Esta seguro";
+         |SI FSalida ! 0;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+
+         |BUCLE dsorm015B;
+     |FINSI;
+
+     nForma = +. 1;
+     |SI nForma ! 1;   |ACABA;  |FINSI;
+
+     |ENTLINEAL #1#15, -2, 2, 22, 1, Baja15, Alta15;
+|FPRC;
+
+
+|PROCESO EntradaDsArchi;
+     |LEE 000#15=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     aAlfa = "GRUPO" + (("0000" + #15#0) % -104);
+
+     aAlfa = "|:dsarchi/dsarz010;" + aAlfa;
+     |SUB_EJECUTA aAlfa;
+
+     |PONCONTROL 23, "SI";
+     |PTEC 809;
+|FPRC;
+
+|PROCESO Tipo13;  |TIPO 13;
+     |SI PARAMETRO = "";   |ACABA;  |FINSI;
+
+     |SI enHayDsArchi = -1;
+         enHayDsArchi = 0;
+         |DBASS aAlfa;    |QBF aAlfa;
+         aAlfa = aAlfa + "dsarchi/def/dsarz010.mas";
+         |XABRE "E", aAlfa, nHandle;
+         |SI FSalida ] 0;
+             |CONTROL_SIMPLE 0, "BOTON,Configuracion en Gestion documental", 1150, 1180, EntradaDsArchi;
+             enBotonDsArchi = FSalida;
+             enHayDsArchi   = 1;
+
+             |ESTADO_CONTROL enBotonDsArchi, "DISABLE";
+         |FINSI;
+         |XCIERRA nHandle;
+     |FINSI;
+
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 4; |Y nModo ! 0;
+         |ACABA;
+     |FINSI;
+
+     |LEE 000#1=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |ATRI 0;
+     |PINTA #1#0;
+     |PINTA #1#1;
+
+     |ENTLINEAL #1#15, -2, 7, 22, 1, Baja15, Alta15;
+|FPRC;
+
+|PROCESO CargaUsuarios;
+     |DBASS aBase; |QBF aBase;
+     aDef = aBase + "agitool/def/agiuser1.mas";
+     |CARGA_DEF aDef, agiuser1@;
+     |SI FSalida ! 0;
+         |MENAV "    [agitool/def/agiuser1.mas] inaccesible";
+         |ACABA;
+     |FINSI;
+
+     aFich = aBase + "agitool/fich/";
+     |PATH_DAT #101 aFich;
+
+     |ABRE #1;
+     |ABRE #101;
+
+     aAlfa = aBase + "dev/usr/ds_sys.psw"
+     |LEESECUENCIAL aAlfa, nBufUsr, nEleUsr, 0, 0;
+     |PARA nRegis = 0; |SI nRegis < nEleUsr; |HACIENDO nRegis = nRegis + 1;
+           |DEL_BUF nBufUsr, nRegis, aAlfa;
+
+           |DDEFECTO #15;
+
+           aAlfa1 = aAlfa % 103;   #15#4  = aAlfa1;
+
+           #101#0 = #15#4;
+           |LEE 000#101=;
+           |SI FSalida = 0;
+               #15#0 = #101#2;
+           |FINSI;
+
+           aAlfa1 = aAlfa % 410;   #15#1 = aAlfa1;
+           |LEE 000#15=;
+           |SI FSalida ! 0;
+               aAlfa1 = aAlfa % 103;   #15#4  = aAlfa1;
+
+               #101#0 = #15#4;
+               |LEE 000#101=;
+               |SI FSalida = 0;
+                   #15#0 = #101#2;
+               |FINSI;
+
+               aAlfa1 = aAlfa % 410;   #15#1  = aAlfa1;
+               aAlfa1 = aAlfa % 1420;  eaPass = aAlfa1;  |HAZ Desencripta;
+                                       #15#3  = eaPassDesEnc;
+                                       #15#7  = "S";
+                                       #15#8  = "S";
+
+               |GRABA 020#15n;
+               |LIBERA #15;
+
+               |HORA aHora;
+
+               |ABRE #99;
+               |SELECT #1#99;
+
+               nReg = 1;
+               |LEE 000#99u;
+               |SI FSalida = 0;
+                   nReg = #99#0 + 1;
+               |FINSI;
+
+               #99#0  = nReg;
+               |GRABA 020#99b;
+
+               #99#1  = #15#1;
+               #99#2  = ~;
+               #99#3  = aHora;
+               #99#4  = "A";
+               #99#5  = "ALTA DEL USUARIO DESDE EL DS_SYS";
+               #99#6  = "";
+               #99#7  = 0;
+               #99#8  = 0;
+               #99#9  = "";
+               #99#10 = "";
+               #99#11 = "";
+               #99#12 = "";
+               #99#13 = "";
+               #99#14 = "";
+               #99#15 = "";
+               #99#16 = "";
+               #99#17 = #15#5;
+               #99#18 = #15#0;
+               #99#19 = #15#4;
+               #99#20 = Usuario % 810;
+               |GRABA 020#99a;
+               |LIBERA #99;
+               |CIERRA #99;
+           |FINSI;
+
+           #1#0 = #15#0;
+           |LEE 101#1=;
+           |SI FSalida ! 0;
+               |DDEFECTO #1;
+               #1#0 = #15#0;
+               |SI #1#0 = 0;
+                   #1#1 = "SIN GRUPO ASIGNADO";
+               |SINO;
+                   #1#1 = "GRUPO " + (("0000" + #1#0) % -104);
+               |FINSI;
+               |GRABA 020#1n;
+           |FINSI;
+           |LIBERA #1;
+     |SIGUE;
+
+     |CIERRA #101;
+     |CIERRA #1;
+     |FINDIM nBufUsr;
+|FPRC;
+
+|PROCESO Tipo80;  |TIPO 80;
+     |SI PARAMETRO ! "";
+         |ABRET #15;
+
+         |LEE 000#15p;
+         |SI FSalida ! 0;
+             |HAZ CargaUsuarios;
+         |FINSI;
+
+         enChequeoUsu = 0;
+         |HAZ RevisaUsuarios;
+     |FINSI;
+|FPRC;
+
+|PROCESO dsarm043;
+     #grupvisd@#0 = #15#1;
+     #grupvisd@#1 = #grupviso@#1;
+     |LEE 000#grupvisd@.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #grupvisd@;
+         #grupvisd@#0 = #15#1;
+         #grupvisd@#1 = #grupviso@#1;
+         |GRABA 020#grupvisd@.b;
+     |FINSI;
+
+     #grupvisd@#2# = #grupviso@#2#;
+     #grupvisd@#3# = #grupviso@#3#;
+     |GRABA 020#grupvisd@.a;
+     |LIBERA #grupvisd@;
+|FPRC;
+
+|DEFBUCLE dsarm043;
+     #grupviso@#1002;
+     ;
+     aUsuario, "";
+     aUsuario, aHasta;
+     ;
+     NULL, dsarm043;
+|FIN;
+
+|PROCESO dsorm015Archi;
+     aAlfa = "GRUPO" + (("0000" + #15#0) % -104);
+
+     aUsuario = #grupusuo@#0;
+     aHasta   = "z" * 60;
+
+     #grupusuo@#0 = aAlfa;
+     |LEE 000#grupusuo@.=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     #grupusud@#0 = #15#1;
+     |LEE 000#grupusud@.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #grupusud@;
+         #grupusud@#0 = #15#1;
+         |GRABA 020#grupusud@.b;
+     |FINSI;
+
+     |PARA nCampo = 1;  |SI nCampo [ 52;  |HACIENDO nCampo = nCampo + 1;
+           #grupusud@#nCampo# = #grupusuo@#nCampo#;
+     |SIGUE;
+
+     #grupusud@#54# = #grupusuo@#54#;
+     |GRABA 020#grupusud@.a;
+     |LIBERA #grupusud@;
+
+     |BUCLE dsarm043;
+|FPRC;
+
+|DEFBUCLE dsorm015Archi;
+     #15#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, dsorm015Archi;
+|FIN;
+
+|PROCESO GrabaDsArchi;
+     |DBASS aBaseMas;    |QBF aBaseMas;
+     aMas = aBaseMas + "dsarchi/def/dsarz010.mas";
+     |CARGA_DEF aMas, grupusuo@;
+     |CARGA_DEF aMas, grupusud@;
+
+     aMas = aBaseMas + "dsarchi/def/dsarm043.mas";
+     |CARGA_DEF aMas, grupviso@;
+     |CARGA_DEF aMas, grupvisd@;
+
+     aFich = aBaseMas + "dsarchi/fich/";
+
+     aAlfa = "grupousu";  |NOME_DAT #grupusuo@#aAlfa#;
+     aAlfa = "grupovis";  |NOME_DAT #grupviso@#aAlfa#;
+
+     |PATH_DAT #grupusuo@#aFich#;
+     |PATH_DAT #grupusud@#aFich#;
+     |PATH_DAT #grupviso@#aFich#;
+     |PATH_DAT #grupvisd@#aFich#;
+
+     |ABRE #grupusuo@;
+     |ABRE #grupusud@;
+     |ABRE #grupvisd@;
+
+     |BUCLE dsorm015Archi;
+
+     |CIERRA #grupusuo@;
+     |CIERRA #grupusud@;
+     |CIERRA #grupvisd@;
+
+     |DESCARGA_DEF #grupvisd@;
+     |DESCARGA_DEF #grupviso@;
+     |DESCARGA_DEF #grupusud@;
+     |DESCARGA_DEF #grupusuo@;
+|FPRC;
+
+|PROCESO Tipo90;  |TIPO 90;
+     |SI PARAMETRO ! "";
+         |CIERRAT #15;
+     |FINSI;
+
+     |SI enHayDsArchi = 1;
+         |HAZ GrabaDsArchi;
+         |FIN_CONTROL_WINDOWS enBotonDsArchi;
+     |FINSI;
+|FPRC;

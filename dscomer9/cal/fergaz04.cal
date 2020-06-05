@@ -1,0 +1,539 @@
+|FICHEROS;
+     fergam09 #9;        ||Mant. Impresora p IP
+
+     referen@;
+     otroref@;
+
+     fergaw01 #100;        ||Aux. Art/Alm/Partida
+|FIN;
+
+|VARIABLES;
+     &eaDefERP = "";
+     &eaSerieDocERP = "";
+     &eaNumDocERP = "";
+
+     nSwHayDsPrintIni = 0;
+     aNomFichero = "";
+
+     aTempo100 = "";
+     &Tempo = "";
+     &eaUnidad = "";
+     aAbre = "";
+     aAux = "";
+     aExtension = "";
+     aAlfa1 = "";
+     aFicFin = "";
+     nFactura = 0;
+
+     aSerieAlbaran = "";
+     nNumeroAlbaran = 0;
+     aDef = "";
+     nSwHayDoc = 0;
+     aImpresora = "";
+     aIPRemoto = "";
+
+     {1}aContiene     = "";
+     aBase = "";
+     nError = 0;
+     aOrigen = "";
+     nHandle = 0;
+     aDestino = "";
+     aDocDestino = "";
+     aDocOrigen = "";
+     aAlfa = "";
+     aEjecuta = "";
+     aLinea = "";
+
+     nSwEstaDocErp = 0;
+     aBass = "";
+     aErp = "";
+     aPathErp = "";
+     aCien = " ";
+     nEmpErp = 0;
+     aAplicaErp = "";
+     aDefErp = "";
+     aClaveErp = "";
+     aMensaje = "";
+|FIN;
+
+|PROCESO DocErp;
+     nSwHayDoc = 1;
+     nSwEstaDocErp = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE DocErp;
+ #otroref@#1005;
+ ;
+ aAplicaErp, nEmpErp, aDefErp, aClaveErp, 01;
+ aAplicaErp, nEmpErp, aDefErp, aClaveErp, 99;
+ ;
+ NULL, DocErp;
+|FIN;
+
+|PROCESO fergaw01_mira;
+     aCien = " " * 100;
+     nEmpErp = #48#0;
+     aAplicaErp = "dscomer9";
+     aDefErp = "dsm00024";
+     aClaveErp = #fergaw01#0 + (("00000" + #fergaw01#1) % -105) + #fergaw01#2;
+     |QBF aClaveErp;
+     aClaveErp = (aClaveErp + aCien) % 199;
+     aClaveErp = aClaveErp + " ";
+
+     nSwHayDoc = 0;
+     |BUCLE DocErp;
+
+     |SI nSwHayDoc = 1;
+          #fergaw01#3 = "S";
+          |GRABA 020#fergaw01.a;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE fergaw01_mira;
+ #fergaw01#1;
+ ;
+ INICIO;
+ FINAL;
+ be;
+ NULL, fergaw01_mira;
+|FIN;
+
+|PROCESO MiraSiEstaDocErp;
+     aErp = aBass + "dserp/def/dserpm09.mas";
+     |XABRE "E", aErp, 0;
+     |SI FSalida ] 0;
+          |CARGA_DEF aErp, otroref@;
+          |SI FSalida = 0;
+               aPathErp = aBass + "dserp/fich/";
+               |PATH_DAT #otroref@#aPathErp#;
+
+               |CIERRA #fergaw01
+               |BUCLE fergaw01_mira;
+
+               |DESCARGA_DEF #otroref@;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO RecorreAlbaran;
+     |DDEFECTO #fergaw01;
+     #fergaw01#0 = #otroref@#2;
+     #fergaw01#1 = #otroref@#3;
+     #fergaw01#2 = #otroref@#49;
+     |LEE 101#fergaw01.=;
+     |SI FSalida ! 0;
+          |GRABA 020#fergaw01.n;
+     |FINSI;
+     |LIBERA #fergaw01;
+|FPRC;
+
+|DEFBUCLE RecorreAlbaran;
+ #otroref@#1003;
+ ;
+ aSerieAlbaran, nNumeroAlbaran,    1;
+ aSerieAlbaran, nNumeroAlbaran,  999;
+ ;
+ NULL, RecorreAlbaran;
+|FIN;
+
+|PROCESO TraeteDSBrowserPrint;
+     |DBASE aBase;
+     |QBF aBase;
+
+     nError = 0;
+
+     aOrigen = aBase + "plugins/dsbrowserprint.exe";
+     |XABRE "E", aOrigen, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSCOMER9\";
+     |RMKDIR aDestino;
+
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsbrowserprint.exe";
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocDestino = FSalida;  |QBF aDocDestino;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocOrigen = FSalida;  |QBF aDocOrigen;
+
+     |SI aDocDestino ! aDocOrigen;  |O aDocDestino = "";
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     aAlfa = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsbrowserprint.exe";
+     |XABRE "EC", aAlfa, nHandle;
+     |SI FSalida < 0;
+         |MENAV "0000 No puedo instalar el Selector de Impresoras (dsbrowserprint.exe)";
+         nError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO PideImpresora;
+     |HAZ TraeteDSBrowserPrint;
+
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSCOMER9\impresora.sel";
+
+     aEjecuta = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsbrowserprint.exe";
+     aEjecuta = aEjecuta + " " + eaUnidad + ":\DOCUMENTOS\DSCOMER9\impresora.sel";
+     |RSYSTEM aEjecuta;
+
+     aImpresora = "";
+     aAlfa = eaUnidad + ":\DOCUMENTOS\DSCOMER9\impresora.sel";
+     |XABRE "CU", aAlfa, nHandle;
+     |SI FSalida < 0;
+          aImpresora = "";
+     |SINO;
+          |XLEE nHandle, 250, aLinea;
+          |SI FSalida ] 0;
+               aImpresora = aLinea;
+          |SINO;
+               aImpresora = "";
+          |FINSI;
+     |FINSI;
+     |XCIERRA nHandle;
+     |QBF aImpresora;
+|FPRC;
+
+|PROCESO TraeteDSPrint;
+     |DBASE aBase;
+     |QBF aBase;
+
+     nError = 0;
+
+     aOrigen = aBase + "plugins/dsprint.exe";
+     |XABRE "E", aOrigen, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     aDestino = eaUnidad + ":\DOCUMENTOS\";
+     |RMKDIR aDestino;
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSCOMER9\";
+     |RMKDIR aDestino;
+
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsprint.exe";
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocDestino = FSalida;  |QBF aDocDestino;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocOrigen = FSalida;  |QBF aDocOrigen;
+
+     |SI aDocDestino ! aDocOrigen;  |O aDocDestino = "";
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     aAlfa = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsprint.exe";
+     |XABRE "EC", aAlfa, nHandle;
+     |SI FSalida < 0;
+         |MENAV "0000 No puedo instalar el dsprint.exe";
+         nError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeUnidadBasico;
+     aContiene = "";
+     |ESPECIFICA "RBASS", aContiene;
+     eaUnidad = (aContiene1 % 102) > "";
+
+     aAlfa = eaUnidad % -101;
+     |SI aAlfa ! ":";
+          eaUnidad = "";
+     |SINO;
+          eaUnidad = eaUnidad % 101;
+     |FINSI;
+|FPRC;
+
+|PROCESO ImprimeFichero;
+     ||Me traigo el documento
+     aOrigen = aBass + "dserp/documentos/";
+     |QBF aOrigen;
+     aOrigen = aOrigen + aNomFichero;
+     |QBF aOrigen;
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSCOMER9\" + aNomFichero;
+     |QBF aDestino;
+
+     |SI aIPRemoto ! "";
+         |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+         |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+
+     |SI nSwHayDsPrintIni = 1; |O aImpresora = "";
+          aEjecuta = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsprint.exe";
+          aEjecuta = aEjecuta + " " + aDestino;
+     |SINO;
+          ||Ejecuto el dsprint.exe, pasandole la impresora
+          aEjecuta = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsprint.exe";
+          aEjecuta = aEjecuta + " " + aDestino + " ";
+          aEjecuta = aEjecuta + &34 + aImpresora + &34;
+     |FINSI;
+     |RSYSTEM aEjecuta;
+
+     aExtension = (aDestino % -104) > "";
+     aAlfa1 = aExtension % 101;
+     |SI aAlfa1 ! ".";
+         aExtension = (aDestino % -105) > "";
+     |FINSI;
+     ||Control del "Fin.txt"
+     |SI aExtension ! ".DOC";      ||Cuando dsprinto documentos Word, no me crea el "fin.txt"
+
+          aFicFin = eaUnidad + ":\ds\dspdf\documentos\fin.txt";
+          |PARA;  |SI;  |HACIENDO;
+               |XABRE "EC", aFicFin, nHandle;
+               |SI FSalida ] 0;
+                    |SAL;
+               |FINSI;
+               |SLEEP 1;
+               |PULSATECLA;
+          |SIGUE;
+     |SINO;
+          |SLEEP 1;
+          |SLEEP 1;
+          |SLEEP 1;
+     |FINSI;
+     |RFBORRA aFicFin;
+
+     |SLEEP 1;
+|FPRC;
+
+|PROCESO documentosERP;
+     aNomFichero = #otroref@#3;
+     |QBF aNomFichero;
+
+     |HAZ ImprimeFichero;
+|FPRC;
+
+|DEFBUCLE documentosERP;
+ #otroref@#1005;
+ ;
+ aAplicaErp, nEmpErp, aDefErp, aClaveErp, 01;
+ aAplicaErp, nEmpErp, aDefErp, aClaveErp, 99;
+ ;
+ NULL, documentosERP;
+|FIN;
+
+|PROCESO fergaw01_imp;
+     |SI #fergaw01#3 = "S";
+          aCien = " " * 100;
+          nEmpErp = #48#0;
+          aAplicaErp = "dscomer9";
+          aDefErp = "dsm00024";
+          aClaveErp = #fergaw01#0 + (("00000" + #fergaw01#1) % -105) + #fergaw01#2;
+          |QBF aClaveErp;
+          aClaveErp = (aClaveErp + aCien) % 199;
+          aClaveErp = aClaveErp + " ";
+          |BUCLE documentosERP;
+          ||Haz Impresion usando dsprint.
+     |FINSI;
+|FPRC;
+
+
+|DEFBUCLE fergaw01_imp;
+ #fergaw01#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, fergaw01_imp;
+|FIN;
+
+|PROCESO CierraTemporal;
+     |CIERRA #fergaw01;
+     |DELINDEX #100; Tempo = aTempo100; |HAZ BoraTempo;
+|FPRC;
+
+|PROCESO RecorreFacturas;
+     aSerieAlbaran = #referen@#15;
+     nNumeroAlbaran = #referen@#2;
+     |BUCLE RecorreAlbaran;
+|FPRC;
+
+|DEFBUCLE RecorreFacturas;
+ #referen@#1003;
+ ;
+ eaSerieDocERP, nFactura,   1;
+ eaSerieDocERP, nFactura, 999;
+ ;
+ NULL, RecorreFacturas;
+|FIN;
+
+|PROGRAMA;
+     ||Ahora la impresion de los documentos se realiza desde el fergaz09.
+     |ACABA;
+
+     |HAZ LeeUnidadBasico;
+
+     |DBASS aBass;
+     |QBF aBass;
+
+|| Relleno un temporal de Articulos/Almacen/Partida (Para no repetir busquedas,
+|| y a la hora de imprimir, no repetir documentos)
+
+     |HAZ CreaTempo; aTempo100 = Tempo;
+     |NOME_DAT #100 aTempo100; |DELINDEX #100;
+
+     |ABRE #fergaw01;
+
+     |SI eaDefERP = "agifa010";          ||Albaranes
+          aDef = aBass + "dscomer9/def/agifa071.mas";
+          |XABRE "E", aDef, 0;
+          |SI FSalida ] 0;
+               |CARGA_DEF aDef, otroref@;
+               |SI FSalida = 0;
+                    aSerieAlbaran = eaSerieDocERP;
+                    nNumeroAlbaran = eaNumDocERP;
+                    |BUCLE RecorreAlbaran;
+                    |DESCARGA_DEF #otroref@;
+               |FINSI;
+          |SINO;
+               |HAZ CierraTemporal;
+               |ACABA;
+          |FINSI;
+     |SINO;
+          |SI eaDefERP = "agifa134";         ||Facturas
+               aDef = aBass + "dscomer9/def/agifa059.mas";
+               |XABRE "E", aDef, 0;
+               |SI FSalida ] 0;
+                    |CARGA_DEF aDef, referen@;
+                    |SI FSalida = 0;
+                         aDef = aBass + "dscomer9/def/agifa071.mas";
+                         |CARGA_DEF aDef, otroref@;
+                         |SI FSalida ! 0;
+                              |DESCARGA_DEF #referen@;
+                              |HAZ CierraTemporal;
+                              |ACABA;
+                         |SINO;
+                              nFactura = eaNumDocERP;
+                              |BUCLE RecorreFacturas;
+                              |DESCARGA_DEF #referen@;
+                              |DESCARGA_DEF #otroref@;
+                         |FINSI;
+                    |FINSI;
+               |SINO;
+                    |HAZ CierraTemporal;
+                    |ACABA;
+               |FINSI;
+          |SINO;
+               |HAZ CierraTemporal;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+|| Miro si el albaran o la factura tiene documentos en el DSERP.
+
+|| Si tiene, preguntamos si queremos imprimir esos documentos
+
+     nSwEstaDocErp = 0;
+     |HAZ MiraSiEstaDocErp;
+     |SI nSwEstaDocErp = 1;
+          aMensaje = "0000SDesea imprimir documentaci¢n partidas?";
+          |CONFI aMensaje;
+          |SI FSalida = 0;
+
+               |HAZ TraeteDSPrint;
+
+               ||Traerme el dsprint.exe
+               ||Creo por si no existe el directorio \ds\dspdf\documentos\
+
+               aAux = eaUnidad + ":\ds\";
+               |RMKDIR aAux;
+               aAux = eaUnidad + ":\ds\dspdf\";
+               |RMKDIR aAux;
+               aAux = eaUnidad + ":\ds\dspdf\documentos\";
+               |RMKDIR aAux;
+
+               |ABRE #fergam09;
+
+               aIPRemoto = "";
+               |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+               aImpresora = "";
+               #fergam09#0 = aIPRemoto;
+               |LEE 000#fergam09.=;
+               |SI FSalida = 0;
+                    aImpresora = #fergam09#1;
+                    |QBF aImpresora;
+               |FINSI;
+
+               |SI aImpresora = "";
+                    |HAZ PideImpresora;
+                    |SI aImpresora ! "";
+                         |DDEFECTO #fergam09;
+                         #fergam09#0 = aIPRemoto;
+                         |LEE 101#fergam09.=;
+                         |SI FSalida ! 0; |GRABA 020#fergam09.b; |FINSI;
+                         #fergam09#1 = aImpresora;
+                         |GRABA 020#fergam09.a;
+                         |LIBERA #fergam09;
+                    |FINSI;
+               |FINSI;
+
+               aAbre = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsprint.ini";
+               |RFBORRA aAbre;
+               nSwHayDsPrintIni = 0;
+               ||CARGA_DEF del dserpm09
+               aAux = aImpresora;
+               |QBT aAux;
+               |SI aAux = ""; |O aAux = aImpresora;
+                    ||El nombre de la impresora NO tiene espacios en blanco.
+                    nSwHayDsPrintIni = 0;
+               |SINO;
+                    ||SI la impresora tiene espacio en blanco creo el dsprint.ini
+                    ||Creo el dsprint.ini
+                    aAbre = eaUnidad + ":\DOCUMENTOS\DSCOMER9\dsprint.ini";
+                    |XABRE "WC", aAbre, nHandle;
+                    |SI FSalida < 0;
+                         nSwHayDsPrintIni = 0;
+                    |SINO;
+                         nSwHayDsPrintIni = 1;
+                         |XGRABA nHandle, aImpresora;
+                         |XCIERRA nHandle;
+                    |FINSI;
+               |FINSI;
+
+               aErp = aBass + "dserp/def/dserpm09.mas";
+               |XABRE "E", aErp, 0;
+               |SI FSalida ] 0;
+                    |CARGA_DEF aErp, otroref@;
+                    |SI FSalida = 0;
+                         aPathErp = aBass + "dserp/fich/";
+                         |PATH_DAT #otroref@#aPathErp#;
+
+                         |BUCLE fergaw01_imp;
+
+                         |DESCARGA_DEF #otroref@;
+                    |FINSI;
+               |FINSI;
+
+               |CIERRA #fergam09;
+          |FINSI;
+     |FINSI;
+
+|| Si no tenemos impresora (fergam09), con dsbrowserprint, la seleccionamos
+
+|| Nos guardamos por ip la impresora
+
+|| Imprimimos los documentos.
+
+     |HAZ CierraTemporal;
+|FPRO;

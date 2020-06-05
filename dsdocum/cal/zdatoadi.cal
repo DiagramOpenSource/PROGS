@@ -1,0 +1,168 @@
+|FICHEROS;
+     dsam0119 #119;
+     dsam0120 #120;
+     dsam0121 #121;
+     dsam0122 #122;
+|FIN;
+
+|VARIABLES;
+     aIPRemoto         = "";
+     aMenav            = "";
+     aOrigen           = "";
+     aDestino          = "";
+     aAlfa             = "";
+     aAbre             = "";
+     aEjecuta          = "";
+
+     nWord             = 0;
+
+     &enFSalida        = 0;
+     &enCodUbica       = 0;
+     &enTipoDocumento  = 0;
+     &eaRutaDocumento  = "";
+     &eaNombrePrograma = "";
+     &eaNombreRuta     = "";
+     &eaRutaPlanilla   = "";
+     &eaExtension      = "";
+     &eaFicheroEdita   = "";
+|FIN;
+
+|PROCESO LeeUbicaciones;
+     enFSalida = 0;
+
+     |IP_REMOTO aIPRemoto;   |QBT aIPRemoto;
+     aIPRemoto = (aIPRemoto + (" " * 20)) % 120;
+     |SI aIPRemoto = "";  aIPRemoto = "LOCAL";  |FINSI;
+
+     |ABRE #121;
+     #121#0 = enCodUbica;
+     |LEE 040#121=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         |MENAV "      No existe Ubicacion ";
+         |CIERRA #121;
+         |ACABA;
+     |FINSI;
+     |CIERRA #121;
+
+     |ABRE #122;
+     #122#0 = enCodUbica;
+     #122#1 = aIPRemoto;
+     |LEE 040#122=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         aMenav =  "      No existe Ubicacion en la Maquina : " + aIPRemoto;
+         |MENAV aMenav;
+         |CIERRA #122;
+         |ACABA;
+     |FINSI;
+     |CIERRA #122;
+
+     eaRutaDocumento = #122#3;  |QBF eaRutaDocumento;
+     |SI eaRutaDocumento = "";
+         aMenav = "      No esta configurada la Ruta en la Maquina " + aIPRemoto;
+         |MENAV aMenav;
+         enFSalida = 1;
+         |ACABA;
+     |FINSI;
+
+     |ABRE #119;
+     #119#0 = #121#2;
+     |LEE 040#119=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         |MENAV "      No existe Registro del Programa Externo ";
+         |CIERRA #119;
+         |ACABA;
+     |FINSI;
+     |CIERRA #119;
+
+     |ABRE #120;
+     #120#0 = #119#0;
+     #120#1 = aIPRemoto;
+     |LEE 040#120=;
+     enFSalida = FSalida;
+     |SI FSalida ! 0;
+         aMenav =  "      No existe Programa Externo en la Maquina : " + aIPRemoto;
+         |MENAV aMenav;
+         |CIERRA #120;
+         |ACABA;
+     |FINSI;
+     |CIERRA #120;
+
+     eaNombrePrograma = #120#3;  |QBF eaNombrePrograma;
+     |SI eaNombrePrograma = "";
+         aMenav = "      No esta configurado el Nombre Programa en la Maquina " + aIPRemoto;
+         |MENAV aMenav;
+         enFSalida = 1;
+         |ACABA;
+     |FINSI;
+
+     eaRutaPlanilla  = #120#4;  |QBF eaRutaPlanilla;
+     enTipoDocumento = #119#2;
+     eaExtension     = #119#3;
+     eaNombreRuta    = #121#1;
+|FPRC;
+
+|PROCESO TraeWait;
+     |DBASE aAlfa;   |QBF aAlfa;
+     aAlfa = aAlfa + "Plantillas/";
+     aOrigen  = aAlfa + "wait.exe";
+     aDestino = "C:/MODELOS/DOCUMENTOS/WAIT.EXE";
+
+     |IP_REMOTO aIPRemoto;   |QBT aIPRemoto;
+     aIPRemoto = (aIPRemoto + (" " * 20)) % 120;
+     |SI aIPRemoto ! "                    ";
+         |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+         |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+|FPRC;
+
+|PROCESO AbreDocumento;
+
+     aAlfa = "C:/MODELOS";                   |RMKDIR aAlfa;
+     aAlfa = "C:/MODELOS/DOCUMENTOS";        |RMKDIR aAlfa;
+
+     |HAZ TraeWait;
+
+     aOrigen  = eaRutaDocumento + "/" + eaFicheroEdita;  |QBF aOrigen;
+     aDestino = "C:/MODELOS/DOCUMENTOS/" + eaFicheroEdita;            |QBF aDestino;
+
+     |RCOPIA_FICHERO aOrigen, aDestino;
+     |SI FSalida ! 0;
+         |MENAV "      No se ha podido copiar el Documento al Directorio de Trabajo";
+         |ACABA;
+     |FINSI;
+
+     |SI enTipoDocumento = 1;
+         nWord = 1;
+         aAbre = aDestino;
+
+         |MENSA "      Abriendo el Documento, espere un Momento.";
+
+         |WORD_ABRE nWord, aAbre;
+         |WORD_PROPIEDADES nWord, "Visible", "SI";
+
+         |MENSA "      Documento Abierto.";
+
+         FSalida = "NO";
+         |PARA;  |SI FSalida = "NO";  |HACIENDO;
+                 |PULSATECLA;
+                 |WORD_PROPIEDADES nWord, "Quit", "";
+         |SIGUE;
+
+         |MENSA "      Cerrando en Documento espere un Momento";
+     |SINO;
+         aEjecuta = "C:\MODELOS\DOCUMENTOS\WAIT " + eaNombrePrograma + " " + aDestino;
+         |RSYSTEM aEjecuta;
+     |FINSI;
+
+     |RCOPIA_FICHERO aDestino, aOrigen;
+     |SI FSalida ! 0;
+         |MENAV "      No se ha podido copiar el Documento al Directorio del Servidor";
+     |SINO;
+         |RFBORRA aDestino;
+         |RFBORRA "C:\MODELOS\DOCUMENTOS\WAIT.EXE";
+     |FINSI;
+|FPRC;

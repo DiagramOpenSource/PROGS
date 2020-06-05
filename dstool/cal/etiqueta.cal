@@ -1,0 +1,1225 @@
+|| PROCESOS COMUNES A ETIQUETAS Y MAILINGS
+
+|| NOTA IMPORTANTE
+|| La etiqueta debe tener un minimo de 2 lineas y un minimo de 20 columnas
+|| No tocar los valores minimos y maximos de estos campos. Venimos obligados
+|| por el |EDITA
+|| Los campos estan repetidos: del 0-9 primer bloque y del 10-19 segundo bloque
+|| El segundo bloque lo utilizo para guardar en el los valores, sobre todo,
+|| de numero de columnas, etiquetas x linea, etc... para poder operar de di-
+|| ferente forma entre la lectura e interpretacion del secuencial y la
+|| interpretacion del edita y grabacion al secuencial.
+
+|| SEGUIR POR:
+|| Conseguir que siempre haya recuadro
+
+|INCLUYE agiutili;
+
+|FICHEROS;
+    etiqueta  #0;  || Etiquetas y Mailings
+    etiquet2  #1;  || Pantallas para compatibilizar etiquetas y mailing
+|FIN;
+
+|VARIABLES;
+    abloque        = "";
+    aconte          = "";
+    acortar        = "";
+    adigito        = "";
+    alinea_buf     = "";
+    alinea_oper    = "";
+    aparam         = "";
+    aresto         = "";
+    atmp2          = "";
+    avacio         = "";
+    aedi_tit       = "";
+    agraba_lin     = "";
+    asistema        = "";
+    avisible        = "";
+
+    ncortar        = 0;
+    nbueno         = 0;
+    nedi_col       = 0;
+    nerror         = 0;
+    ngrabados      = 0;
+    nlong          = 0;
+    ntmp           = 0;
+    nbloque        = 0;
+    nparcial        = 0;
+    nmarg_izq       = 0;
+    nrelleno        = 0;
+
+    x              = 0;
+
+    nnueva          =0;
+
+    nini            = 0;
+    nfin            =0;
+    nini_fil        = 0;
+    nini_col        = 0;
+    nfin_fil        = 0;
+    nfin_col        = 0;
+
+    nbuf_eti       = 0;   || Buffer para el edita
+    nbuf_eti2      = 0;   || Temporal
+    nbuf_eti3      = 0;   || Grabacion y lectura de disco
+    nbuf_eti4      = 0;   || Temporal del buffer edita
+
+    nlin_eti       = 0;   || Lineas para edita
+    nlin_eti2      = 0;   || Lineas para temporal
+    nlin_eti3      = 0;   || Lineas para grabacion y lecturas
+    nlin_eti4      = 0;   || Lineas para temporal buffer edita
+
+    nini_cuadro     = 0;
+    nfin_cuadro     = 0;
+
+    ncampos       = 0;
+    npos_buf      = 0;
+    nnum_reg      = 0;
+    nnum_lin      = 0;
+    nfin_lin      = 0;
+    ncomas        = 0;
+    nformato      = 0;
+    nparrilla     = 0;
+    ndigi_campo   = 0;
+    nizquierda    = 0;
+    nreturn       = 0;
+    nvar          = 0;
+    nlinea        = 0;
+    nlin_pos      = 1;
+    ncol_pos      = 1;
+    efeefe        = "";
+    rtraba        = "";
+    rtrab1        = "";
+    rx            = 0;
+    ry            = 0;
+    rz            = "";
+    rlongi        = 0;
+|FIN;
+
+|| ****************************** PROCESOS COMUNES ***************************
+|PROCESO entra_datos;
+     || Se presentan en pantalla los valores por defecto
+     || y despues de Endatos es correcto envio una orden
+     || para insertar una nueva
+
+     |PINPA #0#etiqueta;
+     |SI aparam = "eti";
+          |PINPA #0#etiquet2;
+     |FINSI;
+
+     |SI nmodo = 1;
+         |PINDA #0#etiqueta;
+         |CAMPO_MODIFICA #etiqueta#0 ,1,"S";
+         |ENDATOS #1#etiqueta;
+     |SINO;
+         |PINDA #0#etiqueta;
+         |CAMPO_MODIFICA #etiqueta#0 ,1,"N";
+         |ENDATOS #2#etiqueta;
+     |FINSI;
+|FPRC;
+
+
+|| Con este proceso centro el edita en pantalla y lo dimensiono en funcion de
+|| las lineas que le haya dicho. La zona util con el |EDITA para que quede bien
+|| debe ser 701 2380
+|PROCESO centra;
+     |SI nlin_eti ] 16;
+          nini_fil = 800;
+          nfin_fil = 2200;
+     |SINO;
+          nini_fil = ((17-nlin_eti+1) /2)!0;   || Resto lines reales
+          nini_fil = (nini_fil *100) + 700;
+
+          nfin_fil =  (nini_fil + ((nlin_eti -1)*100)) -100;    || -1 por el buffer
+     |FINSI;
+
+     |SI nedi_col ] 78;
+         nini_col = 2;
+         nfin_col = 79;
+     |SINO;
+         nini_col = ((80 -nedi_col+1) /2)!0;
+         nfin_col =  nini_col + nedi_col-1;
+     |FINSI;
+
+     nini = nini_fil + nini_col;
+     nfin = nfin_fil + nfin_col;
+
+
+     || Compongo un cuadro que envuelva al |edita
+     nini_cuadro = nini -301;
+     nfin_cuadro = nfin + 101;
+     atmp = nini_cuadro;
+     atmp = atmp + nfin_cuadro;
+     ntmp = atmp;
+
+     |ATRI I;
+     |CUADRO ntmp;
+     |ATRI i;
+|FPRC;
+
+|PROCESO editar;
+      |BLIN 4;
+
+      ||| !!! OJO !!! Deben ser variables. No pueden ser constantes
+      nlin_pos = 1;
+      ncol_pos = 1;
+      |HAZ centra;
+
+      |EDITA nbuf_eti,0,nlin_eti,nini,nfin,0,aedi_tit,nedi_col,nlin_pos,ncol_pos;
+      nlin_eti = nlin_eti -1;
+
+      || Se pasa de edita a secuencial
+      |HAZ edita_secuen;
+|FPRC;
+
+|PROCESO modificas;
+     |SI aparam = "mai";
+            avisible = "N";
+     |SINO;
+            avisible = "S";
+     |FINSI;
+
+     |PARA i = 4; |SI i [ 9;|HACIENDO i = i+1;
+           |CAMPO_VISUAL #etiqueta#i#,1,avisible;
+     |SIGUE;
+|FPRC;
+|| ****************** INTERPRETACION SECUENCIAL -> EDITA *********************
+|| Carga en el buffer para el edita lo que hay en el temporal segun las lineas
+|| que se hayan informado despues de la modificacion
+|PROCESO cambia_buf;
+     |PARA i = 0;|SI i < #etiqueta#16;|HACIENDO i = i+1;
+           |SI i [ nlin_eti;
+               |DEL_BUF nbuf_eti4,i,atmp;
+               |AL_BUF nbuf_eti,i,atmp;
+           |SINO;
+               i = #etiqueta#16;         || Salimos
+           |FINSI;
+     |SIGUE;
+|FPRC;
+
+|| Graba en temporal de edita
+|PROCESO carga_tempo;
+     atmp = agraba_lin;
+     rz = atmp % 0;
+     rlongi = rz;
+     rtrab1 = "";
+     |PARA rx = 1;  |SI rx [ rlongi;  |HACIENDO rx = rx + 1;
+           ry = (rx * 100) + 1;
+           rz = ry;
+           rtraba = atmp % rz;
+           efeefe = &255;
+           |SI rtraba = efeefe;
+               rtrab1 = rtrab1 + ",";
+           |SINO;
+               rtrab1 = rtrab1 + rtraba;
+           |FINSI;
+     |SIGUE;
+     atmp = rtrab1;
+     |AL_BUF nbuf_eti4,ngrabados,atmp;
+     ngrabados = ngrabados +1;
+|FPRC;
+
+|PROCESO digito;
+     ncortar = (x*100) +1;
+     acortar = ncortar;
+     adigito = alinea_buf % acortar;
+|FPRC;
+
+|| Pasa lineas con campos del .inf al edita.
+|| La estructura es:
+|| K000,%-7.7s,0,0,Texto   %s,
+|PROCESO con_campos2;
+
+     || Averiguo longitud de la linea
+     atmp = alinea_buf % "0";
+     nfin_lin = atmp;
+
+
+     || Busco hasta llegar al %
+     adigito = "";
+     |PARA x = 1;|SI adigito ! "%";|Y x [ nfin_lin;|HACIENDO x = x+1;
+           |HAZ digito;
+     |SIGUE;
+
+     || Busco hasta el . para saber el formato de las ######
+     atmp = "";
+
+     adigito = "";
+     |PARA ;|SI adigito ! ".";|Y x [ nfin_lin;|HACIENDO x = x+1;
+           atmp = atmp + adigito;
+           |HAZ digito;
+     |SIGUE;
+
+     nformato = atmp;    || Formato de los #######
+
+
+     || Debo saltar 3 comas
+     ncomas = 0;
+     |PARA ;|SI ncomas < 3;|Y x [ nfin_lin;|HACIENDO x = x+1;
+           |HAZ digito;
+           |SI adigito = ",";
+               ncomas = ncomas +1;
+           |FINSI;
+     |SIGUE;
+
+     || Ahora empiezo a buscar hasta encontrar un "%". Lo que haya antes sera
+     || considerado texto y el resto tambien sera bueno.
+     atmp = "";
+     adigito = "";
+     |PARA ;|SI adigito ! "%";|Y x [ nfin_lin;|HACIENDO x = x+1;
+           atmp = atmp + adigito;      || Texto antes del %s
+           |HAZ digito;
+     |SIGUE;
+
+     x = x+1;            || Me salto el "s"
+
+     || Justificado a la derecha (@)
+     nizquierda = 0;
+     |SI nformato [ 0;
+          nizquierda = 1;
+          nformato = nformato * (-1);
+     |FINSI;
+
+     || A¤ado al texto encontrado la cadena de "#"
+     |PARA nparrilla = 1;|SI nparrilla [ nformato;|HACIENDO nparrilla = nparrilla +1;
+           |SI nizquierda = 1;
+                nizquierda = 0;
+                atmp = atmp + "@";
+           |SINO;
+                atmp = atmp + "#";
+           |FINSI;
+     |SIGUE;
+
+     ncortar = (x*100) + (nfin_lin - x);    || Hasta el final
+     acortar = ncortar;
+
+     atmp2= alinea_buf % acortar;
+     atmp = atmp + atmp2;
+     agraba_lin = agraba_lin + atmp;
+|FPRC;
+
+|PROCESO con_campos;
+     || Por cada linea que exista
+     agraba_lin = "";
+     || De los campos que haya solo grabaremos los buenos ya que pueden
+     || haber repeticiones por bloque en funcion del valor ETIQUETAS X LINEA
+
+     nbueno = ncampos / #etiqueta#14;
+     |PARA j = 1;|SI j [ nbueno;|HACIENDO j = j+1;
+         npos_buf = npos_buf +1;
+         |DEL_BUF nbuf_eti3,npos_buf,alinea_buf;
+         |HAZ con_campos2;
+     |SIGUE;
+
+     |HAZ carga_tempo;
+
+     || Ahora me salto los que no son buenos
+     nbueno = ncampos - nbueno;
+     |PARA j = 1;|SI j [ nbueno;|HACIENDO j = j+1;
+          npos_buf = npos_buf +1;
+     |SIGUE;
+|FPRC;
+
+|PROCESO sin_campos;
+      || Leo la linea que contiene la informacion
+      npos_buf = npos_buf +1;
+      |DEL_BUF nbuf_eti3,npos_buf,alinea_buf;
+
+
+         || Averiguo longitud leida
+          atmp = alinea_buf % "0";
+          nlong = atmp;
+
+          || Inicio del corte, debe saltar "%s," + los espacios que haya
+          || de columna margen izquierdo
+          ntmp = 400 + (#etiqueta#19*100);
+
+          |SI #etiqueta#14 = 1;
+              ntmp = ntmp + (nlong-3);      || Hasta el final
+          |SINO;
+              ntmp = ntmp + #etiqueta#15;  || Solo un bloque de informacion
+          |FINSI;
+
+          acortar = ntmp;
+          agraba_lin = alinea_buf % acortar;
+
+      |HAZ carga_tempo;
+|FPRC;
+
+|PROCESO modi_eti2;
+
+     ngrabados = 0;      || Contador de registros grabados en el temporal
+
+     || Primero necesitamos saber en que linea empiezan las lineas
+     || Para ello debemos saber primero las lineas que hay reservadas a las
+     || VAR
+     |DEL_BUF nbuf_eti3,5,atmp;
+     ntmp = atmp;
+
+     || Linea donde esta el numero de lineas de la etiqueta. En los mailings
+     || es igual a la de la hoja
+     npos_buf = 5 + ntmp + 5;
+     |DEL_BUF nbuf_eti3,npos_buf,atmp;
+     nnum_lin = atmp;                || P.e. 3.1
+     nnum_lin = nnum_lin ! 0;        || Le quito el decimal
+
+     || Con nbueno llego hasta la ultima linea de lineas. Las cinco ultimas
+     || son las del PIE Y SAL. Menos 1, ya que es posicion de buffer y no
+     || numero de linea
+     ||     nbueno = nlin_eti - 5 -1;
+
+
+     || Las lineas de separacion vertical tambien estan pero como en blanco
+     || y no deben aparecer en el edita
+     nnum_lin = nnum_lin - #etiqueta#17;
+
+     || Por cada linea que tiene la etiqueta
+     |PARA i = 1 ;|SI i [ nnum_lin;|HACIENDO i = i+1;
+         || Averiguo el numero de campos que tiene una linea.
+         || Se guarda como 1,1. (1 campo). 0,1 (Solo texto)
+
+         npos_buf = npos_buf +1;
+         |DEL_BUF nbuf_eti3,npos_buf,alinea_buf;
+         ncampos = alinea_buf;
+         ncampos = ncampos ! 0;    || Se redondea P.e. 3.1 -> 3
+
+         |SI ncampos = 0;
+               || *** Sin campos
+               |HAZ sin_campos;
+         |SINO;
+               || *** Con campos
+               |HAZ con_campos;
+         |FINSI;
+
+         npos_buf = npos_buf +2;   || Salto la linea de operaciones  y condiciones
+
+     |SIGUE;
+|FPRC;
+
+|PROCESO modi_eti;
+     anom_fich=amodi_nom;
+     |HAZ compon_fich;
+     |LEESECUENCIAL afich_imp,nbuf_eti3,nlin_eti3,0,0;
+
+     |SI nbuf_eti3 ] 0;
+          |DEL_BUF nbuf_eti3,0,aconte;
+
+          |DDEFECTO #etiqueta;
+          #etiqueta#0 = amodi_nom;      || Nombre         (agiutili)
+          #etiqueta#1 = amodi_tit;      || Titulo en menu (Agiutili)
+
+          |SI aparam = "mai";
+               atmp = aconte % "1603";  || Total columnas hoja
+               #etiqueta#2 = atmp;
+               atmp = aconte % "1903";  || Total lineas hoja
+               #etiqueta#3 = atmp;
+               #etiqueta#4 = 1;              || Etiquetas x linea
+               #etiqueta#5 = #etiqueta#2;    || Columnas etiqueta
+               #etiqueta#6 = #etiqueta#3;    || Lineas etiqueta
+               #etiqueta#7 = 0;              || Lineas separacion vertical
+               #etiqueta#8 = 0;              || Columnas separacion horizontal
+               #etiqueta#9 = 0;              || Columnas margen izquierdo
+          |SINO;
+               atmp = aconte % "1103";  || Total columnas hoja
+               #etiqueta#2 = atmp;
+               atmp = aconte % "1402";  || Total lineas hoja
+               #etiqueta#3 = atmp;
+               atmp = aconte % "0102";  || Etiquetas x linea
+               #etiqueta#4 = atmp;
+               atmp = aconte % "0302";  || Columnas etiqueta
+               #etiqueta#5 = atmp;
+               atmp = aconte % "0502";  || Lineas etiqueta
+               #etiqueta#6 = atmp;
+               atmp = aconte % "0702";  || Lineas separacion vertical
+               #etiqueta#7 = atmp;
+               atmp = aconte % "0902";  || Columnas separacion horizontal
+               #etiqueta#8 = atmp;
+               atmp = aconte % "1602";  || Columnas margen izquierdo
+               #etiqueta#9 = atmp;
+          |FINSI;
+
+          || Descargo los valores en los campos que tengo para guardar
+          || los mismos antes de modificar
+          |PARA i = 10;|SI i [ 19;|HACIENDO i = i+1;
+                 j = i -10;
+                 #etiqueta#i# = #etiqueta#j#;
+          |SIGUE;
+
+          |HAZ entra_datos;
+
+          |ATRI P;
+          |MENSA "0000Interpretando fichero secuencial ...";
+          |ATRI p;
+
+          || Descargo los valores que no son visualizables en mailings
+          |SI aparam = "mai";
+               #etiqueta#5 = #etiqueta#2;    || Columnas etiqueta
+               #etiqueta#6 = #etiqueta#3;    || Lineas etiqueta
+          |FINSI;
+
+          nlin_eti= #etiqueta#6+1;   || Numero de lineas etiqueta despues modificar
+                                     || para el edita (+1)
+          nedi_col = #etiqueta#5;    || Numero de columnas etiqueta
+
+
+
+          |SI FSalida = 0;     || Del calculo entra_datos
+
+               nlin_eti4 = #etiqueta#16;      || Numero lineas antes modificar
+               |DIMENSIONA nlin_eti4,nbuf_eti4,0;
+
+               |SI nbuf_eti4 ] 0;
+                   |HAZ modi_eti2;
+                   |FINDIM nbuf_eti3;     || El nbuf_eti lo limpia edita_sec
+
+                   aedi_tit = #etiqueta#0;
+                   |DIMENSIONA nlin_eti,nbuf_eti,0;
+                   |SI nbuf_eti ] 0;
+                       |HAZ cambia_buf;
+                       |FINDIM nbuf_eti4;
+                       |HAZ editar;           || Edito el buffer leido
+                   |SINO;
+                       amensaje ="0000No se ha podido abrir el buffer";
+                       |MENAV amensaje;
+                   |FINSI;
+               |SINO;
+                   amensaje ="0000No se ha podido abrir el buffer";
+                   |MENAV amensaje;
+               |FINSI;
+           |FINSI;   || Si FSalida ...
+     |SINO;
+          amensaje ="0000No se ha podido abrir el fichero " + afich_imp;
+          |MENAV amensaje;
+     |FINSI;
+|FPRC;
+
+
+|| ****************** INTERPRETACION DE LINEAS EDITA -> SECUENCIAL ***********
+|| Este proceso coge todas las lineas del fichero las descarga en el buffer
+|PROCESO lineas;
+   |PARA nlinea = 0;|SI nlinea < ngrabados;|HACIENDO nlinea = nlinea +1;
+          |DEL_BUF nbuf_eti2,nlinea,atmp;
+          agraba_lin = atmp;
+          |QBF agraba_lin;
+          |HAZ carga_buf;
+   |SIGUE;
+|FPRC;
+
+
+|PROCESO carga_buf;
+    |AL_BUF nbuf_eti3,npos_buf,agraba_lin;
+    npos_buf = npos_buf +1;
+|FPRC;
+
+
+|| Por cada uno de los campos que existen hay que hacer dos lineas
+|| Una con "&B" + numero de bloque (Solo en etiquetas) + "C" + numero de campo
+|| dentro del bloque. P.e.   &B00C00 = 0
+|| Otra con "K"+ numero de bloque 2 digitos(solo en etiquetas) + numero de
+|| campo no se rellena con 2 digitos. P.e. K000 = A
+
+
+|PROCESO variables;
+     || Dejo preparado ya lo de las etiquetas
+     |PARA nbloque = 1; |SI nbloque [ #etiqueta#4;|HACIENDO nbloque = nbloque +1;
+          |PARA i = 1;|SI i [ ncampos;|HACIENDO i = i +1;
+
+              || Primera linea de variable
+               ntmp = nbloque -1;
+               atmp = "00" + ntmp;
+               atmp = atmp % "-102";
+
+               agraba_lin = "&B"+ atmp;
+
+               ntmp = i -1;
+               atmp = "00" + ntmp;
+               atmp = atmp % "-102";
+
+               agraba_lin = agraba_lin + "C" + atmp + "=0";
+               |HAZ carga_buf;
+
+               || Segunda linea de variable
+               ntmp = nbloque -1;
+               atmp = "00" + ntmp;
+               atmp = atmp % "-102";
+
+               agraba_lin = "K"+ atmp;
+               ntmp = i -1;
+               agraba_lin = agraba_lin + ntmp + "=A";
+
+               |HAZ carga_buf;
+          |SIGUE;
+     |SIGUE;
+|FPRC;
+
+|| Primera linea del .inf. Son iguales en mailing y etiqueta excepto que en
+|| en mailing son grupos de 3 digitos y en etiquetas de 2. Excepto en las
+|| columnas hoja
+|PROCESO linea1;
+         |SI aparam = "mai";
+             agraba_lin = "001";     || Etiquetas * linea
+         |SINO;
+             atmp = "00" + #etiqueta#4;
+             atmp = atmp % "-102";
+             agraba_lin = atmp;
+         |FINSI;
+
+         |SI aparam = "mai";
+             atmp = "000" + #etiqueta#2;      || columnas etiqueta
+             atmp = atmp % "-103";
+         |SINO;
+             atmp = "00" + #etiqueta#5;       || columnas etiqueta
+             atmp = atmp % "-102";
+         |FINSI;
+         agraba_lin = agraba_lin + atmp;
+
+         |SI aparam = "mai";
+             atmp = "000" + #etiqueta#3;      || lineas etiqueta
+             atmp = atmp % "-103";
+         |SINO;
+             atmp = "00" + #etiqueta#6;      || lineas etiqueta
+             atmp = atmp % "-102";
+         |FINSI;
+          agraba_lin = agraba_lin + atmp;
+
+
+         || Lineas separacion vertical + separacion horizontal
+         |SI aparam = "mai";
+             agraba_lin = agraba_lin + "000"+"000";
+         |SINO;
+             atmp = "00" + #etiqueta#7;      || lineas sep.vertical
+             atmp = atmp % "-102";
+             agraba_lin = agraba_lin + atmp;
+             atmp = "00" + #etiqueta#8;      || col. sep.horizontal
+             atmp = atmp % "-102";
+             agraba_lin = agraba_lin + atmp;
+         |FINSI;
+
+         || Columnas hoja = etiqueta en los mailings ya que solo hay una
+         atmp = "000" + #etiqueta#2;      || columnas hoja
+         atmp = atmp % "-103";
+         agraba_lin = agraba_lin + atmp;
+
+         || Lineas = etiqueta en los mailings ya que solo hay una
+         |SI aparam = "mai";
+              atmp = "000" + #etiqueta#3;      || Lineas hoja
+              atmp = atmp % "-103";
+              agraba_lin = agraba_lin + atmp;
+         |SINO;
+              atmp = "00" + #etiqueta#3;      || Lineas hoja
+              atmp = atmp % "-102";
+              agraba_lin = agraba_lin + atmp;
+         |FINSI;
+
+         |SI aparam = "mai";
+             agraba_lin = agraba_lin + "000";  || columnas margen izquierdo
+         |SINO;
+             atmp = "00" + #etiqueta#9;
+             atmp = atmp % "-102";
+             agraba_lin = agraba_lin + atmp;
+         |FINSI;
+|FPRC;
+
+|| Ahora ya sabemos como podemos dimensionar el buffer para grabar el secuencial
+|| La estructura es:
+|| 6 lineas fijas + neas * n_campos) + 5 fijas + registros grabados +
+|| + 5 fijas
+|PROCESO carga_sec;
+   nlin_eti3 = 6 +(2*ncampos*#etiqueta#4)+ 5 + (ngrabados-1) +  5;
+   npos_buf = 0;
+   |DIMENSIONA nlin_eti3,nbuf_eti3,0;   || el que se utiliza para grabar el inf
+   |SI FSalida ] 0;
+       |HAZ linea1;              |HAZ carga_buf;
+       agraba_lin = #etiqueta#0; |HAZ carga_buf;  || Nombre
+       agraba_lin = #etiqueta#3; |HAZ carga_buf;  || Lineas hoja
+       agraba_lin = "S";         |HAZ carga_buf;  || Fijo
+       agraba_lin = "VAR";       |HAZ carga_buf;  || Fijo
+
+       ntmp = ncampos * 2 * #etiqueta#4;
+       agraba_lin = ntmp;        |HAZ carga_buf;  || Numero variables
+
+       |HAZ variables;
+
+       agraba_lin = "CAB";       |HAZ carga_buf;  || Fijo
+       agraba_lin = "0,0";       |HAZ carga_buf;  || Fijo
+       agraba_lin = "CUE";       |HAZ carga_buf;  || Fijo
+
+       agraba_lin = #etiqueta#3; |HAZ carga_buf;  || Lineas hoja
+
+       || Lineas etiqueta + separacion vertical. En el caso de mailing es
+       || total lineas.
+       |SI aparam = "mai";
+           || En mailing = a lineas etiqueta
+           agraba_lin = #etiqueta#3+ ",1";   |HAZ carga_buf;  || Lineas hoja
+       |SINO;
+           ntmp = #etiqueta#6 + #etiqueta#7;
+           agraba_lin = ntmp +",1";          |HAZ carga_buf;  || Lineas etiqueta
+       |FINSI;
+
+       |HAZ lineas;
+       agraba_lin = "0";         |HAZ carga_buf;  || Fijo
+       agraba_lin = "PIE";       |HAZ carga_buf;  || Fijo
+       agraba_lin = "0,0";       |HAZ carga_buf;  || Fijo
+       agraba_lin = "SAL";       |HAZ carga_buf;  || Fijo
+       agraba_lin = "0,0";       |HAZ carga_buf;  || Fijo
+
+
+     || Solo compongo el nombre si estoy en alta
+     |SI nmodo = 1;
+       || Ahora ya puedo grabar en el secuencial
+       anom_fich = #etiqueta#0;
+       |HAZ compon_fich;
+     |FINSI;
+
+       |GRABASECUENCIAL afich_imp,nbuf_eti3,0,nlin_eti3;
+
+       |FINDIM nbuf_eti3;
+   |FINSI;
+|FPRC;
+
+|| Graba en el registro que hemos reservado el numero de lineas que tenemos
+|| por cada campo
+|PROCESO graba_reg;
+      atmp = nnum_lin + ",1";
+      |AL_BUF nbuf_eti2,nnum_reg,atmp;
+|FPRC;
+
+|| Este tratamiento lo hacemos no va con instrucciones secuencial ya que no
+|| se a priori cual sera el final y no puedo dimensionar
+|| para mas memoria no creo que de la burra
+
+|PROCESO carga_lin_oper;
+      atmp = alinea_oper;
+      |AL_BUF nbuf_eti2,ngrabados,atmp;
+      ngrabados = ngrabados +1;
+|FPRC;
+
+|PROCESO carga_lin;
+       atmp = agraba_lin;
+       |AL_BUF nbuf_eti2,ngrabados,atmp;
+       ngrabados = ngrabados +1;
+|FPRC;
+
+|| Compone lineas sin campos
+|PROCESO compon_1;
+      || Si es un texto solo, deben poner delante de el tantos espacios como
+      || columnas de separacion horizontal hayan
+
+      agraba_lin = "";
+      atmp = "";
+      |PARA nrelleno = 1;|SI nrelleno [ #etiqueta#9;|HACIENDO nrelleno = nrelleno +1;
+           atmp = atmp + " ";
+      |SIGUE;
+      rz = aconte % 0;
+      rlongi = rz;
+      rtrab1 = "";
+      |PARA rx = 1;  |SI rx [ rlongi;  |HACIENDO rx = rx + 1;
+            ry = (rx * 100) + 1;
+            rz = ry;
+            rtraba = aconte % rz;
+            efeefe = &255;
+            |SI rtraba = ",";
+                rtrab1 = rtrab1 + efeefe;
+            |SINO;
+                rtrab1 = rtrab1 + rtraba;
+            |FINSI;
+      |SIGUE;
+      aconte = rtrab1;
+      agraba_lin =  "%s," + atmp + aconte;
+      |HAZ carga_lin;
+
+      || Linea de operaciones. En etiquetas y mailings vacia
+      agraba_lin = "";
+      |HAZ carga_lin;
+|FPRC;
+
+|| Compone lineas con campos
+|| Cuando hay campos hay 2 lineas: la de la localizacion y la de la operacion
+|| donde se igualan las memorias externas que se crean en el informe con los
+|| valores de los campos
+|PROCESO compon_2;
+    || Ejemplo
+    || K000,%3.3s,0,0,   %s,
+
+
+    |SI aparam = "mai";  || si son mailings no hay bloques de repeticion
+         abloque = "00";
+    |SINO;
+         abloque = "00" + nbloque;
+         abloque = abloque % "-102";
+    |FINSI;
+
+    agraba_lin = "K" + abloque + nvar + ",%";
+    |SI nizquierda = 1;
+         agraba_lin = agraba_lin + "-";
+    |FINSI;
+
+     agraba_lin = agraba_lin + ndigi_campo + "." + ndigi_campo + "s,"
+
+     |SI aparam = "mai";
+        agraba_lin = agraba_lin + "0,0,";
+     |SINO;
+        |SI nmarg_izq = 0;
+            nmarg_izq = 1;
+            agraba_lin = agraba_lin + "0," + #etiqueta#9 + ",";   || Columnas marg.izq
+        |SINO;
+            agraba_lin = agraba_lin + "0,0,";
+        |FINSI;
+     |FINSI;
+     rz = avacio % 0;
+     rlongi = rz;
+     rtrab1 = "";
+     |PARA rx = 1;  |SI rx [ rlongi;  |HACIENDO rx = rx + 1;
+           ry = (rx * 100) + 1;
+           rz = ry;
+           rtraba = avacio % rz;
+           efeefe = &255;
+           |SI rtraba = ",";
+               rtrab1 = rtrab1 + efeefe;
+           |SINO;
+               rtrab1 = rtrab1 + rtraba;
+           |FINSI;
+     |SIGUE;
+     avacio = rtrab1;
+     agraba_lin = agraba_lin + avacio +"%s";
+
+     |SI nreturn = 0;
+          agraba_lin = agraba_lin + aresto;
+     |FINSI;
+
+     || Si es el ultimo campo de la linea y hay COLUMNAS SEPARACION
+     || vertical hay que a¤adirselas. Ademas de lo que queda desde nlong
+     || hasta las columnas etiqueta
+     nfin_lin = #etiqueta#8 +#etiqueta#5 - nlong;
+     |SI j ] nlong;
+          |PARA x = 1;|SI x [ nfin_lin;|HACIENDO x = x+1;
+                agraba_lin = agraba_lin + " ";
+          |SIGUE;
+     |FINSI;
+
+     agraba_lin = agraba_lin +",";
+     |HAZ carga_lin;
+
+     || Linea de operaciones
+     || Ejemplo =  K001=B00C01,
+     alinea_oper = alinea_oper + "K"+abloque + nvar + "=B"+ abloque;
+
+     atmp = "00"+nvar;
+     atmp = atmp % "-102";
+     alinea_oper = alinea_oper + "C" + atmp + ",";
+
+     nnum_lin = nnum_lin +1;
+|FPRC;
+
+|| Debo mirar si queda otro campo o no ya que el tratamiento es diferente
+|| si no queda nada al poner %s se pone una coma inmediatamente, si es el
+|| ultimo se debe rellenar de espacios entre el "%s" y la ","
+|PROCESO queda_otro;
+     ncortar = ((j)*100) + (nlong -j+1);   || Hasta el final
+     acortar = ncortar;
+     aresto = alinea_buf % acortar;
+
+     acortar = aresto - "#";
+     |SI acortar ! aresto;
+          nreturn = 1;
+     |SINO;
+          nreturn = 0;
+     |FINSI;
+|FPRC;
+
+|| Interpreta las lineas con campos
+|PROCESO si_campos;
+
+     alinea_oper = "";   || Este aparte ya que es una sola linea de operaciones
+                         || para todos los bloques
+
+nparcial = ncampos;
+nmarg_izq = 0;    || flag para poner 0,x  (Siendo x margen izq. en la primera
+                  || linea de campos en K001....
+
+|PARA nbloque = 0;|SI nbloque < #etiqueta#4;|HACIENDO nbloque =nbloque +1;
+     ncampos = nparcial;   || Inicializamos contador de campos
+     nvar    = nparcial;
+
+     || Averiguo longitud real de la linea
+     atmp = alinea_buf % "0";
+     nlong = atmp;
+
+     || Inicializaciones por cada linea
+     avacio = "";
+     aresto = "";
+     ndigi_campo = 0;   || Contador de digitos de un campo
+     nizquierda  = 0;
+
+     |PARA j = 1;|SI j [ nlong;|HACIENDO j = j + 1;
+           ncortar = (j*100)+1;
+           acortar = ncortar;
+           adigito = alinea_buf % acortar;
+
+           |SI adigito = "@";|O adigito = "#";   || Es un campo
+                  ndigi_campo = ndigi_campo + 1;
+                  |SI adigito = "@";
+                       nizquierda = 1;     || Justificacion a la izquierda
+                  |FINSI;
+           |SINO;  || Es texto o espacio en blanco
+
+                   |SI ndigi_campo > 0;      || Se ha acabado el campo anterior
+                       ncampos = ncampos +1; || Aumento contador de campos
+                       |HAZ queda_otro;      || Miro si queda otro campo
+                       |SI nreturn = 0;      || Salgo del bucle
+                          j = nlong;
+                       |FINSI;
+                       |HAZ compon_2;
+                       nizquierda = 0;
+                       ndigi_campo = 0;   || Inicializo contador de digitos de campos
+                       avacio = "";
+                           nvar = nvar +1;    || aumento contador de variables despues
+                                              || ya que se empieza por 0
+                   |FINSI;
+                   avacio = avacio + adigito;
+           |FINSI;
+     |SIGUE;
+
+     || Si > 0 es que ha acabado con un campo. Por tanto debe grabarse este
+     |SI ndigi_campo > 0;
+         ncampos = ncampos +1; || Aumento contador de campos
+         |HAZ compon_2;
+         nvar = nvar +1;
+     |FINSI;
+|SIGUE;   || nbloque...
+
+     || Cargo linea de operaciones
+     |HAZ carga_lin_oper;
+|FPRC;
+
+|| Interpreta las lineas sin campos
+|PROCESO no_campos;
+
+     || Averiguo longitud real de la linea
+     atmp = alinea_buf % "0";
+     ntmp = atmp;
+
+     || Esta se inicializa fuera porque es la que arrastra
+     aconte = "";
+
+|PARA nbloque = 1;|SI nbloque [ #etiqueta#4;|HACIENDO nbloque =nbloque +1;
+     avacio = "";
+     aresto = "";
+     nbueno = 0;
+
+     |PARA j = 1;|SI j [ ntmp;|Y nbueno = 0;|HACIENDO j =j +1;
+           ncortar = (j*100)+1;
+           acortar = ncortar;
+           adigito = alinea_buf % acortar;
+               |SI adigito =  " ";
+                   avacio = avacio + adigito;
+               |SINO;
+                   nbueno = 1;  || He encontrado algo bueno
+               |FINSI;
+
+    |SIGUE;
+
+    |SI nbueno = 1;
+        || Si solo hay una etiqueta por linea %s,(seguido del texto) y acabando
+        || donde acaba el texto. Si en cambio ha mas hay que crear bloques de
+        || informacion iguales a las columnas de la etiqueta. Repitiendolos tantas
+        || veces como #etiqueta#4 hayan
+        ncortar = ((j-1)*100) + (ntmp -j+2);   || Hasta el final
+        acortar = ncortar;
+        aresto = alinea_buf % acortar;
+    |FINSI;
+
+     |SI #etiqueta#4 > 1;
+             ||         columnas etiqueta + separacion horizontal - lo que
+             ||         ya hemos cargado.
+             nrelleno = #etiqueta#5 + #etiqueta#8 - (ntmp-j+2);
+             |PARA j =1;|SI j [ nrelleno;|HACIENDO j=j+1;
+                  aresto = aresto + " ";
+             |SIGUE;
+     |FINSI;
+
+     |SI #etiqueta#4 = 1;
+         aconte = avacio + aresto;
+     |SINO;
+         aconte = aconte + avacio + aresto;
+     |FINSI;
+
+|SIGUE;
+
+     |HAZ compon_1;
+|FPRC;
+
+
+|| Interpreta las lineas para saber entre otras cosas como dimensionar el
+|| buffer del grabasecuencial del inf. ya que este es variable en funcion
+|| de lo informado en el edita
+|PROCESO interpre_lin;
+
+    || Por cada linea
+    ngrabados = 0;  || Contador registros grabados
+
+    |PARA i = 0;|SI i < nlin_eti;|HACIENDO i = i + 1;
+          || Grabo antes que las lineas un registro nuevo donde guardare el numero
+          || de lineas que hay por cada campo. Lo necesito para montar el .inf
+          |HAZ carga_lin;
+          nnum_reg = ngrabados-1;   || Me guardo numero de registro para cuando sepa
+                                    || el numero de lineas
+          nnum_lin = 0;             || Contado numero de lineas con campos por linea
+
+          |DEL_BUF nbuf_eti,i,alinea_buf;
+
+          || Averiguamos si hay campos o no
+
+          atmp  = alinea_buf - "@";
+          atmp2 = alinea_buf - "#";
+
+          |SI atmp ! alinea_buf;|O atmp2 ! alinea_buf;
+               |HAZ si_campos;
+          |SINO;
+               |HAZ no_campos;
+          |FINSI;
+
+          || Por ultimo linea de condiciones, que siempre esta en blanco en
+          || etiquetas y mailing.
+          agraba_lin = "";
+          |HAZ carga_lin;
+          |HAZ graba_reg;   || Grabo numero de lineas x campo
+     |SIGUE;
+
+     || Ahora creamos ademas las lineas de separacion vertical que siempre
+     || estan en blanco, es decir, tendran
+     || 0,1
+     || %s,
+     || en blanco
+     || en blanco
+     |PARA i = 1; |SI i [ #etiqueta#7;|HACIENDO i = i+1;
+          agraba_lin = "0,1";      |HAZ carga_lin;
+          agraba_lin = "%s,";      |HAZ carga_lin;
+          agraba_lin = "";         |HAZ carga_lin;
+          agraba_lin = "";         |HAZ carga_lin;
+     |SIGUE;
+|FPRC;
+
+
+|| Control de procesos de lectura de edita hacia secuencial (inf)
+|PROCESO edita_secuen;
+  |ATRI P;
+  |MENSA "0000Grabando fichero secuencial ...";
+  |ATRI p;
+
+  || En realidad no se cual sera el fin, pero con esta cifra debo tener
+  || suficiente.
+  |DIMENSIONA 500,nbuf_eti2,0;
+
+  |SI nbuf_eti2 ] 0;
+
+       ncampos = 0;
+       nvar = 0;       || !!! Mirar de evitarme una de las dos
+
+       |HAZ interpre_lin;
+
+        || Ya no necesito el buffer puesto lo he grabado en el temporal
+        |SI nbuf_eti ] 0;
+           |FINDIM nbuf_eti;
+        |FINSI;
+
+        |HAZ carga_sec;
+
+        |FINDIM nbuf_eti2;
+
+        amodi_nom = #etiqueta#0;
+        amodi_tit = #etiqueta#1;
+        nnueva = 1;
+     |SINO;
+           amensaje = "0000No se ha podido dimensionar el buffer intermedio";
+           |MENAV amensaje;
+     |FINSI;
+
+|FPRC;
+
+|| ****************** INTERPRETACION DE LINEAS SECUENCIAL -> EDITA ***********
+
+|| *********************** ALTA DE ETIQUETAS **********************
+|PROCESO alta_eti;
+     |DDEFECTO #etiqueta;
+     |HAZ entra_datos;
+
+     nerror = 0;
+     |SI FSalida = 0;
+          |SI aparam = "mai";
+              nlin_eti=#etiqueta#3;  || Lineas de la hoja
+          |SINO;
+              nlin_eti=#etiqueta#6;  || Lineas de la etiqueta
+          |FINSI;
+
+          nlin_eti = nlin_eti +1;    || Para poder aprovechar la ultima linea
+          |DIMENSIONA nlin_eti,nbuf_eti,0;
+          |SI FSalida  < 0;
+               amensaje = "0000No se ha podido dimensionar el buffer de etiqueta";
+               |MENAV amensaje;
+               nerror = 1;
+          |SINO;
+             aedi_tit = #etiqueta#0;   || Nombre
+             |SI aparam = "mai";
+                 nedi_col = #etiqueta#2;   || Columnas
+             |SINO;
+                 nedi_col = #etiqueta#5;   || Columnas etiqueta
+             |FINSI;
+
+             |HAZ editar;
+            |FINSI;   || Si FSalida < 0...
+       |SINO;
+            nerror = 1;
+       |FINSI;   || Si FSalida = 0 ...
+
+     || Si se ha producido un error a todos los efectos es como si fuera
+     || una modificacion, en cuanto a los *.d se refiere
+     |SI nerror = 1;
+          nnueva = 0;
+     |FINSI;
+|FPRC;
+
+
+
+
+|| *************************** BUCLE PRINCIPAL *******************************
+|PROGRAMA;
+      |BLIN 4;    || Borro mensajes de lectura en parpadeo
+
+      aparam = PARAMETRO;
+      |QBF aparam;
+
+      |HAZ modificas;
+
+      |SI aparam = "mai";
+           afich = "dev/imp/mailing.d";
+           acabeza= "Definicion de mailings";
+      |SINO;
+           afich = "dev/imp/etiqueta.d";
+           acabeza= "Definicion de etiquetas";
+      |FINSI;
+
+      || Bucle principal
+      nsalir = 0;
+      |PARA;|SI nsalir = 0;|HACIENDO;
+           || Alta
+           |SI nmodo = 1;
+               |HAZ alta_eti;
+               |SI nnueva = 1;
+                   nmenug_modo = 1;
+               |SINO;
+                   nmenug_modo = 0;   || No tocara el *.d
+               |FINSI;
+           |FINSI;
+
+           || Modificacion
+           |SI nmodo = 2;
+               |HAZ modi_eti;
+               nmenug_modo = 2;
+           |FINSI;
+
+           || Baja
+           |SI nmodo = 3;
+               |HAZ baja;
+               |SI nborrar = 1;
+                   nmenug_modo = 3;
+               |SINO;
+                   nmenug_modo = 0;   || Si hemos dicho que NO es Correcto
+                                      || no tocamos el *.d
+               |FINSI;
+           |FINSI;
+
+           |SI nmodo ] 1;
+               |HAZ actualiza_sec;    ||  Agiutil.cal
+           |FINSI;
+
+           |HAZ menus;        || Agiutili.cal
+      |SIGUE;
+|FPRO;
+
+|| ****************** VALIDACIONES **************************************
+|| Con este proceso mantengo igualados los campos que no se ven en mailings
+|PROCESO igualar;
+     |SI aparam = "mai";
+          #etiqueta#5 =#etiqueta#2;   || columnas etiqueta
+          #etiqueta#6 =#etiqueta#3;   || lineas etiqueta
+     |FINSI;
+|FPRC;
+
+|| Comprobamos que el numero de lineas sea un multiplo de las lineas de la
+|| etiqueta + lineas de separacion vertical. Sino deja un hueco al final
+|| de la hoja. De todas formas dejo seguir puesto que puede ser necesario
+|| para etiquetas en papel no continuo
+|PROCESO multiplo;|TIPO 3;
+     ntmp   = #etiqueta#3 / (#etiqueta#6 + #etiqueta#7);
+     ncortar = ntmp !0;
+     |SI ntmp ! ncortar;
+          amensaje = "0000Quedaran unas lineas sobrantes al final de la hoja";
+          |MENAV amensaje;
+          |CONFI "0000SDesea verificarlo ?";
+          |SI FSalida = 0;
+              |HAZ entra_datos;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO altura;
+    ntmp = #etiqueta#6 + #etiqueta#7;
+    |SI ntmp > #etiqueta#3;
+          amensaje = "0000Demasiadas Lineas etiqueta o demasiadas lineas separacion";
+          |MENAV amensaje;
+          |ERROR;
+    |FINSI;
+|FPRC;
+|| Compruebo que todos los campos que determinan la anchura de la hoja no
+|| la excedan
+|PROCESO anchura;
+     ntmp= (#etiqueta#4 * #etiqueta#5) + (#etiqueta#9) + ((#etiqueta#4-1)*#etiqueta#8);
+     |SI ntmp > #etiqueta#2;
+          amensaje = "0000Demasiadas etiquetas o demasiado anchas para la hoja";
+          |MENAV amensaje;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|| No permito que lo deje en blanco, ya que sera el nombre del fichero *.prn
+|| y podria hacer destrozos.Ademas quito todos los blancos.
+|PROCESO no_blanco;
+ |SI nmodo = 1;
+    atmp = #etiqueta#0;
+    |QBT atmp;
+    |SI atmp = "";
+         amensaje= "0000No puede dejarlo en blanco";
+         |MENAV amensaje;
+         |ERROR;
+    |SINO;
+         |HAZ existe_ya;
+    |FINSI;
+ |FINSI;
+|FPRC;
+
+|| Compruebo que no exista ya el informe
+|PROCESO existe_ya;
+      anom_fich = #etiqueta#0;
+      |HAZ compon_fich;
+
+      |LEESECUENCIAL afich_imp,nbuf_eti3,nlin_eti3,0,0;
+      |SI nbuf_eti3 ] 0;
+            |FINDIM nbuf_eti3;
+            |SI aparam = "mai";
+                amensaje = "0000El Mailing ya existe";
+            |SINO;
+                amensaje = "0000La Etiqueta ya existe";
+            |FINSI;
+            |MENAV amensaje;
+            |ERROR;
+      |FINSI;
+|FPRC;
+
+|| No dejo que me salga con Ctrl+c en el nombre en blanco sino al ser un
+|| encampo se iria al siguiente y me desmonta
+|PROCESO no_ctrlc;|TIPO 11;
+     amensaje= "0000No puede dejarlo en blanco";
+     |MENAV amensaje;
+     |ERROR;
+|FPRC;

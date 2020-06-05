@@ -1,0 +1,206 @@
+|FICHEROS;
+     nomirpf1 #0;
+     nomhicca #1;
+     labtraba #2;
+
+     :/contagen/def/camaniva #20;
+     :/contagen/def/caivalin #21;   || lugar donde hay que grabar
+     :/contagen/def/canempre #22;   || empresas contagen
+|FIN;
+
+|VARIABLES;
+     nLinea=0;
+     aTexto="";
+     nMes=0;
+     nBase=0;
+     path_empres="";
+     path_contagen="";
+     aDni="";
+     nEmpresa=0;
+     aEmpresaPeriodo="";
+     cod_empre = 0;
+     cod_perio = 0;
+
+|| variables para llenar de ceros
+     aCadena="";
+     aCadena1="";
+     r_alfa = "";
+     r_long = "";
+     r_num  = 0;
+     r_masc = "000000"; || mascara para tama¤o 6
+     aAlfa1 = "";
+|FIN;
+
+|PROCESO llena_ceros;
+          |QBF aCadena;
+          r_alfa= aCadena;
+          |QBF r_alfa;
+          r_long = aCadena % A0;
+          r_alfa = r_masc + r_alfa;
+||          r_num = -106;    || para tama¤o 6
+          aCadena = r_alfa % r_num;
+|FPRC;
+
+
+|PROCESO PLee_canempre;
+     cod_empre=#22#2;
+     cod_perio=#22#3;
+|FPRC;
+
+|DEFBUCLE BLee_canempre;
+     #22#1;
+     26;
+     nEmpresa, 0, 01;
+     nEmpresa, 9, 01;
+     ;
+     NULL, PLee_canempre;
+|FIN;
+
+
+|PROCESO PonerRutasFicheros;
+     aCadena=cod_empre;
+     aCadena1=cod_perio;
+     aCadena=aCadena+aCadena1;
+
+     r_masc="000000";
+     r_num=-106;
+     |HAZ llena_ceros; || en aCadena esta el resultado
+     aEmpresaPeriodo=aCadena;
+
+     |DBASS path_contagen;
+     path_contagen=path_contagen+"contagen/";
+     path_empres = path_contagen + "fich/" + aEmpresaPeriodo + "/";
+
+     |PATH_DAT #20 path_empres;  || camaniva
+     |PATH_DAT #21 path_empres;  || caivalin
+|FPRC;
+
+|PROCESO LeeDNI;
+     |ABRE #2;
+     #2#0=#1#0;
+     #2#1=#1#1;
+     |LEE 000#2=;
+     |SI FSalida=0;
+          aDni=#2#7;
+          |QBF aDni;
+     |SINO;
+          aCadena="0000Trabajador "+#1#0+"-"+#1#1+" sin DNI";
+          |MENAV aCadena;
+          aDni="";
+     |FINSI;
+     |CIERRA #2;
+|FPRC;
+
+
+|PROCESO CrearCaivalin;
+          |ABRE #21;
+          #21#0=#20#0;
+          #21#1=#20#1;
+          #21#2=999999;
+          |LEE 000#21];   || lee el mayor o igual
+          |SI FSalida=0;
+               |LEE 000#21a;
+          |SINO;
+               |LEE 000#21u;
+          |FINSI;
+
+          |SI FSalida=0; |Y #21#0=#20#0; |Y #21#1=#20#1;
+               nLinea=#21#2+1;
+          |SINO;
+               nLinea=1;
+          |FINSI;
+
+     |DDEFECTO #21;
+     #21#0=#20#0;
+     #21#1=#20#1;
+     #21#2=nLinea;
+     #21#3=402;
+     #21#4=aTexto;
+     #21#20=nBase;
+
+     |GRABA 020#21n;
+     |SI FSalida = 0;
+          aAlfa1 = "Recuperado: " + #1#0 + "." + #1#1 + "." + #1#2 + "." + aTexto + "." + nBase;
+          |IMPRIME aAlfa1;
+     |FINSI;
+
+     |CIERRA #21;
+|FPRC;
+
+|PROCESO PBuscaCamaniva;
+     aCadena=#20#14;
+     |QBF aCadena;
+
+     |SI aCadena=aDni;
+          |SI nMes=1; |Y #20#4="31.01.2001";
+               aTexto="RETENCION IRPF/ENERO";
+               |HAZ CrearCaivalin;
+          |FINSI;
+          |SI nMes=2; |Y #20#4="28.02.2001";
+               aTexto="RETENCION IRPF/FEBRERO";
+               |HAZ CrearCaivalin;
+          |FINSI;
+          |SI nMes=3; |Y #20#4="31.03.2001";
+               aTexto="RETENCION IRPF/MARZO";
+               |HAZ CrearCaivalin;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE BBuscaCamaniva;
+     #20#1;
+     ;
+     03,0000000000;
+     03,9999999999;
+     ;
+     NULL, PBuscaCamaniva;
+|FIN;
+
+|PROCESO Proceso;
+     cod_empre=-1;
+     |BUCLE BLee_canempre;
+     |SI cod_empre!-1;
+          |HAZ LeeDNI;
+          |SI aDni!"";
+               |HAZ PonerRutasFicheros;
+               |BUCLE BBuscaCamaniva;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO PHistorico;
+     nEmpresa=#1#0;
+     nMes=#1#2;
+
+     |SI #1#14!0; |Y #1#15=0;
+          nBase=#1#14;
+          |HAZ Proceso;
+     |FINSI;
+     |SI #1#108!0; |Y #1#110=0;
+          nBase=#1#108;
+          |HAZ Proceso;
+     |FINSI;
+     |SI #1#109!0; |Y #1#111=0;
+          nBase=#1#109;
+          |HAZ Proceso;
+     |FINSI;
+|FPRC;
+
+
+|DEFBUCLE BHistorico;
+     #1#1;
+     ;
+     #0#0,00001,01,0,0; || a¤o 2001 de enero a marzo
+     #0#1,99999,01,3,99;
+     ;
+     NULL, PHistorico;
+|FIN;
+
+
+|PROCESO Tipo3; |TIPO 3;
+          |IMPRE 0;
+          |SI FSalida = 0;
+               |BUCLE BHistorico;
+          |FINSI;
+          |FINIMP;
+|FPRC;

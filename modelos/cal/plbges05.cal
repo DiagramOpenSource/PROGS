@@ -1,0 +1,268 @@
+|| Proceso de Actividad / Subdepartamento
+
+|FICHEROS;
+   :/basica/def/agicen14 #114;
+   :/basica/def/agifigen #1000;
+
+   :/modelos/def/dsmom030  #130;
+   :/modelos/def/dsmom033  #133;
+   :/basica/def/agicen17   #961;
+   :/contagen/def/camansde #962;
+   :/contagen/def/canempre #330;
+|FIN;
+
+|VARIABLES;
+     &enDesModelo   = 0;
+     &eaTipoCultivo = "";
+     &enCultivo     = 0;
+     &enLinInm      = 0;
+     &eaCodDep      = "";
+     nNume1         = 0;
+     nEjer          = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;  || Variables de Contabilidad
+
+|| ************************ Actividades y Reparto
+|RUTINA ActInf;
+   #114#0 = enEmpresa;
+   #114#1 = 01;
+|FRUT;
+
+|RUTINA ActSup;
+   #114#0 = enEmpresa;
+   #114#1 = 99;
+|FRUT;
+
+|PROCESO LActividad;
+   eaNombreAct  = "";
+   eswLect  = 0;
+   efActIni = "01.01.0000";
+   efActFin = "01.01.0000";
+
+   |ABRE #114;
+   |SI eOpDep = 1;
+       |CONSULTA_F_CLAVE #1#114,ActInf,ActSup;
+        enActividad = #114#1;
+   |FINSI;
+   |CIERRA #114;
+
+  || Lee Actividad
+  |ABRE #114;
+  eaEsCom = "N";
+  #114#0 = enEmpresa;
+  #114#1 = enActividad;
+  |LEE 041#114=;
+  |SI FSalida ! 0;
+      eswLect = 1;
+      |CIERRA #114;
+      |ACABA;
+  |FINSI;
+  |CIERRA #114;
+
+  enActividad  = #114#1;
+  eaNombreAct  = #114#4;
+  enTipoIva    = #114#7;
+  enTipoTribut = #114#9;
+  enTipoSector = #114#11;
+  efActIni     = #114#5;
+  efActFin     = #114#6;
+  eaEsCom      = #114#14;
+|FPRC;
+
+|PROCESO LeeMayorAct;
+  enMayorAct = 0;
+  |ABRE #114;
+  #114#0 = enEmpresa;
+  #114#1 = 99;
+  |LEE 041#114];
+  |SI FSalida = 0;
+      |LEE 040#114a;
+  |SINO;
+      |LEE 040#114u;
+  |FINSI;
+  |SI FSalida = 0; |Y #114#0 = enEmpresa;
+      enMayorAct = #114#1;
+  |FINSI;
+  |CIERRA #114;
+|FPRC;
+
+|PROCESO eComprobarCom;
+ aCoBien    = "N";
+ |ABRE #114;
+ #114#0 = enEmpresa;
+ #114#1 = 00;
+ |LEE 041#114];
+ |SI FSalida = 0; |Y #114#0 = enEmpresa;
+     aCoBien = #114#13;  ||Comunidad de Bienes
+ |FINSI;
+ |CIERRA #114;
+|FPRC;
+
+
+|RUTINA inferior1;
+   #agicen17#0 = enEmpresa;
+   #agicen17#1 = enActividad;
+   #agicen17#2 = 001;
+|FRUT;
+
+|RUTINA superior1;
+   #agicen17#0 = enEmpresa;
+   #agicen17#1 = enActividad;
+   #agicen17#2 = 999;
+|FRUT;
+
+|RUTINA inferior11;
+   #camansde#0 = enEmpresa;
+   #camansde#1 = eaCodDep;
+   #camansde#2 = "";
+|FRUT;
+
+|RUTINA superior11;
+   #camansde#0 = enEmpresa;
+   #camansde#1 = eaCodDep;
+   #camansde#2 = "zzz";
+|FRUT;
+
+|PROCESO eSubActividad;
+   eswLect = 0;
+   eaNomSubdep = "";
+   eaNo1Subdep = "";
+
+   |SI enSubde = 1; |HAZ SubOtros; |ACABA; |FINSI;
+
+   |SI enTipoTribut = 6;  |O enTipoTribut = 7;
+    |O enTipoTribut = 11; |O enTipoTribut = 12;
+    |O enTipoTribut = 16; |O enTipoTribut = 17;
+
+       enCultivo = eaCodSubdep;
+       eaTipoCultivo = "A";   ||por ahora todos agricolas
+
+       |SI eOpSub = 1;
+           |SUB_EJECUTA_NP "dsmom033";
+       |FINSI;
+
+       |ABRE #dsmom033;
+       #dsmom033#0 = enCultivo;
+       |LEE 001#dsmom033.=;
+       |SI FSalida ! 0;
+           eswLect = 1;
+       |SINO;
+           eaCodSubdep = ("000" + enCultivo) % -103;
+           eaNomSubdep = #dsmom033#1 % 140;
+           eaNo1Subdep = #dsmom033#9;
+       |FINSI;
+       |CIERRA #dsmom033;
+   |SINO;
+
+       |ABRE #agicen17;
+       |SI eOpSub = 1;
+           |CONSULTA_F_CLAVE #1#agicen17,inferior1,superior1;
+           eaCodSubdep = #agicen17#2; |QBF eaCodSubdep;
+           eaCodSubdep = ("000" + eaCodSubdep) % -103;
+       |FINSI;
+
+ |ET LaLectura;
+       |DDEFECTO #agicen17;
+       #agicen17#0 = enEmpresa;
+       #agicen17#1 = enActividad;
+       #agicen17#2 = eaCodSubdep;
+       |LEE 040#agicen17.=;
+       |SI FSalida ! 0; |Y eaCodSubdep ! "   ";
+           eswLect = 1;
+           |SI enQue ! 2;
+               |CONFI  "    SNo Existe Referencia, Desea dar de Alta ";
+               |SI FSalida = 0;
+                   enLinInm = 0;
+                   enDesModelo = 1;
+                   |SUB_EJECUTA_NP ":basica/agicen17";
+                   enDesModelo = 0;
+                   eswLect = 0;
+                   |VETE LaLectura;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+       eaNomSubdep = #agicen17#3;
+       eaNo1Subdep = #agicen17#5;
+       |SI #agicen17#2 ! 0;
+           eaCodSubdep = #agicen17#2; |QBF eaCodSubdep;
+           eaCodSubdep = ("000" + eaCodSubdep) % -103;
+       |FINSI;
+       |CIERRA #agicen17;
+       |SI eOpSub = 2;
+           enLinInm = eaCodSubdep;
+           enDesModelo = 1;
+           |SUB_EJECUTA_NP ":basica/agicen17";
+           enDesModelo = 0;
+       |FINSI;
+   |FINSI;
+   |CIERRA #dsmom030;
+|FPRC;
+
+|PROCESO SubOtros;
+   eaCodDep = ("00" + enActividad) % -102;
+   |ABRE #camansde;
+   |SI eOpSub = 1;
+       |CONSULTA_F_CLAVE #1#camansde,inferior11,superior11;
+       eaCodSubdep = #camansde#2; |QBF eaCodSubdep;
+   |FINSI;
+   |ET LecturaOtroS;
+       |DDEFECTO #camansde;
+       #camansde#0 = enEmpresa;
+       #camansde#1 = eaCodDep;
+       #camansde#2 = eaCodSubdep;
+       |LEE 040#camansde.=;
+       |SI FSalida ! 0; |Y eaCodSubdep ! "   ";
+           eswLect = 1;
+           |SI enQue ! 2;
+               |CONFI  "    SNo Existe Subdepartamento, Desea dar de Alta ";
+               |SI FSalida = 0;
+                   enLinInm = 0;
+                   |SUB_EJECUTA_NP ":contagen/camansde";
+                   eswLect = 0;
+                   |VETE LecturaOtroS;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+       eaNomSubdep = #camansde#3;
+       eaNo1Subdep = #camansde#4;
+       eaCodSubdep = #camansde#2;
+   |CIERRA #camansde;
+       |SI eOpSub = 2;
+           enLinInm = eaCodSubdep;
+           |SUB_EJECUTA_NP ":contagen/camansde";
+       |FINSI;
+|FPRC;
+
+|PROCESO BuscoElSub;
+   |SI #330#26 < 80;
+       nEjer = 2000 + #330#26;
+   |SINO;
+       nEjer = 1900 + #330#26;
+   |FINSI;
+   |SI nEjer > nNume1;
+       nNume1   = nEjer;
+       eaSubde  = #330#22;
+       enSubde  = 0; |SI eaSubde = "O"; eaSubde = "S"; enSubde = 1; |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscoElSub;
+   #330#1;
+   ;
+   enEmpresa,0;
+   enEmpresa,9;
+   e;
+   NULL, BuscoElSub;
+|FIN;
+
+|PROCESO eBuscoSubdep;
+   eaSubde = "S"; eaSubdeT = "S";
+   enSubde = 0;   enSubdeT = 0;
+   nNume1  = -1;
+   nEjer   = 0;
+   |BUCLE BuscoElSub;
+   eaSubdeT = eaSubde;
+   enSubdeT = enSubde;
+|FPRC;

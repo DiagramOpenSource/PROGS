@@ -1,0 +1,130 @@
+|FICHEROS;
+     dsprez02 #0;
+|FIN;
+
+|VARIABLES;
+     aParametro    = "";
+     aAlfa         = "";
+     aBase         = "";
+     aFich         = "";
+     aDirGrupo     = "";
+     aDirFichero   = "";
+     aBass         = "";
+     aHor          = "";
+     aUsu          = "";
+
+     nCalcGrupo    = -1;
+     nOk           = 0;
+
+     &enChequeoUsu = 0;
+     &enErrorUsu   = 0;
+|FIN;
+
+|PROCESO LimpiaDirectorio;
+     |DBASS aBase;   |QBF aBase;
+     |DFICE aFich;   |QBF aFich;
+     aDirGrupo = aFich + "grupos";           |MKDIR aDirGrupo;
+     aDirGrupo = aDirGrupo + "/" + Usuario;  |MKDIR aDirGrupo;
+     aDirGrupo = aDirGrupo + "/";
+
+     aDirFichero = aDirGrupo + "*";
+     |_PDIR aDirFichero;
+     |PARA;  |SI FSalida ] 0; |HACIENDO;
+         aAlfa   = aBase + "bin/agirm -r " + aDirFichero;
+         |SYSTEM aAlfa;
+
+         |_SDIR aDirFichero;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Tipo3;  |TIPO 3;
+     |SI #0#0 ! "SI";  |ACABA;  |FINSI;
+
+     enChequeoUsu = 1;
+     |HAZ RevisaUsuarios;
+     |SI enErrorUsu = 1;
+         enChequeoUsu = 0;
+         |HAZ RevisaUsuarios;
+     |FINSI;
+
+     enChequeoUsu = 1;
+     |HAZ RevisaUsuarios;
+     |SI enErrorUsu = 1;
+         |MENAV "0000 Proceso cancelado. Entre en la opcion Definicion de Usuarios, para actualizar usuarios";
+         |ACABA;
+     |FINSI;
+
+     #0#1 = "Borrado ficheros PSD";  |PINTA #0#1;
+     |SUB_EJECUTA ":agitool/dsinsbor;AUTOMATICO";
+
+     #0#1 = "Creacion de Usuarios a Partir de los Perfiles";  |PINTA #0#1;
+     |SUB_EJECUTA "dsprez01;AUTOMATICO";
+
+     #0#1 = "Generando Grupos"; |PINTA #0#1;
+     |SI aParametro = "AUTO";  || Viene del gecochek
+         aAlfa = "dsorz005;0000";
+     |SINO;
+         |SI nCalcGrupo = -1;
+             aAlfa = "dsorz005;AUTOMATICO";
+         |SINO;
+             aAlfa = "dsorz005;AUTOMATICO" + (("0000" + nCalcGrupo) % -104);
+         |FINSI;
+     |FINSI;
+     |SUB_EJECUTA aAlfa;
+
+/*
+     #0#1 = "Creando Fichero de Grupos"; |PINTA #0#1;
+     |SUB_EJECUTA "dsorz006;AUTOMATICO";
+
+     #0#1 = "Instalado Grupos "; |PINTA #0#1;
+     |SUB_EJECUTA ":agitool/dsinsgru;AUTOMATICO";
+*/
+
+     #0#1 = "Generando Permisos de Usuarios "; |PINTA #0#1;
+
+     |SI nCalcGrupo = -1;
+         aAlfa = ":agitool/dsinsusu;AUTOMATICO";
+     |SINO;
+         aAlfa = ":agitool/dsinsusu;" + (("0000" + nCalcGrupo) % -104);
+     |FINSI;
+     |SUB_EJECUTA aAlfa;
+
+     |HAZ LimpiaDirectorio;
+|FPRC;
+
+|PROGRAMA;
+     |DBASS aBass;
+     aAlfa = aBass - "ase1016";
+     |SI FSalida ! 0;
+         |HORA aHor;
+         aHor = aHor % 102;
+         aUsu = Usuario % 0804;
+
+         nOk = 0;
+         |SI aUsu = "DS11";  nOk = 1;  |FINSI;
+         |SI aHor ] "17";    nOk = 1;  |FINSI;
+
+         |SI nOk = 0;
+             aAlfa = "0000Acceso permitido a partir de las 17:00 horas. ";
+             aAlfa = aAlfa + "Disculpen las molestias.";
+             |MENAV aAlfa;
+
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     nCalcGrupo = -1;
+     aParametro = PARAMETRO;  |QBF aParametro;
+     |SI aParametro = "";
+         |MANTE #0;
+     |SINO;
+         aAlfa = PARAMETRO - "AUTOMATICO";  |QBT aAlfa;
+         |SI FSalida ! 0;
+             aParametro = "AUTOMATICO";
+             nCalcGrupo = aAlfa;
+         |FINSI;
+
+         #0#0 = "SI";
+         |HAZ Tipo3;
+     |FINSI;
+|FPRO;

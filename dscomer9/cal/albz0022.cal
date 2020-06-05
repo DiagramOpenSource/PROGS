@@ -1,0 +1,1557 @@
+||Ahora recalcula desde/hasta la partida indicada    OK
+
+||Anyadir que busque en el historico tambien.
+
+||Antes de borrar las lineas, me guardo los datos basicos en un temporal,
+||luego usando ese temporal y la informacion de las mezcladas y los
+||pedidos de tintado, tengo que recuperar las lineas exactamente como estaban
+
+
+||Ademas del historico, ver y tener en cuenta las mezcladas y O.Tintado,
+||que lo que hacen es crear movimientos de EV, SS y SI.
+||Lo que tengo que controlar es si son de un movimiento EXTERNO.
+
+||Ver como quedaria en un cierre de ejercicio. Estudiar con Frases.
+
+||Buscar en el albm0056, Si es Documento Externo = "TI".
+||La serie y numero de Pedido. a partir del numero de Orden. Documento Externo.
+||El albm0047#19.   NumeroPedido
+
+|FICHEROS;
+     albz0022 #0;
+
+     albm0046 #46;       ||Art./Alm./PartidaCAB
+     albm0047 #47;       ||Art./Alm./PartidaLIN
+
+     agifa010 #10;       ||Albaranes Ventas (C)
+     agifa071 #71;       ||Albaranes Ventas (L)
+
+     agifa019 #19;       ||Articulos
+     agifa077 #77;       ||Albaranes Com. Cabs.
+     agifa080 #80;       ||Albaranes Com. Lins.
+     agist001 #201;      ||In.Stock Inicial (C)
+     agist002 #202;      ||In.Stock Inicial (L)
+     dsm00056 #56;       ||Entrada Valorada (C)
+     dsm00057 #57;       ||Entrada Valorada (L)
+     dsm00043 #43;       ||Reg. Existencias (C)
+     dsm00044 #44;       ||Reg. Existencias (L)
+     dsm00054 #54;       ||Mtos Almacenes (C)
+     dsm00055 #55;       ||Mtos Almacenes (L)
+
+     albm0035 #35;       ||Incidencias
+
+     albw0028 #828;      ||Tmp Recal. Partidas
+
+     albw0035 #535;      ||Aux. Recal Lin.Part.
+     agifa065 #65;       ||Historico
+
+     albm0056 #456;      ||Orden de Tintado
+
+     albm0062 #62;       ||Rel.Orden-Partidas
+     albw0019 #919;      ||Finalizar Orden
+     albm0037 #37;       ||Orden (C)
+     albm0038 #38;       ||Orden (L)
+
+     referen@ #300;      ||CargaDef
+
+     albm0063 #63;       ||PesoMtsPzas OrdenFab
+|FIN;
+
+|VARIABLES;
+     nPiezas = 0;
+     aSacaSerie = "";
+     aSacaNum = "";
+
+     aLong = "";
+     nLong = "";
+     &eaObser47 = "";
+     aAlfa = "";
+     aMas = "";
+     &enLinOF = 0;
+     &eaArtOF = "";
+     &enAlmOF = 0;
+     &eaSerOF = "";
+     &eaNumOF = "";
+     &eaParOF = "";
+     &efFecOF = @;
+     aSerie = "";
+     aNumPar = "";
+     nNumPar = 0;
+
+     aAux = "";
+     aLinea = "";
+     aParPedido = "";
+     aSerPed = "";
+     nNumPed = 0;
+     aPartidaProce = "";
+
+     &enAlberoDentro = 0; || sirve para evitar reentradas
+
+     nSwMete = 0;
+     &enAlmPar = 0;
+     &eaNumPar = "";
+     &eaProducido = "";
+     &eaDesPro = "";
+     &eaDocExt = "";
+     &eaSerExt = "";
+     &enNumExt = 0;
+
+     nCampo = 0;
+     aParDesde = "";
+     nExiste = 0;
+     aMensaje = "";
+     aRespuesta = "";
+     aPartida = "";
+     nUni1 = 0;
+     nUni2 = 0;
+     aArticulo = "";
+     nAlmacen = 0;
+     aPartida46 = "";
+     aIncPar = "";
+     nForma = 0;
+     aObserva = "";
+     nSalida = 0;
+
+     aCerrada = "";
+     aInciden = "";
+     aObs = ""
+
+     &Tempo    = "";
+     aTempo828 = "";
+     aTempo35 = "";
+     nSwPaso = 0;
+     aArt28 = "";
+     nAlm28 = 0;
+     aPar28 = "";
+     &enUni1 = 0;
+     &enUni2 = 0;
+     &enAlbForma = 0;
+     &eaIncPar = "";
+
+     &enRecalculo = 0;
+     nSwBien = 0;
+     nSwHayLin = 0;
+
+     nAlmacen47 = 0;
+     aPartida47 = ""
+     nAlm47Ant = 0;
+     aPar47Ant = "";
+     nLinea = 0;
+|FIN;
+
+|PROCESO MiraIncidencia;
+     aIncPar = "";
+     |DDEFECTO #albm0035;
+     #albm0035#0 = #80#2;
+     #albm0035#2 = #80#3;
+     #albm0035#4 = #80#37;
+     |LEE 000#albm0035.=;
+     |SI FSalida = 0;
+          |SI #albm0035#11 = "S"; |O #albm0035#12 = "S"; |O #albm0035#13 = "S"; |O #albm0035#14 = "S"; |O #albm0035#15 = "S";
+               aIncPar = "S";
+          |FINSI;
+          |SI #albm0035#16 = "S"; |O #albm0035#17 = "S"; |O #albm0035#18 = "S"; |O #albm0035#19 = "S"; |O #albm0035#20 = "S";
+               aIncPar = "S";
+          |FINSI;
+          |SI #albm0035#21 = "S"; |O #albm0035#22 = "S"; |O #albm0035#23 = "S"; |O #albm0035#24 = "S";
+               aIncPar = "S";
+          |FINSI;
+          |SI #albm0035#25 = "S"; |O #albm0035#27 = "S";
+               aIncPar = "S";
+          |FINSI;
+     |SINO;
+          aIncPar = "N";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |ABRE #0;
+     |DDEFECTO #0;
+     |LEE 101#0p;
+     nExiste = FSalida;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          aRespuesta = #albz0022#4;
+          #albz0022#4 = "NO";
+          |SI nExiste = 0;
+               |GRABA 020#0a;
+          |SINO;
+               |GRABA 020#0n;
+          |FINSI;
+          |SI aRespuesta = "SI";
+               |HAZ Principal;
+          |FINSI;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+|FPRO;
+
+|PROCESO albm0047;
+     |DDEFECTO #albw0035;
+     #albw0035#1 = #albm0047#1;
+     #albw0035#2 = #albm0047#2;
+     #albw0035#3 = #albm0047#3;
+     |LEE 101#albw0035.=;
+     |SI FSalida ! 0; |GRABA 020#albw0035.b; |FINSI;
+     |PARA nCampo = 4; |SI nCampo [ 19; |HACIENDO nCampo = nCampo + 1;
+          #albw0035#nCampo# = #albm0047#nCampo#;
+     |SIGUE;
+     |GRABA 020#albw0035.a;
+     |LIBERA #albw0035;
+
+     |BORRA 020#albm0047.a;
+     |LIBERA #albm0047;
+|FPRC;
+
+|DEFBUCLE albm0047;
+ #albm0047#1;
+ ;
+ #albw0028#1, #albw0028#2, 001;
+ #albw0028#1, #albw0028#2, 999;
+ be;
+ NULL, albm0047;
+|FIN;
+
+|PROCESO albw0028;
+     ||Borro las lineas y limpio los importes y las unidades, y el articulo original
+     ||#albm0046#0 = #albw0028#0;
+     #albm0046#1 = #albw0028#1;
+     #albm0046#2 = #albw0028#2;
+     |LEE 101#albm0046.=;
+     |SI FSalida = 0;
+          |PDEFECTO #albm0046, 9, 13;
+          |PDEFECTO #albm0046, 16, 18;
+          |PDEFECTO #albm0046, 20, 24;
+          |PDEFECTO #albm0046, 29, 35;
+          |PDEFECTO #albm0046, 37, 39;
+          |PDEFECTO #albm0046, 43, 46;
+          |GRABA 020#albm0046.a;
+     |FINSI;
+     |LIBERA #albm0046;
+
+     |BUCLE albm0047;
+|FPRC;
+
+|DEFBUCLE albw0028;
+ #albw0028#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, albw0028;
+|FIN;
+
+|PROCESO Principal;
+     enRecalculo = 1;
+     |ABRE #albm0046;
+     |ABRE #albm0035;
+
+     |HAZ CreaTempo; aTempo828 = Tempo;
+     |NOME_DAT #828 aTempo828; |DELINDEX #828;
+
+     |HAZ CreaTempo; aTempo35 = Tempo;
+     |NOME_DAT #535 aTempo35; |DELINDEX #535;
+
+     |ABRE #828;
+     nSwPaso = 1;                  ||Relleno el temporal
+     |HAZ TodosProcesos;
+     |CIERRA #828;
+
+     |ABRE #albw0035;
+
+     |ABRE #albm0046;
+     |BUCLE albw0028;              ||Inicializo la cabecera y borro las lineas
+     |CIERRA #albm0046;
+
+     |ABRE #828;
+     nSwPaso = 2;                  ||El recalculo en si
+     |HAZ TodosProcesos;
+     |CIERRA #828;
+
+     |CIERRA #albw0035;
+
+     |HAZ ReordenaLineas;
+
+     |ABRE #albm0056;
+     |HAZ NumeroPedido;
+     |CIERRA #albm0056;
+
+     |DELINDEX #828; Tempo = aTempo828; |HAZ BoraTempo;
+     |DELINDEX #535; Tempo = aTempo35; |HAZ BoraTempo;
+
+     |CIERRA #albm0035;
+     |CIERRA #albm0046;
+|FPRC;
+
+|PROCESO albm0047_pedido;
+     |SI #albm0047#17 = "TI";
+          |SI #albm0047#2 ! aParPedido;
+               aParPedido = #albm0047#2;
+               #albm0056#0 = #albm0047#19;
+               |LEE 000#albm0056.=;
+               |SI FSalida = 0;
+                    aSerPed = #albm0056#1;
+                    nNumPed = #albm0056#2;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albm0047_pedido;
+ #albm0047#1;
+ ;
+ #albm0046#1, #albm0046#2, 001;
+ #albm0046#1, #albm0046#2, 001;
+ ;
+ NULL, albm0047_pedido;
+|FIN;
+
+|PROCESO albm0047_tintados;
+     |SI #albm0047#17 = "TI";
+          aAux = #albm0047#12;
+          |QBF aAux;
+          |SI aAux = "";
+               #albm0056#0 = #albm0047#19;
+               |LEE 000#albm0056.=;
+               |SI FSalida = 0;
+                    aPartidaProce = #albm0056#16;
+                    |QBF aPartidaProce;
+                    |SI aPartidaProce ! "";
+                         #albm0047#12 = "PROCEDENTE DE LA PARTIDA " + aPartidaProce;
+                         |GRABA 020#albm0047.a;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albm0047_tintados;
+ #albm0047#1;
+ ;
+ #albm0046#1, #albm0046#2, 001;
+ #albm0046#1, #albm0046#2, 001;
+ be;
+ NULL, albm0047_tintados;
+|FIN;
+
+|PROCESO albm0046_pedido;
+     aSerPed = #albm0046#35;
+     |QBF aSerPed;
+     nNumPed = #albm0046#36;
+
+     |SI aSerPed = ""; |Y nNumPed = 0;
+          |BUCLE albm0047_pedido;
+          |SI aSerPed ! ""; |O nNumPed ! 0;
+               #albm0046#35 = aSerPed;
+               #albm0046#36 = nNumPed;
+               |GRABA 020#albm0046.a;
+          |FINSI;
+     |FINSI;
+
+     |BUCLE albm0047_tintados;
+|FPRC;
+
+|DEFBUCLE albm0046_pedido;
+ #albm0046#1;
+ ;
+ #albz0022#5, #albz0022#6;
+ #albz0022#5, #albz0022#7;
+ be;
+ NULL, albm0046_pedido;
+|FIN;
+
+
+|PROCESO NumeroPedido;
+     ||Buscar en el albm0056, Si es Documento Externo = "TI".
+     ||La serie y numero de Pedido. a partir del numero de Orden. Documento Externo.
+     ||El albm0047#19.   NumeroPedido
+
+     |BUCLE albm0046_pedido;
+|FPRC;
+
+
+|PROCESO albm0047_orden;
+     nAlmacen47 = #albm0047#1;
+     aPartida47 = #albm0047#2;
+     |SI nAlmacen47 ! nAlm47Ant; |O aPartida47 ! aPar47Ant;
+          nLinea = 0;
+          nAlm47Ant = nAlmacen47;
+          aPar47Ant = aPartida47;
+     |FINSI;
+     nLinea = nLinea + 1;
+     |DDEFECTO #albw0035;
+     #albw0035#1 = #albm0047#1;
+     #albw0035#2 = #albm0047#2;
+     #albw0035#3 = nLinea;
+     |LEE 101#albw0035.=;
+     #albw0035#0 = #albm0047#0;
+     |SI FSalida ! 0; |GRABA 020#albw0035.b; |FINSI;
+     |PARA nCampo = 4; |SI nCampo [ 19; |HACIENDO nCampo = nCampo + 1;
+          #albw0035#nCampo# = #albm0047#nCampo#;
+     |SIGUE;
+     |GRABA 020#albw0035.a;
+     |LIBERA #albw0035;
+
+     |BORRA 020#albm0047.a;
+|FPRC;
+
+|DEFBUCLE albm0047_orden;
+ #albm0047#1;
+ ;
+ #albz0022#5, #albz0022#6, 001;
+ #albz0022#5, #albz0022#7, 999;
+ be;
+ NULL, NULL, NULL, NULL, NULL, albm0047_orden;
+ #albm0047#1, #albm0047#2, #albm0047#4;
+|FIN;
+
+|PROCESO albw0035_orden;
+     |DDEFECTO #albm0047;
+     #albm0047#1 = #albw0035#1;
+     #albm0047#2 = #albw0035#2;
+     #albm0047#3 = #albw0035#3;
+     |LEE 101#albm0047.=;
+     |SI FSalida ! 0; |GRABA 020#albm0047.b; |FINSI;
+     #albm0047#0 = #albw0035#0;
+     |PARA nCampo = 4; |SI nCampo [ 19; |HACIENDO nCampo = nCampo + 1;
+          #albm0047#nCampo# = #albw0035#nCampo#;
+     |SIGUE;
+     |GRABA 020#albm0047.a;
+     |LIBERA #albm0047;
+|FPRC;
+
+|DEFBUCLE albw0035_orden;
+ #albw0035#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, albw0035_orden;
+|FIN;
+
+|PROCESO ReordenaLineas;
+     || Esto es para reordenar las lineas por fecha .. de menor a mayor.
+
+     |DELINDEX #albw0035;
+
+     ||La variable para que no actualice el dsm00024, al tocar el albm00047
+     enAlberoDentro = 1;
+     |ABRE #albw0035;
+     nAlm47Ant = -1;
+     |BUCLE albm0047_orden;
+     |CIERRA #albw0035;
+
+     |ABRE #albm0047;
+     |BUCLE albw0035_orden;
+     |CIERRA #albm0047;
+     enAlberoDentro = 0;
+|FPRC;
+
+|PROCESO albm0038;
+     |SI #albm0038#4 = #albm0062#2; |Y #albm0038#6 = #albm0062#3;
+          ||ARA5
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE albm0038;
+ #albm0038#1;
+ ;
+ #albm0037#16, #albm0037#0, 01;
+ #albm0037#16, #albm0037#0, 99;
+ ;
+ NULL, albm0038;
+|FIN;
+
+|PROCESO albm0062;
+     |DDEFECTO #albm0037;
+     #albm0037#16 = #albm0062#4;
+     #albm0037#0 = #albm0062#0;
+     |LEE 000#albm0037.=;
+     |SI FSalida = 0;
+          |DDEFECTO #agifa019;
+          #agifa019#0 = #albm0037#2;
+          |LEE 000#agifa019.=
+          |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+               |ACABA;
+          |FINSI;
+
+          |SI nSwPaso = 1;
+               eaArtOF = "";
+               enAlmOF = #albm0062#2;
+               aSerie = #albm0037#16;
+               |QBT aSerie;
+               eaSerOF = ("00" + aSerie) % -102;
+               eaNumOF = #albm0037#0;
+               eaParOF = eaNumOF + "/" + eaSerOF;
+
+               aPartida = eaParOF;
+               |QBT aPartida;
+               |SI aPartida ! ""; |Y aPartida ! "0";
+                    aArt28 = eaArtOF;
+                    nAlm28 = enAlmOF;
+                    aPar28 = (eaParOF + "               ") % 115;
+                    |HAZ Mete828;
+               |FINSI;
+          |SINO;
+
+||ARA5
+||               |BUCLE albm0038;
+
+               enAlbForma = 1;
+               eaArtOF = "";
+               enAlmOF = #albm0062#2;
+               eaParOF = #albm0062#3;
+
+               aSerie = #albm0037#16;
+               |QBT aSerie;
+               eaSerOF = ("00" + aSerie) % -102;
+               eaNumOF = #albm0037#0;
+               enLinOF = #albm0062#1;
+
+               efFecOF = #albm0037#1;
+               enUni1 = -#albm0062#5;
+               enUni2 = 0;
+               eaIncPar = "N";
+               eaProducido = #albm0037#2;
+               eaDesPro = #albm0037#3;
+
+               |ABRE #albm0047;
+               |SELECT #2#albm0047;
+               #albm0047#1 = enAlmOF;
+               #albm0047#2 = eaParOF;
+               #albm0047#13 = "OF";
+               #albm0047#14 = eaSerOF;
+               #albm0047#15 = eaNumOF;
+               #albm0047#16 = enLinOF;
+               |LEE 000#albm0047.=;
+               |SI FSalida ! 0;
+                    |CIERRA #albm0047;
+                    |HAZ AlberoActPartidasOF2;
+               |SINO;
+                    |CIERRA #albm0047;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO albm0063;
+     nPiezas = nPiezas + #albm0063#7;
+|FPRC;
+
+|DEFBUCLE albm0063;
+ #albm0063#1;
+ ;
+ #albm0037#16, #albm0037#0, 00, 0001;
+ #albm0037#16, #albm0037#0, 99, 9999;
+ ;
+ NULL, albm0063;
+|FIN;
+
+|PROCESO DamePiezas;
+     |BUCLE albm0063;
+|FPRC;
+
+
+|PROCESO albm0062_uno;
+     |DDEFECTO #albm0037;
+     #albm0037#16 = #albm0062#4;
+     #albm0037#0 = #albm0062#0;
+     |LEE 000#albm0037.=;
+     |SI FSalida = 0;
+          |DDEFECTO #agifa019;
+          #agifa019#0 = #albm0037#2;
+          |LEE 000#agifa019.=
+          |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+               |ACABA;
+          |FINSI;
+
+          |SI #albm0037#1 < #albz0022#8; |O #albm0037#1 > #albz0022#9;
+               |ACABA;
+          |FINSI;
+          |SI #albm0037#10 ! #albz0022#5;
+               |ACABA;
+          |FINSI;
+
+          |SI nSwPaso = 1;
+               eaArtOF = #albm0037#2;
+               enAlmOF = 00001;
+               aSerie = #albm0037#16;
+               |QBT aSerie;
+               eaSerOF = ("00" + aSerie) % -102;
+               eaNumOF = #albm0037#0;
+               eaParOF = eaNumOF + "/" + eaSerOF;
+
+               aPartida = eaParOF;
+               |QBT aPartida;
+               |SI aPartida ! ""; |Y aPartida ! "0";
+                    aArt28 = eaArtOF;
+                    nAlm28 = enAlmOF;
+                    aPar28 = (eaParOF + "               ") % 115;
+                    |HAZ Mete828;
+               |FINSI;
+          |SINO;
+
+               efFecOF = #albm0037#1;
+               enUni1 = #albm0037#13;
+
+               nPiezas = 0;
+               |HAZ DamePiezas;
+               enUni2 = nPiezas;
+               eaIncPar = "N";
+
+               enAlbForma = 1;
+               eaArtOF = #albm0037#2;
+               enAlmOF = 00001;
+               aSerie = #albm0037#16;
+               |QBT aSerie;
+               eaSerOF = ("00" + aSerie) % -102;
+               eaNumOF = #albm0037#0;
+               eaParOF = eaNumOF + "/" + eaSerOF;
+
+               |ABRE #albm0047;
+               |SELECT #2#albm0047;
+               #albm0047#1 = enAlmOF;
+               #albm0047#2 = eaParOF;
+               #albm0047#13 = "OF";
+               #albm0047#14 = eaSerOF;
+               #albm0047#15 = eaNumOF;
+               #albm0047#16 = 0;
+               |LEE 000#albm0047.=;
+               |SI FSalida ! 0;
+                    |CIERRA #albm0047;
+                    |HAZ AlberoActPartidasOF;
+               |SINO;
+                    |CIERRA #albm0047;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+
+|DEFBUCLE albm0062;
+ #albm0062#3;
+ ;
+ #albz0022#5, #albz0022#6;
+ #albz0022#5, #albz0022#7;
+ ;
+ NULL, albm0062;
+|FIN;
+
+|DEFBUCLE albm0062_uno;
+ #albm0062#2;
+ ;
+ aSerie, nNumPar, 000;
+ aSerie, nNumPar, 999;
+ ;
+ NULL, albm0062_uno;
+|FIN;
+
+|PROCESO referen;
+     aPartida46 = #referen@#2;
+     |QBF aPartida46;
+     aLong = aPartida46 % A0;
+     nLong = aLong;
+     |SI nLong [ 7;
+          aAux = aPartida46 % -301;
+          |SI aAux = "/";
+               aSerie = aPartida46 % -102;
+               aAux = "/" + aSerie;
+               aNumPar = aPartida46 - aAux;
+               nNumPar = aNumPar;
+               |BUCLE albm0062_uno;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE referen;
+ #referen@#1002;
+ ;
+ #albz0022#5, #albz0022#6;
+ #albz0022#5, #albz0022#7;
+ ;
+ NULL, referen;
+|FIN;
+
+|PROCESO albm0062_todos;
+
+     aSacaSerie = #albm0062#4;
+     |QBF aSacaSerie;
+     |SI aSacaSerie ! "";
+          aLong = aSacaSerie % A0;
+          nLong = aLong;
+          |SI nLong = 2;
+               |SI #albm0062#0 < 10000;
+                    aSacaNum = ("0000" + #albm0062#0) % -104;
+                    aPartida46 = aSacaNum + "/" + aSacaSerie + "        ";
+                    |SI aPartida46 ] #albz0022#6; |Y aPartida46 [ #albz0022#7;
+                         |HAZ albm0062_uno;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     ||TODO CCC
+|FPRC;
+
+|DEFBUCLE albm0062_todos;
+ #albm0062#2;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, albm0062_todos;
+|FIN;
+
+|PROCESO OrdenesFabricacion;
+     |ABRE #albm0037;
+
+     |BUCLE albm0062;
+
+     |DBASE aAlfa; |QBF aAlfa;
+     aMas = aAlfa + "def/albm0046";
+     |CARGA_DEF aMas, referen@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+     |BUCLE referen;
+     |DESCARGA_DEF #referen@;
+
+     |SI #albz0022#6 = #albz0022#7;
+          aPartida46 = #albz0022#6;
+          |QBF aPartida46;
+          aLong = aPartida46 % A0;
+          nLong = aLong;
+          |SI nLong [ 7;
+               aAux = aPartida46 % -301;
+               |SI aAux = "/";
+                    aSerie = aPartida46 % -102;
+                    aAux = "/" + aSerie;
+                    aNumPar = aPartida46 - aAux;
+                    nNumPar = aNumPar;
+                    |BUCLE albm0062_uno;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          ||Aun me falta terminar de pensar como hacerlo.
+          ||Pero sera un bucle del albm0062, acotando por almacen.
+          ||A partir de ahi miro si la posible partida entra dentro
+          ||de la acotacion. Y en tal caso. La proceso.
+          |BUCLE albm0062_todos;
+     |FINSI;
+     |CIERRA #albm0037;
+|FPRC;
+
+|PROCESO TodosProcesos;
+     |ABRE #agifa019;
+
+     ||TODO CCC
+     ||DESCOMENTAR
+
+     |HAZ AlbaranesCompras;
+     |HAZ EntradaValorada;
+     |HAZ EntradaStockIni;
+     |HAZ RegulacionExiste;
+     |HAZ MovimientoAlmacenes;
+     |HAZ AlbaranesVentas;
+
+     |ABRE #919;
+     |HAZ OrdenesFabricacion;
+     |CIERRA #919;
+
+     ||ARA55
+     |SI nSwPaso = 2;
+          |HAZ Historico;
+     |FINSI;
+
+     |CIERRA #agifa019;
+|FPRC;
+
+|PROCESO Mete828;
+     |SI nAlm28 = #albz0022#5;
+          |SI aPar28 ] #albz0022#6; |Y aPar28 [#albz0022#7;
+               #828#1 = nAlm28;
+               #828#2 = aPar28;
+               |LEE 101#828=;
+               |SI FSalida ! 0;
+                    |GRABA 020#828n;
+               |FINSI;
+               |LIBERA #828;
+          |FINSI;
+     |FINSI;
+
+/*
+     nSwBien = 1;
+     |HAZ MiraPartidaBien;
+     |SI nSwBien = 0;
+          ||#828#0 = aArt28;
+          #828#1 = nAlm28;
+          #828#2 = aPar28;
+          |LEE 101#828=;
+          |SI FSalida ! 0;
+               |GRABA 020#828n;
+          |FINSI;
+          |LIBERA #828;
+     |FINSI;
+*/
+
+|FPRC;
+
+|PROCESO agifa080;
+     |SI #agifa077#1 < #albz0022#8; |O #agifa077#1 > #albz0022#9;
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #agifa080#2;
+     |LEE 000#agifa019.=
+     |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+          |ACABA;
+     |FINSI;
+
+     |SI nSwPaso = 1;
+          aPartida = #agifa080#37;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               aArt28 = #80#2;
+               nAlm28 = #80#3;
+               aPar28 = #80#37;
+               |HAZ Mete828;
+          |FINSI;
+     |SINO;
+          aPartida = #agifa080#37;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               nAlm28 = #80#3;
+               aPar28 = #80#37;
+               #albw0028#1 = nAlm28;
+               #albw0028#2 = aPar28;
+               |LEE 000#albw0028.=;
+               |SI FSalida = 0;
+                    #albz0022#1 = "Albaranes";
+                    #albz0022#2 = #agifa080#27;
+                    #albz0022#3 = #agifa080#0;
+                    |PINTA #albz0022#1;
+                    |PINTA #albz0022#2;
+                    |PINTA #albz0022#3;
+
+                    |HAZ MiraIncidencia;
+                    eaIncPar = aIncPar;
+                    enUni1 = #80#5;
+                    enUni2 = #80#36;
+                    enAlbForma = 1;
+                    |HAZ AlberoActPartidas;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa077;
+ #agifa077#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, NULL, agifa080;
+|FIN;
+
+|PROCESO AlbaranesCompras;
+     |BUCLE agifa077;
+|FPRC;
+
+|PROCESO agifa071;
+     |SI #agifa010#1 < #albz0022#8; |O #agifa010#1 > #albz0022#9;
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #agifa071#2;
+     |LEE 000#agifa019.=
+     |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+          |ACABA;
+     |FINSI;
+
+     |SI nSwPaso = 1;
+          #agifa019#0 = #agifa071#2;
+          |LEE 000#agifa019.=;
+          |SI FSalida = 0;
+               aLinea = #agifa019#125;
+               |QBT aLinea;
+               |SI aLinea = "V";
+                    aPartida = #agifa071#49;
+                    |QBT aPartida;
+                    |SI aPartida ! ""; |Y aPartida ! "0";
+                         aArt28 = #agifa071#2;
+                         nAlm28 = #agifa071#3;
+                         aPar28 = #agifa071#49;
+                         |HAZ Mete828;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          #agifa019#0 = #agifa071#2;
+          |LEE 000#agifa019.=;
+          |SI FSalida = 0;
+               aLinea = #agifa019#125;
+               |QBT aLinea;
+               |SI aLinea = "V";
+                    aPartida = #agifa080#37;
+                    |QBT aPartida;
+                    |SI aPartida ! ""; |Y aPartida ! "0";
+                         nAlm28 = #agifa071#3;
+                         aPar28 = #agifa071#49;
+                         #albw0028#1 = nAlm28;
+                         #albw0028#2 = aPar28;
+                         |LEE 000#albw0028.=;
+                         |SI FSalida = 0;
+                              #albz0022#1 = "Albaranes V.";
+                              #albz0022#2 = #agifa071#29;
+                              #albz0022#3 = #agifa071#0;
+                              |PINTA #albz0022#1;
+                              |PINTA #albz0022#2;
+                              |PINTA #albz0022#3;
+
+                              |HAZ MiraIncidencia;
+                              eaIncPar = aIncPar;
+                              enUni1 = #agifa071#5;
+                              enUni2 = #agifa071#48;
+                              enAlbForma = 1;
+                              |HAZ AlberoActPartidasAV;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa010;
+ #agifa010#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, NULL, agifa071;
+|FIN;
+
+|PROCESO AlbaranesVentas;
+     |BUCLE agifa010;
+|FPRC;
+
+|PROCESO dsm00057;
+     |SI #dsm00056#1 < #albz0022#8; |O #dsm00056#1 > #albz0022#9;
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #dsm00057#0;
+     |LEE 000#agifa019.=
+     |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+          |ACABA;
+     |FINSI;
+
+     |SI nSwPaso = 1;
+          aPartida = #57#22;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               aArt28 = #57#0;
+               nAlm28 = #57#1;
+               aPar28 = #57#22;
+               |HAZ Mete828;
+          |FINSI;
+     |SINO;
+          aPartida = #57#22;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               nAlm28 = #57#1;
+               aPar28 = #57#22;
+               #albw0028#1 = nAlm28;
+               #albw0028#2 = aPar28;
+               |LEE 000#albw0028.=;
+               |SI FSalida = 0;
+                    #albz0022#1 = "Entrada Val.";
+                    #albz0022#2 = #dsm00056#2;
+                    #albz0022#3 = #dsm00056#0;
+                    |PINTA #albz0022#1;
+                    |PINTA #albz0022#2;
+                    |PINTA #albz0022#3;
+
+                    enUni1 = #57#4;
+                    enUni2 = #57#21;
+                    enAlbForma = 1;
+
+                    |DDEFECTO #albw0035;
+                    |SELECT #2#albw0035;
+                    #albw0035#1 = nAlm28;
+                    #albw0035#2 = aPar28;
+                    #albw0035#13 = "EV";
+                    #albw0035#14 = #dsm00057#28;
+                    #albw0035#15 = #dsm00057#27;
+                    #albw0035#16 = #dsm00057#14;
+                    |LEE 000#albw0035.=;
+                    |SI FSalida = 0;
+                         enAlmPar = #albw0035#6;
+                         eaNumPar = #albw0035#7;
+                         eaProducido = #albw0035#10;
+                         eaDesPro = #albw0035#11;
+                         eaDocExt = #albw0035#17;
+                         eaSerExt = #albw0035#18;
+                         enNumExt = #albw0035#19;
+                    |FINSI;
+
+                    |HAZ AlberoActPartidasEV;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsm00056;
+ #dsm00056#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, NULL, dsm00057;
+|FIN;
+
+|PROCESO EntradaValorada;
+     |BUCLE dsm00056;
+|FPRC;
+
+|PROCESO agist002;
+     |SI #agist001#1 < #albz0022#8; |O #agist001#1 > #albz0022#9;
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #agist002#2;
+     |LEE 000#agifa019.=
+     |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+          |ACABA;
+     |FINSI;
+
+     |SI nSwPaso = 1;
+          aPartida = #agist002#8;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               aArt28 = #202#2;
+               nAlm28 = #202#3;
+               aPar28 = #202#8;
+               |HAZ Mete828;
+          |FINSI;
+     |SINO;
+          aPartida = #agist002#8;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               nAlm28 = #202#3;
+               aPar28 = #202#8;
+               #albw0028#1 = nAlm28;
+               #albw0028#2 = aPar28;
+               |LEE 000#albw0028.=;
+               |SI FSalida = 0;
+                    #albz0022#1 = "Ent.StockIni";
+                    #albz0022#2 = #agist001#2;
+                    #albz0022#3 = #agist001#0;
+                    |PINTA #albz0022#1;
+                    |PINTA #albz0022#2;
+                    |PINTA #albz0022#3;
+
+                    enUni1 = #202#4;
+                    enUni2 = #202#7;
+                    enAlbForma = 1;
+
+                    |DDEFECTO #albw0035;
+                    |SELECT #2#albw0035;
+                    #albw0035#1 = nAlm28;
+                    #albw0035#2 = aPar28;
+                    #albw0035#13 = "SA";
+                    #albw0035#14 = #agist002#13;
+                    #albw0035#15 = #agist002#0;
+                    #albw0035#16 = #agist002#1;
+                    |LEE 000#albw0035.=;
+                    |SI FSalida = 0;
+                         eaDocExt = #albw0035#17;
+                         eaSerExt = #albw0035#18;
+                         enNumExt = #albw0035#19;
+                    |FINSI;
+
+                    |HAZ AlberoActPartidasSA;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agist001;
+ #agist001#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, NULL, agist002;
+|FIN;
+
+|PROCESO EntradaStockIni;
+     |BUCLE agist001;
+|FPRC;
+
+|PROCESO dsm00044;
+     |SI #dsm00043#1 < #albz0022#8; |O #dsm00043#1 > #albz0022#9;
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #dsm00044#0;
+     |LEE 000#agifa019.=
+     |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+          |ACABA;
+     |FINSI;
+
+     |SI nSwPaso = 1;
+          aPartida = #dsm00044#13;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               aArt28 = #44#0;
+               nAlm28 = #44#1;
+               aPar28 = #44#13;
+               |HAZ Mete828;
+          |FINSI;
+     |SINO;
+          aPartida = #dsm00044#13;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               nAlm28 = #44#1;
+               aPar28 = #44#13;
+               #albw0028#1 = nAlm28;
+               #albw0028#2 = aPar28;
+               |LEE 000#albw0028.=;
+               |SI FSalida = 0;
+                    #albz0022#1 = "Reg.Existen.";
+                    #albz0022#2 = #dsm00043#4;
+                    #albz0022#3 = #dsm00043#0;
+                    |PINTA #albz0022#1;
+                    |PINTA #albz0022#2;
+                    |PINTA #albz0022#3;
+                    enUni1 = #44#4;
+                    enUni2 = #44#12;
+                    |SI #44#7 = "S";
+                         enUni1 = enUni1 * -1;
+                         enUni2 = enUni2 * -1;
+                    |FINSI;
+                    enAlbForma = 1;
+
+                    |DDEFECTO #albw0035;
+                    |SELECT #2#albw0035;
+                    #albw0035#1 = nAlm28;
+                    #albw0035#2 = aPar28;
+                    #albw0035#13 = "ES";
+                    #albw0035#14 = #44#21;
+                    #albw0035#15 = #44#18;
+                    #albw0035#16 = #44#8;
+                    |LEE 000#albw0035.=;
+                    |SI FSalida = 0;
+                         enAlmPar = #albw0035#6;
+                         eaNumPar = #albw0035#7;
+                         eaProducido = #albw0035#10;
+                         eaDesPro = #albw0035#11;
+                         eaDocExt = #albw0035#17;
+                         eaSerExt = #albw0035#18;
+                         enNumExt = #albw0035#19;
+                    |FINSI;
+
+                    aObs = #dsm00044#9;
+                    |QBF aObs;
+                    |SI aObs ! "";
+                         aObs = aObs + #dsm00044#10;
+                         |QBF aObs;
+                    |FINSI;
+                    eaObser47 = aObs;
+                    |HAZ AlberoActPartidasES;
+                    eaObser47 = "";
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsm00043;
+ #dsm00043#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, NULL, dsm00044;
+|FIN;
+
+|PROCESO RegulacionExiste;
+     |BUCLE dsm00043;
+|FPRC;
+
+|PROCESO dsm00055;
+     |SI #dsm00054#1 < #albz0022#8; |O #dsm00054#1 > #albz0022#9;
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #dsm00055#0;
+     |LEE 000#agifa019.=
+     |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+          |ACABA;
+     |FINSI;
+
+     |SI nSwPaso = 1;
+
+          ||Salida
+          aPartida = #dsm00055#16;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               aArt28 = #55#0;
+               nAlm28 = #55#1;
+               aPar28 = #55#16;
+               |HAZ Mete828;
+          |FINSI;
+
+          ||Entrada
+          aPartida = #dsm00055#17;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               aArt28 = #55#0;
+               nAlm28 = #55#5;
+               aPar28 = #55#17;
+               |HAZ Mete828;
+          |FINSI;
+     |SINO;
+
+          ||Salida
+          aPartida = #dsm00055#16;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               nAlm28 = #55#1;
+               aPar28 = #55#16;
+               #albw0028#1 = nAlm28;
+               #albw0028#2 = aPar28;
+               |LEE 000#albw0028.=;
+               |SI FSalida = 0;
+                    #albz0022#1 = "Mov.AlmacenS";
+                    #albz0022#2 = #dsm00055#28;
+                    #albz0022#3 = #dsm00055#27;
+                    |PINTA #albz0022#1;
+                    |PINTA #albz0022#2;
+                    |PINTA #albz0022#3;
+                    enUni1 = #55#4;
+                    enUni2 = #55#15;
+                    enAlbForma = 1;
+                    |HAZ AlberoActPartidasMS61;
+               |FINSI;
+          |FINSI;
+
+          ||ARA
+          ||Entrada
+          aPartida = #dsm00055#17;
+          |QBT aPartida;
+          |SI aPartida ! ""; |Y aPartida ! "0";
+               nAlm28 = #55#5;
+               aPar28 = #55#17;
+               #albw0028#1 = nAlm28;
+               #albw0028#2 = aPar28;
+               |LEE 000#albw0028.=;
+               |SI FSalida = 0;
+                    #albz0022#1 = "Mov.AlmacenE";
+                    #albz0022#2 = #dsm00055#28;
+                    #albz0022#3 = #dsm00055#27;
+                    |PINTA #albz0022#1;
+                    |PINTA #albz0022#2;
+                    |PINTA #albz0022#3;
+                    enUni1 = #55#4;
+                    enUni2 = #55#15;
+                    enAlbForma = 1;
+                    |HAZ AlberoActPartidasME61;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsm00054;
+ #dsm00054#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, NULL, dsm00055;
+|FIN;
+
+|PROCESO MovimientoAlmacenes;
+     |BUCLE dsm00054;
+|FPRC;
+
+|PROCESO albm0047_esta;
+     nSwHayLin = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE albm0047_esta;
+ #albm0047#1;
+ ;
+ nAlm28, aPar28, 001;
+ nAlm28, aPar28, 999;
+ ;
+ NULL, albm0047_esta;
+|FIN;
+
+
+|PROCESO MiraPartidaBien;
+     ||Devuelve nSwBien
+
+     #albm0046#1 = nAlm28
+     #albm0046#2 = aPar28
+     |LEE 000#albm0046.=;
+     |SI FSalida = 0;
+          |SI #46#9 = 0; |Y #46#10 = 0; |Y #46#11 = 0; |Y #46#12 = 0; |Y #46#31 = 0; |Y #46#32 = 0; |Y #46#43 = 0; |Y #46#44 = 0;
+               nSwBien = 0;
+          |SINO;
+               nSwHayLin = 0;
+               |BUCLE albm0047_esta;
+               |SI nSwHayLin = 0;
+                    nSwBien = 0;
+               |SINO;
+                    nSwBien = 1;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          nSwBien = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO Hasta; |TIPO 0;
+     aParDesde = #albz0022#6;
+     |QBF aParDesde;
+     |SI aParDesde ! "";
+          #albz0022#7 = #albz0022#6;
+          |PINTA #albz0022#7;
+     |FINSI;
+|FPRC;
+
+|PROCESO agifa065;
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #agifa065#0;
+     |LEE 000#agifa019.=
+     |SI #agifa019#125 < #albz0022#10; |O #agifa019#125 > #albz0022#11;
+          |ACABA;
+     |FINSI;
+
+     |ABRE #albm0047;
+     |SELECT #2#albm0047;
+     #albm0047#1 = #agifa065#5;
+     #albm0047#2 = #agifa065#18;
+     |SI #agifa065#2 = "SS"; |O #agifa065#2 = "ES";
+          #albm0047#13 = "ES";
+     |SINO;
+          #albm0047#13 = #agifa065#2;
+     |FINSI;
+     #albm0047#14 = #agifa065#11;
+     #albm0047#15 = #agifa065#3;
+     #albm0047#16 = #agifa065#4;
+     |LEE 000#albm0047.=;
+     |SI FSalida ! 0;
+          nSwMete = 1;
+     |SINO;
+          nSwMete = 0;
+     |FINSI;
+     |CIERRA #albm0047;
+
+
+     |SI nSwMete = 1;
+          enAlbForma = 1;
+          |SI #agifa065#2 = "AC";
+               ||Albaran Compra
+               |DDEFECTO #agifa077;
+               |DDEFECTO #agifa080;
+
+               #agifa077#3 = #agifa065#10
+               #agifa077#1 = #agifa065#1;
+
+               #agifa080#2 = #agifa065#0;
+               #agifa080#3 = #agifa065#5;
+               #agifa080#37 = #agifa065#18;
+               #agifa080#5 = #agifa065#6;
+               #agifa080#36 = #agifa065#17;
+               #agifa080#27 = #agifa065#11;
+               #agifa080#0 = #agifa065#3;
+               #agifa080#1 = #agifa065#4;
+
+               enUni1 = #80#5;
+               enUni2 = #80#36;
+               |HAZ AlberoActPartidas;
+          |FINSI;
+          |SI #agifa065#2 = "SS"; |O #agifa065#2 = "ES"; ||Es el que yo denomino "ES"
+               ||Regularizacion existencias
+
+               |DDEFECTO #dsm00043;
+               |DDEFECTO #dsm00044;
+               #dsm00043#1 = #agifa065#1;
+               #dsm00044#0 = #agifa065#0;
+               #dsm00044#1 = #agifa065#5;
+               #dsm00044#4 = #agifa065#6;
+               #dsm00044#12 = #agifa065#17;
+               #dsm00044#21 = #agifa065#11;
+               #dsm00044#18 = #agifa065#3;
+               #dsm00044#8 = #agifa065#4;
+               |SI #dsm00044#4 < 0;
+                    #dsm00044#7 = "S";
+               |SINO;
+                    #dsm00044#7 = "E";
+               |FINSI;
+               #dsm00044#13  = #agifa065#18;
+               enUni1 = #44#4;
+               enUni2 = #44#12;
+
+               nAlm28 = #agifa065#5;
+               aPar28 = #agifa065#18;
+
+               |DDEFECTO #albw0035;
+               |SELECT #2#albw0035;
+               #albw0035#1 = nAlm28;
+               #albw0035#2 = aPar28;
+               #albw0035#13 = "ES";
+               #albw0035#14 = #44#21;
+               #albw0035#15 = #44#18;
+               #albw0035#16 = #44#8;
+               |LEE 000#albw0035.=;
+               |SI FSalida = 0;
+                    enAlmPar = #albw0035#6;
+                    eaNumPar = #albw0035#7;
+                    eaProducido = #albw0035#10;
+                    eaDesPro = #albw0035#11;
+                    eaDocExt = #albw0035#17;
+                    eaSerExt = #albw0035#18;
+                    enNumExt = #albw0035#19;
+               |FINSI;
+               aObs = #dsm00044#9;
+               |QBF aObs;
+               |SI aObs ! "";
+                    aObs = aObs + #dsm00044#10;
+                    |QBF aObs;
+               |FINSI;
+               eaObser47 = aObs;
+               |HAZ AlberoActPartidasES;
+               eaObser47 = "";
+          |FINSI;
+          |SI #agifa065#2 = "EV";
+               ||Entrada Valorada
+
+               |DDEFECTO #dsm00056;
+               |DDEFECTO #dsm00057;
+               #dsm00056#1 = #agifa065#1;
+
+               #dsm00057#0 = #agifa065#0;
+               #dsm00057#1 = #agifa065#5;
+               #dsm00057#22  = #agifa065#18;
+               #dsm00057#5 = #agifa065#10;
+               #dsm00057#19 = #agifa065#9;
+
+               #dsm00057#28 = #agifa065#11;
+               #dsm00057#27 = #agifa065#3;
+               #dsm00057#14 = #agifa065#4;
+
+               #dsm00057#4 = #agifa065#6;
+               #dsm00057#21 = #agifa065#17;
+
+               enUni1 = #dsm00057#4;
+               enUni2 = #dsm00057#21;
+
+               nAlm28 = #agifa065#5;
+               aPar28 = #agifa065#18;
+
+               |DDEFECTO #albw0035;
+               |SELECT #2#albw0035;
+               #albw0035#1 = nAlm28;
+               #albw0035#2 = aPar28;
+               #albw0035#13 = "EV";
+               #albw0035#14 = #dsm00057#28;
+               #albw0035#15 = #dsm00057#27;
+               #albw0035#16 = #dsm00057#14;
+               |LEE 000#albw0035.=;
+               |SI FSalida = 0;
+                    enAlmPar = #albw0035#6;
+                    eaNumPar = #albw0035#7;
+                    eaProducido = #albw0035#10;
+                    eaDesPro = #albw0035#11;
+                    eaDocExt = #albw0035#17;
+                    eaSerExt = #albw0035#18;
+                    enNumExt = #albw0035#19;
+               |FINSI;
+               |HAZ AlberoActPartidasEV;
+          |FINSI;
+          |SI #agifa065#2 = "SA";
+               ||Stock Inicial
+
+               |DDEFECTO #agist001;
+               |DDEFECTO #agist002;
+               #agist001#1 = #agifa065#1;
+
+               #agist002#2 = #agifa065#0;
+               #agist002#3 = #agifa065#5;
+               #agist002#8  = #agifa065#18;
+               #agist002#5 = #agifa065#9;
+
+               #agist002#13 = #agifa065#11;
+               #agist002#0 = #agifa065#3;
+               #agist002#1 = #agifa065#4;
+
+               #agist002#4 = #agifa065#6;
+               #agist002#7 = #agifa065#17;
+
+               enUni1 = #agist002#4;
+               enUni2 = #agist002#7;
+
+               nAlm28 = #agifa065#5;
+               aPar28 = #agifa065#18;
+
+               |DDEFECTO #albw0035;
+               |SELECT #2#albw0035;
+               #albw0035#1 = nAlm28;
+               #albw0035#2 = aPar28;
+               #albw0035#13 = "SA";
+               #albw0035#14 = #agist002#13;
+               #albw0035#15 = #agist002#0;
+               #albw0035#16 = #agist002#1;
+               |LEE 000#albw0035.=;
+               |SI FSalida = 0;
+                    enAlmPar = #albw0035#6;
+                    eaNumPar = #albw0035#7;
+                    eaProducido = #albw0035#10;
+                    eaDesPro = #albw0035#11;
+                    eaDocExt = #albw0035#17;
+                    eaSerExt = #albw0035#18;
+                    enNumExt = #albw0035#19;
+               |FINSI;
+               |HAZ AlberoActPartidasSA;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa065;
+ #agifa065#4;
+ 18;
+ #albz0022#8, #albz0022#5, "                    ", #albz0022#6;
+ #albz0022#9, #albz0022#5, "zzzzzzzzzzzzzzzzzzzz", #albz0022#7;
+ ;
+ NULL, agifa065;
+|FIN;
+
+|PROCESO Historico;
+     |ABRE #dsm00043;
+     |ABRE #dsm00044;
+     |ABRE #agifa077;
+     |ABRE #agifa080;
+     |ABRE #dsm00056;
+     |ABRE #dsm00057;
+     |ABRE #agist001;
+     |ABRE #agist002;
+     |BUCLE agifa065;
+     |CIERRA #dsm00043;
+     |CIERRA #dsm00044;
+     |CIERRA #agifa077;
+     |CIERRA #agifa080;
+     |CIERRA #dsm00056;
+     |CIERRA #dsm00057;
+     |CIERRA #agist001;
+     |CIERRA #agist002;
+|FPRC;

@@ -1,0 +1,137 @@
+|FICHEROS;
+     agiw0015 #903;
+|FIN;
+
+|VARIABLES;
+     aAlfa       = "";
+
+     aID         = "";
+
+     nID         = 0;
+
+     {10} aPopup = "";
+
+     &eaEntidad  = "";
+     &eaSucursal = "";
+     &eaCuenta   = "";
+     &eaDC       = "";
+
+     &eaCta      = "";
+     &eaPais     = "";
+     &eaIBAN     = "";
+     &eaIBANant  = "";
+     nSwC        = 0;
+|FIN;
+
+|PROCESO DC;
+     eaEntidad  = #903#4; |QBF eaEntidad;    eaEntidad  = eaEntidad  % 104;
+     eaSucursal = #903#5; |QBF eaSucursal;   eaSucursal = eaSucursal % 104;
+     eaCuenta   = #903#7; |QBF eaCuenta;     eaCuenta   = eaCuenta   % 110;
+     eaDC       = "";
+
+     |SI eaEntidad = "";  |Y eaSucursal = "";  |Y eaCuenta = "";
+         |ACABA;
+     |FINSI;
+
+     |HAZ CalculoDC;
+
+     |SI FSalida ! 10;
+         |SI #903#6 ! eaDC;
+             aAlfa = "     El Digito de Control deberia ser " + eaDC;
+             |MENAV aAlfa;
+         |FINSI;
+         |ACABA;
+     |FINSI;
+
+     #903#6 = eaDC;
+     |PINTA #903#6;
+|FPRC;
+
+|PROCESO Tipo66C9;  |TIPO 66;
+     aAlfa = "|C009WID";
+     aID   = #903#aAlfa#;
+     nID   = aID;
+
+     aPopup1  = nID;  || Si fuera -1 en la posicion
+     aPopup2  = 6;
+     aPopup3  = "1.- Efectivo";
+     aPopup4  = "2.- Adeudo en cuenta";
+     aPopup5  = "3.- Domiciliacion";
+     aPopup6  = "4.- Aplazamiento";
+     aPopup7  = "5.- Aplazamiento + Ingreso";
+     aPopup8  = "6.- Cuenta corriente tributaria (Ingreso y Devolucion)";
+
+     IaPopup  = aPopup1  <-;
+     |ESPECIFICA "TRACKPOPUP", aPopup;
+     |SI FSalida ! 0;
+         IaPopup  = aPopup3  <-;
+         IaPopup  = IaPopup + (FSalida - 1);
+
+         aAlfa = aPopup % 101;  #903Campo = aAlfa;
+     |FINSI;
+     |PINTA #903Campo;
+|FPRC;
+
+|PROCESO banco15;
+     aAlfa = "S";
+     |SI #903#2 = 0;
+         #903#3  = ""; |PINTA #903#3;
+         #903#4  = ""; |PINTA #903#4;
+         #903#5  = ""; |PINTA #903#5;
+         #903#10 = ""; |PINTA #903#10;
+         #903#11 = ""; |PINTA #903#11;
+         aAlfa = "N";
+     |FINSI;
+     |C_M #903#3, 1,aAlfa;
+     |C_M #903#4, 1,aAlfa;
+     |C_M #903#5, 1,aAlfa;
+     |C_M #903#10,1,aAlfa;
+     |C_M #903#11,1,aAlfa;
+|FPRC;
+
+|PROCESO Tipo7IBAN_w15;  |TIPO 7;
+     aAlfa = #903#11;   |QBF aAlfa;
+
+     |SI aAlfa ! ""; |Y nSwC = 0;  |ACABA;  |FINSI;
+
+     |SI nSwC = 1; |Y aAlfa ! "";
+         |CONFI "0000NSe han modificado los datos de la Cuenta Corriente. Recalcular el IBAN?";
+         |SI FSalida ! 0;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     eaIBANant = "";
+     eaCta  = #903#4 + #903#5 + #903#6 + #903#7;
+     eaPais = #903#12;
+     |HAZ CalcuIBAN;
+
+     #903#11 = eaIBAN;
+     |PINTA #903#11;
+     nSwC = 0;
+|FPRC;
+
+|PROCESO Tipo0IBAN_w15;  |TIPO 0;
+     |SI FSalida = 2; |ACABA; |FINSI;
+
+     eaCta     = #903#4 + #903#5 + #903#6 + #903#7;
+     eaPais    = #903#12;
+     eaIBANant = #903#11;
+     |HAZ CheqIBAN;
+
+     aAlfa = #903#11;    |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |SI aAlfa = "";
+             #903#11 = eaIBAN;
+             |PINTA #903#11;
+         |SINO;
+
+             |CONFI "0000SEl codigo IBAN puede ser erroneo, quiere calcularlo.";
+             |SI FSalida = 0;
+                 #903#11 = eaIBAN;
+                 |PINTA #903#11;
+                 |ERROR;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+|FPRC;

@@ -1,0 +1,180 @@
+|FICHEROS;
+     eosz0099 #99;
+
+     eosm3130 #130;
+     eosm0020 #131;
+     eosclien #1000;
+     eosactiv #114;
+|FIN;
+
+|VARIABLES;
+     nCampo    = 0;
+     aParam    = "";
+     aBase     = "";
+     aMas      = "";
+     nDEmpresa = 0;
+     nHEmpresa = 0;
+
+     &enElEjer   = 0;
+     &enDEmpresa = 0;
+     &enHEmpresa = 0;
+     aAlfa1      = "";
+     nModelo     = 0;
+     fFecIni     = @;
+     fFecFin     = @;
+     nSwConPro   = 0;
+     nNoModi     = 0;
+     nEmpresa    = 0;
+     aCoBien     = "";
+     nNume1      = 0;
+|FIN;
+
+|INCLUYE i_vareos;
+
+|| \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+|PROCESO NoModificar131;
+  |SI #131#4 = "S"; nNoModi = 1; |FINSI;
+|FPRC;
+
+|DEFBUCLE NoModificar131;
+ #131#1;
+ ;
+ nEmpresa, #99#1, 01;
+ nEmpresa, #99#1, 99;
+ ;
+ NULL, NoModificar131;
+|FIN;
+
+|PROCESO NoModificar130;
+  |SI #130#5 = "S"; nNoModi = 1; |FINSI;
+|FPRC;
+
+|DEFBUCLE NoModificar130;
+ #130#1;
+ ;
+ nEmpresa, 0, 01, #99#1;
+ nEmpresa, 9, 99, #99#1;
+ ;
+ NULL, NoModificar130;
+|FIN;
+
+|| .... Mirar si hace el modelo de IVA
+|PROCESO MiraSiD;
+  |SI #114#48 > "01.01.1900";
+      |SI #114#48 > fFecFin;  |ACABA;  |FINSI;
+  |FINSI;
+  |SI #114#49 > "01.01.1900";
+      |SI #114#49 < fFecIni;  |ACABA;  |FINSI;
+  |FINSI;
+
+  |SI #114#22 = "A"; |Y #99#0 = 130;
+     |ACABA;
+  |FINSI;
+  |SI #114#22 ! "A"; |Y #99#0 = 131;
+     |ACABA;
+  |FINSI;
+
+  nSwConPro = 0;
+  aCoBien = #114#46;
+|FPRC;
+
+|DEFBUCLE MiraSiModelo;
+ #114#1;
+ ;
+ nEmpresa, 1, #99#1;
+ nEmpresa, 9, #99#1;
+ ;
+ NULL, MiraSiD;
+|FIN;
+
+|PROCESO LaSeleccion;
+    aCoBien = "N";
+    nSwConPro = -1;
+    |BUCLE MiraSiModelo;
+    |SI nSwConPro = -1;
+        aAlfa1 = "    Empresa sin Modelo " + #1000#0 + " en el Planing";
+        |MENAV aAlfa1;
+        |ACABA;
+    |FINSI;
+    |SI aCoBien = "S";
+        aAlfa1 = "    Empresa COMUNIDAD DE BIENES       ";
+        |MENAV aAlfa1;
+        |CIERRA #114;
+        |ACABA;
+    |FINSI;
+    |CIERRA #114;
+
+     nNoModi = 0;
+     |SI #99#0 = 130; |BUCLE NoModificar130; |FINSI;
+     |SI #99#0 = 131; |BUCLE NoModificar131; |FINSI;
+     |SI nNoModi = 1;
+         |MENAV "    Empresa con Modelos Remesados o Archivados, no puede modificarlos";
+    |FINSI;
+|FPRC;
+
+|CALCULO Recojo;
+     |SI FSalida = 15;
+         enSwApli = 6;
+         |HAZ eGrabadsmom093;
+         #99#3 = enImporte;
+         |PINTA #99#3;
+         |ERROR;
+     |FINSI;
+|FCAL;
+
+|PROGRAMA;
+      |DDEFECTO #99;
+      #99#0 = enMod130;
+      #99#1 = enEje130;
+      #99#2 = enEmp130;
+
+
+      |ABRE #1000;
+      |DDEFECTO #1000;
+      #1000#0 = #99#2;
+      |LEE 041#1000=;
+      eaNombreAp = #1000#2;
+      |CIERRA #1000;
+
+      nEmpresa = #99#2;
+      nModelo  = #99#0;
+      nNume1 = 2000 + #99#1; aAlfa1 = nNume1;
+      aAlfa1 = "01.01." + aAlfa1; fFecIni = aAlfa1;
+      nNume1 = 2000 + #99#1; aAlfa1 = nNume1;
+      aAlfa1 = "31.12." + aAlfa1; fFecFin = aAlfa1;
+
+      |HAZ LaSeleccion;
+      |SI nSwConPro ! -1;
+          enEmp130 = #99#2;
+          enEje130 = #99#1;
+          enMod130 = #99#0;
+          enSwApli = 2;
+          |HAZ eGrabadsmom093;
+
+          #99#3 = enImporte;
+          |PINPA #0#99;
+          |PINDA #0#99;
+
+          |SI nNoModi = 1;
+              |PAUSA;
+          |SINO;
+              |ENDATOS #1#99;
+              |SI FSalida = 0;
+                  enSwApli  = 5;
+                  enImporte = #99#3;
+                  |HAZ eGrabadsmom093;
+
+                  enSwApli   = 4;
+                  enElEjer   = #99#1;
+                  enDEmpresa = #99#2;
+                  enHEmpresa = #99#2;
+                  aAlfa1     = #99#0;
+                  aAlfa1     = "eosz0095;" + aAlfa1;
+                  |SI enMod130 = 130;
+                      |SUB_EJECUTA_NP aAlfa1;
+                  |FINSI;
+                  |PULSATECLA;
+              |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRO;

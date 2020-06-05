@@ -1,0 +1,222 @@
+|FICHEROS;
+   dscam003 #10;
+   dscam004 #11;
+
+   dscaw013 #50;
+   dscam067 #51;
+   dscam045 #52;
+|FIN;
+
+|VARIABLES;
+   &enEmpCartera = 0; &enEmpGestion = 0;
+   &eaSerie = ""; &eaCliGest = ""; &nImporte = 0; &eaTipoOper = "";
+
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+
+   aSerie   = "";
+   nFactura = 0;
+   nRecibo  = 0;
+   fFechaEm = @;
+   nCobro   = 0;
+   nEmpGestion = 0;
+   nEmpCartera = 0;
+
+   nDRecibo = 0;
+   nHRecibo = 0;
+
+   Linea    = 0;
+   Comodin  = "";
+|FIN;
+
+|PROCESO SeparaPartes;
+   aAlfa = PARAMETRO; |QBF aAlfa;
+   aAlfa1 = aAlfa % 0105; aSerie   = aAlfa1; || SERIE
+   aAlfa1 = aAlfa % 0606; nFactura = aAlfa1; || FACTURA
+   aAlfa1 = aAlfa % 1203; nRecibo  = aAlfa1; || RECIBO
+   aAlfa1 = aAlfa % 1510; fFechaEm = aAlfa1; || FECHA EMISION
+
+   nEmpGestion = 0;
+   aAlfa1 = aAlfa % 2505; nEmpGestion = aAlfa1; || EMPRESA GESTION
+   |SI nEmpGestion ! 0;
+      nEmpCartera = 0;
+      |DFICB aAlfa; |QBF aAlfa;
+      |PATH_DAT #dscam045#aAlfa#;
+      |ABRE #dscam045;
+      #dscam045#0 = nEmpGestion;
+      |LEE 000#dscam045.];
+      |PARA; |SI FSalida = 0; |Y #dscam045#0 = nEmpGestion; |HACIENDO;
+         |SI #dscam045#2 = "V";
+            |SI #dscam045#4 [ aSerie; |Y #dscam045#5 ] aSerie;
+               nEmpCartera = #dscam045#6; |SAL;
+            |FINSI;
+         |FINSI;
+         |LEE 000#dscam045.s;
+      |SIGUE;
+      |CIERRA #dscam045;
+   |FINSI;
+|FPRC;
+
+|PROCESO BuscaRecibo;
+   |SELECT #6#dscam003;
+   |DDEFECTO #dscam003;
+   #dscam003#0 = aSerie;
+   #dscam003#1 = nFactura;
+   #dscam003#2 = nRecibo;
+   |LEE 101#dscam003.];
+   |PARA; |SI FSalida = 0; |Y #dscam003#0 = aSerie; |Y #dscam003#1 = nFactura; |Y #dscam003#2 = nRecibo; |HACIENDO;
+      |SI fFechaEm = #dscam003#4; |SAL; |FINSI;
+      |LEE 101#dscam003.s;
+   |SIGUE;
+   |SELECT #1#dscam003;
+|FPRC;
+
+|PROCESO BorraAsiento;
+   aAlfa = Usuario; |QBF aAlfa; aAlfa = "ac" + aAlfa;
+   |NOME_DAT #dscaw013#aAlfa#;
+   |DELINDEX #dscaw013; |ABRE #dscaw013;
+
+   |ABRE #dscam067;
+   |DDEFECTO #dscam067;
+   #dscam067#0 = "CB";
+   #dscam067#1 = #dscam003#40; aAlfa1 = #dscam067#1;
+   #dscam067#2 = nCobro;       aAlfa2 = #dscam067#2;
+   |LEE 000#dscam067.];
+   |SI FSalida = 0; |Y #dscam067#0 = "CB"; |Y #dscam067#1 = aAlfa1; |Y #dscam067#2 = aAlfa2;
+      Linea = 1;
+      #dscaw013#15 = #dscam067#10; #dscaw013#0  = Linea;
+      #dscaw013#13 = "dscam004";   #dscaw013#14 = 17;
+      #dscaw013#5 = #dscam004#17;  #dscaw013#6  = #dscam004#17;
+      #dscaw013#11 = "N";          #dscaw013#12 = 9;
+      |GRABA 020#dscaw013.n; |LIBERA #dscaw013;
+      Linea = Linea + 1;
+      #dscaw013#15 = #dscam067#10; #dscaw013#0 = Linea;
+      #dscaw013#13 = "dscam004";   #dscaw013#14 = 3;
+      #dscaw013#5 = #dscam004#3;   #dscaw013#6 = #dscam004#3;
+      #dscaw013#11 = "N";          #dscaw013#12 = 3;
+      |GRABA 020#dscaw013.n; |LIBERA #dscaw013;
+      Linea = Linea + 1;
+      #dscaw013#15 = #dscam067#10; #dscaw013#0 = Linea;
+      #dscaw013#13 = "dscam004";   #dscaw013#14 = 6;
+      #dscaw013#7 = #dscam004#6;   #dscaw013#8 = #dscam004#6;
+      #dscaw013#11 = "F";          #dscaw013#12 = 10;
+      |GRABA 020#dscaw013.n; |LIBERA #dscaw013;
+
+      enEmpCartera = nEmpCartera; enEmpGestion = nEmpGestion;
+      Comodin = #dscam067#10; |QBF Comodin;
+      Comodin = "dscam033.tab;" + Comodin + ",B";
+      |LIBERA #dscam003; |CIERRAT #dscam003;
+      |LIBERA #dscam004; |CIERRAT #dscam004;
+      |SUB_EJECUTA_NP Comodin;
+      |ABRET #dscam003; |LEE 101#dscam003.=;
+      |ABRET #dscam004; |LEE 101#dscam004.=;
+      |CIERRA #dscaw013; |DELINDEX #dscaw013;
+      |CIERRA #dscam067;
+   |FINSI;
+|FPRC;
+
+|PROCESO BorraCobro;
+   #dscam004#17 = #dscam003#40;
+   #dscam004#3  = 1;
+   |LEE 000#dscam004.];
+   |PARA; |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40; |HACIENDO;
+      nCobro = -1;
+      |SI #dscam004#5 = "COB"; nCobro = #dscam004#3; |FINSI;
+      |LEE 000#dscam004.s;
+   |SIGUE;
+
+   |SI nCobro ] 0;
+      #dscam004#17 = #dscam003#40;
+      #dscam004#3  = nCobro;
+      |LEE 101#dscam004.=;
+      |SI FSalida = 0;
+         |HAZ BorraAsiento;
+
+         |BORRA 020#dscam004.a; |LIBERA #dscam004;
+         #dscam003#56 = #dscam003#56 - #dscam004#24;
+         #dscam003#23 = #dscam003#23 - #dscam004#8; #dscam003#61 = #dscam003#61 - #dscam004#26;
+         #dscam003#31 = #dscam003#31 + #dscam004#8; #dscam003#65 = #dscam003#65 + #dscam004#26;
+         |SI #dscam004#22 = "D";
+             #dscam003#54 = #dscam003#54 - #dscam004#23; #dscam003#67 = #dscam003#67 - #dscam004#32;
+         |SINO;
+            #dscam003#55 = #dscam003#55 - #dscam004#23; #dscam003#68 = #dscam003#68 - #dscam004#32;
+         |FINSI;
+         #dscam003#24 = #dscam003#24 - #dscam004#12; #dscam003#62 = #dscam003#62 - #dscam004#29;
+         #dscam003#25 = #dscam003#25 - #dscam004#13; #dscam003#63 = #dscam003#63 - #dscam004#30;
+         #dscam003#38 = #dscam003#38 - #dscam004#14; #dscam003#66 = #dscam003#66 - #dscam004#31;
+         |SALVA_FICHA #dscam004;
+         |LEE 000#dscam004.a;
+         |SI FSalida = 0;
+            |SI #dscam004#17 = #dscam003#40;
+               #dscam003#26 = #dscam004#6;
+            |SINO;
+               #dscam003#26 = "01.01.0000";
+            |FINSI;
+            |LEE 000#dscam004.s;
+         |SINO;
+            #dscam003#26 = "01.01.0000";
+         |FINSI;
+         |REPON_FICHA #dscam004;
+
+         |SI #dscam003#31 = 0;
+            #dscam003#14 = "L";
+            #dscam003#15 = "Recibo Liquidado";
+         |SINO;
+            |SI #dscam003#23 = 0;
+               |SI #dscam003#70 = "          ";
+                  |SI #dscam003#16 = 0;
+                     #dscam003#14 = "P";
+                     #dscam003#15 = "Pendiente de cobro";
+                  |SINO;
+                     #dscam003#14 = "I";
+                     #dscam003#15 = "Impagado";
+                  |FINSI;
+               |SINO;
+                  #dscam003#14 = "T";
+                  #dscam003#15 = "Pagare/Talon de cliente";
+               |FINSI;
+            |SINO;
+               #dscam003#14 = "C";
+               #dscam003#15 = "Parcialmente cobrado";
+            |FINSI;
+         |FINSI;
+
+         |GRABA 020#dscam003.a;
+         enEmpCartera = -1;     enEmpGestion = #dscam003#46;
+         eaSerie = #dscam003#0; eaCliGest = #dscam003#32;
+         nImporte = #dscam004#8; eaTipoOper = "+4";
+         |HAZ BucleRiesgo;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Recibos;
+#dscam003#12;
+;
+aSerie, nFactura, nDRecibo, fFechaEm, "            ", "      ";
+aSerie, nFactura, nHRecibo, fFechaEm, "zzzzzzzzzzzz", "zzzzzz";
+be;
+NULL, BorraCobro;
+|FIN;
+
+|PROGRAMA;
+   |SI PARAMETRO ! "";
+      |HAZ SeparaPartes;
+
+      |SI nRecibo = 0;
+         nDRecibo = 0; nHRecibo = 999;
+      |SINO;
+         nDRecibo = nRecibo; nHRecibo = nRecibo;
+      |FINSI;
+
+      |SI nEmpCartera ! 0;
+         |DFICB aAlfa; |QBF aAlfa;
+         aAlfa = aAlfa + (("00000" + nEmpCartera) % -105) + "/";
+         |PATH_DAT #dscam003#aAlfa#; |PATH_DAT #dscam004#aAlfa#;
+         |PATH_DAT #dscam067#aAlfa#;
+      |FINSI;
+
+      |ABRE #dscam004; |BUCLE Recibos; |CIERRA #dscam004;
+   |FINSI;
+|FPRO;

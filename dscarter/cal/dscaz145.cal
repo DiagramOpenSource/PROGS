@@ -1,0 +1,220 @@
+|FICHEROS;
+   dscaz145 #0;
+
+   dscam003 #10;
+   dscam008 #11;
+
+   dscam042 #20;
+   dscam043 #21;
+   dscam044 #22;
+   dscam045 #23;
+
+   RefFact@ #100;
+   RefClPr@ #101;
+   ReferFP@ #102;
+   RefEmpr@ #103;
+|FIN;
+
+|VARIABLES;
+   nLibro   = 0;
+   nFactura = 0;
+   nEmpCart = 0;
+   nEmpre   = 0;
+   nPerio   = 0;
+   nNivel   = 0;
+   nSwContagen = 0;
+   nCalc    = 0;
+   nCont    = 0;
+
+   aSerie   = "";
+   aTipo    = "";
+   aPath    = "";
+   aCuenta  = "";
+
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   aAlfa3   = "";
+   aAlfa4   = "";
+|FIN;
+
+|PROCESO CtrlConta;
+   |SI aSerie < #dscam043#7; |O aSerie > #dscam043#8; |ACABA; |FINSI;
+   |SI nLibro < #dscam043#5; |O nLibro > #dscam043#6; |ACABA; |FINSI;
+
+   #dscam042#0 = #dscam043#0;
+   #dscam042#1 = #dscam043#1;
+   |LEE 000#dscam042.=;
+   |SI FSalida = 0;
+      aPath = #dscam042#2; |QBF aPath;
+      |ERROR10;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CtrlConta;
+#dscam043#1;
+3, 9;
+nEmpre, nPerio, 001, aTipo, nEmpCart;
+nEmpre, nPerio, 999, aTipo, nEmpCart;
+;
+NULL,CtrlConta;
+|FIN;
+
+|PROCESO CtrlGestion;
+   |SI aSerie < #dscam045#4; |O aSerie > #dscam045#5; |ACABA; |FINSI;
+
+   #dscam044#0 = #dscam045#0;
+   |LEE 000#dscam044.=;
+   |SI FSalida = 0;
+      aPath = #dscam044#1; |QBF aPath;
+      |ERROR10;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CtrlGestion;
+#dscam045#1;
+2, 6;
+nEmpre, 001, aTipo, nEmpCart;
+nEmpre, 999, aTipo, nEmpCart;
+;
+NULL,CtrlGestion;
+|FIN;
+
+|PROCESO RecibosVta;
+   aPath = ""; nEmpCart = #48#0;
+   aTipo = "V"; aSerie = #dscam003#0;
+   nFactura = #dscam003#1;  nLibro = #dscam003#27;
+   |SI #dscam003#44 ! 0; |O #dscam003#45 ! 0;
+      nEmpre   = #dscam003#44; nPerio = #dscam003#45;
+      |DFICB aAlfa; |PATH_DAT #dscam042#aAlfa#; |PATH_DAT #dscam043#aAlfa#;
+      |ABRE #dscam042; |BUCLE CtrlConta; |CIERRA #dscam042;
+      aAlfa = aPath; |QBF aAlfa;
+      aAlfa1 = aAlfa - "contagen";
+      |SI FSalida ! 0;
+         nSwContagen = 1;
+      |SINO;
+         nSwContagen = 0;
+      |FINSI;
+
+      |SI nSwContagen = 0;
+         aAlfa1 = aAlfa + "def/caivarep.mas";
+      |SINO;
+         aAlfa1 = aAlfa + "def/camaniva.mas";
+      |FINSI;
+      aAlfa2 = aAlfa + "def/caclipro.mas";
+      aAlfa3 = aAlfa + "def/caforpag.mas";
+      aAlfa4 = aAlfa + "def/canempre.mas";
+
+      |CARGA_DEF aAlfa1, RefFact@;
+      |SI FSalida = 0;
+         |CARGA_DEF aAlfa2, RefClPr@; |CARGA_DEF aAlfa3, ReferFP@;
+         |CARGA_DEF aAlfa4, RefEmpr@;
+
+         aAlfa = aPath; |QBF aAlfa;
+         aAlfa = aAlfa + "fich/";
+         |PATH_DAT #RefEmpr@#aAlfa#;
+         aAlfa = aAlfa + (("00000" + #dscam003#44) % -105) + #dscam003#45 + "/";
+         |PATH_DAT #RefFact@#aAlfa#; |PATH_DAT #RefClPr@#aAlfa#;
+         |PATH_DAT #ReferFP@#aAlfa#;
+
+         |ABRE #RefFact@; |ABRE #RefClPr@; |ABRE #ReferFP@; |ABRE #RefEmpr@;
+         #RefEmpr@#2 = #dscam003#44;
+         #RefEmpr@#3 = #dscam003#45;
+         |LEE 000#RefEmpr@.=;
+         |SI FSalida ! 0; |DDEFECTO #RefEmpr@; |FINSI;
+
+         |SI nSwContagen = 1;
+            |SELECT #3#RefFact@;
+            #RefFact@#0 = nLibro;
+            #RefFact@#2 = aSerie;
+            #RefFact@#3 = nFactura;
+         |SINO;
+            #RefFact@#0 = nLibro;
+            #RefFact@#27 = aSerie;
+            #RefFact@#2 = nFactura;
+         |FINSI;
+         |LEE 000#RefFact@.=;
+         |SI nSwContagen = 1;
+            aCuenta = #RefFact@#12;
+         |SINO;
+            aCuenta = #RefFact@#4;
+         |FINSI;
+         |SI FSalida = 0; |Y aCuenta = #dscam003#5;
+            aAlfa = aCuenta; |QBF aAlfa; aAlfa = aAlfa % 0; nCalc = aAlfa;
+            |PARA nCont = 14; |SI nCont [ 19; |HACIENDO nCont = nCont + 1;
+               |SI nCalc = #RefEmpr@#nCont#; nNivel = nCont - 13; |FINSI;
+            |SIGUE;
+
+            #RefClPr@#23 = "C";
+            #RefClPr@#10 = #dscam003#5;
+            #RefClPr@#11 = nNivel;
+            |LEE 000#RefClPr@.=;
+            |SI FSalida = 0;
+               #ReferFP@#0 = #RefClPr@#20;
+               |LEE 000#ReferFP@.=;
+               |SI FSalida = 0;
+                  #dscam003#80 = #ReferFP@#0;
+                  #dscam003#81 = #ReferFP@#1;
+                  |GRABA 020#dscam003.a;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+         |CIERRA #ReferFP@; |DESCARGA_DEF #ReferFP@;
+         |CIERRA #RefClPr@; |DESCARGA_DEF #RefClPr@;
+         |CIERRA #RefFact@; |DESCARGA_DEF #RefFact@;
+      |FINSI;
+   |FINSI;
+   |SI #dscam003#46 ! 0;
+      nEmpre = #dscam003#46;
+      |DFICB aAlfa; |PATH_DAT #dscam044#aAlfa#; |PATH_DAT #dscam045#aAlfa#;
+      |ABRE #dscam044; |BUCLE CtrlGestion; |CIERRA #dscam044;
+      aAlfa = aPath; |QBF aAlfa;
+      aAlfa1 = aAlfa + "def/agifa134.mas";
+      aAlfa2 = aAlfa + "def/agifa091.mas";
+      |CARGA_DEF aAlfa1, RefFact@;
+      |SI FSalida = 0;
+         |CARGA_DEF aAlfa2, ReferFP@;
+         aAlfa = aPath; |QBF aAlfa; aAlfa = aAlfa + "fich/";
+         aAlfa = aAlfa + (("00000" + #dscam003#46) % -105) + "/";
+         |PATH_DAT #RefFact@#aAlfa#; |PATH_DAT #ReferFP@#aAlfa#;
+
+         |ABRE #RefFact@; |ABRE #ReferFP@;
+         #RefFact@#49 = aSerie;
+         #RefFact@#0 = nFactura;
+         |LEE 000#RefFact@.=;
+         aCuenta = #RefFact@#12;
+         |SI FSalida = 0; |Y aCuenta = #dscam003#5;
+            |ABRE #ReferFP@;
+            #ReferFP@#0 = #RefFact@#11;
+            |LEE 000#ReferFP@.=;
+            |SI FSalida = 0;
+               #dscam003#80 = #ReferFP@#0;
+               #dscam003#81 = #ReferFP@#1;
+               |GRABA 020#dscam003.a;
+            |FINSI;
+         |FINSI;
+         |CIERRA #ReferFP@; |DESCARGA_DEF #ReferFP@;
+         |CIERRA #RefFact@; |DESCARGA_DEF #RefFact@;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RecibosVta;
+#dscam003#6;
+;
+#dscaz145#5, #dscaz145#1, #dscaz145#3, 000, " ", 000000001;
+#dscaz145#6, #dscaz145#2, #dscaz145#4, 999, "z", 999999999;
+be;
+NULL, RecibosVta;
+|FIN;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Recalculo forma de pago en recibos";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0; |Y #0#0 = "S";
+      |MENSA "    Recalculando recibos de venta";
+      |BUCLE RecibosVta;
+   |FINSI;
+|FPRO;

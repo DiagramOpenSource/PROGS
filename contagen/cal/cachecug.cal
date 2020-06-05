@@ -1,0 +1,298 @@
+|FICHEROS;
+   cachecug #0;
+
+   caclipro #1;
+   cacuenta #2;
+   cliprov@ #3
+   cacuebal #5;
+
+   canempre #30;
+   caselem1 #998;
+   ca8cumay #410;
+   ca8m0002 #422;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   aAlfa1    = "";
+   aAlfa2    = "";
+   nNume1    = 0;
+   nPara1    = 0;
+
+   informe   = "cachecug";
+   desde    = "";
+   aDCuenta = "";
+   aHCuenta = "";
+   aDNombre = "";
+   aHNombre = "";
+   &aError  = "";
+   &aNomCta = "";
+   sw = 0;
+
+   nEstado    = 0;
+   aMas       = "";
+   aFichero   = "";
+   aDirInicio = "";
+
+   swError    = 0;
+
+   aQueQuiero = "";
+   aNumCampos = "";
+   nNumCampos = 0;
+   mascara    = "";
+   mesdes     = "";
+   meshas     = "";
+   aMes       = "";
+   nMes       = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE defect_i;
+
+|| **********************************************************************
+
+|CALCULO proceso;|TIPO 3;
+
+ |SI #0#0 = "N"; |ACABA; |FINSI;
+
+ |DBASS aDirInicio;
+ aMas  = aDirInicio + "contagen/def/caclipro";
+ |CARGA_DEF aMas, cliprov@;
+ |SI FSalida ! 0; |ACABA; |FINSI;
+
+ aFichero = ("cp" + Usuario) % 108;
+ |NOME_DAT #3 aFichero;
+
+ |IMPRE 0;
+ |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+ |INFOR informe;
+ |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+ aQueQuiero = "|NC";
+ aNumCampos = #caclipro#aQueQuiero#;
+ nNumCampos = aNumCampos;
+ nNumCampos = nNumCampos - 1;
+
+ |SI #48#27 = "S";
+     |HAZ MultiEmpresa;
+ |SINO;
+     |DFICE dirfich0; |QBF dirfich0;
+     |HAZ HazTodo;
+ |FINSI;
+ |FININF;
+ |FINIMP;
+ |DESCARGA_DEF #cliprov@;
+|FCAL;
+
+||************************************************************************
+|PROCESO porcorregir;
+ #1#10 = #3#10;
+ #1#11 = #3#11;
+ #1#23 = #3#23;
+ |LEE 101#1=;
+ nEstado = FSalida;
+ |DDEFECTO #1;
+
+ |PARA nPara1 = 0; |SI nPara1 [ nNumCampos; |HACIENDO nPara1 = nPara1 + 1;
+       #1nPara1 = #3nPara1;
+ |SIGUE;
+ |SI nEstado = 0;  |GRABA 020#1a; |FINSI;
+ |SI nEstado ! 0;  |GRABA 020#1b; |FINSI;
+ |LIBERA #1;
+ |LIBERA #3;
+|FPRC;
+
+|DEFBUCLE Corrijo;
+  #3#1002;
+  ;
+  " ", aDCuenta;
+  "z", aHCuenta;
+  be;
+  NULL, porcorregir;
+|FIN;
+
+|PROCESO AltaCta;
+  |DDEFECTO #2;
+  #2#0 = #1#10;
+  #2#1 = enNivel;
+  #2#2 = #1#1;
+  #2#3 = "S";
+  nMensa  = 1;
+  nMensa9 = 1;
+  |HAZ defect;
+  #2#56 = mesdes;
+  #2#57 = meshas;
+
+  mascara = #2#0;
+  |QBF mascara;
+  mascara = mascara +"zzzzzzzzzzzz";
+  mascara = mascara % 112;
+
+  #2#54 = mascara;
+  #2#55 = #2#1;
+  |GRABA 020#2n;
+|FPRC;
+
+|PROCESO Altaen03;
+      #3#10 = #1#10;
+      #3#11 = #1#11;
+      #3#23 = #1#23;
+      |LEE 101#3=;
+      |SI FSalida = 0;
+          aError = aError + "Ficha Duplicada.";
+          |SI #0#2 = "S";
+              aError = aError + "(Corregido)";
+          |FINSI;
+          sw = 1;
+      |SINO;
+          |PARA nPara1 = 0; |SI nPara1 [ nNumCampos; |HACIENDO nPara1 = nPara1 + 1;
+                #3nPara1 = #1nPara1;
+          |SIGUE;
+          |GRABA 020#3b;
+      |FINSI;
+      |LIBERA #3;
+|FPRC;
+
+|PROCESO porimpre;
+  sw = 0;
+  aError = "";
+
+  eaCuenta = #1#10; |HAZ SacaNivel;
+  |SI #1#11 ! enNivel; |Y enNivel ! 0;
+      aError = "Nivel Incorrecto.";
+      sw = 1;
+      #1#11 = enNivel;
+      |SI #0#2 = "S"; aError = aError + "(Modificado)"; |FINSI;
+  |FINSI;
+
+  |SI enNivel = 0;
+      aError = "Nivel Erroneo.";
+      sw = 1;
+      |SI #0#2 = "S"; aError = aError + "(Borrada)"; |FINSI;
+  |FINSI;
+
+  aNomCta = #1#1;
+
+  #2#0 = #1#10;
+  |LEE 001#2=;
+  |SI FSalida = 0;
+
+      aAlfa1 = #2#2; |QBF aAlfa1;
+      aAlfa2 = #1#1; aAlfa2 = aAlfa2 % 136;  |QBF aAlfa2;
+      |SI aAlfa1 ! aAlfa2;
+          aError = aError + "Razon Social Diferente.";
+          sw = 1;
+          #1#1 = #2#2;
+          |SI #0#2 = "S"; aError = aError + "(Modificado)"; |FINSI;
+      |FINSI;
+
+      |SI enNivel ! 0;
+          |HAZ Altaen03;
+      |FINSI;
+
+   |SINO;
+      |SI enNivel ! 0;
+          aError = aError + "Cta Cble Inexistente.";
+          sw = 1;
+          |SI #0#1 = "N";
+              |HAZ Altaen03;
+              |SI #0#2 = "S";
+                  |HAZ AltaCta;
+                  aError = aError + "-Alta en Plan";
+              |FINSI;
+          |SINO;
+              |SI #0#2 = "S"; aError = aError + "(Borrada)"; |FINSI;
+          |FINSI;
+      |FINSI;
+
+   |FINSI;
+
+   |SI sw = 1;
+       |PRINT;
+       swError = swError + sw;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Lee_codigo;
+  #1#1;
+  ;
+  " ", aDCuenta;
+  "z", aHCuenta;
+  be;
+  NULL, porimpre;
+|FIN;
+
+|PROCESO HazTodo;
+ sw = 0;
+ swError = 0;
+ aDCuenta = "            ";
+ aHCuenta = "zzzzzzzzzzzz";
+ nMes = #canempre#11; |HAZ mes; mesdes = aMes;
+ nMes = #canempre#12; |HAZ mes; meshas = aMes;
+
+ |ABRE #2;
+ |ABRE #3;
+ |BUCLE Lee_codigo;
+ |CIERRA #2;
+ |CIERRA #3;
+
+ |SI swError ! 0;
+    |PIEINF;
+    |SI #0#2 = "S";
+        |DELINDEX #1;
+        |ABRE #1;
+        |BUCLE Corrijo;
+        |CIERRA #1;
+    |FINSI;
+ |FINSI;
+ |DELINDEX #3;
+|FPRC;
+
+|PROCESO mes;
+   |SI nMes =  1; aMes = "Enero";     |ACABA;  |FINSI;
+   |SI nMes = 12; aMes = "Diciembre"; |ACABA;  |FINSI;
+   |SI nMes =  2; aMes = "Febrero";   |ACABA;  |FINSI;
+   |SI nMes =  3; aMes = "Marzo";     |ACABA;  |FINSI;
+   |SI nMes =  4; aMes = "Abril";     |ACABA;  |FINSI;
+   |SI nMes =  5; aMes = "Mayo";      |ACABA;  |FINSI;
+   |SI nMes =  6; aMes = "Junio";     |ACABA;  |FINSI;
+   |SI nMes =  7; aMes = "Julio";     |ACABA;  |FINSI;
+   |SI nMes =  8; aMes = "Agosto";    |ACABA;  |FINSI;
+   |SI nMes =  9; aMes = "Septiembre";|ACABA;  |FINSI;
+   |SI nMes = 10; aMes = "Octubre";   |ACABA;  |FINSI;
+   |SI nMes = 11; aMes = "Noviembre"; |ACABA;  |FINSI;
+|FPRC;
+|| **********************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #5 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

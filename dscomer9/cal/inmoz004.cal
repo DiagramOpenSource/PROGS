@@ -1,0 +1,228 @@
+|FICHEROS;
+     inmoz004 #0;
+     inmom001 #1,MANTE;
+     referen@;
+|FIN;
+
+|VARIABLES;
+     &eaBastidor = "";
+     &enSalida = 0;
+     &eaObra = "";
+     &eaSerie = "";
+     nSwCheq = 0;
+     nBoton = 0;
+     aRuta = "";
+     aAlfa = "";
+     aDato = "";
+     i = 0;
+     aExcel = "";
+     nXls = 0;
+     aAlf1 = "";
+     aAlf2 = "";
+     nSal = 0;
+     aBastidor = "";
+     aCB = "";
+     aSerie = "";
+     aObra = "";
+     aAlbPrv = "";
+     nPrime = 0;
+     nImpre = 1;
+     nInfor = 1;
+|FIN;
+
+|PROCESO Imprime;
+     |SI nPrime = 0;
+          nPrime = 1;
+          |IMPRE 0;
+          nImpre = FSalida;
+          |SI FSalida ! 0; |ACABA; |FINSI;
+          |INFOR "inmoz004";
+          nInfor = FSalida;
+          |SI FSalida ! 0; |ACABA; |FINSI;
+     |FINSI;
+     |SI nInfor = 0; |PRINT; |FINSI;
+|FPRC;
+
+|PROCESO Tmp;
+     |SI nSwCheq = 0;
+          #referen@#0 = #1#0;
+          |LEE 121#referen@.=;
+          |SI FSalida = 0;
+               #referen@#9 = #1#9;
+               #referen@#11 = #1#11;
+               #referen@#32 = #1#32;
+               |GRABA 020#referen@.a;
+               |LIBERA #referen@;
+          |FINSI;
+     |SINO;
+          aAlfa = #1#1; |QBF aAlfa;
+          |SI aAlfa = "REPETIDO";
+               enSalida = 1;
+               |HAZ Imprime;
+               |ACABA;
+          |FINSI;
+
+          #referen@#0 = #1#0;
+          |LEE 000#referen@.=;
+          |SI FSalida ! 0;
+               eaObra = "";
+               eaSerie = "";
+               eaBastidor = "";
+               enSalida = 2;
+               |HAZ Imprime;
+          |SINO;
+               |SI #referen@#9 ! "    "; |O #referen@#11 ! "    ";
+                    eaObra = #referen@#9;
+                    eaSerie = #referen@#11;
+                    eaBastidor = #referen@#32;
+                    enSalida = 3;
+                    |HAZ Imprime;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Tmp;
+     #1#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp;
+|FIN;
+
+|PROCESO Graba;
+     |DDEFECTO #1;
+     #1#0 = aCB;
+     |LEE 101#1=;
+     |SI FSalida = 0;
+          #1#1 = "REPETIDO";
+          |GRABA 020#1a;
+     |SINO;
+          #1#9 = aObra;
+          #1#11 = aSerie;
+          #1#32 = aBastidor;
+          |GRABA 020#1n;
+     |FINSI;
+     |LIBERA #1;
+|FPRC;
+
+|PROCESO ImpXLS;
+     aAlfa = Usuario;
+     |NOME_DAT #1 aAlfa;   || Primero se importa en un temporal
+     |DELINDEX #1;
+
+     |ABRE #1;
+     aExcel = #0#1; |QBF aAlfa;
+     |XABRE "CE", aExcel, 0;
+     |SI FSalida < 0
+          |MENAV "0000No puedo abrir el fichero a importar";
+     |SINO;
+          |CARGADLL "agixl97.dll";
+          |SI FSalida < 0;
+               |MENAV "0000No se puede usar agixl97.dll";
+          |SINO;
+               |ALFACALLDLL "agixl97.dll", "carga_book", aExcel;
+               |ALFACALLDLL "agixl97.dll", "selecciona_hoja", "Hoja1";
+               |SI FSalida = 0;
+                    |PARA nXls = 1; |SI nXls < 65536; |HACIENDO nXls = nXls + 1;
+                         aAlfa = "Importando:" + nXls;
+                         |PINTA 2003, aAlfa;
+                         aAlf1 = "A" + nXls; |ALFACALLDLL "agixl97.dll", "peek_dato", aAlf1;
+                         |SI FSalida ! 0; |SAL; |FINSI;
+                         |SI aAlf1 = ""; |SAL; |FINSI;
+
+                         aCB = aAlf1;
+                         aObra = "B" + nXls; |ALFACALLDLL "agixl97.dll", "peek_dato", aObra;
+                         |SI FSalida ! 0; |SAL; |FINSI;
+                         aSerie = "C" + nXls; |ALFACALLDLL "agixl97.dll", "peek_dato", aSerie;
+                         |SI FSalida ! 0; |SAL; |FINSI;
+
+                         aBastidor = "D" + nXls; |ALFACALLDLL "agixl97.dll", "peek_dato", aBastidor;
+                         |SI FSalida ! 0; |SAL; |FINSI;
+
+                         |HAZ Graba;
+                         |SI nSal = 1; |SAL; |FINSI;
+                    |SIGUE;
+                    |ALFACALLDLL "agixl97.dll", "fin_book", "salva";
+               |FINSI;
+          |FINSI;
+          |DESCARGADLL "agixl97.dll";
+     |FINSI;
+     |CIERRA #1;
+
+     || Despues pasamos el temporal al real si todo esta bien
+
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "inmom001";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          nSwCheq = 1;
+          |BUCLE Tmp;
+          |SI nPrime = 0;
+               nSwCheq = 0;
+               |BUCLE Tmp;
+          |SINO;
+               |SI nInfor = 0; |PIEINF; |FININF; |FINSI;
+               |SI nImpre = 0; |FINIMP; |FINSI;
+               |MENAV "0000Importacion cancelada...";
+          |FINSI;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+
+     |DELINDEX #1; || y finaliza borrando el temporal
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#2 ! "SI"; |ACABA; |FINSI;
+
+     |ESTADO_CONTROL nBoton, "HIDE";
+
+     |HAZ ImpXLS;
+|FPRC;
+
+|PROCESO Tipo0; |TIPO 0;
+     |SI FSalida ! 13; |ACABA; |FINSI;
+     |ESTADO_CONTROL nBoton, "HIDE";
+
+     aRuta = #0#1;  |QBF aRuta;
+     |SI aRuta = "";
+         aRuta = "*.xls";
+     |FINSI;
+     aRuta = "F" + aRuta;
+
+     |BROWSE aRuta;
+
+     aRuta = aRuta % 2;
+     |SI aRuta ! "F";
+          #0#1 = aRuta;
+     |FINSI;
+     |PINTA #0#1;
+
+     |ESTADO_CONTROL nBoton, "SHOW";
+     |ERROR;
+|FPRC;
+
+|PROCESO Boton;
+     |PTEC 827;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     |CLS;
+     #0#2 = "NO";
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |CONTROL_SIMPLE 0, "BOTON, Fichero", 1010, 1018, Boton;
+     nBoton = FSalida;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |GRABA 020#0a;
+     |FINSI;
+     |CIERRA #0;
+     |FIN_CONTROL_WINDOWS nBoton;
+|FPRO;

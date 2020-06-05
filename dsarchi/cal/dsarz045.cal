@@ -1,0 +1,672 @@
+||Parte del codigo se basa en el malpe148 (dscomer9)
+
+|FICHEROS;
+     dsarm500 #500;      ||Facturas XML CAB
+     dsarm501 #501;      ||Facturas XML LIN
+
+     dsarm001 #1;        ||Parametros
+
+     :/integral/def/dsam0103 #103;
+     :/basica/def/agim0003   #203;
+|FIN;
+
+|VARIABLES;
+     nNumeroAux = 0;
+     nACta = 0;
+     aPathImpo = "";
+     aParametro = "";
+     aMensaje = "";
+     aFichero = "";
+
+     aVal = "";
+     aTmp = "";
+     nNivel = 0;
+     nRem = 0;
+     nPos = 0;
+     aAlfa = "";
+     aCar = "";
+     nHandle = 0;
+     aIniCab = "";
+     aIniLin = "";
+     nCampo = 0;
+     {100}Matriz = "";
+
+     aLon = "";
+     aTag = "";
+     aIniTag = "N";
+     aFinTag = "N";
+     aIniPro = "N";
+     aFinPro = "N";
+     aFinTagVacio = "N";
+     nError = 0;
+     nSwLin = 0;
+     nSwCab = 0;
+     nLinea = 0;
+     aDia = "";
+     aMes = "";
+     aA¤o = "";
+     nNume = 0;
+     aNom = "";
+     j = 0;
+
+     nSwCliente = 0;
+     nCodIva = 0;
+     nCampoIva = 0;
+
+     nSwLeeLin = 0;      ||Se usa para lee y grabar bloqueando la linea
+                         ||Luego una vez completa la linea, se graba y libera
+     aNumLin = "";       ||Para permitir la repeticion de linea
+     aNumIva = "";       ||Idem
+     nNumLineaTag = 0;
+     nNumIvaTag = 0;
+     aAlfaTag = "";
+     &eaFicLog = "";
+     &eaTextoLog = "";
+     aConectarMedida = "";
+     aNombreMedida = "";
+     aAlfaExte = "";
+
+     &eaArCodCli = "";  || Codigo Cliente
+     &eaArNomCli = "";  || Nombre Cliente
+     &eaArCodCif = "";  || Cif
+     &eaArNomCif = "";  || Nombre Cif
+     &eaArCodTra = "";  || Codigo Trabajador
+     &eaArNomTra = "";  || Nombre Trabajador
+     &eaArCamPDF = "";  || Camino al PDF a archivar
+     &eaAplicacion = "";
+     &eaDefFE = "";
+     &eaEmpresaFE = "";
+     &eaSerieFE = "";
+     &eaNumeroFE = "";
+     &eaDefLinFe = "";
+     &eaDefEmpFe = "";
+     &eaDefCliFe = "";
+     &eaDefIvaFe = "";
+     &eaCodCliFe = "";
+     &eaDefAlbFe = "";
+     &enTipoIvaFe = 0;
+     &enTipoFacFe = 0;
+
+     &eaArTipoDoc = ""; || Tipo documento.  FD, FV, etc ...
+     &eaArSerDoc = "";  || Serie Docuemnto.
+     &enArNumDoc = 0;   || Numero Documento
+     &eaArFecDoc = "";  || Fecha Documento.
+
+
+     &eaSwEnvioCorreo = "";  ||Indica si se enivia por correo al emitir la minuta
+     &eaDirDesFE = "";  || Direccion destino para envio por correo
+     &eaFirmarFE = "";  || Indica si tenemos que firmar o no el documento
+
+     &eaArGrpMin = "";  || Grupo archivo
+     &eaArSbGMin = "";  || Subgrupo archivo
+     &eaArTipMin = "";  || Tipo archivo
+
+     &enSwLogXMLMete = 0;
+
+     nSwError = 0;
+
+     nSwEstaBasica = 0;
+     nSwEstaIntegral = 0;
+     aBase = "";
+     aDef = "";
+
+     nCodPostal = 0;
+     aCodPostal = "";
+     aCP1 = "";
+     aCP2 = "";
+|FIN;
+
+|PROCESO CamposCab;
+     nCampo = -1;
+
+     |SI aTag = "NumeroFactura"; nCampo = 1; |FINSI;
+     |SI aTag = "SerieFactura"; nCampo = 0; |FINSI;
+     |SI aTag = "FechaFactura"; nCampo = 2; |FINSI;
+
+     |SI nSwCliente = 1;
+          |SI aTag = "CodigoCliente"; nCampo = 10; |FINSI;
+          |SI aTag = "DNICIF"; nCampo = 11; |FINSI;
+          |SI aTag = "RazonSocial"; nCampo = 12; |FINSI;
+          |SI aTag = "NombreComercial"; nCampo = 13; |FINSI;
+          |SI aTag = "Direccion"; nCampo = 14; |FINSI;
+          |SI aTag = "CodigoPostal"; nCampo = 15; |FINSI;
+          |SI aTag = "Poblacion"; nCampo = 16; |FINSI;
+          |SI aTag = "Provincia"; nCampo = 17; |FINSI;
+          |SI aTag = "Telefono"; nCampo = 18; |FINSI;
+          |SI aTag = "Fax"; nCampo = 19; |FINSI;
+          |SI aTag = "Email"; nCampo = 20; |FINSI;
+          |SI aTag = "PersonaContacto"; nCampo = 21; |FINSI;
+     |SINO;
+          |SI aTag = "DNICIF"; nCampo = 3; |FINSI;
+          |SI aTag = "RazonSocial"; nCampo = 4; |FINSI;
+          |SI aTag = "NombreComercial"; nCampo = 5; |FINSI;
+          |SI aTag = "Direccion"; nCampo = 6; |FINSI;
+          |SI aTag = "CodigoPostal"; nCampo = 7; |FINSI;
+          |SI aTag = "Poblacion"; nCampo = 8; |FINSI;
+          |SI aTag = "Provincia"; nCampo = 9; |FINSI;
+     |FINSI;
+
+     |SI aTag = "CodigoIva";
+          nCodIva = aVal;
+          nCampoIva = 22 + (nCodIva * 4);
+          nCampo = nCampoIva;
+     |FINSI;
+     |SI aTag = "%IVA";
+          |SI nCampoIva = 0;
+               ||Si no sabemos el tipo de iva, consideraremos que el tipo 2
+               nCampoIva = 22 + (2 * 4);
+               #500#30 = 2;
+          |FINSI;
+          nCampo = nCampoIva + 1;
+     |FINSI;
+     |SI aTag = "BaseIVA";
+          |SI nCampoIva = 0;
+               ||Si no sabemos el tipo de iva, consideraremos que el tipo 2
+               nCampoIva = 22 + (2 * 4);
+               #500#30 = 2;
+          |FINSI;
+          nCampo = nCampoIva + 2;
+     |FINSI;
+     |SI aTag = "CuotaIVA";
+          |SI nCampoIva = 0;
+               ||Si no sabemos el tipo de iva, consideraremos que el tipo 2
+               nCampoIva = 22 + (2 * 4);
+               #500#30 = 2;
+          |FINSI;
+          nCampo = nCampoIva + 3;
+     |FINSI;
+
+     |SI aTag = "Base"; nCampo = 46; |FINSI;
+     |SI aTag = "TotalIVA"; nCampo = 47; |FINSI;
+     |SI aTag = "Total"; nCampo = 48; |FINSI;
+     |SI aTag = "Firmar"; nCampo = 49; |FINSI;
+     |SI aTag = "EnviarCorreo"; nCampo = 50; |FINSI;
+     |SI aTag = "TotalSuplidos"; nCampo = 54; |FINSI;
+     |SI aTag = "TotalACuenta"; nCampo = 55; |FINSI;
+
+     |SI nCampo ] 0;
+          #500#nCampo# = aVal;
+
+          |SI nCampo = 54;
+               nNumeroAux = aVal;
+               |SI nNumeroAux ! 0;
+                    ||Sirve para capturar el Suplido en negativo,
+                    ||para restar el valor del suplido en determinados campos
+                    #500#57 = nNumeroAux * -1;
+               |FINSI;
+          |FINSI;
+
+          |SI nCampo = 55;              ||Para la fecha de la entrega a Cta.
+               nACta = aVal;
+               |SI nACta ! 0;
+                    #500#56 = #500#2;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CamposLin;
+     nCampo = -1;
+
+     |SI aTag = "Codigo"; nCampo = 3; |FINSI;
+     |SI aTag = "Descripcion"; nCampo = 4; |FINSI;
+     |SI aTag = "Cantidad"; nCampo = 5; |FINSI;
+     |SI aTag = "Precio"; nCampo = 6; |FINSI;
+     |SI aTag = "Descuento"; nCampo = 7; |FINSI;
+     |SI aTag = "CuotaDescuento"; nCampo = 8; |FINSI;
+     |SI aTag = "Importe"; nCampo = 9; |FINSI;
+     |SI aTag = "Codigo"; nCampo = 10; |FINSI;
+     |SI aTag = "%Impuesto"; nCampo = 11; |FINSI;
+     |SI aTag = "Base"; nCampo = 12; |FINSI;
+     |SI aTag = "Cuota"; nCampo = 13; |FINSI;
+     |SI aTag = "Suplido"; nCampo = 15; |FINSI;
+
+     |SI nCampo ] 0; #501#nCampo# = aVal; |FINSI;
+
+     |SI nCampo = 6;
+          #501#14 = #501#5 * #501#6;
+     |FINSI;
+
+     |SI nCampo = 15;              ||Truco, para los suplidos.
+          |QBF aVal;
+          |SI aVal = "S";
+               #501#14 = 0;
+               #501#5 = 0;
+               #501#9 = 0;
+          |FINSI;
+     |FINSI;
+     |SI nCampo = 9;               ||Truco, para los suplidos.
+          |SI #501#15 = "S";
+               #501#14 = 0;
+               #501#5 = 0;
+               #501#9 = 0;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProcesaTagPop;
+     nCampo = -1;
+     |SI nSwCab = 1;
+          |HAZ CamposCab;
+          |SI aTag = "SerieFactura";
+               |LEE 101#500.=;
+               |SI FSalida ! 0;
+                   |GRABA 020#500b;
+               |SINO;
+                    |PDEFECTO #500, 2, 58;
+               |FINSI;
+          |FINSI;
+          |SI aTag = "TotalFactura";
+               |GRABA 020#500a;
+               nError = FSalida;
+               nSwCab = 0;
+               nLinea = 0;
+               |LIBERA #500;
+          |FINSI;
+     |FINSI;
+     |SI nSwLin = 1;
+          |SI aTag = "LineasFactura"; |ACABA; |FINSI;
+
+          |HAZ CamposLin;
+          |SI nSwLeeLin = 0;
+               nLinea = nLinea + 1;
+               #501#0 = #500#0;
+               #501#1 = #500#1;
+               #501#2 = nLinea;
+               |LEE 101#501.=;
+               |SI FSalida ! 0;
+                    |GRABA 020#501b;
+               |SINO;
+                    |PDEFECTO #501, 3, 16;
+               |FINSI;
+               nSwLeeLin = 1;
+          |FINSI;
+          |SI nSwLeeLin = 1;
+               aAlfaTag = aTag % 106;
+               |SI aAlfaTag = "LineaN";
+                    |GRABA 020#501a;
+                    |LIBERA #501;
+
+                    |DDEFECTO #501;
+                    nSwLeeLin = 0;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProcesaTagPush;
+     |SI aTag = "NumeroFactura";
+          nSwCab = 1;
+          |DDEFECTO #500;
+     |FINSI;
+     |SI aTag = "LineasFactura";
+          nSwLin = 1;
+          |DDEFECTO #501;
+     |FINSI;
+     |SI aTag = "DatosCliente";
+          nSwCliente = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProcesaTagVacio;
+|FPRC;
+
+|PROCESO ProcesaPrologo;
+|FPRC;
+
+|PROCESO ProcesaRem;
+|FPRC;
+
+|PROCESO PopTag;
+     nNivel = nNivel - 1;
+     IMatriz = Matriz1<-;
+     IMatriz = IMatriz + nNivel;
+     FSalida = Matriz;
+|FPRC;
+
+|PROCESO PushTag;
+     |SI aTag = "Linea";
+          nNumLineaTag = nNumLineaTag + 1;
+          aNumLin = ("0000" + nNumLineaTag) % -104;
+          aTag = aTag + "N" + aNumLin;
+     |FINSI;
+     |SI aTag = "TipoImpuesto";
+          nNumIvaTag = nNumIvaTag + 1;
+          aNumIva = nNumIvaTag;
+          aTag = aTag + "N" + aNumIva;
+     |FINSI;
+
+     IMatriz = Matriz1<-;
+     IMatriz = IMatriz + nNivel;
+     Matriz = aTag;
+     nNivel = nNivel + 1;
+|FPRC;
+
+|PROCESO Caracter;
+     |SI aCar < " "; |O nError ! 0; |ACABA; |FINSI;
+
+     |SI nRem > 0;
+          |SI nRem < 3;
+               |SI aCar = "-";
+                    nRem = nRem + 1;
+               |SINO;
+                    ||aAlfa = "0000ERROR en XML: " + aTag;
+                    ||MENAV aAlfa;
+                    nError = 1;
+                    nSwError = 1;
+                    eaTextoLog = "Error en XML: " + aTag;
+                    |HAZ MeteLogXML;
+               |FINSI;
+          |SINO;
+               |SI aCar = ">"; || Un comentario no puede tener el caracter '>'
+                    aAlfa = aTag % -102;
+                    |SI aAlfa = "--";
+                         aLon = aTag % A0;
+                         nPos = (aLon - 2) + 100;
+                         aTag = aTag % nPos;
+                         |HAZ ProcesaRem;
+                    |SINO;
+                         ||aAlfa = "0000ERROR en XML: " + aTag;
+                         ||MENAV aAlfa;
+                         nError = 1;
+                         nSwError = 1;
+                         eaTextoLog = "Error en XML: " + aTag;
+                         |HAZ MeteLogXML;
+                    |FINSI;
+                    aTag = ""; nRem = 0;
+               |SINO;
+                    aLon = aTag % A0;
+                    |SI aLon < 250; aTag = aTag + aCar; |FINSI;
+               |FINSI;
+          |FINSI;
+          |ACABA;
+     |FINSI;
+
+     |SI aCar = "<";
+          aIniTag = "S"; aTag = "";
+     |SINO;
+          |SI aIniTag = "S";
+               |SI aCar = "/";
+                    |SI aTag = "";
+                         aFinTag = "S";
+                    |SINO;
+                         aFinTagVacio = "S";
+                    |FINSI;
+               |SINO;
+                    |SI aCar = "!";
+                         |SI aTag = "";
+                              nRem = 1;
+                         |SINO;
+                              ||aAlfa = "0000ERROR en XML: " + aTag;
+                              ||MENAV aAlfa;
+                              nError = 1;
+                              nSwError = 1;
+                              eaTextoLog = "Error en XML: " + aTag;
+                              |HAZ MeteLogXML;
+                         |FINSI;
+                         |ACABA;
+                    |FINSI;
+                    |SI aCar = "?";
+                         |SI aIniPro = "S";
+                              aFinPro = "S";
+                              aIniPro = "N";
+                         |SINO;
+                              |SI aFinPro = "S";
+                                   ||aAlfa = "0000ERROR en XML: " + aTag;
+                                   ||MENAV aAlfa;
+                                   nError = 1;
+                                   nSwError = 1;
+                                   eaTextoLog = "Error en XML: " + aTag;
+                                   |HAZ MeteLogXML;
+                              |SINO;
+                                   aIniPro = "S"; aTag = "";
+                              |FINSI;
+                         |FINSI;
+                    |SINO;
+                         |SI aCar = ">";
+                              |QBT aTag; ||*** solo deberia quitarse a izq y der.
+                              |SI aFinPro = "S";
+                                   |HAZ ProcesaPrologo;
+                                   aFinPro = "N";
+                              |SINO;
+                                   |SI aFinTag = "S";
+                                        |SI aTag = "Linea";
+                                             aNumLin = ("0000" + nNumLineaTag) % -104;
+                                             aTag = aTag + "N" + aNumLin;
+                                        |FINSI;
+                                        |SI aTag = "TipoImpuesto";
+                                             aTag = aTag + "N" + aNumIva;
+                                        |FINSI;
+                                        |HAZ PopTag;
+                                        |SI aTag ! FSalida; ||*** fallaria si en el tag
+                                                            ||    se definen 'atributos'
+                                             ||aAlfa = "0000ERROR en XML: <" + FSalida + "> " + aVal;
+                                             ||MENAV aAlfa;
+                                             nError = 1;
+                                             nSwError = 1;
+                                             eaTextoLog = "Error en XML: <" + FSalida + "> " + aVal;
+                                             |HAZ MeteLogXML;
+                                        |SINO;
+                                             |HAZ ProcesaTagPop;
+                                        |FINSI;
+                                   |SINO;
+                                        |SI aFinTagVacio = "S";
+                                             |HAZ ProcesaTagVacio;
+                                             aFinTagVacio = "N";
+                                        |SINO;
+                                             |HAZ PushTag;
+                                             |HAZ ProcesaTagPush;
+                                        |FINSI;
+                                   |FINSI;
+                              |FINSI;
+                              aIniTag = "N"; aFinTag = "N"; aTag = ""; aVal = "";
+                         |SINO;
+                              aLon = aTag % A0;
+                              |SI aLon < 250; aTag = aTag + aCar; |FINSI;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               aLon = aVal % A0;
+               |SI aLon < 250; aVal = aVal + aCar; |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProcesaXml;
+     nError = 0;
+     |XABRE "BC", aFichero, nHandle;
+     |SI FSalida ] 0;
+          |XLEE nHandle, 250, aTmp;
+          |PARA; |SI FSalida > 0; |HACIENDO;
+               |PARA; |SI aTmp ! ""; |HACIENDO;
+                    aCar = aTmp % 101;
+                    |SI aTmp = aCar;
+                         aTmp = ""; ||con un caracter falla: "aTmp = aTmp % 2"
+                    |SINO;
+                         aTmp = aTmp % 2;
+                    |FINSI;
+                    |HAZ Caracter;
+                    |SI nError ! 0;
+                         |SAL;
+                    |FINSI;
+               |SIGUE;
+               |XLEE nHandle, 250, aTmp;
+               |SI nError ! 0;
+                    |SAL;
+               |FINSI;
+          |SIGUE;
+          |XCIERRA nHandle;
+     |SINO;
+          ||aAlfa = "0000ERROR al abrir" + aFichero;
+          ||MENAV aAlfa;
+          eaTextoLog = "Error al abrir " + aFichero;
+          |HAZ MeteLogXML;
+     |FINSI;
+|FPRC;
+
+|PROCESO MeteRegistoNIF;
+     |DBASS aBase;
+     |QBF aBase;
+     aDef = aBase + "integral/def/dsam0103.mas";
+     |XABRE "E", aDef, 0;
+     |SI FSalida < 0;
+          aDef = aBase + "basica/def/agim0003.mas";
+          |XABRE "E", aDef, 0;
+          |SI FSalida < 0;
+               eaTextoLog = "Aplicacion integral/basica NO instaladas";
+               |HAZ MeteLogXML;
+               |ACABA;
+          |SINO;
+               nSwEstaBasica = 1;
+          |FINSI;
+     |SINO;
+          nSwEstaIntegral = 1;
+     |FINSI;
+
+     |SI nSwEstaIntegral = 1;
+          |ABRE #103;
+          |DDEFECTO #103;
+          #103#0 = #dsarm500#11;
+          |LEE 101#103.=;
+          |SI FSalida ! 0; |GRABA 020#103.b; |FINSI;
+          #103#1 = #dsarm500#12;
+          #103#2 = #dsarm500#14;
+          nCodPostal = #dsarm500#15;
+          aCodPostal = ("00000" + nCodPostal) % -105;
+          aCP1 = aCodPostal % 102;
+          aCP2 = aCodPostal % -103;
+          |SI aCP1 ! "00"; |Y aCP2 ! "000";
+               #103#4 = aCP1;
+               #103#5 = aCP2;
+          |FINSI;
+          #103#6 = #dsarm500#16;
+          #103#7 = #dsarm500#17;
+          #103#8 = #dsarm500#18;
+          #103#17 = #dsarm500#19;
+          |GRABA 020#103.a;
+          |LIBERA #103;
+          |CIERRA #103;
+     |SINO;
+          |ABRE #203;
+          |DDEFECTO #203;
+          #203#0 = #dsarm500#11;
+          |LEE 101#203.=;
+          |SI FSalida ! 0; |GRABA 020#203.b; |FINSI;
+          #203#1 = #dsarm500#12;
+          #203#2 = #dsarm500#14;
+          nCodPostal = #dsarm500#15;
+          aCodPostal = ("00000" + nCodPostal) % -105;
+          aCP1 = aCodPostal % 102;
+          aCP2 = aCodPostal % -103;
+          |SI aCP1 ! "00"; |Y aCP2 ! "000";
+               #203#4 = aCP1;
+               #203#5 = aCP2;
+          |FINSI;
+          #203#6 = #dsarm500#16;
+          #203#7 = #dsarm500#17;
+          #203#8 = #dsarm500#18;
+          #203#17 = #dsarm500#19;
+          |GRABA 020#203.a;
+          |LIBERA #203;
+          |CIERRA #203;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aParametro = PARAMETRO;
+     |QBF aParametro;
+
+     |SI aParametro = "";
+          aMensaje = "0000Parametro incorrecto [Vacio]";
+          |MENAV aMensaje;
+          |ACABA;
+     |SINO;
+          aAlfaExte = aParametro % -104;
+          |SI aAlfaExte ! ".xml"; |Y aAlfaExte ! ".XML";
+               aMensaje = "0000Parametro incorrecto [No tiene extension .xml]";
+               |MENAV aMensaje;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |ABRE #dsarm001;
+     |DDEFECTO #dsarm001;
+     |LEE 000#dsarm001.=;
+     aConectarMedida = #dsarm001#55;
+     aNombreMedida = #dsarm001#63;
+     |QBF aNombreMedida;
+
+     aPathImpo = #dsarm001#190;
+     |QBF aPathImpo;
+     |SI aPathImpo = "";
+          aMensaje = "0000Directorio importaci¢n vacio [Revise los parametros. Aplicacion a medida]";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aParametro = aPathImpo + aParametro;
+
+     eaFicLog = aParametro + ".log";
+     |RFBORRA eaFicLog;
+
+     |SI aConectarMedida = "N"; |O aNombreMedida ! "xml";
+          eaTextoLog = "Error: Modulo a medida <xml> no configurado en DSARCHI";
+          |HAZ MeteLogXML;
+          |ACABA;
+     |FINSI;
+
+     eaArGrpMin = #dsarm001#57;
+     eaArSbGMin = #dsarm001#58;
+     eaArTipMin = #dsarm001#59;
+
+     |CIERRA #dsarm001;
+
+     |ABRE #dsarm500;
+     |ABRE #dsarm501;
+     aFichero = aParametro;
+     |HAZ ProcesaXml;
+     |CIERRA #dsarm500;
+     |CIERRA #dsarm501;
+
+     |SI nSwError = 0;
+          ||Si no existe mete el cliente en el registro de NIF
+          |HAZ MeteRegistoNIF;
+
+          eaArCodCli = #dsarm500#10;
+          eaArNomCli = #dsarm500#12;  || Nombre Cliente
+
+          eaArCodCif = #dsarm500#11; || Cif
+          eaArNomCif = #dsarm500#12;  || Nombre Cif
+
+          eaArTipoDoc = "FA";
+          eaArSerDoc = #dsarm500#0;
+          enArNumDoc = #dsarm500#1;
+          eaArFecDoc = #dsarm500#2;
+
+          eaDirDesFE = #dsarm500#20;
+          |QBF eaDirDesFE;
+          eaFirmarFE = #dsarm500#49;
+          |SI eaDirDesFE = "";
+               eaSwEnvioCorreo = "N";
+          |SINO;
+               eaSwEnvioCorreo = #dsarm500#50;
+          |FINSI;
+
+          eaAplicacion = "xml";
+          eaDefFE = "dsarm500";
+          eaEmpresaFE = "";
+          eaSerieFE = #dsarm500#0;
+          eaNumeroFE = #dsarm500#1;
+          eaDefLinFe = "dsarm501";
+          eaDefEmpFe = "";
+          eaDefCliFe = "";
+          eaDefIvaFe = "";
+          eaCodCliFe = #dsarm500#10;
+          eaDefAlbFe = "";
+
+          enSwLogXMLMete = 1;
+
+          |SUB_EJECUTA "dsarz011";
+     |FINSI;
+|FPRO;

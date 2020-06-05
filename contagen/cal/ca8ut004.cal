@@ -1,0 +1,312 @@
+|FICHEROS;
+   ca8ut004;
+   canempre;
+
+   ca8ctrle;
+   ca8comay;
+
+   cacuenta;
+|FIN;
+
+|VARIABLES;
+   &r_emp  = 0;
+   &r_per  = 0;
+   fFecha  = @;
+   aAlfa1  = "";
+   aAlfa2  = "";
+   nPara1  = 0;
+   nNume1  = 0;
+   nNume2  = 0;
+   nCampo  = 0;
+
+   nTipoCta1 = 0;
+   nTipoCta3 = 0;
+   informe   = "ca8ut004";
+
+   nDEmpresa = 0;
+   nHEmpresa = 0;
+   nDEjer    = 0;
+   nHEjer    = 0;
+   nAlguno   = 0;
+   &enCodDes = 0;
+   &eaSeguir = "";
+   &eaError  = "";
+   &enError  = 0;
+   aPath     = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *************************************************************************
+||                        CALCULOS DE PANTALLA
+|| *************************************************************************
+
+|PROCESO LeoTabla; |TIPO 6;
+
+  |SI FSalida = 2; |ACABA; |FINSI;
+
+  nNume1 = Campo + 1;
+  |ABRE #ca8comay;
+  #ca8comay#0 = #ca8ut004#Campo#;
+  |LEE 001#ca8comay.=;
+  |SI FSalida ! 0;
+      |MENAV "    Error, no existe Codigo de Cuentas de Mayor";
+      |CIERRA #ca8comay;
+      |ERROR;
+      |ACABA;
+  |SINO;
+      #ca8ut004#nNume1# = #ca8comay#1; |PINTA #ca8ut004#nNume1#;
+      |SI Campo = 1;  nTipoCta1 = #ca8comay#3; |FINSI;
+      |SI Campo = 3;  nTipoCta3 = #ca8comay#3; |FINSI;
+  |FINSI;
+  |CIERRA #ca8comay;
+
+  |SI Campo = 3;
+      |SI #ca8ut004#1 = #ca8ut004#3;
+          |MENAV "0000Error, Codigos de Plan Contable Iguales";
+          |ERROR;
+      |SINO;
+          |SI nTipoCta1 ! nTipoCta3;
+              |SI nTipoCta1 = 1;
+                  aAlfa1 = "de Empresa PYME a NO PYME. ";
+              |SINO;
+                  aAlfa1 = "de Empresa NO PYME a PYME. ";
+              |FINSI;
+              aAlfa1 = "0000NEsta cambiando de Tipo Plan: " + aAlfa1 + "Continuar";
+              |CONFI aAlfa1;
+              |SI FSalida ! 0;
+                  |ERROR;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|CALCULO Select;
+   |SI #ca8ut004#48 = "S";
+      |C_M #ca8ut004#49,1,"S";
+      |C_M #ca8ut004#50,1,"S";
+      |PARA nNume1 = 7; |SI nNume1 [ 26; |HACIENDO nNume1 = nNume1 + 1;
+           |C_M #ca8ut004#nNume1#,1,"N"; #ca8ut004#nNume1# = 0;  |PINTA #ca8ut004#nNume1#;
+           nNume2 = nNume1 + 20;         #ca8ut004#nNume2# = ""; |PINTA #ca8ut004#nNume2#;
+      |SIGUE;
+   |FINSI;
+   |SI #ca8ut004#48 = "N";
+      |C_M #ca8ut004#49,1,"N"; #ca8ut004#49 = 0;  |PINTA #ca8ut004#49;
+      |C_M #ca8ut004#50,1,"N"; #ca8ut004#50 = 0;  |PINTA #ca8ut004#50;
+      |PARA nNume1 = 7; |SI nNume1 [ 26; |HACIENDO nNume1 = nNume1 + 1;
+            |C_M #ca8ut004#nNume1#,1,"S";
+      |SIGUE;
+   |FINSI;
+|FCAL;
+
+|CALCULO esbuena; || desde campo de empresas seleccion
+  |SI FSalida = 9;
+      |ERROR;
+      |SUB_EJECUTA_NP "caconemp";
+      |SI r_emp ! 0;
+          #ca8ut004#Campo# = r_emp;
+          |PINTA #ca8ut004#Campo#;
+          |PTEC 802;
+      |FINSI;
+      |ACABA;
+  |FINSI;
+
+  |SI #ca8ut004#Campo# = 0;
+       nNume2 = Campo + 20; #ca8ut004#nNume2# = ""; |PINTA #ca8ut004#nNume2#;
+       |PARA nCampo = Campo + 1;  |SI nCampo [ 26;  |HACIENDO nCampo = nCampo + 1;
+             #ca8ut004#nCampo# = 0; |PINTA #ca8ut004#nCampo#;
+             |C_M #ca8ut004#nCampo#, 1, "N";
+             nNume2 = nCampo + 20;
+             #ca8ut004#nNume2# = ""; |PINTA #ca8ut004#nNume2#;
+       |SIGUE;
+       |ACABA;
+  |SINO;
+       |PARA nCampo = Campo + 1;  |SI nCampo [ 26;  |HACIENDO nCampo = nCampo + 1;
+             |C_M #ca8ut004#nCampo#, 1, "S";
+       |SIGUE;
+  |FINSI;
+
+  |ABRE #canempre;
+  #canempre#2 = #ca8ut004#Campo#;
+  #canempre#3 = 0;
+  |LEE 011#canempre.];
+  |SI FSalida ! 0;  |O #canempre#2 ! #ca8ut004#Campo#;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |SINO;
+      nNume1 = Campo + 20;
+      #ca8ut004#nNume1# = #canempre#1;
+      |PINTA #ca8ut004#nNume1#;
+  |FINSI;
+  |CIERRA #canempre;
+|FCAL;
+
+|CALCULO Tipo0C51; |TIPO 0;
+   |C_M #ca8ut004#51, 0, aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   |SI #ca8ut004#51 = "SI";
+       |CONFI "0000NDebera modificar el Imp.Soc. y/o CCAA para el Nuevo Plan Contable. Correcto ?";
+       |SI FSalida ! 0;
+           #ca8ut004#51 = "NO";
+           |PINTA #ca8ut004#51;
+           |ERROR;
+       |FINSI;
+   |FINSI;
+|FCAL;
+|| //////////////////////////////////////
+
+|PROCESO ElCambio;
+
+   |PUSHV  1514 2166;
+   |BLANCO 1514 2166;
+   |CUADRO 1514 2166;
+   |PINTA 1615, " Empresa: "
+   |PINTA 1625, #canempre#2;
+   |PINTA 1631, #canempre#3;
+   |PINTA 1633, #canempre#26;
+   |PINTA 1725, #canempre#1;
+
+   enError  = 0;
+   eaError  = "";
+   |SUB_EJECUTA_NP ":contagen/ca8ut003;masivo";
+
+   |PRINT;
+   nAlguno = 1;
+
+   |POPV;
+   |PULSATECLA;
+|FPRC;
+
+|PROCESO MiraDef;
+    |PATH_DAT #cacuenta#fich_alta#;
+    #ca8ctrle#2 = 1;
+    |ABRE #cacuenta;
+    #cacuenta#0 = "8           ";
+    |LEE 001#cacuenta.];
+    |SI FSalida = 0; #ca8ctrle#2 = 0; |FINSI;
+    |CIERRA #cacuenta;
+|FPRC;
+
+|PROCESO LeoEmpresas;
+   enEmpresa = #canempre#2;
+   enPeriodo = #canempre#3;
+   |DFICB aPath;
+   aAlfa1 = enEmpresa; aAlfa1 = ("00000" + aAlfa1) % -105;
+   aAlfa2 = enPeriodo; aAlfa2 = ("0"     + aAlfa2) % -101;
+   fich_alta = aPath + aAlfa1 + aAlfa2 + "/";
+
+   #ca8ctrle#0 = #canempre#2;
+   #ca8ctrle#1 = #canempre#3;
+   |LEE 141#ca8ctrle.=;
+   |SI FSalida ! 0;
+       |DDEFECTO #ca8ctrle;
+       |HAZ MiraDef;
+       #ca8ctrle#0 = #canempre#2;
+       #ca8ctrle#1 = #canempre#3;
+       #ca8ctrle#5 = 0;
+       fFecha = ~;
+       #ca8ctrle#6 = fFecha;
+       aAlfa1 = Usuario % 810;
+       #ca8ctrle#7 = aAlfa1;
+       |GRABA 020#ca8ctrle.n;
+   |FINSI;
+   |LIBERA #ca8ctrle;
+   |SI #ca8ctrle#2 = #ca8ut004#1;
+        |HAZ ElCambio;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoEmpresas;
+  #canempre#4;
+  ;
+  nDEmpresa, nDEjer;
+  nHEmpresa, nHEjer;
+  ;
+  NULL, LeoEmpresas;
+|FIN;
+
+|CALCULO wTipo12; |TIPO 12;
+  |SI #ca8ut004#52 ! "SI"; |ACABA; |FINSI;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;
+      |MENAV "    Proceso abortado";
+      |ACABA;
+  |FINSI;
+
+  |INFOR informe;
+  |SI FSalida ! 0;
+      |MENAV "    Error no existe informe";
+      |FINIMP;
+      |ACABA;
+  |FINSI;
+
+  nDEjer = #ca8ut004#5 - 2000;
+  nHEjer = #ca8ut004#6 - 2000;
+  nAlguno = 0;
+  enCodDes = #ca8ut004#3;
+  eaSeguir = #ca8ut004#51;
+  |ABRET #ca8ctrle;
+  |SI #ca8ut004#48 = "S";
+      nDEmpresa = #ca8ut004#49;
+      nHEmpresa = #ca8ut004#50;
+      |BUCLE LeoEmpresas;
+  |SINO;
+      |PARA nPara1 = 7; |SI nPara1 [ 26; |HACIENDO nPara1 = nPara1 + 1;
+            |SI #ca8ut004#nPara1# ! 0;
+                nDEmpresa = #ca8ut004#nPara1#;
+                nHEmpresa = #ca8ut004#nPara1#;
+                |BUCLE LeoEmpresas;
+            |FINSI;
+      |SIGUE;
+  |FINSI;
+  |CIERRAT #ca8ctrle;
+
+  |SI nAlguno = 1;
+      |PIEINF;
+  |SINO;
+      |MENAV "0000Seleccion Vacia";
+  |FINSI;
+  |FININF;
+  |FINIMP;
+|FCAL;
+
+|| *************************************************************************
+|PROGRAMA;
+
+   |HAZ inicio;
+   |HAZ DirAplicSt;
+
+   |CLS;
+   |CABEZA "Control Plan Contable ";
+   |PINPA #0#ca8ut004;
+   |SI HaySociedad = 0;
+       |C_M #ca8ut004#51, 1, "N";
+       |C_V #ca8ut004#51, 1, "N";
+       #ca8ut004#51 = "NO";
+       |PINTA 2302, "                                                              ";
+   |FINSI;
+
+   |ABRE #ca8ut004;
+   |DDEFECTO #ca8ut004;
+   |LEE 101#ca8ut004.p;
+   |SI FSalida ! 0;
+       #ca8ut004#1 = eNum2008;
+       #ca8ut004#5 = enEjercicio;
+       #ca8ut004#6 = enEjercicio;
+      |GRABA 020#ca8ut004.b;
+   |FINSI;
+
+   |PINDA #0#ca8ut004;
+   |ENDATOS #1#ca8ut004;
+   |SI FSalida = 0;
+      #ca8ut004#52 = "NO";
+      |GRABA 020#ca8ut004.a;
+   |FINSI;
+   |LIBERA #ca8ut004;
+   |CIERRA #ca8ut004;
+|FPRO;

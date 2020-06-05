@@ -1,0 +1,290 @@
+|FICHEROS;
+    n43gendi #0;
+    camaasic #1;
+    camaasil #2;
+    n43contc #4;
+    n43contl #5;
+    caconcep #6;
+    catradia #9;
+    camandia #10;
+    calicont #31;
+|FIN;
+
+|VARIABLES;
+    &enDiario   = 0;
+    &enContador = 0;
+    &entrada = 1;
+    &modcon = 0;
+
+    diario = 0;
+    fecha  = @;
+    docume = 0;
+    asient = 0;
+    linea  = 0;
+
+    cobro = 0;
+    pagos = 0;
+    tot_cobro = 0;
+    tot_pagos = 0;
+
+    afecha = @;
+    f1 = @;
+    f2 = @;
+
+    cam = 0;
+    error = 0;
+    signo = "";
+    impor = 0;
+    conce = 0;
+    aun_hay = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+
+|PROCESO mayus;
+ #0Campo = #0Campo > " ";
+ |PINTA #0Campo;
+|FPRC;
+
+|| *********************************************
+|PROCESO lineas;
+  |SI #5#8 = 0; |ACABA; |FINSI;
+  |SI cam = 0;
+      |HAZ cabecera;
+      cam = 1;
+  |FINSI;
+
+    |DDEFECTO #2;
+    #2#0 = diario;
+    #2#1 = fecha;
+    #2#2 = docume;
+    linea = linea + 10;
+    #2#3 = linea;
+    #2#4 = #5#2;   || Cuenta.
+    #2#5 = #5#3;   || Digito.
+    #2#6 = #5#5;   || Concepto.
+    |SI #2#6 = 0;
+          #2#6 = 999;
+    |FINSI;
+    #2#7 = #5#6;   || Des ''
+    #2#8 = #5#7;   || D/H;
+    #2#9 = #5#8;   || Importe...
+    |HAZ adapta;
+    #2#21 = "";    || Departamento....
+    #2#12 = #5#9;  || Cobro/Pago
+    #2#13 = #5#10; || libro
+    #2#14 = #5#11; || factura
+    #2#15 = #5#12; || serie (inhibida)
+    #2#18 = "û";   ||                    Consolidado  "S";
+    |SI #5#9 = "P"; |O #5#9 = "p"; |O #5#9 = "C"; |O #5#9 ="c";
+         #2#18 = "";    || No Consolida los cobros pagos......
+    |FINSI;
+    |SI #5#14 = "N";
+          #2#18 = "";
+    |FINSI;
+    #2#22 = #5#13; || N§ recibo
+    |GRABA 020#2n;
+    |SI FSalida = 0;
+        |HAZ gratra;
+        |HAZ act_cabecera;
+        |HAZ a_diario;
+        |HAZ a_contrapart;
+        |LIBERA #5;
+    |FINSI;
+    |LIBERA #2;
+|FPRC;
+
+|PROCESO apuntes; || desde el bucle de Cabeceras Caja
+ cobro = 0;
+ pagos = 0;
+ cam   = 0;
+
+ diario = #4#1;
+ fecha  = #4#2;
+     enDiario = diario;
+     |HAZ contador;
+     docume = enContador;
+ asient = docume;
+
+ |BUCLELIN 0lineas#4;
+|FPRC;
+
+|DEFBUCLE contabiliza;
+ #4#1;
+ ;
+ 0;
+ 999;
+ e;
+ NULL, apuntes, NULL, NULL;
+|FIN;
+
+|| **************************************************************************
+
+|PROGRAMA;
+|| .................. Abre fichero Auxiliar de Cuentas
+  |ABRE #9;
+  |LEE 101#9u;
+  |SI FSalida ! 0;
+      |DDEFECTO #9;
+      #9#0 = 1;
+  |SINO;
+      #9#0 = #9#0 + 1;
+  |FINSI;
+  |GRABA 101#9n;
+  codcon = #9#0;
+  |LIBERA #9;
+|| ----------------------------------------------------------
+
+ |ABRE #1;
+ |ABRE #2;
+ |ABRE #6;
+ |ABRE #10;
+ |ABRE #31;
+
+ f1 = "01.01.0001";
+ f2 = "31.12.9999";
+
+ |BUCLE contabiliza;
+
+ |CIERRA #1;
+ |CIERRA #2;
+ |CIERRA #6;
+ |CIERRA #9;
+ |CIERRA #10;
+ |CIERRA #31;
+
+ |DELINDEX #4;
+ |DELINDEX #5;
+
+ || ............... Terminar
+ |SI modcon = 0;
+     |ABRET #9;
+     |DDEFECTO #9;
+     #9#0 = codcon;
+     |LEE 040#9=;
+     |BORRA 101#9a;
+     |CIERRAT #9;
+ |SINO;
+     |CORRE "camaapua.tab"
+ |FINSI;
+|FPRO;
+
+|| **************************************************************************
+
+|| ............ Subrutina de Asientos
+|PROCESO adapta;
+|SI #2#8 = "D";
+        #2#16 = #2#4;
+        #2#17 = #2#5;
+        #2#10 = "";
+        #2#11 = 0;
+|SINO;
+        #2#16 = "";
+        #2#17 = 0;
+        #2#10 = #2#4;
+        #2#11 = #2#5;
+|FINSI;
+|FPRC;
+
+|PROCESO cabecera; || lee la cabecera.
+  |DDEFECTO #1;
+  #1#0 = diario;
+  #1#1 = fecha;
+  #1#2 = docume;
+  #1#3 = asient;
+  linea = -9;
+  |GRABA 020#1n;
+  |SI FSalida ! 0;
+      #2#0 = #1#0;
+      #2#1 = #1#1;
+      #2#2 = #1#2;
+      #2#3 = 9999;
+      |LEE 040#2];
+      |SI FSalida = 0;
+          |LEE 040#2a;
+          |SI #2#0 = #1#0; |Y #2#1 = #1#1; |Y #2#2 = #1#2;
+              linea = #2#3;
+          |FINSI;
+      |SINO;
+          |LEE 040#2u;
+          |SI FSalida = 0; |Y  #2#0 = #1#0; |Y #2#1 = #1#1; |Y #2#2 = #1#2;
+              linea = #2#3;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO act_cabecera;
+  #1#0 = diario;
+  #1#1 = fecha;
+  #1#2 = docume;
+  |LEE 101#1=;
+  |SI #2#8 = "D";
+       #1#4 = #1#4 + #2#9;
+       |SI #1#09 = 0; #1#08 = #2#4; #1#09 = #2#5; |FINSI;  || contrp.HABER
+  |SINO;
+       #1#5 = #1#5 + #2#9;
+       |SI #1#11 = 0; #1#10 = #2#4; #1#11 = #2#5; |FINSI;  || contrp.DEBE
+  |FINSI;
+  #1#6 = #1#4 - #1#5;        || saldo
+  |GRABA 020#1a;
+  |LIBERA #1;
+|FPRC;
+
+|PROCESO a_diario;
+ #10#0 = #2#0;
+ |LEE 101#10=;
+ |SI FSalida ! 0;              || actualiza el diario
+     |DDEFECTO #10;
+     #10#0 = #2#0;
+     #10#1 = "<DIARIO SIN DEFINIR>";
+    |GRABA 020#10b;
+ |FINSI;
+ |SI #2#8 = "D";  #10#2 = #10#2 + #2#9;  |FINSI;
+ |SI #2#8 = "H";  #10#3 = #10#3 + #2#9;  |FINSI;
+ |GRABA 020#10a;
+ |LIBERA #10;
+|FPRC;
+
+|PROCESO gratra;
+  modcon = 1;               || graba el temporal para la actualiz. de ctas.
+  #9#0 = codcon;
+  #9#1 = #2#4;
+  #9#2 = #2#5;
+  #9#3 = #2#1;
+  #9#4 = #2#8;
+  #9#6 = #2#0;
+  |LEE 101#9=;
+  |SI FSalida ! 0;
+      |DDEFECTO #9;
+        #9#0 = codcon;
+        #9#1 = #2#4;
+        #9#2 = #2#5;
+        #9#3 = #2#1;
+        #9#4 = #2#8;
+        #9#6 = #2#0;
+      |GRABA 020#9b;
+  |FINSI;
+  #9#5 = #9#5 + #2#9;
+  |GRABA 020#9a;
+  |LIBERA #9;
+|FPRC;
+
+|PROCESO a_contrapart;
+ #31#0 = #2#0;
+ #31#1 = #2#1;
+ #31#2 = #2#2;
+ #31#3 = #2#3;
+ |LEE 101#31=;
+ |SI FSalida ! 0;
+     #31#0 = #2#0;
+     #31#1 = #2#1;
+     #31#2 = #2#2;
+     #31#3 = #2#3;
+     |GRABA 020#31b;
+ |FINSI;
+ ||#31#4 = #90#2;
+ ||#31#5 = #90#3;
+ |GRABA 020#31a;
+ |LIBERA #31;
+|FPRC;

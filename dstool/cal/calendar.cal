@@ -1,0 +1,683 @@
+|FICHEROS;
+  calendar #0;
+  calendal #1;
+  calenpan #2;
+|FIN;
+
+|CAMPOS;
+|| ******************************************************
+|| Campos del fichero de calendario (Cabecera).
+|| ******************************************************
+
+#0#0 carzon;     || Zona en que es valido el calendario.
+#0#1 cardes;     || Descripcion de la zona.
+#0#2 carsab;     || Sabados festivos.
+
+|| ******************************************************
+|| Campos del fichero de calendario (Lineas).
+|| ******************************************************
+
+#1#0 calzon;     || Zona en que es valido el calendario.
+#1#1 callin;     || Linea.
+#1#2 calmes;     || Numero del mes.
+#1#3 caldia;     || N£mero del dia.
+#1#4 calfes;     || Titulo de la festividad.
+
+|| ******************************************************
+|| Campos del fichero de calendario (Pantalla).
+|| ******************************************************
+
+#2#0 panmes;     || Numero del mes.
+#2#1 panany;     || A¤o.
+|FIN;
+
+|VARIABLES;
+  menini       = "0000INICIALIZANDO CALENDARIO. Espere un momento.";
+  seleccion    = "0000Movimiento: Flechas: dias. Pg Up, Pg Dn, F2: Meses. F1: Cambiar festivo.";
+  borrlin      = "0000BORRANDO EL CALENDARIO.";
+  espera       = "0000Espere un momento. Por favor.";
+  fecha        = @;      || Fecha del sistema (calendario por defecto).
+  fechacal     = @;      || Fecha del mes del calendario.
+  fecha1       = @;
+  fechaux      = @;
+  varalfa      = " ";
+  varnume      = 0;
+  semana       = 0;
+  d            = 0;
+  totdias      = 0;
+  f            = 0;
+  c            = 0;
+  salida       = 0;
+  dold         = 0;
+  linea        = 1;      || Contador del numero de linea.
+  fil          = 0;      || Fila.
+  col          = 0;      || Columna.
+  posic        = 0;      || Posicion en pantalla.
+  numes        = 0;      || Numero del mes. (1-12)
+  numes1       = 0;
+  mes          = " ";    || Mes en letras.
+  mes3         = " ";
+  numdia       = 1;      || Numero del dia. (1-31)
+  diasem       = 1;      || Numero del dia de la semana (1-7)
+  any          = 0;      || A¤o.
+  any2         = 0;
+  any3         = " ";
+  maxdias      = 0;      || Numero de dias que tiene este mes.
+  primdia      = 0;      || Dia de la semana del 1er. dia del mes.
+  modogen      = 0;      || Modo de entrada general.
+  modofic      = 0;      || Modo de entrada a la ficha.
+  camsab       = 0;      || Indica si cambia los sabados festivos;
+  antzona      = " ";
+  dia1 = 0;
+  festivo = 0;
+  ini = 0;
+  numes2 = 0;
+  dia2 = 0;
+  varnum =0;
+  salir = 0;
+|FIN;
+
+
+
+******************************************************************************
+  Tras producirse el mantenimiento de la zona del calendario. Se pasa a poder
+modificar los dias festivos.
+******************************************************************************
+
+|CALCULO calenda; |TIPO 3;
+  fecha = ~;
+  fechacal = ~;
+  |ATRI P;
+  |MENSA menini;
+  |ATRI p;
+  |ABRE #1;
+  |HAZ inicio;
+  calzon = carzon;
+  callin = 1;
+  |LEE 101#1];
+  |SI FSalida = 0;
+    |HAZ lineas;
+  |FINSI;
+  |BLIN 4;
+  |SI camsab = 1;
+    |HAZ pintacal;
+    camsab = 0;
+    antzona = carzon;
+  |FINSI;
+  |HAZ selcal;
+  |HAZ borrcal;
+  |LIBERA #1;
+  |CIERRA #1;
+|FCAL;
+
+
+
+******************************************************************************
+  Calcula y actualiza el numero de lineas que tiene la zona.
+******************************************************************************
+
+|CALCULO lineas; |TIPO 0;
+  || Ya ha sido leido el primer dia festivo del calendario.
+  |PARA; |SI FSalida = 0; |Y calzon = carzon; |HACIENDO;
+    linea = linea + 1;
+    |LEE 101#1s;                  || Lee el siguiente.
+    |LIBERA #1;
+  |SIGUE;
+  linea = linea + 1;
+|FCAL;
+
+
+
+******************************************************************************
+  Inicia los valores de las principales variables.
+******************************************************************************
+
+|CALCULO inicio; |TIPO 0;
+  varalfa = fechacal;
+  varalfa = varalfa % "402";
+  numes = varalfa;              || Mes en n£meros.
+  fecha1 = fechacal % 0;
+  varalfa = fecha1;
+  mes = varalfa % "11";         || Mes en letras.
+  |ATRI I;
+  |PINTA 2047,"                     ";
+  |PINTA 2047,mes;
+  varalfa = fechacal;
+  varalfa = varalfa % "7";          || A¤o.
+  any = varalfa;
+  |PINTA 1847,any;
+  |ATRI i;
+  varalfa = fechacal;
+  varalfa = varalfa % "102";
+  numdia = varalfa;             || Dia del mes.
+  fecha1 = fechacal % 1;
+  varalfa = fecha1;
+  varalfa = varalfa % "11";     || Dia de la semana en letras.
+  |HAZ diasema;
+  diasem = semana;
+  |HAZ numdias;
+  maxdias = totdias - 1;
+  fechaux = fechacal;
+  |HAZ primero;
+  primdia = semana;
+|FCAL;
+
+
+
+******************************************************************************
+  Convierte el dia de la semana en letras (varalfa) en el correspondiente
+en numeros (diasem).
+******************************************************************************
+
+|CALCULO diasema; |TIPO 0;
+  semana = 6;
+  |SI varalfa = "Lunes";
+    semana = 0;
+  |SINO;
+    |SI varalfa = "Martes";
+      semana = 1;
+    |SINO;
+      |SI varalfa = "Miercoles";
+        semana = 2;
+      |SINO;
+        |SI varalfa = "Jueves";
+          semana = 3;
+        |SINO;
+          |SI varalfa = "Viernes";
+            semana = 4;
+          |SINO;
+            |SI varalfa = "Sabado";
+              semana = 5;
+            |FINSI;
+          |FINSI;
+        |FINSI;
+      |FINSI;
+    |FINSI;
+  |FINSI;
+|FCAL;
+
+
+
+******************************************************************************
+  Averigua el numero de dias que tiene un mes determinado.
+******************************************************************************
+
+|CALCULO numdias; |TIPO 0;
+  varalfa = fechacal;
+  varalfa = varalfa % "4";
+  varalfa = "28." + varalfa;      || Poner el dia corriente a 28.
+  totdias = 28;
+  fechaux = varalfa;
+  varalfa = fechaux;
+  varalfa = varalfa % "402";
+  numes1 = varalfa;              || Mes en n£meros.
+  |PARA; |SI numes1 = numes; |HACIENDO;
+    totdias = totdias + 1;
+    fechaux = fechaux + 1;
+    varalfa = fechaux;
+    varalfa = varalfa % "402";
+    numes1 = varalfa;              || Mes en n£meros.
+  |SIGUE;
+|FCAL;
+
+
+
+******************************************************************************
+  Averigua qu‚ dia de la semana es el dia 1 del mes.
+******************************************************************************
+
+|CALCULO primero; |TIPO 0;
+  varalfa = fechaux;
+  varalfa = varalfa % "4";
+  varalfa = "01." + varalfa;      || Poner el dia corriente a 1.
+  fecha1 = varalfa;
+
+  fecha1 = fecha1 % 1;
+  varalfa = fecha1;
+  varalfa = varalfa % "11";       || Dia de la semana en letras.
+
+  |HAZ diasema;
+|FCAL;
+
+
+
+******************************************************************************
+  Pinta los dias en la casilla correspondiente.
+******************************************************************************
+
+|CALCULO pintacal;|TIPO 0;
+  || Borra los dias ya pintados.
+  |HAZ borrcal;
+  || Averigua el a¤o de la fecha del sistema.
+  varalfa = fecha;
+  varalfa = varalfa % "7";
+  any2 = varalfa;
+
+  || Averigua el mes de la fecha del sistema.
+  varalfa = fecha;
+  varalfa = varalfa % "402";
+  numes1 = varalfa;
+
+  || Averigua el dia de la fecha del sistema.
+  varalfa = fecha;
+  varalfa = varalfa % "102";
+  dia1 = varalfa;
+
+  || Pinta los dias del mes que se desea ver.
+  || Los sabados y domingos se pintan como festivos.
+  |ATRI I;
+  |PARA d = 1; |SI d [ maxdias; |HACIENDO d = d + 1;
+    col = (d + primdia - 1) $ 7;
+    fil = ((d + primdia - 1) / 7 - 0.5) ! 0;
+    varalfa = "   " + d + " ";
+    varalfa = varalfa % "-104";
+
+    || Si es sabado o domingo se pinta como festivo.
+    festivo = 0;
+    |SI col = 5;|Y carsab = "S";
+      festivo = 1;
+    |FINSI;
+    |SI col = 6;
+      festivo = 1;
+    |FINSI;
+    |SI festivo = 1;
+      |ATRI i;
+      |ATRI R;
+    |FINSI;
+    || Si es el dia de hoy, parpadea.
+    |SI dia1 = d; |Y numes1 = numes; |Y any2 = any;
+      |ATRI P;
+    |FINSI;
+    posic = 1005 + fil * 200 + col * 5;
+    |PINTA posic,varalfa;
+    |SI dia1 = d; |Y numes1 = numes; |Y any2 = any;
+      |ATRI p;
+      |ATRI I;
+    |FINSI;
+    |SI festivo = 1;
+      |ATRI r;
+      |ATRI I;
+    |FINSI;
+  |SIGUE;
+  |ATRI i;
+
+  || Pinta los dias correspondientes al mes anterior.
+  fecha1 = fechacal;    || Prepara las variables que se usan en numdias.
+  fechacal = fechacal + (N\-0.001);
+  d = numes;
+  numes = numes - 1;
+  |SI numes = 0;
+    numes = 12;
+  |FINSI;
+  |HAZ numdias;
+  numes = d;            || Repone las variables que cambi¢.
+  fechacal = fecha1;
+  d = totdias - primdia;
+  |PARA c = 0; |SI c < primdia; |HACIENDO c = c + 1;
+    varalfa = "   " + d + " ";
+    varalfa = varalfa % "-104";
+    d = d + 1;
+    posic = 1005 + c * 5;
+    |PINTA posic,varalfa;
+  |SIGUE;
+
+  || Pinta los dias correspondientes al mes siguiente.
+  d = 1;
+  ini = col + 1;
+  |PARA f = fil; |SI f < 6; |HACIENDO f = f + 1;
+    |PARA c = ini; |SI c < 7; |HACIENDO c = c + 1;
+      varalfa = "   " + d + " ";
+      varalfa = varalfa % "-104";
+      d = d + 1;
+      posic = 1005 + f * 200 + c * 5;
+      |PINTA posic,varalfa;
+    |SIGUE;
+    ini = 0;
+  |SIGUE;
+
+  || Pintar los dias marcados como festivos.
+  |SELECT #2#1;
+  calzon = carzon;
+  calmes = numes;
+  caldia = 1;
+  |LEE 101#1];
+  |ATRI R;
+  |PARA; |SI calmes = numes; |Y calzon = carzon; |Y FSalida = 0; |HACIENDO;
+    col = (caldia + primdia - 1) $ 7;
+    fil = ((caldia + primdia - 1) / 7 - 0.5) ! 0;
+    varalfa = "  " + caldia + " ";
+    varalfa = varalfa % "-104";
+    posic = 1005 + fil * 200 + col * 5;
+    |PINTA posic,varalfa;
+    |LEE 101#1>;
+    |LIBERA #1;
+  |SIGUE;
+  |ATRI r;
+  |SELECT #1#1;
+|FCAL;
+
+
+
+******************************************************************************
+  Borra los dias que ya estaban pintados en el calendario.
+******************************************************************************
+
+|CALCULO borrcal; |TIPO 0;
+  varalfa = "    ";
+  |PARA fil = 1; |SI fil < 7; |HACIENDO fil = fil + 1;
+    |PARA col = 1; |SI col < 8; |HACIENDO col = col + 1;
+      posic = 800 + fil * 200 + col * 5;
+      |PINTA posic,varalfa;
+    |SIGUE;
+  |SIGUE;
+  |PINTA 1648,"                         ";
+|FCAL;
+
+
+
+******************************************************************************
+  Seleccion dentro del calendario.
+******************************************************************************
+
+|CALCULO selcal;|TIPO 0;
+  |MENSA seleccion;
+  || Averigua el a¤o de la fecha del sistema.
+  varalfa = fecha;
+  varalfa = varalfa % "7";
+  any2 = varalfa;
+
+  || Averigua el mes de la fecha del sistema.
+  varalfa = fecha;
+  varalfa = varalfa % "402";
+  numes2 = varalfa;
+
+  || Averigua el dia de la fecha del sistema.
+  varalfa = fecha;
+  varalfa = varalfa % "102";
+  dia2 = varalfa;
+
+  d = 1;
+  dold = 1;
+  salida = 0;
+  |SELECT #2#1;
+  |PARA; |SI salida ! 1; |Y salida ! 7; |HACIENDO;
+    |ATRI I;
+    col = (dold + primdia - 1) $ 7;
+    fil = ((dold + primdia - 1) / 7 - 0.5) ! 0;
+
+    || Controlar si es sabado o domingo.
+    festivo = 0;
+    |SI col = 5;|Y carsab = "S";
+      festivo = 1;
+    |FINSI;
+    |SI col = 6;
+      festivo = 1;
+    |FINSI;
+    || Controlar si el dia antiguo estaba parpadeando.
+    || Si es el dia de hoy, parpadea.
+    |SI dia2 = dold; |Y numes2 = numes; |Y any2 = any;
+      |ATRI P;
+    |FINSI;
+
+    || Controlar si el dia antiguo estaba en reverse.
+    calzon = carzon;
+    calmes = numes;
+    caldia = dold;
+    varnum = 0;
+    |LEE 101#1=;
+    |LIBERA #1;
+    |SI FSalida = 0; |O festivo = 1;
+      |PINTA 1648,"                         ";
+      |ATRI R;
+      varnum = 1;
+    |FINSI;
+    varalfa = "  " + dold;
+    varalfa = varalfa % "-102";
+    varalfa = " " + varalfa + " ";
+    posic = 1005 + fil * 200 + col * 5;
+    |PINTA posic,varalfa;
+    || Si es el dia de hoy, parpadea.
+    |SI dia2 = dold; |Y numes2 = numes; |Y any2 = any;
+      |ATRI p;
+      |ATRI I;
+    |FINSI;
+    |SI varnum = 1;                       || Era un dia festivo.
+      |ATRI r;
+      |ATRI I;
+    |FINSI;
+    dold = d;
+
+    col = (d + primdia - 1) $ 7;
+    fil = ((d + primdia - 1) / 7 - 0.5) ! 0;
+
+    || Controlar si es sabado o domingo.
+    festivo = 0;
+    |SI col = 5;|Y carsab = "S";
+      festivo = 1;
+    |FINSI;
+    |SI col = 6;
+      festivo = 1;
+    |FINSI;
+    || Controlar si el dia nuevo estaba en reverse.
+    calzon = carzon;
+    calmes = numes;
+    caldia = d;
+    varnum = 0;
+    |LEE 101#1=;
+    |LIBERA #1;
+    |SI FSalida = 0; |O festivo = 1;
+      varnum = 1;
+      |SI FSalida = 0;
+        |ATRI I;
+        |PINTA 1648,calfes;
+        |ATRI i;
+      |SINO;
+        |PINTA 1648,"                         ";
+      |FINSI;
+      |ATRI R;
+    |FINSI;
+    varalfa = "  " + d;
+    varalfa = varalfa % "-102";
+    varalfa = "[" + varalfa + "]";
+    posic = 1005 + fil * 200 + col * 5;
+    |PINTA posic,varalfa;
+    |SI varnum = 1;
+      |ATRI r;
+      |ATRI I;
+    |FINSI;
+
+    |PAUSA;
+    salida = FSalida;
+    |SI salida = 9;     || Cambiar de festivo a no festivo o viceversa.(F1)
+      |HAZ cambiadia;
+    |SINO;
+      |SI salida = 4;     || Cambiar al mes anterior.
+        fechacal = fechacal + (N\-0.001);
+        |HAZ inicio;
+        |HAZ pintacal;
+        d = 1;
+        dold = 1;
+        || Repone la clave 2.
+        |SELECT #2#1;
+      |SINO;
+        |SI salida = 5;  || Cambiar al mes siguiente.
+          fechacal = fechacal + 0.001;
+          |HAZ inicio;
+          |HAZ pintacal;
+          d = 1;
+          dold = 1;
+          || Repone la clave 2.
+          |SELECT #2#1;
+        |SINO;
+          |SI salida = 2;  || Cambiar al dia anterior.
+            |SI d ! 1;
+              d = d - 1;
+            |FINSI;
+          |SINO;
+            |SI salida = 3;  || Cambiar al dia siguiente.
+              |SI d ! maxdias;
+                d = d + 1;
+              |FINSI;
+            |SINO;
+              |SI salida = 10; || Ir directamente a un mes.
+                |HAZ irames;
+                |HAZ inicio;
+                |HAZ pintacal;
+                d = 1;
+                dold = 1;
+                |SELECT #2#1;  || Repone la clave original.
+              |FINSI;
+            |FINSI;
+          |FINSI;
+        |FINSI;
+      |FINSI;
+    |FINSI;
+  |SIGUE;
+  |ATRI i;
+  |SELECT #1#1;
+|FCAL;
+
+
+
+******************************************************************************
+  Cambia un dia de festivo a no festivo y viceversa.
+******************************************************************************
+
+|CALCULO cambiadia; |TIPO 0;
+  || Buscar si el dia d del mes numes era festivo.
+  calzon = carzon;
+  calmes = numes;
+  caldia = d;
+  |LEE 101#1=;
+  |LIBERA #1;
+  varnum = 0;
+  |SI FSalida = 0;      || El dia era festivo.
+    || Borrarlo como festivo.
+    |BORRA 021#1a;
+    varnum = 1;
+  |SINO;                || El dia no era festivo.
+    || A¤adirlo como festivo.
+    salir = 0;
+    calfes = "                              ";
+    |ENCAMPO #4#1;      || Entrar el campo festividad.
+    |SI FSalida = 7;    || CTRL C.
+      salir = -1;
+    |SINO;
+      callin = linea;
+      linea = linea + 1;
+      |GRABA 021#1n;      || Graba el nuevo registro.
+    |FINSI;
+  |FINSI;
+  |SI salir ! -1;
+    || Pintarlo en el nuevo formato.
+    |SI varnum = 1;       || Dej¢ de ser festivo.
+      |ATRI I;
+    |SINO;
+      |ATRI R;
+    |FINSI;
+    |PINTA posic,varalfa;
+    |SI varnum = 0;       || Es festivo.
+      |ATRI r;
+    |SINO;
+      |PINTA 1648,"                         ";
+    |FINSI;
+    |ATRI I;
+  |FINSI;
+|FCAL;
+
+
+
+******************************************************************************
+  Ir a un mes concreto.
+******************************************************************************
+
+|CALCULO irames; |TIPO 0;
+  |PUSHV 10201760;
+  |PINPA #0#2;
+  panmes = numes;
+  panany = any;
+  |PINDA #0#2;
+  |ENDATOS #1#2;
+  |POPV;
+  |MENSA seleccion;
+  |SI panmes ! numes; |Y panany ! any;
+    |HAZ borrcal;
+  |FINSI;
+  mes = panmes;  || Rellena a ceros el mes.
+  mes = "0" + mes;
+  mes = mes % "-102";
+  varalfa = panany;  || Rellena a ceros el a¤o.
+  varalfa = "0000" + varalfa;
+  varalfa = varalfa % "-104";
+  varalfa = "01." + mes + "." + varalfa;
+  fechacal = varalfa;
+|FCAL;
+
+
+
+******************************************************************************
+  Comprueba que el dato tecleado en el campo sabados, es correcto.
+******************************************************************************
+
+|CALCULO calsaba; |TIPO 0;
+  carsab = carsab > 0;
+  |SI carsab ! "S"; |Y carsab ! "N";
+    |ERROR;
+  |FINSI;
+  camsab = 0;
+  |SI Contenido ! carsab; |O antzona ! carzon;|O FEntrada = 202;
+    camsab = 1;
+  |FINSI;
+|FCAL;
+
+
+
+******************************************************************************
+  Si la zona cambia o se da de baja, se borran las lineas que ten¡a.
+******************************************************************************
+
+|CALCULO borlin; |TIPO 1;
+  modogen = ((FEntrada / 100) ! 0);
+  modofic = FEntrada $ 100;
+  |SI modogen = 3;              || Modo Baja.
+    |ATRI P;
+    |MENSA borrlin;
+    |ATRI p;
+    |ABRE #1;
+    callin = 1;
+    |LEE 101#1];
+    |PARA; |SI FSalida = 0;|Y calzon = carzon; |HACIENDO;
+      |BORRA 021#1a;
+      |LEE 101#1];
+      |LIBERA #1;
+    |SIGUE;
+    |LIBERA #1;
+    |CIERRA #1;
+    |BLIN 4;
+  |FINSI;
+|FCAL;
+
+
+
+******************************************************************************
+  Salta los dos primeros digitos del a¤o para situarse en las decadas.
+******************************************************************************
+
+|CALCULO salta2;|TIPO 7;
+  |PTEC 811;
+  |PTEC 811;
+|FCAL;
+
+
+
+******************************************************************************
+  Prepara las variables globales y presenta la pantalla.
+******************************************************************************
+
+|CALCULO presenta;|TIPO 0;
+  fecha = ~;
+  fechacal = ~;
+  |HAZ inicio;
+  |HAZ pintacal;
+  antzona = carzon;
+|FCAL;

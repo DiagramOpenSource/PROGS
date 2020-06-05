@@ -1,0 +1,219 @@
+|FICHEROS;
+     :/agitool/def/zmonedas #0;
+
+     referdef@ #100;
+|FIN;
+
+|VARIABLES;
+     aParametro   = "";
+     aAlfa        = "";
+     aLong        = "";
+     aCadena      = "";
+     aBase        = "";
+     aFich        = "";
+     aEmpresa     = "";
+     aAplica      = "";
+     aModoEntrada = "";
+     aModoEntrada1= "";
+     aModoEntrada2= "";
+     aDirDef      = "";
+     aDef         = "";
+     aQueQuiero   = "";
+     aClave       = "";
+
+     nLong        = 0;
+     nSwEmpresa   = 0;
+     nCaracter    = 0;
+     nPos         = 0;
+     nClave       = 0;
+
+     &EURO      = 1;
+     &EURODB    = 0;
+     &EURODV    = 0;
+     &EUROTEXTO = "Cambio de Moneda";
+
+     &eaBase        = "";
+     &eaAplica      = "";
+     &eaEmpresa     = "";
+     &eaMoneda      = "";
+     &enDesdeConver = 0;
+|FIN;
+
+|PROCESO Descripcion;
+     |SI #0#1 = "P";  #0#2 = "PESETAS";  |FINSI;
+     |SI #0#1 = "E";  #0#2 = "EUROS  ";  |FINSI;
+     |PINTA #0#2;
+
+     #0#3 = EURO;
+     |PINTA #0#3;
+|FPRC;
+
+|PROCESO MiraEuro;
+     |SI #0#1 = "P";
+         EURO   = 1 / 166.386;
+         EURODB = 0;
+         EURODV = 2;
+     |SINO;
+         EURO   = 166.386;
+         EURODB = 2;
+         EURODV = 0;
+     |FINSI;
+
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |HAZ Descripcion;
+|FPRC;
+
+|PROCESO Tipo12;  |TIPO 12;
+|FPRC;
+
+|PROCESO MiraDef;
+     aDef = aDirDef;  |QBF aDef;
+
+     |CARGA_DEF aDef, referdef@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     aQueQuiero = "|NK";
+     aClave     = #100#aQueQuiero#;
+     nClave     = aClave;
+
+     |SI nClave > 0;
+         |PATH_DAT #100 aFich;
+         |ABRE #100;  |CIERRA #100;
+     |FINSI;
+
+     |DESCARGA_DEF #referdef@;
+|FPRC;
+
+|PROCESO IndexaAplica;
+     aDirDef = aBase + aAplica + "/def/*.mas";
+     |_PDIR aDirDef;
+     |PARA;  |SI FSalida ] 0; |HACIENDO;
+          |HAZ MiraDef;
+          |_SDIR aDirDef;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Alta;
+     |SI aModoEntrada1 = "FIJO";
+         |LEE 101#0p;
+         |SI FSalida ! 0;
+             |DDEFECTO #0;
+             |GRABA 020#0b;
+         |FINSI;
+         #0#1 = aModoEntrada2;
+         |PINPA #0#0;
+         |PINDA #0#0;
+         |HAZ Descripcion;
+         |GRABA 020#0a;
+         |LIBERA #0;
+         |CIERRA #0;
+
+         |HAZ MiraEuro;
+         |ACABA;
+     |FINSI;
+
+     |CLS;
+     |PINPA #0#0;
+     |CABEZA "Control de Moneda";
+     |DDEFECTO #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0;
+        |GRABA 020#0b;
+     |FINSI;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |GRABA 020#0a;
+     |LIBERA #0;
+     |CIERRA #0;
+
+     |HAZ IndexaAplica;
+
+     |SI enDesdeConver = 1;  |ACABA;  |FINSI;
+
+     eaBase    = aBase;
+     eaAplica  = aAplica;
+     eaEmpresa = aEmpresa;
+     eaMoneda  = #0#1;
+     |SUB_EJECUTA_NP ":agitool/dsconver";
+
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida = 0;
+        #0#1 = eaMoneda;
+        |HAZ Descripcion;
+        |GRABA 020#0a;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+
+     |HAZ MiraEuro;
+|FPRC;
+
+|PROGRAMA;
+     aParametro = PARAMETRO;  |QBF aParametro;
+
+     aLong        = aParametro % 0;
+     nLong        = aLong;
+     aAplica      = "";
+     aEmpresa     = "";
+     aModoEntrada = "";
+     nSwEmpresa   = 0;
+     PARAMETRO    = "";
+     |PARA nCaracter = 1; |SI nCaracter [ nLong;  |HACIENDO nCaracter = nCaracter + 1;
+           nPos    = (nCaracter * 100) + 1;
+           aCadena = aParametro % nPos;
+
+           |SI aCadena = "*";
+               nSwEmpresa = nSwEmpresa + 1;
+           |SINO;
+               |SI nSwEmpresa = 0;
+                   |SI aCadena ! ";";
+                       PARAMETRO  = PARAMETRO + aCadena;
+                   |FINSI;
+               |FINSI;
+
+               |SI nSwEmpresa = 1;
+                   aAplica  = aAplica  + aCadena;
+               |FINSI;
+
+               |SI nSwEmpresa = 2;
+                   aEmpresa = aEmpresa + aCadena;
+               |FINSI;
+
+               |SI nSwEmpresa = 3;
+                   aModoEntrada = aModoEntrada + aCadena;
+               |FINSI;
+           |FINSI;
+     |SIGUE;
+
+     |DBASS aBase;   |QBF aBase;
+     |SI aEmpresa = "";
+         aFich = aBase + aAplica + "/fich/";
+     |SINO;
+         aFich = aBase + aAplica + "/fich/" + aEmpresa + "/";
+     |FINSI;
+
+     |PATH_DAT #0 aFich;
+
+     |ABRE #0;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     aModoEntrada1 = aModoEntrada % 104;
+     aModoEntrada2 = aModoEntrada % 501;
+     aModoEntrada1 = aModoEntrada1 > " ";
+     aModoEntrada2 = aModoEntrada2 > " ";
+     |SI aModoEntrada = "";  |O aModoEntrada1 = "FIJO";
+         |DDEFECTO #0;
+         |LEE 040#0p;
+         |SI FSalida ! 0;
+             |HAZ Alta;
+         |SINO;
+             |HAZ MiraEuro;
+             |CIERRA #0;
+         |FINSI;
+         |ACABA;
+     |FINSI;
+
+     |HAZ Alta;
+|FPRO;

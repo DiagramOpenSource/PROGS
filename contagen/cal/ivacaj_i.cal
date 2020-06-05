@@ -1,0 +1,347 @@
+|| ... Rutinas del Criterio de Caja
+|FICHEROS;
+   camaasic;
+   camaasil;
+
+   camaniva;
+   caivalin;
+
+   cainliva;
+   caivaasi;
+
+   camacc01 #501;
+   camacc02 #502;
+   camacc03 #503;
+   camacc12 #512;
+   camaccw1 #599;
+   camaccw2 #598;
+|FIN;
+
+|VARIABLES;
+  nPregunta  = 0;
+  aPath      = "";
+  aAlfa      = "";
+  aAlfa0     = "";
+  aAlfa1     = "";
+  aAlfa2     = "";
+  nDNum      = 0;
+  nHNum      = 0;
+  nExiste    = 0;
+  nAny       = 0;
+  nNume1     = 0;
+  &i_nom     = "";
+  &i_cif     = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+
+|PROCESO eElCtrlModIVA;
+
+   enSwSalir = 0;
+   nPregunta = 0;
+   aAlfa     = "";
+   aAlfa0    = "";
+   aAlfa1    = "";
+   aAlfa2    = "";
+   |DDEFECTO #501;
+
+   |SI #camaniva#40 ! 0;
+       nPregunta = 1;
+       aAlfa = "0000Factura ya Liquidada ";
+   |SINO;
+       |SI enEjercicio ] 2014;
+           |SI #camaniva#42 = "Z"; |O #camaniva#42 = "1"; |O #camaniva#42 = "2";
+               |O #camaniva#42 = "3"; |O #camaniva#42 = "4"; |O #camaniva#42 = "5";
+               |O #camaniva#42 = "6"; |O #camaniva#42 = "7"; |O #camaniva#42 = "8";
+
+               |ABRE #501;
+               #501#0  = #camaniva#0;
+               #501#1  = #camaniva#1;
+               #501#17 = eDevenCaja;
+               |LEE 041#501=;
+               |SI FSalida = 0;
+                   aAlfa = "0000Asiento de Fra. en Criterio de Caja";
+                   |SI #501#8 ! 0; |Y #501#9 ! 0;
+                       nPregunta = 2;
+                   |FINSI;
+                   |SI #501#5 = "S";
+                       aAlfa2 = " totalmente liquidada";
+                       nPregunta = 3;
+                   |SINO;
+                       |SI #501#10 ! 0; |Y #501#11 ! 0;
+                           aAlfa2 = " parcialmente liquidada";
+                           nPregunta = 3;
+                       |FINSI;
+                   |FINSI;
+                   |SI #501#18 ! -1; |Y #501#17 = 0;
+                       aAlfa2 = " sin liquidar, pasada al ejercicio posterior";
+                       nPregunta = 3;
+                   |FINSI;
+               |FINSI;
+               |CIERRA #501;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SI nPregunta = 0; |Y eSwReten = 0; |ACABA; |FINSI;
+
+   aAlfa0 = aAlfa;
+   |SI nPregunta ! 0;
+       nExiste = 0;
+       |SI enSi340 = 1;
+           nExiste = 1;
+           nAny = enEjercicio;
+           |SI dig1 ! 1; |Y #camaniva#40 < dig1;
+                nAny = enEjercicio + 1;
+           |FINSI;
+           |SI #camaniva#40 ! 0; |Y enBaja340 ! 0;
+               |SI nAny > enBajE340; nExiste = 0; |FINSI;
+               |SI nAny = enBajE340; |Y #camaniva#40 > enBaja340; nExiste = 0; |FINSI;
+           |FINSI;
+       |FINSI;
+       |SI nExiste = 1;
+           |SI #caivaasi#156 = "N";
+               |SI eModoCaja = 3; aAlfa1 = " en el Modelo 340. No se puede dar de Baja"; |FINSI;
+               |SI eModoCaja = 2; aAlfa1 = " en el Modelo 340. No se puede Modificar";   |FINSI;
+           |SINO;
+               aAlfa1 = ". Repase el Modelo 340";
+           |FINSI;
+
+           aAlfa = aAlfa + aAlfa1;
+           aMenCaja = aAlfa;
+           |SI nMenCaja = 0;   |MENAV aAlfa;  |FINSI;
+
+           |SI #caivaasi#156 = "N";
+               enSwSalir = 1;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SI eSwReten ! 0; |Y enSi111 = 1;
+       enPerMod = #camaniva#5;
+       nNume1   = enPanMod;
+       enPanMod = 1;
+       |HAZ ConsulModIVA;
+       |SI enEmiMod = 1; nPregunta = 1; |FINSI;
+       enPanMod = nNume1;
+   |FINSI;
+
+   |SI nPregunta = 0; |ACABA; |FINSI;
+
+   |SI enSi303 = 1; |O enSi111 = 1;
+     |SI #caivaasi#167 ! "X"; |Y nPregunta ! 2;
+         aAlfa = "Hay Modelos Elaborados.";
+         |SI nPregunta = 3;
+             aAlfa = aAlfa + aAlfa2;
+         |FINSI;
+
+        |SI #caivaasi#167 = "N";
+            |SI eModoCaja = 3; aAlfa1 = " No se puede dar de Baja"; |FINSI;
+            |SI eModoCaja = 2; aAlfa1 = " No se puede Modificar";   |FINSI;
+        |SINO;
+           aAlfa1 = " Reviselos";
+           |SI #caivaasi#167 = "P";
+               |SI eModoCaja = 2; aAlfa1 = " Modificar solo Contrapartida"; |FINSI;
+               |SI eModoCaja = 3; aAlfa1 = " No se puede dar de Baja"; |FINSI;
+           |FINSI;
+       |FINSI;
+
+        aAlfa    = aAlfa + aAlfa1;
+        aMenCaja = aAlfa;
+        |SI nMenCaja = 0;   |MENAV aAlfa;  |FINSI;
+
+        |SI #caivaasi#167 = "N";  enSwSalir = 1;  |FINSI;
+        |SI #caivaasi#167 = "P";
+            |SI eModoCaja = 2; enSwSalir = 2;  |FINSI;
+            |SI eModoCaja = 3; enSwSalir = 1;  |FINSI;
+        |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO BorraMacc03;
+   |BORRA 020#503a;
+   |LIBERA #503;
+|FPRC;
+
+|DEFBUCLE BorraMacc03;
+   #503#1;
+   ;
+   #502#17, #502#0, #502#1, #502#2, 01;
+   #502#17, #502#0, #502#1, #502#2, 99;
+   be;
+   NULL, BorraMacc03;
+|FIN;
+
+|PROCESO BorraMacc02;
+
+   |SI #502#4 ! 0; |Y nPregunta = 0;
+       || indico que no se puede borrar
+       nPregunta = 1;
+   |FINSI;
+   |BUCLE BorraMacc03;
+
+   |BORRA 020#502a;
+   |LIBERA #502;
+|FPRC;
+
+|DEFBUCLE BorraMacc02;
+   #502#1;
+   ;
+   #501#17, #501#0, #501#1, 01;
+   #501#17, #501#0, #501#1, 99;
+   be;
+   NULL, BorraMacc02;
+|FIN;
+
+|PROCESO BajaCaja;
+   nPregunta = 0;
+   |ABRE #501;
+   #501#0  = #camaniva#0;
+   #501#1  = #camaniva#1;
+   #501#17 = eDevenCaja;
+   |LEE 141#501=;
+   |SI FSalida = 0;
+       |BUCLE BorraMacc02;
+       |BORRA 020#501a;
+   |FINSI;
+   |LIBERA #501;
+   |CIERRA #501;
+|FPRC;
+
+|PROCESO eTrataClaveZ;
+
+   |SI eModoCaja = 3; |O enSwCaja = 0;
+       |HAZ BajaCaja;
+       |ACABA;
+   |FINSI;
+
+   |SI enSwCaja = 1;
+       eaFicCaja = "vc" + Usuario;
+       |NOME_DAT #599 eaFicCaja;
+       |DELINDEX #599;
+
+       |ABRE #599;
+       #599#0  = #camaniva#0;
+       #599#1  = #camaniva#1;
+       #599#26 = eDevenCaja;
+       |LEE 041#599=;
+       |SI FSalida ! 0;
+           |DDEFECTO #599;
+           #599#0  = #camaniva#0;
+           #599#1  = #camaniva#1;
+           #599#26 = eDevenCaja;
+           |GRABA 020#599c;
+       |FINSI;
+       #599#2    = #camaniva#03;
+       #599#3    = #camaniva#02;
+       #599#4    = #camaniva#04;
+       #599#5    = #camaniva#12;
+       #599#6    = #camaniva#27;
+       #599#7    = #camaniva#28;
+       #599#8    = #camaniva#19;
+       #599#9    = #camaniva#23;
+       #599#10   = #camaniva#21;
+       #599#11   = #camaniva#13;
+       #599#12   = #camaniva#14;
+       #599#13   = aTipoIVA;
+       #599#14   = "N";           || #camaniva#39;
+       #599#15   = #camaniva#04;
+       #599#17   = #camaniva#5;
+       #599#21   = #camaniva#7;
+       #599#22   = #camaniva#8;
+       #599#23   = #camaniva#9;
+       #599#27   = -1;
+       |SI #599#26 ! 0;  #599#27   = ePerioCaja;  |FINSI;
+       |GRABA 020#599a;
+       |CIERRA #599;
+       |SUB_EJECUTA_NP "camaccw1";
+   |FINSI;
+|FPRC;
+
+|| //////////////////////// Parte de los apuntes de cobro/Pago
+|PROCESO BorraMacc02C;
+    #501#0  = #502#0;
+    #501#1  = #502#1;
+    #501#17 = #502#17;
+    |LEE 041#501=;
+    |SI FSalida = 0;
+        || |HAZ ElCon501 .. SI nPregunta = 0;
+        #501#06 = #501#6  - #502#11;
+        #501#07 = #501#7  - #502#12;
+        #501#12 = #501#12 - #502#10;
+        #501#5  = "N";
+        |GRABA 020#501a;
+    |FINSI;
+
+    |HAZ BorraMacc02;
+|FPRC;
+
+|DEFBUCLE BorraMacc02C;
+   #502#2;
+   18;
+   #camaasil#0, #camaasil#1, #camaasil#2, #camaasil#3, 0000, 00, 0000000001, 00, -1;
+   #camaasil#0, #camaasil#1, #camaasil#2, #camaasil#3, 9999, 99, 9999999999, 99, -1;
+   be;
+   NULL, BorraMacc02C;
+|FIN;
+
+|PROCESO BajaCajaCP;
+   |ABRE #501;
+   |BUCLE BorraMacc02C;
+   |CIERRA #501;
+|FPRC;
+
+|PROCESO eTrataCobroZ;
+
+   |SI eModoCaja = 3; |O enSwCaja = 0;
+       |HAZ BajaCajaCP;
+       |ACABA;
+   |FINSI;
+
+   |SI enSwCaja = 1;
+       eaFicCaja = "wc" + Usuario;
+       |NOME_DAT #598 eaFicCaja;
+       |DELINDEX #598;
+
+       |ABRE #598;
+       #598#15 = eDevenCaja;
+       #598#0 = #camaasil#0;
+       #598#1 = #camaasil#1;
+       #598#2 = #camaasil#2;
+       #598#3 = #camaasil#3;
+       |LEE 041#598=;
+       |SI FSalida ! 0;
+           |DDEFECTO #598;
+           #598#15 = eDevenCaja;
+           #598#0 = #camaasil#0;
+           #598#1 = #camaasil#1;
+           #598#2 = #camaasil#2;
+           #598#3 = #camaasil#3;
+           |GRABA 020#598c;
+       |FINSI;
+       #598#4  = #camaasil#04;
+       #598#5  = i_nom;
+       #598#6  = #camaasil#06;
+       #598#7  = #camaasil#07;
+       #598#8  = #camaasil#09;
+       #598#9  = i_cif;
+       #598#10 = aTipoIVA;
+       |GRABA 020#598a;
+       |CIERRA #598;
+       |SUB_EJECUTA_NP "camaccw2";
+   |FINSI;
+|FPRC;
+
+|PROCESO ePathCaja;
+   |DBASS aPath; |QBT aPath;
+   aAlfa = aPath + "contagen/fich/";
+   aAlfa1 = ("00000" + enEmpresa) % -105;
+   aAlfa2 = ("0"     + enPeriodo) % -101;
+   |SI ePerioCaja ! -1;
+       aAlfa2 = ("0" + ePerioCaja) % -101;
+   |FINSI;
+   ePathCaja = aAlfa + aAlfa1 + aAlfa2 + "/";
+|FPRC;

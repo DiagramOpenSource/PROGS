@@ -1,0 +1,204 @@
+|FICHEROS;
+     pcegz040 #0;
+     pcegm028 #28;
+|FIN;
+
+|VARIABLES;
+     aIP = "";
+     aDir = "";
+     aDSCorreo = "";
+     aUsu = "";
+     aPwd = "";
+     aPop3 = "";
+     aNombre = "";
+     aMensaje = "";
+     nCorreos = 0;
+     i = 0;
+     j = 0;
+     nSwAuto = 0;
+     aNom = "";
+     aLon = "";
+     nPos = 0;
+     aAlfa = "";
+     aDes = "";
+     nError = 0;
+
+     aFicheroLog = "";
+     nHandleLog = 0;
+     aTxtLog = "";
+     aBase = "";
+     fLogDia = @;
+     aLogHor = "";
+     aIPRemoto = "";
+|FIN;
+
+|PROCESO SacaNombre;
+     aNom = "";
+     aLon = aNombre % A0;
+     |PARA j = 1; |SI j [ aLon; |HACIENDO j = j + 1;
+          nPos = -(j * 100 + 1);
+          aAlfa = aNombre % nPos;
+          |SI aAlfa = "/"; |O aAlfa = "\"; |SAL; |FINSI;
+          aNom = aAlfa + aNom;
+     |SIGUE;
+|FPRC;
+
+|PROCESO MeteLog;
+     fLogDia = ~;
+     |HORA aLogHor;
+
+     |XABRE "A", aFicheroLog, nHandleLog;
+     |SI FSalida ] 0;
+          aTxtLog = fLogDia + "#" + aLogHor + "#" + aTxtLog;
+          |XGRABA nHandleLog, aTxtLog;
+          |XCIERRA nHandleLog;
+     |FINSI;
+|FPRC;
+
+|PROCESO Recoge;
+     aDir = #28#1; |QBF aDir;
+     |SI #28#4 = "F";
+          aDSCorreo = #28#5;  |QBF aDSCorreo;
+     |SINO;
+          |SI #28#4 = "L";   |IP_REMOTO aDSCorreo;    |FINSI;
+          |SI #28#4 = "S";   |IP_LOCAL aDSCorreo;     |FINSI;
+     |FINSI;
+     aPop3 = #28#6; |QBF aPop3;
+     aUsu = #28#7; |QBF aUsu;
+     aPwd = #28#8; |QBF aPwd;
+     aNombre = "";
+
+     aAlfa = "0000Recibiendo [" + aDSCorreo + "]";
+     |MENSA aAlfa;
+
+     aIP = "";
+     |IP_REMOTO aIP;
+     |SI aIP ! "";
+          aDes = aDir;
+          |DFICE aDir;
+     |FINSI;
+
+     aTxtLog = " --------- RECECPCION CORREO --------";
+     |HAZ MeteLog;
+
+     aTxtLog = "IP Maquina Cliente: " + aIP;
+     |HAZ MeteLog;
+
+     aTxtLog = "IP DSCORREO: " + aDSCorreo;
+     |HAZ MeteLog;
+
+     aTxtLog = "Servidor POP3: " + aPop3;
+     |HAZ MeteLog;
+
+     aTxtLog = "Directorio Destino Correos: " + aDir;
+     |HAZ MeteLog;
+
+     || El dscorreo deja el adj en el servidor
+     |DSCORREO_RECIBE aDSCorreo, aPop3, aUsu, aPwd, aDir, aNombre;
+
+     nError = FSalida;
+
+     aTxtLog = "Resultado DSCORREO_RECIBE: " + FSalida;
+     |HAZ MeteLog;
+
+     |SI nError = 0;
+          aTxtLog = "Fichero Adjunto: " + aNombre;
+          |HAZ MeteLog;
+     |SINO;
+          |SI nError = 1;
+               aTxtLog = "No hay correos";
+               |HAZ MeteLog;
+          |SINO;
+               aTxtLog = "Error al recibir los correos";
+               |HAZ MeteLog;
+          |FINSI;
+     |FINSI;
+
+     |SI aIP = "";
+          aAlfa = aDes + "_cuerpo_.txt";
+          |FBORRA aAlfa;
+     |FINSI;
+
+     |BLIN 4;
+     |SI nError < 0; |Y nSwAuto = 0;
+          aMensaje = "    Problemas al recibir correo ..." + nError;
+          |MENAV aMensaje;
+     |FINSI;
+     |SI nError = 0;
+          aMensaje = "    Correo recibido con exito [" + nError + "][" + aNombre + "]";
+          |MENSA aMensaje;
+          |SI aIP ! "";
+               |PARA; |SI; |HACIENDO;         || quita los ";"
+                    aNombre = aNombre - ";";
+                    |SI FSalida [ 0; |SAL; |FINSI;
+               |SIGUE;
+
+               || y lo copiamos al local
+               |HAZ SacaNombre;
+               aDes = aDes + aNom;
+               |SI aNom ! "_cuerpo_.txt";    || cuando no hay adjunto
+                    |ENVIA_FICHERO aNombre, aDes;
+                    aTxtLog = "Copiando " + aNombre + " a " + aDes;
+                    |HAZ MeteLog;
+               |FINSI;
+               || y lo borro del servidor
+               |FBORRA aDir;
+          |FINSI;
+     |FINSI;
+     |SI nError = 1; |Y nSwAuto = 0;
+          |SI nCorreos = 1;
+               |MENAV "    No hay correo ...";
+          |SINO;
+               i = nCorreos - 1;
+               aAlfa = "0000" + i + " Correos recibidos...";
+               |MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Inicio;
+     |ABRE #28; |LEE 000#28p; |CIERRA #28;
+     nCorreos = 0;
+     |PARA; |SI; |HACIENDO;
+          nError = 0;
+          nCorreos = nCorreos + 1;
+          |HAZ Recoge;
+          |SI nError ! 0; |SAL; |FINSI;
+          |SLEEP 2;
+     |SIGUE;
+|FPRC;
+
+|PROGRAMA;
+     |DBASE aBase;
+     |QBF aBase;
+
+     aFicheroLog = aBase + "log/";
+     |MKDIR aFicheroLog;
+     aFicheroLog = aFicheroLog + "recepcion_correos.log";
+
+     |IP_REMOTO aIPRemoto;
+     |QBF aIPRemoto;
+     |SI aIPRemoto = "";
+          aTxtLog = " --------- RECECPCION CORREO --------";
+          |HAZ MeteLog;
+
+          aTxtLog = "ERROR: PROCESO EJECUTADO EN MODO LOCAL";
+          |HAZ MeteLog;
+
+          |ACABA;
+     |FINSI;
+
+     |SI PARAMETRO = "menu";
+          nSwAuto = 0;
+          |CLS;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0; |Y #0#0 = "SI";
+               |HAZ Inicio;
+          |FINSI;
+     |SINO;
+          nSwAuto = 1;
+          |HAZ Inicio;
+     |FINSI;
+|FPRO;

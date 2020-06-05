@@ -1,0 +1,248 @@
+|FICHEROS;
+     bogez005 #0;
+     bogew003 #3,MANTE;
+     bogem014 #14,MANTE; || Documentos
+     bogem020 #20;
+|FIN;
+
+|VARIABLES;
+     &Tempo = "";
+     aTmp3 = "";
+     aIP = "";
+     nForma = 0;
+     aOrigen = "";
+     nHandle = 0;
+     aDestino = "";
+     aDirDocumentos = "";
+     fHoy = @;
+     fFecha = @;
+     aAlfa = "";
+     nSemana = 0;
+     nJueves = 0;
+     nNume = 0;
+     f = @;
+     f1 = @;
+     aNom = "";
+     i = 0;
+     nPos = 0;
+     aLon = "";
+     aRuta = "";
+     aCar = "";
+     nModo = 0;
+     aRef = "";
+|FIN;
+
+|PROCESO SacaNombre;
+     aLon = aRuta % A0;
+     aNom = "";
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = -(i * 100 + 1)
+          aCar = aRuta % nPos;
+          |SI aCar = "\"; |O aCar = "/"; |SAL; |FINSI;
+          aNom = aCar + aNom;
+     |SIGUE;
+|FPRC;
+
+|PROCESO LinTipo0; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          aRuta = "F*.*";
+          |BROWSE aRuta;
+          aRuta = aRuta % 2;
+          |QBF aRuta;
+          |SI aRuta = ""; |O aRuta = "F"; |ERROR; |ACABA; |FINSI;
+          aAlfa = Usuario % 810;
+          #14#3 = aAlfa;
+
+          |DFICE aAlfa;
+          aAlfa = aAlfa + "DOC";
+          |MKDIR aAlfa;
+          aRef = #14#0; |QBF aRef;
+          aAlfa = aAlfa + "/" + aRef + ("0000" + #14#1) % -104;
+          |HAZ SacaNombre;
+          #14#4 = aNom;
+          #14#2 = aNom;
+          |SI aIP = "";
+               |COPIA_FICHERO aRuta, aAlfa;
+          |SINO;
+               |RECIBE_FICHERO aRuta, aAlfa;
+          |FINSI;
+          |SI FSalida ! 0;
+               |MENAV "0000Se ha producido un error al copiar el fichero";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LinTipo2; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     nForma = 0 +. 1;
+     |SI nModo = 2; |Y nForma = -1;
+          aDestino = "C:\DOCUMENTOS\" + #14#4;  |QBF aDestino;
+          |DFICE aAlfa;
+          aAlfa = aAlfa + "DOC";
+          aRef = #14#0; |QBF aRef;
+          aOrigen = aAlfa + "/" + aRef + ("0000" + #14#1) % -104;
+          |SI aIP = "";
+               |COPIA_FICHERO aOrigen, aDestino;
+          |SINO;
+               |ENVIA_FICHERO aOrigen, aDestino;
+          |FINSI;
+          |SI FSalida = 0;
+               |AVISO;
+               |CONFI "0000NEditar una copia en su maquina?";
+               |SI FSalida = 0;
+                    aAlfa = #14#4;  |QBF aAlfa;
+                    aAlfa = "0000Queda ubicado en C:\DOCUMENTOS como [" + aAlfa + "]";
+                    |MENAV aAlfa;
+               |SINO;
+                    |RSYSTEM aDestino;
+                    |SI aIP = "";
+                         |COPIA_FICHERO aOrigen, aDestino;
+                    |SINO;
+                         |RECIBE_FICHERO aDestino, aOrigen;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI nModo = 3;
+          |DFICE aAlfa;
+          aAlfa = aAlfa + "DOC";
+          |MKDIR aAlfa;
+          aRef = #14#0; |QBF aRef;
+          aAlfa = aAlfa + "/" + aRef + ("0000" + #14#1) % -104;
+          |FBORRA aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min14;
+     #14#0 = #3#0;
+     #14#1 = 0001;
+|FPRC;
+
+|PROCESO Max14;
+     #14#0 = #3#0;
+     #14#1 = 9999;
+|FPRC;
+
+|PROCESO Tipo0; |TIPO 0;
+     |SI FSalida = 0; |Y #3Campo = Contenido;
+          |PUSHV 0501 2380;
+          |ENTLINEAL #1#14, 2, 2, 22, 1, Min14, Max14;
+          |POPV;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo66; |TIPO 66;
+     |CONSULTA_F_CLAVE #2#3, Min3, Max3;
+     |SI FSalida = 0;
+          |LEE 000#3=;
+          |PONCONTROL 23, "SI";
+     |SINO;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO CalculaSemana;
+|| Norma ISO 8601
+|| la semana 1 de cada a¤o es aquella en la que aparece
+|| el primer jueves del a¤o
+|| Ej: 02.01.2005 es la semana 53 del 2004
+
+     fHoy = ~;
+
+     fFecha = fHoy;
+     aAlfa = fFecha % 704;
+     aAlfa = "01.01." + aAlfa;
+     fFecha = fHoy;
+     nSemana = 0;
+     nJueves = 0;
+     |PARA f = aAlfa; |SI f [ fFecha; |HACIENDO f = f + 1;
+          f1 = f;
+          f1 = f % A1;
+          aAlfa = f1 % 1101;
+          |SI nJueves = 0;
+               |SI aAlfa = "J"; nJueves = 1; nSemana = 1; |FINSI;
+          |FINSI;
+          |SI nJueves = 1;
+               |SI aAlfa = "L"; nSemana = nSemana + 1; |FINSI;
+          |FINSI;
+     |SIGUE;
+     |SI nSemana = 0;
+          fFecha = fHoy;
+          aAlfa = fFecha % 704;
+          nNume = aAlfa;
+          nNume = nNume - 1;
+          aAlfa = ("0000" + nNume) % -104;
+          aAlfa = "01.01." + aAlfa;
+          fFecha = fHoy;
+          nSemana = 0;
+          nJueves = 0;
+          |PARA f = aAlfa; |SI f [ fFecha; |HACIENDO f = f + 1;
+               f1 = f;
+               f1 = f % A1;
+               aAlfa = f1 % 1101;
+               |SI nJueves = 0;
+                    |SI aAlfa = "J"; nJueves = 1; nSemana = 1; |FINSI;
+               |FINSI;
+               |SI nJueves = 1;
+                    |SI aAlfa = "L"; nSemana = nSemana + 1; |FINSI;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min3;
+     #3#0 = 0000001;
+     #3#29 = 0;
+     #3#30 = 0;
+     #3#31 = "  ";
+|FPRC;
+
+|PROCESO Max3;
+     #3#0 = 9999999;
+     #3#29 = 9999;
+     #3#30 = 99;
+     #3#31 = "zz";
+|FPRC;
+
+|PROCESO Registros;
+     |PARA i = 0; |SI i [ 32; |HACIENDO i = i + 1;
+          #3i = #20i;
+     |SIGUE;
+     |GRABA 040#3n;
+|FPRC;
+
+|DEFBUCLE Registros;
+     #20#2;
+     ;
+     #0#0, #0#2, #0#4;
+     #0#1, #0#3, #0#5;
+     ;
+     NULL, Registros;
+|FIN;
+
+|PROGRAMA;
+     |HAZ CreaTempo; |NOME_DAT #3 Tempo; |DELINDEX #3; aTmp3 = Tempo;
+
+     aIP = ""; |IP_REMOTO aIP;
+     |CLS;
+     |HAZ CalculaSemana;
+     aAlfa = fHoy;
+     aAlfa = aAlfa % 704;
+     #0#0 = aAlfa;
+     #0#1 = aAlfa;
+     #0#2 = nSemana;
+     #0#3 = nSemana;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |ABRE #3;
+          |BUCLE Registros;
+          |CIERRA #3;
+          |ENTLINEAL #1#3, 1, 4, 21, 1, Min3, Max3;
+     |FINSI;
+
+     Tempo = aTmp3; |HAZ BoraTempo; |DELINDEX #3;
+|FPRO;

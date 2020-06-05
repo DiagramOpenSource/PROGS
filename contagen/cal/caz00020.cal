@@ -1,0 +1,328 @@
+|FICHEROS;
+  caz00020 #0;
+  camaasic #1;
+  camaasil #2;
+  cacuenta #3;
+  camandia #4;
+
+  :/modelos/def/dsmom030 #330;
+
+  canempre #30;
+  caselem1 #998;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   informe  = "caz00020";
+
+   nHayDesc = 0;
+   opcion  = 0;
+   nUltLin = 0;
+   nDebe   = 0;
+   nHaber  = 0;
+   nSaldo  = 0;
+   aElDepar = "";
+   aElSubde = "";
+   aLaCtaAn = "";
+   aAlfa1 = "";
+   aAlfa2 = "";
+   nNume1 = 0;
+   nPaso  = 0;
+   nInkey  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| **********************************************************************
+|| ***** Calculos de Pantalla
+|| **********************************************************************
+|CALCULO defectos; |TIPO 7;
+   #0#2 = fec1; |PINTA #0#2;
+   #0#3 = fec2; |PINTA #0#3;
+|FCAL;
+
+|CALCULO antesCta; |TIPO 7;
+  |SI nPaso = 0;
+      nPaso = 1;
+      #0#12 = #0#6; |PINTA #0#12;
+      #0#13 = #0#7; |PINTA #0#13;
+  |FINSI;
+|FCAL;
+
+|CALCULO cuenta; |TIPO 6;
+     eaCuenta = #caz00020#Campo#;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #caz00020#Campo# = eaCuenta;
+     |PINTA #caz00020#Campo#;
+|FCAL;
+
+|CALCULO cuefin; |TIPO 0;
+   nInkey = FSalida;
+   |SI nInkey = 15; |Y Campo = 12;
+       #0#12 = #0#6;
+       |PINTA #0#12;
+   |FINSI;
+
+   |SI #0Campo = doce;
+       |ERROR;
+       |ACABA;
+   |FINSI;
+
+   emCta    = 1;
+   eaCuenta = #0Campo;
+   |HAZ SacaNivel;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   |HAZ LeeCuenta;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   nNume1   = Campo + 1;
+   #0nNume1 = #cacuenta#2; |PINTA #0nNume1;
+|FCAL;
+
+|CALCULO concepto; |TIPO 0;
+   |SI FSalida = 10;
+       enConcepto = #0#8;
+       |HAZ VerConcepto30;
+       #0#8 = enConcepto; |PINTA #0#8;
+   |FINSI;
+
+   enFilConc = 0;
+   eaCuenta   = "";
+   enConcepto = #0#8;
+   |HAZ FiltroConcepto;  |SI eswLect ! 0; |ACABA; |FINSI;
+
+   #0#9 = #dsmom030#1; |PINTA #0#9;
+|FCAL;
+
+|CALCULO c_descrip; |TIPO 7;
+       |SI eaSobreEs ! "S";
+           |PTEC 816;
+       |FINSI;
+|FCAL;
+
+|CALCULO fecha; |TIPO 0;
+   |SI #0Campo < fec1; |O #0Campo > fec2;
+       |MENAV "    ATENCION!!! Fecha fuera de periodo ...";
+       |ERROR;
+       |ACABA;
+   |FINSI;
+   |SI Campo = 3; |Y #0Campo < #0#2;
+       |MENAV "    ATENCION!!! Fecha inferior al primer limite ... ";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|| ----------------------------------------------------------
+|CALCULO descuadre; |TIPO 3;
+
+      opcion = 0; |SI #0#10 = "S"; opcion = 1; |FINSI;
+      |SI opcion = 1;
+          |IMPRE 0;
+          |SI FSalida ! 0;  |ACABA;  |FINSI;
+          |INFOR informe;
+          |SI FSalida ! 0;  |FINIMP;  opcion = 0; |FINSI;
+      |FINSI;
+
+      |C_V #0#11,1,"S";
+      |CUADRO 2005 2371;
+      |SI #48#27 = "S";
+          |HAZ MultiEmpresa;
+      |SINO;
+          |DFICE dirfich0; |QBF dirfich0;
+          |HAZ HazTodo;
+      |FINSI;
+
+      |SI opcion = 1;
+          |FININF;
+          |FINIMP;
+      |FINSI;
+|FCAL;
+
+||***********************************************************************
+
+|PROCESO LeeLineas;
+   nUltLin = #2#3;
+
+   aElDepar = #2#21;
+   aElSubde = #2#28;
+   aLaCtaAn = #2#29;
+
+   |SI #2#8 = "D";
+       nDebe  = nDebe  + #2#9;
+   |SINO;
+       nHaber = nHaber + #2#9;
+   |FINSI;
+|FPRC;
+
+|PROCESO LeeCabecera;
+   |PINTA 2222, #1#0;
+   |PINTA 2225, #1#1;
+   |PINTA 2236, #1#2;
+   |PINTA 2243, "                            ";
+
+   nUltLin = 0;
+   nDebe   = 0;
+   nHaber  = 0;
+   aElDepar = "";
+   aElSubde = "";
+   aLaCtaAn = "";
+   |BUCLELIN 2LeeLineas#1;
+   nSaldo = nDebe - nHaber;
+
+   aAlfa1 = nSaldo; |QBF aAlfa1;
+   |SI aAlfa1 = "0"; |O aAlfa1 = "-0";
+       nSaldo = 0;
+   |FINSI;
+
+   |SI nSaldo ! 0;    || ... Crea Linea Nueva
+       |ATRI P; |PINTA 2243, "DESCUADRADO"; |ATRI 0;
+
+       |ABRE #2;
+       |DDEFECTO #2;
+
+       #2#0  = #1#0;
+       #2#1  = #1#1;
+       #2#2  = #1#2;
+       #2#3  = nUltLin + 10;
+
+       |SI nSaldo < 0;
+           #2#4   = #0#6;
+       |SINO;
+           #2#4   = #0#12;
+       |FINSI;
+       eaCuenta = #2#4; |HAZ SacaNivel;
+       #2#5  = enNivel;
+       #2#6  = #0#8;
+       #2#7  = #0#9;
+
+       |SI nSaldo < 0;
+           #2#8   = "D";
+           nSaldo = - nSaldo;
+           nDebe  = nDebe + nSaldo;
+       |SINO;
+           #2#8  = "H";
+           nHaber = nHaber + nSaldo;
+       |FINSI;
+       #2#9  = nSaldo;
+       |HAZ adapta;
+
+       #2#21 = aElDepar;        || El Departamento
+       #2#24 = #1#12;           || Numero de Registro
+       #2#26 = #1#17;           || La Referencia
+       #2#28 = aElSubde;        || EL Subdepartamento
+       #2#29 = aLaCtaAn;        || La Cuenta Analitica
+       #2#30 = #1#1;            || La Fecha
+
+       |GRABA 020#2n;
+       |LIBERA #2;
+       |HAZ LaActualizacion;
+       |CIERRA #2;
+
+       #1#4 = nDebe; #1#5 = nHaber; #1#6 = #1#4 - #1#5;
+       |GRABA 020#1a;
+
+       |SI opcion = 1;  |PRINT; |FINSI;
+       nHayDesc = nHayDesc + 1;
+   |FINSI;
+   |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE lee_asientos;
+   #1#1;
+   ;
+   #0#0, #0#2, #0#4;
+   #0#1, #0#3, #0#5;
+   be;
+   NULL, LeeCabecera;
+|FIN;
+
+|| ----------------------------------------------------------------------
+|PROCESO HazTodo;
+  |HAZ eLeeParametro;
+  |ATRI R; |PINTA 2107, "Empresa: "; |ATRI 0;
+  |PINTA 2116, #canempre#2; |PINTA 2122, #canempre#1;
+
+  |ATRI S; |PINTA 2207, "En proceso ... "; |ATRI 0;
+
+  nHayDesc = 0;
+  |BUCLE lee_asientos;
+
+  |SI nHayDesc ! 0;
+     aAlfa1 = nHayDesc; |QBF aAlfa1;
+     aAlfa2 = "Encontrado";
+     |SI nHayDesc > 1; aAlfa2 = aAlfa2 + "s"; |FINSI;
+     aAlfa2 = aAlfa2 + " " + aAlfa1 + " " + "descuadre";
+     |SI nHayDesc > 1; aAlfa2 = aAlfa2 + "s"; |FINSI;
+
+     #0#11 = aAlfa2; |PINTA #0#11;
+     |PAUSA;
+     |SI opcion = 1;  |PIEINF; |FINSI;
+  |FINSI;
+|FPRC;
+
+
+|| ********************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #4 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 001;
+ 999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+
+|| .... Procesos de la linea de apuntes
+
+|PROCESO LaActualizacion;
+   MasMenos     = #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+   nNIVELCUENTA = #camaasil#5;
+   |HAZ ActDiario;          || diario
+   |HAZ ActCuenta;          || cuenta
+   |HAZ ActTesteo;          || Para recalculo en informes
+|FPRC;
+
+|PROCESO adapta;
+   |SI #camaasil#8 = "D";
+       #camaasil#16 = #camaasil#4;
+       #camaasil#17 = #camaasil#5;
+       #camaasil#10 = "";
+       #camaasil#11 = 0;
+   |SINO;
+       #camaasil#16 = "";
+       #camaasil#17 = 0;
+       #camaasil#10 = #camaasil#4;
+       #camaasil#11 = #camaasil#5;
+   |FINSI;
+|FPRC;

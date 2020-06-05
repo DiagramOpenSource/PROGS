@@ -1,0 +1,429 @@
+|| ............................. Actualizacion Cuenta y Diario
+|FICHEROS;
+   :/contagen/def/cacuenta;
+   :/contagen/def/cacuebal;
+   :/contagen/def/ca8cumay;
+   :/contagen/def/ca8m0002;
+
+   :/contagen/def/camandia #10;
+|FIN;
+
+|VARIABLES;
+   p_mensa2 = "0000No Existe Cuenta Contable ";
+   p_mensa3 = "0000Esta Cuenta NO tiene Pase Directo.";
+   actcta_Debe = "D";
+   actcta_Haber = "H";
+   actcta_i1 = 0;
+   actcta_i2 = 0;
+   actcta_i3 = 0;
+   actcta_i4 = 0;
+   actcta_i5 = 0;
+   actcta_alfa1 = "";
+   actcta_alfa2 = "";
+   actcta_alfa3 = "";
+   actcta_alfa4 = "";
+   actcta_alfa5 = "";
+   {-1}actcta_punt1 = 0;
+   uno = "";
+   dos = "";
+   nivel = 0;
+   mascara = "";
+   alfa_en1 = "";
+   Longitud = "";
+   Comodin = "";
+   nCalc = 0;
+   i = 0;
+   aAlfa1 = "";
+
+   nNoBal8 = 0;
+   nNoBalX = 0;
+   nNoBal  = 0;
+   tres    = "";
+   aNueva  = "";
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+**********************************************************************
+ACTUALIZACION DE CUENTAS
+**********************************************************************
+
+
+|RUTINA suma_cuenta;
+   |SI nDIARIO = 0; || nDIARIO de apertura !!
+      |SI DebeHaber = actcta_Debe;
+         #cacuenta#9 = #cacuenta#9 + MasMenos;        || diario cero (saldos iniciales)
+         #cacuenta#51 = #cacuenta#51 + MasMenos;
+      |SINO;
+         #cacuenta#10 = #cacuenta#10 + MasMenos;
+         #cacuenta#52 = #cacuenta#52 + MasMenos;
+      |FINSI;
+      #cacuenta#11 = #cacuenta#9  - #cacuenta#10;
+   |SINO;
+      |SI nDIARIO = 99; || nDIARIO de cierre !!
+         |SI DebeHaber = actcta_Debe;
+            #cacuenta#48 = #cacuenta#48 + MasMenos;       || diario 99 (saldos finales)
+            #cacuenta#51 = #cacuenta#51 + MasMenos;
+         |SINO;
+            #cacuenta#49 = #cacuenta#49 + MasMenos;
+            #cacuenta#52 = #cacuenta#52 + MasMenos;
+         |FINSI;
+         #cacuenta#50 = #cacuenta#48 - #cacuenta#49;
+         #cacuenta#53 = #cacuenta#51 - #cacuenta#52;
+      |SINO;
+         actcta_i1 = (A\ aFECHA % 402 ); || obtengo el mes de la fecha
+         || ajustar segun mes inicial del periodo (dig1)
+         |SI actcta_i1 ] dig1;
+            actcta_i1 = (actcta_i1 + 1) - dig1;
+         |SINO;
+            actcta_i1 = (13 - dig1) + actcta_i1;
+         |FINSI;
+         actcta_i1 = (actcta_i1 * 3) + 9;
+         actcta_i2 = actcta_i1 + 1;
+         actcta_i3 = actcta_i2 + 1;
+         |SI DebeHaber = actcta_Debe;
+            #cacuenta#actcta_i1# = #cacuenta#actcta_i1# + MasMenos;
+            #cacuenta#51 = #cacuenta#51 + MasMenos;
+         |SINO;
+            #cacuenta#actcta_i2# = #cacuenta#actcta_i2# + MasMenos;
+            #cacuenta#52 = #cacuenta#52 + MasMenos;
+         |FINSI;
+         #cacuenta#actcta_i3# = #cacuenta#actcta_i1# - #cacuenta#actcta_i2#;
+      |FINSI;
+   |FINSI;
+   #cacuenta#53 = #cacuenta#51 - #cacuenta#52;
+   |SI #cacuenta#58 < aFECHA;
+      #cacuenta#58 = aFECHA;
+   |FINSI;
+|FRUT;
+
+|PROCESO saca_2008_am;
+   nNoBal8 = 0;
+|FPRC;
+
+|DEFBUCLE saca_2008_am;
+ #ca8m0002#2;
+ ;
+ enEjerBal, 00, 0, uno;
+ enEjerBal, 99, 9, uno;
+ ;
+ NULL, saca_2008_am;
+|FIN;
+
+|PROCESO defecto_actm;
+   |SI nNoBal = 1;
+       #cacuebal#0 = uno;
+       |LEE 040#cacuebal.=;
+       |SI FSalida = 0;
+           |HAZ saca_defecto;
+           nNoBal = 0;
+       |FINSI;
+   |FINSI;
+
+   |SI nNoBal8 = 1;
+       uno = (uno + "     " ) % 105;
+       |BUCLE saca_2008_am;
+   |FINSI;
+   |SI nNoBalX = 1;
+      |ABRE #ca8cumay;
+      #ca8cumay#12 = enEjerBal;
+      #ca8cumay#0  = uno;
+      #ca8cumay#10 = eNum2008;
+      |LEE 001#ca8cumay.=;
+      |SI FSalida = 0;
+          nNoBalX = 0;
+      |FINSI;
+      |CIERRA #ca8cumay;
+   |FINSI;
+|FPRC;
+
+|CALCULO defecto_cuenta;
+
+   |ABRE #cacuebal;
+   nNoBal8 = 1;
+   nNoBalX = 1;
+   nNoBal  = 1;
+   |SI enEjer < 2008; nNoBal8 = 0; nNoBalX = 0; |FINSI;
+
+   uno = #cacuenta#0;
+   |QBF uno;               || quita los espacios blancos
+   dos = uno % 0;
+   |SI dos = MaximoDigitos; |O uno = "";
+      #cacuenta#3 = "S";
+   |FINSI;
+   |SI uno = ""; nNoBal8 = 0; nNoBalX = 0; nNoBal = 0; |VETE findefecto_cuenta; |FINSI;
+   tres = uno;
+
+   dos = uno + "000000000000";
+   uno = dos % 105;
+   |HAZ defecto_actm;
+   |SI nNoBal8 = 0; |Y nNoBal = 0; |Y nNoBalX = 0;
+       |VETE findefecto_cuenta;
+   |FINSI;
+
+   uno = dos % 104;
+   |HAZ defecto_actm;
+   |SI nNoBal8 = 0; |Y nNoBal = 0; |Y nNoBalX = 0;
+       |VETE findefecto_cuenta;
+   |FINSI;
+
+   uno = dos % 103;
+   |HAZ defecto_actm;
+   |SI nNoBal8 = 0; |Y nNoBal = 0; |Y nNoBalX = 0;
+       |VETE findefecto_cuenta;
+   |FINSI;
+
+   uno = dos % 102;
+   |HAZ defecto_actm;
+   |SI nNoBal8 = 0; |Y nNoBal = 0; |Y nNoBalX = 0;
+       |VETE findefecto_cuenta;
+   |FINSI;
+
+   uno = dos % 101;
+   |HAZ defecto_actm;
+   |SI nNoBal8 = 0; |Y nNoBal = 0; |Y nNoBalX = 0;
+       |VETE findefecto_cuenta;
+  |SINO;
+       |SI nNoBal = 1;
+           |SI eaPaCTA2 ! "N";
+               aAlfa1 = "0000Cuenta de Balance: " + tres + " No Definida plan contable 1990!!";
+               |MENAV aAlfa1;
+            |FINSI;
+            #cacuenta#4 = #ca8cumay#2;
+            #cacuenta#5 = #ca8cumay#3;
+            #cacuenta#6 = #ca8cumay#5;
+        |FINSI;
+        |SI nNoBal8 = 1;
+            aAlfa1 = "     No esta definida esta cuenta: " + tres + " en Cuentas de Balance 2008";
+            |MENAV aAlfa1;
+        |FINSI;
+   |FINSI;
+
+   |ET findefecto_cuenta;
+   nivel = #cacuenta#1;
+   || la 3a clave esta formada por la cta + zzzz y el campo fantasma del nivel;
+   mascara = #cacuenta#0;
+   |QBF mascara;
+   mascara = mascara +"zzzzzzzzzzzz";
+   mascara = mascara % 112;
+   #cacuenta#54    = mascara;
+   #cacuenta#55    = nivel;
+   |CIERRA #cacuebal;
+
+|FCAL;
+
+|PROCESO alta_cuenta;
+
+   |PARA i = 100; |SI i [ 1200; |HACIENDO i = i + 100;
+      i = i + 1;
+      Comodin = cuenta_alta % i;
+      |SI Comodin < "0"; |O Comodin > "9";
+         |SI Comodin ! " ";
+            |AVISO;
+            |MENAV "0400Cuenta con caracteres alfabeticos";
+            |ERROR;
+            |ACABA;
+         |FINSI;
+      |FINSI;
+      i = i - 1;
+   |SIGUE;
+
+   actcta_alfa1 = cuenta_alta;
+   |QBF actcta_alfa1;
+   |SI actcta_alfa1 = "";
+      |ACABA;
+   |FINSI;
+   |SI nivel_alta = -1;
+      nivel_alta = dig3;
+      actcta_i1 = (A\ actcta_alfa1 % 0 );
+      Iactcta_punt1 = dig3 <-;
+      Iactcta_punt1 = Iactcta_punt1 + 1;
+      |PARA actcta_i2 = 0;|SI actcta_i2 < dig3;
+         |HACIENDO actcta_i2 = actcta_i2 + 1;
+         |SI actcta_i1 = actcta_punt1;
+            nivel_alta = actcta_i2 + 1;
+            |SAL;
+         |FINSI;
+         Iactcta_punt1 = Iactcta_punt1 + 1;
+      |SIGUE;
+   |FINSI;
+   |ABRE #cacuenta;
+   |DDEFECTO #cacuenta;
+   #cacuenta#0 = cuenta_alta;
+   #cacuenta#1 = nivel_alta;
+   |LEE 010#cacuenta.=;
+   |SI FSalida ! 0;
+      |HAZ defecto_cuenta;
+      |SI eswCuenta = 1; |Y #cacuenta#3 = "S";
+          |QBF eaTitCuenta;
+          |SI  eaTitCuenta = "";
+               aAlfa1 = #cacuenta#0 % 102;
+               |SI aAlfa1 ! "40"; |Y aAlfa1 ! "41" |Y aAlfa1 ! "43"; |Y aAlfa1 ! "44";
+                   eaTitCuenta = aNueva;
+               |FINSI;
+          |FINSI;
+          #cacuenta#2 = eaTitCuenta;
+          |GRABA 020#cacuenta.n;
+          |LIBERA #cacuenta;
+      |SINO;
+          |GRABA 020#cacuenta.b;
+          |PUSHV 501 2480;
+          |PINPA #0#cacuenta;
+          |PINDA #0#cacuenta;
+          |ET siempre_alta;
+          |ENDATOS #1#cacuenta;
+          |SI FSalida < 0;
+             |VETE siempre_alta;
+          |FINSI;
+          |POPV;
+          |GRABA 020#cacuenta.a;
+          |LIBERA #cacuenta;
+      |FINSI;
+   |FINSI;
+   |CIERRA #cacuenta;
+
+|FPRC;
+
+|RUTINA saca_defecto;
+   #cacuenta#4 = #cacuebal#1;
+   #cacuenta#5 = #cacuebal#2;
+   #cacuenta#6 = #cacuebal#3;
+   #cacuenta#7 = #cacuebal#4;
+   #cacuenta#8 = #cacuebal#5;
+|FRUT;
+
+|PROCESO ActCuenta;
+   aNueva = "";
+   |PATH_DAT #cacuenta #aPathConta#;
+   |PATH_DAT #cacuebal #aPathConta#;
+   |SI MaximoDigitos = 0;
+      |MENAV "0000No se ha inicializado correctamente";
+   |FINSI;
+
+   actcta_alfa1 = aCUENTA;
+   |QBF actcta_alfa1;
+   |SI actcta_alfa1 = "";
+      |ACABA;
+   |FINSI;
+
+   |ABRE #cacuenta;
+   || Primero actualizar cuentas-acumulados (catradia defeat)
+   Iactcta_punt1 = dig3<-;
+   Iactcta_punt1 = Iactcta_punt1 + nNIVELCUENTA;
+   nCalc = nNIVELCUENTA;
+   nCalc = nCalc - 1;
+   |PARA actcta_i5 = nCalc; |SI actcta_i5 > 0;|HACIENDO actcta_i5 = actcta_i5 - 1;
+      Iactcta_punt1 = Iactcta_punt1 - 1;
+      actcta_alfa1 = aCUENTA % (N\ 100 + actcta_punt1);
+
+      |DDEFECTO #cacuenta;
+      #cacuenta#0 = actcta_alfa1;
+      #cacuenta#1 = actcta_i5;
+      |LEE 111#cacuenta.=;
+      |SI FSalida ! 0;
+         cuenta_alta = #cacuenta#0;
+         nivel_alta  = #cacuenta#1;
+         |HAZ alta_cuenta;
+         |LEE 111#cacuenta.=;
+         |SI FSalida ! 0;
+            |MENAV "0000Faltan cuentas de Nivel";
+         |SINO;
+            #cacuenta#3 = "N";
+         |FINSI;
+      |FINSI;
+      |SI aNueva = "";
+          aNueva = #cacuenta#2;
+      |FINSI;
+
+      |SI FSalida = 0;
+         |SI #cacuenta#3 = "S"; || esta tiene pase directo!!!
+            |SI DigitosPaseDirecto > actcta_punt1;
+               |MENAV "0000Nivel incorrecto para pase directo";
+            |FINSI;
+            |VETE actcta_seguir;
+         |FINSI;
+         |HAZ suma_cuenta;
+         |GRABA 020#cacuenta.a;
+         |LIBERA #cacuenta;
+      |FINSI;
+      |ET actcta_seguir;
+      |LIBERA #cacuenta; || importante
+   |SIGUE;
+   |LIBERA #cacuenta; || importante
+   || Actualizar la cuenta de trabajo
+   #cacuenta#0 = aCUENTA;
+   #cacuenta#1 = nNIVELCUENTA;
+   |LEE 111#cacuenta.=;
+   |SI FSalida ! 0;
+      cuenta_alta = aCUENTA;
+      nivel_alta  = nNIVELCUENTA;
+      |HAZ alta_cuenta;
+      |LEE 121#cacuenta.=;
+   |FINSI;
+   |SI FSalida ! 0;
+      |MENAV "0000Cuenta inexistente";
+   |SINO;
+      |HAZ suma_cuenta;
+      |GRABA 020#cacuenta.a;
+   |FINSI;
+   |LIBERA #cacuenta;
+   |CIERRA #cacuenta;
+|FPRC;
+
+|PROCESO ActDiario;
+   |PATH_DAT #10 aPathConta;
+   |ABRE #10;
+   #camandia#0 = nDIARIO;
+   |LEE 101#10=;
+   |SI FSalida ! 0;
+      |DDEFECTO #10;
+      #camandia#0 = nDIARIO;
+      |SI #camandia#0 = 0;
+         #camandia#1 = "DIARIO DE APERTURA";
+      |SINO;
+         |SI #camandia#0 = 99;
+            #camandia#1 = "DIARIO DE CIERRE";
+         |SINO;
+            #camandia#1 = "<DIARIO SIN DEFINIR>";
+         |FINSI;
+      |FINSI;
+      |GRABA 020#10n;
+      |LEE 121#10=;
+   |FINSI;
+   |SI DebeHaber = "D";
+      #camandia#2 = #camandia#2 + MasMenos;        || debe
+   |SINO;
+      #camandia#3 = #camandia#3 + MasMenos;        || haber
+   |FINSI;
+   |GRABA 020#10a;
+   |LIBERA #10;
+   |CIERRA #10;
+|FPRC;
+
+|PROCESO LeeCuenta; |TIPO 0;
+   eswCta = 0;
+   |ABRE #cacuenta;
+   #cacuenta#0 = eaCuenta;
+   |LEE 001#cacuenta.=;
+   |SI FSalida ! 0;
+       eswCta = 1;
+       |SI emCta = 1;
+           |MENAV p_mensa2;
+           |ERROR;
+       |FINSI;
+       |CIERRA #cacuenta;
+       |ACABA;
+   |FINSI;
+   |CIERRA #cacuenta;
+
+   |SI eaCuenta ! doce;
+      |SI #cacuenta#3 = "N";
+          eswCta = 2;
+          |SI emCta = 1;
+              |MENAV p_mensa3;
+              |ERROR;
+          |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;

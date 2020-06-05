@@ -1,0 +1,175 @@
+     XmlIni, XmlFin, XmlTag
+
+|VARIABLES;
+     &enSwDebug = 0;
+     &eaPain = "";
+     &eaFichero = "";
+     &eaTag = "";
+     &eaVal = "";
+     &eaGrupo = "";
+     nHandle = 0;
+     {100}aPila = "";
+     aAlfa = "";
+     aAlfa1 = "";
+     nNivel = 0;
+     aEspacio = "";
+     i = 0;
+     aCar = "";
+     aLon = "";
+     nPos = 0;
+     aDato = "";
+     nComi = 0;
+     aCarValidos = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/-?:().,‘+ ";
+     nSw = 0;
+     aTag1 = "";
+     aTag2 = "";
+|FIN;
+
+|PROCESO QuitaRarosXml;
+     nComi = &34;
+     |QBF eaVal;
+     aAlfa = eaVal;
+     aLon = aAlfa % A0;
+     aDato = "";
+     |PARA i = 0; |SI i < aLon; |HACIENDO i = i + 1;
+          nPos = (i + 1) * 100 + 1;
+          aCar = aAlfa % nPos;
+          nSw = 0;
+
+          |SI aCar = "¥"; aCar = "N"; nSw = 1; |FINSI;
+          |SI aCar = "¤"; aCar = "n"; nSw = 1; |FINSI;
+          |SI aCar = " "; aCar = "a"; nSw = 1; |FINSI;
+          |SI aCar = "‚"; aCar = "e"; nSw = 1; |FINSI;
+          |SI aCar = "¡"; aCar = "i"; nSw = 1; |FINSI;
+          |SI aCar = "¢"; aCar = "o"; nSw = 1; |FINSI;
+          |SI aCar = "£"; aCar = "u"; nSw = 1; |FINSI;
+          |SI aCar = "§"; aCar = "."; nSw = 1; |FINSI;
+          |SI aCar = "¦"; aCar = "."; nSw = 1; |FINSI;
+          |SI aCar = "‡"; aCar = "c"; nSw = 1; |FINSI;
+          |SI aCar = "€"; aCar = "C"; nSw = 1; |FINSI;
+          |SI aCar = "°"; aCar = "e"; nSw = 1; |FINSI;  ||Euro
+
+          |SI aCar = "&"; aCar = "&amp;";    nSw = 1; |FINSI;
+          |SI aCar = "<"; aCar = "&lt;";     nSw = 1; |FINSI;
+          |SI aCar = ">"; aCar = "&gt;";     nSw = 1; |FINSI;
+          |SI aCar = "'"; aCar =  "&apos;";  nSw = 1; |FINSI;
+          |SI aCar = nComi; aCar = "&quot;"; nSw = 1; |FINSI;
+
+          |SI nSw = 0;
+               aAlfa1 = aCarValidos - aCar;
+               |SI FSalida = 0; aCar = " "; |FINSI;
+          |FINSI;
+
+          aDato = aDato + aCar;
+     |SIGUE;
+     eaVal = aDato;
+     |QBF eaVal;
+|FPRC;
+
+|PROCESO Graba;
+     |SI enSwDebug = 1;
+          aEspacio = nNivel + "+" * nNivel;
+     |SINO;
+          aEspacio = &9 * nNivel;
+     |FINSI;
+     aAlfa = aEspacio + aAlfa;
+     |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|PROCESO XmlIni;
+     nNivel = 0;
+     IaPila = aPila1<-;
+
+     |XABRE "W", eaFichero, nHandle;
+     |SI FSalida < 0;
+          aAlfa = "0000Error al crear el fichero:" + eaFichero;
+          |MENAV aAlfa;
+     |SINO;
+          aAlfa = "<?xml version=" + &34 + "1.0" + &34 + " encoding=" + &34 + "UTF-8" + &34 + "?>";
+          |HAZ Graba;
+          |SI eaPain ! "";
+               aAlfa = "<Document xmlns:xsi=" + &34 + "http://www.w3.org/2001/XMLSchema-instance" + &34 + " ";
+               aAlfa = aAlfa + "xmlns="+ &34 + "urn:iso:std:iso:20022:tech:xsd:pain." + eaPain + &34 + ">";
+               |HAZ Graba;
+
+               aPila = "Document";
+               nNivel = nNivel + 1;
+               IaPila = IaPila + 1;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO XmlFin;
+     |PARA i = nNivel; |SI i > 0; |HACIENDO i = i - 1;
+          nNivel = i - 1;
+          IaPila = IaPila - 1;
+          aAlfa = "</" + aPila + ">";
+          |HAZ Graba;
+     |SIGUE;
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO DesglosaTag;
+     aAlfa = eaTag - " ";
+     |SI FSalida > 0;
+          nPos = (FSalida - 1) / 100;
+          aTag2 = eaTag % nPos;
+          nPos = nPos + 99;
+          aTag1 = eaTag % nPos;
+     |SINO;
+          aTag1 = eaTag;
+          aTag2 = "";
+     |FINSI;
+|FPRC;
+
+|PROCESO XmlTag;
+     |SI eaGrupo = "S";
+          |HAZ DesglosaTag;
+          aPila = aTag1;
+          aAlfa = "<" + aTag1 + aTag2 + ">";
+          |HAZ Graba;
+          nNivel = nNivel + 1;
+          IaPila = IaPila + 1;
+     |SINO;
+          |SI eaGrupo = "N";
+               nNivel = nNivel - 1;
+               |SI nNivel < 0;
+                    |MENAV "0000Error, nivel < 0 ...";
+                    nNivel = 0; || ...para que continue y se salga del bucle
+               |SINO;
+                    IaPila = IaPila - 1;
+               |FINSI;
+               aAlfa = "</" + aPila + ">";
+               |HAZ Graba;
+          |SINO;
+               |SI eaVal ! "";  || Tique 2046_2049
+                   |HAZ QuitaRarosXml;
+                   |HAZ DesglosaTag;
+                   aAlfa = "<" + aTag1 + aTag2 + ">" + eaVal + "</" + aTag1 + ">";
+                   |HAZ Graba;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     eaGrupo = "";
+|FPRC;
+
+|PROCESO Ejemplo;
+     eaFichero = "/tmp/prueba.xml";
+     |HAZ XmlIni;
+
+     eaTag = "cab"; eaGrupo = "S"; |HAZ XmlTag;
+
+     eaTag = "ele1 id=1234"; eaVal = "uno"; |HAZ XmlTag;
+
+     eaTag = "ele2"; eaVal = "dos"; |HAZ XmlTag;
+
+     eaTag = "lin"; eaGrupo = "S"; |HAZ XmlTag;
+
+     eaTag = "ele1"; eaVal = "luno"; |HAZ XmlTag;
+     eaTag = "ele2"; eaVal = "ldos"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaTag = "ele3"; eaVal = "tres"; |HAZ XmlTag;
+
+     |HAZ XmlFin;
+|FPRC;

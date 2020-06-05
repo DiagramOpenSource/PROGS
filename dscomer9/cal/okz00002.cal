@@ -1,0 +1,251 @@
+|FICHEROS;
+     okm00009 #9;
+     agifa019 #19;
+     agifa024 #24;
+     agifa067 #67;
+     agifa073 #73;
+     agifa081 #81;
+     agifa104 #104;
+     agifa112 #112;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     &eaSerie = "";
+     &enCodigo = 0;
+     aTipo = "";
+     &eaCliente = "";
+     &efFecha = @;
+     &enForma = 0;
+     &nImpo = 0;
+     &eaTag = "";
+     &eaCli = "";
+     &enTiva = 0;
+     &efFiva = @;
+     &enIva = 0;
+     &enRec = 0;
+     &enImpCliPed = 0;
+     nImpoIva = 0;
+     nCalc = 0;
+     fmes = "";
+     mes = 0;
+     &eaDocu = "";
+     &enImpPrvPed = 0;
+     &eaProve = "";
+|FIN;
+
+|PROCESO LinPedCompra;
+     enForma = 1;
+     eaDocu = "agifa067";
+     |HAZ StockEntra;
+     |BORRA 020#67a;
+|FPRC;
+
+|PROCESO ActProv;
+     #19#0 = #67#2;
+     |LEE 000#19=;
+     |SI FSalida ! 0; |DDEFECTO #19; |FINSI;
+
+     fmes = #81#1 % A402;
+     mes = fmes + 42;
+     |SI #19#196 = 2;
+          nImpo = (((((#67#41 * #67#6) < #67#8) < #67#27) < #67#57) < #81#5) < #81#17;
+     |SINO;
+          nImpo = (((((#67#5 * #67#6) < #67#8) < #67#27) < #67#57) < #81#5) < #81#17;
+     |FINSI;
+     |SI #142#114 = "S";
+          nImpo = nImpo < #81#6;
+     |FINSI;
+     #112mes = #112mes - nImpo;
+     #112#55 = #112#55 - nImpo;
+
+     enImpPrvPed = -nImpo;
+     efFecha = #81#1;
+     eaProve = #81#4;
+     |HAZ AcumulaPrv;
+|FPRC;
+
+|PROCESO BorraPedCompra;
+     |DDEFECTO #112;
+     |ABRE #112;
+     |ABRE #19;
+     #112#0 = #81#4;
+     |LEE 101#112=;
+     |SI FSalida ! 0; |GRABA 020#112b; |FINSI;
+     |BUCLELIN 2 ActProv #81;
+     |GRABA 020#112a;
+     |CIERRA #19;
+     |CIERRA #112;
+     |BUCLELIN 0 LinPedCompra #81;
+|FPRC;
+
+|PROCESO LinPedVenta;
+     enForma = -1;
+     |HAZ AcumulaPV;
+     |BORRA 020#73a;
+|FPRC;
+
+|PROCESO ActCli;
+     #19#0 = #73#2;
+     |LEE 000#19=;
+     |SI FSalida ! 0; |DDEFECTO #19; |FINSI;
+
+     #24#0 = #104#4;
+     |LEE 101#24=;
+     |SI FSalida = 0;
+          |SI #19#194 = 2;
+               nImpo = ((((#73#44 * #73#6) < #73#8) < #73#29) < #104#5) < #104#17;
+          |SINO;
+               nImpo = ((((#73#5 * #73#6) < #73#8) < #73#29) < #104#5) < #104#17;
+          |FINSI;
+          |SI #142#115 = "S";
+               nImpo = nImpo < #104#6;
+          |FINSI;
+          fmes = #104#1 % A402;
+          mes = fmes - 1;
+          mes = mes * 3;
+          mes = mes + 114;
+          #24mes = #24mes   - nImpo;     || VENTA.
+          #24#150 = #24#150 - nImpo;
+          |GRABA 020#24a;
+          |LIBERA #24;
+
+          eaCliente = #104#4;
+          efFecha = #104#1;
+          enImpCliPed = -nImpo;
+          |HAZ AcumulaCli;
+     |FINSI;
+
+     eaCli = #104#4;
+     enTiva = #73#14;
+     efFiva = #104#1;
+     |HAZ IVACli;
+     nCalc = #73#11 % enIva;
+     |SI #24#47 = "S";
+          nCalc = nCalc + (#73#11 % enRec);
+     |FINSI;
+     nImpoIva = nImpoIva + (#73#11 + nCalc);
+|FPRC;
+
+|PROCESO BorraPedVenta;
+     nImpoIva = 0;
+     |ABRE #24;
+     |ABRE #19;
+     |BUCLELIN 2 ActCli #104;
+     |CIERRA #24;
+     |CIERRA #19;
+     nImpo = -nImpoIva; eaTag = "PE";  |HAZ Riesgos;
+     |BUCLELIN 0 LinPedVenta #104;
+|FPRC;
+
+|PROGRAMA;
+     aTipo = PARAMETRO;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     |SI aTipo = "C";
+          |ABRE #9;
+          |SELECT #3#9;
+          #9#14 = eaSerie;
+          #9#15 = enCodigo;
+          |LEE 101#9=;
+          |SI FSalida = 0;
+               #9#13 = "N";
+               #9#14 = "";
+               #9#15 = 0;
+               |ABRE #104;         ||Vta Propio
+               #104#25 = #9#16;
+               #104#0 = #9#17;
+               |LEE 101#104=;
+               |SI FSalida = 0;
+                    |HAZ BorraPedVenta;
+                    #9#16 = "";
+                    #9#17 = 0;
+                    |BORRA 020#104a;
+               |FINSI;
+                                   ||Vta Central
+               #104#25 = #9#19;
+               #104#0 = #9#20;
+               |LEE 101#104=;
+               |SI FSalida = 0;
+                    |HAZ BorraPedVenta;
+                    #9#19 = "";
+                    #9#20 = 0;
+                    |BORRA 020#104a;
+               |FINSI;
+               |CIERRA #104;
+               |GRABA 020#9a;
+          |FINSI;
+          |CIERRA #9;
+     |SINO;
+          |ABRE #9;
+          |SELECT #4#9;
+          #9#16 = eaSerie;
+          #9#17 = enCodigo;
+          |LEE 101#9=;
+          |SI FSalida = 0;
+               #9#13 = "N";
+               #9#16 = "";
+               #9#17 = 0;
+
+               |ABRE #81;          ||Compras
+               #81#25 = #9#14
+               #81#0 = #9#15;
+               |LEE 101#81=;
+               |SI FSalida = 0;
+                    |HAZ BorraPedCompra;
+                    #9#14 = "";
+                    #9#15 = 0;
+                    |BORRA 020#81a;
+               |FINSI;
+               |CIERRA #81;
+
+               |ABRE #104;         ||Vta Central
+               #104#25 = #9#19;
+               #104#0 = #9#20;
+               |LEE 101#104=;
+               |SI FSalida = 0;
+                    |HAZ BorraPedVenta;
+                    #9#19 = "";
+                    #9#20 = 0;
+                    |BORRA 020#104a;
+               |FINSI;
+               |CIERRA #104;
+               |GRABA 020#9a;
+          |SINO;
+               |SELECT #5#9;
+               #9#19 = eaSerie;
+               #9#20 = enCodigo;
+               |LEE 101#9=;
+               |SI FSalida = 0;
+                    #9#13 = "N";
+                    #9#19 = "";
+                    #9#20 = 0;
+
+                    |ABRE #81;          ||Compras
+                    #81#25 = #9#14
+                    #81#0 = #9#15;
+                    |LEE 101#81=;
+                    |SI FSalida = 0;
+                         |HAZ BorraPedCompra;
+                         #9#14 = "";
+                         #9#15 = 0;
+                         |BORRA 020#81a;
+                    |FINSI;
+                    |CIERRA #81;
+
+                    |ABRE #104;         ||Vta Propio
+                    #104#25 = #9#16;
+                    #104#0 = #9#17;
+                    |LEE 101#104=;
+                    |SI FSalida = 0;
+                         |HAZ BorraPedVenta;
+                         #9#16 = "";
+                         #9#17 = 0;
+                         |BORRA 020#104a;
+                    |FINSI;
+                    |CIERRA #104;
+                    |GRABA 020#9a;
+               |FINSI;
+          |FINSI;
+          |CIERRA #9;
+     |FINSI;
+|FPRO;

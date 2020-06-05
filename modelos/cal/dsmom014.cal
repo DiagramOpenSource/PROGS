@@ -1,0 +1,235 @@
+|FICHEROS;
+     dsmom014;
+     dsmoz052;
+     dsmow178;
+
+     :/modelos/def/dsmom100;
+     :/contagen/def/cacuenta;
+     :/contagen/def/ca8cumay;
+|FIN;
+
+|VARIABLES;
+     aAlfa       = "";
+     aAlfa1      = "";
+
+     nCuenta     = 0;
+
+     &eaTabla    = "";
+     &eaAlfa     = "";
+     &eaDestino  = "";
+     &enPosicion = 0;
+     &enComp     = 0;
+     &enError    = 0;
+
+     nSw   = 0;
+     nOpe  = 0;
+     nPlan = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+|PROCESO LeoDsmom014;
+   |SI nOpe = 1;
+       |BORRA 020#dsmom014.a;
+   |FINSI;
+   |SI nOpe = 0;
+       #dsmom014#10 = #dsmoz052#4;
+       |GRABA 040#dsmom014.n;
+   |FINSI;
+   |LIBERA #dsmom014;
+|FPRC;
+
+|DEFBUCLE LeoDsmom014;
+   #dsmom014#1;
+   ;
+   nPlan, "    ";
+   nPlan, "9999";
+   be;
+   NULL, LeoDsmom014;
+|FIN;
+
+|PROCESO CopiarEAnt;
+   nOpe = 1; nPlan = #dsmoz052#4; |BUCLE LeoDsmom014;
+   nOpe = 0; nPlan = enPlan14;    |BUCLE LeoDsmom014;
+|FPRC;
+
+|CALCULO wTipo0C4;
+   |C_M #dsmoz052#4,0,aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI FSalida = 10;
+       |ABRE #dsmow178;
+       #dsmow178#0 = #dsmoz052#4;
+       |CONSULTA_CLAVE #1#dsmow178;
+       #dsmoz052#4 = #dsmow178#0;
+       |PINTA #dsmoz052#4;
+       |CIERRA #dsmow178;
+   |FINSI;
+
+   nSw = 0;
+   |ABRE #dsmom014;
+   #dsmom014#10 = #dsmoz052#4;
+   #dsmom014#0  = "    ";
+   |LEE 040#dsmom014.];
+   |SI FSalida ! 0; |O #dsmom014#10 ! #dsmoz052#4;
+       nSw = 1;
+       |CONFI "0000SNo existe Ejercicio. Recoger Anterior";
+       |SI FSalida = 0;
+           nSw = 2;
+       |FINSI;
+   |FINSI;
+   |CIERRA #dsmom014;
+   |SI nSw = 2;
+       |HAZ CopiarEAnt;
+   |FINSI;
+|FCAL;
+
+|PROCESO AntesCuenta; |TIPO 7;
+     |C_M #dsmom014#1,1,"N";
+     |SI nCuenta = 1;  |C_M #dsmom014#1, 1, "S"; |FINSI;
+|FPRC;
+
+|PROCESO LeeLaCuenta;
+     |SI nCuenta = 1; |ACABA; |FINSI;
+
+     |SI enPlan = 1990;
+         |ABRE #cacuenta;
+         #cacuenta#0 = #dsmom014#0;
+         |LEE 001#cacuenta.=;
+         |SI FSalida ! 0;
+             |MENAV "    Error No Existe Cuenta ";
+             |ERROR;
+         |FINSI;
+         |CIERRA #cacuenta;
+         #dsmom014#1 = #cacuenta#2;
+    |FINSI;
+
+    |SI enPlan ] 2008;
+        |C_M #dsmom014#1,1,"N";
+        |ABRE #ca8cumay;
+        #ca8cumay#12 = enEjerBal;
+        #ca8cumay#10 = 0;
+        #ca8cumay#0  = #dsmom014#0;
+        |LEE 000#ca8cumay.=;
+        |SI FSalida ! 0;
+            |C_M #dsmom014#1,1,"S";
+            |MENAV "    Error No Existe Cuenta ";
+            |DDEFECTO #ca8cumay;
+        |FINSI;
+        |CIERRA #ca8cumay;
+        #dsmom014#1 = #ca8cumay#1;
+    |FINSI;
+
+    |PINTA #dsmom014#1;
+|FPRC;
+
+|RUTINA ClaveBaja14;
+     #dsmom014#10 = #dsmoz052#4;
+     #dsmom014#0  = "    ";
+|FRUT;
+
+|RUTINA ClaveAlta14;
+     #dsmom014#10 = #dsmoz052#4;
+     #dsmom014#0  = "zzzz";
+|FRUT;
+
+|PROCESO LeeTabla; |TIPO 7;
+     |SI Campo = 7;                   ||  = MN
+         |SI #dsmom014#10 ] 2019;
+             eaTabla = "ztab1906.txt";
+         |SINO;
+             eaTabla = "ztabla06.txt";
+         |FINSI;
+     |FINSI;
+     |SI Campo = 8;  eaTabla = "ztabla07.txt";  |FINSI;
+     |SI Campo = 9;
+         |SI #dsmom014#10 ] 2019;
+             eaTabla = "ztab1908.txt";
+         |SINO;
+             eaTabla = "ztabla08.txt";
+         |FINSI;
+     |FINSI;
+     |HAZ CargaTabla;
+|FPRC;
+
+|PROCESO CompTabla;  |TIPO 0;
+     |SI FSalida = 10;
+         enPosicion = 15;
+         |HAZ SacaTabla;
+
+         aAlfa1    = eaDestino % 102;
+         #dsmom014#Campo#  = aAlfa1;
+         |PINTA #dsmom014#Campo#;
+     |FINSI;
+
+     enComp = 2;
+     eaAlfa = ("00" + #dsmom014#Campo#) % -102;
+     |HAZ CompruebaTabla;
+
+     |SI enError = 1;
+         |MENAV "0000 Contenido Incorrecto. Consulta la Tabla con F2";
+         |ERROR;
+         |PULSATECLA;
+         |ACABA;
+     |FINSI;
+
+     aAlfa1   = eaDestino % 102;
+     #dsmom014#Campo# = aAlfa1;
+
+     |PINTA #dsmom014#Campo#;
+
+     |HAZ FinTabla;
+|FPRC;
+
+|PROGRAMA;
+
+   eaPlanilla = "dsmom014";  |HAZ PlanDePlanillas;
+   enEjer = 2999;
+   |HAZ Verm014Plan;
+   |SI enPlan14 = 0; |ACABA; |FINSI;
+
+   nCuenta = 0;
+   |SI enPlan = 1990;
+       |ABRE #dsmom100;
+       |LEE 040#dsmom100.p;
+       |SI FSalida ! 0;
+           |MENAV "    No esta configurada las Empresas Maestras de Contabilidad";
+           nCuenta = 1;
+       |FINSI;
+       |CIERRA #dsmom100;
+
+       enEmpresa  = #dsmom100#1;
+       enPerConta = #dsmom100#2;
+       |HAZ LeeEmpConta;
+       |PATH_DAT #cacuenta#aPathConta#;
+   |FINSI;
+
+   enCreaFAnyo = 2;
+   |HAZ eCreaFAnyo;
+   |NOME_DAT #dsmow178#eaNFw178#;
+
+   |CLS;
+   |CABEZA "Cuentas Planillas";
+
+   #dsmom014#10 = enPlan14;
+
+|ET PideAnyo;
+   |PINPA #0#dsmom014;
+   |C_P #dsmoz052#4,1,0576;
+   #dsmoz052#4 = #dsmom014#10;
+   |ENCAMPO #4#dsmoz052;
+   |SI FSalida = 1; |O FSalida = 7; |ACABA; |FINSI;
+   enPlan = #dsmoz052#4;
+   |HAZ wTipo0C4;
+
+   aAlfa = "S";
+   |SI #dsmoz052#4 ] 2019; aAlfa = "N"; |FINSI;
+   |C_M #dsmom014#8, 1, aAlfa;
+
+   enEjer = enPlan;
+   |HAZ VerEjerBal;
+   |ENTLINEAL #1#dsmom014, -2, 2, 22, 0, ClaveBaja14, ClaveAlta14;
+
+   |VETE PideAnyo;
+|FPRO;

@@ -1,0 +1,109 @@
+|FICHEROS;
+    ascabrec #0;
+    asclient #3;    || clientes
+    ascabmin #6;    || minutas cabs.
+    aslinmin #7;    || minutas lins.
+    ascontro #8;    || control facturacion
+    ascontrt #450;
+|FIN;
+
+|VARIABLES;
+    honorario  = 0;
+    suplido    = 0;
+    acuenta    = 0;
+    iva        = 0;
+    seleccio   = 0;
+    hay_lineas = 0;
+|FIN;
+____________________________________/ CALCULOS DE GRABACION DE MINUTAS
+|PROCESO iva;
+     |ABRE #450;
+     #450#0 = #6#0;
+     |LEE 000#450=;
+     |SI FSalida ! 0; |DDEFECTO #450; |FINSI;
+     |CIERRA #450;
+
+     iva = #450#3;
+|FPRC;
+
+|PROCESO linealin;
+hay_lineas = 1;
+|SI #7#10 = "H"; honorario = honorario + #7#13; |FINSI;
+|SI #7#10 = "S"; suplido   = suplido   + #7#13; |FINSI;
+|SI #7#10 = "A"; acuenta   = acuenta   + #7#13; |FINSI;
+|FPRC;
+
+|PROCESO lee_cabeceras1;
+    #0#1 = #6#0;    |PINTA #0#1;
+    #0#2 = #6#1;    |PINTA #0#2;
+
+|DDEFECTO #3;
+    #3#0 = #6#1;
+|LEE 000#3=;        || lee cliente
+
+    #6#2  = #3#1;        || razon social
+    #6#3  = #3#2;        || nombre
+    #6#4  = #3#3;        || direccion
+    #6#5  = #3#4;        || cod. postal 1
+    #6#6  = #3#5;        || cod. postal 2
+    #6#7  = #3#6;        || poblacion
+    #6#8  = #3#7;        || provincia
+    #6#9  = #3#8;        || cif
+    #6#10 = #3#15;       || forma de pago
+    #6#11 = #3#16;       || banco
+
+    #6#13 = #3#11;       || banco
+    #6#14 = #3#12;       || direccion banco
+    #6#15 = #3#13;       || CCC
+    #6#16 = #3#14;       || cta. cte.
+
+    honorario  = 0;
+    suplido    = 0;
+    acuenta    = 0;
+    hay_lineas = 0;
+
+|BUCLELIN 2linealin#6;             || calcula total lineas
+
+|SI hay_lineas = 1;
+        #6#17 = honorario;         || honorarios
+        #6#18 = suplido;           || suplidos
+        #6#19 = acuenta;           || a cuenta
+        #6#21 = #6#17 % #6#20;     || total descuento
+        #6#22 = #6#17 - #6#21;     || base imponible
+    |HAZ iva;
+        #6#23 = #6#22 % iva;       || cuota iva
+        #6#24 = #6#22 + #6#23 + #6#18;  || total factura
+    |SI #6#12 = "S"; #6#25 = #6#22 % #8#31; |SINO; #6#25 = 0; |FINSI; || ret.
+        #6#26 = #6#24 - #6#19 - #6#25;  || total a pagar
+
+    |GRABA 020#6a;
+    |LIBERA #6;
+|SINO;
+    |BORRA 020#6a;
+|FINSI;
+    seleccio = 1;
+|FPRC;
+
+|DEFBUCLE lee_cabeceras;
+ #6#1;
+ ;
+ 00,     1;
+ 99, 99999;
+ be;
+ NULL, lee_cabeceras1;
+|FIN;
+____________________________________/ CALCULO PRINCIPAL
+|PROCESO tipo3; |TIPO 3;
+     |SI #0#0 ! "SI"; |ACABA; |FINSI;
+
+     |ABRE #3;
+     |ABRE #8;
+     |DDEFECTO #8;
+     |LEE 000#8p;
+     |BUCLE lee_cabeceras;
+     |SI seleccio = 0;
+         |MENAV "    No hay Minutas ...";
+     |FINSI;
+     |CIERRA #3;
+     |CIERRA #8;
+|FPRC;

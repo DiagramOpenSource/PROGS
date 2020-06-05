@@ -1,0 +1,230 @@
+|FICHEROS;
+     nomembin;
+
+     :integral/dsam0017 #17;
+     :integral/dsam0103 #103;
+
+     nomembca;
+     nomembli;
+     labempre;
+     labtraba;
+     nomcontr;
+|FIN;
+
+|VARIABLES;
+     aParam = "";
+     aNif = "";
+     aEmpresa = "";
+     nEmpresa = 0;
+     aTrabajador = "";
+     nTrabajador = 0;
+
+     nTotal = 0;
+     nRetenido = 0;
+     nPendiente = 0;
+     nTipo = 0;
+     nCantidad = 0;
+     nFamiliares = 0;
+
+     nAny = 0;
+     nAnyAlta = 0;
+     nAnyAltaMenos2 = 0;
+     aAlfa = "";
+     &aFechaAlta = "";
+     fFecha = @;
+     fFechaRef = @;
+     nEmpOri = 0;
+     nTraOri = 0;
+|FIN;
+
+|PROCESO labtraba;
+     aAlfa = #labtraba#36;
+     fFecha = aAlfa;
+     |SI fFecha > fFechaRef;
+          nEmpOri = #labtraba#0;
+          nTraOri = #labtraba#1;
+
+          fFechaRef = aAlfa;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE labtraba;
+     #labtraba#2;
+     ;
+     aNif;
+     aNif;
+     ;
+     NULL, labtraba;
+|FIN;
+
+|PROCESO GrabaEmbargo;
+     #labempre#0 = nEmpresa;
+     |LEE 000#labempre.=;
+
+     #labtraba#0 = nEmpresa;
+     #labtraba#1 = nTrabajador;
+     |LEE 000#labtraba.=;
+
+     #nomembca#0 = nEmpresa;
+     #nomembca#1 = nTrabajador;
+     #nomembca#2 = #labempre#2;
+
+     #dsam0103#0 = aNif;
+     |LEE 000#dsam0103.=;
+
+     #nomembca#3 = #dsam0103#1;
+     #nomembca#4 = nTipo;
+     #nomembca#5 = nCantidad;
+     #nomembca#6 = nTotal;
+     #nomembca#7 = nFamiliares;
+     |GRABA 020#nomembca.n;
+
+     #nomembli#0 = nEmpresa;
+     #nomembli#1 = nTrabajador;
+     aAlfa = (aFechaAlta % -104);
+     nAny = aAlfa;
+     #nomembli#2 = nAny;
+     #nomembli#27 = nTotal;
+     #nomembli#28 = nRetenido;
+     #nomembli#29 = nPendiente;
+     |GRABA 020#nomembli.n;
+     |LIBERA #nomembli;
+|FPRC;
+
+|PROCESO NuevoEmbargo;
+     |DDEFECTO #nomembca;
+     |DDEFECTO #nomembli;
+
+     #nomembca#0 = nEmpresa;
+     #nomembca#1 = nTrabajador;
+     |LEE 101#nomembca.=;
+     |SI FSalida ! 0;
+          |HAZ GrabaEmbargo;
+     |FINSI;
+     |LIBERA #nomembca;
+|FPRC;
+
+|PROCESO dsam0017;
+     nTipo = #17#7;
+     nCantidad = #17#11;
+     nFamiliares = #17#12;
+
+     nTotal = nTotal + #17#8;
+     nRetenido = nRetenido + #17#9;
+     nPendiente = nPendiente + #17#10;
+
+     aAlfa = #17#3;
+     aAlfa = aAlfa % -104;
+     nAny = aAlfa;
+|FPRC;
+
+|DEFBUCLE dsam0017;
+     #17#1;
+     ;
+     nEmpresa, aNif, 01;
+     nEmpresa, aNif, 99;
+     ;
+     NULL, dsam0017;
+|FIN;
+
+|PROGRAMA;
+     |ABRE #nomcontr; |LEE 000#nomcontr.p; |CIERRA #nomcontr;
+     aParam = PARAMETRO;
+     |QBF aParam;
+     |SI aParam ! "";
+          aEmpresa = aParam % 105;
+          aTrabajador = aParam % 605;
+          aNif = aParam - aEmpresa - aTrabajador;
+          |QBF aNif;
+          aNif = (aNif + "            ") % 112;
+          nEmpresa = aEmpresa;
+          nTrabajador = aTrabajador;
+
+          |ABRE #nomembca;
+          |ABRE #nomembli;
+          |ABRE #labempre;
+          |ABRE #labtraba;
+          |ABRE #dsam0103;
+
+          nTotal = 0;
+          nRetenido = 0;
+          nPendiente = 0;
+          nTipo = 3;
+          nCantidad = 0;
+          nFamiliares = 0;
+
+          |ABRE #nomcontr; |LEE 000#nomcontr.p; |CIERRA #nomcontr;
+          |SI #nomcontr#65 = "S";
+               |BUCLE dsam0017;
+
+               |SI nTotal ! 0; |O nRetenido ! 0; |O nPendiente ! 0;
+                    aAlfa = "    SEl NIF tiene un embargo activo registrado.";
+                    aAlfa = aAlfa + "¿Aplicar el embargo en la nueva ficha?"
+                    |CONFI aAlfa;
+                    |SI FSalida = 0;
+                         |HAZ NuevoEmbargo;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               fFechaRef = "01.01.1900";
+               nEmpOri = 0;
+               nTraOri = 0;
+               nTotal = 0;
+               nRetenido = 0;
+               nPendiente = 0;
+               |BUCLE labtraba;
+               |SI nTraOri ! 0;
+                    #nomembca#0 = nEmpOri;
+                    #nomembca#1 = nTraOri;
+                    |LEE 000#nomembca.=;
+                    |SI FSalida = 0;
+                         aAlfa = (aFechaAlta % -104);
+                         nAnyAlta = aAlfa;
+                         nAnyAltaMenos2 = nAnyAlta - 2;
+                         |PARA nAny = nAnyAlta; |SI nAny ] nAnyAltaMenos2;
+                         |HACIENDO nAny = nAny - 1;
+                              #nomembli#0 = nEmpOri;
+                              #nomembli#1 = nTraOri;
+                              #nomembli#2 = nAny;
+                              |LEE 000#nomembli.=;
+                              |SI FSalida = 0;
+                                   nTotal = #nomembli#27;
+                                   nRetenido = #nomembli#28;
+                                   nPendiente = #nomembli#29;
+                                   |SAL;
+                              |FINSI;
+                         |SIGUE;
+                    |FINSI;
+                    |SI nPendiente > 0;
+                         aAlfa = "    SLa anterior ficha del trabajador tiene un embargo activo.";
+                         aAlfa = aAlfa + "¿Aplicar el embargo en la nueva ficha?"
+                         |CONFI aAlfa;
+                         |SI FSalida = 0;
+                              #nomembca#0 = nEmpresa;
+                              #nomembca#1 = nTrabajador;
+                              |GRABA 020#nomembca.n;
+                              |LIBERA #nomembca;
+
+                              |DDEFECTO #nomembli;
+                              #nomembli#0 = nEmpresa;
+                              #nomembli#1 = nTrabajador;
+                              #nomembli#2 = nAnyAlta;
+                              #nomembli#27 = nTotal;
+                              #nomembli#28 = nRetenido;
+                              #nomembli#29 = nPendiente;
+                              |GRABA 020#nomembli.n;
+                              |LIBERA #nomembli;
+                        |FINSI;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+
+          |CIERRA #dsam0103;
+          |CIERRA #labtraba;
+          |CIERRA #labempre;
+          |CIERRA #nomembli;
+          |CIERRA #nomembca;
+     |SINO;
+          || desde el menu, de momento no esta puesto
+     |FINSI;
+|FPRO;

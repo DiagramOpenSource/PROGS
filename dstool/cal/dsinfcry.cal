@@ -1,0 +1,223 @@
+|FICHEROS;
+     dsinfcry #0;
+|FIN;
+
+|VARIABLES;
+     aRpt = "";
+     nModo = 0;
+     nBoton1 = 0;
+     nBoton2 = 0;
+     nBoton3 = 0;
+     aAlfa = "";
+     aOrg = "";
+     aDes = "";
+     aRuta = "";
+     aIP = "";
+     aFic = "";
+     aLon = "";
+     i = 0;
+     nPos = 0;
+     nSw = 0;
+|FIN;
+
+|PROCESO Tipo2; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+          aRpt = #0#2; |QBF aRpt;
+          aAlfa = "0000NBorrar informe " + aRpt;
+          |CONFI aAlfa;
+          |SI FSalida = 0;
+               |DDEF aAlfa;
+               aAlfa = aAlfa + aRpt + ".rpt";
+               |FBORRA aAlfa;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Linea7; |TIPO 7;
+     |ESTADO_CONTROL nBoton1, "ENABLE";
+     |ESTADO_CONTROL nBoton2, "ENABLE";
+     |ESTADO_CONTROL nBoton3, "ENABLE";
+|FPRC;
+
+|PROCESO Linea0; |TIPO 0;
+     |ESTADO_CONTROL nBoton1, "DISABLE";
+     |ESTADO_CONTROL nBoton2, "DISABLE";
+     |ESTADO_CONTROL nBoton3, "DISABLE";
+|FPRC;
+
+|PROCESO Nombre; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          |HAZ AlServidor;
+     |FINSI;
+|FPRC;
+
+|PROCESO SacaFic;
+     aFic = "";
+     aLon = aRuta % A0;
+     |PARA i = aLon; |SI i > 0; |HACIENDO i = i - 1;
+          nPos = i * 100 + 1;
+          aAlfa = aRuta % nPos;
+          |SI aAlfa = "/"; |O aAlfa = "\"; |SAL; |FINSI;
+          aFic = aAlfa + aFic;
+     |SIGUE;
+|FPRC;
+
+|PROCESO AlPuesto;
+     aAlfa = #0#2; |QBF aAlfa;
+     |SI aAlfa = ""; |ACABA; |FINSI;
+
+     aRuta = "D*.*";
+     |BROWSE aRuta;
+     aRuta = aRuta % 2;
+     |SI aRuta = "D"; |ACABA; |FINSI;
+
+     |DDEF aOrg;
+     aAlfa = #0#2; |QBF aAlfa;
+     aOrg = aOrg + aAlfa + ".rpt";
+
+     |XABRE "E", aOrg, 0;
+     |SI FSalida ! 0;
+          |MENAV "0000No existe el fichero...";
+          |ACABA;
+     |FINSI;
+
+
+     aDes = aRuta + "\" + aAlfa + ".rpt";
+
+     aIP = "";
+     |IP_REMOTO aIP;
+     |SI aIP = "";
+          |COPIA_FICHERO aOrg, aDes;
+     |SINO;
+          |ENVIA_FICHERO aOrg, aDes;
+     |FINSI;
+     |SI FSalida = 0;
+          |MENAV "0000Fichero copiado...";
+     |SINO;
+          |MENAV "0000Error al copiar fichero...";
+     |FINSI;
+|FPRC;
+
+|PROCESO AlServidor;
+     aRuta = "F*.rpt";
+     |BROWSE aRuta;
+     aRuta = aRuta % 2;
+     |SI aRuta = "F"; |ACABA; |FINSI;
+
+     aAlfa = aRuta % -104;
+     aAlfa = aAlfa < "";
+     |SI aAlfa ! ".rpt";
+          |MENAV "0000La extension del fichero debe ser '.rpt'";
+          |ACABA;
+     |FINSI;
+
+     |HAZ SacaFic;
+     aFic = aFic < "";
+
+     aOrg = aRuta;
+
+     |DDEF aAlfa;
+     aDes = aAlfa + aFic;
+
+     aIP = "";
+     |IP_REMOTO aIP;
+     |SI aIP = "";
+          |COPIA_FICHERO aOrg, aDes;
+     |SINO;
+          |RECIBE_FICHERO aOrg, aDes;
+     |FINSI;
+     |SI FSalida = 0;
+          |MENAV "0000Fichero copiado...";
+     |SINO;
+          |MENAV "0000Error al copiar fichero...";
+     |FINSI;
+
+
+     aAlfa = aFic - ".rpt";
+     #0#2 = aAlfa;
+
+     |PINTA #0#2;
+
+|FPRC;
+
+|PROCESO AlServidor0;
+     |LEE 000#0=;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |HAZ AlServidor;
+
+     |GRABA 020#0a;
+|FPRC;
+
+|PROCESO Imprimir;
+     aRpt = #0#2; |QBF aRpt;
+     |SI aRpt = ""; |ACABA; |FINSI;
+
+     |DDEF aAlfa;
+     aOrg = aAlfa + "modelo.inf";
+
+     aDes = aAlfa + aRpt + ".inf";
+     |COPIA_FICHERO aOrg, aDes;
+
+     Impresora = "CrystalReport";
+     |IMPRE -1;
+     |SI FSalida = 0;
+          |INFOR aRpt;
+          |SI FSalida = 0;
+               |FININF;
+          |SINO;
+               |MENAV "0000Error en informe...";
+          |FINSI;
+          |FINIMP;
+     |SINO;
+          |MENAV "0000Error en impresora 'CrystalReport'";
+     |FINSI;
+     |FBORRA aDes;
+|FPRC;
+
+|PROCESO Tipo11; |TIPO 11;
+     |SI FSalida = 10; |HAZ AlPuesto;  |ERROR; |FINSI;
+     |SI FSalida = 11; |HAZ AlServidor0;|ERROR; |FINSI;
+     |SI FSalida = 12; |HAZ Imprimir;  |ERROR; |FINSI;
+|FPRC;
+
+|PROCESO Min;
+     #0#0 = 1;
+|FPRC;
+
+|PROCESO Max;
+     #0#0 = 999;
+|FPRC;
+
+|PROCESO F2;
+     |PTEC 824;
+|FPRC;
+
+|PROCESO F3;
+     |PTEC 825;
+|FPRC;
+
+|PROCESO F4;
+     |PTEC 826;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |PINPA #0#0;
+
+     |CONTROL_SIMPLE 0, "BOTON,F2 -Copiar al puesto.", 0533, 0546,  F2;
+     nBoton1 = FSalida;
+     |CONTROL_SIMPLE 0, "BOTON,F3 -Traer al servidor.", 0548, 0561, F3;
+     nBoton2 = FSalida;
+     |CONTROL_SIMPLE 0, "BOTON,F4 -Imprimir.", 0563, 0576, F4;
+     nBoton3 = FSalida;
+
+     |ENTLINEAL #1#0, 1, 2, 21, 0, Min, Max;
+
+     |FIN_CONTROL_WINDOWS nBoton1;
+     |FIN_CONTROL_WINDOWS nBoton2;
+     |FIN_CONTROL_WINDOWS nBoton3;
+     |PULSATECLA;
+|FPRO;

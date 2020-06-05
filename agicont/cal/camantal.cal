@@ -1,0 +1,364 @@
+|FICHEROS;
+    camantal #0;
+    cacuenta #1;
+    cacuadre #9;
+
+    camanban #2;
+    capaglin #3;
+    caclipro #6;
+    capagaux #7;
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    men0 = "";
+    men1  = "2400NDesea modificar TALON y ponerlo como NO emitido: ";
+    men11 = "2400NDesea poner como NO emitida CARTA: ";
+    men12 = "2400NDesea poner como NO emitido TALON: ";
+    men2  = "     Talon Contabilizado. No puede modificar Cuenta Cargo. ";
+    men3  = "2400NDesea imprimirlo: ";
+    men31 = "2400NDesea imprimir la CARTA: ";
+    men32 = "2400NDesea imprimir el TALON: ";
+    {-1}menu  = "";           || Variables menu Carta o Talon
+        menu1 = "2400";
+        menu2 = "1";
+        menu3 = "Elija : ";
+        menu4 = "CT";
+        menu5 = " Carta ";
+        menu6 = " Talon ";
+
+    con = 0;
+    d_pagar= "";
+    anterior = "";
+    swptec = 0;
+    swdos = 0;
+    informe = "caemital";
+    Talon = 0;
+    &sw = 0;
+    &importe = 0;
+    &prov = "";
+    &prov1 = "";
+    &cc1 = "";
+    &cc2 = "";
+    &cc3 = "";
+
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    long = 0;
+    swdig = 0;
+    alguno = 0;
+    fecha1 = @;
+    fecha2 = "@";
+    &des = " ";
+    &dni = " ";
+    &dir = " ";
+    &pob = " ";
+    &pro = " ";
+    &dia = "";
+    &mes = "";
+    &any = "";
+    &dia_e = "";
+    &mes_e = "";
+    &any_e = "";
+    &dianum = 0;
+    sw_act = 0;
+    pagban = "";
+    x = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE puntos_i;
+
+**************************************************************************
+    CALCULOS DESDE CAMPOS
+**************************************************************************
+
+|PROCESO cuadre; |TIPO 8;
+  |HAZ inicio;
+  sw_act  = 0;    || 0 = N control (Carta/Talon) junto / 1 = S por separado
+  d_pagar = "S";
+  |ABRE #9;
+  |DDEFECTO #9;
+  #9#0 = 1;
+  |LEE 001#9=;
+  |SI FSalida = 0;
+      d_pagar = #9#20;
+      |SI #9#18 = "S";
+          sw_act = 1;
+      |FINSI;
+  |FINSI;
+  |CIERRA #9;
+|FPRC;
+
+|PROCESO mayu;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO automati; |TIPO 7;  || ultimo numero de Talon
+    con = FEntrada / 100;
+    con = con ! 0;
+|SI con = 1;
+    |DDEFECTO #1;
+    |LEE 001#0u;
+    |SI FSalida = 0;
+            #0#0 = #0#0 + 1;
+            #0#07 = "N";
+            #0#08 = "N";
+            #0#10 = "N";
+            #0#12 = "N";
+            #0#13 = d_pagar;
+    |SINO;
+            #0#0 = 1;
+    |FINSI;
+    #0#9 = 0;
+    #0#17 = "";
+    |PINDA #0#0;
+|FINSI;
+|FPRC;
+
+|PROCESO modifi; |TIPO 7;   || pone Talon como no impreso y guarda proveedor
+ swdos = 0;
+ swptec = 0;
+ con = FEntrada / 100;
+ con = con ! 0;
+ |SI con = 2;
+     anterior = #0#1;
+||     pagban = #0#11;
+     |SI #0#10 = "S"; |O #0#12 = "S";
+         swdos = 1;
+         men0 = men1;
+         |SI #0#10 = "S"; |Y #0#12 = "N"; men0 = men11; swdos = 2; |FINSI;
+         |SI #0#10 = "N"; |Y #0#12 = "S"; men0 = men12; swdos = 3; |FINSI;
+         |CONFI men0;
+         |SI FSalida ! 0;
+             |PTEC 3;
+         |SINO;
+             swptec = 1;
+             #0#10 = "N";
+             #0#12 = "N";
+             |SI swdos ! 2; #0#11 = 0; |FINSI;
+             |PINTA #0#10;
+             || .. |PINTA #0#11;
+             |PINTA #0#12;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO comprueb; |TIPO 0;  || chequea proveedor no modificado
+    con = FEntrada / 100;
+    con = con ! 0;
+ |SI con = 2;
+    |SI #0#1 ! anterior;
+        |SI #0#7 = "S"; |O #0#8 = "S";
+            |MENAV men2;
+            #0#1 = anterior;
+            |PINTA #0#1;
+            |ERROR;
+        |FINSI;
+    |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO cuenta; |TIPO 6;   || digito cuenta proveedor y cuenta banco
+    p_alfa1 = #0Campo;
+    salidas = FSalida;
+|HAZ punto;
+|SI p_error ! 0;  |ERROR;  |ACABA;  |FINSI;
+    nume1 = Campo + 1;
+    alfa1 = #0Campo;
+|QBF alfa1;
+    alfa1 = alfa1 % 0;
+    long  = alfa1;
+    swdig = 0;
+    #0nume1 = 0;  || inicializa el digito
+|SI long = dig4; |Y dig4 ! 0; swdig = 1; #0nume1 = 1; |FINSI;
+|SI long = dig5; |Y dig5 ! 0; swdig = 1; #0nume1 = 2; |FINSI;
+|SI long = dig6; |Y dig6 ! 0; swdig = 1; #0nume1 = 3; |FINSI;
+|SI long = dig7; |Y dig7 ! 0; swdig = 1; #0nume1 = 4; |FINSI;
+|SI long = dig8; |Y dig8 ! 0; swdig = 1; #0nume1 = 5; |FINSI;
+|SI long = dig9; |Y dig9 ! 0; swdig = 1; #0nume1 = 6; |FINSI;
+|SI swdig = 0;|Y long ! 0;
+    |MENAV "    Longitud de Cuenta Fuera de Nivel !";
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO pintacuen; |TIPO 0;
+ |ABRE #1;
+    nume1 = Campo + 1;
+    #1#0 = #0Campo;
+    #1#1 = #0nume1;
+ |LEE 001#1=;
+ |SI FSalida ! 0;  |DDEFECTO #1;  |FINSI;
+ |ATRI I;
+ |SI Campo = 1;  #0#14 = #1#2;  |PINTA #0#14; |FINSI;
+ |SI Campo = 3;  |PINTA 1337, #1#2;  |FINSI;
+ |ATRI 0;
+ |CIERRA #1;
+|FPRC;
+
+/*
+|PROCESO pintadas; |TIPO 13;
+|ABRE #1;
+    #1#0 = #0#3;         || banco
+    #1#1 = #0#4;
+|LEE 001#1=;
+|SI FSalida ! 0;  |DDEFECTO #1;  |FINSI;
+|ATRI I;  |PINTA 1036, #1#2;  |ATRI 0;
+|CIERRA #1;
+|FPRC;
+*/
+
+|PROCESO ptec; |TIPO 7;
+ |PTEC 816;
+|FPRC;
+
+**************************************************************************
+    IMPRESION DEL Talon
+**************************************************************************
+
+|PROCESO imprimir;  |TIPO 30;
+ |SI swptec ! 0;
+     swptec = 0;
+     men0 = men3;
+     |SI swdos = 2; men0 = men31; |FINSI;
+     |SI swdos = 3; men0 = men32; |FINSI;
+     |CONFI men0;
+     |SI FSalida = 0;
+         Talon = #0#0;
+         || ... #0#11 = pagban;
+         |HAZ impre;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+
+|PROCESO impre;
+ |SI swdos = 2; informe = "caemital"; |FINSI;
+ |SI swdos = 3;
+     |SI #9#36 [ 10; x = #9#36 + 6; |FINSI;
+     |SI #9#36 > 10; x = #9#36 + 14; |FINSI;
+     informe = #9x; swdos = 3;
+ |FINSI;
+ |SI swdos = 1;
+     |MENU menu;
+     |SI FSalida ! 1; |Y FSalida ! 2; |ACABA; |FINSI;
+     |SI FSalida = 1;
+         informe = "caemital"; swdos = 2;
+     |SINO;
+         |SI #9#36 [ 10; x = #9#36 + 6; |FINSI;
+         |SI #9#36 > 10; x = #9#36 + 14; |FINSI;
+         informe = #9x; swdos = 3;
+     |FINSI;
+ |FINSI;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0;  |FINIMP;  |ACABA;   |FINSI;
+
+  |DDEFECTO #7;
+  |ABRE #7;
+  |LEE 000#7p;
+  |CIERRA #7;
+  |ABRE #2;
+  |SELECT #2#2;
+  |ABRE #6;
+|| .................. lee cuenta y banco
+    des = #0#14;
+    dni = " ";
+    dir = " ";
+    pob = " ";
+    pro = " ";
+    #6#23 = "P";
+    #6#10 = #0#1;
+    #6#11 = #0#2;
+ |LEE 001#6=;        || lee el proveedor
+ |SI FSalida = 0;
+     dni = #6#9;
+     dir = #6#2;
+     pob = #6#6;
+     |QBF pob;
+     alfa1 = #6#3;  alfa1 = "00"  + alfa1;  alfa1 = alfa1 % -102;
+     alfa2 = #6#4;  alfa2 = "000" + alfa2;  alfa2 = alfa2 % -103;
+     pob = "(" + alfa1 + alfa2 + ") " + pob;
+     pro = #6#5;
+ |FINSI;
+
+ #2#10 = #0#3;
+ #2#11 = #0#4;
+ |LEE 001#2=;
+ |SI FSalida ! 0;  |DDEFECTO #2;  |FINSI;
+ cc1 = #2#9 % 104;
+ cc2 = #2#9 % 604;
+ cc3 = #2#9;
+ |QBF cc3;
+ cc3 = cc3 % -102;
+ importe = #0#9;
+ sw = 1;
+ |HAZ fecha_hoy;
+ |PRINT;
+ |PIEINF;
+ |FININF;
+ |FINIMP;
+
+ |CIERRA #2;
+ |CIERRA #6;
+ |SI sw_act = 0;
+     #0#10 = "S"; #0#12 = "S";
+ |SINO;
+     |SI swdos = 2; #0#10 = "S"; |FINSI;
+     |SI swdos = 3; #0#12 = "S"; |FINSI;
+ |FINSI;
+
+ || ............ |PINTA #0#11;
+ |PINTA #0#10;
+ |PINTA #0#12;
+
+ |GRABA 020#0a;
+|FPRC;
+
+|PROCESO fecha_hoy;
+  alfa1 = #0#5;
+  dia_e = alfa1 % 102;
+  mes_e = alfa1 % 402;
+  any_e = alfa1 % -102;
+  |SI mes_e = "01";  mes_e = "Enero     ";  |FINSI;
+  |SI mes_e = "02";  mes_e = "Febrero   ";  |FINSI;
+  |SI mes_e = "03";  mes_e = "Marzo     ";  |FINSI;
+  |SI mes_e = "04";  mes_e = "Abril     ";  |FINSI;
+  |SI mes_e = "05";  mes_e = "Mayo      ";  |FINSI;
+  |SI mes_e = "06";  mes_e = "Junio     ";  |FINSI;
+  |SI mes_e = "07";  mes_e = "Julio     ";  |FINSI;
+  |SI mes_e = "08";  mes_e = "Agosto    ";  |FINSI;
+  |SI mes_e = "09";  mes_e = "Septiembre";  |FINSI;
+  |SI mes_e = "10";  mes_e = "Octubre   ";  |FINSI;
+  |SI mes_e = "11";  mes_e = "Noviembre ";  |FINSI;
+  |SI mes_e = "12";  mes_e = "Diciembre ";  |FINSI;
+  dianum =dia_e;
+
+  alfa1 = #0#6;
+  dia = alfa1 % 102;
+  mes = alfa1 % 402;
+  any = alfa1 % -102;
+  |SI mes = "01";  mes = "Enero     ";  |FINSI;
+  |SI mes = "02";  mes = "Febrero   ";  |FINSI;
+  |SI mes = "03";  mes = "Marzo     ";  |FINSI;
+  |SI mes = "04";  mes = "Abril     ";  |FINSI;
+  |SI mes = "05";  mes = "Mayo      ";  |FINSI;
+  |SI mes = "06";  mes = "Junio     ";  |FINSI;
+  |SI mes = "07";  mes = "Julio     ";  |FINSI;
+  |SI mes = "08";  mes = "Agosto    ";  |FINSI;
+  |SI mes = "09";  mes = "Septiembre";  |FINSI;
+  |SI mes = "10";  mes = "Octubre   ";  |FINSI;
+  |SI mes = "11";  mes = "Noviembre ";  |FINSI;
+  |SI mes = "12";  mes = "Diciembre ";  |FINSI;
+|FPRC;

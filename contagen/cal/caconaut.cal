@@ -1,0 +1,850 @@
+|FICHEROS;
+   caconaut #0;
+   camaasil #1;
+   cacuenta #4;
+
+   zconcili #5;  ||Temporal
+   zconcil1 #6;  ||Temporal
+
+   canempre #30;
+   caselem0 #997;
+   caselem1 #998;
+
+   cacuefus #900;
+   caw00039 #999;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+
+   aFichero = "";
+   nCampo   = 0;
+   nPara1   = 0;
+   nPara2   = 0;
+   aAlfa1   = "";
+
+   aTip      = "";
+   nDDiario  = 0;
+   nHDiario  = 0;
+   fDFecha   = @;
+   fHFecha   = @;
+   aDDepar   = "";
+   aHDepar   = "";
+   SwError   = 0;
+   nContador = 0;
+   nImporte  = 0;
+   nDImport  = 0;
+   nHImport  = 0;
+   aSigno    = "";
+
+   TotDebe   = 0;
+   TotHabe   = 0;
+   HaySaldo  = 0;
+   Linea     = 0;
+   p_error   = 0;
+
+   aDCuenta = "";
+   aHCuenta = "";
+
+   BuscaImp = 0;
+   DebeHab = "D";
+   SegundaPasada = 0;
+   EncoImp = 0;
+   swAlgun = 0;
+
+  nSw       = 0;
+  nEmpMulti = 0;
+  &eSwMul   = 0;
+  &espe15   = "";
+  &espe16   = 0;
+  nSwOpera  = 0;
+  nPerAct   = 0;
+  nNume1    = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dsco08_i;
+
+|| *********************************************************************
+|| ************* Calculos de la Pantalla
+|| *********************************************************************
+|CALCULO losdefectos; |TIPO 0;
+ |SI #0#34 = "N";
+     #0#30 = fec1;
+     #0#28 = 00;
+ |SINO;
+     #0#30 = "01.01.2000";
+     #0#28 = 01;
+ |FINSI;
+
+ |PINTA #0#30;
+ #0#31 = fec2; |PINTA #0#31;
+ |PINTA #0#28;
+|FCAL;
+
+|CALCULO MiraSelec; |TIPO 0;
+  |SI #0#0 = "S";
+      |C_M #0#1,1,"S";
+      |C_M #0#2,1,"S";
+      |PARA nCampo = 3; |SI nCampo [ 26; |HACIENDO nCampo = nCampo + 1;
+           |C_M #0nCampo,1,"N";
+      |SIGUE;
+   |SINO;
+      |C_M #0#1,1,"N";
+      |C_M #0#2,1,"N";
+      |PARA nCampo = 3; |SI nCampo [ 26; |HACIENDO nCampo = nCampo + 1;
+            |C_M #0nCampo,1,"S";
+      |SIGUE;
+   |FINSI;
+|FCAL;
+
+|CALCULO NoMasCuentas; |TIPO 0;
+   aAlfa1 = #0Campo; |QBF aAlfa1;
+   |SI aAlfa1 = "";
+      |PARA nCampo = Campo + 1;  |SI nCampo [ 26;  |HACIENDO nCampo = nCampo + 1;
+            #0nCampo = "";  |C_M #0nCampo, 1, "N";
+      |SIGUE;
+   |SINO;
+      |PARA nCampo = Campo + 1;  |SI nCampo [ 26;  |HACIENDO nCampo = nCampo + 1;
+            |C_M #0nCampo, 1, "S";
+      |SIGUE;
+  |FINSI;
+|FCAL;
+
+|CALCULO BuscaCuenta; |TIPO 6;
+   |C_M #0Campo,0,aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta;
+     |PINTA #0Campo;
+|FCAL;
+
+|CALCULO QueTipo; |TIPO 0;
+     aAlfa1 = "S";
+     |SI #0#27 ! "I";
+         aAlfa1 = "N";
+         #0#35 = 0; |PINTA #0#35;
+         #0#36 = 1; |PINTA #0#36;
+     |FINSI;
+     |C_M #0#35, 1, aAlfa1;
+     |C_M #0#36, 1, aAlfa1;
+|FCAL;
+
+|CALCULO fechas; |TIPO 0;
+  |SI #0#34 = "N";
+      |SI #0Campo > fec2;|O #0Campo < fec1;
+          |MENAV "    Fecha fuera de Periodo ...";
+          |ERROR;
+      |FINSI;
+  |FINSI;
+|FCAL;
+|| ************************************************************************
+|| ************************************************************************
+|PROCESO Actualiza0;
+   |SI #5#8 = " "; |ACABA; |FINSI;
+
+   |SI nPerAct = -1; |O nPerAct ! #5#10;
+      |CIERRA #1;
+      dirfich0 = #5#11; |QBF dirfich0;
+      nPerAct =  #5#10;
+      |PATH_DAT #1 dirfich0;
+      |ABRE #1;
+   |FINSI;
+
+   #1#0 = #5#1;
+   #1#1 = #5#2;
+   #1#2 = #5#3;
+   #1#3 = #5#4;
+   |LEE 041#1=;
+   |SI FSalida = 0;
+      #1#18 = "û";
+      |GRABA 020#1a;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Actualiza;
+ #5#1;
+ ;
+ 00001;
+ 99999;
+ ;
+ NULL,Actualiza0;
+|FIN;
+
+|PROCESO LaActualiz;
+       nPerAct = -1;
+       |SI #0#34 = "N";
+           |ABRE #1;
+           nPerAct = enPeriodo;
+       |FINSI;
+       |BUCLE Actualiza;
+       |CIERRA #1;
+|FPRC;
+
+|| -------------------------------------
+|PROCESO zconcil1;   ||Actualizo el auxiliar
+  #5#0 = #6#2;
+  |LEE 101#5=;
+  |SI FSalida = 0;
+      swAlgun = 1;
+      #5#8 = "*";
+      |GRABA 020#5a;
+  |FINSI;
+  |LIBERA #5;
+|FPRC;
+
+|DEFBUCLE zconcil1;
+  #6#2;
+  ;
+  0    , "C";
+  99999, "C";
+  e;
+  NULL,zconcil1;
+|FIN;
+
+|PROCESO zconcil2;
+     |SI #6#4 > 0; |Y #6#4 ! #0#36;
+
+         |PARA nNume1 = 5; |SI nNume1 [ 9; |HACIENDO nNume1 = nNume1 + 1;
+               |SI #6nNume1 ! 0;
+                   #5#0 = #6nNume1;
+                   |LEE 041#5=;
+                   #5#8 = " ";
+                   |GRABA 020#5a;
+                   |LIBERA #5;
+               |FINSI;
+         |SIGUE;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE zconcil2;
+     #6#2;
+     ;
+     0    , " ";
+     99999, " ";
+     e;
+     NULL,zconcil2;
+|FIN;
+
+|PROCESO GZconcili1;        || lo doy de alta para buscarlo
+      |DDEFECTO #6;
+      #6#0 = BuscaImp;
+      |SI DebeHab = "D";
+          #6#1 = "H";
+      |SINO;
+          #6#1 = "D";
+      |FINSI;
+      #6#2 = #5#0;
+      #6#3 = " ";
+      |GRABA 020#6n;
+|FPRC;
+
+|RUTINA GrabaImp;
+     #6#0 = BuscaImp;
+     #6#1 = DebeHab;
+     #6#2 = 0;
+     #6#3 = " ";
+     |LEE 101#6];
+     |SI FSalida = 0;
+         |SI #6#0 ! BuscaImp;  |LIBERA #6;  |ACABA;  |FINSI;
+         |SI #6#1 ! DebeHab;   |LIBERA #6;  |ACABA;  |FINSI;
+         |SI #6#3 = " ";
+             EncoImp = 1;
+             #6#4 = #6#4 + 1;
+             |SI #6#4 = #0#36
+                 #6#3 = "C";
+             |FINSI;
+             nNume1 = 4 + #6#4;
+             #6nNume1 = #5#0;
+             |GRABA 020#6a;
+             |LIBERA #6;
+             |ACABA;
+        |FINSI;
+     |FINSI;
+    |ET LeoOtra;
+    |LIBERA #6;
+    |LEE 101#6s;
+    |SI FSalida = 0;
+        |SI #6#0 ! BuscaImp;  |LIBERA #6;  |ACABA;  |FINSI;
+        |SI #6#1 ! DebeHab;   |LIBERA #6;  |ACABA;  |FINSI;
+        |SI #6#3 = " ";
+            EncoImp = 1;
+            #6#4 = #6#4 + 1;
+            |SI #6#4 = #0#36;
+                #6#3 = "C";
+            |FINSI;
+            nNume1 = 4 + #6#4;
+            #6nNume1 = #5#0;
+            |GRABA 020#6a;
+            |LIBERA #6;
+        |SINO;
+            |VETE LeoOtra;
+        |FINSI;
+    |FINSI;
+|FRUT;
+
+|PROCESO LeoDesvio;
+       EncoImp = 1;
+       #6#4 = #6#4 + 1;
+       |SI #6#4 = #0#36;
+           #6#3 = "C";
+       |FINSI;
+       nNume1   = 4 + #6#4;
+       #6nNume1 = #5#0;
+       |GRABA 020#6a;
+       |LIBERA #6;
+       |ERROR10;
+|FPRC;
+
+|DEFBUCLE LeoDesvio;
+  #6#1;
+  3;
+  nDImport, DebeHab, 0    , " ";
+  nHImport, DebeHab, 99999, " ";
+  e;
+  NULL,LeoDesvio;
+|FIN;
+
+|PROCESO BuscaImporte0_N;
+  |SI #5#6 ! 0;
+      BuscaImp = #5#6;
+      DebeHab  = "H";
+  |SINO;
+      BuscaImp = #5#7;
+      DebeHab  = "D";
+  |FINSI;
+
+  nImporte = BuscaImp * nPara2;
+  nDImport = nImporte - #0#35;
+  nHImport = nImporte + #0#35;
+  EncoImp = 0;
+  |BUCLE LeoDesvio;
+  |SI EncoImp = 0;
+      |HAZ GZconcili1;          || Alta para buscar
+  |SINO;
+      swAlgun = 1;
+      #5#8    = "*";
+      SegundaPasada = 1;
+      |GRABA 020#5a;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaImporte_N;
+   #5#1;
+   8;
+   00001, " ";
+   99999, " ";
+   e;
+   NULL, BuscaImporte0_N;
+|FIN;
+
+|PROCESO BuscaImporte0;
+  |SI #5#6 ! 0;
+      BuscaImp = #5#6;
+      DebeHab  = "H";
+  |SINO;
+      BuscaImp = #5#7;
+      DebeHab  = "D";
+  |FINSI;
+  #6#0 = BuscaImp;
+  #6#1 = DebeHab;
+  #6#2 = 0;
+  EncoImp = 0;
+  |HAZ GrabaImp;
+  |SI EncoImp = 0;
+      |HAZ GZconcili1;          || Alta para buscar
+  |SINO;
+      swAlgun = 1;
+      #5#8    = "*";
+      SegundaPasada = 1;
+      |GRABA 020#5a;
+  |FINSI;
+  |LIBERA #5;
+|FPRC;
+
+|DEFBUCLE BuscaImporte;
+   #5#1;
+   ;
+   00001;
+   99999;
+   e;
+   NULL, BuscaImporte0;
+|FIN;
+
+|PROCESO Importe;
+   || ... ... ... ... ... ... Concilia primero sin desviacion ni multiplos
+   || ... ... ... ... ... ... por importe exacto.
+
+   |SI #0#36 = 1;
+       SegundaPasada = 0;
+       |ABRE #6;
+       |BUCLE BuscaImporte;
+       |CIERRA #6;
+       |SI SegundaPasada = 1;
+           |ABRE #5;
+           |BUCLE zconcil1;
+           |CIERRA #5;
+       |FINSI;
+   |FINSI;
+
+   || ... ... ... ... ... ... Proceso para la Desviacion y multiplos
+   |SI #0#35 ! 0; |O #0#36 ! 1;   ||existe desviacion o multiplos
+
+|| ... ... ... ... ...        |PARA nPara2 = 1; |SI nPara2 [ #0#36; |HACIENDO nPara2 = nPara2 + 1;
+             nPara2 = #0#36;
+             |SI #0#35 ! 0; |O nPara2 ! 1;
+                 |DELINDEX #6;
+                 SegundaPasada = 0;
+                 |ABRE #6;
+                 |BUCLE BuscaImporte_N;
+                 |CIERRA #6;
+                 |SI SegundaPasada = 1;
+                     |ABRE #5;
+                     |BUCLE zconcil1;
+                     |SI #0#36 ! 1; |BUCLE zconcil2; |FINSI;
+                     |CIERRA #5;
+                 |FINSI;
+             |FINSI;
+|| ... ... ... ...        |SIGUE;
+   |FINSI;
+|FPRC;
+
+|| --------------------------------------------------------------------------
+
+|PROCESO LineasConci0;
+   swAlgun = 1;
+   |SI #5#9 = 0;  HaySaldo = HaySaldo - 1; |FINSI;
+   #5#8 = "*";
+   |GRABA 020#5a;
+   |LIBERA #5;
+   |SI HaySaldo = 0; |ERROR10; |FINSI;
+|FPRC;
+
+|DEFBUCLE LineasConci;
+  #5#1;
+  ;
+  00001;
+  99999;
+  be;
+  NULL,LineasConci0;
+|FIN;
+
+|PROCESO SaldoCero;
+   |BUCLE LineasConci;
+|FPRC;
+
+||///////////////////////////////////////////////////////////////
+|PROCESO LeeApuntes0;
+   |SI Haybasica = 0
+       |SI #camaasil#21 < #0#32; |O #camaasil#21 > #0#33;
+           |ACABA;
+       |FINSI;
+   |SINO;
+       nDepar = #camaasil#21; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+       |SI nDepar < #0#32; |O nDepar > #0#33;  ||desde/hasta actividad
+           |ACABA;
+       |FINSI;
+   |FINSI;
+
+     nContador = nContador + 1;
+     #5#0 = nContador;
+     #5#1 = #camaasil#0;
+     #5#2 = #camaasil#1;
+     #5#3 = #camaasil#2;
+     #5#4 = #camaasil#3;
+     #5#5 = #camaasil#7;
+     |SI #camaasil#8 = "D";
+         #5#6 = #camaasil#9;
+         #5#7 = 0;
+     |SINO;
+         #5#7 = #camaasil#9;
+         #5#6 = 0;
+     |FINSI;
+     TotDebe = TotDebe + #5#6;
+     TotHabe = TotHabe + #5#7;
+     #5#9 = TotDebe - TotHabe;
+     |SI #5#9 = 0;  HaySaldo = HaySaldo + 1;  |FINSI;
+     #5#8  = #camaasil#18;
+
+     |SI eSwMul = 0;
+         #5#10 = enPeriodo;
+         #5#11 = dirfich0;
+         #5#12 = enEjercicio;
+     |SINO;
+         #5#10 = #999#5;
+         #5#11 = #999#6;
+         #5#12 = #999#7;
+     |FINSI;
+
+     |GRABA 040#5n;
+|FPRC;
+
+|DEFBUCLE LeeApuntes;
+   #camaasil#3;
+   0,18;
+   #cacuenta#0, fDFecha, 000000, 0001, nDDiario, " ";
+   #cacuenta#0, fHFecha, 999999, 9999, nHDiario, " ";
+   e;
+   NULL, LeeApuntes0;
+|FIN;
+
+|PROCESO Conciliacion0;
+   nContador = 0;
+   HaySaldo  = 0;
+   TotDebe   = 0;
+   TotHabe   = 0;
+
+   |ABRE #5;
+   |BUCLE LeeApuntes;  ||Crea el primer temporal
+   |CIERRA #5;
+
+   swAlgun = 0;
+   |SI aTip = "S"; |Y HaySaldo ] 1;
+       |HAZ SaldoCero;
+   |FINSI;
+   |SI aTip = "I";
+       |HAZ Importe;
+   |FINSI;
+
+   |SI swAlgun = 1;
+       |HAZ LaActualiz;
+   |FINSI;
+
+   |DELINDEX #5;
+   |DELINDEX #6;
+|FPRC;
+
+|DEFBUCLE Conciliacion;
+   #cacuenta#1;
+   3;
+   aDCuenta, "S";
+   aHCuenta, "S";
+   e;
+   NULL, Conciliacion0;
+|FIN;
+
+||///////////////////////////////////////////////////////////////
+|PROCESO LeeAuxiliar0;
+   dirfich0 = #999#6; |QBF dirfich0;
+   |PATH_DAT #1 dirfich0;
+
+   |ABRE #1;
+   #1#0 = #999#0;
+   #1#1 = #999#1;
+   #1#2 = #999#2;
+   #1#3 = #999#3;
+   |LEE 041#1=;
+   |SI FSalida = 0;
+       |HAZ LeeApuntes0;
+   |FINSI;
+   |CIERRA #1;
+|FPRC;
+
+|DEFBUCLE LeeAuxiliar;
+   #999#2;
+   ;
+   #900#0, fDFecha, 000000, 0001;
+   #900#0, fHFecha, 999999, 9999;
+   e;
+   NULL, LeeAuxiliar0;
+|FIN;
+
+|PROCESO Concil_Multi;
+   nContador = 0;
+   HaySaldo  = 0;
+   TotDebe   = 0;
+   TotHabe   = 0;
+
+   |ABRE #5;
+   |BUCLE LeeAuxiliar;
+   |CIERRA #5;
+
+   swAlgun = 0;
+   |SI aTip = "S"; |Y HaySaldo ] 1;
+       |HAZ SaldoCero;
+   |FINSI;
+   |SI aTip = "I";
+       |HAZ Importe;
+   |FINSI;
+
+   |SI swAlgun = 1;
+       |HAZ LaActualiz;
+   |FINSI;
+
+   |DELINDEX #5;
+   |DELINDEX #6;
+|FPRC;
+
+|DEFBUCLE Conciliacion_Multi;
+   #900#1;
+   ;
+   "            ";
+   "zzzzzzzzzzzz";
+   ;
+   NULL, Concil_Multi;
+|FIN;
+
+
+|| **********************************************************************
+|PROCESO EmpiezaEmpresa;
+  aFichero = ("ww" + Usuario) % 108; |NOME_DAT #5 aFichero;
+  aFichero = ("zw" + Usuario) % 108; |NOME_DAT #6 aFichero;
+  |DELINDEX #5;
+  |DELINDEX #6;
+|FPRC;
+
+|PROCESO HazTodo;
+  |HAZ EmpiezaEmpresa;
+
+  |SI #0#0 = "S";
+      aDCuenta = #0#1;
+      aHCuenta = #0#2;
+      |BUCLE Conciliacion;
+  |SINO;
+      |PARA nPara1 = 3; |SI nPara1 [ 26; |HACIENDO nPara1 = nPara1 + 1;
+            aAlfa1= #0nPara1;
+            |SI aAlfa1 ! "            ";
+                aDCuenta = #0nPara1;
+                aHCuenta = #0nPara1;
+                |BUCLE Conciliacion;
+            |FINSI;
+      |SIGUE;
+  |FINSI;
+|FPRC;
+
+|PROCESO HazTodo_Multi;
+
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   |HAZ EmpiezaEmpresa;
+   nEmpMulti = #caselem1#1;
+
+   |BUCLE Conciliacion_Multi;
+|FPRC;
+
+|| **********************************************************************
+
+|CALCULO Conciliar; |TIPO 3;
+   |HAZ DirAplicSt;
+   |SI Haybasica = 1;
+       |SI #0#33 = "zz"; #0#33 = "99"; |FINSI;
+   |FINSI;
+   aTip     = #0#27;
+   nDDiario = #0#28; nHDiario = #0#29; aDDepar = #0#32;
+   fDFecha  = #0#30; fHFecha  = #0#31; aHDepar = #0#33;
+
+   aFichero = ("xx" + Usuario) % 108; |NOME_DAT #999 aFichero;
+   aFichero = ("yy" + Usuario) % 108; |NOME_DAT #900 aFichero;
+
+   |SI #0#34 = "N";
+       |SI #48#27 = "S";
+           |HAZ MultiEmpresa;
+       |SINO;
+           |DFICE dirfich0; |QBF dirfich0;
+           |HAZ HazTodo;
+       |FINSI;
+   |SINO;
+       eSwMul = 1;
+       |SI #48#27 = "S";  eSwMul = 2; |FINSI;
+       |HAZ MultiEjercicio;
+   |FINSI;
+|FCAL;
+|| **********************************************************************
+
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+   |SI #0#30 > #caselem1#5; |O #0#31 < #caselem1#4;
+       |ACABA;  || Fuera de la seleccion
+   |FINSI;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #4 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+   #caselem1#1;
+   ;
+   000001;
+   999999;
+   ;
+   NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+
+|| /////////////////////////////////////////////
+|PROCESO PasoAuxiliar;
+   |SI Haybasica = 0
+       |SI #1#21 < #0#32; |O #1#21 > #0#33;
+           |ACABA;
+       |FINSI;
+   |SINO;
+       nDepar = #1#21; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+       |SI nDepar < #0#32; |O nDepar > #0#33;  ||desde/hasta actividad
+           |ACABA;
+       |FINSI;
+   |FINSI;
+
+   |SI enEjercicio < 2008;
+       eaCuenta = #1#4;
+       eaCta08  = #1#4;
+       eaCta90  = #1#4;
+       enBEjer  = enEjercicio;
+       |HAZ eCam_Segundo;
+       #1#4 = eaCta08;
+       |SI #0#0 = "S";
+           |SI #1#4 < #0#1; |O #1#4 > #0#2;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   #999#0 = #1#0;        || Diario
+   #999#1 = #1#1;        || Fecha
+   #999#2 = #1#2;        || Documento
+   #999#3 = #1#3;        || Apunte
+   #999#4 = #1#4;        || Cuenta Contable
+   #999#5 = enPeriodo;   || Periodo Contable
+   #999#6 = dirfich0;    || Path
+   #999#7 = enEjercicio;    || Ejercicio
+   |GRABA 000#999n;
+   nSw = 1;
+
+   #900#0 = #1#4;
+   |LEE 041#900=;
+   |SI FSalida ! 0;
+       #900#0 = #1#4;
+       |GRABA 020#900n;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE PasoAuxiliar;
+   #1#3;
+   0,18;
+   aDCuenta, fDFecha, 000000, 0001, nDDiario, " ";
+   aHCuenta, fHFecha, 999999, 9999, nHDiario, " ";
+   e;
+   NULL, PasoAuxiliar;
+|FIN;
+
+|PROCESO MultiEmpEjer1;
+   |SI #0#30 > #caselem1#5; |O #0#31 < #caselem1#4;
+       |ACABA;  || Fuera de la seleccion
+   |FINSI;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+   dirfich0 = #caselem1#3; |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #4 dirfich0;
+
+   |SI #0#0 = "S";
+       |SI enEjercicio ] 2008;
+           aDCuenta = #0#1;
+           aHCuenta = #0#2;
+       |SINO;
+           aDCuenta = "            ";
+           aHCuenta = "zzzzzzzzzzzz";
+       |FINSI;
+       |BUCLE PasoAuxiliar;
+   |SINO;
+       |PARA nPara1 = 3; |SI nPara1 [ 26; |HACIENDO nPara1 = nPara1 + 1;
+             aAlfa1= #0nPara1;
+             |SI aAlfa1 ! "            ";
+                 eaCuenta = #0nPara1;
+                 |SI enEjercicio < 2008;
+                     enBEjer  = 2008;
+                     |HAZ eCam_Segundo;
+                     eaCuenta = eaCta90;
+                 |FINSI;
+                 aDCuenta = eaCuenta;
+                 aHCuenta = eaCuenta;
+                 |BUCLE PasoAuxiliar;
+             |FINSI;
+       |SIGUE;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MultiEmpEjer;
+  #caselem1#2;
+  ;
+  #997#0, "01.01.0000";
+  #997#0, "31.12.2999";
+  ;
+  NULL,MultiEmpEjer1;
+|FIN;
+
+|PROCESO MultiEjer1;
+
+   enEmpresa   = #997#0;
+   enEjercicio = 0;
+   |HAZ eCam_Primero;
+
+   nSw = 0;
+   |DELINDEX #999;
+   |DELINDEX #900;
+
+   |ABRE #900;
+   |ABRE #999;
+   |BUCLE MultiEmpEjer;
+   |CIERRA #999;
+   |CIERRA #900;
+
+   |SI nSw ! 0;
+       |ABRE #998;
+       |SELECT #3#998;
+       #998#1 = #997#0;
+       #998#2 = #997#5;
+       |LEE 001#998=;
+       |SI FSalida = 0;
+           |HAZ HazTodo_Multi;
+       |FINSI;
+       |SELECT #1#998;
+       |CIERRA #998;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MultiEjer0;
+   #caselem0#1;
+   ;
+   00001;
+   99999;
+   ;
+   NULL,MultiEjer1;
+|FIN;
+
+|PROCESO MultiEjercicio;
+   espe15 = "S";
+
+   |SUB_EJECUTA "caselemp";
+   |NOME_DAT #998 eaFichsel;
+   |NOME_DAT #997 eaFichres;
+
+   nEmpMulti = -1;
+   |BUCLE MultiEjer0;
+   |DELINDEX #998;
+   |DELINDEX #997;
+|FPRC;

@@ -1,0 +1,268 @@
+|FICHEROS;
+     altadi01 #0;
+     agifa081 #81;
+     agifa067 #67;
+|FIN;
+
+|VARIABLES;
+     aDoc = "";
+     {1}aContiene = "";
+     nConta = 0;
+     aTipo = "";
+     fFecha = @;
+     nLon = 0;
+     nNume = 0;
+     nAbo = 0;
+     nNu1 = 0;
+     nNu2 = 0;
+     nDec = 0;
+     aReg = "";
+     aAlfa = "";
+     aLetra = "";
+     aIPRemoto = "";
+     aOrigen = "";
+     aDestino = "";
+     aFic = "";
+     aLon = "";
+     aPath = "";
+     aLog = "";
+     nHandle = 0;
+     nPos = 0;
+     i = 0;
+|FIN;
+
+|PROCESO Relleno;
+     |SI aTipo = "F";
+          aAlfa = fFecha;
+          aAlfa =  (aAlfa % -104) + (aAlfa % 402) + (aAlfa % 102);
+     |FINSI;
+     |SI aTipo = "H";
+          aAlfa = (aAlfa % 102) + (aAlfa % 402) + (aAlfa % 702);
+     |FINSI;
+
+     |SI aTipo = "A";
+          aAlfa = aAlfa + "                                             ";
+          nPos = nLon + 100;
+          aAlfa = aAlfa % nPos;
+     |FINSI;
+
+     |SI aTipo = "N";
+          |SI nNume < 0; nAbo = -1; |SINO; nAbo = 1; |FINSI;
+          |SI nNume < 0; nNume = nNume * - 1; |FINSI;
+          nNu1 = nNume ! 0;
+          |SI nNu1 > nNume; nNu1 = nNu1 - 1; |FINSI;
+          nNu2 = nNume - nNu1;
+          |SI nDec < 0;
+               aAlfa = nNume;
+          |SINO;
+               |SI nDec = 0;
+                    aAlfa = nNu1;
+               |SINO;
+                    aAlfa = nNu2;
+                    aAlfa = aAlfa + "00000000000000000000000000";
+                    nPos = nDec + 300;
+                    aAlfa = aAlfa % nPos;
+                    aAlfa = nNu1 + "." + aAlfa;
+               |FINSI;
+          |FINSI;
+          aAlfa = "000000000000000000000000000000000000000000000" + aAlfa;
+          |SI nAbo = 1;
+               nPos = -1 * (nLon + 100);
+               aAlfa = aAlfa % nPos;
+          |SINO;
+               nPos = -1 * (nLon + 99);
+               aAlfa = "-" + aAlfa % nPos;
+          |FINSI;
+     |FINSI;
+     nDec = -1;
+|FPRC;
+
+|PROCESO LinPed;
+     aAlfa = #81#25 + (("00000" + #81#0) % -105);
+     aTipo = "A"; nLon = 10; |HAZ Relleno;
+     aReg = aAlfa;
+
+     aAlfa = #67#2;
+     aTipo = "A"; nLon = 18; |HAZ Relleno;
+     aReg = aReg + aAlfa;
+
+     aAlfa = #67#5;
+     aTipo = "A"; nLon = 12; |HAZ Relleno;
+     aReg = aReg + aAlfa;
+
+     fFecha = ~;
+     aTipo = "F";  |HAZ Relleno;
+     aReg = aReg + aAlfa;
+
+     |HORA aAlfa;
+     aTipo = "H";  |HAZ Relleno;
+     aReg = aReg + aAlfa;
+
+     |XGRABA nHandle, aReg;
+|FPRC;
+
+|PROCESO CapPed;
+     aAlfa = #81#25 + (("00000" + #81#0) % -105);
+     aTipo = "A"; nLon = 10; |HAZ Relleno;
+     aReg = aAlfa;
+
+     aReg = aReg + #0#0 + #0#1 + #0#3 + #0#2 + "1";
+
+     fFecha = ~;
+     aTipo = "F";  |HAZ Relleno;
+     aReg = aReg + aAlfa;
+
+     |HORA aAlfa;
+     aTipo = "H";  |HAZ Relleno;
+     aReg = aReg + aAlfa;
+
+     |XGRABA nHandle, aReg;
+|FPRC;
+
+|DEFBUCLE Pedido;
+     #81#1;
+     ;
+     #0#4, #0#5;
+     #0#4, #0#5;
+     ;
+     NULL, CapPed, LinPed;
+|FIN;
+
+|PROCESO EnviaFichero;
+/*
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+     |SI aIPRemoto ! "";
+         |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+         |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+*/
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDoc = FSalida;
+
+     |SI aIPRemoto ! "";
+          aContiene1 = aDestino;
+          |ESPECIFICA "REMOTOMD5", aContiene;
+          |SI aDoc ! FSalida;
+               |ENVIA_FICHERO aOrigen, aDestino;
+          |FINSI;
+     |SINO;
+          aContiene1 = aDestino;
+          |ESPECIFICA "MD5", aContiene;
+          |SI aDoc ! FSalida;
+               |COPIA_FICHERO aOrigen, aDestino;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Envia;
+     aFic = "";
+     aAlfa = #0#7; |QBF aAlfa;
+     aLon = aAlfa % A0;
+     |PARA i = aLon; |SI i > 0; |HACIENDO i = i - 1;
+          nPos = i * 100 + 1;
+          aLetra = aAlfa % nPos;
+          |SI aLetra = "/"; |O aLetra = "\"; |SAL; |FINSI;
+          aFic = aLetra + aFic;
+     |SIGUE;
+
+     |PARA; |SI i > 0; |HACIENDO i = i - 1;
+          nPos = i * 100 + 1;
+          aLetra = aAlfa % nPos;
+          aPath = aLetra + aPath
+     |SIGUE;
+     |RMKDIR aPath;
+
+     |DBASE aOrigen;
+     aOrigen = aOrigen + "altadi/" + aFic;
+     aDestino = #0#7; |QBF aDestino;
+     |HAZ EnviaFichero;
+|FPRC;
+
+|PROCESO Pedido; |TIPO 0;
+     |ABRE #81;
+     #81#25 = #0#4;
+     #81#0 = #0#5;
+     |LEE 000#81=;
+     |SI FSalida ! 0;
+          |MENAV "0000No existe Pedido...";
+          |ERROR;
+     |FINSI;
+     |CIERRA #81;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |HAZ Envia;
+
+     aAlfa = ("00000000" + #0#8) % -108;
+     aPath = #0#6; |QBF aPath;
+     aFic = aPath + "\" + aAlfa + ".txt";
+     aLog = aPath + "\" + aAlfa + ".log";
+
+     |XABRE "CW", aFic, nHandle;
+     |SI FSalida < 0;
+          aAlfa = "0000ERROR al crear " + aFic;
+          |MENAV aAlfa;
+     |SINO;
+          |BUCLE Pedido;
+          |XCIERRA nHandle;
+
+          aAlfa = #0#7; |QBF aAlfa;
+          aAlfa = aAlfa + " " + aFic;
+          |RSYSTEM aAlfa;
+
+          nConta = 0;
+          |PARA; |SI; |HACIENDO;
+               nConta = nConta + 1;
+               |SI nConta > 10;
+                    |MENAV "0000No se ha recibido respuesta de la actualizacion...";
+                    |CONFI "0000NDesea salir de la espera del log";
+                    |SI FSalida = 0; |ACABA; |FINSI;
+                    nConta = 0;
+               |FINSI;
+               aAlfa = "0000Esperando respuesta...("+ nConta + ")";
+               |MENSA aAlfa;
+               |SLEEP 1;
+
+               |XABRE "CU", aLog, nHandle;
+               |SI FSalida > 0;
+                    |XLEE nHandle, 250, aAlfa;
+                    |SI FSalida > 0;
+                         |QBF aAlfa;
+                         |SI aAlfa = "OK";
+                              |MENAV "0000Actualizado correctamente...";
+                         |SINO;
+                              aAlfa = "0000" + aAlfa;
+                              |MENAV "0000Error al acutalizar la mdb";
+                              |MENAV aAlfa;
+                         |FINSI;
+                    |SINO;
+                         |MENAV "0000Error al leer el fichero log...";
+                    |FINSI;
+                    |XCIERRA nHandle;
+                    |SAL;
+               |FINSI;
+          |SIGUE;
+          |MENSA "0000.";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          #0#8 = #0#8 + 1;
+          |GRABA 020#0a;
+     |FINSI;
+     |CIERRA #0;
+|FPRO;

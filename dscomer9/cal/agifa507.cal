@@ -1,0 +1,386 @@
+|FICHEROS;
+     agifa505 #4;        ||Parametros CAJA
+     agifa507 #6;        ||Acceso T.P.V
+     agifa510 #7;        ||Fichero de Horarios
+     agifa509 #8;        ||Resumen diario
+     agifa066 #11;||*
+     agifa019 #19;
+     agifa517 #30;       ||Parametros T.P.V
+     agifa024 #24;
+     agifa027 #31;       ||Contadores
+     dsm00032 #32;
+     agifv029 #111;      ||Usuarios / Cajas.
+     agifa142 #142;
+     agifa514 #514;
+     agift555 #555;
+     agifa321;
+     agifa324;
+     dsm00023 #23;
+|FIN;
+
+|VARIABLES;
+     &enSwSematel = 0;
+     fUltima = @;
+     &eaParametro = "";
+     &eaEsEuro = "";
+
+     &enCaja   = 0;
+     &efFecha  = @;
+
+     &nSwCajaModi = 0;
+     &camarero = 0;
+     &mesas    = "";
+     &acaja    = 0;
+     &empresa  = 0;
+     &afecha   = "";
+     &almacen  = 0;
+
+     &abre_dis = "";
+     &cier_dis = "";
+     &mens_dis = "";
+     &ferr_tarjeta = "";      || Fichero de Error -> 'error'
+     &oper_tarjeta = "";      || Operacion
+     &bat_tarjeta  = "";      || Fichero Cobro
+     &impr_tpv     = "";
+
+     fNume     = 0;
+     fAntes    = @;
+     nErr      = 0;
+     aAlf1     = "";
+     aPath     = "";
+     aAlfa     = "";
+     aParam    = "";
+     texto     = "";
+     aPersona  = "";
+     fich      = "";
+     path      = "";
+     camino    = "";
+     mensaje   = "";
+     puente    = "";
+     i         = 0;
+     nHay      = 0;
+     fFecha    = @;
+|FIN;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+Estando en el campo 'CAJA' y pulsando <F5> se activa la modificacion
+de la caja (estando esta abieta o cerrada), cada tiquet que se modifique
+sera recalculado, tambien se permite la baja ....
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+|PROCESO Tecla; |TIPO 6;
+     |SI FSalida = 13;
+          |PUSHV 0501 2380;
+          |BLANCO 1823 2354;
+          |CUADRO 1823 2354;
+          |ATRI R; |PINTA 1924, "  ACTIVACION CAJA MODIFICABLE "; |ATRI 0;
+          |PINTA 2125, "Clave:";
+          aAlfa = "";
+          E_sup = "10";
+          E_inf = "";
+          aAlfa = 2132 ? -1;
+          |QBF aAlfa;
+          |SI aAlfa = "<MYPASWD>";
+               |MENAV "0000Caja modificable activada...";
+               nSwCajaModi = 1;
+          |SINO;
+               |MENAV "0000Clave incorrecta...";
+               nSwCajaModi = 0;
+          |FINSI;
+          |POPV;
+          |ERROR;
+     |FINSI;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴�
+|PROCESO MiraImporta;
+     |ABRE #555; |LEE 000#555p; |CIERRA #555;
+     aPath = #555#1; |QBF aPath;
+     aAlfa = aPath % A0;
+     |SI aAlfa [ 1; |ACABA; |FINSI;
+     |ABRE #32;
+     |SELECT #2#32;
+     |_PDIR aPath;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          aAlfa = aPath % -112;
+          #32#0 = "I";
+          #32#5 = aAlfa;
+          |LEE 000#32=;
+          |SI FSalida ! 0;
+               ||--------------------Chequeo el fichero debe se numerico
+               nErr = 0;
+               |PARA i = 101; |SI i [ 1200; |HACIENDO i = i + 100;
+                    aAlf1 = (aAlfa % i);
+                    |SI aAlf1 < "0"; |O aAlf1 > "9";
+                         |SI i = 901; |Y aAlf1 = ".";
+                         |SINO;
+                              nErr = 1;
+                              |SAL;
+                         |FINSI;
+                    |FINSI;
+               |SIGUE;
+               |SI nErr = 0;
+                    nHay = 1; |SAL;
+               |FINSI;
+          |FINSI;
+          |_SDIR aPath;
+     |SIGUE;
+     |CIERRA #32;
+     |SI nHay = 1;
+          |CONFI "0000SHay Ficheros a Importar. Ejecutar importacion S/N ";
+          |SI FSalida = 0;
+               enCaja = acaja;
+               efFecha = afecha;
+               |SUB_EJECUTA "agift550";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO al_entrar;
+     |HAZ EsSematel;
+     enSwSematel = FSalida;
+
+     |DFICE puente;      |QBF puente;
+     puente = puente % -205;
+     empresa = puente;
+     |ABRE #30;              ||Compruebo existencia Parametros tpv
+     |LEE 001#30p;
+     |SI FSalida = 0;
+          almacen = #30#0;  || *(3)
+          |ABRE #4;         ||Compruebo Existencia parametros caja
+          #4#0 = #6#0;
+          |LEE 101#4=;
+          |SI FSalida = 0;
+               oper_tarjeta = #30#8;        |QBF oper_tarjeta;
+               path = #30#11;               |QBF path;
+               bat_tarjeta = path + #30#9;  |QBF bat_tarjeta;
+               ferr_tarjeta = path + "error";
+               |HAZ Secuencias;
+
+                              ||Caja abierta o de diferente fecha
+               |SI #4#23 = "N";
+                    |HAZ abre_caja;     ||Abro la caja en todos los ficheros
+                    |SI mensaje = "";        ||Hasta ahora todo Correcto
+                         |ABRE #7;    ||Verifico que exista el codigo
+                         #7#0 = #4#18;   ||de horarios
+                         |LEE 001#7=;
+                         |SI FSalida ! 0;
+                              mensaje = "0000ATENCION no existe el fichero de HORARIOS";
+                         |SINO;
+                              |HAZ verif_iva;
+                         |FINSI;
+                         |CIERRA #7;
+                    |FINSI;
+               |SINO;
+                    |SI #4#24 ! #6#1;
+                         mensaje = "0000ATENCION caja del dia --> " + #4#24 + " Abierta";
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               mensaje = "0000El fichero PARAMETROS CAJA no existe";
+          |FINSI;
+          |LIBERA #4;
+          |CIERRA #4;
+     |SINO;
+          mensaje = "0000El fichero PARAMETROS T.P.V no existe";
+     |FINSI;
+     |CIERRA #30;
+|FPRC;
+
+|PROCESO abre_caja;           ||Verifico que no exista el resumen diario
+     |ABRE #8;
+     |DDEFECTO #8;
+     #8#63 = empresa;
+     #8#0 = #6#0;
+     #8#1 = #6#1;
+     |LEE 001#8=;
+     |SI FSalida = 0;
+          mensaje = "0000ATENCION Caja cerrada, no puede introducir mas movimientos";
+     |SINO;
+          fFecha = ~;
+          fNume = fFecha; fNume = fFecha - 1;
+          fAntes = fNume;
+          |SI #4#124 = "S";
+               |SI #6#1 < fAntes; |O #6#1 > fFecha;
+                    mensaje = "0000Fecha NO AUTORIZADA...";
+                    |ACABA;
+               |FINSI;
+          |FINSI;
+          |PINTA 1427 , "Provision";
+          #6#5 = #4#26;
+
+          |SI enSwSematel = 0;
+               |HAZ SematelProvision;
+          |FINSI;
+
+          |C_V #6#5, 1, "S";
+          |ENCAMPO #5#6;
+          |SI FSalida = 0;
+               #8#2 = #6#5;              ||Provision
+               #8#55 = #8#55 + #8#2;
+               #8#56 = "S";           ||Caja abierta en diario
+               #4#23 = "S";           ||caga abierta en Parametros
+               #4#24 = #6#1;   ||Fecha de Apertura
+
+               |GRABA 021#8n;
+               |GRABA 021#4a;
+          |SINO;
+               mensaje = "0000Operacion Anulada por el Usuario";
+          |FINSI;
+     |FINSI;
+     |CIERRA #8;
+|FPRC;
+
+|PROCESO verif_iva;
+     |ABRE #11;
+     |PARA i = 0; |SI i [ 5; |HACIENDO i = i + 1;
+          #11#0 = i;
+          #11#4 = "01.01.0000";
+          |LEE 001#11];
+          |SI FSalida ! 0; |O #11#0 ! i;
+               |DDEFECTO #11;
+               #11#0 = i;
+               |GRABA 021#11n;
+          |FINSI;
+     |SIGUE;
+     |CIERRA #11;
+|FPRC;
+
+|PROCESO sacacaj; |TIPO 7;
+    ||---- Sacar Usuario Para Cargar N� Caja Trabajo.
+    aPersona = Usuario % 810;
+    |ABRE #111;
+    #111#0 = aPersona;
+    |LEE 041#111=;
+    |SI FSalida = 0;
+          #6#0 = #111#1;
+          |SI #6#0 ! 0;
+               |CAMPO_MODIFICA #6#0 , 1 , "N";
+          |FINSI;
+    |FINSI;
+    |CIERRA #111;
+    |PINTA #6#0;
+|FPRC;
+
+|PROCESO defecto; |TIPO 0;
+     |ABRE #4;
+     #4#0 = #6#0;
+     |LEE 000#4=;
+     |SI #4#34 = "S";
+          |C_M #6#2, 1, "S";
+     |SINO;
+          |C_M #6#2, 1, "N";
+     |FINSI;
+     #6#2 = #4#20;
+     |CIERRA #4;
+|FPRC;
+
+|PROCESO Inicio; |TIPO 12;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+
+     |DDEFECTO #19;
+     |ABRE #19;
+     |GRABA 040#19n;          ||Graba Articulo Blanco
+     |CIERRA #19;
+
+     |HAZ al_entrar;
+
+     |SI nSwCajaModi = 1;
+          mensaje = "";      || Dejo de entrar aunque este cerrada
+     |FINSI;
+
+     |SI mensaje ! "";        ||Si ha habido algun error No deja continuar
+          |MENAV mensaje;
+     |SINO;
+          acaja    = #6#0;
+          afecha   = #6#1;
+          camarero = #6#2;
+          mesas    = #6#3;
+          |SI impr_tpv ! "";
+               |SI #4#84 = "S";
+                    Impresora = "windows";
+                    |IMPRE -1;
+                    |IMPRIMESIN " ";
+                    |FINIMP;
+               |FINSI;
+               |SI #4#21 = "S"; |Y #4#181 = "S";
+                    Impresora = impr_tpv;
+                    |IMPRE -1;
+                    |IMPRIMESIN " ";
+                    |FINIMP;
+               |FINSI;
+          |FINSI;
+          |SI #4#133 = "S";
+               |HAZ MiraImporta;
+          |FINSI;
+
+          |SI aParam ! "";
+               |SUB_EJECUTA "tpv00001";        || Restaurante
+          |SINO;
+               |SI #142#117 = "S";
+                    |SUB_EJECUTA "agifa503";    || Doble Stock
+               |SINO;
+                    |SUB_EJECUTA "agifa501";    || Normal o partidas
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     |QBF aParam;
+     |SUB_EJECUTA_NP "zmonedas";
+
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 000#agifa321.p;
+     #agifa324#0 = #agifa321#9;
+     |LEE 000#agifa324.=;
+     |CIERRA #agifa324;
+     |CIERRA #agifa321;
+
+     |SI #agifa324#2 = 1;
+          eaEsEuro = "S";
+     |SINO;
+          eaEsEuro = "N";
+     |FINSI;
+
+     eaParametro = aParam;
+     |CLS;
+     |PINPA #0#6;
+
+     |SI aParam = "";
+          |C_V #6#2, 1, "N";
+          |C_V #6#3, 1, "N";
+          |MODO_RELACION #6, 1, "agifa514", "N", "N";
+     |SINO;
+          |SI aParam = "alimenta";
+               |C_V #6#3, 1, "N";
+               #6#3 = "N";         ||No hay mesas
+               #6#2 = 1;
+               |PINTA 1227, "Cajero...:";
+          |SINO;
+               |PINTA 1227, "Camarero.:";
+               |PINTA 1327, "Mesas S/N:";
+          |FINSI;
+     |FINSI;
+     |PINDA #0#6;
+     |ENDATOS #1#6;
+|FPRO;
+
+|PROCESO SematelProvision;
+     |SALVA_FICHA #8;
+
+     #8#1 = "01.01.0000";
+     fUltima = "01.01.0000";
+     |LEE 000#8];
+     |PARA; |SI FSalida = 0; |Y #8#63 = empresa; |Y #8#0 = #6#0; |HACIENDO;
+          |SI fUltima < #8#1;
+               fUltima = #8#1;
+               #6#5 = #8#55;  || Total Caja
+          |FINSI;
+          |LEE 000#8s;
+     |SIGUE;
+
+     |REPON_FICHA #8;
+|FPRC;

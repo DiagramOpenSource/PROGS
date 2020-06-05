@@ -1,0 +1,937 @@
+|FICHEROS;
+   caborasi #0;
+   camaasil #1;    || apuntes lins.
+   camaasic #2;    || apuntes cabs.
+   cacuenta #3;    || plan contable
+
+   camandia #10;   || diarios
+   caivaasi #8;
+   &Puente@ #9;
+   calicont #31;
+   camanefe #347;
+
+   camaniva #6;
+   caivalin #7;
+   caivam03 #223;
+
+   canempre #30;
+   caselem1 #998;
+   cabortmp #999,MANTE;
+   caerpnif;
+
+   anm00012 #112;
+   anm00013 #113;
+
+   calincob #1000;
+   calinpag #1001;
+
+   ca8m0004 #404;
+
+   dscam043@ #2000;
+   dscam004@ #2002;
+   dscam009@ #2004;
+
+   camanref  #1002;
+   casiim01;
+   casiim02;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   &enDnDIARIO   = 0;
+   &enHnDIARIO   = 0;
+   &efDFechas    = @;
+   &efHFechas    = @;
+   &enDDocume    = 0;
+   &enHDocume    = 0;
+   &enBorraAu    = 0;
+
+   &modcon = 0;
+   nOk   = 0;
+   nAny  = 0;
+   alfa1 = "";
+   desdi = 0;
+   hasdi = 0;
+   desfe = @;
+   hasfe = @;
+   desdo = 0;
+   hasdo = 0;
+   mensa1 = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+   mensa2 = "    ATENCION. FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+
+   Comodin = "";
+   &eaPath = "";
+   &eaRetorno = "";
+
+   nLibroR   = 0;
+   aSerieR   = "";
+   nFacturaR = 0;
+   fFechaFra = @;
+
+   contador = 0;
+   swSelec  = 0;
+   aFichero = "";
+   descrip = "";
+   swConcepto = 0;
+   nConcepto  = 0;
+   swPasa     = 0;
+   nDdepar    = 0;
+   nHdepar    = 0;
+
+   nSwError   = 0;
+   nSwMensaje = 0;
+   nSwMensaj1 = 0;
+   nSwMensaj2 = 0;
+   aTipoDoc   = "";
+   aSerie     = 0;
+   nFactura   = 0;
+   nLibro     = 0;
+   fFecha     = @;
+
+   aAlfa      = "";
+   aAlfa1     = "";
+   aT1        = "";
+   nT2        = 0;
+   nT3        = 0;
+   aT4        = "";
+   &swVarios  = 0;
+   &enSi340   = 0;
+   &enSi303   = 0;
+   &enSi111   = 0;
+   &enBaja340 = 0;
+   &enBajE340 = 0;
+   &enSwCaja  = 0;
+   &eModoCaja = 0;
+
+   nCont      = 0;
+
+   nNumNoBorr1 = 0;
+   nNumNoBorr2 = 0;
+   nNumNoBorr3 = 0;
+   SwPath      = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscopi_i;
+|INCLUYE modulo_i;
+
+|| *************************************************************************
+||                          DESDE CAMPOS DE PANTALLA
+|| *************************************************************************
+
+|PROCESO defectos; |TIPO 7;
+   #0#1 = fec1;
+   #0#10 = fec2;
+   |PINTA #0#1;
+   |PINTA #0#10;
+|FPRC;
+
+|PROCESO fecha; | TIPO 0;   || Desde/hasta fecha
+      |SI #0Campo [ fec3;
+          |MENAV mensa2;
+          |ACABA;
+      |FINSI;
+
+      |SI #0Campo < fec1; |O #0Campo > fec2;
+          |MENAV mensa1;
+          |ERROR;
+      |FINSI;
+|FPRC;
+
+|PROCESO diarh; | TIPO 0;   ||  hasta diario
+   |SI #0#9 < #0#0;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO fechah; | TIPO 0;   ||  hasta fecha
+   |SI #0#10 < #0#1;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO documh; | TIPO 0;   ||  hasta documento
+   |SI #0#3 < #0#2;  |ERROR;  |FINSI;
+|FPRC;
+
+|CALCULO cuenta; |TIPO 0;
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta;
+     |PINTA #0Campo;
+|FCAL;
+
+|PROCESO cuenth; | TIPO 0;   ||  hasta documento
+   |SI #0#19 < #0#18;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO nodepar; |TIPO 7;
+   |C_M #0#14, 1, eaDepar;
+   |C_M #0#15, 1, eaDepar;
+|FPRC;
+
+|PROCESO nosubde; |TIPO 7;
+   |C_M #0#16, 1, eaSubde;
+   |C_M #0#17, 1, eaSubde;
+|FPRC;
+
+|| *************************************************************************
+||                  ACTUALIZA
+|| *************************************************************************
+|PROCESO borrocp347;       || cobros/pagos 347
+   |BORRA 020#347a;
+   |LIBERA #347;
+|FPRC;
+
+|PROCESO borrocont;     || contrapartidas
+   |BORRA 020#31a;        || borra contrap.
+   |LIBERA #31;
+|FPRC;
+
+|PROCESO borrodia00;      || auxiliar diario apertura
+   |BORRA 020#404a;
+   |LIBERA #404;
+|FPRC;
+
+|PROCESO borrodia;  || trabajo por cada lineas
+   MasMenos     = - #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+   nNIVELCUENTA = #camaasil#5;
+   |HAZ ActDiario;          || diario
+   |HAZ ActCuenta;          || cuenta
+   |HAZ ActTesteo;          || cuenta
+
+   |SI enEjercicio ] 2014; |Y  #camaasil#12 = " ";
+       |Y #camaasil#0 ! 0; |Y #camaasil#0 ! 99;
+          eModoCaja = 3;
+          |HAZ eTrataCobroZ;
+   |FINSI;
+
+   |BORRA 020#1a;  ||   borra l¡nea
+   |LIBERA #1;
+
+  || ....  BajaGrupo;
+  alfa1 = #1#29; alfa1 = alfa1 % 103;
+  |SI alfa1 = "GRU";
+      |ABRE #112;
+      #112#0 = #1#0;
+      #112#1 = #1#1;
+      #112#2 = #1#2;
+      #112#3 = #1#3;
+      #112#4 = #1#29;
+      |LEE 101#112=;
+      |SI FSalida = 0;
+          |BUCLELIN 1NULL#112;
+          |BORRA 020#112a;
+      |FINSI;
+      |LIBERA #112;
+      |CIERRA #112;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE cacierre0;
+   #1#1;
+   ;
+   #camaasic#0, #camaasic#1, #camaasic#2,    1;
+   #camaasic#0, #camaasic#1, #camaasic#2, 9999;
+   be;
+   NULL, borrodia;
+|FIN;
+
+|DEFBUCLE cacierre2;
+   #31#1;
+   ;
+   #camaasic#0, #camaasic#1, #camaasic#2,    1;
+   #camaasic#0, #camaasic#1, #camaasic#2, 9999;
+   be;
+   NULL, borrocont;
+|FIN;
+
+|DEFBUCLE cacierre3;
+   #404#1;
+   ;
+   #camaasic#0, #camaasic#1, #camaasic#2,    1;
+   #camaasic#0, #camaasic#1, #camaasic#2, 9999;
+   be;
+   NULL, borrodia00;
+|FIN;
+
+|DEFBUCLE cacierre4;
+   #347#1;
+   ;
+   #camaasic#0, #camaasic#1, #camaasic#2,    1;
+   #camaasic#0, #camaasic#1, #camaasic#2, 9999;
+   be;
+   NULL, borrocp347;
+|FIN;
+
+|PROCESO ComprLineas;
+   |SI #camaasil#12 ! "S"; |Y #camaasil#12 ! "R"; |ACABA; |FINSI;
+
+   |SI nLibroR ! #camaasil#13; |O aSerieR ! #camaasil#15; |O nFacturaR ! #camaasil#14;
+      |SI #camaasil#12 = "S";
+         aTipoDoc  = "C";
+      |SINO;
+         aTipoDoc  = "V";
+      |FINSI;
+      nLibroR   = #camaasil#13;
+      aSerieR   = #camaasil#15;
+      nFacturaR = #camaasil#14;
+      |ABRE #camaniva;
+      |SELECT #2#camaniva;
+      #camaniva#7 = #camaasic#0;
+      #camaniva#8 = #camaasic#1;
+      #camaniva#9 = #camaasic#2;
+      |LEE 000#camaniva.=;
+      |SI FSalida ! 0; |DDEFECTO #camaniva; |FINSI;
+      |SELECT #1#camaniva;
+      |LEE 000#camaniva.=;
+      fFechaFra = #camaniva#4;
+      |CIERRA #camaniva;
+      eaProg = "camaniva";
+      eaVC   = #camaniva#36;
+      |HAZ MiraRecibos;
+      |SI enErrCarte ! 0; nSwError = 1; |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE ComprLineas;
+  #camaasil#1;
+  ;
+  #camaasic#0, #camaasic#1, #camaasic#2, 0000;
+  #camaasic#0, #camaasic#1, #camaasic#2, 9999;
+  ;
+  NULL, ComprLineas;
+|FIN;
+
+|PROCESO borrocab;     || trabajo de cabecera
+   nDIARIO      = #camaasic#0;
+   aFECHA       = #camaasic#1;
+   nDOCUMENTO   = #camaasic#2;
+   |HAZ LeeTemporal;
+   |SI swSelec = 0; |ACABA; |FINSI;
+
+   |BUCLE cacierre0;  ||Borrar Lineas
+   |SI #camaasic#0 = 00;
+       |BUCLE cacierre3;  ||Borrar Auxiliar de la apertura
+   |FINSI;
+   |BUCLE cacierre2;     ||Borrar Contrapartidas
+   |BUCLE cacierre4;     ||Borrar Cobros/pagos para el 347
+   |BORRA 020#2a;        ||   borra cabecera
+   |LIBERA #2;
+
+   enTipoEx   = 3;
+   enDiarioEx = #camaasic#0;
+   efFechaEx  = #camaasic#1;
+   enDocumEx  = #camaasic#2;
+   enPerEx    = enPeriodo;
+   |HAZ eBorraExtras;
+|FPRC;
+
+|DEFBUCLE cacierre1;
+   #2#1;
+   ;
+   desdi, desfe, desdo;
+   hasdi, hasfe, hasdo;
+   be;
+   NULL, borrocab;
+|FIN;
+
+|| ---------------------- IVA y Cartera
+
+|PROCESO BorraRecsV;
+     |DDEFECTO #Puente@;
+     #Puente@#0  = #calincob#0;
+     #Puente@#1  = #calincob#2;
+     #Puente@#2  = #calincob#1;
+     #Puente@#3  = #calincob#3;
+     #Puente@#5  = #calincob#6;
+     #Puente@#22 = nCont;
+     #Puente@#23 = #48#2;
+     #Puente@#24 = #48#3;
+     #Puente@#27 = "V";
+     #Puente@#28 = "B";
+     #Puente@#35 = " ";
+     |GRABA 020#Puente@.n;
+     nCont = nCont + 1;
+
+     |BORRA 020#calincob.a;
+     |LIBERA #calincob;
+|FPRC;
+
+|DEFBUCLE BorraRecsV;
+  #calincob#1;
+  ;
+  #camaniva#0,#camaniva#2,#camaniva#3,001;
+  #camaniva#0,#camaniva#2,#camaniva#3,999;
+  be;
+  NULL,BorraRecsV;
+|FIN;
+
+|PROCESO BorraRecsC;
+     |DDEFECTO #Puente@;
+     #Puente@#0  = #calinpag#0;
+     #Puente@#1  = #calinpag#2;
+     #Puente@#2  = #calinpag#1;
+     #Puente@#3  = #calinpag#3;
+     #Puente@#5  = #calinpag#6;
+     #Puente@#22 = nCont;
+     #Puente@#23 = #48#2;
+     #Puente@#24 = #48#3;
+     #Puente@#27 = "C";
+     #Puente@#28 = "B";
+     #Puente@#35 = " ";
+     |GRABA 020#Puente@.n;
+     nCont = nCont + 1;
+
+     |BORRA 020#calinpag.a;
+     |LIBERA #calinpag;
+|FPRC;
+
+|DEFBUCLE BorraRecsC;
+   #calinpag#1;
+   ;
+   #camaniva#0,#camaniva#2,#camaniva#3,001;
+   #camaniva#0,#camaniva#2,#camaniva#3,999;
+   be;
+   NULL,BorraRecsC;
+|FIN;
+
+|PROCESO LineasIva;
+   |BORRA 020#caivalin.a;
+   |LIBERA #caivalin;
+|FPRC;
+
+|DEFBUCLE LineasIva;
+   #caivalin#1;
+   ;
+   #camaniva#0,#camaniva#1,001;
+   #camaniva#0,#camaniva#1,999;
+   be;
+   NULL,LineasIva;
+|FIN;
+
+|PROCESO borroiva;
+   nDIARIO      = #camaniva#7;
+   aFECHA       = #camaniva#8;
+   nDOCUMENTO   = #camaniva#9;
+   |HAZ LeeTemporal;
+   |SI swSelec = 0; |ACABA; |FINSI;
+
+   |BUCLE LineasIva;
+   |BORRA 020#camaniva.a;
+   |LIBERA #camaniva;
+
+   |ABRE #caerpnif;
+   #caerpnif#0 = #camaniva#0;
+   #caerpnif#1 = #camaniva#1;
+   |LEE 101#caerpnif.=;
+   |SI FSalida = 0;
+       |BORRA 020#caerpnif.a;
+       |LIBERA #caerpnif;
+   |FINSI;
+   |CIERRA #caerpnif;
+
+   |HAZ DesactualizaDSarchi;
+
+   |SI #camaniva#36 = "N"; |ACABA; |FINSI;
+
+   enSwCaja = 0;
+   |SI enEjercicio ] 2014;
+       |SI #camaniva#42 = "Z"; |O #camaniva#42 = "1"; |O #camaniva#42 = "2";
+           |O #camaniva#42 = "3"; |O #camaniva#42 = "4"; |O #camaniva#42 = "5";
+           |O #camaniva#42 = "6"; |O #camaniva#42 = "7"; |O #camaniva#42 = "8";
+              enSwCaja  = 1;
+              eModoCaja = 3;
+              |HAZ eTrataClaveZ;
+       |FINSI;
+   |FINSI;
+
+   |ABRE #223;
+   #223#0 = #camaniva#0;
+   #223#1 = #camaniva#1;
+   |LEE 101#223=;
+   |SI FSalida = 0;
+       |BORRA 020#223a;
+   |FINSI;
+   |LIBERA #223;
+   |CIERRA #223;
+
+   |SI #camaniva#36 = "S";
+       |HAZ EsComersan;
+       |SI FSalida = 0;
+           |ABRE #1002;
+           #1002#0 = #camaniva#0;
+           #1002#1 = #camaniva#1;
+           |LEE 101#1002=;
+           |SI FSalida = 0;
+               |BORRA 020#1002a;
+           |FINSI;
+           |LIBERA #1002;
+           |CIERRA #1002;
+       |FINSI;
+   |FINSI;
+
+   |ABRE #caivaasi;
+   |LEE 000#caivaasi.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #caivaasi;
+      |GRABA 020#caivaasi.n;
+   |FINSI;
+   Comodin = #caivaasi#56; |QBF Comodin;
+   |CIERRA #caivaasi;
+   |SI Comodin = ""; |ACABA; |FINSI;
+
+   nCont  = 1;
+   eaPath = Comodin;
+   |HAZ CreaPuente;
+   |SI eaRetorno = "ERROR"; |ACABA; |FINSI;
+
+   |SI #camaniva#36 = "R"; |BUCLE BorraRecsV; |FINSI;
+   |SI #camaniva#36 = "S"; |BUCLE BorraRecsC; |FINSI;
+
+   |HAZ CierraPuente;
+|FPRC;
+
+|DEFBUCLE borroiva;
+   #camaniva#2;
+   ;
+   desdi, desfe, desdo;
+   hasdi, hasfe, hasdo;
+   e;
+   NULL, borroiva;
+|FIN;
+
+|| **************************************************************************
+|PROCESO borrado; |TIPO 3;
+  |HAZ DirAplicSt;
+  |SI Haybasica = 1; |Y #0#15 = "zz"; #0#15 = "99"; |FINSI;
+
+   |SI #0#8 ! "SI";  |ACABA;  |FINSI;
+
+   desdi = #0#0;
+   hasdi = #0#9;
+   desfe = #0#1;
+   hasfe = #0#10;
+   desdo = #0#2;
+   hasdo = #0#3;
+
+  |SI #48#27 = "S"; |Y enBorraAu = 0;
+      |HAZ MultiEmpresa;
+  |SINO;
+      |SI SwPath = 0;
+          |DFICE dirfich0; |QBF dirfich0;
+      |FINSI;
+      |HAZ HazTodo;
+  |FINSI;
+|FPRC;
+
+|PROCESO HazTodo;
+
+   enEmpresaPINET = enEmpresa;
+   |HAZ RestriccionPINET;
+   |SI enModoPINET3 = 1;
+       aAlfa = ("00000" + enEmpresa) % -105;
+       aAlfa = "    No puede dar de Baja Asientos en la Empresa: " + aAlfa;
+       |MENAV aAlfa;
+
+       |ACABA;
+   |FINSI;
+
+   nSwMensaje = 0;
+   nSwMensaj1 = 0;
+   nSwMensaj2 = 0;
+   enM349 = 1; |HAZ Consul303; enM349 = 0;
+   |HAZ eLeeParametro;
+
+   |ABRE #caivaasi;
+   |DDEFECTO #caivaasi;
+   |LEE 000#caivaasi.p;
+   |CIERRA #caivaasi;
+
+   |HAZ elLineal;
+   |SI contador = 0; |ACABA; |FINSI;
+
+   |ABRE #999;
+   |SELECT #2#999;
+   |BUCLE cacierre1;   || borra cabeceras
+
+   |SI #0#4 = "S";
+       |BUCLE borroiva;
+   |FINSI;
+
+   |CIERRA #999;
+   |DELINDEX #999;
+|FPRC;
+
+|PROGRAMA;
+   |HAZ inicio;
+
+   SwPath = 0;
+   |SI enBorraAu = 2; |Y swVarios = 1; SwPath = 1; |FINSI;
+   |SI enBorraAu = 4;  SwPath = 1; |FINSI;
+
+   |SI SwPath = 1;
+      |PATH_DAT #1 dirfich0;
+      |PATH_DAT #2 dirfich0;
+      |PATH_DAT #3 dirfich0;
+      |PATH_DAT #6 dirfich0;
+      |PATH_DAT #7 dirfich0;
+      |PATH_DAT #8 dirfich0;
+      |PATH_DAT #10 dirfich0;
+      |PATH_DAT #31 dirfich0;
+      |PATH_DAT #347 dirfich0;
+      |PATH_DAT #112 dirfich0;
+      |PATH_DAT #113 dirfich0;
+      |PATH_DAT #223 dirfich0;
+      |PATH_DAT #404 dirfich0;
+      |PATH_DAT #1000 dirfich0;
+      |PATH_DAT #1001 dirfich0;
+      |PATH_DAT #casiim01#dirfich0#;
+      |PATH_DAT #casiim02#dirfich0#;
+      |HAZ EsComersan;
+      |SI FSalida = 0; |PATH_DAT #1002 dirfich0; |FINSI;
+   |FINSI;
+
+   |SI enBorraAu ! 2; |Y enBorraAu ! 3; |Y enBorraAu ! 4;
+       |CLS;
+       |CABEZA "Borrado de Asientos";
+       |PINPA #0#0;
+   |FINSI;
+
+   |SI enBorraAu ! 0;
+      |DDEFECTO #0;
+      #0#0   = enDnDIARIO;
+      #0#1   = efDFechas;
+      #0#2   = enDDocume;
+      #0#3   = enHDocume;
+      #0#4   = "S";
+      #0#8   = "SI";
+      #0#9   = enHnDIARIO;
+      #0#10  = efHFechas;
+      #0#11  = "S";
+      #0#12  = 1;
+      #0#13  = 999;
+      |SI enBorraAu ! 2; |Y enBorraAu ! 3; |Y enBorraAu ! 4;
+          |PINDA #0#0;
+      |FINSI;
+      |HAZ borrado;
+   |SINO;
+      |DDEFECTO #0;
+      |PINDA #0#0;
+      |ENDATOS #1#0;
+   |FINSI;
+|FPRO;
+
+||********************************
+|PROCESO LeoLin1;
+ swPasa = 1;
+
+ |SI #1#6 < #0#12; |O #1#6 > #0#13; swPasa = 0; |FINSI;
+ |SI Haybasica = 1;
+     nDepar  = #1#21; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+     nDdepar = #0#14;
+     nHdepar = #0#15;
+     |SI nDepar < nDdepar; |O nDepar > nHdepar; swPasa = 0; |FINSI;
+ |SINO;
+     |SI #1#21 < #0#14;    |O #1#21 > #0#15;    swPasa = 0; |FINSI;
+ |FINSI;
+ |SI #1#28 < #0#16;  |O #1#28 > #0#17;  swPasa = 0; |FINSI;
+ |SI #1#4  < #0#18;  |O #1#4  > #0#19;  swPasa = 0; |FINSI;
+
+ |SI swPasa = 1;
+     swConcepto = 1;
+     nConcepto = #1#6;
+     descrip   = #1#7;
+     aT1       = #1#12;
+     nT2       = #1#13;
+     nT3       = #1#14;
+     aT4       = #1#15;
+     |ERROR10;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoLin;
+   #1#1;
+   ;
+   #camaasic#0, #camaasic#1, #camaasic#2,    1;
+   #camaasic#0, #camaasic#1, #camaasic#2, 9999;
+   e;
+   NULL, LeoLin1;
+|FIN;
+
+
+|PROCESO CreaTemp2;
+
+ |SI #2#1 [ fec3; |ACABA; |FINSI;  || no si es la fecha de bloqueo
+
+ swConcepto = 0;
+ descrip    = "";
+ aT1        = "";
+ nT2        = 0;
+ nT3        = 0;
+ aT4        = "";
+ |BUCLE LeoLin;
+ |SI swConcepto = 0; |ACABA; |FINSI;
+
+ enTipoAsto = #2#13;
+ |SI #2#13 > 100; |Y enBorraAu < 3;
+     enSwDejar = 0;
+     |SI #2#13 ] 110; |HAZ eDejarModificar; |FINSI;
+     |SI enSwDejar = 0;  |ACABA; |FINSI;
+ |FINSI;
+
+ || Comprobamos si el asiento es de IVA
+    |ABRE #camaniva;
+    |SELECT #2#camaniva;
+    #camaniva#7 = #camaasic#0;
+    #camaniva#8 = #camaasic#1;
+    #camaniva#9 = #camaasic#2;
+    |LEE 000#camaniva.=;
+    |SI FSalida = 0;
+        || ... ... Comprobamos primero el Modelo 340, para la baja
+
+        |SI enSi303 = 1; |Y #camaniva#40 ! 0; |Y #camaniva#36 ! "N"; |Y #caivaasi#167 ! "X";
+            nSwMensaj2 = nSwMensaj2 + 1;
+            |SI #caivaasi#167 = "N"; |O #caivaasi#167 = "P";
+                |SELECT #1#camaniva;
+                |CIERRA #camaniva;
+                nNumNoBorr2 = nNumNoBorr2 + 1;
+                |ACABA;
+            |FINSI;
+        |FINSI;
+
+        |SI enSi111 = 1; |Y #camaniva#40 ! 0; |Y #caivaasi#167 ! "X"; |Y #camaniva#20 ! 0;
+            nSwMensaj2 = nSwMensaj2 + 1;
+            |SI #caivaasi#167 = "N"; |O #caivaasi#167 = "P";
+                |SELECT #1#camaniva;
+                |CIERRA #camaniva;
+                nNumNoBorr2 = nNumNoBorr2 + 1;
+                |ACABA;
+            |FINSI;
+        |FINSI;
+
+        |SI enSi340 = 1; |Y #camaniva#40 ! 0; |Y #camaniva#36 ! "N"; |Y #caivaasi#156 ! "X";
+
+            nOk = 1;
+            nAny = enEjercicio;
+            |SI dig1 ! 1; |Y #camaniva#40 < dig1;
+                nAny = enEjercicio + 1;
+            |FINSI;
+            |SI enBaja340 ! 0; |Y #camaniva#40 > enBaja340; |Y enBajE340 = nAny;
+                nOk = 0;
+            |FINSI;
+            |SI enBaja340 ! 0; |Y enBajE340 < nAny; nOk = 0; |FINSI;
+
+            |SI nOk = 1;
+                nSwMensaj1 = nSwMensaj1 + 1;
+                |SI #caivaasi#156 = "N";
+                    |SELECT #1#camaniva;
+                    |CIERRA #camaniva;
+                    nNumNoBorr3 = nNumNoBorr3 + 1;
+                    |ACABA;
+                |FINSI;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+    |SELECT #1#camaniva;
+    |CIERRA #camaniva;
+
+ nSwError = 0; |BUCLE ComprLineas;
+ |SI nSwError = 1;
+     nSwMensaje  = 1;
+     nNumNoBorr1 = nNumNoBorr1 + 1;
+     |ACABA;
+ |FINSI;
+
+ contador  = contador + 1;
+ #999#0    = contador;
+ #999#1    = #2#0;
+ #999#2    = #2#1;
+ #999#3    = #2#2;
+ #999#4    = #2#3;
+ #999#5    = #2#4;
+ #999#6    = #2#5;
+ #999#7    = #2#6;
+ #999#8    = #0#11;
+ #999#9    = descrip;
+ #999#10   = nConcepto;
+ #999#11   = aT1;
+ aAlfa1 = nT2; |QBF aAlfa1; aAlfa1 = ("00" + aAlfa1) % -102;
+ |SI aAlfa1 = "00"; aAlfa1 = ""; |FINSI;
+ #999#12 = aAlfa1;
+ aAlfa1 = nT3; |QBF aAlfa1; aAlfa1 = ("000000" + aAlfa1) % -106;
+ |SI aAlfa1 = "000000"; aAlfa1 = ""; |FINSI;
+ #999#13 = aAlfa1;
+ #999#14 = aT4;
+ aAlfa1 = #999#2; aAlfa1 = aAlfa1 % 105;
+ #999#15 = aAlfa1;
+ |GRABA 040#999n;
+ |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE CreaTemp1;
+   #2#1;
+   ;
+   desdi, desfe, desdo;
+   hasdi, hasfe, hasdo;
+   e;
+   NULL, CreaTemp2;
+|FIN;
+
+|RUTINA ClaveAlta999;
+ #999#0 = 1;
+|FRUT;
+
+|RUTINA ClaveBaja999;
+ #999#0 = contador;
+|FRUT;
+
+|PROCESO elLineal;
+  contador = 0;
+  aFichero = ("0b" + Usuario) % 108;
+  |NOME_DAT #999 aFichero;
+  |DELINDEX #999;
+
+  nNumNoBorr1 = 0;
+  nNumNoBorr2 = 0;
+  nNumNoBorr3 = 0;
+  |ABRE #999;
+  |BUCLE CreaTemp1;
+  |CIERRA #999;
+
+  |SI nNumNoBorr1 ! 0;
+      aAlfa1 =  "    Se han omitido registros de IVA por no poder ser eliminados (recibos con movimientos)";
+      |SI nNumNoBorr1 = 1; aAlfa1 =  "    Se ha omitido registro de IVA por no poder ser eliminado (recibo con movimientos) "; |FINSI;
+      |MENAV aAlfa1;
+  |FINSI;
+
+  |SI nSwMensaj1 ! 0; |O nSwMensaj2 ! 0;
+      |SI nSwMensaj1 ! 0; |Y nSwMensaj2 = 0;
+          |SI nNumNoBorr3 ! 0;
+              aAlfa1 =  "    Se han omitido registros de IVA por no poder ser eliminados (Fras Liquidadas en Modelo 340)";
+              |SI nNumNoBorr3 = 1; aAlfa1 =  "    Se ha omitido registro de IVA por no poder ser eliminado (Fra Liquidada en Modelo 340)"; |FINSI;
+          |SINO;
+              aAlfa1 =  "    Borrados Asientos de Facturas ya Liquidada. Repase el 340";
+              |SI nSwMensaj1 = 1; aAlfa1 =  "    Borrado Asiento de Factura ya Liquidada. Repase el 340"; |FINSI;
+          |FINSI;
+      |FINSI;
+      |SI nSwMensaj2 ! 0; |Y nSwMensaj1 = 0;
+          |SI nNumNoBorr2 ! 0;
+              aAlfa1 =  "    Se han omitido registros de IVA por no poder ser eliminados (Fras Liquidadas en Modelos)";
+              |SI nNumNoBorr2 = 1; aAlfa1 =  "    Se ha omitido registro de IVA por no poder ser eliminado (Fra Liquidada en Modelos) "; |FINSI;
+          |SINO;
+              aAlfa1 =  "    Borrados Asientos de Facturas ya Liquidada. Repase los Modelos confeccionados";
+              |SI nSwMensaj2 = 1; aAlfa1 =  "    Borrado Asiento de Factura ya Liquidada. Repase Modelos"; |FINSI;
+          |FINSI;
+      |FINSI;
+      |SI nSwMensaj2 ! 0; |Y nSwMensaj1 ! 0;
+          |SI nNumNoBorr2 = 0; |Y nNumNoBorr3 = 0;
+              aAlfa1 =  "    Borrados Asientos de Facturas ya Liquidada. Repase Modelos";
+              |SI nSwMensaj2 = 1; aAlfa1 =  "    Borrado Asiento de Factura ya Liquidada. Repase Modelos" ; |FINSI;
+          |SINO;
+              aAlfa1 =  "    Se han omitido registros de IVA por no poder ser eliminados (Fras Liquidadas en Modelos)";
+              |SI nNumNoBorr2 [ 1; |O nNumNoBorr3 [ 1; aAlfa1 =  "    Se ha omitido registro de IVA por no poder ser eliminado (Fra Liquidada en Modelos) "; |FINSI;
+          |FINSI;
+      |FINSI;
+      |MENAV aAlfa1;
+  |FINSI;
+
+  |SI contador  ! 0;
+     |SI enBorraAu = 0;
+
+         |SI #0#4 = "S";
+             |PINPA #0#999;
+         |SINO;
+             |PINPA #1#999;
+             |C_V #999#12,1,"N";
+             |C_V #999#13,1,"N";
+             |C_V #999#14,1,"N";
+             |C_P #999#8,1,1262;
+         |FINSI;
+         |ATRI S; |PINTA 0706, "Empresa: "; |ATRI 0;
+         |PINTA 0715, #canempre#2;
+         |PINTA 0721, #canempre#1;
+         |ENTLINEAL #1#999, -1, 4, 22, 0, ClaveAlta999, ClaveBaja999;
+         |CONFI "2400SDesea borrar los Asientos Seleccionados ";
+         |SI FSalida ! 0; contador = 0; |FINSI;
+     |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO pidetecla; |TIPO 11;
+ |SI FSalida ! 10; |ACABA; |FINSI;
+ |LIBERA #999;
+ |LEE 110#999=;
+ |SI #999#8 = "N";
+     #999#8 = "S";
+ |SINO;
+     #999#8 = "N";
+ |FINSI;
+ |PTEC 809;
+ |PINTA #999#8;
+ |GRABA 020#999a;
+|FPRC;
+
+|PROCESO LeeTemporal;
+ swSelec = 0;
+ #999#1 = nDIARIO;
+ #999#2 = aFECHA;
+ #999#3 = nDOCUMENTO;
+ |LEE 000#999=;
+ |SI FSalida = 0;
+     |SI #999#8 = "S";
+         swSelec = 1;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|| **********************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #6 dirfich0;
+   |PATH_DAT #7 dirfich0;
+   |PATH_DAT #8 dirfich0;
+   |PATH_DAT #10 dirfich0;
+   |PATH_DAT #31 dirfich0;
+   |PATH_DAT #347 dirfich0;
+   |PATH_DAT #112 dirfich0;
+   |PATH_DAT #113 dirfich0;
+   |PATH_DAT #223 dirfich0;
+   |PATH_DAT #404 dirfich0;
+   |PATH_DAT #1000 dirfich0;
+   |PATH_DAT #1001 dirfich0;
+   |PATH_DAT #casiim01#dirfich0#;
+   |PATH_DAT #casiim02#dirfich0#;
+   |HAZ EsComersan;
+   |SI FSalida = 0; |PATH_DAT #1002 dirfich0; |FINSI;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

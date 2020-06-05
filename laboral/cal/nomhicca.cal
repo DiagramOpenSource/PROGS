@@ -1,0 +1,471 @@
+|FICHEROS;
+     nomhicca #0;
+     nomcalac #100;
+     nomvarcc;
+     nomagic1 #101;
+     :/modelos/def/dsmom107 #107;   || Control y Firmantes
+
+     labbasel;
+
+     labtraba;
+     nomcot03;
+|FIN;
+
+|VARIABLES;
+    mod = 0;
+    fecsys = @;
+    alfa1 = "";
+    xxxxfiac = "  ";
+    xxaponer = "  ";
+    xrelleno = "                              ";
+    men1 = "0000ATENCION !!! Fecha erronea ...";
+    dia1 = "";
+    mes1 = "";
+    any1 = "";
+    dia = 0;
+    mes = 0;
+    any = 0;
+    tope = 0;
+    sw = 0;
+    fec = "";
+    blanco = "          ";
+    puntos = "..........";
+     nBonif = 0;
+     swSigue = 0;
+     nAny = 0;
+
+     aPath           = "";
+     &eaPathDsmodelo = "";
+     nSwVerConta     = 0;  ||... 0 = #107#29 = N, 1 = #107#29 = S
+     swPaso          = 0;
+     aAlfa           = "";
+     nModoEntrada    = 0;
+     aTipo           = "";
+
+     &nArchi         = 0;
+
+     aAlfa1 = "";
+     aAlfa2 = "";
+     nMes = 0;
+     nNume = 0;
+     nModo = 0;
+
+     enBotonCal = 0;
+     swBotonCalSiNo = 0;
+     enBotonRec = 0;
+     swBotonRecSiNo = 0;
+     aParametro = "";
+     aNaf = "";
+|FIN;
+
+|| ... ... ... ...  Procesos nuevos para controlar contabilizacion nominas
+|PROCESO Tipo8C0; |TIPO 8;
+     nSwVerConta = 0;
+     |HAZ BusquedaApli;
+     |SI eaPathDsmodelo ! "";
+         aPath = eaPathDsmodelo + "fich/";
+         |PATH_DAT #107 aPath;
+
+         |ABRE #107;
+         |DDEFECTO #107;
+         |LEE 041#107p;
+         |CIERRA #107;
+         |SI #107#29 = "S"; nSwVerConta = 1; |FINSI;
+
+         |CIERRA #107;
+     |FINSI;
+|FPRC;
+
+|PROCESO VeoHisAsto;
+
+  swPaso = 0;
+  aTipo  = "H";
+  |SI #0#3 > 4;  aTipo = "T"; |FINSI;
+
+  |ABRE #101;
+  #101#0 = #0#0;
+  #101#1 = #0#1;
+  #101#2 = #0#66;
+  #101#3 = #0#2;
+  #101#4 = #0#3;
+  #101#5 = aTipo;
+  |LEE 101#101=;
+  |SI FSalida = 0;
+      swPaso = 1;
+      |SI #101#12 < 100;         swPaso = 2; |FINSI;
+      |SI #101#7 = "01.01.0000"; swPaso = 0; |FINSI;
+  |FINSI;
+  |LIBERA #101;
+  |CIERRA #101;
+|FPRC;
+
+|PROCESO Tipo1C03; |TIPO 1;
+    |SI nSwVerConta = 1;
+        nModoEntrada = (FEntrada / 100) ! 0;
+        |HAZ VeoHisAsto;
+        |SI swPaso ! 0;
+            |SI swPaso = 1;
+                aAlfa = "    NOMINA CONTABILIZADA. ";
+                |SI nModoEntrada = 3; aAlfa = aAlfa + "No se puede dar de Baja"; |FINSI;
+                |SI nModoEntrada = 2; aAlfa = aAlfa + "No se puede Modificar";   |FINSI;
+                aAlfa = aAlfa + ". Debe desactualizarla";
+                |MENAV aAlfa;
+                |ERROR;
+                |ACABA;
+            |SINO;
+                aAlfa = "    NNOMINA CONTABILIZADA. ";
+                |SI nModoEntrada = 3; aAlfa = aAlfa + "Si borra, "; |FINSI;
+                |SI nModoEntrada = 2; aAlfa = aAlfa + "Si modifica, "; |FINSI;
+                aAlfa = aAlfa + "provocara diferencias con Contabilidad. Continuar ";
+                |CONFI aAlfa;
+                |SI FSalida ! 0;
+                    |ERROR;
+                    |ACABA;
+                |FINSI;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+
+    |SI nModoEntrada = 3;
+        |HAZ MiraSiArchiva;
+        |SI nArchi = 1;
+            aAlfa = "BLAB";                                        || Accion
+            aAlfa = aAlfa + ("00000" + #nomhicca#0) % -105;        || Empresa
+            aAlfa = aAlfa + ("00000" + #nomhicca#1) % -105;        || Trabajador
+            aAlfa = aAlfa + ("00" + #nomhicca#2) % -102;           || Periodo
+            aAlfa = aAlfa + "20" + (("00" + #nomhicca#66) % -102); || A¤o
+            aAlfa = aAlfa + ("00" + #nomhicca#3) % -102;           || Tipo
+            aAlfa = aAlfa + "990";                                 || Modelo
+            aAlfa = "|:dsarchi/dsarz016;" + aAlfa;
+            |SUB_EJECUTA aAlfa;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO fechaok; |TIPO 0;
+        fec = #0Campo; sw = 0;
+|SI fec ! blanco; |Y fec ! puntos;
+  dia1 = fec % A102;
+  mes1 = fec % A402;
+  any1 = fec % A704;
+  dia = dia1; mes = mes1; any = any1;
+  |SI dia ! 0; |Y mes ! 0; |Y any ! 0;
+     |SI mes [ 12; |Y mes ] 1;
+       |SI mes = 1; |O mes = 3; |O mes = 5; |O mes = 7; |O mes = 8; |O mes = 10; |O mes = 12;
+           tope = 31;
+       |SINO;
+           |SI mes = 2;
+               mod = any $ 4;
+               |SI mod = 0;
+                   tope = 29;
+               |SINO;
+                   tope = 28;
+               |FINSI;
+            |SINO;
+               tope = 30;
+            |FINSI;
+        |FINSI;
+        |SI dia [ tope;
+            sw = 1;
+        |FINSI;
+     |FINSI;
+  |FINSI;
+|SINO;
+  sw = 1;
+|FINSI;
+|SI sw = 0;
+    |MENAV men1;
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO modifno;
+        xxaponer = Anono;
+        xxxxfiac = Control % A1001;
+        Control = Control + xxxxfiac;
+        Control = Control + xrelleno;
+        Control = Control % A120;
+        Control = Control + xxaponer;
+|FPRC;
+
+|PROCESO mirames; |TIPO 7; ||CALCULA EL MES POR DEFECTO SEGUN FECHA SISTEMA
+    fecsys = ~;
+    alfa1 = fecsys;
+    alfa1 = alfa1 % 402;
+    #0Campo = alfa1;
+|PINTA #0Campo;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7; ||calcula el a¤o por defecto segun fecha sistema
+    fecsys = ~;
+    alfa1 = fecsys;
+    alfa1 = alfa1 % -102;
+    #0Campo = alfa1;
+|PINTA #0Campo;
+|FPRC;
+
+|PROCESO irpf; |TIPO 0;  || calcula las retenciones y totales de IRPF
+    #0#15 = #0#14 % #0#13;         || base 1
+    #0#17 = #0#16 % #0#129;         || pagas
+    #0#110 = #0#108 % #0#106;      || base 2
+    #0#111 = #0#109 % #0#107;      || base 3
+    #0#113 = #0#14 + #0#108 + #0#109;   || total bases
+    #0#114 = #0#15 + #0#110 + #0#111;   || total retenciones
+|PINTA #0#15;
+|PINTA #0#17;
+|PINTA #0#110;
+|PINTA #0#111;
+|PINTA #0#113;
+|PINTA #0#114;
+|FPRC;
+
+|PROCESO nomvarcc;
+     swSigue = 1;
+|FPRC;
+
+|DEFBUCLE nomvarcc;
+     #nomvarcc#1;
+     ;
+     #0#0, #0#1, #0#2, #0#3, nAny, 00;
+     #0#0, #0#1, #0#2, #0#3, nAny, 31;
+     ;
+     NULL, nomvarcc;
+|FIN;
+
+|PROCESO inferior;
+     #nomvarcc#0 = #0#0;
+     #nomvarcc#1 = #0#1;
+     #nomvarcc#2 = #0#2;
+     #nomvarcc#3 = #0#3;
+     #nomvarcc#4 = nAny;      || el a¤o, en principio 0000
+     #nomvarcc#5 = 00;
+|FPRC;
+
+|PROCESO superior;
+     #nomvarcc#0 = #0#0;
+     #nomvarcc#1 = #0#1;
+     #nomvarcc#2 = #0#2;
+     #nomvarcc#3 = #0#3;
+     #nomvarcc#4 = nAny;      || el a¤o, en principio 0000
+     #nomvarcc#5 = 31;
+|FPRC;
+
+|PROCESO EREMasDe4;
+     nAny = #0#66 + 2000;
+     swSigue = 0;
+     |SI FSalida = 18;
+          swSigue = 1;
+     |FINSI;
+     |SI swSigue = 0;
+          |BUCLE nomvarcc;
+     |FINSI;
+     |SI swSigue = 1;
+          |PUSHV 12392356;
+          |ENTLINEAL #1#nomvarcc, 6, 2, 22, 1, inferior, superior;
+          |POPV;
+     |FINSI;
+|FPRC;
+
+|PROCESO labbasel;
+     aAlfa = #labbasel#3;
+     aAlfa1 = aAlfa % 402;
+     nMes = aAlfa1;
+     aAlfa2 = aAlfa % -104;
+     nAny = aAlfa2;
+     nAny = nAny - 2000;
+
+     |SI nMes = #nomhicca#2; |Y nAny = #nomhicca#66;
+          #labbasel#7 = #labbasel#7 - #nomhicca#39 - #nomhicca#159 - #nomhicca#170;
+          #labbasel#8 = #labbasel#8 - #nomhicca#40 - #nomhicca#159 - #nomhicca#170;
+     |FINSI;
+
+     nNume = #labbasel#7;
+
+     |SI -0.10 [ nNume; |Y nNume [ 0.10;
+          |BORRA 020#labbasel.a;
+     |FINSI;
+     |LIBERA #labbasel;
+|FPRC;
+
+|DEFBUCLE labbasel;
+     #labbasel#1;
+     ;
+     #nomhicca#0, #nomhicca#1, 001;
+     #nomhicca#0, #nomhicca#1, 999;
+     be;
+     NULL, labbasel;
+|FIN;
+
+|PROCESO Borrado; |TIPO 1;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+          |BUCLE labbasel;
+     |FINSI;
+|FPRC;
+
+/************************* BOTON DE CALCULOS *********************************/
+
+|PROCESO Recalculo;
+     |MENAV "    Recálculo";
+|FPRC;
+
+|PROCESO BotonRecalculo;
+     swSigue = 0;   || futuro proyecto
+     |SI swSigue = 1;
+          |CONTROL_SIMPLE 0, "BOTON,Recalcular", 0869, 0879, Recalculo;
+          enBotonRec = FSalida;
+
+          |ESTADO_CONTROL enBotonRec, "ENABLE";
+          swBotonRecSiNo = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO BotonCalculos;
+     swSigue = 0;
+     |HAZ BuscaCalculos;
+     |SI swSigue = 1;
+          |CONTROL_SIMPLE 0, "BOTON,C lculos", 0803, 0813, Calculos;
+          enBotonCal = FSalida;
+
+          |ESTADO_CONTROL enBotonCal, "ENABLE";
+          swBotonCalSiNo = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Botones; |TIPO 8;
+     |HAZ BotonCalculos;
+     |HAZ BotonRecalculo;
+|FPRC;
+
+|PROCESO FinBotonCalculos;
+     swSigue = 0;
+     |HAZ BuscaCalculos;
+     |SI swSigue = 1;
+          |FIN_CONTROL_WINDOWS enBotonCal;
+          |PULSATECLA;
+          swBotonCalSiNo = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO FinBotonRecalculo;
+     swSigue = 0;   || futuro proyecto
+     |SI swSigue = 1;
+          |FIN_CONTROL_WINDOWS enBotonRec;
+          |PULSATECLA;
+          swBotonRecSiNo = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO FinBotones; |TIPO 9;
+     |HAZ FinBotonCalculos;
+     |HAZ FinBotonRecalculo;
+|FPRC;
+
+|PROCESO PonBotones; |TIPO 14;
+     swSigue = 0;
+
+     |HAZ BuscaCalculos;
+     |SI swSigue = 1;
+          |SI swBotonCalSiNo = 0;
+               |HAZ BotonCalculos;
+          |FINSI;
+     |SINO;
+          |FIN_CONTROL_WINDOWS enBotonCal;
+          |PULSATECLA;
+          swBotonCalSiNo = 0;
+     |FINSI;
+
+|| futuro proyecto
+/*
+     swSigue = 1;
+     |SI swSigue = 1;
+          |HAZ BotonRecalculo;
+     |SINO;
+          |FIN_CONTROL_WINDOWS enBotonRec;
+          |PULSATECLA;
+          swBotonRecSiNo = 0;
+     |FINSI;
+*/
+|FPRC;
+
+|PROCESO QuitaBotones; |TIPO 14;
+     |SI swBotonCalSiNo = 1;
+          |HAZ FinBotonCalculos;
+     |FINSI;
+     |SI swBotonRecSiNo = 1;
+          |HAZ FinBotonRecalculo;
+     |FINSI;
+|FPRC;
+
+/************************ BOTON DE CALCULOS *********************************/
+
+|PROCESO nomcot03;
+     swSigue = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE nomcot03;
+     #nomcot03#1;
+     ;
+     #0#0, #0#226, #0#2, 0, "               ", aNaf, 01, 00001, 001;
+     #0#0, #0#226, #0#2, 0, "zzzzzzzzzzzzzzz", aNaf, 99, 99999, 999;
+     ;
+     NULL, nomcot03;
+|FIN;
+
+|PROCESO BuscaCalculos;
+     |DBASS aAlfa; |QBF aAlfa;
+     |SI aAlfa = "/u/dsprofes/"; |O aAlfa = "/u/dsasesor/";
+     ||O aAlfa = "/u/ccprofes/"; |O aAlfa = "/u/ccasesor/";
+          || adelante
+     |SINO;
+          |SI #0#226 [ 2017;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |SI #0#3 ! 0;
+          |ACABA;
+     |FINSI;
+
+     |ABRE #labtraba;
+     #labtraba#0 = #nomhicca#0;
+     #labtraba#1 = #nomhicca#1;
+     |LEE 000#labtraba.=;
+     |CIERRA #labtraba;
+
+
+/*
+     |ABRE #nomcot08;
+     #nomcot08#0 = #0#0;
+     #nomcot08#1 = #0#1;
+     #nomcot08#2 = #0#2;
+     #nomcot08#3 = #0#3;
+     |LEE 000#nomcot08.=;
+     |SI FSalida = 0; |Y #nomcot08#184 = #0#226;
+          swSigue = 1;
+     |FINSI;
+     |CIERRA #nomcot08;
+*/
+
+     aNaf = #labtraba#75;
+     |QBF aNaf;
+     |BUCLE nomcot03;
+|FPRC;
+
+|PROCESO Calculos;
+     aAlfa = #0#0; |QBF aAlfa; aAlfa = ("00000" + aAlfa) % -105;
+     aParametro = aAlfa;
+     aAlfa = #0#226;
+     aParametro = aParametro + aAlfa;
+     aAlfa = #0#2; |QBF aAlfa; aAlfa = ("00" + aAlfa) % -102;
+     aParametro = aParametro + aAlfa;
+     aAlfa = #0#3; |QBF aAlfa;
+     aParametro = aParametro + aAlfa;
+     aNaf = #labtraba#75;
+     |QBF aNaf;
+     aParametro = aParametro + aNaf;
+     aAlfa = "|nomcot36;" + aParametro;
+
+     |SUB_EJECUTA aAlfa;
+|FPRC;

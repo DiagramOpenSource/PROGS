@@ -1,0 +1,964 @@
+|FICHEROS;
+     dsarm001;
+     dsarm002;
+     dsarm003;
+     dsarm004;
+     dsarm005;
+     dsarm072;
+     dsarm100;
+
+     dsarw047;
+     dsarw121;
+     dsarw122;
+
+     :basica/agitab99;
+|FIN;
+
+|VARIABLES;
+|FIN;
+
+|INCLUYE z1000var;
+
+|PROCESO CambiaRaros;
+     aAlfa    = eaFicRes;   |QBF aAlfa;
+     aLong    = aAlfa % 0;
+     nLong    = aLong;
+     aCadena  = "";
+     nPuntos  = 0;
+     |PARA nCarac = 1;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+           nPos   = (nCarac * 100) + 1;
+           aCarac =  aAlfa % nPos;
+           |SI aCarac = ".";
+               nPuntos = nPuntos + 1;
+           |FINSI;
+
+           |SI aCarac = " ";
+               aCarac = "";
+           |FINSI;
+
+           aCadena = aCadena + aCarac;
+     |SIGUE;
+
+     |SI nPuntos ] 2;
+         aAlfa   = aCadena;
+         aCadena = "";
+         |PARA nCarac = 1;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+               nPos   = (nCarac * 100) + 1;
+               aCarac =  aAlfa % nPos;
+
+               |SI aCarac = ".";  |Y nPuntos > 1;
+                   aCarac  =  "_";
+                   nPuntos = nPuntos - 1;
+               |FINSI;
+
+               aCadena = aCadena + aCarac;
+         |SIGUE;
+     |FINSI;
+
+     |SI aCadena ! eaFicRes;
+         aOrigen  = aFichero;
+         aDestino = eaRuta + "\" + aCadena;
+         |RRENOMBRA_FICHERO aOrigen, aDestino;
+
+         eaFicRes = aCadena;
+         aFichero = aDestino;
+     |FINSI;
+|FPRC;
+
+|PROCESO CheqContratos;
+     enChequeo = 0;
+     |HAZ MiraSi99200;  |SI enChequeo = 1;  |ACABA;  |FINSI;
+|FPRC;
+
+|PROCESO CheqSegSocial;
+     enChequeo = 0;
+
+     |HAZ MiraSi99100;  |SI enChequeo = 1;  |ACABA;  |FINSI;
+     |HAZ MiraSi99101;  |SI enChequeo = 1;  |ACABA;  |FINSI;
+     |HAZ MiraSi99102;  |SI enChequeo = 1;  |ACABA;  |FINSI;
+     |HAZ MiraSi99103;  |SI enChequeo = 1;  |ACABA;  |FINSI;
+     |HAZ MiraSi99104;  |SI enChequeo = 1;  |ACABA;  |FINSI;
+|FPRC;
+
+|PROCESO ConvierteTxt;
+     aEjecuta = aDirBaseLocal + "pdftotext/pdftotext.exe -f 1 -l 3 -layout " + aFichero + " " + aAbre + ".txt";
+     |RSYSTEM aEjecuta;
+|FPRC;
+
+|PROCESO Graba047;
+     |SI PARAMETRO = "2";
+         |SI aCadena = "";  |ACABA;  |FINSI;
+     |FINSI;
+
+     nConta047   = nConta047 + 1;
+     #dsarw047#0 = nConta047;
+     #dsarw047#1 = aCadena;
+     |GRABA 020#dsarw047.n;
+     |LIBERA #dsarw047;
+|FPRC;
+
+|PROCESO Graba121Vacio;
+     |DDEFECTO #dsarw121;
+
+     enConta      = enConta + 1;
+     #dsarw121#0  = enConta;
+     #dsarw121#1  = eaFicRes;
+     #dsarw121#7  = "Formato documento no reconocido";
+     #dsarw121#22 = eaRojo;
+
+     |SI PARAMETRO = "1";
+         #dsarw121#5  = 992;
+         #dsarw121#6  = 0;
+     |FINSI;
+
+     |SI PARAMETRO = "2";
+         #dsarw121#5  = 991;
+         #dsarw121#6  = 0;
+     |FINSI;
+
+     |GRABA 020#dsarw121.n;
+     |LIBERA #dsarw121;
+|FPRC;
+
+|PROCESO ModoPDFTOTEXT;
+     aAbre  = aAlfa - ".pdf";
+     |HAZ ConvierteTxt;
+
+     aAlfa  = aFichero < " ";
+     aAbre  = aAlfa - ".pdf" + ".txt";
+
+     |DBASE aPathBase;
+     |QBF aPathBase;
+
+     eaDestino = aAbre;
+     eaOrigen  = aPathBase + "tmp";         |MKDIR eaOrigen;
+     eaOrigen  = eaOrigen + "/" + Usuario;  |MKDIR eaOrigen;
+     eaOrigen  = eaOrigen + "/tempo.txt";
+     |HAZ RecibeEnServidorMD5;
+
+     aAbre = eaOrigen;
+     |XABRE "BU", aAbre, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     aDat = "dsarw047" + Usuario;
+     |NOME_DAT #dsarw047#aDat#;
+
+     |ABRE #dsarw047;  |CIERRA #dsarw047;  |DELINDEX  #dsarw047;
+
+     eaJusti            = "";
+     eaElect            = "";
+     aCR                = &10;
+     aLF                = &13;
+     aCadena            = "";
+     eaEjercicio        = "";
+     eaPeriodo          = "";
+     eaDni              = "";
+     eaDni2             = "";
+     eaTributa          = "";
+     enCompl            = 0;
+     nConta047          = 0;
+
+     |ABRE #dsarw047;
+     |XLEE nHandle, 1, aAlfa;
+     |PARA; |SI FSalida > 0; |HACIENDO;
+            |SI aAlfa = aCR;
+                |HAZ Graba047;
+                aCadena = "";
+            |SINO;
+                |SI aAlfa ! aLF;
+                    aCadena = aCadena + aAlfa;
+                |FINSI;
+            |FINSI;
+            |XLEE nHandle, 1, aAlfa;
+     |SIGUE;
+     |XCIERRA nHandle;
+
+     |SI PARAMETRO = "1";
+         |HAZ CheqContratos;
+     |FINSI;
+
+     |SI PARAMETRO = "2";
+         |HAZ CheqSegSocial;
+     |FINSI;
+
+     |CIERRA #dsarw047;
+
+     |SI enChequeo = 0;
+         |HAZ Graba121Vacio;
+     |FINSI;
+
+     |DELINDEX  #dsarw047;
+
+     aAlfa = aPathBase + "tmp/" + Usuario + "/tempo.txt"; |FBORRA aAlfa;
+|FPRC;
+
+|PROCESO LeeFicheroPDF;
+     aAbre = aFichero;
+
+     |SI nLabel2 ! -1;
+         |FIN_CONTROL_WINDOWS nLabel2;
+     |FINSI;
+
+     aAlfa = "LABEL,{{0}} " + eaFicRes;
+     |CONTROL_SIMPLE 0, aAlfa,  1020, 1098, NULL;
+     nLabel2 = FSalida;
+
+     aAlfa  = aFichero < " ";
+     aAbre  = aAlfa - ".pdf" + ".txt";
+     |XABRE "EC", aAbre, nHandle;
+     |SI FSalida ] 0;
+         |RFBORRA aAbre;
+     |FINSI;
+
+     |HAZ ModoPDFTOTEXT;
+|FPRC;
+
+|PROCESO EstaIntegral;
+     enSwEstaIntegral = 0;
+     |DBASS aBase;
+     aMas = aBase + "/integral/def/dsam0000.mas";
+     |XABRE "E", aMas, nHandle;
+     |SI FSalida ] 0;
+         enSwEstaIntegral = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO EstaBasica;
+     enSwEstaBasica = 0;
+
+     |DBASS aBase;
+     aMas = aBase + "/basica/def/agifigen.mas";
+     |XABRE "E", aMas, nHandle;
+     |SI FSalida ] 0;
+         enSwEstaBasica = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeDocumentos;
+     aAlfa = "0000A continuaci¢n seleccione el directorio donde se encuentran los PDF a tratar.";
+     |MENAV aAlfa;
+
+     nLabel1 = -1;
+     nLabel2 = -1;
+     eaRuta  = "D ";
+     |BROWSE eaRuta;
+
+     aAlfa  = eaRuta;   |QBF aAlfa;
+     eaRuta = "";
+     aLong  = aAlfa % 0;
+     nLong  = aLong;
+     |PARA nCarac = 2;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+           nPos = (nCarac * 100) + 1;
+           eaRuta = eaRuta + (aAlfa % nPos);
+     |SIGUE;
+
+     |SI eaRuta = "";
+         |MENAV "0000No ha seleccionado un directorio.";
+         enErrorMod = 1;
+         |ACABA;
+     |FINSI;
+
+     |HAZ EstaIntegral;
+     |HAZ EstaBasica;
+
+     |CONTROL_SIMPLE 0, "LABEL,{{9}} Leyendo documentos", 0610, 0798, NULL;
+     nLabel1 = FSalida;
+
+     |SI #dsarm001#7 = "N";
+          |HAZ DimeUnidad;
+     |SINO;
+          |HAZ LeeUnidadBasico;
+
+          eaUnidad = eaUnidadBasico % 101;
+     |FINSI;
+
+     aDirBaseLocal = eaUnidad + ":\DOCUMENTOS";              |RMKDIR aDirBaseLocal;
+     aDirBaseLocal = eaUnidad + ":\DOCUMENTOS\DSARCHI";      |RMKDIR aDirBaseLocal;
+     aDirBaseLocal = eaUnidad + ":\DOCUMENTOS\DSARCHI\";
+
+     enConta = 0;
+     aFicMod = eaRuta + "\*.pdf";
+     |R_PDIR aFicMod;
+     |PARA; |SI; |HACIENDO;
+         |SI FSalida ! 0; |SAL; |FINSI;
+
+         eaFicRes = (aFicMod - eaRuta) > "";
+         eaFicRes = eaFicRes % 2;
+         aFichero = aFicMod;
+
+         |HAZ CambiaRaros;
+
+         |HAZ LeeFicheroPDF;
+         |PULSATECLA;
+
+         |R_SDIR aFicMod;
+     |SIGUE;
+
+     |FIN_CONTROL_WINDOWS nLabel1;
+     |FIN_CONTROL_WINDOWS nLabel2;
+|FPRC;
+
+|PROCESO dsarw121M;
+     |SI aMarca = "*";
+         |SI #dsarw121#16 = 0;
+          |O #dsarw121#19 = 0;
+          |O #dsarw121#8  = 0;
+          |O #dsarw121#9  = 0;
+          |O #dsarw121#10 = 0;
+          |O #dsarw121#14 = 0;
+          |O #dsarw121#15 = 0;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     #dsarw121#21 = aMarca;
+
+     |HAZ PonColor;
+
+     |GRABA 020#dsarw121.a;
+     |LIBERA #dsarw121;
+|FPRC;
+
+|DEFBUCLE dsarw121M;
+     #dsarw121#1;
+     ;
+           1;
+     9999999;
+     be;
+     NULL, dsarw121M;
+|FIN;
+
+|PROCESO Todo;
+     aMarca = "*";
+     |BUCLE dsarw121M;
+
+     |SELECT #1#dsarw121;
+
+     |REFRESCACONTROL nGrid;
+|FPRC;
+
+|PROCESO Ninguno;
+     aMarca = " ";
+     |BUCLE dsarw121M;
+
+     |SELECT #1#dsarw121;
+
+     |REFRESCACONTROL nGrid;
+|FPRC;
+
+|PROCESO CambiarValores;
+     |LEE 101#dsarw121.=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |VENTANA 0501, 2599, -1, 16, "Cambiar valores";
+     nSubVentz1 = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nSubVentz1;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     #dsarw122#0  = #dsarw121#1;
+     #dsarw122#1  = #dsarw121#2;
+     #dsarw122#2  = #dsarw121#3;
+     #dsarw122#3  = #dsarw121#4;
+     #dsarw122#4  = #dsarw121#5;
+     #dsarw122#5  = #dsarw121#6;
+     #dsarw122#6  = #dsarw121#7;
+     #dsarw122#7  = #dsarw121#8;
+     #dsarw122#8  = #dsarw121#9;
+     #dsarw122#9  = #dsarw121#10;
+     #dsarw122#10 = #dsarw121#11;
+     #dsarw122#11 = #dsarw121#12;
+     #dsarw122#12 = #dsarw121#13;
+     #dsarw122#13 = #dsarw121#14;
+     #dsarw122#14 = #dsarw121#15;
+     #dsarw122#15 = #dsarw121#16;
+     #dsarw122#16 = #dsarw121#17;
+     #dsarw122#17 = #dsarw121#18;
+     #dsarw122#18 = #dsarw121#19;
+     #dsarw122#19 = #dsarw121#20;
+
+     |PINPA #0#dsarw122;
+     |PINDA #0#dsarw122;
+     |ENDATOS #1#dsarw122;
+     |SI FSalida = 0;
+         #dsarw121#1  = #dsarw122#0;
+         #dsarw121#2  = #dsarw122#1;
+         #dsarw121#3  = #dsarw122#2;
+         #dsarw121#4  = #dsarw122#3;
+         #dsarw121#5  = #dsarw122#4;
+         #dsarw121#6  = #dsarw122#5;
+         #dsarw121#7  = #dsarw122#6;
+         #dsarw121#8  = #dsarw122#7;
+         #dsarw121#9  = #dsarw122#8;
+         #dsarw121#10 = #dsarw122#9;
+         #dsarw121#11 = #dsarw122#10;
+         #dsarw121#12 = #dsarw122#11;
+         #dsarw121#13 = #dsarw122#12;
+         #dsarw121#14 = #dsarw122#13;
+         #dsarw121#15 = #dsarw122#14;
+         #dsarw121#16 = #dsarw122#15;
+         #dsarw121#17 = #dsarw122#16;
+         #dsarw121#18 = #dsarw122#17;
+         #dsarw121#19 = #dsarw122#18;
+         #dsarw121#20 = #dsarw122#19;
+
+         |HAZ PonColor;
+
+         |GRABA 020#dsarw121.a;
+     |FINSI;
+
+     |LIBERA #dsarw121;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nSubVentz1;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nSubVentz1;
+
+     |REFRESCACONTROL nGrid;
+     |FOCOTECLADO nGrid;
+|FPRC;
+
+|PROCESO NoReconocidos;
+|FPRC;
+
+|PROCESO Recomendaciones;
+     |VENTANA 0501, 1970, -1, 16, "Recomendaciones";
+     nSubVentz1 = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nSubVentz1;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     aAlfa = "LABEL,{{0}}1.- Guardar siempre los documentos Seguridad Social en las mismas carpetas por periodo/ejercicio"
+     |CONTROL_SIMPLE 0, aAlfa, 0602, 0670, NULL;
+
+     aAlfa = "LABEL,{{0}}    para una mayor agilizaci¢n del proceso.";
+     |CONTROL_SIMPLE 0, aAlfa, 0702, 0770, NULL;
+
+     aAlfa = "LABEL,{{0}}3.- Contacte con nuestro departamento de soporte para incluir formatos de ";
+     |CONTROL_SIMPLE 0, aAlfa, 0902, 0970, NULL;
+
+     aAlfa = "LABEL,{{0}}    documentos no reconocidos. En cualquier caso podr  rellenar los datos a ";
+     |CONTROL_SIMPLE 0, aAlfa, 1002, 1070, NULL;
+
+     aAlfa = "LABEL,{{0}}    trav‚s del bot¢n " + &34 + "Cambiar Valores" + &34 + ".";
+     |CONTROL_SIMPLE 0, aAlfa, 1102, 1170, NULL;
+
+     |PAUSA;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nSubVentz1;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nSubVentz1;
+|FPRC;
+
+|PROCESO Colores;
+     |VENTANA 0501, 1270, -1, 16, "Ayuda colores registros";
+     nSubVentz1 = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nSubVentz1;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     aAlfa = "LABEL,{{15}}Rojo.-   Documentos con datos no reconocidos"
+     |CONTROL_SIMPLE 0, aAlfa, 0602, 0670, NULL;
+
+     aAlfa = "LABEL,{{15}}Verde.- Documentos ya existentes en la gesti¢n documental";
+     |CONTROL_SIMPLE 0, aAlfa, 0702, 0770, NULL;
+
+     aAlfa = "LABEL,{{15}}Negro.- Documentos preparados para seleccionar"
+     |CONTROL_SIMPLE 0, aAlfa, 0802, 0870, NULL;
+
+     aAlfa = "LABEL,{{15}}Azul.-   Documentos seleccionados para archivar"
+     |CONTROL_SIMPLE 0, aAlfa, 0902, 0970, NULL;
+
+     |PAUSA;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nSubVentz1;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nSubVentz1;
+|FPRC;
+
+|PROCESO Evento121;
+     |SI FSalida = 1;  |O FSalida = 2;
+         |LEE 000#dsarw121.=;
+     |FINSI;
+
+     |SI FSalida = 4;
+         |LEE 101#dsarw121.=;
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+         |SI #dsarw121#8 = 0;  |O #dsarw121#9 = 0;  |O #dsarw121#10 = 0;
+             |LIBERA #dsarw121;
+             |ACABA;
+         |FINSI;
+
+         |SI #dsarw121#21 = " ";
+             aAlfa = #dsarw121#22;  |QBF aAlfa;
+             |SI aAlfa = eaVerde;
+                 |CONFI "0000NEste documento ya existe en la gesti¢n documental, quiere registrarlo de nuevo";
+                 |SI FSalida ! 0;
+                     |ACABA;
+                 |FINSI;
+             |FINSI;
+
+             #dsarw121#21 = "*";
+         |SINO;
+             #dsarw121#21 = " ";
+         |FINSI;
+
+         |HAZ PonColor;
+
+         |GRABA 020#dsarw121.a;
+         |LIBERA #dsarw121;
+
+         |PINTA #dsarw121#21;
+
+         FSalida = "SKIPDEFAULT";
+         |REFRESCACONTROL nGrid;
+     |FINSI;
+|FPRC;
+
+|PROCESO LinealSimple;
+     nRango = 4 + 8 + 16 + 32;
+     |LINEAL_SIMPLE #1#dsarw121, nRango, 0601, 2899, NULL, NULL, Evento121;
+     nGrid = FSalida;
+
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+         FSalida = "::{{230}}Continuar," + nGrid;
+         |LEETECLA aTecla;
+         |SI aTecla = aEsc1; |SAL;  |FINSI;
+         |SI aTecla = aEsc2; |SAL;  |FINSI;
+         |SI aTecla = aRetu; |SAL;  |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Pantalla;
+     |CONTROL_SIMPLE 0, "LABEL,{{2}}Doble click en la l¡nea para MARCAR o DESMARCAR el registro", 0502, 0598, NULL;
+     nId1 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{137}}Marcar todo", 2902, 3015, Todo;
+     nId2 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{193}}Desmarcar todo", 2917, 3032, Ninguno;
+     nId3 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{197}}Cambiar valores", 2951, 3061, CambiarValores;
+     nId5 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{197}}Ver documento PDF", 2963, 3074, VerDocu;
+     nId6 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,Ver documento TXT", 2976, 3086, VerDocuTXT;
+     nId7 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{197}}Recomendaciones", 3202, 3220, Recomendaciones;
+     nId8 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{197}}Ayuda colores registros", 3224, 3244, Colores;
+
+     |PARA;  |SI;  |HACIENDO;
+          |HAZ LinealSimple;
+          |CONFI "0000SConforme con lo seleccionado";
+          |SI FSalida = 0;  |SAL;  |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO SacaUbicacion;
+     aPath = #dsarm001#1;  |QBF aPath;
+
+     |DDEFECTO #dsarm002;
+     #dsarm002#0 = #dsarw121#8;
+     |LEE 000#dsarm002.=;
+
+     aPath = aPath + "/" + #dsarm002#2;  |QBF aPath;
+     |SI #dsarm001#7 = "N";
+         |MKDIR aPath;
+     |SINO;
+         |RMKDIR aPath;
+     |FINSI;
+
+     |SI #dsarm001#8 = "N";
+         aPath = aPath + "/";
+         aUbicacion = aPath;
+
+         |DDEFECTO #dsarm004;
+         #dsarm004#0 = #dsarw121#8;
+         #dsarm004#1 = 1;
+         #dsarm004#2 = 1;
+         |LEE 000#dsarm004.=;
+
+         |SI #dsarm004#75 = "S";
+              fFechaSis = ~;
+              aFechaSis = fFechaSis;
+              aAAAAMM = (aFechaSis % -104) + (aFechaSis % 402);
+              aUbicacion = aUbicacion + aAAAAMM + "/";
+              |SI #dsarm001#7 = "N";
+                   |MKDIR aUbicacion;
+              |SINO;
+                   |RMKDIR aUbicacion;
+              |FINSI;
+         |FINSI;
+
+         |ACABA;
+     |FINSI;
+
+     |DDEFECTO #dsarm003;
+     #dsarm003#0 = #dsarw121#8;
+     #dsarm003#1 = #dsarw121#9;
+     |LEE 000#dsarm003.=;
+
+     aPath = aPath + "/" + #dsarm003#3;  |QBF aPath;
+     |SI #dsarm001#7 = "N";
+         |MKDIR aPath;
+     |SINO;
+         |RMKDIR aPath;
+     |FINSI;
+
+     |DDEFECTO #dsarm004;
+     #dsarm004#0 = #dsarw121#8;
+     #dsarm004#1 = #dsarw121#9;
+     #dsarm004#2 = #dsarw121#10;
+     |LEE 000#dsarm004.=;
+
+     aPath = aPath + "/" + #dsarm004#4;  |QBF aPath;
+     |SI #dsarm001#7 = "N";
+         |MKDIR aPath;
+     |SINO;
+         |RMKDIR aPath;
+     |FINSI;
+
+     aPath = aPath + "/";
+     aUbicacion = aPath;
+
+     |SI #dsarm004#75 = "S";
+          fFechaSis = ~;
+          aFechaSis = fFechaSis;
+          aAAAAMM = (aFechaSis % -104) + (aFechaSis % 402);
+          aUbicacion = aUbicacion + aAAAAMM + "/";
+          |SI #dsarm001#7 = "N";
+               |MKDIR aUbicacion;
+          |SINO;
+               |RMKDIR aUbicacion;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO dsarw121G;
+     nDocu      = 1;
+     |LEE 000#dsarm005.u;
+     |SI FSalida = 0;
+          nDocu = #dsarm005#0 + 1;
+     |FINSI;
+
+     |DDEFECTO #dsarm100;
+     |LEE 000#dsarm100.p;
+     |SI FSalida = 0;
+          nUltimoDoc = #dsarm100#1 + 1;
+     |SINO;
+          nUltimoDoc = 1;
+     |FINSI;
+     |SI nUltimoDoc > nDocu;
+          nDocu = nUltimoDoc;
+     |FINSI;
+     #dsarm100#0 = "1";
+     |LEE 101#dsarm100.=;
+     |SI FSalida ! 0; |GRABA 020#dsarm100.b; |FINSI;
+     #dsarm100#1 = nDocu;
+     |GRABA 020#dsarm100.a;
+     |LIBERA #dsarm100;
+
+     |DDEFECTO #dsarm005;
+     #dsarm005#0   = nDocu;
+     |GRABA 020#dsarm005.b;
+
+     aAlfa  = #dsarw121#1;  |QBF aAlfa;
+     aAlfa  = (aAlfa % -104) > "";
+     aAlfa1 = aAlfa % 101;
+     |SI aAlfa1 ! ".";
+         aAlfa  = #dsarw121#1;  |QBF aAlfa;
+         aAlfa  = (aAlfa % -105) > "";
+     |FINSI;
+     aFicModelo = (("000000000" + nDocu) % -109) + aAlfa;
+     |QBT aFicModelo;
+
+     aUbicacion = "";
+     |HAZ SacaUbicacion;
+
+     eaDestino      = eaRuta + "/" + #dsarw121#1;  |QBF eaDestino;
+     eaOrigen       = aUbicacion + aFicModelo;
+     eaDocPC        = eaDestino;
+     enSwIOCorrecta = 0;
+     |HAZ RecibeConMD5;
+     |SI enSwIOCorrecta = 0;
+         |MENAV "0000 Ha habido un error al transferir el documento al servidor. Revise Permisos y espacio disponible.";
+         |BORRA 020#dsarm005.a;
+         |LIBERA #dsarm005;
+         |ACABA;
+     |FINSI;
+
+     |SI eaSwBorroOrigen = "S";
+          aAlfa = eaRuta + "/" + #dsarw121#1;  |QBF aAlfa;
+          aAlfa = aAlfa < " ";
+          aAlfa = aAlfa - ".pdf" + ".txt";
+          |RFBORRA aAlfa;
+     |FINSI;
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+     |SI #dsarm001#7 = "N";  |Y aIPRemoto ! "";
+         |XABRE "E", eaOrigen, nHandle;
+     |SINO;
+         |XABRE "EC", eaOrigen, nHandle;
+     |FINSI;
+
+     |SI FSalida < 0;
+         |MENAV "0000 Ha habido un error al transferir el documento al servidor. Intentelo de nuevo";
+         |BORRA 020#dsarm005.a;
+         |LIBERA #dsarm005;
+         |ACABA;
+     |FINSI;
+
+     #dsarm005#1 = #dsarw121#8;
+     #dsarm005#2 = #dsarw121#9;
+     #dsarm005#3 = #dsarw121#10;
+
+     #dsarm005#4 = ~;
+     |HORA aHora;
+     aHora = aHora % 105;
+     #dsarm005#5 = aHora;
+     aUsuario = Usuario % 810;
+     #dsarm005#6  = aUsuario;
+     #dsarm005#7  = aUbicacion;
+     #dsarm005#9  = aFicModelo;
+
+     #dsarm005#95 = #dsarw121#3;
+     #dsarm005#19 = #dsarw121#5;
+     #dsarm005#20 = #dsarw121#6;
+     #dsarm005#17 = #dsarw121#14;
+     #dsarm005#18 = #dsarw121#15;
+     #dsarm005#8  = #dsarw121#16;
+     #dsarm005#10 = #dsarw121#17;
+     #dsarm005#14 = #dsarw121#18;
+     #dsarm005#38 = #dsarw121#18;
+     #dsarm005#15 = #dsarw121#19;
+     #dsarm005#16 = #dsarw121#20;
+     #dsarm005#11 = #dsarw121#23;
+     #dsarm005#12 = #dsarw121#24;
+     #dsarm005#13 = #dsarw121#25;
+
+     |SI #dsarm005#18 = 1;   #dsarm005#22 = "ENERO     ";  |FINSI;
+     |SI #dsarm005#18 = 2;   #dsarm005#22 = "FEBRERO   ";  |FINSI;
+     |SI #dsarm005#18 = 3;   #dsarm005#22 = "MARZO     ";  |FINSI;
+     |SI #dsarm005#18 = 4;   #dsarm005#22 = "ABRIL     ";  |FINSI;
+     |SI #dsarm005#18 = 5;   #dsarm005#22 = "MAYO      ";  |FINSI;
+     |SI #dsarm005#18 = 6;   #dsarm005#22 = "JUNIO     ";  |FINSI;
+     |SI #dsarm005#18 = 7;   #dsarm005#22 = "JULIO     ";  |FINSI;
+     |SI #dsarm005#18 = 8;   #dsarm005#22 = "AGOSTO    ";  |FINSI;
+     |SI #dsarm005#18 = 9;   #dsarm005#22 = "SEPTIEMBRE";  |FINSI;
+     |SI #dsarm005#18 = 10;  #dsarm005#22 = "OCTUBRE   ";  |FINSI;
+     |SI #dsarm005#18 = 11;  #dsarm005#22 = "NOVIEMBRE ";  |FINSI;
+     |SI #dsarm005#18 = 12;  #dsarm005#22 = "DICIEMBRE ";  |FINSI;
+     |SI #dsarm005#18 = 99;  #dsarm005#22 = "ANUAL     ";  |FINSI;
+
+     |ABRE #agitab99;
+     #agitab99#0 = #dsarw121#5;
+     |LEE 000#agitab99.=;
+     |SI FSalida ! 0;  |DDEFECTO #agitab99;  |FINSI;
+     |CIERRA #agitab99;
+
+     #dsarm005#21 = #agitab99#1;
+
+
+     aAux = #dsarm004#5;   |QBF aAux;  |SI aAux ! "";  #dsarm005#23 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#6;   |QBF aAux;  |SI aAux ! "";  #dsarm005#24 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#7;   |QBF aAux;  |SI aAux ! "";  #dsarm005#25 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#8;   |QBF aAux;  |SI aAux ! "";  #dsarm005#26 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#9;   |QBF aAux;  |SI aAux ! "";  #dsarm005#27 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#27;  |QBF aAux;  |SI aAux ! "";  #dsarm005#28 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#28;  |QBF aAux;  |SI aAux ! "";  #dsarm005#29 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#29;  |QBF aAux;  |SI aAux ! "";  #dsarm005#30 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#30;  |QBF aAux;  |SI aAux ! "";  #dsarm005#31 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#31;  |QBF aAux;  |SI aAux ! "";  #dsarm005#32 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#10;  |QBF aAux;  |SI aAux ! "";  #dsarm005#33 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#11;  |QBF aAux;  |SI aAux ! "";  #dsarm005#34 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#12;  |QBF aAux;  |SI aAux ! "";  #dsarm005#35 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#13;  |QBF aAux;  |SI aAux ! "";  #dsarm005#36 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#14;  |QBF aAux;  |SI aAux ! "";  #dsarm005#37 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#15;  |QBF aAux;  |SI aAux ! "";  #dsarm005#60 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#16;  |QBF aAux;  |SI aAux ! "";  #dsarm005#61 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#17;  |QBF aAux;  |SI aAux ! "";  #dsarm005#62 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#18;  |QBF aAux;  |SI aAux ! "";  #dsarm005#63 = aAux + ":";  |FINSI;
+     aAux = #dsarm004#19;  |QBF aAux;  |SI aAux ! "";  #dsarm005#64 = aAux + ":";  |FINSI;
+
+     aAlfa = #dsarm005#23 - "MOTIVO:";
+     |SI FSalida ! 0;
+         aAlfa = #dsarm005#23;  |QBF aAlfa;
+         aAlfa = aAlfa + " " + #dsarw121#23;  |QBF aAlfa;
+         aAlfa = aAlfa + " " + #dsarw121#24;  |QBF aAlfa;
+         aAlfa = aAlfa + " " + #dsarw121#25;  |QBF aAlfa;
+         #dsarm005#23 = aAlfa;
+     |FINSI;
+
+     aAlfa = #dsarm005#60 - "FECHA:";
+     |SI FSalida ! 0;
+         aAlfa = #dsarm005#60;  |QBF aAlfa;
+         aAlfa = aAlfa + " " + #dsarw121#4;
+         #dsarm005#24 = aAlfa;
+         #dsarm005#60 = "";
+     |FINSI;
+
+     #dsarm005#93 = #dsarw121#1;
+
+     |GRABA 020#dsarm005.a;
+     |LIBERA #dsarm005;
+
+     aAlfa = "dsarz013;" + #dsarm005#0;
+     |SUB_EJECUTA aAlfa;
+
+     aAlfa = "dsarz030;" + #dsarm005#0;
+     |SUB_EJECUTA aAlfa;
+|FPRC;
+
+|DEFBUCLE dsarw121G;
+     #dsarw121#3;
+     ;
+     "*",       1;
+     "*", 9999999;
+     be;
+     NULL, dsarw121G;
+|FIN;
+
+|PROGRAMA;
+     |HAZ Traete_pdftotext;
+     |SI enError = 1;  |ACABA;  |FINSI;
+
+     aAlfa = "Capturar documentos Seguridad Social";
+     |VENTANA 0501, 3299, -1, 16, aAlfa;
+     nVentz1  = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentz1;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PTEC 802;
+     |PAUSA;
+
+     |HAZ LeeDocumentos;
+
+     |LEE 000#dsarw121.p;
+     |SI FSalida = 0;
+         |HAZ Pantalla;
+     |SINO;
+         |MENAV "0000Carpeta sin documentos a archivar.";
+     |FINSI;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentz1;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nVentz1;
+
+     |SELECT #3#dsarw121;
+     |LEE 000#dsarw121.p;
+     |SI FSalida ! 0;  |O #dsarw121#21 = " ";
+         |MENAV "0000Seleccion vac¡a";
+
+         |ACABA;
+     |FINSI;
+
+     aAlfa = "Registrado documentos";
+     |VENTANA 0501, 0540, -1, 16, aAlfa;
+     nVentz1  = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentz1;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PTEC 802;
+     |PAUSA;
+
+     |HAZ CargaVarBorrado;
+
+     |BUCLE dsarw121G;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentz1;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nVentz1;
+|FPRO;
+
+|PROCESO T80;  |TIPO 80;
+     |ABRE #dsarm001;
+     |DDEFECTO #dsarm001;
+     |LEE 000#dsarm001.p;
+     |CIERRA #dsarm001;
+
+     eaVerde = "0,185,0;255,255,255";
+     eaAzul  = "18,28,245;255,255,255";
+     eaRojo  = "255,80,80;255,255,255";
+
+     aDat = "dsarw121" + Usuario;
+     |NOME_DAT #dsarw121#aDat#;
+
+     |ABRE #dsarw121;  |CIERRA #dsarw121;  |DELINDEX  #dsarw121;
+
+     |ABRET #dsarw121;
+     |ABRET #dsarm072;
+     |ABRET #dsarm002;
+     |ABRET #dsarm003;
+     |ABRET #dsarm004;
+     |ABRET #dsarm005;
+     |ABRET #dsarm100;
+|FPRC;
+
+|PROCESO T90;  |TIPO 90;
+     |CIERRAT #dsarm002;
+     |CIERRAT #dsarm003;
+     |CIERRAT #dsarm004;
+     |CIERRAT #dsarm005;
+     |CIERRAT #dsarm100;
+     |CIERRAT #dsarm072;
+
+     |CIERRAT #dsarw121;
+     |DELINDEX #dsarw121;
+|FPRC;

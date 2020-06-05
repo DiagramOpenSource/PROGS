@@ -1,0 +1,243 @@
+||Copiado del agif0065
+
+|FICHEROS;
+     tecaz028 #0;   || Este
+     agifa065 #1;   || Historico
+     agifa019 #2;   || Articulos
+     tempo065 #3;   || Temporal
+     agifa080 #4;   || Alb Compras (L)
+     agifa017 #5;   || Almacen;
+     agifa077 #6;   || Alb Compras (C)
+     dsm00010 #910;
+     agifa142 #142;
+     dsm00241 #241;
+|FIN;
+
+|VARIABLES;
+     &eaArticulo = "";
+     nGuarda   = 0;
+     nPrecio   = 0;
+     nFactor   = 0;
+     &Tempo    = "";
+     aTempo3   = "";
+     fichero   = "";
+     fechtope  = @;
+     dias      = 0;
+     coste     = 0;
+     total     = 0;
+     pcm       = 0;
+     uni       = 0;
+     alfa1     = "";
+     pre       = 0;
+
+     &eAlfa  = "";
+     &eAlfa1 = "";
+     &eAlfa2 = "";
+     &eAlfa3 = "";
+     &eAlfa4 = "";
+     aParam  = "";
+|FIN;
+
+|PROCESO Calc6; |TIPO 6;
+     eaArticulo = #0Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #0Campo = eaArticulo;
+          |PINTA #0Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO PideArt;  |TIPO 7;
+     |ABRE #910;
+     |LEE 040#910p;
+     |SI FSalida ! 0;  |DDEFECTO #910;  |FINSI;
+     |CIERRA #910;
+
+     |SI #910#2 [ 2;    |ACABA;  |FINSI;
+
+     eAlfa = #0Campo;
+     |SUB_EJECUTA_NP "dsz99990";                 || Por Pantalla
+     |SI eAlfa = "-1";  |PTEC 807;  |ACABA;  |FINSI;
+     |SI eAlfa = "-2";              |ACABA;  |FINSI;
+
+     eaArticulo = eAlfa;      ||  700000-4215
+
+     #0Campo = eAlfa;
+     |PINTA #0Campo;
+     |PTEC 802;
+|FPRC;
+
+|PROCESO Tempo;
+     |SI total ] #3#3;
+          total = total - #3#3;
+          uni = #3#3;
+     |SINO;
+          uni = total;
+          total = 0;
+     |FINSI;
+     coste = coste + (#3#2 * uni);
+     |SI total = 0;
+          pcm = coste / #5#5;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Tempo;
+     #3#1;
+     ;
+     #5#0, #5#1, 9999999999;
+     #5#0, #5#1, 0;
+     ;
+     NULL, Tempo;
+|FIN;
+
+|PROCESO Almacen;
+     coste = 0;
+     total = #5#5;
+     |SI total [ 0; |ACABA; |FINSI;
+     |BUCLE Tempo;
+     |SI total ! 0;
+          alfa1 = "0000El Total Articulo/Almacen '" + #5#0+"/"+#5#1+ " ' supera las compras";
+          |||MENAV alfa1;
+          |PINTA 1422, alfa1;
+     |SINO;
+          #5#69 = pcm;
+          #5#3 = #5#69 * #5#5; || Valor almacen;
+          |GRABA 021#5a;
+     |FINSI;
+     |LIBERA #5;
+|FPRC;
+
+|DEFBUCLE Almacen;
+     #5#1;
+     ;
+     #0#0, 00001;
+     #0#1, 99999;
+     be;
+     NULL, Almacen;
+|FIN;
+----------------------------------------------------------------
+|PROCESO Historico;
+     #2#0 = #1#0;
+     |LEE 000#2=;
+     |SI FSalida ! 0; |DDEFECTO #2; |FINSI;
+
+     |SI #2#204 = "N";
+          nFactor = 1;
+     |SINO;
+          #241#0 = #2#5;
+          #241#2 = #1#20;
+          |LEE 000#241=;
+          |SI FSalida ! 0; |DDEFECTO #241; |FINSI;
+          |SI #241#6 = "D";
+              nFactor = 1 * #241#5;
+          |SINO;
+              nFactor = 1 / #241#5;
+          |FINSI;
+     |FINSI;
+
+     |SI #1#2 = "AC"; |O #1#2 = "EV";
+          |SI #1#6 [ 0; |ACABA; |FINSI;
+          dias = fechtope - #1#1;
+          #3#0 = #1#0; || Arti
+          #3#4 = #1#5;
+          #3#1 = dias;
+          |LEE 000#3=;
+
+          nPrecio = #1#14 / nFactor;
+
+          |SI #142#148 = "S";
+               nGuarda = FSalida;
+               |DDEFECTO #4;
+               #4#27 = #1#11;
+               #4#0 = #1#3;
+               #4#1 = #1#4;
+               |LEE 000#4=;
+               nPrecio = nPrecio + #4#42;
+               FSalida = nGuarda;
+          |FINSI;
+
+          |SI FSalida = 0;
+               #3#2 = ((#3#2*#3#3) + (nPrecio * #1#6) ) / (#3#3+#1#6);
+               #3#3 = #3#3 + #1#6;
+               |GRABA 021#3a;
+          |SINO;
+               #3#2 = nPrecio;
+               #3#3 = #1#6;        || unidades;
+               |GRABA 021#3n;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Historico;
+     #1#1;
+     ;
+     #0#0, "01.01.0000", "  ",      0, 00001, "     ";
+     #0#1, "99.99.9999", "zz", 999999, 99999, "zzzzz";
+     ;
+     NULL, Historico;
+|FIN;
+----------------------------------------------------------------;
+
+|PROCESO RecalHisto;
+     #6#50 = #1#11;
+     #6#0 = #1#3;
+     |LEE 000#6=;
+     |SI FSalida = 0;
+          #4#0 = #1#3;  || Numero Albaran
+          #4#1 = #1#4;  || Linea Albaran
+          #4#27= #1#11; || Serie
+          |LEE 000#4=;
+          |SI FSalida = 0;
+               #1#9  = #4#6;     || Precio
+               #1#12 = #4#8;     || Dto1
+               #1#13 = #4#26;    || Dto2
+               #1#21 = #4#45;    || Dto3
+               pre = (((((#1#9 < #1#12) < #1#13) < #1#21) < #6#5) < #6#32);
+               |SI #142#114 = "S";
+                    pre = pre < #6#7;
+               |FINSI;
+               #1#14 =  pre;      || Precio con Dto%
+               |GRABA 021#1a;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE RecalHisto;
+     #1#1;
+     ;
+     "                    ", "01.01.1900", "AC", 000000, 00000, "     ";
+     "zzzzzzzzzzzzzzzzzzzz", "01.01.2100", "AC", 999999, 99999, "zzzzz";
+     ;
+     NULL, RecalHisto;
+|FIN;
+----------------------------------------------------------------
+|PROCESO inicio; |TIPO 3;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     |SI #0#2 = "S";
+          |ABRE #4;
+          |ABRE #6;
+          |BUCLE RecalHisto;
+          |CIERRA #4;
+          |CIERRA #6;
+     |FINSI;
+     fechtope  = "31.12.2100";
+     |HAZ CreaTempo; aTempo3 = Tempo;
+     |NOME_DAT #3 aTempo3; |DELINDEX #3;
+
+     |ABRE #241; |SELECT #2#241;
+     |ABRE #2;
+     |ABRE #3;
+     |ABRE #4;
+     |BUCLE Historico;
+     |CIERRA #3;
+     |CIERRA #4;
+     |CIERRA #2;
+
+     |BUCLE Almacen;
+     |CIERRA #241;
+
+     |DELINDEX #3;  Tempo = aTempo3; |HAZ BoraTempo;
+|FPRC;

@@ -1,0 +1,543 @@
+|FICHEROS;
+    c3gpream #0;
+    camocabe #1;
+    camoline #2;
+    capreamo #3;
+|FIN;
+
+|VARIABLES;
+  &entrada = 1;
+  informe = "capreamo";
+  sw = 0;
+  fecalf = "";
+  feclin = "";
+  linea = 0;
+  mensaje = "";
+  trab1 = "";
+  dias = 0;
+  diasanyo = 0;
+  ultlin = 0;
+  ultfis = @;
+  ultcon = @;
+  amorcon = 0;
+  amorfis = 0;
+  canamort = 0;
+  coefi = 0.0;
+  fecpri = @;
+  fecult = @;
+  valorele = 0;
+  fecha = @;
+  cuotamor = 0;
+  nume1 = 0;
+  nume2 = 0;
+  cuodig = 0;
+  x = 0;
+  topfisc = @;
+  topcont = @;
+  diastot = 0;
+  diasprim = 0;
+
+  &acontab = 0;
+  &vcontab = 0;
+  &afiscal = 0;
+  &vfiscal = 0;
+
+  alfa1    = "";
+  alfa2    = "";
+  sw_error = 0;
+  i_cm1 = 7;  || Campo Desde/Hasta Empresa
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE numamo_i;
+|INCLUYE multie_i;
+
+|| **************************************************************************
+|| ********************* PROCESOS DE PANTALLA *******************************
+|| **************************************************************************
+
+|PROCESO tipo8;  |TIPO 8;
+  |HAZ inicio;
+  any = #30#26;
+  |HAZ coloca;
+|FPRC;
+
+|PROCESO numamo; |TIPO 0;
+    x_alfa1 = #0Campo;
+|HAZ x_punto;
+    #0Campo = x_alfa1;
+    |PINTA #0Campo;
+|FPRC;
+
+|PROCESO mayor;
+  #0Campo = #0Campo > #0Campo;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO defecano;
+  fecalf = #0#3;
+  fecalf = fecalf % -104;
+  #0#2 = fecalf;
+|FPRC;
+
+|| ***********************************************************************
+|PROCESO sel_multi;
+|| |SI #30#26 ! any;  |ACABA; |FINSI;
+  |SI #30#21 = "I"; |ACABA; |FINSI;
+  sw_error = 0;
+  leidos = 1;
+|FPRC;
+
+|| ***********************************************************************
+|| ---------- Seleccion DESDE / HASTA Empresa.
+|PROCESO esdesd1;
+  alfa1 = #30#2;
+  alfa2 = #30#3;
+  alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+  alfa2 = "0"   + alfa2;   alfa2 = alfa2 % -101;
+  dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+
+  sw_error = 0;
+  leidos = 0;
+  |HAZ sel_multi;
+  |SI leidos = 1; |Y sw_error = 0;
+      |HAZ haztodo;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE esdesde;
+ #30#1;
+ ;
+ d_empres, d_period;
+ h_empres, h_period;
+ e;
+ NULL,esdesd1;
+|FIN;
+
+|| ---------- Seleccion en parrilla.
+|PROCESO esunaauna;
+  |PARA xx = i_cm6; |SI xx [ i_cm7; |HACIENDO xx = xx + 1;
+        |SI #0xx = 0;  |SAL;  |FINSI;
+        yy = xx + 20;
+        alfa1 = #0xx;
+        alfa2 = #0yy;
+
+        || ... lee empresa
+           |ABRE #30;
+           |DDEFECTO #30;
+           #30#2 = #0xx;
+           #30#3 = #0yy;
+           |LEE 011#30=;
+           |CIERRA #30;
+           leidos = 0; sw_error = 0;
+           |HAZ sel_multi;
+           |SI leidos = 0; |O sw_error ! 0; |VETE otramas; |FINSI;
+        || ...................
+
+        alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+        alfa2 = "0"     + alfa2;   alfa2 = alfa2 % -101;
+        dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+
+        |HAZ haztodo;
+ |ET otramas;
+  |SIGUE;
+|FPRC;
+|| ----------------------------------------------- Calculo
+
+|PROCESO normfisc;
+  fecpri = #1#6;
+  fecult = #0#3;
+  |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+      fecult = #1#23;
+  |FINSI;
+  diastot = fecult - #1#6;
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = ((#1#7 * #1#11) / 100) ! EURODB;
+         fecha = fecult - fecpri;
+         |SI fecha ] "00.00.0001";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecult = fecult - nume1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorfis = ((dias * cuotamor) / diasanyo) ! EURODB;
+             canamort = canamort + amorfis;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorfis = canamort - #1#12;
+|FPRC;
+
+|PROCESO degrfisc;
+  coefi = 2.5;
+  |SI #1#14 < 8;  coefi = 2;    |FINSI;
+  |SI #1#14 < 5;  coefi = 1.5;  |FINSI;
+  coefi = (coefi * #1#11) / 100;
+  fecpri = #1#6;
+  fecult = #0#3;
+  |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+      fecult = #1#23;
+  |FINSI;
+  canamort = 0;
+  valorele = #1#7;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = ((#1#7 * #1#11) / 100) ! EURODB;
+         |SI cuotamor > valorele;
+             cuotamor = valorele;
+         |SINO;
+             cuotamor = (valorele * coefi) ! EURODB;
+         |FINSI;
+         fecha = fecult - fecpri;
+         |SI fecha ] "00.00.0001";
+             canamort = canamort + cuotamor;
+             valorele = valorele - cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorfis = ((dias * cuotamor) / diasanyo) ! EURODB;
+             canamort = canamort + amorfis;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorfis = canamort - #1#12;
+|FPRC;
+
+|PROCESO acelfisc;
+  nume1 = 0;
+  |PARA x = 1;  |SI x [ #1#14;  |HACIENDO x = x + 1;
+        nume1 = nume1 + x;
+  |SIGUE;
+  cuodig = #1#7 / nume1;
+  x = #1#14;
+  fecpri = #1#6;
+  fecult = #0#3;
+  |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+      fecult = #1#23;
+  |FINSI;
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = (cuodig * x) ! EURODB;
+         fecha = fecult - fecpri;
+         |SI fecha ] "00.00.0001";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+             x = x - 1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorfis = ((dias * cuotamor) / diasanyo) ! EURODB;
+             canamort = canamort + amorfis;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorfis = canamort - #1#12;
+|FPRC;
+
+|PROCESO normcont;
+  fecpri = #1#6;
+  fecult = #0#3;
+  |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+      fecult = #1#23;
+  |FINSI;
+  diastot = fecult - #1#6;
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = ((#1#7 * #1#17) / 100) ! EURODB;
+         fecha = fecult - fecpri;
+         |SI fecha ] "00.00.0001";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+         |SINO;
+             dias = fecult - fecpri;
+                 amorcon = ((dias * cuotamor) / diasanyo) ! EURODB;
+             canamort = canamort + amorcon;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorcon = canamort - #1#18;
+|FPRC;
+
+|PROCESO degrcont;
+  coefi = 2.5;
+  |SI #1#20 < 8;  coefi = 2;    |FINSI;
+  |SI #1#20 < 5;  coefi = 1.5;  |FINSI;
+  coefi = (coefi * #1#17) / 100;
+  fecpri = #1#6;
+  fecult = #0#3;
+  |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+      fecult = #1#23;
+  |FINSI;
+  canamort = 0;
+  valorele = #1#7;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = ((#1#7 * #1#17) / 100) ! EURODB;
+         |SI cuotamor > valorele;
+             cuotamor = valorele;
+         |SINO;
+             cuotamor = (valorele * coefi) ! EURODB;
+         |FINSI;
+         fecha = fecult - fecpri;
+         |SI fecha ] "00.00.0001";
+             canamort = canamort + cuotamor;
+             valorele = valorele - cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorcon = ((dias * cuotamor) / diasanyo) ! EURODB;
+             canamort = canamort + amorcon;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorcon = canamort - #1#18;
+|FPRC;
+
+|PROCESO acelcont;
+  nume1 = 0;
+  |PARA x = 1;  |SI x [ #1#20;  |HACIENDO x = x + 1;
+        nume1 = nume1 + x;
+  |SIGUE;
+  cuodig = #1#7 / nume1;
+  x = #1#20;
+  fecpri = #1#6;
+  fecult = #0#3;
+  |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+      fecult = #1#23;
+  |FINSI;
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = (cuodig * x) ! EURODB;
+         fecha = fecult - fecpri;
+         |SI fecha ] "00.00.0001";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+             x = x - 1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorcon = ((dias * cuotamor) / diasanyo) ! EURODB;
+             canamort = canamort + amorcon;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorcon = canamort - #1#18;
+|FPRC;
+
+|PROCESO calamor;
+  |SI #2#4 = "C";
+      |SI #2#9 = 0; #2#9 = #2#5; |FINSI;
+  |FINSI;
+  |SI #2#5 ! 0;  |Y #2#4 ! "V"; |Y #2#7 > ultfis;  ultfis = #2#7;  |FINSI;
+  |SI #2#9 ! 0;  |Y #2#4 ! "V"; |Y #2#7 > ultcon;  ultcon = #2#7;  |FINSI;
+  |SI #2#2 > ultlin;  ultlin = #2#2;  |FINSI;
+  |SI #2#4 = "A";
+      #1#12 = #1#12 + #2#5;
+      #1#18 = #1#18 + #2#9;
+  |FINSI;
+|FPRC;
+
+|PROCESO calcula;
+  |SI #0#6 = "A";  |Y #1#21 ! "A";  |ACABA;  |FINSI;
+  |SI #0#6 = "P";  |Y #1#21 ! "P";  |ACABA;  |FINSI;
+  |SI #1#13 = 0;   |Y #1#19 = 0;    |ACABA;  |FINSI;
+  ultlin = 0;
+  ultfis = 0;
+  ultcon = 0;
+  #1#12 = 0;
+  #1#18 = 0;
+
+  feclin = #1#6;
+  feclin = feclin % -104;
+  diasprim = 365;
+  |SI feclin = 1980; |O feclin = 1984;  |O feclin = 1988;  |O feclin = 1992;
+                     |O feclin = 1996;  |O feclin = 2000;  |O feclin = 2004;
+                     |O feclin = 2008;  |O feclin = 2012;  |O feclin = 2016;
+      diasprim = 366;
+  |FINSI;
+  |BUCLELIN 2calamor#1;
+  amorfis = 0;
+  amorcon = 0;
+  |SI #1#10 = "N";
+      nume1 = (100 / #1#11) ! 0;
+      nume1 = nume1 / 1000000;
+      nume2 = 100 $ #1#11;
+      nume2 = ((365 * nume2 ) / #1#11 ! 0);
+      nume1 = nume1 + nume2;
+  |SINO;
+      nume1 = #1#14 / 1000000;
+  |FINSI;
+  topfisc = #1#6 + nume1;
+
+  |SI #1#16 = "N";
+      nume1 = (100 / #1#17) ! 0;
+      nume1 = nume1 / 1000000;
+      nume2 = 100 $ #1#17;
+      nume2 = ((365 * nume2 ) / #1#17 ! 0);
+      nume1 = nume1 + nume2;
+  |SINO;
+      nume1 = #1#20 / 1000000;
+  |FINSI;
+  topcont = #1#6 + nume1;
+
+  |SI #1#13 ! 0;
+      |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+          dias = #1#23 - ultfis;
+      |SINO;
+          dias = #0#3 - ultfis;
+      |FINSI;
+      |SI dias [ 0;  |O dias > diasanyo;
+          mensaje = "     ATENCION!!  ERROR EN FECHAS AMORTIZACION ELEMENTO "
+          trab1 = #1#0;
+          mensaje = mensaje + trab1 + "/";
+          trab1 = #1#1;
+          mensaje = mensaje + trab1;
+         || ...  |MENAV mensaje;
+          |ACABA;
+      |FINSI;
+
+      |SI #1#10 = "N";
+          cuotamor = ((#1#7 * #1#11) / 100) ! EURODB;
+          amorfis = ((dias * cuotamor) / diasanyo) ! EURODB;
+      |SINO;
+          |SI #1#10 = "D";
+              |HAZ degrfisc;
+          |SINO;
+              |HAZ acelfisc;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI #1#19 ! 0;
+      |SI #1#23 ! "00.00.0000"; |Y #1#23 < #0#3;
+          dias = #1#23 - ultcon;
+      |SINO;
+          dias = #0#3 - ultcon;
+      |FINSI;
+      |SI dias [ 0;  |O dias > diasanyo;
+          mensaje = "     ATENCION!!  ERROR EN FECHAS AMORTIZACION EN ELEMENTO "
+          trab1 = #1#0;
+          mensaje = mensaje + trab1;
+          trab1 = #1#1;
+          mensaje = mensaje + trab1;
+          || ... |MENAV mensaje;
+          |ACABA;
+      |FINSI;
+
+      |SI #1#16 = "N";
+          cuotamor = ((#1#7 * #1#17) / 100) ! EURODB;
+          amorcon = ((dias * cuotamor) / diasanyo) ! EURODB;
+      |SINO;
+          |SI #1#16 = "D";
+              |HAZ degrcont;
+          |SINO;
+              |HAZ acelcont;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  |DDEFECTO #2;
+  |SI #1#7 > 0;
+      |SI #1#13 < amorfis;  amorfis = #1#13;  |FINSI;
+      |SI #1#19 < amorcon;  amorcon = #1#19;  |FINSI;
+  |SINO;
+      |SI #1#13 > amorfis;  amorfis = #1#13;  |FINSI;
+      |SI #1#19 > amorcon;  amorcon = #1#19;  |FINSI;
+  |FINSI;
+
+  #1#12 = #1#12 + amorfis;
+  #1#13 = #1#13 - amorfis;
+  #1#18 = #1#18 + amorcon;
+  #1#19 = #1#19 - amorcon;
+  |SI #1#13 ! 0;
+      |SI #1#23 ! "00.00.0000";
+          |SI #1#23 [ #0#3;
+              #1#13 = 0;
+          |FINSI;
+      |SINO;
+          |SI topfisc [ #0#3;
+              amorfis = amorfis + #1#13;
+              #1#12 = #1#12 + #1#13;
+              #1#13 = 0;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  |SI #1#19 ! 0;
+      |SI #1#23 ! "00.00.0000";
+          |SI #1#23 [ #0#3;
+              #1#19 = 0;
+          |FINSI;
+      |SINO;
+          |SI topcont [ #0#3;
+              amorcon = amorcon + #1#19;
+              #1#18 = #1#18 + #1#19;
+              #1#19 = 0;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  sw = 1;
+  afiscal = amorfis;
+  acontab =  amorcon;
+  vfiscal = #1#13;
+  vcontab = #1#19;
+  |PRINT;
+|FPRC;
+
+|DEFBUCLE leecabe0;
+ #1#1;
+ ;
+ #0#0, 00;
+ #0#1, 99;
+ be;
+ NULL, calcula;
+|FIN;
+
+|| **********************************************************************
+|PROCESO proceso; |TIPO 3;
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+
+    #3#3 = #0#3;
+    #3#4 = #0#4;
+    #3#5 = #0#5;
+    #3#6 = #0#6;
+
+  |SI #0i_cm1 = "S";
+      |BUCLE esdesde;
+  |SINO;
+      |HAZ esunaauna;
+  |FINSI;
+  |FININF;
+  |FINIMP;
+|FPRC;
+
+|| ................................................................
+|PROCESO haztodo;
+
+  enEmpresa = #canempre#2;
+  enPeriodo = #canempre#3;
+  swOperacion = 0;
+  |SUB_EJECUTA "camoneda.tab";
+
+  |PATH_DAT #1 dirfich0;
+  |PATH_DAT #2 dirfich0;
+
+  |ABRET #2;
+  diasanyo = 365;
+  |SI #0#2 = 1980;  |O #0#2 = 1984;  |O #0#2 = 1988;  |O #0#2 = 1992;
+                    |O #0#2 = 1996;  |O #0#2 = 2000;  |O #0#2 = 2004;
+                    |O #0#2 = 2008;  |O #0#2 = 2012;  |O #0#2 = 2016;
+      diasanyo = 366;
+  |FINSI;
+
+  sw = 0;
+  |BUCLE leecabe0;
+
+  |SI sw = 1;
+      |PIEINF; || imprime el pie del informe
+  |FINSI;
+  |CIERRAT #2;
+|FPRC;

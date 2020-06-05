@@ -1,0 +1,713 @@
+|FICHEROS;
+    caimpcar #0;
+    calibros #1;    || libros
+    camancob #2;    || cobros
+    camanpag #3;    || pagos
+    caremesc #4;    || remesas cabs.
+    caremesl #5;    || remesas lins.
+    capagcab #6;    || pagares cabs.
+    capaglin #7;    || pagares lins.
+    camingca #8;    || confirmings cabs.
+    camingli #9;    || confirmings lins.
+
+    catmpcob #11;   || tmp. cobros
+    catmppag #12;   || tmp. pagos
+    caremtmc #13;   || tmp. remesas cabs.
+    caremtml #14;   || tmp. remesas lins.
+    capagtmc #15;   || tmp. pagares cabs.
+    capagtml #16;   || tmp. pagares lins.
+    camintmc #17;   || tmp. confirmings cabs.
+    camintml #18;   || tmp. confirmings lins.
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    para1 = 0;
+    para2 = 0;
+    para3 = 0;
+    para4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    elsw1 = 0;
+    elsw2 = 0;
+    elsw3 = 0;
+    elsw4 = 0;
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+
+    sw_g = 0;
+    g_emp = 0;
+    g_per = 0;
+    lin = 0;
+    ind = 0;
+    collin = 0;
+    path_1 = "";
+    path_2 = "";
+    sw_bueno = 0;
+    libro = 0;
+    dire = "";
+    traba1 = "";
+    temporal1 = "";
+    temporal2 = "";
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE tempo_i;
+|INCLUYE dsmone_i;
+____________________________________/ CALCULOS PANTALLA
+|PROCESO guarda; |TIPO 7;
+  |SI sw_g = 0;
+      g_emp = #30#2;
+      g_per = #30#3;
+      sw_g = 1;
+      aMonedaA = eaMoneda;
+      #0#0 = #30#2; |PINTA #0#0;
+      #0#1 = #30#3 - 1; |SI #0#1 < 0; #0#1 = 9; |FINSI;
+      |PINTA #0#1;
+  |FINSI;
+|FPRC;
+
+|PROCESO lee_empre; |TIPO 0;
+  |SI FSalida = 2;  |ACABA;  |FINSI;
+  |SI g_emp = #0#0;|Y g_per = #0#1;
+      |MENAV "    Empresa Actual ...";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |DBASE dir_fich;
+  dir_fich = dir_fich + "fich/";
+  |PATH_DAT #30 dir_fich;
+  |DDEFECTO #30;
+  |ABRE #30;
+  #30#2 = #0#0;
+  #30#3 = #0#1;
+  |LEE 000#30=;
+  |SI FSalida ! 0;
+      |MENAV "    Empresa INEXISTENTE ...";
+      |ERROR;
+  |SINO;
+      alfa1 = #0#0;  alfa1 = "00000" + alfa1; alfa1 = alfa1 % -105;
+      path_1 = dir_fich + alfa1 + #0#1 + "/";
+      alfa1 = g_emp; alfa1 = "00000" + alfa1; alfa1 = alfa1 % -105;
+      path_2 = dir_fich + alfa1 + g_per + "/";
+  |FINSI;
+  |ATRI I;
+  |PINTA 0731, #30#1;
+  |ATRI 0;
+  |CIERRA #30;
+
+  swOperacion = 0;
+  enEmpresa = #0#0;
+  enPeriodo = #0#1;
+  |SUB_EJECUTA_NP "camoneda";
+  aMonedaC = eaMoneda;
+|FPRC;
+
+|PROCESO pinta_libro; |TIPO 0;
+  |SI Campo ]  2;|Y Campo [  9;        || origen
+      lin = 10;
+      ind = Campo - 1;
+  |FINSI;
+  |SI Campo ] 10;|Y Campo [ 17;        || destino
+      lin = 34;
+      ind = Campo - 9;
+  |FINSI;
+  collin = ((ind + 10) * 100) + lin;
+  |PINTA collin, "                    ";
+  |SI #0Campo = 0;  |ACABA;  |FINSI;
+  |SI lin = 10;   |PATH_DAT #1 path_1;     |FINSI;
+  |SI lin = 34;   |PATH_DAT #1 path_2;     |FINSI;
+  |DDEFECTO #1;
+  |ABRE #1;
+  #1#0 = #0Campo;
+  |LEE 000#1=;
+  |SI FSalida ! 0;
+      |MENAV "    Libro Inexistente ...";
+      |ERROR;
+  |FINSI;
+  alfa1 = #1#1 % 120;
+  |ATRI I;
+  |PINTA collin, alfa1;
+  |ATRI 0;
+  |CIERRA #1;
+|FPRC;
+
+|PROCESO def_libro; |TIPO 7;
+  |SI #0Campo = 0;
+      nume1 = Campo - 8;
+      #0Campo = #0nume1;
+      |PINTA #0Campo;
+  |FINSI;
+|FPRC;
+____________________________________/ RUTINAS COMUNES COBROS/PAGOS
+|PROCESO busca_libro;
+  sw_bueno = 0;
+  |PARA para1 = 2; |SI para1 [ 9; |HACIENDO para1 = para1 + 1;
+        |SI #0para1 ! 0;
+            |SI libro = #0para1;
+                sw_bueno = 1;           || si esta en la seleccion de libros
+                |SAL;
+            |FINSI;
+        |FINSI;
+  |SIGUE;
+|FPRC;
+
+|PROCESO nuevo_libro;
+  |PARA para1 = 2; |SI para1 [ 9; |HACIENDO para1 = para1 + 1;
+        |SI libro = #0para1;
+            para2 = para1 + 8;          || nuevo libro
+            libro = #0para2;
+            |SAL;
+        |FINSI;
+  |SIGUE;
+|FPRC;
+____________________________________/ GRABACION EN TEMPORALES COBROS/PAGOS
+|PROCESO gra_tmp_cobros;
+  |DDEFECTO #11;
+  #11#0  = #2#0;   #11#1  = #2#1;   #11#2  = #2#2;   #11#3  = #2#3;   #11#4  = #2#4;
+  #11#5  = #2#5;   #11#6  = #2#6;   #11#7  = #2#7;   #11#8  = #2#8;   #11#9  = #2#9;
+  #11#10 = #2#10;  #11#11 = #2#11;  #11#12 = #2#12;  #11#13 = #2#13;  #11#14 = #2#14;
+  #11#15 = #2#15;  #11#16 = #2#16;  #11#17 = #2#17;  #11#18 = #2#18;  #11#19 = #2#19;
+  #11#20 = #2#20;  #11#21 = #2#21;  #11#22 = #2#22;  #11#23 = #2#23;  #11#24 = #2#24;
+  #11#25 = #2#25;  #11#26 = #2#26;  #11#27 = #2#27;  #11#28 = #2#28;
+  |GRABA 020#11n;
+|FPRC;
+
+|PROCESO gra_tmp_remesc;
+  |DDEFECTO #13;
+  #13#0  = #4#0;   #13#1  = #4#1;   #13#2  = #4#2;   #13#3  = #4#3;   #13#4  = #4#4;
+  #13#5  = #4#5;   #13#6  = #4#6;   #13#7  = #4#7;   #13#8  = #4#8;   #13#9  = #4#9;
+  #13#10 = #4#10;  #13#11 = #4#11;  #13#12 = #4#12;  #13#13 = #4#13;  #13#14 = #4#14;
+  #13#15 = #4#15;
+  |GRABA 000#13n;
+|FPRC;
+
+|PROCESO gra_tmp_remesl;
+  |DDEFECTO #14;
+  #14#0  = #5#0;   #14#1  = #5#1;   #14#2  = #5#2;   #14#3  = #5#3;   #14#4  = #5#4;
+  #14#5  = #5#5;   #14#6  = #5#6;   #14#7  = #5#7;   #14#8  = #5#8;   #14#9  = #5#9;
+  #14#10 = #5#10;  #14#11 = #5#11;  #14#12 = #5#12;  #14#13 = #5#13;  #14#14 = #5#14;
+  |GRABA 020#14n;
+|FPRC;
+
+|PROCESO gra_tmp_pagos;
+  |DDEFECTO #12;
+  #12#0  = #3#0;   #12#1  = #3#1;   #12#2  = #3#2;   #12#3  = #3#3;   #12#4  = #3#4;
+  #12#5  = #3#5;   #12#6  = #3#6;   #12#7  = #3#7;   #12#8  = #3#8;   #12#9  = #3#9;
+  #12#10 = #3#10;  #12#11 = #3#11;  #12#12 = #3#12;  #12#13 = #3#13;  #12#14 = #3#14;
+  #12#15 = #3#15;  #12#16 = #3#16;  #12#17 = #3#17;  #12#18 = #3#18;  #12#19 = #3#19;
+  #12#20 = #3#20;  #12#21 = #3#21;  #12#22 = #3#22;  #12#23 = #3#23;  #12#24 = #3#24;
+  #12#25 = #3#25;  #12#26 = #3#26;
+  |GRABA 020#12n;
+|FPRC;
+
+|PROCESO gra_tmp_pagac;
+  |DDEFECTO #15;
+  #15#0  = #6#0;   #15#1  = #6#1;   #15#2  = #6#2;   #15#3  = #6#3;
+  #15#4  = #6#4;   #15#5  = #6#5;   #15#6  = #6#6;   #15#7  = #6#7;
+  #15#8  = #6#8;   #15#9  = #6#9;   #15#10 = #6#10;  #15#11 = #6#11;
+  #15#12 = #6#12;  #15#13  = #6#13;
+  |GRABA 000#15n;
+|FPRC;
+
+|PROCESO gra_tmp_pagal;
+  |DDEFECTO #16;
+  #16#0 = #7#0;  #16#1 = #7#1;  #16#2 = #7#2;  #16#3 = #7#3;  #16#4 = #7#4;
+  #16#5 = #7#5;  #16#6 = #7#6;  #16#7 = #7#7;  #16#8 = #7#8;  #16#9 = #7#9;
+  |GRABA 020#16n;
+|FPRC;
+
+|PROCESO gra_tmp_confc;
+  |DDEFECTO #17;
+  #17#0  = #8#0;   #17#1  = #8#1;   #17#2  = #8#2;   #17#3  = #8#3;
+  #17#4  = #8#4;   #17#5  = #8#5;   #17#6  = #8#6;   #17#7  = #8#7;
+  #17#8  = #8#8;   #17#9  = #8#9;   #17#10 = #8#10;  #17#11 = #8#11;
+  |GRABA 000#17n;
+|FPRC;
+
+|PROCESO gra_tmp_confl;
+  |DDEFECTO #18;
+  #18#0  = #9#0;   #18#1  = #9#1;   #18#2 = #9#2;    #18#3 = #9#3;
+  #18#4  = #9#4;   #18#5  = #9#5;   #18#6  = #9#6;   #18#7 = #9#7;
+  #18#8  = #9#8;   #18#9  = #9#9;   #18#10 = #9#10;  #18#11 = #9#11;
+  #18#12 = #9#12;  #18#13 = #9#13;
+  |GRABA 020#18n;
+|FPRC;
+
+
+____________________________________/ ----- C O B R O S --------
+____________________________________/ RECALCULO DE LAS REMESAS
+|PROCESO recal_remesa2;
+    #4#5 = #4#5 + 1;          || nro. efectos
+    #4#10 = #4#10 + #5#7;     || remesa
+    #4#11 = #4#11 + #4#6;     || comision
+    #4#12 = #4#12 + #5#10;    || interes
+|FPRC;
+
+|PROCESO recal_remesa1;
+    #4#5 = 0;       || nro. efectos
+    #4#10 = 0;      || remesa
+    #4#11 = 0;      || comision
+    #4#12 = 0;      || interes
+    #4#13 = 0;      || vencidos
+
+|BUCLELIN 2recal_remesa2#4;
+
+|GRABA 020#4a;
+|LIBERA #4;
+|FPRC;
+
+|DEFBUCLE recal_remesa;
+ #4#1;
+ ;
+     1;
+ 99999;
+ be;
+ NULL, recal_remesa1;
+|FIN;
+____________________________________/ GRABACIONES DESDE TEMPORALES
+|PROCESO lee_tmp_cobros;
+  |DDEFECTO #2;
+  #2#0  = #11#0;   #2#1  = #11#1;   #2#2  = #11#2;   #2#3  = #11#3;   #2#4  = #11#4;
+  #2#5  = #11#5;   #2#6  = #11#6;   #2#7  = #11#7;   #2#8  = #11#8;   #2#9  = #11#9;
+  #2#10 = #11#10;  #2#11 = #11#11;  #2#12 = #11#12;  #2#13 = #11#13;  #2#14 = #11#14;
+  #2#15 = #11#15;  #2#16 = #11#16;  #2#17 = #11#17;  #2#18 = #11#18;  #2#19 = #11#19;
+  #2#20 = #11#20;  #2#21 = #11#21;  #2#22 = #11#22;  #2#23 = #11#23;  #2#24 = #11#24;
+  #2#25 = #11#25;  #2#26 = #11#26;  #2#27 = #11#27;  #2#28 = #11#28;
+
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #11#8;  |HAZ ElCambioMoneda; #2#8 = impMoneda;
+      impMoneda = #11#9;  |HAZ ElCambioMoneda; #2#9 = impMoneda;
+      impMoneda = #11#10; |HAZ ElCambioMoneda; #2#10 = impMoneda;
+      impMoneda = #11#24; |HAZ ElCambioMoneda; #2#24 = impMoneda;
+      impMoneda = #11#26; |HAZ ElCambioMoneda; #2#26 = impMoneda;
+  |FINSI;
+
+  libro = #2#0;   |HAZ nuevo_libro;   #2#0 = libro;
+  |GRABA 000#2n;
+|FPRC;
+
+|DEFBUCLE tmp_cobros;
+ #11#1;
+ ;
+  1,      1, "  ",   1;
+ 99, 999999, "zz", 999;
+ e;
+ NULL, lee_tmp_cobros;
+|FIN;
+
+|PROCESO lee_tmp_remesc;
+  |DDEFECTO #4;
+  #4#0  = #13#0;   #4#1  = #13#1;   #4#2  = #13#2;   #4#3  = #13#3;   #4#4  = #13#4;
+  #4#5  = #13#5;   #4#6  = #13#6;   #4#7  = #13#7;   #4#8  = #13#8;   #4#9  = #13#9;
+  #4#10 = #13#10;  #4#11 = #13#11;  #4#12 = #13#12;  #4#13 = #13#13;  #4#14 = #13#14;
+  #4#15 = #13#15;
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #13#10; |HAZ ElCambioMoneda; #4#10 = impMoneda;
+      impMoneda = #13#11; |HAZ ElCambioMoneda; #4#11 = impMoneda;
+      impMoneda = #13#12; |HAZ ElCambioMoneda; #4#12 = impMoneda;
+      impMoneda = #13#13; |HAZ ElCambioMoneda; #4#13 = impMoneda;
+  |FINSI;
+  |GRABA 000#4n;
+|FPRC;
+
+|DEFBUCLE tmp_remesc;
+ #13#1;
+ ;
+     1;
+ 99999;
+ e;
+ NULL, lee_tmp_remesc;
+|FIN;
+
+|PROCESO lee_tmp_remesl;
+  |DDEFECTO #5;
+  #5#0  = #14#0;   #5#1  = #14#1;   #5#2  = #14#2;   #5#3  = #14#3;   #5#4  = #14#4;
+  #5#5  = #14#5;   #5#6  = #14#6;   #5#7  = #14#7;   #5#8  = #14#8;   #5#9  = #14#9;
+  #5#10 = #14#10;  #5#11 = #14#11;  #5#12 = #14#12;  #5#13 = #14#13;  #5#14 = #14#14;
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #14#7;  |HAZ ElCambioMoneda; #5#7 = impMoneda;
+      impMoneda = #14#10; |HAZ ElCambioMoneda; #5#10 = impMoneda;
+  |FINSI;
+  libro = #5#2;   |HAZ nuevo_libro;   #5#2 = libro;
+  |GRABA 000#5n;
+|FPRC;
+
+|DEFBUCLE tmp_remesl;
+ #14#1;
+ ;
+     1,   1;
+ 99999, 999;
+ e;
+ NULL, lee_tmp_remesl;
+|FIN;
+____________________________________/ LECTURAS ORIGEN Y CHEQUEOS
+|PROCESO lee_remesa2;
+  |DDEFECTO #4;
+  #4#0 = #5#0;
+  |LEE 020#4=;
+  |DDEFECTO #2;
+  #2#0 = #5#2;
+  #2#1 = #5#3;
+  #2#2 = #5#4;
+  #2#3 = #5#5;
+  |LEE 020#2=;
+|FPRC;
+
+|PROCESO lee_remesa1;
+  libro = #5#2;
+  |HAZ busca_libro;
+  |SI sw_bueno ! 1;  |ACABA;  |FINSI;
+  |HAZ lee_remesa2;         || lee la cabecera de la remesa y el cobro
+  |SI #4#9 = "N";
+      |HAZ gra_tmp_cobros;
+      |HAZ gra_tmp_remesc;
+      |HAZ gra_tmp_remesl;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_remesa;
+ #5#1;
+ 6;
+     1,   1,        #0#18;
+ 99999, 999, "31.12.9999";
+ e;
+ NULL, lee_remesa1;
+|FIN;
+
+|PROCESO lee_cobros1;
+  libro = #2#0;
+  |HAZ busca_libro;
+  |SI sw_bueno = 1;
+      |HAZ gra_tmp_cobros;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_cobros;
+ #2#1;
+ 12, 23;
+  1,      1, "  ",   1, 0, "N";
+ 99, 999999, "zz", 999, 0, "N";
+ e;
+ NULL, lee_cobros1;
+|FIN;
+
+|PROCESO cobros;
+  |DELINDEX #11;
+  |DELINDEX #13;
+  |DELINDEX #14;
+  |ABRE #11;
+  |ABRE #13;
+  |ABRE #14;
+  eaMoneda = aMonedaC;
+  |HAZ MoCierre;      ||Carga Variables Moneda
+
+  |PATH_DAT #2 path_1;
+  |PATH_DAT #4 path_1;
+  |PATH_DAT #5 path_1;
+  |BUCLE lee_cobros;
+  |ABRE #2;
+  |ABRE #4;
+  |BUCLE lee_remesa;
+  |CIERRA #2;
+  |CIERRA #4;
+  |CIERRA #11;
+  |CIERRA #13;
+  |CIERRA #14;
+  eaMoneda = aMonedaA;
+  |HAZ MoCierre;      ||Carga Variables Moneda
+
+  |PATH_DAT #2 path_2;     |ABRE #2; |BUCLE tmp_cobros;  |CIERRA #2;
+  |PATH_DAT #4 path_2;     |ABRE #4; |BUCLE tmp_remesc;  |CIERRA #4;
+  |PATH_DAT #5 path_2;     |ABRE #5; |BUCLE tmp_remesl;  |CIERRA #5;
+  |DELINDEX #11;
+  |DELINDEX #13;
+  |DELINDEX #14;
+  |BUCLE recal_remesa;
+|FPRC;
+
+
+____________________________________/ ----- P A G O S --------
+____________________________________/ GRABACIONES DESDE TEMPORALES
+|PROCESO lee_tmp_pagos;
+  |DDEFECTO #3;
+  #3#0  = #12#0;   #3#1  = #12#1;   #3#2  = #12#2;   #3#3  = #12#3;   #3#4  = #12#4;
+  #3#5  = #12#5;   #3#6  = #12#6;   #3#7  = #12#7;   #3#8  = #12#8;   #3#9  = #12#9;
+  #3#10 = #12#10;  #3#11 = #12#11;  #3#12 = #12#12;  #3#13 = #12#13;  #3#14 = #12#14;
+  #3#15 = #12#15;  #3#16 = #12#16;  #3#17 = #12#17;  #3#18 = #12#18;  #3#19 = #12#19;
+  #3#20 = #12#20;  #3#21 = #12#21;  #3#22 = #12#22;  #3#23 = #12#23;  #3#24 = #12#24;
+  #3#25 = #12#25;  #3#26 = #12#26;
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #12#8;  |HAZ ElCambioMoneda; #3#8 = impMoneda;
+      impMoneda = #12#9;  |HAZ ElCambioMoneda; #3#9 = impMoneda;
+      impMoneda = #12#23; |HAZ ElCambioMoneda; #3#23 = impMoneda;
+  |FINSI;
+
+  libro = #3#0;   |HAZ nuevo_libro;   #3#0 = libro;
+  |GRABA 000#3n;
+|FPRC;
+
+|DEFBUCLE tmp_pagos;
+ #12#1;
+ ;
+  1,      1, "  ",   1;
+ 99, 999999, "zz", 999;
+ e;
+ NULL, lee_tmp_pagos;
+|FIN;
+
+|PROCESO lee_tmp_pagac;
+  |DDEFECTO #6;
+  #6#0  = #15#0;   #6#1  = #15#1;   #6#2  = #15#2;   #6#3  = #15#3;
+  #6#4  = #15#4;   #6#5  = #15#5;   #6#6  = #15#6;   #6#7  = #15#7;
+  #6#8  = #15#8;   #6#9  = #15#9;   #6#10 = #15#10;  #6#11 = #15#11;
+  #6#12 = #15#12;  #6#13 = #15#13;
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #15#9;  |HAZ ElCambioMoneda; #6#9 = impMoneda;
+  |FINSI;
+  |GRABA 000#6n;
+|FPRC;
+
+|DEFBUCLE tmp_pagac;
+ #15#1;
+ ;
+      1;
+ 999999;
+ e;
+ NULL, lee_tmp_pagac;
+|FIN;
+
+|PROCESO lee_tmp_pagal;
+  |DDEFECTO #7;
+  #7#0 = #16#0;  #7#1 = #16#1;  #7#2 = #16#2;  #7#3 = #16#3;  #7#4 = #16#4;
+  #7#5 = #16#5;  #7#6 = #16#6;  #7#7 = #16#7;  #7#8 = #16#8;  #7#9 = #16#9;
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #16#7;  |HAZ ElCambioMoneda; #7#7 = impMoneda;
+  |FINSI;
+  libro = #7#2;   |HAZ nuevo_libro;   #7#2 = libro;
+  |GRABA 000#7n;
+|FPRC;
+
+|DEFBUCLE tmp_pagal;
+ #16#1;
+ ;
+      1,  1;
+ 999999, 99;
+ e;
+ NULL, lee_tmp_pagal;
+|FIN;
+
+|PROCESO lee_tmp_confc;
+  |DDEFECTO #8;
+  #8#0  = #17#0;   #8#1  = #17#1;   #8#2  = #17#2;   #8#3  = #17#3;
+  #8#4  = #17#4;   #8#5  = #17#5;   #8#6  = #17#6;   #8#7  = #17#7;
+  #8#8  = #17#8;   #8#9  = #17#9;   #8#10 = #17#10;  #8#11 = #17#11;
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #17#9;  |HAZ ElCambioMoneda; #8#9 = impMoneda;
+  |FINSI;
+  |GRABA 000#8n;
+|FPRC;
+
+|DEFBUCLE tmp_confc;
+ #17#1;
+ ;
+     1;
+ 99999;
+ e;
+ NULL, lee_tmp_confc;
+|FIN;
+
+|PROCESO lee_tmp_confl;
+  |DDEFECTO #9;
+  #9#0  = #18#0;   #9#1  = #18#1;   #9#2  = #18#2;   #9#3  = #18#3;
+  #9#4  = #18#4;   #9#5  = #18#5;   #9#6  = #18#6;   #9#7  = #18#7;
+  #9#8  = #18#8;   #9#9  = #18#9;   #9#10 = #18#10;  #9#11 = #18#11;
+  #9#12 = #18#12;  #9#13 = #18#13;
+  |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #18#8;  |HAZ ElCambioMoneda; #9#8 = impMoneda;
+  |FINSI;
+  libro = #9#2;   |HAZ nuevo_libro;   #9#2 = libro;
+  |GRABA 000#9n;
+|FPRC;
+
+|DEFBUCLE tmp_confl;
+ #18#1;
+ ;
+     1,   1;
+ 99999, 999;
+ e;
+ NULL, lee_tmp_confl;
+|FIN;
+____________________________________/ LECTURAS ORIGEN Y CHEQUEOS
+|PROCESO lee_confirming2;
+  libro = #9#2;
+  |HAZ busca_libro;
+  |SI sw_bueno ! 1;  |ACABA;  |FINSI;
+  |DDEFECTO #3;
+  #3#0 = #9#2;
+  #3#1 = #9#3;
+  #3#2 = #9#4;
+  #3#3 = #9#5;
+  |LEE 020#3=;
+  |HAZ gra_tmp_pagos;
+  |HAZ gra_tmp_confl;
+  #8#8 = #8#8 + 1;
+  #8#9 = #8#9 + #9#8;
+  seleccio = 1;
+|FPRC;
+
+|PROCESO lee_pagare2;
+  libro = #7#2;
+  |HAZ busca_libro;
+  |SI sw_bueno ! 1;  |ACABA;  |FINSI;
+  |DDEFECTO #3;
+  #3#0 = #7#2;
+  #3#1 = #7#3;
+  #3#2 = #7#9;
+  #3#3 = #7#4;
+  |LEE 020#3=;
+  |HAZ gra_tmp_pagos;
+  |HAZ gra_tmp_pagal;
+  #6#9 = #6#9 + #7#7;
+  seleccio = 1;
+|FPRC;
+
+|PROCESO lee_confirming1;
+  #8#8 = 0;
+  #8#9 = 0;
+  seleccio = 0;
+  |BUCLELIN 2lee_confirming2#8;
+  |SI seleccio ! 0;
+      |HAZ gra_tmp_confc;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_confirming;
+ #8#1;
+ 2,11;
+     1,        #0#20, "N";
+ 99999, "31.12.9999", "N";
+ e;
+ NULL, lee_confirming1;
+|FIN;
+
+|PROCESO lee_pagare1;
+  #6#9 = 0;
+  seleccio = 0;
+  |BUCLELIN 2lee_pagare2#6;
+  |SI seleccio ! 0;
+      |HAZ gra_tmp_pagac;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_pagare;
+ #6#1;
+ 6, 8;
+      1,        #0#19, "N";
+ 999999, "31.12.9999", "N";
+ e;
+ NULL, lee_pagare1;
+|FIN;
+
+|PROCESO lee_pagos1;
+  libro = #3#0;
+  |HAZ busca_libro;
+  |SI sw_bueno = 1;
+      |HAZ gra_tmp_pagos;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_pagos;
+ #3#1;
+ 12, 22;
+  1,      1, "  ",   1, 0, "N";
+ 99, 999999, "zz", 999, 0, "N";
+ e;
+ NULL, lee_pagos1;
+|FIN;
+
+|PROCESO pagos;
+  |DELINDEX #12;
+  |DELINDEX #15;
+  |DELINDEX #16;
+  |DELINDEX #17;
+  |DELINDEX #18;
+  |ABRE #12;
+  |ABRE #15;
+  |ABRE #16;
+  |ABRE #17;
+  |ABRE #18;
+  eaMoneda = aMonedaC;
+  |HAZ MoCierre;      ||Carga Variables Moneda
+  |PATH_DAT #3 path_1;
+  |PATH_DAT #6 path_1;
+  |PATH_DAT #7 path_1;
+  |PATH_DAT #8 path_1;
+  |PATH_DAT #9 path_1;
+  |BUCLE lee_pagos;
+  |ABRE #3;
+  |BUCLE lee_pagare;
+  |BUCLE lee_confirming;
+  |CIERRA #3;
+  |CIERRA #12;
+  |CIERRA #15;
+  |CIERRA #16;
+  |CIERRA #17;
+  |CIERRA #18;
+  eaMoneda = aMonedaA;
+  |HAZ MoCierre;      ||Carga Variables Moneda
+  |PATH_DAT #3 path_2;     |ABRE #3; |BUCLE tmp_pagos;  |CIERRA #3;
+  |PATH_DAT #6 path_2;     |ABRE #6; |BUCLE tmp_pagac;  |CIERRA #6;
+  |PATH_DAT #7 path_2;     |ABRE #7; |BUCLE tmp_pagal;  |CIERRA #7;
+  |PATH_DAT #8 path_2;     |ABRE #8; |BUCLE tmp_confc;  |CIERRA #8;
+  |PATH_DAT #9 path_2;     |ABRE #9; |BUCLE tmp_confl;  |CIERRA #9;
+  |DELINDEX #12;
+  |DELINDEX #15;
+  |DELINDEX #16;
+  |DELINDEX #17;
+  |DELINDEX #18;
+|FPRC;
+____________________________________/ COPIA DE TIPOS DE RECIBO
+|PROCESO tipos;
+  traba1 = "camanrec"
+  temporal1 = path_1 + traba1 + ".ixx";
+  temporal2 = path_2 + traba1 + ".ixx";
+  |COPIA_FICHERO temporal1,temporal2;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  temporal1 = path_1 + traba1 + ".dat";
+  temporal2 = path_2 + traba1 + ".dat";
+  |COPIA_FICHERO temporal1,temporal2;
+  |SI FSalida ! 0;
+      temporal2 = path_2 + traba1 + ".ixx";
+      |FBORRA temporal2;
+      |ACABA;
+  |FINSI;
+  temporal1 = path_1 + traba1 + ".ddx";
+  temporal2 = path_2 + traba1 + ".ddx";
+  |COPIA_FICHERO temporal1,temporal2;
+|FPRC;
+____________________________________/ CALCULO PRINCIPAL
+|PROCESO tipo3; |TIPO 3;
+  |HAZ nom_usu;
+  alfa1 = "1" + nom_tmp;   |NOME_DAT #11 alfa1;     || cobros
+  alfa1 = "2" + nom_tmp;   |NOME_DAT #12 alfa1;     || pagos
+  alfa1 = "3" + nom_tmp;   |NOME_DAT #13 alfa1;     || remesas cabs.
+  alfa1 = "4" + nom_tmp;   |NOME_DAT #14 alfa1;     || remesas lins.
+  alfa1 = "5" + nom_tmp;   |NOME_DAT #15 alfa1;     || pagares cabs.
+  alfa1 = "6" + nom_tmp;   |NOME_DAT #16 alfa1;     || pagares lins.
+  alfa1 = "7" + nom_tmp;   |NOME_DAT #17 alfa1;     || confirmings cabs.
+  alfa1 = "8" + nom_tmp;   |NOME_DAT #18 alfa1;     || confirmings lins.
+  |HAZ cobros;
+  |HAZ pagos;
+  |HAZ tipos;
+|FPRC;

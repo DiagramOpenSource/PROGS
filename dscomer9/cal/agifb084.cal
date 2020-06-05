@@ -1,0 +1,292 @@
+|FICHEROS;
+     agifa084 #0;
+     agifa024 #6;
+     agifa007 #40;
+     agifa142 #41;
+     dsm00153 #153;
+     dsm00211 #211;
+     agifa325 #325;
+     agifa704 #704;
+     agifa722 #722;
+     dsm00279 #279;
+     agifa770 #770;
+     Referen@ #2000;
+     ParamCns@ #5002;    || Parametros construccion
+|FIN;
+
+|VARIABLES;
+     &enSwLiquid = 0;
+     &enSwEmpCerrada = 0;
+     &enTecla    = 0;
+     &enErr = 0;
+
+     nModo = 0;
+     i = 0;
+
+     nDiario = 0;
+     fFecha  = @;
+     nDocum  = 0;
+
+     aAlfa   = "";
+     aAlfa2  = "";
+     aAlfa3  = "";
+
+     &enLiq              = 0;
+     &enCer              = 0;
+     &enOk               = 0;
+     &eaSer              = "";
+     &enFac              = 0;
+     &eaAny              = "";
+     &eaTip              = "";
+|FIN;
+
+|PROCESO DefePromo84;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 1; |ACABA; |FINSI;
+     |SI #41#129 ! "S"; |ACABA; |FINSI;
+
+     |HAZ EsAparecida;
+     |SI FSalida = 0;
+          |ABRE #6;
+          #6#0 = #0#3;
+          |LEE 000#6=;
+          |CIERRA #6;
+          |ABRE #211;
+          |LEE 000#211p;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               |SI #211#25 = "GENERADA ";
+                    |PARA i = 1; |SI i [ 24; |HACIENDO i = i + 1;
+                         |SI #211i = #6#158;
+                              #0#79 = #211#0; |PINTA #0#79;
+                              |SAL;
+                         |FINSI;
+                    |SIGUE;
+               |FINSI;
+               |LEE 000#211s;
+          |SIGUE;
+          |CIERRA #211;
+     |FINSI;
+|FPRC;
+
+|PROCESO MiraSiLiquidada;
+   |ABRE #dsm00279;
+   |LEE 000#dsm00279.p;
+   |SI FSalida ! 0; |DDEFECTO #dsm00279; |FINSI;
+   |CIERRA #dsm00279;
+
+   enSwLiquid = 0; enSwEmpCerrada = 0;
+
+   || Integracion Contagen y Dscomer9
+
+   |HAZ CargaContagen;
+   |SI enOk = 1;
+       eaSer = #agifa084#48;
+       enFac = #agifa084#0;
+       eaAny = #agifa084#1 % -102;
+       eaTip = "R";
+       |HAZ MiraLiquidada;
+
+       enSwLiquid     = enLiq;
+       enSwEmpCerrada = enCer;
+   |FINSI;
+
+   |SI enSwLiquid ! 0;
+       |ACABA;
+   |FINSI;
+
+   || Se busca la factura por el caenlace
+
+   |ABRE #agifa722; |DDEFECTO #agifa722;
+   #agifa722#0 = "FD";
+   #agifa722#1 = #agifa084#48;
+   #agifa722#2 = #agifa084#0;
+   #agifa722#11 = 1;
+   |LEE 000#agifa722.];
+   aAlfa2 = #agifa722#1;  |QBF aAlfa2;
+   aAlfa3 = #agifa084#48; |QBF aAlfa3;
+   |PARA; |SI FSalida = 0; |Y #agifa722#0 = "FD"; |Y aAlfa2 = aAlfa3; |Y #agifa722#2 = #agifa084#0; |HACIENDO;
+      |ABRE #agifa704;
+      #agifa704#0 = #agifa722#10;
+      |LEE 000#agifa704.=;
+      |SI FSalida ! 0; |DDEFECTO #agifa704; |FINSI;
+      |CIERRA #agifa704;
+      aAlfa = #agifa704#6; |QBF aAlfa;
+      aAlfa = aAlfa - "contagen";
+      |SI FSalida ! 0;
+         |SI #dsm00279#13 = "S";
+            aAlfa = #agifa704#6; |QBF aAlfa;
+            aAlfa = aAlfa + "def/camaniva.mas";
+            |CARGA_DEF aAlfa, Referen@;
+            |SI FSalida = 0;
+               aAlfa = #agifa704#6; |QBF aAlfa;
+               aAlfa = aAlfa + "fich/" + (("00000" + #agifa722#8) % -105) + #agifa722#9 + "/";
+               |PATH_DAT #Referen@#aAlfa#;
+               |ABRE #Referen@;
+               |SELECT #2#Referen@;
+               #Referen@#7 = #agifa722#4; nDiario = #Referen@#7;
+               #Referen@#8 = #agifa722#5; fFecha  = #Referen@#8;
+               #Referen@#9 = #agifa722#6; nDocum  = #Referen@#9;
+               |LEE 000#Referen@.];
+               |PARA; |SI FSalida = 0; |Y #Referen@#7 = nDiario; |Y #Referen@#8 = fFecha;
+                       |Y #Referen@#9 = nDocum; |HACIENDO;
+                  |SI #agifa084#48 = #Referen@#2; |Y #agifa084#0 = #Referen@#3;
+                     |SAL;
+                  |FINSI;
+                  |LEE 000#Referen@.s;
+               |SIGUE;
+               |SI FSalida = 0; |Y #Referen@#7 = nDiario; |Y #Referen@#8 = fFecha;
+                  |Y #Referen@#9 = nDocum; |Y #agifa084#48 = #Referen@#2;
+                  |Y #agifa084#0 = #Referen@#3;
+                  |SI #Referen@#40 ! 0; enSwLiquid = 1; |SAL; |FINSI;
+               |FINSI;
+            |FINSI;
+            |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+         |FINSI;
+
+         aAlfa = #agifa704#6; |QBF aAlfa;
+         aAlfa = aAlfa + "def/camaasic.mas";
+         |CARGA_DEF aAlfa, Referen@;
+         |SI FSalida = 0;
+            aAlfa = #agifa704#6; |QBF aAlfa;
+            aAlfa = aAlfa + "fich/" + (("00000" + #agifa722#8) % -105) + #agifa722#9 + "/";
+            |PATH_DAT #Referen@#aAlfa#;
+            |ABRE #Referen@;
+            #Referen@#0 = 99;
+            #Referen@#1 = "01.01.0000";
+            #Referen@#2 = 0;
+            |LEE 000#Referen@.];
+            |SI FSalida = 0; |Y #Referen@#0 = 99;
+               enSwEmpCerrada = 1;
+            |FINSI;
+            |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+         |FINSI;
+      |FINSI;
+
+      |LEE 000#agifa722.s;
+      aAlfa2 = #agifa722#1;  |QBF aAlfa2;
+      aAlfa3 = #agifa084#48; |QBF aAlfa3;
+   |SIGUE;
+|FPRC;
+
+|PROCESO HisCamDivi;
+     #0#66 = #325#2;
+|FPRC;
+
+|DEFBUCLE HisCamDivi;
+     #325#2;
+     ;
+     #0#65, "01.01.0000", 0;
+     #0#65, #0#1, 99999999;
+     ;
+     NULL, HisCamDivi;
+|FIN;
+
+|PROCESO HisCamDiv;
+     |BUCLE HisCamDivi;
+|FPRC;
+
+|PROCESO TmpSeries;
+   |DDEFECTO #agifa770;
+   #agifa770#0 = #agifa007#26;
+   #agifa770#1 = #agifa007#27;
+   #agifa770#2 = #agifa007#43;
+   |GRABA 020#agifa770.n;
+|FPRC;
+
+|DEFBUCLE TmpSeries;
+#agifa007#1;
+;
+INICIO;
+FINAL;
+;
+NULL, TmpSeries;
+|FIN;
+
+|PROCESO PonMensa000con;
+     |DDEF aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + "goparame.mas";
+     |CARGA_DEF aAlfa, ParamCns@
+     |SI FSalida = 0;
+        |ABRE #ParamCns@;
+        |LEE 000#ParamCns@.=;
+        |SI FSalida = 0;
+           |SI #ParamCns@#142 = "S";
+              |MENSA "0000<F2> Seleccion obra";
+           |FINSI;
+        |FINSI;
+        |CIERRA #ParamCns@; |DESCARGA_DEF #ParamCns@;
+     |FINSI;
+|FPRC;
+
+|PROCESO CogeObra000con;
+        |DDEF aAlfa; |QBF aAlfa;
+        aAlfa = aAlfa + "goparame.mas";
+        |CARGA_DEF aAlfa, ParamCns@
+        |SI FSalida = 0;
+           |ABRE #ParamCns@;
+           |LEE 000#ParamCns@.=;
+           |SI FSalida = 0;
+              |SI #ParamCns@#142 = "S";
+                 |SI enTecla = 10;   ||F2
+                      aAlfa = "ttt" + Usuario; |NOME_DAT #agifa770#aAlfa#;
+                      |DELINDEX #agifa770; |ABRE #agifa770;
+                      |BUCLE TmpSeries;
+                      #agifa770#0 = #agifa084#87;
+                      |LEE 000#agifa770.];
+
+                      |CONSULTA_CLAVE #1#agifa770;
+                      |SI FSalida = 0;
+                         #agifa084#87 = #agifa770#0;
+                         |PINTA #agifa084#87;
+                      |FINSI;
+
+                      |CIERRA #agifa770;   |DELINDEX #agifa770;
+                 |SINO;
+                      |ABRE #agifa007;
+                      #agifa007#26 = #0#87;
+                      |LEE 000#agifa007.=;
+                      |SI FSalida ! 0;
+                         |MENAV "    Obra inexistente"; |ERROR;
+                      |FINSI;
+                      |CIERRA #agifa007;
+                 |FINSI;
+                 aAlfa = #0#87; |QBF aAlfa;
+                 |SI aAlfa = "";
+                      |MENAV "0000Campo obligatorio...";
+                      |ERROR;
+                 |SINO;
+                      |MENSA "0000                         ";
+                 |FINSI;
+              |FINSI;
+           |FINSI;
+           |CIERRA #ParamCns@; |DESCARGA_DEF #ParamCns@;
+        |FINSI;
+|FPRC;
+
+|PROCESO CheqRecticativa;
+     enErr = 0;
+     |ABRE #153;
+     #153#0 = "D";
+     #153#1 = #0#48;
+     #153#2 = #0#0;
+     |LEE 000#153=;
+     |SI FSalida = 0;
+          aAlfa = "0000Factura con factura rectificativa:" +&13+ #153#6 + "/" + (("000000" + #153#7) % -106) + "...";
+          |MENAV aAlfa;
+          enErr = 1;
+     |FINSI;
+     |CIERRA #153;
+|FPRC;
+
+|PROCESO BorraRecticativa;
+     |ABRE #153;
+     |SELECT #2#153;
+     #153#0 = "D";
+     #153#6 = #0#48;
+     #153#7 = #0#0;
+     |LEE 101#153=;
+     |SI FSalida = 0;
+          |BORRA 020#153a;
+     |FINSI;
+     |CIERRA #153;
+|FPRC;

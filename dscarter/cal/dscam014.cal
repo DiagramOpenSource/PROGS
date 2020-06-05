@@ -1,0 +1,459 @@
+|FICHEROS;
+   dscam014 #0;
+   dscam015 #1;
+
+   &canempr@ #10;
+   paises@ #100;
+|FIN;
+
+|VARIABLES;
+   nSwC        = 0;
+   &eaPais     = "";
+   &eaCta      = "";
+   &eaIBAN     = "";
+   &eaIBANant  = "";
+
+   &Fichero    = "";
+   &Tipo       = "";
+   &Cmp        = "";
+   &CmpNum     = 0;
+   &HayGestion = 0;
+   &HayConta   = 0;
+
+   &Niv1       = 0;
+   &Niv2       = 0;
+   &Niv3       = 0;
+   &Niv4       = 0;
+   &Niv5       = 0;
+   &Niv6       = 0;
+   aAlfa       = "";
+   aAlfa1      = "";
+   nPos1       = 0;
+   nPos2       = 0;
+   nModo       = 0;
+   Comodin     = "";
+   Comodin1    = "";
+   Calc        = 0;
+
+   MaxDigit   = 0;
+   Parte      = "";
+   Part1      = "";
+   Part2      = "";
+   Parte1     = 0;
+   Parte2     = 0;
+   Long       = 0;
+   LongAlfa   = "";
+   aLong      = "";
+   nLong      = 0;
+   Sw         = 0;
+   nTecla     = 0;
+   nSwPintalo = 0;
+
+   &eaEntidad  = "";
+   &eaSucursal = "";
+   &eaCuenta   = "";
+   &eaDC       = "";
+
+    aNifQbf1   = "";
+    aNifQbf2   = "";
+
+    &eaVarDni  = "";
+    &enCalcCif = 0;
+
+  nSwCarga_Def = 0;
+  nCalc        = 0;
+  nHandle      = 0;
+|FIN;
+
+|PROCESO T80_14; |TIPO 80;    || Rellena el campo 78 (nuevo) con el 63
+     aAlfa = "";              || 79 con 64, 80 con 68 y 69 con 81
+     |ABRE #0;                || 2 de julio de 2014
+     |LEE 000#0p;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          aAlfa = #0#81; |QBF aAlfa;
+          |SI aAlfa ! ""; |SAL; |FINSI;
+          |LEE 000#0s;
+     |SIGUE;
+     |SI aAlfa = "";
+          |LEE 101#0p;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               #0#78 = (("000" + #0#63) % -103);
+               #0#79 = (("000" + #0#64) % -103);
+               #0#80 = (("000" + #0#68) % -103);
+               #0#81 = (("000" + #0#69) % -103);
+               |GRABA 020#0a;
+               |LIBERA #0;
+               |LEE 101#0s;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #0;
+|FPRC;
+
+|PROCESO CalculaNif;
+     |SI FSalida = 10;
+         eaVarDni   = #0Campo;
+         enCalcCif  = 1;
+         |HAZ CalculoDNI;
+         #0Campo = eaVarDni;
+         |PINTA #0Campo;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #0Campo;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+
+     aNifQbf1 = #0Campo;   |QBF aNifQbf1;
+     aNifQbf2 = eaVarDni;  |QBF aNifQbf2;
+
+     |SI aNifQbf1 ! aNifQbf2; |Y aNifQbf1 ! "";
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #0Campo = eaVarDni;  |PINTA #0Campo;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Cuenta; |TIPO 6;
+   |SI HayConta = 0; |ACABA; |FINSI;
+
+   Comodin = #dscam014#Campo#
+   Comodin = Comodin - ".";
+   |SI FSalida ! 0;
+      Parte = FSalida;
+      Parte1 = 100 + (((Parte / 100) ! 0) - 1);
+      Parte2 = ((((Parte / 100) ! 0) + 1) * 100) + 99;
+      Part1 = #dscam014#Campo# % Parte1;
+      Part2 = #dscam014#Campo# % Parte2;
+      |QBF Part2;
+      Comodin = Part1 + Part2;
+      LongAlfa = Comodin % 0;
+      Long = MaxDigit - LongAlfa;
+      LongAlfa = "0" * Long;
+      Comodin = Part1 + LongAlfa + Part2;
+      #dscam014#Campo# = Comodin;
+      |PINTA #dscam014#Campo#;
+   |FINSI;
+|FPRC;
+
+|PROCESO ChequeaCuenta;
+   |SI HayConta = 0; |ACABA; |FINSI;
+
+   aLong = #dscam014#Campo#; |QBF aLong; aLong = aLong % 0; nLong = aLong;
+   Sw = 0;
+   |SI nLong = Niv1; Sw = 1; |FINSI;
+   |SI nLong = Niv2; Sw = 2; |FINSI;
+   |SI nLong = Niv3; Sw = 3; |FINSI;
+   |SI nLong = Niv4; Sw = 4; |FINSI;
+   |SI nLong = Niv5; Sw = 5; |FINSI;
+   |SI nLong = Niv6; Sw = 6; |FINSI;
+   |SI Sw = 0;
+      |MENAV "    Cuenta fuera de nivel";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO DefectoCuenta; |TIPO 7;
+   |SI HayConta = 0; |ACABA; |FINSI;
+
+   Comodin = #dscam014#10; |QBF Comodin;
+   |SI Comodin = "";
+      Fichero = "Empresas"; Tipo = "C"; Cmp = "Digitos Nivel 1"; |HAZ ObtenDato;
+      |SI #canempr@#CmpNum# ! 0; Calc = #canempr@#CmpNum#; |FINSI;
+      Fichero = "Empresas"; Tipo = "C"; Cmp = "Digitos Nivel 2"; |HAZ ObtenDato;
+      |SI #canempr@#CmpNum# ! 0; Calc = #canempr@#CmpNum#; |FINSI;
+      Fichero = "Empresas"; Tipo = "C"; Cmp = "Digitos Nivel 3"; |HAZ ObtenDato;
+      |SI #canempr@#CmpNum# ! 0; Calc = #canempr@#CmpNum#; |FINSI;
+      Fichero = "Empresas"; Tipo = "C"; Cmp = "Digitos Nivel 4"; |HAZ ObtenDato;
+      |SI #canempr@#CmpNum# ! 0; Calc = #canempr@#CmpNum#; |FINSI;
+      Fichero = "Empresas"; Tipo = "C"; Cmp = "Digitos Nivel 5"; |HAZ ObtenDato;
+      |SI #canempr@#CmpNum# ! 0; Calc = #canempr@#CmpNum#; |FINSI;
+      Fichero = "Empresas"; Tipo = "C"; Cmp = "Digitos Nivel 6"; |HAZ ObtenDato;
+      |SI #canempr@#CmpNum# ! 0; Calc = #canempr@#CmpNum#; |FINSI;
+      MaxDigit = Calc;
+
+      Calc = Calc - 3; Calc = Calc + 100; Calc = 0 - Calc;
+      Comodin = #dscam014#0; |QBF Comodin;
+      Comodin = ("000000000" + Comodin) % Calc;
+      Comodin = "572" + Comodin;
+      #dscam014#10 = Comodin; |PINTA #dscam014#10;
+   |FINSI;
+
+   |CIERRA #canempr@;
+   |DESCARGA_DEF #canempr@;
+|FPRC;
+
+|PROCESO MiraDC;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+   eaEntidad  = #dscam014#34;
+   eaSucursal = #dscam014#35;
+   eaCuenta   = #dscam014#37;
+   |HAZ CalculoDC;
+   #dscam014#36 = eaDC; |PINTA #dscam014#36;
+|FPRC;
+
+|PROCESO CalcDisp; |TIPO 13;
+   nTecla = FSalida;
+   |HAZ TomaDecim;
+   #dscam014#41 = #dscam014#12 - #dscam014#13;
+   |PINTA #dscam014#41;
+|FPRC;
+
+|PROCESO CalcDispon; |TIPO 7;
+   #dscam014#41 = #dscam014#12 - #dscam014#13;
+   |PINTA #dscam014#41;
+|FPRC;
+
+|PROCESO RecogeDatos; |TIPO 3;
+   aAlfa = #dscam014#46; |QBF aAlfa;
+   |SI aAlfa = "";
+      aAlfa = #dscam014#47; |QBF aAlfa;
+      |SI aAlfa = "";
+         aAlfa = #dscam014#53; |QBF aAlfa;
+         |SI aAlfa = "";
+            aAlfa = #dscam014#54; |QBF aAlfa;
+            |SI aAlfa = "";
+               aAlfa = #dscam014#72; |QBF aAlfa;
+               |SI aAlfa = "";
+                  |PUSHV 0910 1970; |BLANCO 0910 1970;
+                  |CUADRO 0910 1970;
+                  |ATRI R;
+                  |PINTA 1012, "Los datos para la emision de remesas en soporte magnetico";
+                  |PINTA 1112, "estan vacios. Seleccione un registro del fichero anterior";
+                  |PINTA 1212, "del cual importar los datos necesarios.                  ";
+                  |ATRI N;
+                  nPos1 = 1312; nPos2 = 1868; nModo = 2 + 4 + 8 + 16;
+                  |ABRE #dscam015;
+                  |ET OtraVez;
+                  |LINEAL_SIMPLE #1#dscam015,nModo, nPos1, nPos2, NULL, NULL, NULL;
+                  |SI FSalida < 0;
+                     |CONFI "    SSin datos para emitir remesas en soporte magnetico no podra emitir dichas normas. Continuar ? ";
+                     |SI FSalida ! 0; |VETE OtraVez; |FINSI;
+                  |SINO;
+                     #dscam014#46 = #dscam015#2;
+                     #dscam014#47 = #dscam015#3;
+                     #dscam014#48 = #dscam015#12;
+                     #dscam014#49 = #dscam015#13;
+                     #dscam014#72 = #dscam015#19;
+                     #dscam014#51 = #dscam015#20;
+                     #dscam014#52 = #dscam015#6;
+                     #dscam014#53 = #dscam015#7;
+                     #dscam014#54 = #dscam015#21;
+                     #dscam014#55 = #dscam015#8;
+                     #dscam014#56 = #dscam015#9;
+                     #dscam014#57 = #dscam015#11;
+                     #dscam014#58 = #dscam015#10;
+                     #dscam014#59 = #dscam015#14;
+                     #dscam014#60 = #dscam015#15;
+                     #dscam014#61 = #dscam015#16;
+                     #dscam014#62 = #dscam015#17;
+                  |FINSI;
+                  |CIERRA #dscam015;
+                  |POPV;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraOpcs; |TIPO 7;
+   |HAZ EsLuxe;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   nSwPintalo = 0;
+   |SI Campo = 65;
+      |SI nTecla = 0; nSwPintalo = 1; |FINSI;
+   |FINSI;
+   |SI Campo = 70;
+      |SI nTecla = 2; nSwPintalo = 1; |FINSI;
+   |FINSI;
+
+   |SI nSwPintalo = 1;
+      |ATRI R;
+      aAlfa = " DIAS DE CARENCIA " + (" " * 55);
+      |PINTA 2104, aAlfa;
+      |ATRI N;
+
+      |PINTA 2205, " Dias de carencia ....";
+      |C_M #dscam014#80, 1, "S"; |C_V #dscam014#80, 1, "S";
+   |FINSI;
+
+   |SI nSwPintalo = -1;
+      |BLANCO 2104 2277;
+      |C_M #dscam014#80, 1, "N"; |C_V #dscam014#80, 1, "N";
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraAlfanumero;
+   |SI #dscam014#50 ! 99999999999;
+      aAlfa = ("00000000000" + #dscam014#50) % -111;
+      #dscam014#72 = aAlfa;
+      #dscam014#50 = 99999999999;
+      |GRABA 020#dscam014.a;
+   |FINSI;
+|FPRC;
+
+|PROCESO CargaDef;
+   nSwCarga_Def = 0;
+   aAlfa = #48#16; |QBF aAlfa;
+   aAlfa = aAlfa - "contagen";
+   |SI FSalida ! 0;
+      nCalc = ((FSalida / 100) ! 0) + 99;
+      aAlfa = aAlfa % nCalc;
+      aAlfa = aAlfa + "integral/";
+      aAlfa1 = aAlfa + "def/dsam0104.mas";
+      |XABRE "E", aAlfa1, nHandle;
+      |SI FSalida ] 0;
+         |CARGA_DEF aAlfa1, paises@;
+         |SI FSalida = 0;
+            nSwCarga_Def = 1;
+            aAlfa1 = aAlfa + "fich/"; |PATH_DAT #paises@#aAlfa1#;
+            |ABRE #paises@;
+         |FINSI;
+      |SINO;
+         aAlfa = aAlfa - "integral/";
+         aAlfa = aAlfa + "basica/";
+         aAlfa1 = aAlfa + "def/agim0016.mas";
+         |XABRE "E", aAlfa1, nHandle;
+         |SI FSalida ] 0;
+            |CARGA_DEF aAlfa1, paises@;
+            |SI FSalida = 0;
+               nSwCarga_Def = 1;
+               aAlfa1 = aAlfa + "fich/"; |PATH_DAT #paises@#aAlfa1#;
+               |ABRE #paises@;
+            |FINSI;
+         |SINO;
+            aAlfa = #48#17; |QBF aAlfa;
+            aAlfa1 = aAlfa + "def/dsm00225.mas";
+            |XABRE "E", aAlfa1, nHandle;
+            |SI FSalida ] 0;
+               |CARGA_DEF aAlfa1, paises@;
+               |SI FSalida = 0;
+                  nSwCarga_Def = 1;
+                  aAlfa1 = aAlfa + "fich/" + (("00000"+#48#15)%-105) + "/";
+                  |PATH_DAT #paises@#aAlfa1#;
+                  |ABRE #paises@;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |SINO;
+      aAlfa = #48#17; |QBF aAlfa;
+      aAlfa1 = aAlfa + "def/dsm00225.mas";
+      |XABRE "E", aAlfa1, nHandle;
+      |SI FSalida ] 0;
+         |CARGA_DEF aAlfa1, paises@;
+         |SI FSalida = 0;
+            nSwCarga_Def = 1;
+            aAlfa1 = aAlfa + "fich/" + (("00000"+#48#15)%-105) + "/";
+            |PATH_DAT #paises@#aAlfa1#;
+            |ABRE #paises@;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Descarga_Def;
+   |SI nSwCarga_Def = 1; |DESCARGA_DEF #paises@; |FINSI;
+|FPRC;
+
+|PROCESO PaisesT66; |TIPO 66;
+   |HAZ CargaDef;
+   |SI nSwCarga_Def = 1;
+      #paises@#0 = #dscam014#76;
+      |LEE 000#paises@.]
+      |CONSULTA_CLAVE #1#paises@;
+      |SI FSalida = 0;
+         #dscam014#76 = #paises@#0; |PINTA #dscam014#76;
+         #dscam014#77 = #paises@#1; |PINTA #dscam014#77;
+      |SINO;
+         |ERROR;
+      |FINSI;
+      |HAZ Descarga_Def;
+   |FINSI;
+|FPRC;
+
+|PROCESO PaisesT00;
+   |HAZ CargaDef;
+   |SI nSwCarga_Def = 1;
+      #paises@#0 = #dscam014#76;
+      |LEE 000#paises@.=;
+      |SI FSalida = 0;
+          #dscam014#77 = #paises@#1; |PINTA #dscam014#77;
+      |SINO;
+          |MENAV "    Pais no encontrado"; |ERROR;
+      |FINSI;
+      |HAZ Descarga_Def;
+   |FINSI;
+|FPRC;
+
+/*
+|PROCESO CalculaIBAN;
+     eaPais = #0#76;
+     eaCta = #0#34 + #0#35 + #0#36 + #0#37;
+     |HAZ CalcuIBAN;
+|FPRC;
+
+|PROCESO CalIban; |TIPO 0;
+     |SI #0Campo ! Contenido;
+          |HAZ CalculaIBAN;
+          #0#42 = eaIBAN; |PINTA #0#42;
+     |FINSI;
+|FPRC;
+*/
+
+|PROCESO VerSwC; |TIPO 0;
+   aAlfa = Contenido;
+   |SI aAlfa ! #0Campo;
+       nSwC = 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO Iban7; |TIPO 7;
+     aAlfa = #0#42; |QBF aAlfa;
+
+     |SI aAlfa ! "";  |Y nSwC = 0; |ACABA;  |FINSI;
+
+     |SI nSwC = 1; |Y aAlfa ! "";
+         |CONFI "0000SSe han modificado los datos de la Cuenta Corriente. Recalcular el IBAN?";
+         |SI FSalida ! 0;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     eaIBANant = "";
+     eaCta     = #0#34 + #0#35 + #0#36 + #0#37;
+     eaPais    = #0#76;
+     |HAZ CalcuIBAN;
+
+     #0#42 = eaIBAN;
+     |PINTA #0#42;
+     nSwC = 0;
+|FPRC;
+
+|PROCESO Iban0; |TIPO 0;
+     |SI FSalida = 2; |ACABA; |FINSI;
+
+     eaCta  = #0#34 + #0#35 + #0#36 + #0#37;
+     eaPais = #0#76;
+     eaIBANant = #0#42;
+     |HAZ CheqIBAN;
+
+     aAlfa = eaIBANant; |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |SI aAlfa = "";
+             #0#42 = eaIBAN;
+             |PINTA #0#42;
+         |SINO;
+             |CONFI "0000SEl codigo IBAN puede ser erroneo, quiere calcularlo.";
+             |SI FSalida = 0;
+                 #0#42 = eaIBAN;
+                 |ERROR;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+|FPRC;

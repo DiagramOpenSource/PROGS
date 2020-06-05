@@ -1,0 +1,176 @@
+|FICHEROS;
+   dsmow048 #0;
+
+   dsmom030 #30;
+   dsmom30@ #930;
+   dsmom031 #31;
+   dsmom31@ #931;
+|FIN;
+
+|VARIABLES;
+  nNume1 = 0;
+  nError = 0;
+  nErrorPr = 0;
+  aQueQuiero = "";
+  aNumCampos = "";
+  nNumCampos = 0;
+  aBase = "";
+  aDef  = "";
+  aAlfa = "";
+  &nSwOpera = 0;
+  &enDesde  = 0;
+  &enHasta  = 0;
+|FIN;
+
+|INCLUYE i_variar;
+
+|| =====================================================================
+|PROCESO w48_88;
+   nErrorPr = 0;
+   |DBASE aBase;  |QBT aBase;
+
+   aDef = aBase + "def/dsmom030.mas";
+   |CARGA_DEF aDef, dsmom30@;
+   |SI FSalida ! 0;
+       aAlfa = "     Error en cargar el Def dsmom030";
+       |MENAV aAlfa;
+       nErrorPr = 1;
+   |SINO;
+       aDef = aBase + "def/dsmom031.mas";
+       |CARGA_DEF aDef, dsmom31@;
+       |SI FSalida ! 0;
+           |DESCARGA_DEF #dsmom30@;
+           aAlfa = "     Error en cargar el Def dsmom031";
+           |MENAV aAlfa;
+           nErrorPr = 1;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO w48_99;
+  |SI nErrorPr = 0;
+      |DESCARGA_DEF #dsmom31@;
+      |DESCARGA_DEF #dsmom30@;
+  |FINSI;
+|FPRC;
+
+|PROCESO ClAlta930;
+ #930#0 = 1;
+|FPRC;
+
+|PROCESO ClBaja930;
+ #930#0 = 999;
+|FPRC;
+
+|PROCESO LeeCon; |TIPO 0;
+ |SI nSwOpera = 1; |ACABA; |FINSI;
+
+ |HAZ w48_88;
+ |SI nErrorPr = 1; |PTEC 807; |ACABA; |FINSI;
+
+ |SI FSalida = 10;
+     |ABRE #930;
+     #930#0 = #0#0;
+     |CONSULTA_F_CLAVE #1#930, ClAlta930, ClBaja930;
+     #0#0 = #930#0; |PINTA #0#0;
+     |CIERRA #930;
+ |FINSI;
+
+ nError = 0;
+ |ABRE #930;
+ |DDEFECTO #930;
+ #930#0 = #0Campo;
+ |LEE 041#930=;
+ |SI FSalida ! 0;
+     |MENAV "    Error. NO EXISTE CONCEPTO ";
+     nError = 1;
+ |FINSI;
+ |SI nError = 0;
+     #0#1 = #930#1; |PINTA #0#1;
+ |SINO;
+     |ERROR;
+ |FINSI;
+ |CIERRA #930;
+
+ |HAZ w48_99;
+|FPRC;
+
+|PROCESO BajaL31;
+  |BORRA 041#31a;
+|FPRC;
+
+|DEFBUCLE BajaL31;
+  #31#1;
+  ;
+  #30#0, 000;
+  #30#0, 999;
+  e;
+  NULL, BajaL31;
+|FIN;
+
+|PROCESO CopiaL31;
+  #31#0 = #30#0;
+  #31#1 = #931#1;
+  #31#2 = #931#2;
+  |GRABA 041#31n;
+|FPRC;
+
+|DEFBUCLE CopiaL31;
+ #931#1002;
+ ;
+ #930#0, 000;
+ #930#0, 999;
+ e;
+ NULL, CopiaL31;
+|FIN;
+
+|PROCESO Copia; |TIPO 12;
+ |SI #0#3 ! "S"; |ACABA; |FINSI;
+
+ |SI nSwOpera = 0;
+     |HAZ w48_88;
+     |SI nErrorPr = 1; |ACABA; |FINSI;
+
+     |ABRE #930;
+     |DDEFECTO #930;
+
+     #930#0 = #0#0;
+     |LEE 041#930=;
+     |SI FSalida ! 0;
+         |CIERRA #930;
+         |MENAV "    ERROR NO EXISTE EL CONCEPTO ORIGEN. PROCESO INTERRUMPIDO";
+         |HAZ w48_99;
+         |ACABA;
+     |FINSI;
+     |CIERRA #930;
+
+     aQueQuiero = "|NC";
+     aNumCampos = #30#aQueQuiero#;
+     nNumCampos = aNumCampos;
+     nNumCampos = nNumCampos - 1;
+     |PARA nNume1 = 1; |SI nNume1 [ nNumCampos; |HACIENDO nNume1 = nNume1 + 1;
+           #30nNume1 = #930nNume1;
+     |SIGUE;
+
+     |BUCLE BajaL31;
+     |ABRE #31;
+     |BUCLE CopiaL31;
+     |CIERRA #31;
+
+     |HAZ w48_99;
+ |FINSI;
+
+ |SI nSwOpera = 1;
+     enPlan      = 2008;
+     enDesde     = #0#0;
+     enHasta     = #0#2;
+     eaExtension = "mod";
+     eaPrograma  = "dsmom030";
+     |SUB_EJECUTA_NP ":basica/dspatron";
+     eaExtension = "mod";
+     eaPrograma  = "dsmom031";
+     |SUB_EJECUTA_NP ":basica/dspatron";
+     enPlan      = 0;
+ |FINSI;
+|FPRC;
+|| **************************************************************************

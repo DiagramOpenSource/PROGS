@@ -1,0 +1,240 @@
+|FICHEROS;
+     tecaz007 #0;
+     tecam003 #3;
+     tecam004 #4;
+     tecam005 #5;
+     tecam012 #12;
+     agifa104 #104;
+     agifa073 #73;
+|FIN;
+
+|VARIABLES;
+     nSwEnvia = 1;
+     nSwSirve = 0;
+     nPend = 0;
+     nPara = 0;
+     nArranca = 0;
+     nEnvia = 0;
+     nEstado = 0;
+     nHandle = 0;
+     aFic = "";
+     aFicEstado = "";
+     aAlfa = "";
+     aDirec = "";
+|FIN;
+
+|PROCESO PonPermisos;
+     |SI #3#0 > #12#3;   |ACABA;   |FINSI;   || solo los activos
+
+     aFic = #3#2; |QBF aFic;
+
+     aAlfa = "chmod -R 777 " + aFic;
+     |SYSTEM aAlfa;
+|FPRC;
+
+|DEFBUCLE PonPermisos;
+     #3#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, PonPermisos;
+|FIN;
+
+|PROCESO CreaReset;
+     aFic = #3#2; |QBF aFic;
+
+     aDirec = "";   |DIRECTORIO aDirec; |QBF aDirec;
+     aAlfa = aDirec + "bin/agirm -r " + aFic;
+     |SYSTEM aAlfa;
+
+     |SI #3#0 > #12#3;   |ACABA;   |FINSI;   || solo los activos
+
+     |MKDIR aFic;
+
+     aFic = aFic + "reset.txt";
+
+     |XABRE "W", aFic, nHandle;
+     |SI FSalida ] 0;
+          |XCIERRA nHandle;
+     |SINO;
+          aAlfa = "0000Error al grabar " + aFic;
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE CreaReset;
+     #3#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, CreaReset;
+|FIN;
+
+|PROCESO CreaFin;
+     |SI nSwSirve = 1;
+          |HAZ TecaCreaLote;
+     |FINSI;
+|FPRC;
+
+|PROCESO CreaLin;
+     nPend = #73#5 - #73#43;
+     |SI nPend ! 0; nSwSirve = 1; |FINSI;
+|FPRC;
+
+|PROCESO CreaCab;
+     aAlfa = #104#51; |QBF aAlfa;
+     aAlfa = aAlfa > "";
+     |SI aAlfa = "RIESGO";
+          |ERROR;
+     |FINSI;
+     nSwSirve = 0;
+|FPRC;
+
+|DEFBUCLE CreaLotes;
+     #104#2;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, CreaCab, CreaLin, CreaFin;
+|FIN;
+
+|PROCESO Arranca;
+     |DELINDEX #4;
+     |DELINDEX #5;
+     |SI nSwEnvia = 1;
+          |BUCLE CreaLotes;
+     |FINSI;
+     |BUCLE CreaReset;
+     |SI nSwEnvia = 1;
+           |SUB_EJECUTA_NP "tecaz005;auto";
+     |FINSI;
+     |BUCLE PonPermisos;
+
+     |DBASE aAlfa; aAlfa = aAlfa + "palm/arranca.sh";
+     |SYSTEM aAlfa;
+|FPRC;
+
+|PROCESO Para;
+     |DBASE aAlfa; aAlfa = aAlfa + "palm/para.sh";
+     |SYSTEM aAlfa;
+|FPRC;
+
+|PROCESO GrabaEstado;
+     |XABRE "W", aFicEstado, nHandle;
+     |SI FSalida ] 0;
+          aAlfa = nEstado;
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |SINO;
+          aAlfa = "0000Error al grabar " + aFicEstado;
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeEstado;
+     nEstado = 0;
+     |XABRE "U", aFicEstado, nHandle;
+     |SI FSalida ] 0;
+          |XLEE nHandle, 250, aAlfa;
+          |XCIERRA nHandle;
+          nEstado = aAlfa;
+     |SINO;
+          |HAZ GrabaEstado;
+     |FINSI;
+|FPRC;
+
+|PROCESO Estado;
+     |SI nEstado = 1;
+          |SI nSwEnvia = 1;
+               |MENSA "0000Arrancado (envia).";
+          |SINO;
+               |MENSA "0000Arrancado (no envia).";
+          |FINSI;
+          |ESTADO_CONTROL nPara, "ENABLE";
+          |ESTADO_CONTROL nArranca, "DISABLE";
+          |ESTADO_CONTROL nEnvia, "DISABLE";
+     |SINO;
+          |MENSA "0000Parado.";
+          |ESTADO_CONTROL nPara, "DISABLE";
+          |ESTADO_CONTROL nArranca, "ENABLE";
+          |ESTADO_CONTROL nEnvia, "ENABLE";
+     |FINSI;
+|FPRC;
+
+|PROCESO PulsaSin;
+     nSwEnvia = 0;
+     |HAZ Pulsa;
+|FPRC;
+
+|PROCESO PulsaCon;
+     nSwEnvia = 1;
+     |HAZ Pulsa;
+|FPRC;
+
+|PROCESO Pulsa;
+     |ESTADO_CONTROL nArranca, "DISABLE";
+     |ESTADO_CONTROL nPara, "DISABLE";
+     |ESTADO_CONTROL nEnvia, "DISABLE";
+     nEstado = (nEstado + 1) $ 2;
+     |HAZ GrabaEstado;
+     |HAZ LeeEstado;
+     |SI nEstado = 1;
+          |MENSA "0000Arrancando...";
+          |HAZ Arranca;
+          |MENSA "0000Arrancado.";
+     |SINO;
+          |MENSA "0000Parando...";
+          |HAZ Para;
+          |MENSA "0000Parado.";
+     |FINSI;
+     |HAZ Estado;
+|FPRC;
+
+|PROCESO Tipo0; |TIPO 0;
+     |SI FSalida = 13; |HAZ Pulsa; |ERROR; |FINSI;
+     |SI FSalida = 1; #0#0 = "SI"; |FINSI;
+|FPRC;
+
+|PROCESO Tipo12; |TIPO 12;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #12; |LEE 000#12p; |CIERRA #12;
+
+     |CLS;
+     |PINPA #0#0;
+     |PINDA #0#0;
+
+     |CONTROL_SIMPLE 0, "BOTON,ARRANCA ENVIANDO", 1018, 1231, PulsaCon;
+     nArranca = FSalida;
+     |ESTADO_CONTROL nArranca, "SHOW";
+
+     |CONTROL_SIMPLE 0, "BOTON,PARAR", 1054, 1267, PulsaCon;
+     nPara = FSalida;
+     |ESTADO_CONTROL nPara, "SHOW";
+     |ESTADO_CONTROL nPara, "DISABLE";
+
+     |CONTROL_SIMPLE 0, "BOTON,ARRANCA SIN ENVIAR", 1036, 1249, PulsaSin;
+     nEnvia = FSalida;
+     |ESTADO_CONTROL nPara, "SHOW";
+     |ESTADO_CONTROL nPara, "DISABLE";
+
+     |DBASE aFicEstado;
+     aFicEstado = aFicEstado + "palm/";
+     |MKDIR aFicEstado;
+     aFicEstado = aFicEstado + "palm.loc";
+     |HAZ LeeEstado;
+     |HAZ Estado;
+
+     |PARA; |SI #0#0 ! "SI"; |HACIENDO;
+          |ENDATOS #2#0;
+     |SIGUE;
+
+     |FIN_CONTROL_WINDOWS nPara;
+     |FIN_CONTROL_WINDOWS nArranca;
+     |FIN_CONTROL_WINDOWS nEnvia;
+     |PULSATECLA;
+|FPRO;

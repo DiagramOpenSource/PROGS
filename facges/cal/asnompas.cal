@@ -1,0 +1,458 @@
+|FICHEROS;
+    asnompas #0;
+    asnomdat #1;    || datos nominas mes
+    asconcep #2;    || conceptos
+    asclient #3;    || clientes
+    asnomenl #4;    || enlace codigos y tarifa
+    asnomtar #5;    || tarifas
+    ascabmin #6;    || minutas cabs.
+    aslinmin #7;    || minutas lins.
+    ascontro #8;    || control facturacion
+    asconmen #9;    || conceptos variables
+|FIN;
+
+|VARIABLES;
+    fecha  = @;
+    varalf = "";
+    honorario = 0;
+    suplido   = 0;
+    acuenta   = 0;
+    seccion   = "";
+    concepto  = "";
+    canti     = 0;
+    import    = 0;
+    tlinea    = 0;
+    iva       = 0;
+    linea     = 0;
+    FEstado   = 0;
+    sw_cabecera = 0;
+    h_nomin = 0;
+    h_pagas = 0;
+    h_fijas = 0;
+    h_tc1   = 0;
+    h_tc2   = 0;
+    h_tc21  = 0;
+    h_contr = 0;
+    h_prorr = 0;
+    seleccio = 0;
+    descrip = "";
+    conver    = "";
+    conver1   = "";
+    conver2   = "";
+
+    &empre_p  = 0;
+    &empre_f  = 0;
+    &mes_p    = 0;
+    &anyo_p   = 0;
+    &fecha_p  = @;
+    &tipo_p   = 0;
+    &rete_p   = "";
+    &tarifa   = 0;
+
+     nTipoFactG=8;
+|FIN;
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO pinta; |TIPO 7;
+    fecha = ~;
+    varalf = fecha % 402;
+    #0#2 = varalf;
+    varalf = fecha % 902;
+    #0#3 = varalf;
+|PINTA #0#2;
+|PINTA #0#3;
+|FPRC;
+____________________________________/ CALCULOS DE GRABACION DE MINUTAS
+|PROCESO linea;
+    linea = #7#2;
+|FPRC;
+
+|DEFBUCLE leelin;
+ #7#1;
+ ;
+ #0#5, empre_f, 001;
+ #0#5, empre_f, 999;
+ e;
+ NULL, linea;
+|FIN;
+
+|PROCESO leeconc;
+|DDEFECTO #2;
+    #2#0 = seccion;
+    #2#1 = concepto;
+|LEE 000#2=;
+    descrip = #2#2;           || conceptos
+
+    #9#0 = seccion;
+    #9#1 = concepto;
+|LEE 000#9=;
+|SI FSalida = 0;
+        descrip = #9#2;       || conceptos variables
+|FINSI;
+|FPRC;
+
+|PROCESO grabalin;
+|ABRE #7;
+    |SI linea = 0; |HAZ saldo_ant; |FINSI;
+
+    |HAZ leeconc;
+    linea = linea + 5;
+    #7#0  = #0#5;             || tipo facturacion
+    #7#1  = empre_f;             || cliente
+    #7#2  = linea;            || linea
+    |HAZ conver_fec;
+    #7#3  = conver;           || fecha
+    #7#4  = seccion;          || seccion
+    #7#5  = concepto;         || concepto
+    #7#6  = descrip;          || descrip. abreviada
+    #7#7  = descrip;          || descrip. 1
+    #7#8  = #2#17;            || descrip. 2
+    #7#9  = #2#18;            || descrip. 3
+    #7#10 = #2#3;             || tipo (hon., sup., etc.)
+    #7#11 = canti;            || cantidad
+    #7#12 = import;           || importe unidad
+    #7#13 = #7#11 * #7#12;    || total linea
+    #7#14 = #2#5;             || unitario/global
+    #7#15 = #0#4;             || fecha
+|GRABA 020#7n;
+|CIERRA #7;
+|FPRC;
+
+|PROCESO conver_fec; |TIPO 0;
+conver1 = #0#4 % 0102;
+conver2 = #0#4 % 0402;
+conver  = conver1 + conver2;
+|FPRC;
+
+|PROCESO saldo_ant;
+|ABRE #8;
+|LEE 040#8p;
+|CIERRA #8;
+
+|SI #8#32 ! "S"; |ACABA; |FINSI;
+
+|SI #3#24 = 0;   |ACABA; |FINSI;
+
+#2#0 = #8#33;
+#2#1 = #8#34;
+|LEE 040#2=;
+|SI FSalida ! 0; |ACABA; |FINSI;
+|SI #2#3 ! "A";  |ACABA; |FINSI;
+
+linea = 5;
+#7#0  = #0#5;
+#7#1  = empre_f;
+#7#2  = linea;
+#7#3  = 0;
+#7#4  = #2#0;
+#7#5  = #2#1;
+#7#6  = #2#2;
+#7#7  = #2#16;
+#7#8  = #2#17;
+#7#9  = #2#18;
+#7#10 = #2#3;
+#7#11 = 1;
+#7#12 = -#3#24;
+#7#13 = -#3#24;
+#7#14 = "G";
+#7#15 = "00.00.0000";
+|GRABA 040#7n;
+|FPRC;
+
+|PROCESO linealin;
+|SI #7#10 = "H"; honorario = honorario + #7#13; |FINSI;
+|SI #7#10 = "S"; suplido   = suplido   + #7#13; |FINSI;
+|SI #7#10 = "A"; acuenta   = acuenta   + #7#13; |FINSI;
+|FPRC;
+
+|PROCESO iva;
+|DDEFECTO #8;
+|ABRE #8;
+|LEE 000#8p;
+    iva = 0;
+|SI #6#0 = 0; iva = #8#21; |FINSI;
+|SI #6#0 = 1; iva = #8#22; |FINSI;
+|SI #6#0 = 2; iva = #8#23; |FINSI;
+|SI #6#0 = 3; iva = #8#24; |FINSI;
+|SI #6#0 = 4; iva = #8#25; |FINSI;
+|SI #6#0 = 5; iva = #8#26; |FINSI;
+|SI #6#0 = 6; iva = #8#27; |FINSI;
+|SI #6#0 = 7; iva = #8#28; |FINSI;
+|SI #6#0 = 8; iva = #8#29; |FINSI;
+|SI #6#0 = 9; iva = #8#30; |FINSI;
+|CIERRA #8;
+|FPRC;
+
+|PROCESO cabecera;
+|DDEFECTO #6;
+|ABRE #6;
+    #6#0 = #0#5;         || tipo facturacion
+    #6#1 = empre_f;         || cliente
+|LEE 101#6=;
+    FEstado = FSalida;
+
+    #6#2  = #3#1;        || razon social
+    #6#3  = #3#2;        || nombre
+    #6#4  = #3#3;        || direccion
+    #6#5  = #3#4;        || cod. postal 1
+    #6#6  = #3#5;        || cod. postal 2
+    #6#7  = #3#6;        || poblacion
+    #6#8  = #3#7;        || provincia
+    #6#9  = #3#8;        || cif
+    #6#10 = #3#15;       || forma de pago
+    #6#11 = #3#16;       || banco
+|SI #0#6 = "S"; #6#12 = #3#17; |SINO; #6#12 = "N"; |FINSI;  || retencion IRPF
+    #6#13 = #3#11;       || banco
+    #6#14 = #3#12;       || direccion banco
+    #6#15 = #3#13;       || CCC
+    #6#16 = #3#14;       || cta. cte.
+
+    honorario = 0;
+    suplido   = 0;
+    acuenta   = 0;
+
+|BUCLELIN 2linealin#6;             || calcula total lineas
+
+|SI honorario ! 0;|O suplido ! 0;|O acuenta ! 0;
+        #6#17 = honorario;         || honorarios
+        #6#18 = suplido;           || suplidos
+        #6#19 = acuenta;           || a cuenta
+        #6#20 = #3#23;             || descuento
+        #6#21 = #6#17 % #6#20;     || total descuento
+        #6#22 = #6#17 - #6#21;     || base imponible
+    |HAZ iva;
+        #6#23 = #6#17 % iva;       || cuota iva
+        #6#24 = #6#22 + #6#23 + #6#18;  || total factura
+    |SI #6#12 = "S"; #6#25 = #6#22 % #8#31; |SINO; #6#25 = 0; |FINSI; || ret.
+        #6#26 = #6#24 - #6#19 - #6#25;  || total a pagar
+    |SI FEstado = 0;    |GRABA 020#6a; |FINSI;
+    |SI FEstado ! 0;    |GRABA 020#6n; |FINSI;
+        sw_cabecera = 1;
+|FINSI;
+|LIBERA #6;
+|CIERRA #6;
+|FPRC;
+
+|PROCESO gra_cab;
+    sw_cabecera = 0;
+|HAZ cabecera;
+|SI sw_cabecera = 1;
+        #1#4 = "S";      || facturado SI
+    |GRABA 020#1a;
+        seleccio = 1;
+|FINSI;
+|LIBERA #1;
+|FPRC;
+
+|PROCESO gra_lin;
+    h_nomin = 0;
+    h_pagas = 0;
+    h_fijas = 0;
+    h_tc1   = 0;
+    h_tc2   = 0;
+    h_tc21  = 0;
+    h_contr = 0;
+    h_prorr = 0;
+
+|SI #5#9 = "S";|Y #1#6 ! 0;                     || nominas
+    |SI #1#6 ] #5#12; |Y #1#6 [ #5#13; import = #5#14; |FINSI;
+    |SI #1#6 ] #5#16; |Y #1#6 [ #5#17; import = #5#18; |FINSI;
+    |SI #1#6 ] #5#20; |Y #1#6 [ #5#21; import = #5#22; |FINSI;
+    |SI #1#6 ] #5#24; |Y #1#6 [ #5#25; import = #5#26; |FINSI;
+    |SI #1#6 ] #5#28; |Y #1#6 [ #5#29; import = #5#30; |FINSI;
+    |SI #1#6 ] #5#32; |Y #1#6 [ #5#33; import = #5#34; |FINSI;
+        canti = #1#6;
+        h_nomin = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#10;  concepto = #5#11;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#9 = "S";|Y #1#8 ! 0;                     || pagas
+    |SI #1#8 ] #5#12; |Y #1#8 [ #5#13; import = #5#15; |FINSI;
+    |SI #1#8 ] #5#16; |Y #1#8 [ #5#17; import = #5#19; |FINSI;
+    |SI #1#8 ] #5#20; |Y #1#8 [ #5#21; import = #5#23; |FINSI;
+    |SI #1#8 ] #5#24; |Y #1#8 [ #5#25; import = #5#27; |FINSI;
+    |SI #1#8 ] #5#28; |Y #1#8 [ #5#29; import = #5#31; |FINSI;
+    |SI #1#8 ] #5#32; |Y #1#8 [ #5#33; import = #5#35; |FINSI;
+        canti = #1#8;
+        h_pagas = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#10;  concepto = #5#11;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#5 = "S";                                   || fijas
+        canti = 1;
+        import = #5#6;
+        h_fijas = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#7;   concepto = #5#8;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#5 = "S";|Y #5#9 = "S";|Y h_nomin = 0;
+        h_fijas = 0;
+|FINSI;
+
+|SI #5#36 = "S";                                   || TC1
+        canti = 1;
+        import = #5#37;
+        h_tc1 = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#38;  concepto = #5#39;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#40 = "S";                                   || TC2
+        canti = #1#10;
+        import = #5#41;
+        h_tc2 = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#42;  concepto = #5#43;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#44 = "S";                                   || TC2/1
+        canti = #1#12;
+        import = #5#45;
+        h_tc21 = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#46;  concepto = #5#47;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#48 = "S";                                   || contratos
+        canti = #1#14;
+        import = #5#49;
+        h_contr = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#50;  concepto = #5#51;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#52 = "S";                                   || prorrogas
+        canti = #1#16;
+        import = #5#53;
+        h_prorr = canti * import;
+    |SI #5#2 = "N";
+            seccion = #5#54;  concepto = #5#55;
+        |HAZ grabalin;
+    |FINSI;
+|FINSI;
+
+|SI #5#2 = "S";                              || globaliza
+        seccion = #5#3;  concepto = #5#4;
+        canti = 1;
+        import = h_fijas+h_nomin+h_pagas+h_tc1+h_tc2+h_tc21+h_contr+h_prorr;
+    |HAZ grabalin;
+|FINSI;
+
+|SI #5#56 = "S";
+        seccion = #5#57;  concepto = #5#58;       || suplidos TC1
+        canti = 1;
+        import = #1#18;
+    |HAZ grabalin;
+|FINSI;
+|FPRC;
+
+|PROCESO lee_datos1;
+|SI #1#6 = 0;|Y #1#8  = 0;|Y #1#10 = 0;|Y #1#12 = 0;   || si todo es cero
+             |Y #1#14 = 0;|Y #1#16 = 0;|Y #1#18 = 0;   ||/se lo salta
+    |ACABA;
+|FINSI;
+
+|SI empre_p = 0;
+    #4#0 = #1#0;
+    |LEE 000#4=;                  || lee codigo de enlace
+    |SI FSalida ! 0; |O #4#7 = "N"; |ACABA; |FINSI;
+    empre_f = #4#2;
+
+    tarifa=#4#4;
+
+    |SI #0#7="S";         || tipo facturacion igual para todas las empresas
+          #0#5=nTipoFactG;
+    |SINO;
+          #0#5=#4#6;      || facturacion individual, se guarda en #0#5 porque lo lee simpre de ahi
+    |FINSI;
+|FINSI;
+
+#5#0 = tarifa;
+|LEE 000#5=;              || lee tarifa
+|SI FSalida = 0;
+    |DDEFECTO #3;
+    #3#0 = empre_f;
+    |LEE 000#3=;          || lee el cliente
+    linea     = 0;
+    |BUCLE leelin;        || ultima linea
+    |HAZ gra_lin;         || calcula y graba lineas
+    |HAZ gra_cab;         || calcula y graba cabecera
+|FINSI;
+|FPRC;
+
+|DEFBUCLE lee_datos;
+ #1#1;
+ 4;
+ #0#0, #0#2, #0#3, "N";
+ #0#1, #0#2, #0#3, "N";
+ be;
+ NULL, lee_datos1;
+|FIN;
+____________________________________/ CALCULO PRINCIPAL
+
+|PROGRAMA;
+|SI empre_f = 0;
+    |CLS;
+    |CABEZA "Pase Minut.Nominas";
+    |DDEFECTO #0;
+    |PINPA #0#0;
+    |PINDA #0#0;
+    |ENDATOS #1#0;
+    |SI FSalida = 0;
+          nTipoFactG=#0#5;
+          |HAZ tipo3;
+    |FINSI;
+|SINO;
+    #0#0 = empre_p;
+    #0#1 = empre_p;
+    #0#2 = mes_p;
+    #0#3 = anyo_p;
+    #0#4 = fecha_p;
+    #0#5 = tipo_p;
+    #0#6 = rete_p;
+    |HAZ tipo3;
+|FINSI;
+|FPRO;
+
+|PROCESO tipo3; |TIPO 3;
+
+|ABRE #2;      || conceptos
+|ABRE #3;      || clientes
+|ABRE #4;      || enlaces
+|ABRE #5;      || tarifas
+|ABRE #9;      || conceptos variables
+|BUCLE lee_datos;
+|SI seleccio = 0;
+    |SI empre_p = 0; |MENAV "    Seleccion vacia ..."; |FINSI;
+|FINSI;
+|CIERRA #2;
+|CIERRA #3;
+|CIERRA #4;
+|CIERRA #5;
+|CIERRA #9;
+|FPRC;
+
+
+|PROCESO FactGlobal;|TIPO 0;
+     |SI #0#7="N";
+          |CAMPO_MODIFICA #0#5,1,"N";
+     |SINO;
+          |CAMPO_MODIFICA #0#5,1,"S";
+     |FINSI;
+|FPRC;

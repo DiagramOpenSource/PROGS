@@ -1,0 +1,1 @@
+tar zcvf /tmp/ccc/dslpd.tgz cal/ def/ documentos/plantillas/ dslpd.* inc/ pan/ patrones/ vent/ zInstala.sh

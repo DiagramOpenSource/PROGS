@@ -1,0 +1,259 @@
+|FICHEROS;
+     malpe092 #92;
+     malpe005 #0;
+     malpe004 #1;
+     agifa019 #2;   || Articulos
+     agifa017 #17;
+     dsm00024 #50; || Stock por lotes
+     agifa027 #27;
+     malpe087 #11;  || Pedidos (C)
+     malpe088 #12;  ||         (L)
+     malpe104 #21;  || Fecha de Servicios
+     malpe085 #85;
+     malpe093 #93;
+|FIN;
+
+|VARIABLES;
+     &aMoneda = "";
+     &aDivisa = "";
+     nConta = 0;
+     nForma = 0;
+     uni = 0;
+     axLote = "";
+     axLoteRese = "";
+     aAlfa = "";
+     nUni = 0;
+     &enNumAlb = 0;
+|FIN;
+
+|PROCESO Lee;
+     #21#0  = #0#32; #21#1 = #0#33; #21#2 = #0#34; #21#3 = #0#35;
+     #12#28 = #0#32; #12#0 = #0#33; #12#1 = #0#34;
+     #11#25 = #0#32; #11#0 = #0#33;
+     |LEE 101#21=;
+     |SI FSalida = 0;
+          |LEE 101#11=;
+          |SI FSalida = 0;
+               |LEE 101#12=;
+               |SI FSalida = 0;
+                    aDivisa = #11#35
+                    aMoneda = #11#37;
+                    |HAZ Divisas104;
+                    FSalida = 0;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Contador;
+     |ABRE #27;
+     #27#2 = #1#0;
+     #27#0 = "orden";
+     |LEE 111#27=;
+     |SI FSalida ! 0;
+          #27#1 = 1;
+          |GRABA 020#27b;
+     |FINSI;
+     nConta = #27#1;
+     #27#1 = #27#1 + 1;
+     |GRABA 021#27a;
+     |CIERRA #27;
+|FPRC;
+
+|PROCESO ActPedido;
+     uni = #0#5;
+
+     #12#43 = #12#43 + (uni * nForma);
+     #12#64 = #1#2;
+     |GRABA 020#12a;
+
+     aDivisa = #11#35;
+     aMoneda = #11#37;
+     |HAZ Divisas104;
+     |HAZ CalCabMalpe087;
+     #11#24 = #11#24 + nForma;
+     |GRABA 020#11a;
+|FPRC;
+
+|PROCESO ActArtiAlma;
+     |ABRE #17;
+     |ABRE #2;
+     #2#0 = #0#2;
+     |LEE 101#2=;
+     |SI FSalida = 0;
+          #17#0 = #0#2;
+          #17#1 = #0#3;
+          |LEE 101#17=;
+          |SI FSalida = 0;
+               aAlfa = axLoteRese; |QBF aAlfa;
+               |SI aAlfa ! "";
+                    #2#12 = #2#12 - (nUni * nForma);
+                    #2#104 = #2#104 + (nUni * nForma);
+                    #17#8 = #17#8 - (nUni * nForma);
+                    #17#39 = #17#39 + (nUni * nForma);
+               |FINSI;
+               #2#15 = #2#15 - (nUni * nForma);
+               #17#42 = #17#42 - (nUni * nForma);
+               |HAZ ValoraStock;
+               |GRABA 021#2a;
+               |GRABA 021#17a;
+          |FINSI;
+     |FINSI;
+     |CIERRA #2;
+     |CIERRA #17;
+|FPRC;
+
+|PROCESO actlote;
+     |ABRE #85;
+     |ABRE #50;
+
+     #50#0 = #0#2;
+     #50#1 = #0#3;
+     #50#2 = axLote;
+     |LEE 101#50=;
+     |SI FSalida = 0;
+          |DDEFECTO #85;
+          #85#0 = #50#0;
+          #85#1 = #50#1;
+          #85#2 = #50#2;
+          |LEE 101#85=;
+          |SI FSalida ! 0; |GRABA 020#85b; |FINSI;
+          aAlfa = axLoteRese; |QBF aAlfa;
+          |SI aAlfa ! "";
+               #85#9 = #85#9 - (nUni * nForma);
+               #50#31 = #50#31 + (nUni * nForma);
+          |FINSI;
+          #50#16 = #50#16 - (nUni * nForma);
+          |GRABA 021#85a;
+          |LIBERA #85;
+          |GRABA 021#50a;
+     |FINSI;
+     |CIERRA #50;
+     |CIERRA #85;
+|FPRC;
+
+|PROCESO Stock;
+     axLote = #21#10;
+     axLoteRese = #21#12;
+     |HAZ ActArtiAlma;
+     |HAZ actlote;
+|FPRC;
+
+|PROCESO Actualiza;
+     nForma = -1;
+     |SI #0#5 > #21#7;
+          uni = #0#5 - #21#7;
+          nUni = #21#7; |HAZ Stock;
+          #21#7 = 0;
+          |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+          |GRABA 021#21a;
+          |LIBERA #21;
+          |LEE 101#21>;
+          |PARA; |SI FSalida = 0; |Y #21#0 = #0#32;
+               |Y #21#1 = #0#33; |Y #21#2 = #0#34; |Y uni > 0;
+               |HACIENDO;
+               |SI uni ] #21#7;
+                    nUni = #21#7; |HAZ Stock;
+                    uni = uni - #21#7;
+                    #21#7 = 0;
+               |SINO;
+                    nUni = uni; |HAZ Stock;
+                    #21#7 = #21#7 - uni;
+                    uni = 0;
+               |FINSI;
+               |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+               |GRABA 021#21a;
+               |LIBERA #21;
+               |LEE 101#21>;
+          |SIGUE;
+     |SINO;
+          nUni = #0#5; |HAZ Stock;
+          #21#7 = #21#7 - #0#5;    || Servidas
+          |SI #21#5=#21#7;#21#6="S";|SINO;#21#6="N";|FINSI;
+          |GRABA 021#21a;
+     |FINSI;
+     |HAZ ActPedido;
+|FPRC                                                                                                                                                                                                                                                ;
+
+|PROCESO CreaLinOrden;
+     |HAZ Lee
+     |SI FSalida = 0;
+          |HAZ Actualiza
+          |LIBERA #11;
+          |LIBERA #12;
+     |FINSI;
+     #0#5 = -#0#5;
+     #0#7 = -#0#7;
+     #0#37 = -#0#37;
+     #0#0 = nConta;
+     |GRABA 020#0n;
+|FPRC;
+
+|PROCESO Historico;
+     |ABRE #93;
+     |LEE 000#93u;
+     |SI FSalida = 0;
+          #93#0 = #93#0 + 1;
+     |SINO;
+          #93#0 = 1;
+     |FINSI;
+     #93#1 = #92#0;
+     #93#2 = #92#1;
+     #93#3 = ~;
+     |HORA aAlfa;
+     #93#4 = aAlfa;
+     #93#5 = Usuario % 810;
+     #93#6 = #92#2;
+     |GRABA 020#93n;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |ABRE #11;
+     |ABRE #12;
+     |ABRE #21;
+     |ABRE #0;
+     |ABRE #1;
+     #1#0 = #92#0;
+     #1#1 = #92#1;
+     |LEE 101#1=;
+     |SI FSalida ! 0;
+          |MENAV "0000No existe Orden...";
+     |SINO;
+          |SI #1#15 ! "S";
+               |MENAV "0000Orden no confirmada...";
+          |SINO;
+               |SI #1#21 ! 0;
+                    |SI #1#14 < 0;
+                         |MENAV "0000ERROR, la orden es una anulacion...";
+                    |SINO;
+                         |MENAV "0000ERROR, orden ya anulada....";
+                    |FINSI;
+               |SINO;
+                    |HAZ Contador;
+                    |BUCLELIN 0 CreaLinOrden #1;
+                    #1#1 = nConta;
+                    #1#14 = -#1#14;
+                    #1#21 = #92#1;
+                    |GRABA 020#1b;
+                    |HAZ CabAlb;
+                    |BUCLELIN 0 CreaLinAlb #1;
+                    |HAZ FinAlb;
+                    #1#17 = enNumAlb;
+                    #1#2 = ~;
+                    |GRABA 020#1a;
+
+                    #1#1 = #92#1;
+                    |LEE 121#1=;
+                    #1#21 = nConta;
+                    |GRABA 020#1a;
+
+                    |HAZ Historico;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #1;
+     |CIERRA #0;
+     |CIERRA #21;
+     |CIERRA #12;
+     |CIERRA #11;
+|FPRC;

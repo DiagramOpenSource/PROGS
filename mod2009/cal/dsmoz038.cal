@@ -1,0 +1,446 @@
+|FICHEROS;
+    dsmoz038 #997,MANTE;
+    dsmow035 #995,MANTE;  || Temporal de Fra. de Inversion
+
+   :/contagen/def/canempre #300;
+   :/contagen/def/camaniva #301;
+   :/contagen/def/caivalin #302;
+|FIN;
+
+|VARIABLES;
+   &aCamp1 = "";
+   &nCamp2 = 0;
+   &fCamp3 = @;
+   &nCamp4 = 0;
+   &nCamp5 = 0;
+   &aCamp6 = "";
+   &nCamp7 = 0;
+   &aCamp8 = "";
+   &nCamp9 = 0;
+
+  aFichero    = "";
+  fecalf      = "";
+  nDEmpresa   = 0;
+  nHEmpresa   = 0;
+  nDActividad = 0;
+  nHActividad = 0;
+
+  aAlfa1 = "";
+  aAlfa2 = "";
+  nNume1 = 0;
+  nPara1 = 0;
+
+  nSwElem = 0;
+  &errconta = 0;
+  nInkey = 0;
+  nElAny = 0;
+
+  aPath  = "";
+  fecsys = @;
+  nDepar = 0;
+  &aComVen = "";
+  &aRepSop = "";
+
+  &enSwBien = 0;
+
+  nLibro    = 0;
+  aSerie    = "";
+  nDocum    = 0;
+  nElModo   = 0;
+  nSwEste   = 0;
+  swpaso    = 0;
+  nElnumero = 0;
+  nNoBusco  = 0;
+  fDFecha   = @;
+  fHFecha   = @;
+  nBueno    = 0;
+  nSwAlgun  = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+|| ----------------------------------------------------------------------
+
+|PROCESO BuscaPeriodo;
+   nBueno = 0;
+   |SI #300#11 = 1;
+       |SI #300#26 = nElAny;
+           nBueno = 1;
+       |FINSI;
+   |SINO;
+        |HAZ LaFecha;
+        |SI fHFecha ] fec1; |Y fDFecha [ fec2;
+            nBueno = 1;
+        |FINSI;
+   |FINSI;
+   |SI nBueno = 0; |ACABA; |FINSI;
+   nNume1     = #300#3 + 15;
+   #997nNume1 = 1;
+   nSwAlgun   = 1;
+|FPRC;
+
+|DEFBUCLE BuscaPeriodo;
+ #300#1;
+ ;
+ enEmpresa, 0;
+ enEmpresa, 9;
+ ;
+ NULL, BuscaPeriodo;
+|FIN;
+|| ----------------------------------------------------------------------
+|PROGRAMA;
+
+  |SI aComVen = "C";  aRepSop = "S"; |FINSI;
+  |SI aComVen = "V";  aRepSop = "R"; |FINSI;
+
+  |SI enSwBien = -1; nNoBusco = 1; |FINSI;
+
+  enSwBien = 0;
+  nDActividad = enActividad;
+  nHActividad = enActividad;
+  aAlfa1      = enEjer;     |QBF aAlfa1;
+      aAlfa2  = "01.01." + aAlfa1; fDFecha = aAlfa2;
+      aAlfa2  = "31.12." + aAlfa1; fHFecha = aAlfa2;
+  aAlfa1      = aAlfa1 % -102;
+  nElAny      = aAlfa1;
+
+  nSwAlgun = 0;
+  |PDEFECTO #997,15,25;
+
+  |BUCLE BuscaPeriodo;
+  |SI nSwAlgun = 0;
+      |ACABA;
+  |FINSI;
+
+|| .................. Graba Fichero Auxiliar de Amortizaciones
+  aFichero = ("38z" + Usuario) % 108;
+  |NOME_DAT #997 aFichero;
+  |ABRE #997;  |CIERRA #997;  |DELINDEX #997;
+
+  |HAZ Graba997;
+  |SI nSwElem = 0; |ACABA; |FINSI;
+
+|| .................. Graba Fichero Auxiliar de Facturas
+  aFichero = ("35w" + Usuario) % 108;
+  |NOME_DAT #995 aFichero;
+  |ABRE #995;  |CIERRA #995;  |DELINDEX #995;
+
+  nSwElem = 0;
+  |PARA nPara1 = 0; |SI nPara1 [ 9; |HACIENDO nPara1 = nPara1 + 1;
+        nNume1 = nPara1 + 15;
+        |SI #997nNume1 = 1;
+            |ABRE #300;
+            #300#2 = enEmpresa;
+            #300#3 = nPara1;
+            |LEE 001#300=;
+            |CIERRA #300;
+            |HAZ Graba995;
+       |FINSI;
+  |SIGUE;
+  |SI nSwElem = 0;
+      |MENAV "    Error No existe ninguna factura de Inversion";
+      |ACABA;
+  |FINSI;
+
+  |PINPA #0#997;
+
+  |ATRI P;
+  |SI aComVen = "C"; |PINTA 1152, "COMPRA"; |SINO |PINTA 1152, "VENTA"; |FINSI;
+  |ATRI 0;
+
+  |PINDA #0#997;
+
+  nLibro =  #997#10;
+  aSerie =  #997#11;
+  nDocum =  #997#12;
+|| .................... Lo leo
+ nElnumero = 0;
+ |ABRE #995;
+ |SELECT #2#995;
+ #995#0 = #997#0;  || Empresa
+ #995#1 = #997#10; || Libro
+ #995#3 = #997#11; || Serie
+ #995#4 = #997#12; || Factura
+ |LEE 001#995=;
+ |SI FSalida = 0;
+     nElnumero = #995#2;
+ |FINSI;
+ |SELECT #1#995;
+ |CIERRA #995;
+
+|| ................................
+  |SI nNoBusco = 1;
+      |SI nElnumero ! 0;
+          |PINDA #0#995;
+          |PAUSA;
+      |SINO;
+          |MENAV "    Error, No existe Factura";
+      |FINSI;
+  |SINO;
+
+      |ENDATOS #2#997;
+      |SI FSalida = 0;
+          enSwBien = 1;
+          nCamp7 = #997#10;
+          aCamp8 = #997#11;
+          nCamp9 = #997#12;
+      |FINSI;
+
+   |FINSI;
+
+  |DELINDEX #997;
+  |DELINDEX #995;
+|FPRO;
+
+|| /////////////////////////// Procesos \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+|PROCESO LeeFacturas0;
+ #301#0 = #302#0;
+ #301#1 = #302#1;
+ |LEE 001#301=;
+ |SI FSalida ! 0;   |ACABA;  |FINSI;
+
+ |SI #301#36 ! aRepSop; |ACABA; |FINSI;
+
+ nDepar = #301#10;
+ |SI nDepar < enActividad; |O nDepar > enActividad;   |ACABA;  |FINSI;
+
+ |SI #301#4 < fDFecha; |O #301#4 > fHFecha; |ACABA; |FINSI;
+
+ #302#6 =(#302#6 / enConversor) ! EURODBMOD;
+ #302#8 =(#302#8 / enConversor) ! EURODBMOD;
+ #302#10 =(#302#10 / enConversor) ! EURODBMOD;
+
+ #995#0 = enEmpresa;
+ #995#1 = #301#0;
+ #995#2 = #301#1;
+ |LEE 101#995=;
+ |SI FSalida ! 0;
+     |DDEFECTO #995;
+     #995#0 = enEmpresa;
+     #995#1 = #301#0;
+     #995#2 = #301#1;
+     |GRABA 020#995b;
+ |FINSI;
+ #995#3  = #301#2;
+ #995#17 = #301#3;
+ #995#4  = #301#3;
+ aAlfa1  = #301#4; aAlfa1 = (aAlfa1 % 102) + (aAlfa1 % 402);
+ #995#5  = aAlfa1;
+ #995#6  = #302#2;
+ #995#7  = #301#10;
+ #995#8  = #301#24;
+ #995#9  = #301#12;
+ #995#10 = #301#13;
+ #995#11 = #302#6;
+ #995#12 = #302#8;
+ #995#13 = #302#6 + #302#8;
+ #995#14 = #301#22;
+ #995#15 = #302#3;
+ #995#16 = #302#4;
+ #995#17 = #302#12;
+ |GRABA 020#995a;
+ |LIBERA #995;
+ nSwElem = 1;
+|FPRC;
+
+|DEFBUCLE LeeFacturas;
+ #302#1;
+ 17;
+ 01,0000000001,01,"S";
+ 99,9999999999,99,"S";
+ e;
+ NULL, LeeFacturas0;
+|FIN;
+
+|PROCESO Graba995;
+  aAlfa1 = #300#2; |QBF aAlfa1;  aAlfa1 = ("00000" + aAlfa1) % -105;
+  aAlfa2 = #300#3; |QBF aAlfa2;  aAlfa2 = ("0" + aAlfa2) % -101;
+
+  enEmpresa  = #300#2;
+  enPerConta = #300#3;
+  eaLaMonEmp = #300#28;
+  |HAZ EnConversor;
+
+  |DBASS aPath; |QBT aPath;
+  aPathConta    = aPath + "contagen/fich/" + aAlfa1 + aAlfa2 + "/";
+
+  |PATH_DAT #301 aPathConta;
+  |PATH_DAT #302 aPathConta;
+
+  nSwElem = 0;
+  |ABRE #995;
+  |ABRE #301;
+  |BUCLE LeeFacturas;
+  |CIERRA #301;
+  |CIERRA #995;
+|FPRC;
+
+||************************************************************************
+|PROCESO Graba997;
+   |ABRE #997;
+   nSwElem = 1;
+   #997#0 = enEmpresa;
+   #997#1 = eaElemento;
+   #997#2 = enElemeNum;
+
+   #997#3 = aCamp1;   || descripcion
+   #997#4 = nCamp2;   || Linea
+   #997#5 = enEjer;   || A¤o Venta
+   #997#6 = fCamp3;   || Fecha Venta
+   #997#7 = nCamp4;   || Importe Venta
+   #997#8 = nCamp5;   || Concepto
+   #997#9 = aCamp6;   || Descripcion
+   #997#10 = nCamp7;  || Libro
+   #997#11 = aCamp8;  || Serie
+   #997#12 = nCamp9;  || Factura
+   #997#13 = enActividad;  || Actividad
+   #997#14 = eaNombreAct;
+   |GRABA 020#997n;
+   |CIERRA #997;
+|FPRC;
+||************************************************************************
+
+|RUTINA ClaveBaja995;
+ #995#0 = enEmpresa;
+ |SI FSalida ! "POSICION";
+     #995#1 = 01;
+     #995#2 = 0000000000;
+ |SINO;
+     #995#1 = nLibro;
+     #995#2 = nElnumero;
+ |FINSI;
+|FRUT;
+
+|RUTINA ClaveAlta995;
+ #995#0 = enEmpresa;
+ #995#1 = 99;
+ #995#2 = 99999999999;
+|FRUT;
+
+|CALCULO Verlos; |TIPO 7;
+  |ENTLINEAL #1#995, -3, 7, 22, 0, ClaveBaja995, ClaveAlta995;
+  |SI nLibro ! 0; |Y swpaso = 0;
+      |PTEC 824;
+  |FINSI;
+  swpaso = 1;
+|FCAL;
+
+|CALCULO lasfunciones; |TIPO 0;
+ nInkey = FSalida;
+ |SI nInkey = 10;
+     nLibro =  #997#10;
+     aSerie =  #997#11;
+     nDocum =  #997#12;
+     |ENTLINEAL #1#995, -3, 5, 22, 0, ClaveBaja995, ClaveAlta995;
+     #997#10 = nLibro;
+     #997#11 = aSerie;
+     #997#12 = nDocum;
+     |PINTA #997#10;
+     |PINTA #997#11;
+     |PINTA #997#12;
+ |FINSI;
+ |SI nInkey = 11;
+     |HAZ BuscaEste;
+ |FINSI;
+|FCAL;
+
+|CALCULO loleo; |TIPO 0;
+ |ABRE #995;
+ |SELECT #2#995;
+ #995#0 = #997#0;  || Empresa
+ #995#1 = #997#10; || Libro
+ #995#3 = #997#11; || Serie
+ #995#4 = #997#12; || Factura
+ |LEE 001#995=;
+ |SI FSalida ! 0;
+     |MENAV "    Error, No existe Factura";
+     |ERROR;
+     |CIERRA #995;
+     |ACABA;
+ |FINSI;
+ |SELECT #1#995;
+ |CIERRA #995;
+
+ |SI #995#7 ! #997#13;
+     |MENAV "    Error. La Actividad NO es la del Elemento de Amortizacion";
+     |ERROR;
+     |ACABA;
+ |FINSI;
+ |SI #995#17 ! #997#6;
+     |CONFI "    NLa Factura no tiene la misma fecha de venta. Continuar ";
+     |SI FSalida ! 0;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+ |FINSI;
+ |SI #995#11 ! #997#7;
+     |CONFI "    NLa Factura no tiene el mismo IMPORTE. Continuar ";
+     |SI FSalida ! 0;
+         |ERROR;
+     |FINSI;
+ |FINSI;
+|FCAL;
+
+|| .... Procesos del auxiliar W035;
+
+|CALCULO LaRecoge;
+ |SI FSalida = 0;
+     |SI #995#7 ! #997#13;
+         |MENAV "    Error. La Actividad NO es la del Elemento de Amortizacion";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+     |SI #995#17 ! #997#6;
+         |CONFI "    NLa Factura no tiene la misma fecha de venta. Continuar ";
+         |SI FSalida ! 0;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+     |SI #995#11 ! #997#7;
+         |CONFI "    NLa Factura no tiene el mismo IMPORTE. Continuar ";
+         |SI FSalida ! 0;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+     nLibro = #995#1;
+     aSerie = #995#3;
+     nDocum = #995#4;
+ |FINSI;
+ |PTEC 806;
+|FCAL;
+
+|| *********************************************************************
+|PROCESO Busca1;
+ nLibro =  #995#1;
+ aSerie =  #995#3;
+ nDocum =  #995#4;
+ nSwEste = 1;
+ |ERROR10;
+|FPRC;
+
+|DEFBUCLE Busca1;
+ #995#1;
+ 5,7,11;
+ #997#0, 00, 0000000001, #997#6, #997#13, #997#7;
+ #997#0, 99, 9999999999, #997#6, #997#13, #997#7;
+ ;
+ NULL, Busca1;
+|FIN;
+
+|PROCESO BuscaEste;
+ nLibro =  #997#10;
+ aSerie =  #997#11;
+ nDocum =  #997#12;
+ nSwEste = 0;
+ |BUCLE Busca1;
+ |SI nSwEste = 1;
+     #997#10 = nLibro; |PINTA #997#10;
+     #997#11 = aSerie; |PINTA #997#11;
+     #997#12 = nDocum; |PINTA #997#12;
+ |SINO;
+     |MENAV "    No encontrada factura correspondiente ";
+ |FINSI;
+|FPRC;

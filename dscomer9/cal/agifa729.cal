@@ -1,0 +1,267 @@
+|FICHEROS;
+   agifa729 #0;
+
+   ParamOTP@ #900;
+   DirecOTP@ #901;
+   visal000@ #902;
+|FIN;
+
+|VARIABLES;
+     aAlfa  = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     &eaEntrada  = "";
+     &eaSalida   = "";
+     aIP         = "";
+     aTexto      = "";
+     aDirOrigen  = "";
+     aDirDestino = "";
+     aIPDSCorreo = "";
+     aSerie      = "";
+     nFactura    = 0;
+     aServidor   = "";
+     aUsuario    = "";
+     aClave      = "";
+     aFichero    = "";
+     aAsunto     = "";
+     aCadena     = "";
+     aPath       = "";
+     fFecha      = @;
+     nNumChar    = 0;
+     nCalc       = 0;
+     nCont       = 0;
+     nNumero     = 0;
+     FEstado     = 0;
+
+     nCalc1      = 0;
+     nCalc2      = 0;
+     aChar       = "";
+
+     nRefer      = 0;
+     nSwCorreos  = 0;
+    aQueQuiero = "";
+    aNumCampos = "";
+    nNumCampos = 0;
+    aEmpresa   = "";
+    aBase      = "";
+    aFich      = "";
+    aMas       = "";
+|FIN;
+
+|RUTINA inf729;
+   #agifa729#0 = 00000000001;
+|FRUT;
+
+|RUTINA sup729;
+   #agifa729#0 = 99999999999;
+|FRUT;
+
+|PROCESO Encriptacion;
+   nNumChar = 0;
+   nCalc    = 0;
+   nCont    = 0;
+   eaSalida = "";
+   aAlfa = eaEntrada; |QBF aAlfa;
+   aAlfa = aAlfa % 0; nNumChar = aAlfa;
+   |PARA nCont = 1; |SI nCont [ nNumChar; |HACIENDO nCont = nCont + 1;
+      nCalc = (nCont * 100) + 1; aAlfa = eaEntrada % nCalc;
+      nCalc = &aAlfa;
+      |SI nCalc > 79;
+         nCalc = 79 - (nCalc - 79);
+      |SINO;
+         nCalc = 79 + (79 - nCalc);
+      |FINSI;
+      eaSalida = eaSalida + &nCalc;
+   |SIGUE;
+|FPRC;
+
+|PROCESO QuitaVDSCorreo;
+  aAlfa = aCadena % 0301;
+  |SI aAlfa = "[";
+     aAlfa = aCadena % 1101;
+     |SI aAlfa = "]"; aCadena = (aCadena % 0102) + (aCadena % 1299); |FINSI;
+  |SINO;
+     aAlfa = aCadena % 0401;
+     |SI aAlfa = "[";
+        aAlfa = aCadena % 1201;
+        |SI aAlfa = "]"; aCadena = (aCadena % 0103) + (aCadena % 1399); |FINSI;
+     |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO EmpresaPrevencion;
+     |DBASS aBase;  |QBF aMas;
+     aMas = aBase + "dspreven/def/visal000.mas";
+
+     |CARGA_DEF aMas, visal000@;
+     aQueQuiero = "|NC";
+     aNumCampos = #902#aQueQuiero#;
+     nNumCampos = aNumCampos;
+     aEmpresa   = "00001";
+
+     |SI nNumCampos = 4;
+         aFich = aBase + "dspreven/fich/";
+         |PATH_DAT #902 aFich;
+         |ABRE #902;
+         |SELECT #2#902;
+         #902#3 = "S";
+         |LEE 000#902=;
+         |SI FSalida = 0;
+             aEmpresa = ("00000" + #902#0) % -105;
+         |FINSI;
+         |CIERRA #902;
+     |FINSI;
+
+     |DESCARGA_DEF #visal000@;
+|FPRC;
+
+|PROCESO Actualiza;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dspreven/def/visalm36.mas";
+   |CARGA_DEF aAlfa, ParamOTP@;
+   |SI FSalida = 0;
+      |HAZ EmpresaPrevencion;
+
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dspreven/fich/" + aEmpresa + "/";
+      |PATH_DAT #ParamOTP@#aAlfa#;
+      |ABRE #ParamOTP@;
+      |LEE 000#ParamOTP@.p;
+      |SI FSalida ! 0; |DDEFECTO #ParamOTP@; |FINSI;
+
+      |BLIN 23; |ATRI I; |PINTA 2302, "Chequeando correo ...."; |ATRI N;
+
+||      aIPDSCorreo = #ParamOTP@#1 + "." + #ParamOTP@#2 + "." + #ParamOTP@#3 + "." + #ParamOTP@#4;
+      aIPDSCorreo = #ParamOTP@#42; |QBF aIPDSCorreo;
+      aServidor   = #ParamOTP@#5;  |QBF aServidor;
+      aUsuario    = #ParamOTP@#30; |QBF aUsuario;
+      eaEntrada   = #ParamOTP@#32; |HAZ Encriptacion; aClave = eaSalida;
+      |DFICE aPath; |QBF aPath;
+      nSwCorreos = 0;
+|ET Repite;
+      |DSCORREO_RECIBE aIPDSCorreo, aServidor, aUsuario, aClave, aPath, aFichero;
+      FEstado = FSalida;
+      aCadena = FSalida; |HAZ QuitaVDSCorreo; aAlfa = aCadena; |QBF aAlfa;
+      |SI FEstado < 0;
+         |MENAV "    Problemas para acceder al DsCorreo.";
+      |SINO;
+         aAsunto = aCadena % 0399; |QBF aAsunto; |QBF aFichero;
+         |SI aAsunto = ""; |Y aFichero = "";
+            |SI nSwCorreos = 0;
+               |MENAV "    Correo vacio. No se han confirmado envios";
+            |FINSI;
+         |SINO;
+            nSwCorreos = 1;
+            aAsunto = aCadena % 0399; |HAZ TransAsunto; aAsunto = aAlfa;
+            |BLIN 23; |ATRI I; |PINTA 2305, aAsunto; |ATRI N;
+            |PARA nCont = 11; |SI nCont [ 15; |HACIENDO nCont = nCont + 1;
+               aAlfa1 = aAlfa; aAlfa2 = #ParamOTP@#nCont#; |QBF aAlfa2;
+               aAlfa1 = aAlfa1 - aAlfa2;
+               |SI FSalida ! 0; |Y aAlfa2 ! "";
+                  || Toma el registro que hay que actualizar
+                  aAlfa = aAsunto - "Factura electronica (";
+                  |SI FSalida ! 0;
+                     nCalc = FSalida + 78; aAlfa = aAlfa % nCalc;
+                     aSerie = aAlfa % 0105; aAlfa = aAlfa % 0706; nFactura = aAlfa;
+                     nRefer = 0;
+                     |SELECT #2#agifa729;
+                     #agifa729#0 = 1;
+                     #agifa729#1 = aSerie;
+                     #agifa729#2 = nFactura;
+                     |LEE 000#agifa729.];
+                     |PARA; |SI FSalida = 0; |Y #agifa729#1 = aSerie; |Y #agifa729#2 = nFactura; |HACIENDO;
+                        nRefer = #agifa729#0; |LEE 000#agifa729.s;
+                     |SIGUE;
+
+                     |SELECT #1#agifa729;
+                     #agifa729#0 = nRefer;
+                     |LEE 101#agifa729.=;
+                     |SI FSalida = 0;
+                        fFecha = ~; |HORA aAlfa; |QBF aAlfa; aAlfa = aAlfa % 0105;
+                        #agifa729#7 = fFecha;
+                        #agifa729#8 = aAlfa;
+                        |GRABA 020#agifa729.a; |LIBERA #agifa729;
+                     |FINSI;
+                  |SINO;
+                     ||PEPE
+                  |FINSI;
+                  |SAL;
+               |FINSI;
+            |SIGUE;
+            |VETE Repite;
+         |FINSI;
+      |FINSI;
+
+      |CIERRA #ParamOTP@; |DESCARGA_DEF #ParamOTP@;
+   |FINSI;
+|FPRC;
+
+|PROCESO Tipo05729; |TIPO 5;
+   #agifa729#7 = "01.01.0000";
+   |LINEAS_BI_ATRI #agifa729#7, S, D, -1;
+|FPRC;
+
+|PROCESO TransAsunto;
+   aAlfa = aAsunto; |QBF aAlfa;
+   aAlfa1 = aAlfa % 0; nCalc = aAlfa1;
+   |PARA nCont = 1; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+      nCalc1 = (nCont * 100) + 1;
+      aAlfa1 = aAlfa % nCalc1;
+      |SI aAlfa1 = "_";
+         nCalc1 = nCalc1 + 2; aAlfa1 = aAlfa % nCalc1;
+         nCalc1 = 99 + nCont; nCalc2 = ((nCont + 1) * 100) + 99;
+         aAlfa = (aAlfa % nCalc1) + " " + (aAlfa % nCalc2);
+         aAlfa1 = " ";
+      |FINSI;
+      |SI aAlfa1 = "=";
+         nCalc1 = nCalc1 + 2; aAlfa1 = aAlfa % nCalc1;
+         aAlfa1 = aAlfa1 % -102; aChar = aAlfa1; |HAZ Hexa; aAlfa1 = aChar;
+         nCalc1 = 99 + nCont; nCalc2 = ((nCont + 3) * 100) + 99;
+         aAlfa = (aAlfa % nCalc1) + aAlfa1 + (aAlfa % nCalc2);
+      |FINSI;
+   |SIGUE;
+|FPRC;
+
+|PROCESO Hexa;
+   aAlfa1 = aChar % 0101;
+   aAlfa2 = aChar % 0201;
+   |SI aAlfa1 ] "1"; |Y aAlfa1 [ "9";
+      nCalc1 = aAlfa1;
+   |SINO;
+      |SI aAlfa1 = "A"; nCalc1 = 10; |FINSI;
+      |SI aAlfa1 = "B"; nCalc1 = 11; |FINSI;
+      |SI aAlfa1 = "C"; nCalc1 = 12; |FINSI;
+      |SI aAlfa1 = "D"; nCalc1 = 13; |FINSI;
+      |SI aAlfa1 = "E"; nCalc1 = 14; |FINSI;
+      |SI aAlfa1 = "F"; nCalc1 = 15; |FINSI;
+   |FINSI;
+   |SI aAlfa2 ] "1"; |Y aAlfa2 [ "9";
+      nCalc2 = aAlfa2;
+   |SINO;
+      |SI aAlfa2 = "A"; nCalc2 = 10; |FINSI;
+      |SI aAlfa2 = "B"; nCalc2 = 11; |FINSI;
+      |SI aAlfa2 = "C"; nCalc2 = 12; |FINSI;
+      |SI aAlfa2 = "D"; nCalc2 = 13; |FINSI;
+      |SI aAlfa2 = "E"; nCalc2 = 14; |FINSI;
+      |SI aAlfa2 = "F"; nCalc2 = 15; |FINSI;
+   |FINSI;
+   nCalc1 = (nCalc1 * 16) + nCalc2;
+   aChar = &nCalc1;
+
+   |SI aChar = "á"; aChar = "a"; |FINSI;
+   |SI aChar = "é"; aChar = "e"; |FINSI;
+   |SI aChar = "í"; aChar = "i"; |FINSI;
+   |SI aChar = "ó"; aChar = "o"; |FINSI;
+   |SI aChar = "ú"; aChar = "u"; |FINSI;
+|FPRC;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Bandeja de salida de envios de facturas electronicas";
+
+   |ABRE #agifa729;
+   |HAZ Actualiza;
+   |CIERRA #agifa729;
+
+   |ENTLINEAL #1#agifa729, 1, 4, 20, 1, inf729, sup729;
+|FPRO;

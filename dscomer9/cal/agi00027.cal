@@ -1,0 +1,847 @@
+|FICHEROS;
+     agi00027 #0;        || Pre-Pedidos(C).
+     agi00028 #2;        || Pre-Pedidos(L).
+     agifa081 #3;        || Pedidos de Compras(C).
+     agifa067 #4;        || Pedidos de Compras(L).
+     agi00030 #5,MANTE;  || Pantalla desde/hasta para creacion de pedidos.
+     agifa112 #6;        || Proveedores.
+     agifa019 #7;        || Articulos.
+     agifa017 #8;        || Almacenes Stock
+     agifa029 #9;        || Almacenes
+     agifa112 #10;       || Proveedores
+     agif0041 #11;       || Datos empresa;
+     agifa142 #12;       || Parametros Generales
+
+     agifa321 #35;       || Parametros de Divisas
+     agifa322 #36;       || Clientes/Divisas
+     agifa323 #37;       || Lineas de Clientes/Divisas
+     agifa324 #38;       || Divisas
+     dsm00083 #83,MANTE;
+     dsm00005 #905;
+     dsm00064 #964;
+     dsm00065 #965;
+     dsm00115;
+     agifa048;
+     dsm00087@;
+     referen@;
+|FIN;
+
+|VARIABLES;
+     nSal = 0;
+     aUsu = "";
+     nContaLog = 0;
+     aSer = "";
+     aNum = "";
+     aTipo = "";
+     nTipo = 0;
+     nPreTon = 0;
+     aAlfa = "";
+     nImporDescue1 = 0;
+     nImporDescue2 = 0;
+     nImporDescue3 = 0;
+     nImporMoneda1 = 0;
+     nImporMoneda2 = 0;
+     nBrutoMoneda1 = 0;
+     nBrutoMoneda2 = 0;
+     nLin = 0;
+     nLinV = 0;
+     &enEvento  = 0;
+     &enEnvio   = 0;
+     &eaOrigen  = "";
+     &eaDestino = "";
+     &eaAsunto  = "";
+
+     &enSwMenu       = 0;
+     nModo           = 0;
+     nConta          = 0;
+     nLinea          = 0;
+     nImpo           = 0;
+     aDatos          = "";
+     aDirEmp         = "";
+     nCodEmp         = 0;
+     &nDeci_Base     = 0;   || Decimales en Totales de la moneda base
+     &nDeci_PreBase  = 0;   || Decimales en el Precio en moneda base
+     &nDeci_BaseMxP  = 0;   || Decimales en Totales de la moneda base (Maxima precision)
+     &nDeci_PreBasMxP = 0;   || Decimales en el Precio en moneda base (Maxima precision)
+     &nDeci_DivP      = 0;   || Decimales en Totales de la divisa
+     &nDeci_PreDivP   = 0;  || Decimales en el Precio en divisa
+     &nDeci_TotVisP   = 0;  || Decimales en Totales visibles (el de la moneda de trabajo)
+     &nDeci_TotNoVisP = 0;  || Decimales en Totales no visibles (el de la otra moneda)
+     &nDeci_PreVisP   = 0;  || Decimales en el Precio visual. (lineas)
+     &nDeci_ImpVisP   = 0;  || Decimales en el Importe visual. (lineas)
+     nfecha    = 0;
+     &ac_divisa = "N";   || Vale "S" cuando las divisas en compras estan
+                         || activadas y la serie es de divisas
+||     &pintado = 0;       || Sirve para controlar los pintados de las lineas
+     &decim_divisa = 0;  || Decimales de la divisa
+     &precio_divisa = 0; || Decimales del precio en divisa
+     &decim_base = 0;    || Decimales de la moneda base
+     &precio_base = 0;   || Decimales del precio en moneda base
+     div_act = 0;        || Divisa actualizada. Me sirve en un PARA para que
+                         || no salga hasta que este actualizada (div_act=1)
+     &prov_divisa = "";  || Codigo de Proveedor. Se pasa a PROVEED/DIVISAS
+     ||&divisa = "";       || Codigo de Divisa. Se pasa a ACTUAL. de DIVISAS
+
+     fechasis  = ~;
+     Unidades  = 0;
+     asto      = 0;
+     tempo     = " ";
+     pro_ant   = "";
+     pedido    = "";
+     linea     = 0;
+     numero    = 0;
+     div_ant   = "";
+     monba     = "";
+     serie     = "";
+     montra    = "";
+     divisa    = "";
+     cambiomb  = 0;
+     cambio    = 0;
+     mes       = 0;
+     fmes1     = "  ";
+     art       = "";
+     pre       = 0;
+     dto       = 0;
+     nImpDiv   = 0;
+     nPend     = 0;
+|FIN;
+
+|INCLUYE i_varart;
+
+|PROCESO Tipo2; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     |SI #0#2 = "S";
+          |MENAV "0000Documento acutalizado. No se puede modificar...";
+          |ERROR; |ACABA;
+     |FINSI;
+     |SI nModo = 3;
+          |HAZ EsDesanch;
+          |SI FSalida = 0;
+               aAlfa = "desan016;XB     " + (("000000" + #0#0) % -106);
+               |SUB_EJECUTA aAlfa;
+               |HAZ PinDesanch27;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|CALCULO Contador; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          |LEE 000#0u;
+          |SI FSalida = 0;
+               nConta = #0#0 + 1;
+          |SINO;
+               nConta = 1;
+          |FINSI;
+          |DDEFECTO #0;
+          #0#0 = nConta;
+     |FINSI;
+|FCAL;
+
+|PROCESO visual_totales;
+   |SI montra = "D";
+     #3#37 = #3#34;
+     #3#38 = #3#35;
+     #3#39 = #3#36;
+     #3#40 = #3#11;
+     #3#41 = #3#12;
+     #3#42 = #3#13;
+   |SINO;
+     #3#37 = #3#11;
+     #3#38 = #3#12;
+     #3#39 = #3#13;
+     #3#40 = #3#34;
+     #3#41 = #3#35;
+     #3#42 = #3#36;
+   |FINSI;
+|FPRC;
+
+|PROCESO miramonba;
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 010#agifa321.p;   ||Leo parametros de divisa
+     monba = #agifa321#9;  ||Cojo la Moneda Base de parametros
+     #agifa324#0 = #agifa321#9;
+     |LEE 010#agifa324.=;         ||Leo la ficha de la moneda base en Divisas
+     cambiomb    = #agifa324#3;  ||Asigno el cambio de la moneda base con el euro
+     decim_base  = #agifa324#7;    ||Asigno los decimales de la moneda base
+     precio_base = #agifa324#9;   ||Asigno los decimales del precio en la mon. base
+     |CIERRA #agifa324;
+     |CIERRA #agifa321;
+|FPRC;
+
+|PROCESO Param_Divisas; |TIPO 0;
+     |ABRE #agifa324;
+     #agifa324#0 = divisa;
+     |LEE 001#agifa324.=;
+     |CIERRA #agifa324;
+
+     decim_divisa = #agifa324#7;
+     precio_divisa = #agifa324#9;
+     nDeci_DivP = decim_divisa;
+     nDeci_PreDivP = precio_divisa;
+     cambio = #agifa324#3; ||Cambio divisa
+     |SI montra = "B";
+         nDeci_PreVisP   = precio_divisa;
+         nDeci_ImpVisP   = decim_divisa;
+         nDeci_Base      = decim_base;
+         nDeci_PreBase   = precio_base;
+         nDeci_BaseMxP   = decim_base;
+         nDeci_PreBasMxP = precio_base;
+         nDeci_TotVisP   = decim_base;
+         nDeci_TotNoVisP = decim_divisa;
+     |SINO;
+         nDeci_PreVisP   = precio_base;
+         nDeci_ImpVisP   = decim_base;
+         nDeci_Base      = decim_base;
+         nDeci_PreBase   = precio_base;
+         |SI cambio = 1;
+              nDeci_BaseMxP   = decim_base;    || sin triangulacion
+              nDeci_PreBasMxP = precio_base;
+         |SINO;
+              nDeci_BaseMxP   = #agifa321#10;  || con triangulacion
+              nDeci_PreBasMxP = #agifa321#11;
+         |FINSI;
+         nDeci_TotVisP   = decim_divisa;
+         nDeci_TotNoVisP = decim_base;
+     |FINSI;
+     |HAZ Deci_IVAC;
+|FPRC;
+
+|PROCESO CambioDivisa; |TIPO 0;
+      |SI #agifa112#80 = "S"; || Si el proveedor es de divisa pactada
+         |ABRE #agifa323;
+         |ABRE #agifa322;
+         #agifa322#0 = #agifa081#4;
+         #agifa322#2 = #agifa081#27;
+         #agifa322#7 = "N";
+         |SELECT #2#agifa322;  || Con esta clave ...
+         |LEE 011#agifa322.=;  || ... busco periodos no finalizados de esa divisa
+         |SI FSalida = 0;  || Si existe un periodo no finalizado
+           |PARA div_act = 0; |SI div_act = 0; |HACIENDO;
+             #agifa081#28 = #agifa322#3;        || ...y el cambio
+             |LEE 001#agifa322.=;   || Leo las lineas de Proveed/Divisas
+             nfecha = fechasis - #agifa322#6;  || Resto la fecha de fin de periodo a la actual
+             |SI nfecha > 0;  || Si la fecha actual supera a la del periodo asignado ...
+                |MENAV "0000ATENCION deberia Actualizar primero la divisa en Proveedores/Divisas";
+                prov_divisa = #agifa081#4;  || Le envio el cod. de proveedor a "agifa323"
+                |SUB_EJECUTA_NP "agifa323.tab";  || Ejecuto Proveedores/Divisas
+                |ERROR;
+             |SINO;
+                div_act = 1;  || Para salir del PARA
+             |FINSI;
+           |SIGUE;
+         |SINO;  || Si no existe un periodo no finalizado para esa divisa
+           |MENAV "0000No existe un periodo activo para la divisa en Proveedores / Divisas";
+           prov_divisa = #agifa081#4;  || Le paso a "agifa323" el proveedor
+           |SUB_EJECUTA_NP "agifa323.tab";  || Ejecuto Proveedores / Divisas
+           |ERROR;
+         |FINSI;
+         |SELECT #1#agifa322;
+         |CIERRA #agifa322;
+         |CIERRA #agifa323;
+      |SINO; || Si el Proveedor no es de Divisa pactada ...
+         |ABRE #agifa324; || ...miro directamente en divisas
+         #agifa324#0 = #agifa081#27;
+         |LEE 001#agifa324.=;
+         |SI FSalida = 0; ||Si existe la divisa...
+            #agifa081#28 = #agifa324#3; || la recojo
+            |SI #agifa324#6 ! -1; || Si los dias de margen de actualizacion no
+                                  || son = -1 (indefinidos)
+              |PARA div_act = 0; |SI div_act = 0; |HACIENDO;
+                 #agifa081#28 = #agifa324#3;        ||Cargo el valor del cambio
+                 |LEE 001#agifa324.=;  || Leo la divisa
+                 nfecha = fechasis - #agifa324#4;
+                 |SI nfecha > #agifa324#6; |Y #agifa324#6 ! -1;  || Si la fecha actual
+                    |MENAV "0000ATENCION deberia Actualizar primero la divisa";
+                    divisa = #agifa081#27;
+                    |SUB_EJECUTA_NP "agifa326.tab";
+                    |ERROR;
+                 |SINO;
+                    div_act = 1;
+                 |FINSI;
+              |SIGUE;
+            |FINSI;
+         |FINSI;
+         |CIERRA #agifa324;
+      |FINSI;
+   ||SINO;
+   ||#agifa081#28 = #agifa081#33;
+   ||FINSI;
+|FPRC;
+
+|PROCESO crea_cabecera;
+     |SI monba = #2#11; ||Si Moneda base coincide con la del pre-pedido
+         #6#0 = #2#4;
+         |LEE 001#6=;
+         |SI #6#81 ! monba; ||El prov tiene una divisa distinta a monbase
+             serie = #5#5;
+             montra = "B"; ||Moneda de trabajo Base
+             divisa = #6#81;
+         |SINO;
+             serie = #5#4;
+             montra = "B";
+             divisa = #2#11;
+         |FINSI;
+     |SINO;
+         serie = #5#5;
+         montra = "D";
+         divisa = #2#11;
+     |FINSI;
+
+     #6#0  = #2#4;
+     |LEE 020#6=;
+
+     enSwMenu = 1;
+     #3#25 = serie; |HAZ ContaPC7;
+     pedido = #3#0;
+
+     |DDEFECTO #3;
+     #3#0  = pedido;          || N�.PEDIDO.
+     #3#4  = #2#4;            || PROVEEDOR.
+     #3#8  = #6#2;            || NOMBRE.
+     #3#9  = #6#17;           || FORMA DE PAGO.
+     #3#25 = serie;           || SERIE PEDIDO
+     #3#26 = #3#25 + "/" + #3#0;   || REFERENCIA INTERNA.
+     #3#29 = montra;          || MONEDA DE TRABAJO
+     #3#27 = divisa;          || DIVISA
+     #3#32 = monba;           || MONEDA BASE
+     #3#33 = cambiomb;        || CAMBIO MON. BASE A EURO
+     #3#5  = #6#24;           || DTO1 del proveedor
+     #3#6  = #6#25;           || DTO P.P. del proveedor
+     #3#17 = #6#41;           || DTO Acumulado del proveedor
+
+     |DFICE aDirEmp;            || tomo el directorio de la empresa
+     |DFICB aDatos;             || tomo el directorio de los datos
+     aDirEmp = aDirEmp % -205;  || me quedo con los 5 digitos de la empresa
+     nCodEmp = aDirEmp;         || y los paso a una variable numerica
+     |PATH_DAT #11 aDatos;      || pongo el path al fichero agifa041
+     |ABRE #11;                 || abre el fichero agifa041
+     #11#0 = nCodEmp;
+     |LEE 020#11=;              || y busco la empresa en la que estoy
+     |SI FSalida = 0;
+          #3#19 = #11#1;        || nombre de la empresa
+          #3#18 = #11#2;        || direccion de la empresa
+          #3#20 = #11#3;        || poblacion de la empresa
+          #3#21 = #11#4;        || provincia de la empresa
+     |FINSI;
+     |CIERRA #11;               || cierro el fichero agifa041
+
+     |HAZ Param_Divisas;
+     |HAZ CambioDivisa;
+     |GRABA 021#3b;
+|FPRC;
+
+|PROCESO PasaAPedido;
+     |SALVA_DATOS #905;
+
+     #905#0 = "PC";
+     #905#1 = #4#28;
+     #905#2 = #4#0;
+     #905#3 = #4#1;
+     |GRABA 020#905n;
+     |LIBERA #905;
+
+     eaTipo       = "PC";
+     eaArticulo   = #4#2;
+     enAlmacen    = #4#3;
+     eaComponente = #905#4;
+     eaReservado  = #4#22;
+     enUnidades   = #905#6;
+     eaMoneda     = #3#28;
+     enCamBas     = #3#29;
+     enCamDiv     = #3#33;
+
+     |SUB_EJECUTA_NP "dsz00002;PCC";
+
+     |REPON_DATOS #905;
+     |LEE 000#905=;
+|FPRC;
+
+|DEFBUCLE dsm00005;
+     #905#1;
+     ;
+     "W2", "  ", #2#0, nLinV, "      ";
+     "W2", "  ", #2#0, nLinV, "zzzzzz";
+     ;
+     NULL, PasaAPedido;
+|FIN;
+
+|PROCESO TotalLinea;
+     #7#0 = #2#2;
+     |LEE 020#7=;
+
+     nPreTon = 1;
+     |HAZ EsVigor;
+     |SI FSalida = 0;
+          aAlfa = #7#110; |QBF aAlfa;   || Alfanumerico1
+          aAlfa = aAlfa > "";
+          |SI aAlfa = "S"; nPreTon = 1000; |FINSI;
+     |FINSI;
+
+     #4#56 = #4#5 * #7#208;
+     |SI montra = "D";                     || Si la moneda de trabajo es la divisa ...
+         #4#33 = #2#6;                     || ... el precio en divisa es el precio de prepedidos
+         #4#6  = #2#6 / cambio * cambiomb; || Precio en mon base
+         #4#35 = #4#6;                     || Precio visualizable
+     |SINO;                                || Si la moneda de trabajo es la moneda base ...
+         #4#6  = #2#6;                      || ... el precio en base es el precio de prepedidos
+         #4#33 = #2#6 / cambiomb * cambio; || Precio en divisa
+         #4#35 = #4#33;                    || Precio visualizable
+     |FINSI;
+
+     |SI #7#196 = 2;
+          #4#7    = #4#41 * #4#6 / nPreTon;     || IMPORTE EN BASE.
+          nImpDiv = (#4#41 * #4#33 / nPreTon) ! nDeci_DivP;
+     |SINO;
+          #4#7    = #4#5 * #4#6 / nPreTon;      || IMPORTE EN BASE.
+          nImpDiv = (#4#5 * #4#33 / nPreTon) ! nDeci_DivP;
+     |FINSI;
+
+     #4#8  = #2#7;             || DTO de la linea de prepedido
+/*
+     #4#9  = (((#4#7 < #4#8) < #3#5) < #3#17) < #3#6;
+     #4#34 = (((nImpDiv < #4#8) < #3#5) < #3#17) < #3#6;
+*/
+     nBrutoMoneda1 = #4#7 < #4#8;
+     nImporDescue1 = (nBrutoMoneda1 % #3#5) ! nDeci_BaseMxP;
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue1;
+     nImporDescue2 = (nBrutoMoneda1 % #3#17) ! nDeci_BaseMxP;
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue2;
+     nImporDescue3 = (nBrutoMoneda1 % #3#6) ! nDeci_BaseMxP
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue3;
+     #4#9 = nBrutoMoneda1;
+     nBrutoMoneda1 = nImpDiv < #4#8;
+     nImporDescue1 = (nBrutoMoneda1 % #3#5) ! nDeci_BaseMxP;
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue1;
+     nImporDescue2 = (nBrutoMoneda1 % #3#17) ! nDeci_BaseMxP;
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue2;
+     nImporDescue3 = (nBrutoMoneda1 % #3#6) ! nDeci_BaseMxP
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue3;
+     #4#34 = nBrutoMoneda1;
+
+     |SI montra = "D";  || Si la moneda de trabajo es la divisa ...
+          #4#36 = #4#9;                      ||Importe Total visualizable
+     |SINO;            || Si la moneda de trabajo es la moneda base ...
+          #4#36 = #4#34;                     || I. Total visualizable
+     |FINSI;
+|FPRC;
+*/
+|PROCESO dsm00064;
+     nLinea = nLinea + 1;
+     #965#0 = #4#28;
+     #965#1 = #4#0;
+     #965#2 = #4#1;
+     #965#3 = #964#3;
+     #965#4 = #964#4;
+     #965#5 = #964#5;
+     #965#6 = nLinea;
+     |GRABA 020#965n;
+|FPRC;
+
+|DEFBUCLE dsm00064;
+     #964#1;
+     ;
+     "  ", #2#0, #2#1, 001;
+     "  ", #2#0, #2#1, 999;
+     ;
+     NULL, dsm00064;
+|FIN;
+
+|PROCESO crea_linea;      || CREA LAS LINEAS DEL PEDIDO DE COMPRAS...................
+     |DDEFECTO #4;
+     #4#0  = pedido;          || N�.PEDIDO.
+     #4#1  = linea;           || N�.LINEA.
+     #4#2  = #2#2;            || ARTICULO.
+     #4#3  = #2#21;              || ALMACEN.
+     #4#4  = #2#3;            || DESCRIPCION.
+     #4#5  = #2#5;            || UNIDADES.
+     #4#41 = #2#14;    ||uni2
+     |HAZ TotalLinea;
+     #4#11 = #4#9;            || IMPORTE PENDIENTE.
+     #4#14 = #7#30;            || TIPO DE IVA.
+     |SI #6#60 = "S";
+          #4#14 = 0;
+     |FINSI;
+     #4#20 = #2#4;            || PROVEEDOR.
+     #4#26 = #3#9;            || FORMA DE PAGO.
+     #4#28 = serie;           || SERIE PEDIDO.
+     #4#39 = #2#12;
+     #4#40 = #2#13;
+     #4#37 = #4#5;
+     #4#42 = #2#15;    ||par
+     #4#43 = #2#16;    ||merma
+     #4#45 = #4#41;
+
+     #4#47 = #2#17;
+     #4#48 = #2#18;
+     #4#49 = #2#19;
+     #4#54 = #2#20;
+     |GRABA 021#4n;
+     || ACTUALIZA LA CABECERA DEL PRE-PEDIDO.................................
+     #0#0 = #2#0;
+     |LEE 141#0=;
+     |SI FSalida = 0;
+          #0#2 = "S";
+          |GRABA 020#0a;
+          |LIBERA #0;
+     |FINSI;
+     nLinV = #2#1;
+     |BUCLE dsm00005;
+
+     || ACTUALIZA LA LINEA DEL PRE-PEDIDO....................................
+     #2#10 = "S";
+     |GRABA 020#2a;
+     |LIBERA #2;
+
+     eaArticulo = #2#2;
+     |HAZ EsKit;
+     |SI FSalida = 0;
+          nLinea = 0;
+          |ABRE #965;
+          |BUCLE dsm00064;
+          |CIERRA #965;
+     |FINSI;
+|FPRC;
+
+|PROCESO AcumulaLinea;
+     #7#0 = #2#2;
+     |LEE 020#7=;
+
+     |DDEFECTO #4;
+     #4#28 = serie;           || SERIE PEDIDO.
+     #4#0  = pedido;          || N�.PEDIDO.
+     #4#1  = linea;           || N�.LINEA.
+     |LEE 101#4=;
+     #4#5  = #4#5 + #2#5;     || UNIDADES.
+     #4#40 = #4#40 + #2#13;
+     #4#41 = #4#41 + #2#14;    ||uni2
+     |HAZ TotalLinea;
+     #4#11 = #4#9;            || IMPORTE PENDIENTE.
+     |GRABA 021#4a;
+     |LIBERA #4;
+     || ACTUALIZA LA LINEA DEL PRE-PEDIDO....................................
+     #2#10 = "S";
+     |GRABA 021#2a;
+     |LIBERA #2;
+|FPRC;
+
+|PROCESO Actualiza;
+     |ABRE #12;    |LEE 020#12p; |CIERRA #12;
+
+     || ACTUALIZA LA CABECERA DEL PEDIDO DE COMPRAS..........................
+     #3#11 = #3#11 + #4#9;              || IMPORTE TOTAL CABECERA Base.
+     #3#12 = #3#12 + #4#11;             || IMPORTE POR RECIBIR Base.
+     #3#13 = #3#11 - #3#12;             || IMPORTE RECIBIDO
+     #3#44 = #3#44 + #4#56;
+     |SI #7#196 = 2;
+         nPend = (#4#41 - #4#38) * #4#33;
+     |SINO;
+         nPend = (#4#5 - #4#38) * #4#33;
+     |FINSI;
+/*
+     nPend  = (((nPend < #4#8) < #3#5) < #3#17) < #3#6;
+*/
+     nBrutoMoneda1 = nPend < #4#8;
+     nImporDescue1 = (nBrutoMoneda1 % #3#5) ! nDeci_BaseMxP;
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue1;
+     nImporDescue2 = (nBrutoMoneda1 % #3#17) ! nDeci_BaseMxP;
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue2;
+     nImporDescue3 = (nBrutoMoneda1 % #3#6) ! nDeci_BaseMxP
+     nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue3;
+     nPend = nBrutoMoneda1;
+
+     #3#34 = #3#34 + #4#34;             || IMPORTE TOTAL CAB
+     #3#35 = #3#35 + nPend;
+     #3#36 = #3#34 - #3#35;             || IMPORTE RECIBIDO CAB
+
+     |HAZ visual_totales;
+     |GRABA 021#3a;
+
+     ||ACTUALIZA LA FICHA DE PROVEEDORES...
+     |ABRE #10;
+     #10#0 = #2#4;
+     |LEE 121#10=;
+     |SI 0 = FSalida;
+          fmes1 = #0#1 % A402;
+          mes = fmes1 + 42;
+
+          #7#0 = #4#2;
+          |LEE 020#7=;
+
+          |SI #7#196 = 2;
+               nBrutoMoneda1 = (#4#41 * #4#6) < #4#8;
+               nImporDescue1 = (nBrutoMoneda1 % #3#5) ! nDeci_BaseMxP;
+               nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue1;
+               nImporDescue2 = (nBrutoMoneda1 % #3#17) ! nDeci_BaseMxP;
+               nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue2;
+               nImporDescue3 = (nBrutoMoneda1 % #3#6) ! nDeci_BaseMxP
+               nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue3;
+               nImpo = nBrutoMoneda1;
+          |SINO;
+               nBrutoMoneda1 = (#4#5 * #4#6) < #4#8;
+               nImporDescue1 = (nBrutoMoneda1 % #3#5) ! nDeci_BaseMxP;
+               nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue1;
+               nImporDescue2 = (nBrutoMoneda1 % #3#17) ! nDeci_BaseMxP;
+               nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue2;
+               nImporDescue3 = (nBrutoMoneda1 % #3#6) ! nDeci_BaseMxP
+               nBrutoMoneda1 = nBrutoMoneda1 - nImporDescue3;
+               nImpo = nBrutoMoneda1;
+          |FINSI;
+
+          |SI #12#114 = "S";          || si DTO PP a PCM
+               nImpo = nImpo < #3#6;
+          |FINSI;
+          #10mes = #10mes + nImpo;
+          #10#55 = #10#55 + nImpo;
+          |GRABA 020#10a;
+          |LIBERA #10;
+     |FINSI;
+     |CIERRA #10;
+
+     enForma = 1;
+     eaDocu = "agifa067";
+     |HAZ StockEntra;
+
+     |ABRE #dsm00115; |LEE 000#dsm00115.p; nSal = FSalida; |CIERRA #dsm00115;
+     |SI nSal = 0;
+          eaProve = #3#4;
+          aAlfa = "dsz99982;PEDALTA" + #3#25 + (("000000" + #3#0) % -106);
+          |SUB_EJECUTA aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO dsm00083;
+     #83#0 = "P";
+     #83#1 = #4#28;
+     #83#2 = #4#0;
+     #83#3 = #4#1;
+     #83#4 = nLin;
+     |GRABA 020#83n;
+     nLin = nLin + 1;
+|FPRC;
+
+|DEFBUCLE dsm00083;
+     #83#1;
+     ;
+     "X", "     ", #2#0, #2#1, 001;
+     "X", "     ", #2#0, #2#1, 999;
+     ;
+     NULL, dsm00083;
+|FIN;
+
+|PROCESO Ultima83;
+     #83#0 = "P";
+     #83#1 = #4#28;
+     #83#2 = #4#0;
+     #83#3 = #4#1;
+     #83#4 = 999;
+     |LEE 000#83];
+     |SI FSalida = 0;
+          |LEE 000#83a;
+     |SINO;
+          |LEE 000#83u;
+     |FINSI;
+     |SI FSalida = 0; |Y #83#0 = "P"; |Y #83#1 = #4#28;  |Y #83#2 = #4#0;
+               |Y #83#3 = #4#1;
+          nLin = #83#4 + 1;
+     |SINO;
+          nLin = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Crealos;
+     |SI pro_ant = "";
+          linea    = 0;
+          pro_ant  = #2#4;
+          div_ant  = #2#11;
+          |HAZ crea_cabecera;
+     |FINSI;
+
+     |SI pro_ant ! #2#4;|O div_ant ! #2#11;
+          |SI art ! ""; |HAZ Actualiza; |FINSI;
+          |LIBERA #3;              || LIBERA EL PEDIDO ANTERIOR.
+          linea   = 0;
+          pro_ant = #2#4;
+          div_ant = #2#11;
+          |HAZ crea_cabecera;
+          linea = linea + 1;
+          |HAZ crea_linea;
+          art = #2#2;
+          pre = #2#6;
+          dto = #2#7;
+     |SINO;
+          |SI art ! #2#2; |O pre ! #2#6; |O dto ! #2#7;
+               |SI art ! ""; |HAZ Actualiza; |FINSI;
+               art = #2#2;
+               pre = #2#6;
+               dto = #2#7;
+               linea = linea + 1;
+               |HAZ crea_linea;
+          |SINO;
+               |HAZ AcumulaLinea;
+          |FINSI;
+     |FINSI;
+
+     |ABRE #83;
+     |HAZ Ultima83;
+     |CIERRA #83;
+     |BUCLE dsm00083;
+|FPRC;
+
+|DEFBUCLE agi00028;
+     #2#2;
+     10,0;
+     "    ", "   ", #5#2, "                    ", "N", #5#0;
+     "zzzz", "zzz", #5#3, "zzzzzzzzzzzzzzzzzzzz", "N", #5#1;
+     be;
+     NULL, NULL, NULL, NULL, NULL, Crealos;
+     #2#4, #2#11, #2#2, #2#6, #2#7;         ||Prv, Div,  Arti, Prec, Dto
+|FIN;
+
+|PROCESO crea_ped; |TIPO 20;
+     |SI FSalida = "OPCION";
+          FSalida = "Generar";
+          |ACABA;
+     |FINSI;
+     |HAZ ControlUsuPC;
+     |SI enErr ! 0; |ACABA; |FINSI;
+
+     |PUSHV 0501 2380;
+     |PINPA #0#5;
+     |DDEFECTO #5;
+     |PINDA #0#5;
+     |ENDATOS #1#5;
+     |SI FSalida ! 0; |POPV; |ACABA;  |FINSI;
+
+     |ABRE #0;
+     |ABRE #3;
+     |ABRE #4;
+     |ABRE #6;
+     |ABRET #7;
+     |ABRET #8;
+     |HAZ miramonba;
+     |BUCLE agi00028;
+     |SI art ! ""; |HAZ Actualiza; |FINSI;
+     |CIERRA #0;
+     |CIERRA #3;
+     |CIERRA #4;
+     |CIERRA #6;
+     |CIERRAT #7;
+     |CIERRAT #8;
+     |POPV;
+|FPRC;
+
+|PROCESO T027_15; |TIPO 15;
+     nTipo = 15; |HAZ Log027;
+|FPRC;
+
+|PROCESO T027_16; |TIPO 16;
+     nTipo = 16; |HAZ Log027;
+|FPRC;
+
+|PROCESO T027_17; |TIPO 17;
+     nTipo = 17; |HAZ Log027;
+|FPRC;
+
+|PROCESO Log027;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "dsm00087";
+     |CARGA_DEF aAlfa, dsm00087@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aSer = "";
+     aNum = ("000000" + #0#0) % -106;
+     aTipo = "PP";
+
+     |ABRE #dsm00087@;
+     |DDEFECTO #dsm00087@;
+     |SELECT #2#dsm00087@;
+     #dsm00087@#1 = aSer;
+     #dsm00087@#2 = aNum;
+     #dsm00087@#3 = aTipo;
+     |LEE 101#dsm00087@.=;
+     |SI FSalida ! 0;
+          |SELECT #1#dsm00087@;
+          |LEE 000#dsm00087@.u;
+          |SI FSalida = 0;
+               nContaLog = #dsm00087@#0 + 1;
+          |SINO;
+               nContaLog = 1;
+          |FINSI;
+          |DDEFECTO #dsm00087@;
+          #dsm00087@#0 = nContaLog;
+          #dsm00087@#1 = aSer;
+          #dsm00087@#2 = aNum;
+          #dsm00087@#3 = aTipo;
+          |GRABA 020#dsm00087@.b;
+     |FINSI;
+     |SI FSalida = 0;
+          |HORA aAlfa;
+          aUsu = Usuario % 810;
+          |SI nTipo = 15;
+               #dsm00087@#4 = aUsu;
+               #dsm00087@#5 = ~;
+               #dsm00087@#6 = aAlfa;
+               #dsm00087@#7 = "";
+               #dsm00087@#8 = "01.01.0000";
+               #dsm00087@#9 = ""
+               #dsm00087@#10 = "";
+               #dsm00087@#11 = "01.01.0000";
+               #dsm00087@#12 = ""
+          |FINSI;
+          |SI nTipo = 16;
+               #dsm00087@#7 = aUsu;
+               #dsm00087@#8 = ~;
+               #dsm00087@#9 = aAlfa;
+          |FINSI;
+          |SI nTipo = 17;
+               #dsm00087@#10 = aUsu;
+               #dsm00087@#11 = ~;
+               #dsm00087@#12 = aAlfa;
+          |FINSI;
+          |GRABA 020#dsm00087@.a;
+     |FINSI;
+     |CIERRA #dsm00087@;
+     |DESCARGA_DEF #dsm00087@;
+|FPRC;
+
+|PROCESO T27_13; |TIPO 13;
+     |HAZ EsDesanch;
+     |SI FSalida = 0;
+          |HAZ PinDesanch27;
+     |FINSI;
+|FPRC;
+
+|PROCESO PinDesanch27;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "desan016";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |DDEFECTO #referen@;
+          |ABRE #referen@;
+          #referen@#0 = "X";
+          #referen@#1 = "";
+          #referen@#2 = #0#0;
+          |LEE 000#referen@.=;
+          |CIERRA #referen@;
+          |PINTA 0741, "%Dto2:   %Dto3:  ";
+          |PINTA 0841, "컴컴컴컴컴컴컴컴�";
+          |ATRI I;
+          |PINTA 0748, #referen@#3;
+          |PINTA 0757, #referen@#4;
+          |ATRI 0;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+|FPRC;
+
+|PROCESO Fecha27; |TIPO 0;
+     |SI FSalida = 0;
+          |HAZ EsDesanch;
+          |SI FSalida = 0;
+               aAlfa = "desan016;XA     " + (("000000" + #0#0) % -106);
+               |SUB_EJECUTA aAlfa;
+               |HAZ PinDesanch27;
+          |FINSI;
+     |FINSI;
+|FPRC;

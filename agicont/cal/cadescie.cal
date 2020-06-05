@@ -1,0 +1,550 @@
+|FICHEROS;
+  cadescie #0;
+  camaasil #1;    || apuntes lins.
+  camaasic #2;    || apuntes cabs.
+  cacuenta #3;    || plan contable
+  cacuebal #4;    || cuentas de balance
+  catradia #5;    || trabajo actualizacion
+  camandia #10;   || diarios
+
+  ca8m0004 #404;
+  ca8m0002 #422;
+|FIN;
+
+|VARIABLES;
+  &modcon = 0;
+
+  cam = 0;
+  cierre = "";
+  Comodin = "";
+  apertu = "";
+  alfa1 = "";
+  desdi = 0;
+  hasdi = 0;
+  desfe = @;
+  hasfe = @;
+  desdo = 0;
+  hasdo = 0;
+  ini = 0;
+  fecalf = "";
+  mes = "";
+  mesfec = 0;
+  mesac = 0;
+  a = 0;
+  b = 0;
+  c = 0;
+  temporal = "";
+  mensa1 = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+  fec1c = @;
+  fec2c = @;
+  cierr = "";
+  solo = 0;
+  totdeb = 0;
+  tothab = 0;
+  &entrada = 1;
+  juan = 0;
+  errant = 0;
+  cuini = "            ";
+  cufin = "999999999998";
+  diini = 0;
+  difin = 9;
+  fecini = @;
+  fecfin = @;
+  tiini = "D";
+  tifin = "H";
+  diain = 0;
+  diafi = 99;
+  prim = 0;
+  cuant = "";
+  lon = 0;
+  aa = 0;
+  mensa = "";
+  aar = "";
+  traba = "";
+  errcuent = "aaaaaaaaaaaa";
+
+   &enPeriodoO = 0;
+   &enPeriodoD = 0;
+   nEjer       = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE varnue_i;
+|INCLUYE defec1_i;
+
+|| *************************************************************************
+||                          DESDE CAMPOS DE PANTALLA
+|| *************************************************************************
+
+|PROCESO fecha; | TIPO 0;   || Desde fecha cierre
+  |SI #0#1 < fec1c; |O #0#1 > fec2c;
+      |MENAV mensa1;
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO nueva; || desde empresa apertura
+  |SI solo = 1; || no existe empresa de apertura, solo admite 00000
+      #0#4 = "00000";
+      |PINTA #0#4;
+      |CAMPO_MODIFICA #0#7,1,"N";
+      |ACABA;
+  |FINSI;
+  apertu = #0#4 + #0#5;  apertu = "000000" + apertu;  apertu = apertu % -106;
+  |SI #0#4 = 0;
+      |CAMPO_MODIFICA #0#7,1,"N";
+  |SINO;
+      |CAMPO_MODIFICA #0#7,1,"S";
+  |FINSI;
+|FPRC;
+
+|| *************************************************************************
+||                  ACTUALIZA LAS CUENTAS DE TRABAJO
+|| *************************************************************************
+
+|PROCESO a_actualiza;                || rutina 'a_cuentas'
+  ini = dig1;
+  fecalf = #1#1;
+  mes = fecalf % 402;
+  mesfec = mes;
+  |SI ini = 1;
+      mesac = mesfec;
+  |SINO;
+      mesac = (mesfec - ini) + 1;
+      |SI mesac [ 0;
+          mesac = (13 - ini) + mesfec;
+      |FINSI;
+  |FINSI;
+  a = (mesac * 3) + 9;
+  b = a + 1;
+  c = a + 2;
+  |SI #1#8 = "D";
+      #3a = #3a - #1#9;
+      #3#51 = #3#51 - #1#9;
+  |SINO;
+      #3b = #3b - #1#9;
+      #3#52 = #3#52 - #1#9;
+  |FINSI;
+  #3c = #3a - #3b;
+  #3#53 = #3#51 - #3#52;
+|FPRC;
+
+|PROCESO actuacuen;
+  |SI #1#0 = 0;
+      |SI #1#8 = "D";
+          #3#9  = #3#9 - #1#9;        || diario cero (saldos iniciales)
+          #3#51 = #3#51 - #1#9;
+      |SINO;
+          #3#10 = #3#10 - #1#9;
+          #3#52 = #3#52 - #1#9;
+      |FINSI;
+      #3#11 = #3#9 - #3#10;
+      #3#53 = #3#51 - #3#52;
+  |SINO;
+      |SI #1#0 = 99;
+          |SI #1#8 = "D";
+              #3#48 = #3#48 - #1#9;       || diario 99 (saldos finales)
+              #3#51 = #3#51 - #1#9;
+          |SINO;
+              #3#49 = #3#49 - #1#9;
+              #3#52 = #3#52 - #1#9;
+          |FINSI;
+          #3#50 = #3#48 - #3#49;
+          #3#53 = #3#51 - #3#52;
+      |SINO;
+          |HAZ a_actualiza;           || saldos del mes correspondiente
+      |FINSI;
+  |FINSI;
+  |GRABA 020#3a;
+  |LIBERA #3;
+|FPRC;
+|| *************************************************************************
+
+|PROCESO altatra;                  || calculo 'guarda' y 'entmod'
+  modcon = 1;               || graba el temporal para la actualiz. de ctas.
+|ABRE #5;
+  #5#0 = codcon;
+  #5#1 = #1#4;
+  #5#2 = #1#5;
+  #5#3 = #1#1;
+  #5#4 = #1#8;
+  #5#6 = #1#0;
+  |LEE 101#5=;
+  |SI FSalida ! 0;
+      |DDEFECTO #5;
+      #5#0 = codcon;
+      #5#1 = #1#4;
+      #5#2 = #1#5;
+      #5#3 = #1#1;
+      #5#4 = #1#8;
+      #5#6 = #1#0;
+      |GRABA 020#5b;
+  |FINSI;
+  #5#5 = #5#5 + #1#9;
+  |GRABA 020#5a;
+  |LIBERA #5;
+  cam = 1
+|CIERRA #5;
+|FPRC;
+|| **************************************************************************
+
+|PROCESO borrodia;  || trabajo por cada lineas
+  |SI #1#8 = "D";
+      totdeb = totdeb + #1#9;
+    |SINO;
+      tothab = tothab + #1#9;
+    |FINSI;
+  #3#0 = #1#4;
+  #3#1 = #1#5;
+  |LEE 011#3=;
+  |SI FSalida = 0;
+      |HAZ actuacuen; ||   actualiza saldo en cuenta de trabajo
+  |FINSI;
+  |HAZ altatra;   ||   graba trabajo para act. cuentas superiores
+  |BORRA 020#1a;  ||   borra l¡nea
+|FPRC;
+
+|PROCESO borrocab;     || trabajo de cabecera
+ |BORRA 020#2a;        ||   borra cabecera
+|FPRC;
+
+|PROCESO actua_dia; || actualiza diario
+  #10#0 = desdi;
+  |LEE 011#10=;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+    #10#2 = #10#2 - totdeb;
+    #10#3 = #10#3 - tothab;
+  |GRABA 020#10a;
+  |LIBERA #10;
+|FPRC;
+
+|DEFBUCLE cacierre0;
+ #1#1;
+ ;
+ desdi, desfe, desdo,    1;
+ hasdi, hasfe, hasdo, 9999;
+ e;
+ NULL, borrodia;
+|FIN;
+
+|DEFBUCLE cacierre1;
+ #2#1;
+ ;
+ desdi, desfe, desdo;
+ hasdi, hasfe, hasdo;
+ e;
+ NULL, borrocab;
+|FIN;
+
+|PROCESO borrodia2;
+ |BORRA 020#404a;
+ |LIBERA #404;
+|FPRC;
+
+|DEFBUCLE cacierre2;
+ #404#1;
+ ;
+ desdi, desfe, desdo,    1;
+ hasdi, hasfe, hasdo, 9999;
+ be;
+ NULL, borrodia2;
+|FIN;
+
+|| ------------- Anulando el CIERRE --------------------
+
+|PROCESO cierre;
+  |DBASE dir_fich;
+  dir_fich = dir_fich + "fich/" + cierre + "/";
+  |PATH_DAT #1 dir_fich;
+  |PATH_DAT #2 dir_fich;
+  |PATH_DAT #3 dir_fich;
+  |PATH_DAT #4 dir_fich;
+  |PATH_DAT #5 dir_fich;
+  |PATH_DAT #10 dir_fich;
+  |DELINDEX #5;
+  |ABRE #3;
+  |ABRE #10;
+  cam = 0;
+  totdeb = 0;
+  tothab = 0;
+  desdi = #0#0;
+  hasdi = #0#0;
+  desfe = #0#1;
+  hasfe = #0#1;
+  desdo = #0#2;
+  hasdo = #0#3;
+  |BUCLE cacierre0;   || borra lineas
+  |BUCLE cacierre1;   || borra cabeceras
+  |HAZ actua_dia;  || actualiza diario
+  |CIERRA #3;
+  |CIERRA #10;
+  |HAZ camaapua;   || act. las cuentas.
+
+  enPeriodoD = #0#5;
+  |SI #0#9 = "S";
+      alfa1 = nEjer;
+      alfa1 = "camaccz3;D"+ nEjer;
+      |SUB_EJECUTA_NP alfa1;
+  |FINSI;
+|FPRC;
+
+|PROCESO apertura;
+  |SI #0#4 = "00000"; |ACABA; |FINSI;
+
+  cod1 = #0#4;
+  cod2 = #0#5;
+  emEmp = 1;
+  |HAZ leelo;
+  |HAZ eVarEmpresa;
+
+  |DBASE dir_fich;
+  dir_fich = dir_fich + "fich/" + apertu + "/";
+  |PATH_DAT #1 dir_fich;
+  |PATH_DAT #2 dir_fich;
+  |PATH_DAT #3 dir_fich;
+  |PATH_DAT #4 dir_fich;
+  |PATH_DAT #5 dir_fich;
+  |PATH_DAT #10 dir_fich;
+  |PATH_DAT #404 dir_fich;
+  |DELINDEX #5;
+  |ABRE #3;
+  |ABRE #10;
+  cam = 0;
+  totdeb = 0;
+  tothab = 0;
+  desdi = #0#7;
+  hasdi = #0#7;
+  desfe = "01.01.0001";
+  hasfe = "31.12.9999";
+  desdo = "000000";
+  hasdo = "999999";
+  |BUCLE cacierre0;      || borra l¡neas
+  |BUCLE cacierre1;      || borra cabeceras
+  |BUCLE cacierre2;      || borra l¡neas
+  |HAZ actua_dia;        || actualiza diario
+  |CIERRA #3;
+  |CIERRA #10;
+  |HAZ camaapua;         || act. las cuentas
+|FPRC;
+
+|| **************************************************************************
+
+|PROCESO leeempre;       || lee la empresa de apertura
+  |SI #0#4 ! "00000";
+     cod1 = #0#4;
+     cod2 = #0#5;
+     apertu = #0#4 + #0#5;  apertu = "000000" + apertu;  apertu = apertu % -106;
+  |SINO;
+     #0#5 = "0";
+     |PINTA #0#5;
+  |FINSI;
+  #0#6 = #30#1;
+  |PINTA #0#6;
+|FPRC;
+
+|PROCESO apertu;         || calcula el periodo de la empresa nueva
+  |HAZ inicio;
+  |HAZ eVarEmpresa;
+
+  enPeriodoO = enPeriodo;
+  nEjer      = enEjercicio;
+
+  |DFICE cierre; cierre = cierre % -107; cierre = cierre % 0106;
+  Comodin = cierre % 0105; cod1 = Comodin;
+  Comodin = cierre % -101; cod2 = Comodin;
+  #0#4 = cod1;
+  #0#5 = cod2 + 1;
+  |SI #0#5 = 10;  #0#5 = 0;  |FINSI;
+  |PINTA #0#4; |PINTA #0#5;
+  #0#1 = fec2;
+  fec1c = fec1;
+  fec2c = fec2;
+  cierr = cierre % 105;
+  |PINTA #0#1;
+|FPRC;
+
+
+|PROGRAMA;
+  |CLS;
+  |CABEZA "Anulacion Cierre";
+  |PINPA #0#0;
+  |DDEFECTO #0;
+  |PINDA #0#0;
+  |HAZ apertu;
+  |HAZ leeempre;
+  |ENDATOS #1#0;
+  |SI #0#8 ! "SI";  |ACABA;  |FINSI;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+  |HAZ cierre;
+  |DBASE fich_alta; fich_alta = fich_alta + "fich/" + ((("00000" + #0#4) % -105) + #0#5) + "/";
+  |HAZ apertura;
+|FPRO;
+
+|| **************************************************************************
+|| ----------------------- PROCESO camaapua -----------------------
+
+|PROCESO actuali;
+  |SI #5#2 [ juan; |O #5#2 = 9;
+      |SI prim = 1;
+           |GRABA 020#3a;
+      |FINSI;
+      prim = 0;
+      |VETE acaba;
+  |FINSI;
+  aa = 100 + lon;
+  aar = aa;
+  traba = #5#1 % aar;
+|ET iniemp;
+  |SI prim = 0;
+      cuant = traba;
+      prim = 1;
+      #3#0 = cuant;
+      #3#1 = juan;
+      |SI #3#0 = errcuent;
+          prim = 0;
+          |VETE acaba;
+      |FINSI;
+      |LIBERA #3;
+      |LEE 101#3=;
+      |SI FSalida ! 0; || no existe la cuenta
+          |LIBERA #3;
+          |DDEFECTO #3;
+          #3#0 = cuant;
+          #3#1 = juan;
+          |HAZ defect1; || poner defectos a la cuenta nueva
+          |PUSHV 0501 1980;
+          |PINPA #0#3;
+          |PINDA #0#3;
+          |ENDATOS #1#3;
+          |SI FSalida ! 0;
+              |POPV;
+            ||  mensa = "Actualizando nivel: " + juan + "        ";
+            ||  PINTA 2410,mensa;
+              errant = #3#0;
+              prim = 0;
+              |VETE acaba;
+          |FINSI;
+          |GRABA 020#3b;
+          |POPV;
+       ||   mensa = "Actualizando nivel: " + juan + "        ";
+       ||   PINTA 2410,mensa;
+      |FINSI;
+  |FINSI;
+  |SI cuant ! traba;
+      |GRABA 020#3a;
+      prim = 0;
+      |VETE iniemp;
+  |FINSI;
+  |HAZ suma;
+|ET acaba;
+|FPRC;
+
+|PROCESO borrando;
+  |BORRA 020#5a;
+|FPRC;
+
+|DEFBUCLE camaapua0; || lee el fichero de trabajo para modificar cuentas
+ #5#1;
+ ;
+ codcon,cuini,diini,fecini,tiini,diain;
+ codcon,cufin,difin,fecfin,tifin,diafi;
+ be;
+ NULL,actuali;
+|FIN;
+
+|DEFBUCLE camaapua1; || lee fic. trabajo para borrarlo
+ #5#1;
+ ;
+ codcon,cuini,diini,fecini,tiini,diain;
+ codcon,cufin,difin,fecfin,tifin,diafi;
+ be;
+ NULL,borrando;
+|FIN;
+
+|PROCESO camaapua;
+  |SI cam = 0; |ACABA; |FINSI;
+  |PINTA 2410,"Estoy Actualizando las Cuentas";
+  |ABRE #3;
+  |PARA juan = dig3 - 1; |SI juan ] 1; |HACIENDO juan = juan - 1;
+        prim = 0;
+        |SI juan = 1; lon = dig4; |FINSI;
+        |SI juan = 2; lon = dig5; |FINSI;
+        |SI juan = 3; lon = dig6; |FINSI;
+        |SI juan = 4; lon = dig7; |FINSI;
+        |SI juan = 5; lon = dig8; |FINSI;
+        fecini = "01.01.0000";
+        fecfin = "31.12.8999";
+        |BUCLE camaapua0;
+        |SI prim = 1;
+            |GRABA 020#3a;
+        |FINSI;
+  |SIGUE;
+  |CIERRA #3;
+  fecini = "01.01.0000";
+  fecfin = "31.12.8999";
+  |BUCLE camaapua1;
+  |ABRE #5;
+  |LEE 000#5u;
+  |SI FSalida ! 0;
+       |CIERRA #5;
+       |DELINDEX #5;
+  |SINO;
+       |CIERRA #5;
+  |FINSI;
+|FPRC;
+
+|PROCESO suma;
+  |SI #5#6 = 0;
+      |SI #5#4 = "D";
+          #3#9 = #3#9 - #5#5;
+          #3#51 = #3#51 - #5#5;
+      |SINO;
+          #3#10 = #3#10 - #5#5;
+          #3#52 = #3#52 - #5#5;
+      |FINSI;
+      #3#11 = #3#9 - #3#10;
+      #3#53 = #3#51 - #3#52;
+  |SINO;
+      |SI #5#6 = 99;
+          |SI #5#4 = "D";
+              #3#48 = #3#48 - #5#5;
+              #3#51 = #3#51 - #5#5;
+          |SINO;
+              #3#49 = #3#49 - #5#5;
+              #3#52 = #3#52 - #5#5;
+          |FINSI;
+          #3#50 = #3#48 - #3#49;
+          #3#53 = #3#51 - #3#52;
+      |SINO;
+          |HAZ actualiza;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO actualiza;
+  ini = dig1;
+  fecalf = #5#3;
+  mes = fecalf % 402;
+  mesfec = mes;
+  |SI ini = 1;
+      mesac = mesfec;
+  |SINO;
+      mesac = (mesfec - ini) + 1;
+      |SI mesac [ 0;
+          mesac = (13 - ini) + mesfec;
+      |FINSI;
+  |FINSI;
+  a = (mesac * 3) + 9;
+  b = a + 1;
+  c = a + 2;
+  |SI #5#4 = "D";
+      #3a = #3a - #5#5;
+      #3#51 = #3#51 - #5#5;
+  |SINO;
+      #3b = #3b - #5#5;
+      #3#52 = #3#52 - #5#5;
+  |FINSI;
+  #3c = #3a - #3b;
+  #3#53 = #3#51 - #3#52;
+|FPRC;

@@ -1,0 +1,946 @@
+|FICHEROS;
+   caordivm #0;
+
+   camaasil #1;    || apuntes lins.
+   camaasic #2;    || apuntes
+   calibros #10;   || Libro de IVA
+
+   caivatm2 #11;    || temporal ivas
+
+   camaniva #15;    || Cabecera IVA
+
+   :/modelos/def/dsmom042 #42;
+   :/modelos/def/dsmow034 #934;
+
+   caivaasi #200;
+
+   dscam003@ #1000;
+   dscam013@ #1001;
+
+   dscam008@ #1002;
+   dscam022@ #1003;
+   dscam047@ #1004;
+   dscam050@ #1005;
+   dscam096@ #1006;
+   dscaw209@ #1007;
+
+   dscam043@ #1010;
+
+   Referen@ #1100;
+   calinpag #1101;
+   calincob #1102;
+   caivatm3 #1103;    || temporal cobros/pagos
+
+   calinpa@ #1200;
+   calinco@ #1201;
+|FIN;
+
+|VARIABLES;
+    &eaCausa = "";
+
+    alfa1 = "";
+    alfa2 = "";
+    para1 = 0;
+    para2 = 0;
+    fech1 = @;
+    fech2 = @;
+    mes   = 0;
+
+    nSwRenum = 0;
+
+    mensa1 = "    ERROR!. FECHA INCORRECTA ";
+    mensa2 = "    ERROR!. LIBRO INCORRECTO ";
+
+    nSwCargadef = 0;
+
+    swalgun = 0;
+    inkey   = 0;
+
+    estado  = 0;
+    tipo    = "";
+    libro   = 0;
+    numero  = 0;
+    sw_err  = 0;
+    sw      = 0;
+    ultfec  = @;
+    feini   = @;
+    fefin   = @;
+
+    aDirCart = "";
+
+    ordena  = 0;
+    guarda  = 0;
+    aQue    = "";
+    aFichero = "";
+    Comodin  = "";
+
+    nTope    = 0;
+    nCont    = 0;
+
+    nSwCartera = 0;
+    aAlfa      = "";
+    aAlfa1     = "";
+    aAlfa2     = "";
+    fFechaIni  = @;
+
+    nSwHay     = 0;
+    nSwImp     = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+*****************************************************************************
+                       PROCESOS DESDE CAMPOS
+*****************************************************************************
+|PROCESO mayor1;
+  |C_M #0#5,1,"S";
+  |SI #0Campo = "R";
+      |C_M #0#5,1,"N";
+      #0#5 = 1; |PINTA #0#5;
+  |FINSI;
+|FPRC;
+
+|PROCESO fechad;
+  |SI #0Campo < fec1; |O #0Campo > fec2;
+      |MENAV mensa1;
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO cheq_libro; |TIPO 0;
+  |SI #10#2 ! #0#0;
+     |MENAV mensa2;
+     |ERROR;
+  |SINO;
+     |SI #0#0 = "S";
+         #0#5 = #10#2;
+         |PINTA #0#5;
+     |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO lee_libro1;
+  |ERROR10;
+|FPRC;
+
+|DEFBUCLE lee_libro;
+   #10#1;
+   2;
+    1, #0#0;
+   99, #0#0;
+   e;
+   NULL, lee_libro1;
+|FIN;
+
+|PROCESO deflib; |TIPO 7;
+  |DDEFECTO #10;
+  |BUCLE lee_libro;
+  #0#1 = #10#0;
+  |PINTA #0#1;
+|FPRC;
+
+|PROCESO calnum; |TIPO 7;
+  #0#6 = #0#4 + #0#5;
+  |PINTA #0#6;
+|FPRC;
+
+|| **********************************************************************
+|PROCESO comiva1;
+ |SI #15#3 ] #0#6;
+     sw_err = 1;
+     |ERROR10;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE comiva;
+  #15#1;
+  8;
+  libro, 0000000000, feini;
+  libro, 9999999999, fefin;
+  e;
+  NULL, comiva1;
+|FIN;
+
+|PROCESO comprobacion;
+ sw_err = 0;
+ |BUCLE comiva;
+ |SI sw_err = 1;
+     |AVISO;
+     |AVISO;
+     |PUSHV 1509 2170;
+     |D_CUADRO 1509, 2170;
+     |ATRI I;
+     |PINTA 1610, "  ATENCION!!!.                                              ";
+     |PINTA 1710, "  Existen  Facturas  con  Fecha  contable  anterior  a  la  ";
+     |PINTA 1810, "  seleccionada y numero de Orden mayor al numero informado. ";
+     |PINTA 1910, "                                                            ";
+     |ATRI R;
+     |PINTA 2010, "      NO PUEDO ORDENAR EL HISTORICO. PROCESO ABORTADO.      ";
+     |ATRI 0;
+     |PAUSA;
+     |POPV;
+ |FINSI;
+|FPRC;
+
+|| **************************************************************************
+||  Actualizaciones ficheros relacionados Apuntes/Remesas/Pagares/Confirmes
+|| **************************************************************************
+______________________________________________ACTUALIZA APUNTES
+|PROCESO lee_apuntes1;
+     #1#14 = numero;      || nuevo nro. de fra. en apuntes
+     |GRABA 020#1a;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE lee_apuntes;
+     #1#1;
+     13,14,15;
+     #11#5, #11#6, #11#7,    1, #11#0, #11#3, #11#2;
+     #11#5, #11#6, #11#7, 9999, #11#0, #11#3, #11#2;
+     be;
+     NULL, lee_apuntes1;
+|FIN;
+
+|| **************************************************************************
+|PROCESO Encuentro;
+
+    #934#0 = #42#0;
+    #934#1 = #42#2;
+    #934#2 = #42#3;
+    #934#4 = #42#4;
+    |LEE 041#934=;
+    |SI FSalida ! 0;
+        #42#16 = #11#10;
+        |GRABA 020#42a;
+
+        #934#0 = #42#0;
+        #934#1 = #42#2;
+        #934#2 = #42#3;
+        #934#4 = #42#4;
+        |GRABA 020#934n;
+    |FINSI;
+    |LIBERA #42;
+|FPRC;
+
+|DEFBUCLE BuscoFact;
+    #42#2;
+    14,15,16;
+    enEmpresa, "        ", 00, aQue, fec1, 001, #11#0, #11#2, #11#3;
+    enEmpresa, "zzzzzzzz", 99, aQue, fec2, 999, #11#0, #11#2, #11#3;
+    be;
+    NULL, Encuentro;
+|FIN;
+
+|PROCESO Amortizaciones;
+
+  |SI Haymodelo = 0;
+      |ACABA;
+  |FINSI;
+  |SI tipo = "R"; aQue = "V"; |FINSI;
+  |SI tipo = "S"; aQue = "C"; |FINSI;
+
+  |ABRE #934;
+  |BUCLE BuscoFact;
+  |CIERRA #934;
+
+|FPRC;
+
+|PROCESO Cartera;
+  |SI #11#8 = "N"; |ACABA; |FINSI;
+
+  |SI nSwCargadef = 0; |ACABA; |FINSI;
+  || paso a Abdon el tique
+
+  Comodin = aDirCart; |QBF Comodin;
+  |SI Comodin = ""; |ACABA; |FINSI;
+
+  nSwHay = -1;
+
+  #dscam043@#0 = #48#2;
+  #dscam043@#1 = #48#3;
+  #dscam043@#2 = 1;
+  |LEE 000#dscam043@.];
+  |PARA; |SI FSalida = 0; |Y #dscam043@#0 = #48#2; |Y #dscam043@#1 = #48#3; |HACIENDO;
+     |SI #11#8 = "R"; |Y #dscam043@#3 = "V";
+        aAlfa = Comodin + "fich/" + (("00000" + #dscam043@#9) % -105) + "/";
+        |PATH_DAT #dscam003@#aAlfa#; |ABRE #dscam003@;
+        |PATH_DAT #dscam013@#aAlfa#; |ABRE #dscam013@;
+
+        |SELECT #9#dscam003@; |SELECT #3#dscam013@;
+        #dscam003@#40 = 1;
+        #dscam003@#27 = #11#0;
+        #dscam003@#0  = #11#2;
+        #dscam003@#1  = #11#3;
+        |LEE 000#dscam003@.];
+        |PARA; |SI FSalida = 0; |Y #dscam003@#27 = #11#0; |Y #dscam003@#0 = #11#2; |Y #dscam003@#1 = #11#3; |HACIENDO;
+           |SI #dscam003@#44 = #dscam043@#0; |Y #dscam003@#45 = #dscam043@#1;
+                #dscaw209@#0 = #dscam043@#9;
+                #dscaw209@#1 = #11#8;
+                #dscaw209@#2 = #dscam003@#40;
+                |LEE 000#dscaw209@.=;
+                |SI FSalida ! 0;
+                   nSwHay = 0;
+                   |SI #dscam003@#4 = #11#4;
+                      |LEE 101#dscam003@.=;
+                      |SI FSalida = 0;
+                         #dscam013@#2  = #dscam003@#27;
+                         #dscam013@#4  = #dscam003@#0;
+                         #dscam013@#3  = #dscam003@#1;
+                         #dscam013@#5  = #dscam003@#2;
+                         #dscam013@#16 = #dscam003@#40;
+                         |LEE 101#dscam013@.=;
+                         |PARA; |SI FSalida = 0; |Y #dscam013@#2  = #dscam003@#27; |Y #dscam013@#4  = #dscam003@#0;
+                                 |Y #dscam013@#3  = #dscam003@#1; |Y #dscam013@#5  = #dscam003@#2;
+                                  |Y #dscam013@#16 = #dscam003@#40; |HACIENDO;
+                            #dscam013@#3 = #11#10;
+                            |GRABA 020#dscam013@.a; |LIBERA #dscam013@;
+                            |LEE 101#dscam013@.s;
+                         |SIGUE;
+                         |LIBERA #dscam013@;
+
+                         |DDEFECTO #dscaw209@;
+                         #dscaw209@#0 = #dscam043@#9;
+                         #dscaw209@#1 = #11#8;
+                         #dscaw209@#2 = #dscam003@#40;
+                         |GRABA 020#dscaw209@.n;
+
+                         #caivatm3#0 = #dscam003@#27;
+                         #caivatm3#1 = #dscam003@#0;
+                         #caivatm3#2 = #dscam003@#1;
+                         #caivatm3#3 = #dscam003@#2;
+                         |LEE 000#caivatm3.=;
+                         |SI FSalida ! 0;
+                            |DDEFECTO #caivatm3;
+                            #caivatm3#0 = #dscam003@#27;
+                            #caivatm3#1 = #dscam003@#0;
+                            #caivatm3#2 = #dscam003@#1;
+                            #caivatm3#3 = #dscam003@#2;
+                            #caivatm3#4 = #dscam003@#27;
+                            #caivatm3#5 = #dscam003@#0;
+                            #caivatm3#6 = #11#10;
+                            #caivatm3#7 = #dscam003@#2;
+                            #caivatm3#8 = #11#1;
+                            |GRABA 020#caivatm3.n;
+                         |FINSI;
+     /*
+                         |ABRE #calincob;
+                         #calincob#0 = #dscam003@#27;
+                         #calincob#2 = #dscam003@#0;
+                         #calincob#1 = #dscam003@#1;
+                         #calincob#3 = #dscam003@#2;
+                         |LEE 101#calincob.=;
+                         |SI FSalida = 0;
+                            |SALVA_FICHA #calincob;
+                            #calincob#1 = #11#10;
+                            |GRABA 020#calincob.n;
+                            |REPON_FICHA #calincob;
+                            |BORRA 020#calincob.a; |LIBERA #calincob;
+                         |FINSI;
+                         |CIERRA #calincob;
+     */
+                         #dscam003@#1 = #11#10;
+                         |GRABA 020#dscam003@.a; |LIBERA #dscam003@;
+                         nSwHay = 1;
+
+                         #dscam003@#40 = 1;
+                         #dscam003@#27 = #11#0;
+                         #dscam003@#0  = #11#2;
+                         #dscam003@#1  = #11#3;
+                         |LEE 000#dscam003@.];
+                         |VETE OtroVta;
+                      |FINSI;
+                   |FINSI;
+                |FINSI;
+           |FINSI;
+           |LEE 000#dscam003@.s;
+|ET OtroVta;
+        |SIGUE;
+        |SELECT #1#dscam003@; |SELECT #1#dscam013@;
+        |CIERRA #dscam003@; |CIERRA #dscam013@;
+     |FINSI;
+     |SI #11#8 = "S"; |Y #dscam043@#3 = "C";
+        aAlfa = Comodin + "fich/" + (("00000" + #dscam043@#9) % -105) + "/";
+        |PATH_DAT #dscam008@#aAlfa#; |ABRE #dscam008@;
+        |PATH_DAT #dscam022@#aAlfa#; |ABRE #dscam022@;
+        |PATH_DAT #dscam047@#aAlfa#; |ABRE #dscam047@;
+        |PATH_DAT #dscam050@#aAlfa#; |ABRE #dscam050@;
+        |PATH_DAT #dscam096@#aAlfa#; |ABRE #dscam096@;
+        |SELECT #7#dscam008@; |SELECT #3#dscam022@;
+        |SELECT #3#dscam047@; |SELECT #3#dscam050@;
+        |SELECT #3#dscam096@;
+
+        #dscam008@#40 = 1;
+        #dscam008@#27 = #11#0;
+        #dscam008@#0  = #11#2;
+        #dscam008@#1  = #11#3;
+        |LEE 000#dscam008@.];
+        |PARA; |SI FSalida = 0; |Y #dscam008@#27 = #11#0; |Y #dscam008@#0 = #11#2;
+         |Y #dscam008@#1 = #11#3; |Y #dscam008@#1 ! #11#10; |HACIENDO;
+           |SI #dscam008@#44 = #dscam043@#0; |Y #dscam008@#45 = #dscam043@#1;
+              nSwHay = 0;
+              |SI #dscam008@#4 = #11#4;
+                 #dscaw209@#0 = #dscam043@#9;
+                 #dscaw209@#1 = #11#8;
+                 #dscaw209@#2 = #dscam008@#40;
+                 |LEE 000#dscaw209@.=;
+                 |SI FSalida ! 0;
+                    |LEE 101#dscam008@.=;
+                    |SI FSalida = 0;
+                       #dscam022@#2  = #dscam008@#27;
+                       #dscam022@#4  = #dscam008@#0;
+                       #dscam022@#3  = #dscam008@#1;
+                       #dscam022@#5  = #dscam008@#2;
+                       #dscam022@#13 = #dscam008@#40;
+                       |LEE 101#dscam022@.=;
+                       |PARA; |SI FSalida = 0; |Y #dscam022@#2  = #dscam008@#27; |Y #dscam022@#4  = #dscam008@#0;
+                               |Y #dscam022@#3  = #dscam008@#1; |Y #dscam022@#5  = #dscam008@#2; |Y #dscam022@#13 = #dscam008@#40; |HACIENDO;
+                          #dscam022@#3 = #11#10;
+                          |GRABA 020#dscam022@.a; |LIBERA #dscam022@;
+                          |LEE 101#dscam022@.s;
+                       |SIGUE;
+                       |LIBERA #dscam022@;
+                       #dscam047@#2  = #dscam008@#27;
+                       #dscam047@#4  = #dscam008@#0;
+                       #dscam047@#3  = #dscam008@#1;
+                       #dscam047@#5  = #dscam008@#2;
+                       #dscam047@#13 = #dscam008@#40;
+                       |LEE 101#dscam047@.=;
+                       |PARA; |SI FSalida = 0; |Y #dscam047@#2  = #dscam008@#27; |Y #dscam047@#4  = #dscam008@#0;
+                               |Y #dscam047@#3  = #dscam008@#1; |Y #dscam047@#5  = #dscam008@#2; |Y #dscam047@#13 = #dscam008@#40; |HACIENDO;
+                          #dscam047@#3 = #11#10;
+                          |GRABA 020#dscam047@.a; |LIBERA #dscam047@;
+                          |LEE 101#dscam047@.s;
+                       |SIGUE;
+                       |LIBERA #dscam047@;
+                       #dscam050@#2  = #dscam008@#27;
+                       #dscam050@#4  = #dscam008@#0;
+                       #dscam050@#3  = #dscam008@#1;
+                       #dscam050@#5  = #dscam008@#2;
+                       #dscam050@#13 = #dscam008@#40;
+                       |LEE 101#dscam050@.=;
+                       |PARA; |SI FSalida = 0; |Y #dscam050@#2  = #dscam008@#27; |Y #dscam050@#4  = #dscam008@#0;
+                               |Y #dscam050@#3  = #dscam008@#1; |Y #dscam050@#5  = #dscam008@#2; |Y #dscam050@#13 = #dscam008@#40; |HACIENDO;
+                          #dscam050@#3 = #11#10;
+                          |GRABA 020#dscam050@.a; |LIBERA #dscam050@;
+                          |LEE 101#dscam050@.s;
+                       |SIGUE;
+                       |LIBERA #dscam050@;
+                       #dscam096@#2  = #dscam008@#27;
+                       #dscam096@#4  = #dscam008@#0;
+                       #dscam096@#3  = #dscam008@#1;
+                       #dscam096@#5  = #dscam008@#2;
+                       #dscam096@#16 = #dscam008@#40;
+                       |LEE 101#dscam096@.=;
+                       |PARA; |SI FSalida = 0; |Y #dscam096@#2  = #dscam008@#27; |Y #dscam096@#4  = #dscam008@#0;
+                               |Y #dscam096@#3  = #dscam008@#1; |Y #dscam096@#5  = #dscam008@#2; |Y #dscam096@#16 = #dscam008@#40; |HACIENDO;
+                          #dscam096@#3 = #11#10;
+                          |GRABA 020#dscam096@.a; |LIBERA #dscam096@;
+                          |LEE 101#dscam096@.s;
+                       |SIGUE;
+                       |LIBERA #dscam096@;
+
+                       |DDEFECTO #dscaw209@;
+                       #dscaw209@#0 = #dscam043@#9;
+                       #dscaw209@#1 = #11#8;
+                       #dscaw209@#2 = #dscam008@#40;
+                       |GRABA 020#dscaw209@.n;
+
+                       #caivatm3#0 = #dscam008@#27;
+                       #caivatm3#1 = #dscam008@#0;
+                       #caivatm3#2 = #dscam008@#1;
+                       #caivatm3#3 = #dscam008@#2;
+                       |LEE 000#caivatm3.=;
+                       |SI FSalida ! 0;
+                          |DDEFECTO #caivatm3;
+                          #caivatm3#0 = #dscam008@#27;
+                          #caivatm3#1 = #dscam008@#0;
+                          #caivatm3#2 = #dscam008@#1;
+                          #caivatm3#3 = #dscam008@#2;
+                          #caivatm3#4 = #dscam008@#27;
+                          #caivatm3#5 = #dscam008@#0;
+                          #caivatm3#6 = #11#10;
+                          #caivatm3#7 = #dscam008@#2;
+                          #caivatm3#8 = #11#1;
+                          |GRABA 020#caivatm3.n;
+                       |FINSI;
+/*
+                       |ABRE #calinpag;
+                       #calinpag#0 = #dscam008@#27;
+                       #calinpag#2 = #dscam008@#0;
+                       #calinpag#1 = #dscam008@#1;
+                       #calinpag#3 = #dscam008@#2;
+                       |LEE 101#calinpag.=;
+                       |SI FSalida = 0;
+                          |SALVA_FICHA #calinpag;
+                          #calinpag#1 = #11#10;
+                          |GRABA 020#calinpag.n;
+                          |REPON_FICHA #calinpag;
+                          |BORRA 020#calinpag.a; |LIBERA #calinpag;
+                       |FINSI;
+                       |CIERRA #calinpag;
+*/
+                       #dscam008@#1 = #11#10;
+                       |GRABA 020#dscam008@.a; |LIBERA #dscam008@;
+                       nSwHay = 1;
+
+                       #dscam008@#40 = 1;
+                       #dscam008@#27 = #11#0;
+                       #dscam008@#0  = #11#2;
+                       #dscam008@#1  = #11#3;
+                       |LEE 000#dscam008@.];
+                       |VETE OtroCmp;
+                    |FINSI;
+                 |FINSI;
+              |FINSI;
+           |FINSI;
+           |LEE 000#dscam008@.s;
+|ET OtroCmp;
+        |SIGUE;
+        |SELECT #1#dscam008@;
+        |CIERRA #dscam008@; |CIERRA #dscam022@;
+        |CIERRA #dscam047@; |CIERRA #dscam050@;
+        |CIERRA #dscam096@;
+     |FINSI;
+     |LEE 000#dscam043@.s;
+  |SIGUE;
+
+  |SI nSwHay < 1;
+     |SI nSwImp < 0;
+        nSwImp = 0;
+        |CONFI "    SSe han encontrado incongruencias con cartera. ¨ Desea obtener los resultados ?";
+        |SI FSalida = 0;
+           |IMPRE 0;
+           |SI FSalida = 0;
+              |INFOR "caordivm";
+              |SI FSalida = 0;
+                 |SI nSwHay = -1;
+                    eaCausa = "  El registro de iva " + (("00" + #11#0) % -102);
+                    eaCausa = eaCausa + "/" + (("000000000" + #11#1) % -109);
+                    eaCausa = eaCausa + " (" + #11#2 + "/" + (("000000" + #11#3) % -106);
+                    eaCausa = eaCausa + ") no tiene recibos en cartera. Revise la factura.";
+                 |FINSI;
+                 |SI nSwHay = 0;
+                    eaCausa = "  El registro de iva " + (("00" + #11#0) % -102);
+                    eaCausa = eaCausa + "/" + (("000000000" + #11#1) % -109);
+                    eaCausa = eaCausa + " (" + #11#2 + "/" + (("000000" + #11#3) % -106);
+                    eaCausa = eaCausa + ") tiene recibos pero no coinciden la fecha de emision. Revise la factura.";
+                 |FINSI;
+                 |PRINT; nSwImp = 1;
+              |FINSI;
+           |FINSI;
+        |FINSI;
+     |FINSI;
+  |FINSI;
+|FPRC;
+
+                      || ______ACTUALIZA HISTORICO IVA
+|PROCESO lee_tempo1;
+  |PINTA 2143, #11#3;
+  |PINTA 2150, #11#4;
+  |PINTA 2161, #11#6;
+
+  numero = ordena;
+  |SI sw = 0; ultfec = #11#6; sw = 1;  |FINSI;
+  |SI ultfec < #11#6; ultfec = #11#6; |FINSI;
+
+  #11#10 = numero;
+  |GRABA 020#11a;
+
+  #15#0 = #11#0;
+  #15#1 = #11#1;
+  |LEE 141#15=;
+  |SI FSalida = 0;
+      #15#3 = numero;
+      |GRABA 020#15a;
+
+      |HAZ Amortizaciones;
+      |HAZ Cartera;
+
+      |BUCLE lee_apuntes;
+      ordena = ordena + #0#5;
+  |FINSI;
+  |LIBERA #15;
+|FPRC;
+
+|DEFBUCLE lee_tempo;
+  #11#2;
+  ;
+  libro, 0000, fech1, feini,      0, "     ";
+  libro, 9999, fech2, fefin, 999999, "zzzzz";
+  e;
+  NULL, lee_tempo1;
+|FIN;
+
+|| **************************************************************************
+______________________________________________GRABACION TEMPORAL IVA
+|PROCESO gra_tempo1;
+
+  |DDEFECTO #2;
+  #2#0 = #15#7;
+  #2#1 = #15#8;
+  #2#2 = #15#9;
+  |LEE 001#2=;
+  |SI FSalida = 0;
+      |SI #2#13 ] 100;    || es un asiento que viene de un pase de gestion
+          |LIBERA #15;
+          |ACABA;
+      |FINSI;
+  |FINSI;
+
+  |DDEFECTO #11;
+  #11#00 = #15#00;
+  #11#01 = #15#01;
+  #11#02 = #15#02;
+  #11#03 = #15#03;
+  #11#04 = #15#04;
+  #11#05 = #15#07;
+  #11#06 = #15#08;
+  #11#07 = #15#09;
+  #11#08 = #15#36;
+
+  #11#09 = #15#2;    ||Nueva serie
+  #11#10 = #15#3;    ||Nueva factura
+  #11#11 = 0;
+  |SI #0#8 = "S";
+      alfa1 = #11#6;
+      alfa1 = (alfa1 % -102) + (alfa1 % 402); || a¤o + mes
+      mes = alfa1; #11#11 = mes;
+      |PINTA 0511, mes;
+  |FINSI;
+  |GRABA 020#11n;     || graba en el temporal iva
+  |LIBERA #15;
+  sw = 1;
+|FPRC;
+
+|DEFBUCLE gra_tempo;
+    #15#1;
+    8;
+    libro, 0000000001, feini;
+    libro, 9999999999, fefin;
+    be;
+    NULL, gra_tempo1;
+|FIN;
+
+|| ***************************************
+|PROCESO ordenar;
+  |NOPARA;
+
+  aFichero = ("1S" + Usuario)  % 108;
+  |NOME_DAT #11 aFichero;
+  |DELINDEX #11;
+  aFichero = ("1R" + Usuario)  % 108;
+  |NOME_DAT #934 aFichero;
+  |DELINDEX #934;
+
+  |ABRE #11;
+  |ABRE #2;
+  |CUADRO 2041 2272;
+  |ATRI P;  |PINTA 2142, "    <PREPARANDO TEMPORALES>   ";  |ATRI 0;
+
+  sw     = 0;
+  numero = 0;
+  feini  = #0#2;
+  fefin  = fec2;
+  |BUCLE gra_tempo;
+
+  |CIERRA #11;
+  |CIERRA #2;
+
+  |PINTA 2142, "                              ";
+
+  |SI sw = 0;
+      |MENAV "    ATENCION!!!.  No existen Facturas para Ordenar. ";
+  |SINO;
+       fech1  = "01.01.1900";
+       fech2  = "31.12.2090";
+       sw     = 0;
+       numero = 0;
+       feini  = #0#2;
+       fefin  = fec2;
+       ultfec = "";
+       ordena = #0#6;
+
+       nSwImp = 0;
+       |ABRE #15;
+       |BUCLE lee_tempo;
+       |CIERRA #15;
+
+       |SI nSwImp ! 0; |PIEINF; |FININF; |FINIMP; |FINSI;
+
+       |ABRE #10;
+       #10#0 = #0#1;
+       |LEE 101#10=;
+       |SI FSalida = 10;
+           #10#4 = numero;
+           |GRABA 020#10a;
+       |FINSI;
+       |LIBERA #10;
+       |CIERRA #10;
+  |FINSI;
+
+  |DELINDEX #11;
+  |DELINDEX #934;
+  |SIPARA;
+|FPRC;
+
+|PROCESO Pagos;
+   #caivatm3#0 = #calinpag#0;
+   #caivatm3#1 = #calinpag#2;
+   #caivatm3#2 = #calinpag#1;
+   #caivatm3#3 = #calinpag#3;
+   |LEE 000#caivatm3.=;
+   |SI FSalida = 0; || ... renumerado
+      #calinpag#0 = #caivatm3#4;
+      #calinpag#2 = #caivatm3#5;
+      #calinpag#1 = #caivatm3#6;
+      #calinpag#3 = #caivatm3#7;
+   |SINO;
+      || Si no est  renumerado, quiere decir que no hay que pasarlo,  a
+      ||    no ser que la factura sea anterior a la fecha de inicio de la
+      ||    de la renumeracion
+      |SI #calinpag#6 ] fFechaIni;
+         |ACABA;
+      |FINSI;
+   |FINSI;
+
+   aAlfa = "|NC"; aAlfa = #calinpa@#aAlfa#; nTope = aAlfa;
+   |DDEFECTO #calinpa@;
+   |PARA nCont = 0; |SI nCont < nTope; |HACIENDO nCont = nCont + 1;
+      #calinpa@#nCont# = #calinpag#nCont#;
+   |SIGUE;
+   |GRABA 020#calinpa@.n;
+|FPRC;
+
+|DEFBUCLE Pagos;
+#calinpag#1;
+6;
+#caordivm#1, "     ", 000000, 000, fFechaIni;
+#caordivm#1, "zzzzz", 999999, 999, "31.12.9999";
+;
+NULL, Pagos;
+|FIN;
+
+|PROCESO Cobros;
+   #caivatm3#0 = #calincob#0;
+   #caivatm3#1 = #calincob#2;
+   #caivatm3#2 = #calincob#1;
+   #caivatm3#3 = #calincob#3;
+   |LEE 000#caivatm3.=;
+   |SI FSalida = 0; || ... renumerado
+      #calincob#0 = #caivatm3#4;
+      #calincob#2 = #caivatm3#5;
+      #calincob#1 = #caivatm3#6;
+      #calincob#3 = #caivatm3#7;
+   |SINO;
+      || Si no est  renumerado, quiere decir que no hay que pasarlo,  a
+      ||    no ser que la factura sea anterior a la fecha de inicio de la
+      ||    de la renumeracion
+      |SI #calincob#6 ] fFechaIni;
+         |ACABA;
+      |FINSI;
+   |FINSI;
+
+   aAlfa = "|NC"; aAlfa = #calinco@#aAlfa#; nTope = aAlfa;
+   |DDEFECTO #calinco@;
+   |PARA nCont = 0; |SI nCont < nTope; |HACIENDO nCont = nCont + 1;
+      #calinco@#nCont# = #calincob#nCont#;
+   |SIGUE;
+   |GRABA 020#calinco@.n;
+|FPRC;
+
+|DEFBUCLE Cobros;
+#calincob#1;
+6;
+#caordivm#1, "     ", 000000, 000, fFechaIni;
+#caordivm#1, "zzzzz", 999999, 999, "31.12.9999";
+;
+NULL, Cobros;
+|FIN;
+
+|| ************************************************************************
+|| ****************** PROGRAMA ********************************************
+|| ************************************************************************
+|PROGRAMA;
+  |CLS;
+  |CABEZA "Ordenar IVA mensual";
+  |HAZ inicio;
+  |HAZ DirAplicSt;
+
+  |ABRE #200;
+  |LEE 000#200p;
+  |SI FSalida ! 0;
+     |DDEFECTO #200;
+     |GRABA 020#200n;
+     |LEE 000#200p;
+  |FINSI;
+  aDirCart = #200#56; |QBF aDirCart;
+  |CIERRA #200;
+
+  nSwCargadef = 0;
+  |SI aDirCart ! "";
+     aAlfa = aDirCart + "def/dscaw209.mas";
+     |CARGA_DEF aAlfa, dscaw209@;
+     |SI FSalida = 0;
+        aAlfa = aDirCart + "def/dscam043.mas"; |CARGA_DEF aAlfa, dscam043@;
+        aAlfa = aDirCart + "def/dscam003.mas"; |CARGA_DEF aAlfa, dscam003@;
+        aAlfa = aDirCart + "def/dscam013.mas"; |CARGA_DEF aAlfa, dscam013@;
+        aAlfa = aDirCart + "def/dscam008.mas"; |CARGA_DEF aAlfa, dscam008@;
+        aAlfa = aDirCart + "def/dscam022.mas"; |CARGA_DEF aAlfa, dscam022@;
+        aAlfa = aDirCart + "def/dscam047.mas"; |CARGA_DEF aAlfa, dscam047@;
+        aAlfa = aDirCart + "def/dscam050.mas"; |CARGA_DEF aAlfa, dscam050@;
+        aAlfa = aDirCart + "def/dscam096.mas"; |CARGA_DEF aAlfa, dscam096@;
+        nSwCargadef = 1;
+
+        aAlfa = aDirCart + "fich/"; |PATH_DAT #dscaw209@#aAlfa#;
+        aAlfa = "tmp" + Usuario;    |NOME_DAT #dscaw209@#aAlfa#;
+        |DELINDEX #dscaw209@; |ABRE #dscaw209@;
+
+        aAlfa = aDirCart + "fich/";
+        |PATH_DAT #dscam043@#aAlfa#; |ABRE #dscam043@;
+     |FINSI;
+  |FINSI;
+
+  |ABRE #0;
+  |DDEFECTO #0;
+  #0#2 = fec1;
+
+  |PINPA #0#0;
+  |PINDA #0#0;
+
+|ET rep_sop;
+  |ENCAMPO #0#0;
+  inkey = FSalida;
+  |SI inkey = 7; |CIERRA #0; |ACABA; |FINSI;
+
+|ET libro;
+  |ENCAMPO #1#0;
+  inkey = FSalida;
+  |SI inkey = 2; |VETE rep_sop; |FINSI;
+  |SI inkey = 7; |CIERRA #0; |ACABA; |FINSI;
+
+  tipo  = #0#0;
+  libro = #0#1;
+  |LIBERA #0;
+  |LEE 101#0=;
+  estado = FSalida;
+  |SI estado ! 0;
+      |DDEFECTO #0;
+      #0#0 = tipo;
+      #0#1 = libro;
+      #0#2 = fec1;
+  |FINSI;
+
+  |PINDA #0#0;
+  |ENDATOS #2#0;
+  inkey = FSalida;
+  |SI inkey ! 0; |CIERRA #0; |ACABA; |FINSI;
+
+  |SI #0#7 = "NO";
+      |CIERRA #0;
+      |ACABA;
+  |FINSI;
+
+  |CONFI "    NEste proceso modifica el numero de Fra. y es irreversible. Desea continuar";
+  |SI FSalida ! 0; |ACABA; |FINSI;
+
+
+  |SI #200#1 = "N";
+      |CONFI "    NEmpresa NO relacionada con Cartera. Desea Continuar";
+      |SI FSalida ! 0;  |ACABA; |FINSI;
+
+      |CONFI "    NSi continua, solo se reordenaran Registros en Contabilidad. Esta seguro?";
+      |SI FSalida ! 0;  |ACABA; |FINSI;
+
+  |FINSI;
+
+
+  |DELINDEX #caivatm3; |ABRE #caivatm3;
+
+|| ...... Variables
+   tipo  = #0#0;
+   libro = #0#1;
+   feini = "01.01.0001";
+   fefin = #0#2 - 1;
+|| ..................................
+
+  sw_err = 0;
+  |HAZ comprobacion;
+  |SI sw_err = 1;
+      |CIERRA #0;
+      |ACABA;
+  |FINSI;
+
+  fFechaIni = #0#2;
+  |HAZ ordenar;
+  |SI numero ! 0;
+      #0#2 = ultfec;
+      #0#3 = ultfec;
+      |SI #0#3 < fec2; #0#2 = ultfec + 1; |FINSI;
+      #0#4 = numero;
+      #0#6 = #0#4 + #0#5;
+      #0#7 = "NO";
+      |SI estado = 0; |GRABA 011#0a; |FINSI;
+      |SI estado ! 0; |GRABA 011#0n; |FINSI;
+  |FINSI;
+
+  || Una vez acabado todo, tenemos que cambiar los lineales de cobros/pagos
+  ||   a la nueva numeracion. Esto está preparado en el fichero caivatm3.
+  || Para esto hago un bucle del fichero original y voy grabando en una copia.
+  ||   Antes de grabar en la copia miro si tengo que renumerar, en cuyo caso,
+  ||   grabo en la copia ya renumerado. Al acabar en la copia están todos los
+  ||   cobros/pagos ya renumerados.
+
+  |DDEF aAlfa; |QBF aAlfa;
+  aAlfa = aAlfa + "calinpag.mas";
+  |CARGA_DEF aAlfa, calinpa@;
+  |SI FSalida = 0;
+     |DDEF aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + "calincob.mas";
+     |CARGA_DEF aAlfa, calinco@;
+     |SI FSalida = 0;
+        aAlfa = "tpg" + Usuario; |NOME_DAT #calinpa@#aAlfa#;
+        aAlfa = "tcb" + Usuario; |NOME_DAT #calinco@#aAlfa#;
+        |DELINDEX #calinco@; |ABRE #calinco@;
+        |DELINDEX #calinpa@; |ABRE #calinpa@;
+
+        |BUCLE Pagos; |BUCLE Cobros;
+
+        |CIERRA #calinco@; |CIERRA #calinpa@;
+
+        || Copio los ficheros temporales en los originales ...
+        |DFICE aAlfa1; |QBF aAlfa1; aAlfa = aAlfa1 + "calincob.dat";
+        aAlfa1 = aAlfa1 + "tcb" + Usuario + ".dat"; |COPIA_FICHERO aAlfa1, aAlfa;
+        |DFICE aAlfa1; |QBF aAlfa1; aAlfa = aAlfa1 + "calincob.ddx";
+        aAlfa1 = aAlfa1 + "tcb" + Usuario + ".ddx"; |COPIA_FICHERO aAlfa1, aAlfa;
+        |DFICE aAlfa1; |QBF aAlfa1; aAlfa = aAlfa1 + "calincob.ixx";
+        aAlfa1 = aAlfa1 + "tcb" + Usuario + ".ixx"; |COPIA_FICHERO aAlfa1, aAlfa;
+        |DFICE aAlfa1; |QBF aAlfa1; aAlfa = aAlfa1 + "calinpag.dat";
+        aAlfa1 = aAlfa1 + "tpg" + Usuario + ".dat"; |COPIA_FICHERO aAlfa1, aAlfa;
+        |DFICE aAlfa1; |QBF aAlfa1; aAlfa = aAlfa1 + "calinpag.ddx";
+        aAlfa1 = aAlfa1 + "tpg" + Usuario + ".ddx"; |COPIA_FICHERO aAlfa1, aAlfa;
+        |DFICE aAlfa1; |QBF aAlfa1; aAlfa = aAlfa1 + "calinpag.ixx";
+        aAlfa1 = aAlfa1 + "tpg" + Usuario + ".ixx"; |COPIA_FICHERO aAlfa1, aAlfa;
+
+        |DELINDEX #calinco@; |DELINDEX #calinpa@;
+        |DESCARGA_DEF #calinco@;
+     |FINSI;
+     |DESCARGA_DEF #calinpa@;
+  |FINSI;
+
+  |CIERRA #caivatm3; |DELINDEX #caivatm3;
+
+  |SI nSwCargadef = 1;
+     |DESCARGA_DEF #dscam096@;
+     |DESCARGA_DEF #dscam050@;
+     |DESCARGA_DEF #dscam047@;
+     |DESCARGA_DEF #dscam022@;
+     |DESCARGA_DEF #dscam008@;
+     |DESCARGA_DEF #dscam013@;
+     |DESCARGA_DEF #dscam003@;
+     |CIERRA #dscam043@;  |DESCARGA_DEF #dscam043@;
+     |CIERRA #dscaw209@;   |DELINDEX #dscaw209@;
+     |DESCARGA_DEF #dscaw209@;
+  |FINSI;
+  |LIBERA #0;
+  |CIERRA #0;
+|FPRO;

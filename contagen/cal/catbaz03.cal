@@ -1,0 +1,821 @@
+|FICHEROS;
+   catbaz03 #0;    || Pantalla
+
+   camaasic;       || Apuntes Cabs
+   camaasil;       || Apuntes Lins
+
+   catbam04;       || apuntes contrapartidas
+   catbam05;
+   catbam02;
+   catbam03;       || apuntes ctas lins.
+   catbam01;       || Saldo Anterior.
+
+   caconasi;
+   camandia;
+   cacuenta;
+   calicont;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   &modcon  = 0;
+
+   aPunteado  = "";
+   aPunteadoL = "";
+   nOpera     = 0;
+   nSwAlgun   = 0;
+   sumal      = 0;
+   nBlanco    = 0;
+   nOk        = 0;
+
+   aParam     = "";
+   paso       = 0;
+   tipoAct    = 0;
+   cam        = 0;
+   aAlfa1     = "";
+   nNume1     = 0;
+
+   Registro   = 0;
+   lacontra   = "";
+   total      = 0;
+   swalgun    = 0;
+
+   aContra    = "";
+   aContraD   = "";
+   nNivel     = 0;
+   diario     = 0;
+   fecha      = @;
+   docume     = 0;
+   asient     = 0;
+   linea      = 0;
+   swcuadre   = 0;  || 0 = cuadrado; Descuadres -> 1 = pasar a Asientos
+   sw_error   = 0;
+
+   debe       = 0;
+   haber      = 0;
+   entfec     = @;
+   tdebe      = 0;
+   thaber     = 0;
+   fecult     = @;
+   swbueno    = 0;
+   swnuevo    = 1;
+   nCuadre    = 0;
+   aCuadre    = "";
+
+   signo      = "";
+   dp_con     = "";
+   sd_con     = "";
+   cta_con    = "";
+   dig_con    = 0;
+   con_con    = 0;
+   des_con    = "";
+   imp_con    = 0;
+   estado     = 0;
+   cuedebe    = 0;
+   cuehaber   = 0;
+   cuediario  = 0;
+   cuefecha   = @;
+
+   nDiaPun    = 0;
+   fFecPun    = @;
+   nDocPun    = 0;
+   nAptPun    = 0;
+
+
+   &antdia  = 0;
+   &antfec  = @;
+   &antdoc  = 0;
+   &numero  = 0;
+   &error   = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *************************************************************************
+||                        DESDE CAMPOS DE PANTALLA
+|| *************************************************************************
+
+|PROCESO defectos; |TIPO 7;
+   aParam = PARAMETRO; |QBF aParam;
+   |SI paso = 0;
+      |ABRE #catbam02;
+      |LEE 001#catbam02.p;
+      |SI FSalida = 0;
+         #catbaz03#0 = #catbam02#0; #catbaz03#1 = #catbam02#1;
+         |PINTA #catbaz03#0;
+      |FINSI;
+      |LEE 001#catbam02.u;
+      |SI FSalida = 0;
+         #catbaz03#2 = #catbam02#0; #catbaz03#3 = #catbam02#1;
+         |PINTA #catbaz03#2;
+      |FINSI;
+      |CIERRA #catbam02;
+
+      |HAZ documento;
+      paso = 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO cuenta; |TIPO 6;
+   |SI FSalida = 2; |ACABA; |FINSI;
+
+    eaCuenta = #catbaz03#Campo#;
+    salidas  = FSalida;
+    |HAZ FiltraPuntos;
+    #catbaz03#Campo# = eaCuenta;
+    |PINTA #catbaz03#Campo#;
+
+    emCta = 1;
+    |HAZ SacaNivel;
+|FPRC;
+
+|PROCESO ctah; | TIPO 0;   ||  hasta cuenta
+   |SI #catbaz03#0 > #catbaz03#2;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO documento; |TIPO 7;
+   |HAZ contador;
+   #catbaz03#6 = nDOCUMENTO;
+   Registro    = nREGISTRO;
+   |PINTA #catbaz03#6;
+|FPRC;
+
+|PROCESO comdocum; |TIPO 0;
+   |ABRE #camaasic;
+   |SELECT #3#camaasic;
+   #camaasic#2 = #catbaz03#6;
+   |LEE 001#camaasic.=;
+   |SI FSalida = 0;
+      |MENAV "    ERROR!. EL DOCUMENTO YA EXISTE ! ";
+      |ERROR;
+   |FINSI;
+   |SELECT #1#camaasic;
+   |CIERRA #camaasic;
+|FPRC;
+
+|| **************************************************************************
+|| ............................... Comprobar Cuadre
+|PROCESO LeeFechas;
+  |SI #catbam03#3 [ fec3;
+      cam = 1;
+      |ERROR10;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE LeeFechas;
+   #catbam03#2;
+   ;
+   #catbaz03#0, "01.01.1900", 00001;
+   #catbaz03#2, "31.12.2100", 99999;
+   e;
+   NULL, LeeFechas;
+|FIN;
+|| ------------------------------------------------
+|PROCESO sumacontra0;
+   swalgun = 1;
+   aAlfa1 = #catbam04#4; |QBF aAlfa1;
+   |SI aAlfa1 = "";
+       swalgun = 0;
+       |ERROR10;
+   |FINSI;
+   total = (total + #catbam04#8) ! 2;
+|FPRC;
+
+|DEFBUCLE sumacontra;
+   #catbam04#1;
+   ;
+   #catbam03#0, #catbam03#2, 00001;
+   #catbam03#0, #catbam03#2, 99999;
+   e;
+   NULL, sumacontra0;
+|FIN;
+
+|PROCESO verlineas;
+   cam = 1;
+   lacontra = #catbam03#8;
+   |QBF lacontra;
+   |SI lacontra ! "";
+       |ACABA;
+   |SINO;
+       total   = 0;
+       swalgun = 0;
+       |BUCLE sumacontra;
+       |SI swalgun ! 0;
+           nNume1 = #catbam03#7 - total;
+           aAlfa1 = nNume1; |QBF aAlfa1;
+           |SI aAlfa1 = "0"; |O aAlfa1 = "-0"; nNume1 = 0; |FINSI;
+           |SI nNume1 ! 0;
+               swcuadre = 1;
+               |ERROR10;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE comcuablo;
+   #catbam03#1;
+   ;
+   #catbaz03#0, 00000;
+   #catbaz03#2, 99999;
+   e;
+   NULL, verlineas;
+|FIN;
+
+|PROCESO comcuadre;
+   |PUSHV 1501 1580;
+   |ATRI I;
+   |PINTA 1522, "Comprobando Cuadre ...";
+   |ATRI 0;
+   cam      = 0;
+   swcuadre = 0;
+   |BUCLE comcuablo;
+
+   |SI swcuadre ! 0;
+
+      |CONFI "1510NContrapartidas con Descuadres. ¨ Desea Continuar ? ";
+      |SI FSalida ! 0;
+         swcuadre = 2;
+      |FINSI;
+   |FINSI;
+   |POPV;
+|FPRC;
+
+|| **************************************************************************
+|| ............................... Crear Asientos
+|PROCESO impresora;
+   |SI sw_error = 0;
+      |IMPRE 0;
+      |SI FSalida ! 0;  |ACABA;  |FINSI;
+      |INFOR "cadescua";
+      |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+      sw_error = 1;
+   |FINSI;
+   numero = numero + 1;
+   antdia = #camaasil#0;
+   antfec = #camaasil#1;
+   antdoc = #camaasil#2;
+   |PRINT;
+|FPRC;
+
+|PROCESO elFichero31;
+   |SI #camaasil#8 = "D";
+       aContraD = #camaasic#10;
+   |SINO;
+       aContraD = #camaasic#8;
+   |FINSI;
+
+   #calicont#0 = diario;
+   #calicont#1 = fecha;
+   #calicont#2 = docume;
+   #calicont#3 = linea;
+   #calicont#4 = aContra;
+   #calicont#5 = nNivel;
+   #calicont#6 = Registro;
+   |SI aContra ! aContraD;
+       |GRABA 040#calicont.n;
+   |FINSI;
+|FPRC;
+
+|PROCESO nuevoAsi;
+   debe    = 0;
+   haber   = 0;
+   entfec  = #catbam03#3;
+   swnuevo = 0;
+   linea   = 0;
+
+   diario   = #catbaz03#5;
+   fecha    = #catbam03#3;
+   docume   = #catbaz03#6;
+   Registro = Registro + 1;
+   #catbaz03#6 = #catbaz03#6 + 1;
+
+   swbueno = 0;
+|FPRC;
+
+|| -------------------------------------------------------------------------
+|PROCESO estacontra;
+   aContra  = #catbam03#8; nNivel = #catbam03#9; |HAZ elFichero31;
+
+   |DDEFECTO #camaasil;
+   #camaasil#0 = diario;
+   #camaasil#1 = fecha;
+   #camaasil#2 = docume;
+   linea = linea + 5;
+   #camaasil#3 = linea;
+   #camaasil#4 = #catbam03#8;        || Contrapartida Contable
+   #camaasil#5 = #catbam03#9;        || digito control
+   #camaasil#6 = #catbam03#10;       || concepto
+   #camaasil#7 = #catbam03#11;       || Descripcion
+   #camaasil#8 = signo;              || Signo
+   #camaasil#9 = #catbam03#7;        || Importe
+   #camaasil#24 = Registro;          || Registro
+   #camaasil#21 = #catbam03#12;      || Departamento
+   #camaasil#28 = #catbam03#13;      || Subdepartamento
+   #camaasil#18 = aPunteado;         || Punteado
+   |HAZ adapta;
+
+   |GRABA 020#camaasil.n;
+
+   |HAZ act_cabecera;
+   |HAZ Actualiza;
+   |LIBERA #camaasil;
+
+   aContra  = #catbam03#0; nNivel = #catbam03#1; |HAZ elFichero31;
+   |SI aPunteado ! " "; |Y #catbam03#14 = "X";
+       nDiaPun = #catbam03#15;
+       fFecPun = #catbam03#16;
+       nDocPun = #catbam03#17;
+       nAptPun = #catbam03#18;
+       |HAZ ParaPuntear;
+   |FINSI;
+|FPRC;
+
+|PROCESO grabacontra;
+   |SI swalgun = 0;
+       aContra  = cta_con; nNivel = dig_con; |HAZ elFichero31;
+   |FINSI;
+
+   |DDEFECTO #camaasil;
+   #camaasil#0 = diario;
+   #camaasil#1 = fecha;
+   #camaasil#2 = docume;
+   linea = linea + 5;
+   #camaasil#3 = linea;
+   #camaasil#4 = cta_con;     || Contrapartida Contable
+   #camaasil#5 = dig_con;     || digito control
+   #camaasil#6 = con_con;     || concepto
+   #camaasil#7 = des_con;     || Descripcion
+   #camaasil#8 = signo;       || Signo
+   #camaasil#9 = imp_con;     || Importe
+   #camaasil#24 = Registro;
+   #camaasil#21 = dp_con;      || Departamento
+   #camaasil#28 = sd_con;      || Subdepartamento
+   #camaasil#18 = aPunteadoL;  || Subdepartamento
+   |HAZ adapta;
+
+   |GRABA 020#camaasil.n;
+
+   |HAZ act_cabecera;
+   |HAZ Actualiza;
+   |LIBERA #camaasil;
+
+   aContra  = #catbam03#0; nNivel = #catbam03#1; |HAZ elFichero31;
+
+   |SI aPunteadoL ! " "; |Y #catbam04#9 = "X";
+       nDiaPun = #catbam04#10;
+       fFecPun = #catbam04#11;
+       nDocPun = #catbam04#12;
+       nAptPun = #catbam04#13;
+       |HAZ ParaPuntear;
+   |FINSI;
+|FPRC;
+
+|PROCESO contras1;
+   total = total + #catbam04#8;
+   cta_con = #catbam04#4;               || Contrapartida Contable Por defecto
+   dig_con = #catbam04#5;               || digito control
+   con_con = #catbam04#6;               || concepto
+   des_con = #catbam04#7;               || Descripcion
+   imp_con = #catbam04#8;               || Importe
+   aPunteadoL = " ";
+   |SI #catbam04#9 = "X"; |O #catbaz03#8 = "S";
+       aPunteadoL = "û";
+   |FINSI;
+   |HAZ grabacontra;
+   swalgun = 1;
+
+   |BORRA 020#catbam04.a;
+   |LIBERA #catbam04;
+|FPRC;
+
+|DEFBUCLE contras0;
+   #catbam04#1;
+   ;
+   #catbam03#0, #catbam03#2, 00001
+   #catbam03#0, #catbam03#2, 99999;
+   be;
+   NULL, contras1;
+|FIN;
+
+|PROCESO otrascontra;
+   total   = 0;
+   swalgun = 0;
+   swbueno = 0;
+   |BUCLE contras0;
+   nNume1 = (#catbam03#7 - total) ! 2;
+   aAlfa1 = nNume1; |QBF aAlfa1;
+   |SI aAlfa1 = "0"; |O aAlfa1 = "-0";  nNume1 = 0;  |FINSI;
+
+   |SI swalgun = 0; |O nNume1 ! 0;
+      swbueno = 1;
+      cta_con = aCuadre;
+      dig_con = #catbam03#1;
+      con_con = #catbam03#4;               || concepto
+      des_con = #catbam03#5;               || Descripcion
+      imp_con = nNume1;                    || Importe, la diferencia
+
+      aPunteadoL = " ";
+      |SI aPunteado ! " "; |O #catbaz03#8 = "S"; aPunteadoL = "û"; |FINSI;
+
+      |HAZ grabacontra;
+   |FINSI;
+|FPRC;
+
+|| -------------------------------------------------------------------------
+|PROCESO BorraTbam05;
+   |BORRA 020#catbam05.a;
+   |LIBERA #catbam05;
+|FPRC;
+
+|DEFBUCLE BorraTbam05;
+   #catbam05#2;
+   ;
+   #catbam03#0, #catbam03#2, 00000;
+   #catbam03#0, #catbam03#2, 99999;
+   be;
+   NULL, BorraTbam05;
+|FIN;
+
+|PROCESO BorraLaLinea;
+
+   |SI #catbam03#6 = "D";
+      #catbam02#5 = #catbam02#5 - #catbam03#7;
+   |SINO;
+      #catbam02#6 = #catbam02#6 - #catbam03#7;
+   |FINSI;
+   #catbam02#4 = #catbam02#7 - (#catbam02#5 - #catbam02#6);
+   #catbam02#7 = #catbam02#4 + #catbam02#5 - #catbam02#6;
+
+   |SI #catbam03#19 = " ";
+       |SI #catbam03#6 = "D";
+           tdebe = tdebe + #catbam03#7;
+       |SINO;
+           thaber = thaber + #catbam03#7;
+       |FINSI;
+       |SI fecult < #catbam03#3;
+           fecult = #catbam03#3;
+       |FINSI;
+   |FINSI;
+
+   |BORRA 020#catbam03.a;
+   |LIBERA #catbam03;
+
+   |BUCLE BorraTbam05;
+|FPRC;
+
+|PROCESO ParaPuntear;
+    #camaasil#0 = nDiaPun;
+    #camaasil#1 = fFecPun;
+    #camaasil#2 = nDocPun;
+    #camaasil#3 = nAptPun;
+    |LEE 141#camaasil.=;
+    |SI FSalida = 0;
+        #camaasil#18 = "û";
+        |GRABA 020#camaasil.a;
+    |FINSI;
+    |LIBERA #camaasil;
+|FPRC;
+
+|PROCESO PuntearAnterior;
+    nDiaPun = #catbam03#20;
+    fFecPun = #catbam03#21;
+    nDocPun = #catbam03#22;
+    nAptPun = #catbam03#23;
+    |HAZ ParaPuntear;
+|FPRC;
+
+|PROCESO borracontra;
+  |SI nOpera = 0;
+      |BORRA 041#catbam04.a;
+  |FINSI;
+
+  |SI nOpera = 1;
+      swalgun = 1;
+      sumal = (sumal + #catbam04#8) ! 2;
+
+      aAlfa1 = #catbam04#4; |QBF aAlfa1;
+      |SI aAlfa1 = ""; nBlanco = 1; |FINSI;
+      |SI #catbam04#9 = "X"; aPunteado = "û"; |FINSI;
+  |FINSI;
+
+  |LIBERA #catbam04;
+|FPRC;
+
+|DEFBUCLE borracontra;
+   #catbam04#1;
+   ;
+   #catbam03#0, #catbam03#2, 1;
+   #catbam03#0, #catbam03#2, 99999;
+   be;
+   NULL,borracontra;
+|FIN;
+
+|PROCESO apuntes;
+
+   |SI #catbam03#19 = "X";
+       |HAZ PuntearAnterior;
+       nOpera = 0; |BUCLE borracontra;
+       |HAZ BorraLaLinea;
+       |ACABA;
+   |FINSI;
+
+   |SI #catbam03#3 [ fec3; nSwAlgun = 1; |ACABA; |FINSI;
+
+   aPunteado = " ";
+   |SI #catbam03#14 = "X"; |O #catbaz03#8 = "S";
+       aPunteado = "û";
+   |FINSI;
+
+   nOk = 0;
+   |SI #catbam03#8 ! "            ";
+       nOk = 1;
+       nOpera = 0; |BUCLE borracontra;
+   |SINO;
+       swalgun = 0;
+       nBlanco = 0;
+       sumal   = 0;
+       nOpera  = 1; |BUCLE borracontra;
+       |SI nBlanco = 0; |Y swalgun = 1;
+           |SI sumal ! #catbam03#7; |Y nCuadre = 1; nBlanco = 1; |FINSI;
+       |FINSI;
+       |SI nBlanco = 0; |Y swalgun = 1;
+           nOk = 1;
+       |FINSI;
+   |FINSI;
+
+   |SI nOk = 0; nSwAlgun = 1; |ACABA; |FINSI;
+
+   |SI tipoAct = 1;
+       |HAZ nuevoAsi;
+   |SINO;
+      |SI entfec ! #catbam03#3;
+         |HAZ nuevoAsi;
+      |FINSI;
+   |FINSI;
+   cam = 1;
+
+   || .............................. PROCESO grabalinea;
+   |SI swnuevo = 0;
+       |HAZ cabecera;
+       swnuevo = 1;
+   |FINSI;
+   |PINTA 1522, #catbam03#0;
+   |PINTA 1535, #catbam03#2;
+   |PINTA 1541, #catbam03#3;
+
+   || ..................... Asiento Cuenta
+   |DDEFECTO #camaasil;
+   #camaasil#0 = diario;
+   #camaasil#1 = fecha;
+   #camaasil#2 = docume;
+   linea = linea + 5;
+   #camaasil#3 = linea;
+   #camaasil#4 = #catbam03#0;        || Cuenta Contable
+   #camaasil#5 = #catbam03#1;        || digito control
+   #camaasil#6 = #catbam03#4;        || concepto
+   #camaasil#7 = #catbam03#5;        || Descripcion
+   #camaasil#8 = #catbam03#6;        || Signo
+   #camaasil#9 = #catbam03#7;        || Importe
+
+   |HAZ adapta;
+
+   #camaasil#24 = Registro;          || Registro
+   #camaasil#21 = #catbam03#12;      || Departamento
+   #camaasil#28 = #catbam03#13;      || Subdepartamento
+   #camaasil#18 = aPunteado;         || Punteado
+   |GRABA 020#camaasil.n;
+
+   |HAZ act_cabecera;
+   |HAZ Actualiza;
+   |LIBERA #camaasil;
+
+   |SI #catbam03#6 = "D";
+      signo = "H";
+   |SINO;
+      signo = "D";
+   |FINSI;
+
+   dp_con = #catbam03#12;      || Departamento
+   sd_con = #catbam03#13;      || Subdepartamento
+
+   || ............ Contrapartidas;
+   lacontra = #catbam03#8;
+   |QBF lacontra;
+   |SI lacontra ! "";
+       |HAZ estacontra;
+   |SINO;
+       |HAZ otrascontra;
+   |FINSI;
+
+   |HAZ BorraLaLinea;
+
+   |SI swbueno = 1;
+      error = "Asto Cuadrado con Contrapartida Defecto.";
+      |HAZ impresora;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE contabiliza1;
+   #catbam03#2;
+   ;
+   #catbam02#0, "01.01.1900", 00001;
+   #catbam02#0, "31.12.2100", 99999;
+   e;
+   NULL, apuntes;
+|FIN;
+
+|| -------------------------------------------
+|PROCESO cabs_ctas;
+
+   #catbam01#0 = #catbam02#0;
+   |LEE 101#catbam01.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #catbam01;
+      #catbam01#0 = #catbam02#0;
+      #catbam01#1 = #catbam02#2;
+      |GRABA 020#catbam01.b;
+   |FINSI;
+
+   nCuadre  = 0;
+   aCuadre  = #catbam01#30;
+   |QBF aCuadre;
+   |SI aCuadre = ""; nCuadre = 1; |FINSI;
+
+   fecult   = "01.01.0000";
+   nSwAlgun = 0;
+   tdebe    = 0;
+   thaber   = 0;
+   cam      = 0;
+   |BUCLE contabiliza1;
+
+   #catbam01#5  = #catbam01#5 + tdebe - thaber;
+   |SI #catbam01#4 < fecult; #catbam01#4  = fecult; |FINSI;
+
+   |SI nSwAlgun = 0;
+       #catbam01#28 = #catbam01#2;
+       #catbam01#29 = #catbam01#3;
+   |FINSI;
+   |GRABA 020#catbam01.a;
+   |LIBERA #catbam01;
+
+   |SI nSwAlgun = 0;
+       |BORRA 020#catbam02.a;
+   |SINO;
+       |GRABA 020#catbam02.a;
+   |FINSI;
+   |LIBERA #catbam02;
+|FPRC;
+
+|DEFBUCLE contabiliza0;
+   #catbam02#1;
+   ;
+   #catbaz03#0;
+   #catbaz03#2;
+   be;
+   NULL, cabs_ctas;
+|FIN;
+
+|| **************************************************************************
+
+|| ............ Subrutina de Asientos
+|PROCESO adapta;
+   |SI #camaasil#9 < 0;
+       |SI #camaasil#8 = "D";
+           #camaasil#8 = "H";
+       |SINO;
+           #camaasil#8 = "D";
+       |FINSI;
+        #camaasil#9 = - #camaasil#9;
+   |FINSI;
+
+   |SI #camaasil#8 = "D";
+      #camaasil#16 = #camaasil#4;
+      #camaasil#17 = #camaasil#5;
+      #camaasil#10 = "";
+      #camaasil#11 = 0;
+   |SINO;
+      #camaasil#16 = "";
+      #camaasil#17 = 0;
+      #camaasil#10 = #camaasil#4;
+      #camaasil#11 = #camaasil#5;
+   |FINSI;
+|FPRC;
+
+|PROCESO Actualiza;
+   MasMenos     = #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+   nNIVELCUENTA = #camaasil#5;
+   |HAZ ActDiario;          || diario
+   |HAZ ActCuenta;          || cuenta
+   |HAZ ActTesteo;
+|FPRC;
+
+|PROCESO cabecera; || lee la cabecera.
+   |DDEFECTO #camaasic;
+   #camaasic#0 = diario;
+   #camaasic#1 = fecha;
+   #camaasic#2 = docume;
+   #camaasic#3 = docume;
+   #camaasic#12 = Registro;
+   linea = 0;
+   |GRABA 020#camaasic.n;
+   |SI FSalida ! 0;
+      #camaasil#0 = #camaasic#0;
+      #camaasil#1 = #camaasic#1;
+      #camaasil#2 = #camaasic#2;
+      #camaasil#3 = 9999;
+      |LEE 040#camaasil.];
+      |SI FSalida = 0;
+         |LEE 040#camaasil.a;
+         |SI #camaasil#0 = #camaasic#0; |Y #camaasil#1 = #camaasic#1; |Y #camaasil#2 = #camaasic#2;
+            linea = #camaasil#3;
+         |FINSI;
+      |SINO;
+         |LEE 040#camaasil.u;
+         |SI FSalida = 0; |Y  #camaasil#0 = #camaasic#0; |Y #camaasil#1 = #camaasic#1; |Y #camaasil#2 = #camaasic#2;
+            linea = #camaasil#3;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+   Registro = #camaasic#12;
+|FPRC;
+
+|PROCESO act_cabecera;
+   #camaasic#0 = diario;
+   #camaasic#1 = fecha;
+   #camaasic#2 = docume;
+   |LEE 101#camaasic.=;
+   |SI #camaasil#8 = "D";
+      #camaasic#4 = #camaasic#4 + #camaasil#9;
+      |SI #camaasic#09 = 0; #camaasic#08 = #camaasil#4; #camaasic#09 = #camaasil#5; |FINSI;  || contrp.HABER
+   |SINO;
+      #camaasic#5 = #camaasic#5 + #camaasil#9;
+      |SI #camaasic#11 = 0; #camaasic#10 = #camaasil#4; #camaasic#11 = #camaasil#5; |FINSI;  || contrp.DEBE
+   |FINSI;
+   #camaasic#6 = #camaasic#4 - #camaasic#5;        || saldo
+   #camaasic#12 = Registro;
+   |GRABA 020#camaasic.a;
+   |LIBERA #camaasic;
+|FPRC;
+
+|PROCESO actual; |TIPO 3;
+   |SI #catbaz03#7 = "NO"; |ACABA; |FINSI;
+
+  |HAZ eLeeParametro;
+
+   tipoAct = #catbaz03#4;
+   cam = 0;
+   |HAZ comcuadre;
+   |SI swcuadre = 2; |ACABA; |FINSI;
+   |SI cam = 0; |ACABA; |FINSI;
+
+   |SI fec3 > "01.01.0000";
+       cam = 0;
+       |BUCLE LeeFechas;
+       |SI cam = 1;
+
+           |CUADRO 1623 2063;
+           |ATRI I;
+           |PINTA 1724, " Existen Asientos con Fecha Inferior o ";
+           |PINTA 1824, " Igual a la Fecha de Bloqueo de Datos. ";
+           |PINTA 1924, " ESTOS ASIENTOS NO SE ACTUALIZARAN     ";
+           |ATRI 0;
+           |PAUSA;
+       |FINSI;
+   |FINSI;
+
+   |ABRE #calicont;
+   |ABRE #camaasic;
+   |ABRE #camaasil;
+   |ABRE #catbam01;
+   |BUCLE contabiliza0;
+
+   |SI sw_error = 1;
+      |PIEINF;
+      |FININF;
+      |FINIMP;
+   |FINSI;
+
+   |CIERRA #catbam01;
+   |CIERRA #camaasil;
+   |CIERRA #camaasic;
+   |CIERRA #calicont;
+
+   || ............... Terminar
+
+   || ... Actualiza cabeceras de Bloques
+   |ABRE #caconasi;
+   |LEE 101#caconasi.p;
+   estado = FSalida;
+   #caconasi#1 = docume;
+   #caconasi#2 = Registro;
+   |SI estado ! 0; |GRABA 020#caconasi.n; |FINSI;
+   |SI estado = 0; |GRABA 020#caconasi.a; |FINSI;
+   |LIBERA #caconasi;
+   |CIERRA #caconasi;
+|FPRC

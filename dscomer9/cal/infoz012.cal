@@ -1,0 +1,380 @@
+|FICHEROS;
+     infoz012 #0;
+     infow004 #4;   ||Tmp
+     infom007 #7;
+     agifa024 #24;
+     dsm00053 #53;
+     agifa073 #73;
+     agifa104 #104;
+     dsm00113 #113;
+|FIN;
+
+|VARIABLES;
+     &enIva = 0;
+     &enTiva = 0;
+     &enRec = 0;
+     &efFiva = @;
+     &nImpo = 0;
+     &enSigno = 0;
+     &eaTag = "";
+     &Tempo = "";
+     &enForma = 0;
+     aParam = "";
+     aAlfa = "";
+     aFic = "";
+     aFic1 = "";
+     aNom = "";
+     aPathOrg = "";
+     aCar = "";
+     aLon = "";
+     nPed = 0;
+     aSer = "";
+     aTip = "";
+     i = 0;
+     nPos = 0;
+     nError = 0;
+     aTab = "";
+ {99}Valor = "";
+     aDato = "";
+     aReg = "";
+     aLetra = "";
+     nCampo = 0;
+     nHandle = 0;
+     nCan = 0;
+     nSer = 0;
+     nLin = 0;
+     nCalc = 0;
+     nDLin = 0;
+     nHLin = 0;
+     aSwLocal = "N";
+|FIN;
+---------------------------------------
+Fichero "L"
+==========
+serie pedido
+pedido
+linea
+codigo articulo
+descripcion articulo
+cantidad
+valor NULO
+cantidad servida
+
+Fichero "D"
+===========
+serie
+pedido
+linea de pedido
+sublinea
+n§ de serie
+---------------------------------------
+|PROCESO MueveFic;
+     aAlfa = #7#4; |QBF aAlfa;
+     aAlfa = aAlfa + #4#0; |QBF aAlfa;
+
+     |SI aSwLocal = "S";
+          |COPIA_FICHERO aFic, aAlfa;
+          |FBORRA aFic;
+     |SINO;
+          |RCOPIA_FICHERO aFic, aAlfa;
+          |RFBORRA aFic;
+     |FINSI;
+|FPRC;
+
+|PROCESO CalcConIva;
+     |ABRE #113;
+     #113#0 = #104#4;
+     #113#1 = #73#14;
+     |LEE 000#113=;
+     |SI FSalida = 0;
+          nCalc = #73#11 % #113#3;
+          |SI #24#47 = "S";
+               nCalc = nCalc + (#73#11 % #113#4);
+          |FINSI;
+     |SINO;
+          enTiva = #73#14;
+          efFiva = #104#1;
+          |HAZ SacaIVA;
+
+          nCalc = #73#11 % enIva;
+          |SI #24#47 = "S";
+               nCalc = nCalc + (#73#11 % enRec);
+          |FINSI;
+     |FINSI;
+     |CIERRA #113;
+
+     nImpo = nImpo + (#73#11 + nCalc);
+|FPRC;
+
+|DEFBUCLE CalcConIva;
+     #73#1;
+     ;
+     #104#25, #104#0,001;
+     #104#25, #104#0,999;
+     ;
+     NULL,CalcConIva;
+|FIN;
+
+|PROCESO BorraDA;
+     |BORRA 020#53a;
+|FPRC;
+
+|DEFBUCLE BorraDA;
+     #53#1;
+     ;
+     "P", aSer, nPed, nDLin, 0001;
+     "P", aSer, nPed, nHLin, 9999;
+     be;
+     NULL, BorraDA;
+|FIN;
+
+|PROCESO ProcesaLin;
+     nCan = Valor6;
+     nSer = Valor8;
+     |SI nCan ! nSer; |Y nSer ! 0;
+          |ABRE #73;
+          #73#28 = Valor1;
+          #73#0 = Valor2;
+          #73#1 = Valor3;
+          |LEE 101#73=;
+          |SI FSalida ! 0;
+               aAlfa = "0000No existe linea pedido:" + aSer + "/" + nPed + "/" + Valor3;
+               |SI aParam ! ""; |MENAV aAlfa; |FINSI;
+          |SINO;
+               enForma = -1; |HAZ AcumulaPV;
+               #73#2 = Valor4;
+               #73#4 = Valor5;
+               #73#5 = nSer;
+               |GRABA 020#73a;
+               enForma = 1; |HAZ AcumulaPV;
+          |FINSI;
+          |CIERRA #73;
+     |FINSI;
+     |SI nSer = 0;
+          |ABRE #73;
+          #73#28 = Valor1;
+          #73#0 = Valor2;
+          #73#1 = Valor3;
+          |LEE 101#73=;
+          |SI FSalida ! 0;
+               aAlfa = "0000No existe linea pedido:" + aSer + "/" + nPed + "/" + Valor3;
+               |SI aParam ! ""; |MENAV aAlfa; |FINSI;
+          |SINO;
+               enForma = -1; |HAZ AcumulaPV;
+               |BORRA 020#73a;
+               nDLin = #73#1;
+               nHLin = #73#1;
+               |BUCLE BorraDA;
+          |FINSI;
+          |CIERRA #73;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProcesaDA;
+     |SI Valor4 = 1;
+          nDLin = Valor3;
+          nHLin = Valor3;
+          |BUCLE BorraDA;
+     |FINSI;
+     |ABRE #53;
+     |DDEFECTO  #53;
+     #53#0 = "P";
+     #53#1 = Valor1;
+     #53#2 = Valor2;
+     #53#3 = Valor3;
+     #53#4 = Valor4;
+     |LEE 101#53=;
+     |SI FSalida ! 0; |GRABA 020#53b; |FINSI;
+     #53#5 = Valor5;
+     |GRABA 020#53a;
+     |CIERRA #53;
+     Valor5 = "";
+|FPRC;
+
+|PROCESO Dato;
+     aTab = &9;
+     nCampo = 1;
+     IValor = Valor1<-;
+     aLon = aDato % A0;
+     aReg = "";
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = i * 100 + 1;
+          aLetra = aDato % nPos;
+          |SI aLetra = aTab;
+               Valor = aReg;
+               aReg = "";
+               nCampo = nCampo + 1;
+               IValor = IValor + 1;
+          |SINO;
+               aReg = aReg + aLetra;
+          |FINSI;
+          |SI nCampo > 90; |SAL; |FINSI;     || Por si.... :)
+     |SIGUE;
+     Valor = aReg;
+|FPRC;
+
+|PROCESO SacaPedido;
+     aFic1 = aFic;
+     nError = 0;
+     aAlfa = aFic1 - "-";
+     nPos = FSalida;
+     |SI nPos > 0;
+          nPos = (nPos - 1) / 100;
+          nPos = nPos - 1 + 100;
+          aAlfa = aFic1 % nPos;
+          nPed = aAlfa;
+          aFic1 = aFic1 - aAlfa - "-";
+     |SINO;
+          nError = 1;
+     |FINSI;
+
+     aAlfa = aFic1 - "-";
+     nPos = FSalida;
+     |SI nPos > 0;
+          nPos = (nPos - 1) / 100;
+          nPos = nPos - 1 + 100;
+          aSer = aFic1 % nPos;
+          aFic1 = aFic1 - aSer - "-";
+     |SINO;
+          nError = 1;
+     |FINSI;
+
+     aTip = aFic1 % 101;
+     aTip = aTip > "";
+     |SI aTip ! "L"; |Y aTip ! "D";
+          nError = 1;
+     |FINSI;
+     ||aAlfa = "0000Pedido:" + aSer + "/" + aPed + "/" + aTip; |MENAV aAlfa;
+|FPRC;
+
+|PROCESO Tmp;
+     aFic =  #4#0; |QBF aFic;
+     |HAZ SacaPedido;
+     |SI nError ! 0;
+          aAlfa = "0000Fichero erroneo:" + aFic;
+          |SI aParam ! ""; |MENAV aAlfa; |FINSI;
+     |SINO;
+          |ABRE #104;
+          #104#25 = aSer;
+          #104#0 = nPed;
+          |LEE 101#104=;
+          |SI FSalida ! 0;
+               aAlfa = "0000No existe pedido:" + aSer + "/" + nPed;
+               |SI aParam ! ""; |MENAV aAlfa; |FINSI;
+          |SINO;
+               |SI aTip = "L";
+                    |ABRE #24;
+                    #24#0 = #104#4;
+                    |LEE 000#24=;
+                    |SI FSalida ! 0; |DDEFECTO #24; |FINSI;
+                    |CIERRA #24;
+
+                    enSigno = -1;
+                    nImpo = 0; |BUCLE CalcConIva;
+                    eaTag = "PE";  |HAZ Riesgos;
+               |SINO;
+/*
+                    nDLin = 1;
+                    nHLin = 999;
+                    |BUCLE BorraDA;
+*/
+               |FINSI;
+
+               aFic = aPathOrg + aFic;
+               |SI aSwLocal = "S";
+                    |XABRE "", aFic, nHandle;
+               |SINO;
+                    |XABRE "C", aFic, nHandle;
+               |FINSI;
+               |SI FSalida ] 0;
+                    |XLEE nHandle, 250, aDato;
+                    |PARA; |SI FSalida > 0; |HACIENDO;
+                         |HAZ Dato;
+                         |SI aTip = "D";
+                              |HAZ ProcesaDA;
+                         |SINO;
+                              |HAZ ProcesaLin;
+                         |FINSI;
+                         |XLEE nHandle, 250, aDato;
+                    |SIGUE;
+                    |XCIERRA nHandle;
+                    |HAZ MueveFic;
+               |SINO;
+                    aAlfa = "0000Error al abrir:" + aFic;
+                    |MENAV aAlfa;
+               |FINSI;
+               |SI aTip = "L";
+                    |HAZ CalCabAgifa104;
+                    enSigno = 1;
+                    nImpo = 0; |BUCLE CalcConIva;
+                    eaTag = "PE";  |HAZ Riesgos;
+               |FINSI;
+          |FINSI;
+          |CIERRA #104;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Tmp;
+     #4#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp;
+|FIN;
+
+|PROCESO SacaNombre;
+     aLon = aFic % A0;
+     aNom = "";
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = -(i * 100 + 1)
+          aCar = aFic % nPos;
+          |SI aCar = "\"; |O aCar = "/"; |SAL; |FINSI;
+          aNom = aCar + aNom;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#0 ! "SI"; |ACABA; |FINSI;
+
+     |ABRE #7; |LEE 000#7p; |CIERRA #7;
+     aPathOrg = #7#3; |QBF aPathOrg;
+     aAlfa = aPathOrg % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPathOrg = aPathOrg + "/"; |FINSI;
+
+     aSwLocal = "S";
+
+     |HAZ CreaTempo; |NOME_DAT #4Tempo; |DELINDEX #4;
+     |ABRE #4;
+     aFic = aPathOrg;
+     |SI aSwLocal = "S";
+          |_PDIR aFic;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               |HAZ SacaNombre;
+               #4#0 = aNom;
+               |GRABA 020#4n;
+               |_SDIR aFic;
+          |SIGUE;
+     |SINO;
+          |R_PDIR aFic;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               |HAZ SacaNombre;
+               #4#0 = aNom;
+               |GRABA 020#4n;
+               |R_SDIR aFic;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #4;
+     |BUCLE Tmp;
+     |DELINDEX #4; |HAZ BoraTempo;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     |SI aParam = "menu";
+          |MANTE #0;
+     |SINO;
+          #0#0 = "SI";
+          |HAZ Tipo3;
+     |FINSI;
+|FPRO;

@@ -1,0 +1,631 @@
+|FICHEROS;
+     nomcalcu #00;        || pantalla calculo mes
+     nomgruec;            || grupos de empresas Cabs.
+     nomgruel;            || grupos de empresas Lins.
+     nompanta;
+     nomcot09;
+|FIN;
+
+|VARIABLES;
+    avisa_mes = 0;
+    &htipo = 0;
+    &runnom = "";
+    meses = "ENERO     FEBRERO   MARZO     ABRIL     MAYO      JUNIO     JULIO     AGOSTO    SEPTIEMBREOCTUBRE   NOVIEMBRE DICIEMBRE ";
+    salte_1 = 0;
+    salte_2 = 0;
+
+    &nElMesIRPF = 0;         || para 'nomir008'
+    &nElAnyIRPF = 0;         || para 'nomir008'
+    &nDiferencias = 0;   || para 'nomir008'
+    &nElMes = 0;         || para la nomina
+    &nElAny = 0;         || para la nomina
+    swActiva = 0;
+    swPorGrupos = 0;
+    nGrupo = 0;
+    nCampoG = 0;
+     &eaVengoDe = "";
+
+     &nEmpAUTO = 0;
+     &nEmpAUTO_D = 0;
+     &nEmpAUTO_H = 0;
+     &nTraAUTO = 0;
+     &nTraAUTO_D = 0;
+     &nTraAUTO_H = 0;
+     &nMesAUTO = 0;
+     &nAnyAUTO = 0;
+     &aParam = "";
+     &nEnEmpresa = 0;
+     &nPaso = 0;
+     &swCompAjuste = 0;
+     &swSegPasada = 0;
+     &nRetEstAnu = 0;    || retencion estimada anual
+     &swCalPagas = "S";
+     &enVersionAgitool = 0;
+     nNroNomina = 0;
+     nTotalNominas = 0;
+     swRecuento = 0;
+     &swCambiaCot = 0;
+     &eaFichTramos = "";
+     &eaMensaCad = "";
+     &enErrorCad = 0;
+     &enSwPasada09 = 1;
+
+     nNroITs = 0;
+|FIN;
+
+|INCLUYE nomcal_2;
+|INCLUYE nomcal_1;
+|INCLUYE nomcal_3;
+|INCLUYE nomcal_5;
+|INCLUYE nomcal_4;
+||INCLUYE i_no3145;
+
+|PROCESO TipoCot;
+     swCambiaCot = 0;
+     |SI #0#8 = 04; |O #0#8 = 06; |O #0#8 = 09; |O #0#8 = 11;
+          |ACABA;
+     |FINSI;
+     swSigue = 0;
+     |SI #labtraba#42 = "X"; |O #labtraba#42 = "P";
+          swSigue = 1;
+     |FINSI;
+     nNume = #labtraba#45;
+     |SI nNume ] 300; |Y nNume [ 399;
+     |Y #labtraba#42 = "M";
+          swSigue = 1;
+     |FINSI;
+     |SI swSigue = 1;
+          |ABRE #nomvarca;
+          #nomvarca#0 = #labtraba#0;
+          #nomvarca#1 = #labtraba#1;
+          #nomvarca#2 = #0#8;
+          #nomvarca#3 = 0;
+          |LEE 000#nomvarca.=;
+          |SI FSalida = 0;
+               nNroITs = 0;
+               |PARA nCampo = 12; |SI nCampo [ 15; |HACIENDO nCampo = nCampo + 1;
+                    |SI #nomvarca#nCampo# ! " ";
+                         |SI #nomvarca#nCampo# ! "D";
+                              || desempleo no cuenta para esto
+                              nNroITs = nNroITs + 1;
+                         |FINSI;
+                    |SIGUE;
+                    |SI nNroITs ! 0;
+                         swCambiaCot = 1;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |CIERRA #nomvarca;
+          |SI #labtraba#60 ! " "; |Y #labtraba#89 ! 0;
+               swCambiaCot = 1;
+          |FINSI;
+          |SI #labtraba#92 ! 0;
+               swCambiaCot = 1;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+____________________________________/ LECTURA PRINCIPAL TRABAJADORES
+|PROCESO proceso;
+     |HAZ TipoCot;
+     |HAZ chequea;
+     |SI #0#11 = "N";
+          |HAZ chequea2;
+     |FINSI;
+     |HAZ activasino;
+     |HAZ chequeaBloqueo;
+     |SI swfuera = 0; |Y swActiva = 1;
+          |SI swRecuento = 1;
+               nTotalNominas = nTotalNominas + 1;
+               |ACABA;
+          |SINO;
+               nNroNomina = nNroNomina + 1;
+               alfa1 = nNroNomina; |QBF alfa1;
+               alfa2 = nTotalNominas; |QBF alfa2;
+               aAlfa = "    Calculando nómina " + alfa1 + " de " + alfa2 + ".";
+               |MENSA aAlfa;
+          |FINSI;
+
+          |HAZ historico;
+          |SI swfuera = 0;
+               #9#0 = #2#87;
+               |LEE 000#9=;
+               |SI FSalida = 0;
+                    cabecera = 0;
+                    |SI swCompAjuste ! 1;
+                         swCompAjuste = 0;
+                    |FINSI;
+                    |SI swSegPasada ! 1;
+                         swSegPasada = 0;
+                    |FINSI;
+                    nIncid = 0;
+
+                    |PINTA 2171, #2#0;
+                    |PINTA 2271, #2#1;
+
+                    |HAZ ayuntamientos;
+                    nEnEmpresa = #labtraba#0;
+                    |HAZ BuscaModulo;
+                    |SI swModulo = 3145;
+                         ||HAZ Antig3145;
+                    |FINSI;
+                    |HAZ lib_0;
+                    |HAZ leeregis;
+                    |HAZ EnPracticas;
+                    |HAZ BuscaRegTP;
+                    |HAZ t_parcial;
+                    |HAZ leeconceptos;
+                    |HAZ cabecera;
+               |SINO;
+                    |ATRI P;
+                    alfa1 = "    Convenio [" + #2#87 + "] inaccesible o inexistente ...";
+                    |MENAV alfa1;
+                    |ATRI 0;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO nomcot09_cal;
+     |ABRE #labtraba;
+     #labtraba#0 = #nomcot09#0;
+     #labtraba#1 = #nomcot09#1;
+     |LEE 000#labtraba.=;
+     |SI FSalida = 0;
+          |HAZ proceso;
+     |FINSI;
+     |CIERRA #labtraba;
+
+     #nomcot09#4 = "S";
+     |GRABA 020#nomcot09.a;
+     |LIBERA #nomcot09;
+|FPRC;
+
+|DEFBUCLE nomcot09_cal;
+     #nomcot09#3;
+     ;
+     00001, 00001, "N";
+     99999, 99999, "N";
+     be;
+     NULL, nomcot09_cal;
+|FINSI;
+
+|DEFBUCLE nomcalc0;
+ #2#1;
+ 87, 17, 77, 44;
+ #0#0, #0#2, #0#4, #0#6, #0#71, "A";
+ #0#1, #0#3, #0#5, #0#7, #0#72, "A";
+ ;
+ NULL, proceso;
+|FIN;
+
+|DEFBUCLE nomcalcg;
+     #2#1;
+     44;
+     #nomgruel#1, 00001, "A";
+     #nomgruel#1, 99999, "A";
+     ;
+     NULL, proceso;
+|FIN;
+
+|PROCESO CalGrupo;       || para cada una hace el proceso de siemrpe
+     |BUCLE nomcalcg;
+|FPRC;
+
+|DEFBUCLE Grupo;         || lee empresas del grupo
+     #nomgruel#1;
+     ;
+     nGrupo, 00001;
+     nGrupo, 99999;
+     ;
+     NULL, CalGrupo;
+|FIN;
+
+|PROCESO PorGrupos;
+     swPorGrupos = 1;
+     |PARA nCampoG = 63; |SI nCampoG [ 70; |HACIENDO nCampoG = nCampoG + 1;
+          nGrupo = #0nCampoG;
+          |BUCLE Grupo;
+     |SIGUE;
+|FPRC;
+
+|PROCESO lectura;             || INICIO DEL CALCULO
+     |ABRE #09;
+     |ABRE #10;
+     |SI aParam = "NOMVARCA";
+          alfa1 = Usuario; |QBF alfa1;    alfa1 = "0" + alfa1;
+          |NOME_DAT #11 alfa1;
+          |DELINDEX #11;
+
+          alfa1 = Usuario; |QBF alfa1;    alfa1 = "1" + alfa1;
+          |NOME_DAT #12 alfa1;
+          |DELINDEX #12;
+     |FINSI;
+     |ABRET #11;
+     |ABRET #12;
+
+     nMes = #0#8;
+     nAny = #0#9;
+     |HAZ ini_log;
+
+     nNroNomina = 0;
+     nTotalNominas = 0;
+     swRecuento = 1;
+     |SI #0#21 = 0;
+         |SI #0#63 = 0;
+             |BUCLE nomcalc0;
+         |SINO;
+             |HAZ PorGrupos;
+         |FINSI;
+     |SINO;
+         |HAZ salteada;
+     |FINSI;
+
+     swRecuento = 0;
+     |SI #0#21 = 0;
+         |SI #0#63 = 0;
+               |SI aParam = "NOMVARCA";
+                    |HAZ BuscaModulo;
+                    swSigue = 0;
+                    |SI swModulo = 3462; |O swModulo = 1;
+                         |ABRE #labtraba;
+                         #labtraba#0 = nEmpAUTO;
+                         #labtraba#1 = nTraAUTO;
+                         |LEE 000#labtraba.=;
+                         |CIERRA #labtraba;
+
+                         |SI #labtraba#42 = "X"; |O #labtraba#42 = "T";
+                         |O #labtraba#42 = "P";
+                              swSigue = 1;
+                         |FINSI;
+                    |FINSI;
+                    |SI swSigue = 1;
+                         |HAZ PromTP_plb;
+                         |SI promE_AUTO = 0; |Y promA_AUTO = 0;
+                              |BUCLE nomcalc0;
+                         |SINO;
+                              |HAZ fin_log;
+                              |CIERRA #09;
+                              |CIERRA #10;
+                              |CIERRAT #11;
+                              |CIERRAT #12;
+                              |ACABA;
+                         |FINSI;
+                    |SINO;
+                         |BUCLE nomcalc0;
+                    |FINSI;
+               |SINO;
+                    |BUCLE nomcalc0;
+               |FINSI;
+         |SINO;
+             |HAZ PorGrupos;
+         |FINSI;
+     |SINO;
+         |HAZ salteada;
+     |FINSI;
+
+     enSwPasada09 = 1;
+     |BUCLE nomcot09_cal;
+     enSwPasada09 = 0;
+
+     |HAZ fin_log;
+     |SI seleccio = 0;
+         |ATRI P;
+         |MENAV "    Seleccion vacia ...";
+         |ATRI 0;
+     |FINSI;
+     |SI nNroErrores > 0;
+          |HAZ CargaLog;
+     |FINSI;
+     |CIERRA #09;
+     |CIERRA #10;
+     |CIERRAT #11;
+     |CIERRAT #12;
+|FPRC;
+
+|PROCESO mes_anterior1;
+|ATRI P;
+|MENAV "    AVISO: Quedan nominas del MES ANTERIOR por ACTUALIZAR ...";
+|ATRI 0;
+|ERROR10;
+|FPRC;
+
+|DEFBUCLE mes_anterior;
+ #11#1;
+ ;
+     1,     1, avisa_mes, 0;
+ 99999, 99999, avisa_mes, 9;
+ ;
+ NULL, mes_anterior1;
+|FIN;
+
+|PROCESO avisa;
+    avisa_mes = #0#8 - 1;
+|SI avisa_mes = 0;  avisa_mes = 12;     |FINSI;
+
+|BUCLE mes_anterior;
+|FPRC;
+
+|PROCESO Aviso;
+     |PUSHV 05012380;
+     |BLANCO 05012380;
+     |PINPA #8#nompanta;
+     |AVISO;
+     |PAUSA;
+     |POPV;
+|FPRC;
+
+|PROCESO ActualizaCons;
+     |ABRE #nomconst;
+
+     |SI #0#9 ] 2020;
+          #nomconst#0 = 500;
+          #nomconst#79 = "01.01.2020";
+          |LEE 000#nomconst.=;
+
+          |SI FSalida ! 0;
+               |SUB_EJECUTA "nomfan02;ACTUALIZACION";
+
+               aAlfa = "    Se han actualizado las constantes con los tipos de cotización";
+               aAlfa = aAlfa + " para 2019";
+               ||MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+
+     |CIERRA #nomconst;
+|FPRC;
+
+|PROGRAMA;
+     eaMensaCad = "9";
+     |HAZ ControlCaducidad;
+     |SI enErrorCad = 1;
+         |ACABA;
+     |FINSI;
+
+     runnom = "nomcalcu";
+     eaVengoDe = "nomcalcu";
+
+     aAlfa = Usuario;         |QBF aAlfa;
+     aAlfa = "n" +  aAlfa;
+     |NOME_DAT #0 aAlfa;
+     aParam = PARAMETRO;
+     |QBF aParam;
+     |SI aParam ! "";
+          |SI aParam = "NOMVARCA"; |O aParam = "NOMSICOS"; |O aParam = "NOMSICOSR";
+               nEmpAUTO_D = nEmpAUTO;
+               nEmpAUTO_H = nEmpAUTO;
+               nTraAUTO_D = nTraAUTO;
+               nTraAUTO_H = nTraAUTO;
+          |FINSI;
+          #0#0 = nEmpAUTO_D
+          #0#1 = nEmpAUTO_H
+          #0#2 = nTraAUTO_D
+          #0#3 = nTraAUTO_H
+          #0#4 = 000;
+          #0#5 = 999;
+          #0#6 = 000;
+          #0#7 = 999;
+          #0#8 = nMesAUTO;
+          #0#9 = nAnyAUTO;
+          nElMes = #0#8;
+          nElAny = #0#9;
+
+          |HAZ ValoresITIMS;
+          |HAZ ActualizaCons;
+          |HAZ lib_0;
+          |HAZ tipos;
+               aAlfa = Usuario; |QBT aAlfa; aAlfa = "tm_nomcot09_" + aAlfa;
+               eaFichTramos = aAlfa;
+               |NOME_DAT #nomcot09#aAlfa#;
+               |DELINDEX #nomcot09;
+
+          |HAZ lectura;
+
+               |DELINDEX #nomcot09;
+
+          |SI aParam = "AUTOCONREG"; |O aParam = "NOMSICOSR";
+               aAlfa = Usuario;         |QBF aAlfa;
+               aAlfa = "n" +  aAlfa;
+               |NOME_DAT #0 aAlfa;
+               |DELINDEX #0;
+               |ABRE #0;
+
+               #0#0 = nEmpAUTO_D; #0#1 = nEmpAUTO_H;
+               #0#2 = nTraAUTO_D; #0#3 = nTraAUTO_H;
+               #0#4 = 000;        #0#5 = 999;
+               #0#6 = 000;        #0#7 = 999;
+               #0#8 = nMesAUTO;   #0#9 = nAnyAUTO;
+               #0#20 = 1;
+               |GRABA 000#0n;
+               nElMes = #0#8;
+               nElAny = #0#9;
+               |HAZ ValoresITIMS;
+               |CIERRA #0;
+               swCalPagas = #0#12;
+               nElMesIRPF = #0#8;
+               nElAnyIRPF = #0#9;
+               |SUB_EJECUTA "nomir008";
+
+               swCalPagas = #0#12;
+               nElMesIRPF = #0#8;
+               nElAnyIRPF = #0#9;
+               |SUB_EJECUTA "nom400ca";
+          |FINSI;
+     |SINO;
+          |HAZ LeeEURODB;
+
+          |CLS;
+          |CABEZA "Calculo Mensual";
+          |PINPA #0#0;
+          |ABRE #0;
+          |DDEFECTO #0;
+          |LEE 000#0p;
+          |SI FSalida = 0;  |BORRA 020#0a;  |FINSI;
+          |CIERRA #0;
+          #0#11 = "N";
+          #0#12 = "N";
+
+          |DBASS aAlfa; |QBF aAlfa;
+          aAlfa = aAlfa % -109;
+          |SI aAlfa = "dsprofes/"; |O aAlfa = "ccprofes/";
+               || estoy en produccion, sin duda
+               #0#11 = "S";
+               #0#12 = "S";
+          |FINSI;
+
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0;
+               |HAZ avisa;
+               |HAZ lib_0;
+               nElMes = #0#8;
+               nElAny = #0#9;
+               |HAZ tipos;
+               |ABRE #0;
+               |GRABA 000#0n;
+               |CIERRA #0;
+               |HAZ ActualizaCons;
+               |HAZ ValoresITIMS;
+
+               aAlfa = Usuario; |QBT aAlfa; aAlfa = "tm_nomcot09_" + aAlfa;
+               eaFichTramos = aAlfa;
+               |NOME_DAT #nomcot09#aAlfa#;
+               |DELINDEX #nomcot09;
+
+               |HAZ lectura;
+
+               |DELINDEX #nomcot09;
+
+               swCalPagas = #0#12;
+               nElMesIRPF = #0#8;
+               nElAnyIRPF = #0#9;
+               |SUB_EJECUTA "nomir008";
+               |MENSA " ";
+
+               swCalPagas = #0#12;
+               nElMesIRPF = #0#8;
+               nElAnyIRPF = #0#9;
+               |SUB_EJECUTA "nom400ca";
+
+               |MENSA "    Registrando movimientos en el Gestor de Incidencias de IRPF";
+               |SUB_EJECUTA "nomgir00;nomcalcu";
+          |SINO;
+               |ABRE #0;
+               |GRABA 000#0n;
+               |CIERRA #0;
+          |FINSI;
+          |DBASS aAlfa; |QBF aAlfa;
+          aAlfa = aAlfa % -109;
+          |SI aAlfa = "dsprofes/";       || estoy en produccion, sin duda
+          |Y #0#21 ! 0; |Y #0#42 ! 0; |Y #0#22 = 0; |Y #0#43 = 0;
+               |ABRE #nomcalca;
+               #nomcalca#0 = #0#21;
+               #nomcalca#1 = #0#42;
+               #nomcalca#2 = #0#8;
+               #nomcalca#3 = 0;
+               |LEE 000#nomcalca.=;
+               |SI FSalida = 0;
+                    |CLS;
+                    |PINPA #0#nomcalca;
+                    |PINDA #0#nomcalca;
+                    |ENDATOS #4#nomcalca;
+               |FINSI;
+               |CIERRA #nomcalca;
+          |FINSI;
+     |FINSI;
+|FPRO;
+
+||****************************************************************************
+||                  LLAMADAS DESDE EL MANTENIMIENTO
+||****************************************************************************
+
+|PROCESO pintames; |TIPO 0;
+    nume1 = ((((#0Campo - 1) * 10) + 1) * 100) + 10;
+    p_mes = meses % nume1;
+|ATRI I;
+|PINTA 0656, p_mes;
+|ATRI 0;
+|FPRC;
+
+|PROCESO mirames; |TIPO 7; ||calcula el mes por defecto segun fecha sistema
+|SI #0Campo = 0;
+        fecsys = ~;
+        alfa1 = fecsys;
+        alfa1 = alfa1 % 402;
+        #0Campo = alfa1;
+    |PINTA #0Campo;
+|FINSI;
+|HAZ pintames;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7; ||calcula el a¤o por defecto segun fecha sistema
+|SI #0Campo = "    ";
+        fecsys = ~;
+        alfa1 = fecsys;
+        alfa1 = alfa1 % -104;
+        #0Campo = alfa1;
+    |PINTA #0Campo;
+|FINSI;
+|FPRC;
+
+|PROCESO lib_0; |TIPO 0;   || halla ultimo dia natural del mes
+    mesnum = #0#8;
+    anynum = #0#9;
+|HAZ ulti_dia;
+    guarda = topemes;      || cambia de variable para no perderlo
+|FPRC;
+
+|PROCESO Valida; |TIPO 0;
+     nume1 = #0#9;
+     |SI nume1 < 1980;
+          |MENAV "0000Error de entrada ...";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO activasino;
+     swActiva = 1;
+
+     |ABRE #1;
+     #1#0 = #2#0;
+     |LEE 000#1=;
+     |SI #1#50 = "S";
+          swActiva = 0;  || empresa no activa
+     |FINSI;
+     |CIERRA #1;
+
+     |SI swActiva = 0;
+          |ACABA;
+     |FINSI;
+
+     aFabre = "";
+     |DIRECTORIO aFabre;
+     aFabre = "rt  " + aFabre + "integral/bin/dsam0000.tab";
+     |FABRE aFabre;
+     |SI FSalida ] 0;
+          |FCIERRA FSalida;
+          |DBASS aBase;  |QBF aBase;
+          aMas  = aBase + "integral/def/dsam0000.mas";
+          aFich = aBase + "integral/fich/";
+
+          |CARGA_DEF aMas, copiadef@;
+          |SI FSalida ! 0;
+              aAlfa = "0000 No puedo cargar el Def " + aMas;
+              |MENAV aAlfa;
+              |ACABA;
+          |FINSI;
+
+          |ABRE #500;
+          #500#0 = #2#0;
+          |LEE 000#500=;
+          |SI FSalida = 0;
+               |SI #500#85 = "I";
+                    swActiva = 0;  || empresa no activa
+                    nIncid = 30;
+                    |HAZ graba_inc;
+               |FINSI;
+          |FINSI;
+          |CIERRA #500;
+          |DESCARGA_DEF #copiadef@;
+     |FINSI;
+|FPRC;

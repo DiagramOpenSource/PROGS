@@ -1,0 +1,362 @@
+|FICHEROS;
+     caivarep;
+     caivasop;
+     caiivrel;
+     caiivsol;
+     casiim01;
+     casiim02;
+
+     siibase@ #100;
+|FIN;
+
+|VARIABLES;
+     aH60                = "";
+     aSii                = "";
+     aMas                = "";
+     aFic                = "";
+     aAlfa               = "";
+
+     nOk                 = 0;
+
+     &enEmpresa          = 0;
+     &enAnyo             = 0;
+     &enEjercicio        = 0;
+     &enPeriodo          = 0;
+     &aTipoIVA           = "";
+     &enImpExp           = 0;
+|FIN;
+
+|PROCESO siim0003;
+     nOk = 1;
+     |SI #siibase@#111 = "S";
+         nOk = 0;
+         |ACABA;
+     |FINSI;
+
+     aAlfa = "0000AVISO: Factura " + (("00" + #caivarep#0) % -102) + ".";
+     |SI #caivarep#27 ! "  ";
+         aAlfa = aAlfa + #caivarep#27 + "/";
+     |FINSI;
+
+     aAlfa = aAlfa + ("000000" + #caivarep#2) % -106;
+     aAlfa = aAlfa + " fue enviada al SII en el lote ";
+     aAlfa = aAlfa + (("0000000000" + #siibase@#1) % -110);
+     aAlfa = aAlfa + "." + (("000000" + #siibase@#2) % -106);
+|FPRC;
+
+|DEFBUCLE siim0003;
+     #siibase@#4008;
+     19;
+enEmpresa,enEjercicio,00,#caivarep#0,#caivarep#2,#caivarep#27,         0,     0,#casiim01#66;
+enEmpresa,enEjercicio,12,#caivarep#0,#caivarep#2,#caivarep#27,9999999999,999999,#casiim01#66;
+     ;
+     NULL, siim0003;
+|FIN;
+
+|PROCESO siim0004;
+     nOk = 1;
+     |SI #siibase@#86 = "S";
+         nOk = 0;
+         |ACABA;
+     |FINSI;
+
+     aAlfa = "0000AVISO: Factura " + (("00" + #caivasop#0) % -102) + ".";
+     |SI #caivasop#27 ! "  ";
+         aAlfa = aAlfa + #caivasop#27 + "/";
+     |FINSI;
+     aAlfa = aAlfa + (("000000" + #caivasop#2) % -106);
+     aAlfa = aAlfa + " fue enviada al SII en el lote ";
+     aAlfa = aAlfa + (("0000000000" + #siibase@#1) % -110);
+     aAlfa = aAlfa + "." + (("000000" + #siibase@#2) % -106);
+     |MENAV aAlfa;
+|FPRC;
+
+|DEFBUCLE siim0004;
+     #siibase@#5008;
+     14;
+enEmpresa,enEjercicio,00,#caivasop#0,#caivasop#2,#caivasop#27,         0,     0,#casiim01#66;
+enEmpresa,enEjercicio,12,#caivasop#0,#caivasop#2,#caivasop#27,9999999999,999999,#casiim01#66;
+     ;
+     NULL, siim0004;
+|FIN;
+
+|PROCESO MensaSII;
+     |DBASS aSii;
+     aMas = aSii + "siibase/def/siim0003.mas";
+     |XABRE "E", aSii, 0;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     |SI aTipoIVA = "R";
+         aMas = aSii + "siibase/def/siim0003.mas";
+         |CARGA_DEF aMas, siibase@;
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+         aFic = aSii + "siibase/fich/";
+         |PATH_DAT #siibase@#aFic#;
+
+         nOk = 0;
+         |BUCLE siim0003;
+         |SI nOk = 1;
+             |MENAV aAlfa;
+         |FINSI;
+
+         |DESCARGA_DEF #siibase@;
+     |FINSI;
+
+     |SI aTipoIVA = "S";
+         aMas = aSii + "siibase/def/siim0004.mas";
+         |CARGA_DEF aMas, siibase@;
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+         aFic = aSii + "siibase/fich/";
+         |PATH_DAT #siibase@#aFic#;
+
+         nOk = 0;
+         |BUCLE siim0004;
+         |SI nOk = 1;
+             |MENAV aAlfa;
+         |FINSI;
+
+         |DESCARGA_DEF #siibase@;
+     |FINSI;
+|FPRC;
+
+|PROCESO casiim02Bor;
+     |BORRA 020#casiim02.a;
+     |LIBERA #casiim02;
+|FPRC;
+
+|DEFBUCLE casiim02Bor;
+     #casiim02#1;
+     ;
+     #casiim01#0, #casiim01#1, #casiim01#2, "";
+     #casiim01#0, #casiim01#1, #casiim01#2, aH60;
+     be;
+     NULL, casiim02Bor;
+|FIN;
+
+|PROCESO &T15rep; |TIPO 15;
+     |ABRE #casiim01;
+     #casiim01#0 = "caivarep";
+     #casiim01#1 = #caivarep#0;
+     #casiim01#2 = #caivarep#27 + (("000000" + #caivarep#2) % -106);
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caivarep";
+         #casiim01#1 = #caivarep#0;
+         #casiim01#2 = #caivarep#27 + (("000000" + #caivarep#2) % -106);
+
+         |GRABA 020#casiim01.n;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T16rep; |TIPO 16;
+     |ABRE #casiim01;
+     #casiim01#0 = "caivarep";
+     #casiim01#1 = #caivarep#0;
+     #casiim01#2 = #caivarep#27 + (("000000" + #caivarep#2) % -106);
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caivarep";
+         #casiim01#1 = #caivarep#0;
+         #casiim01#2 = #caivarep#27 + (("000000" + #caivarep#2) % -106);
+
+         |GRABA 020#casiim01.n;
+     |SINO;
+         |SI enImpExp = 0;
+             aTipoIVA = "R";
+             |HAZ MensaSII;
+         |FINSI;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T17rep; |TIPO 17;
+     |ABRE #casiim01;
+     #casiim01#0 = "caivarep";
+     #casiim01#1 = #caivarep#0;
+     #casiim01#2 = #caivarep#27 + (("000000" + #caivarep#2) % -106);
+     |LEE 101#casiim01.=;
+     |SI FSalida = 0;
+         aH60 = "z" * 60;
+         |BUCLE casiim02Bor;
+
+         |BORRA 020#casiim01.a;
+         |LIBERA #casiim01;
+
+         |SI enImpExp = 0;
+             aTipoIVA = "R";
+             |HAZ MensaSII;
+         |FINSI;
+     |FINSI;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T15sop; |TIPO 15;
+     |ABRE #casiim01;
+     #casiim01#0 = "caivasop";
+     #casiim01#1 = #caivasop#0;
+     #casiim01#2 = #caivasop#27 + (("000000" + #caivasop#2) % -106);
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caivasop";
+         #casiim01#1 = #caivasop#0;
+         #casiim01#2 = #caivasop#27 + (("000000" + #caivasop#2) % -106);
+
+         |GRABA 020#casiim01.n;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T16sop; |TIPO 16;
+     |ABRE #casiim01;
+     #casiim01#0 = "caivasop";
+     #casiim01#1 = #caivasop#0;
+     #casiim01#2 = #caivasop#27 + (("000000" + #caivasop#2) % -106);
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caivasop";
+         #casiim01#1 = #caivasop#0;
+         #casiim01#2 = #caivasop#27 + (("000000" + #caivasop#2) % -106);
+
+         |GRABA 020#casiim01.n;
+     |SINO;
+         |SI enImpExp = 0;
+             aTipoIVA = "S";
+             |HAZ MensaSII;
+         |FINSI;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T17sop; |TIPO 17;
+     |ABRE #casiim01;
+     #casiim01#0 = "caivasop";
+     #casiim01#1 = #caivasop#0;
+     #casiim01#2 = #caivasop#27 + (("000000" + #caivasop#2) % -106);
+     |LEE 101#casiim01.=;
+     |SI FSalida = 0;
+         aH60 = "z" * 60;
+         |BUCLE casiim02Bor;
+
+         |BORRA 020#casiim01.a;
+         |LIBERA #casiim01;
+
+         |SI enImpExp = 0;
+             aTipoIVA = "S";
+             |HAZ MensaSII;
+         |FINSI;
+     |FINSI;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T15rel; |TIPO 15;
+     |ABRE #casiim01;
+     #casiim01#0 = "caiivrel";
+     #casiim01#1 = #caiivrel#0;
+     #casiim01#2 = #caiivrel#1;
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caiivrel";
+         #casiim01#1 = #caiivrel#0;
+         #casiim01#2 = #caiivrel#1;
+
+         |GRABA 020#casiim01.n;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T16rel; |TIPO 16;
+     |ABRE #casiim01;
+     #casiim01#0 = "caiivrel";
+     #casiim01#1 = #caiivrel#0;
+     #casiim01#2 = #caiivrel#1;
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caiivrel";
+         #casiim01#1 = #caiivrel#0;
+         #casiim01#2 = #caiivrel#1;
+
+         |GRABA 020#casiim01.n;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T17rel; |TIPO 17;
+     |ABRE #casiim01;
+     #casiim01#0 = "caiivrel";
+     #casiim01#1 = #caiivrel#0;
+     #casiim01#2 = #caiivrel#1;
+     |LEE 101#casiim01.=;
+     |SI FSalida = 0;
+         aH60 = "z" * 60;
+         |BUCLE casiim02Bor;
+
+         |BORRA 020#casiim01.a;
+         |LIBERA #casiim01;
+     |FINSI;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T15sol; |TIPO 15;
+     |ABRE #casiim01;
+     #casiim01#0 = "caiivsol";
+     #casiim01#1 = #caiivsol#0;
+     #casiim01#2 = #caiivsol#1;
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caiivsol";
+         #casiim01#1 = #caiivsol#0;
+         #casiim01#2 = #caiivsol#1;
+
+         |GRABA 020#casiim01.n;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T16sol; |TIPO 16;
+     |ABRE #casiim01;
+     #casiim01#0 = "caiivsol";
+     #casiim01#1 = #caiivsol#0;
+     #casiim01#2 = #caiivsol#1;
+     |LEE 101#casiim01.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #casiim01;
+         #casiim01#0 = "caiivsol";
+         #casiim01#1 = #caiivsol#0;
+         #casiim01#2 = #caiivsol#1;
+
+         |GRABA 020#casiim01.n;
+     |FINSI;
+     |LIBERA #casiim01;
+     |CIERRA #casiim01;
+|FPRC;
+
+|PROCESO &T17sol; |TIPO 17;
+     |ABRE #casiim01;
+     #casiim01#0 = "caiivsol";
+     #casiim01#1 = #caiivsol#0;
+     #casiim01#2 = #caiivsol#1;
+     |LEE 101#casiim01.=;
+     |SI FSalida = 0;
+         aH60 = "z" * 60;
+         |BUCLE casiim02Bor;
+
+         |BORRA 020#casiim01.a;
+         |LIBERA #casiim01;
+     |FINSI;
+     |CIERRA #casiim01;
+|FPRC;

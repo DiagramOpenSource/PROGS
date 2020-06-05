@@ -1,0 +1,174 @@
+|FICHEROS;
+     coima001 #1;
+     agifa010 #10;
+     agifa019 #19;
+     agifa024 #24;
+     agifa071 #71;
+     agifa091 #91;
+     dsm00225 #225;
+|FIN;
+
+|VARIABLES;
+     aSer = "";
+     aNum = "";
+     aAlfa = "";
+     aPath = "";
+     aFic = "";
+     nHandle = 0;
+     aDato = "";
+     aPais = "";
+     nKilos = 0;
+     nReembolso = 0;
+|FIN;
+
+|PROCESO Pais;
+     |ABRE #24;
+     #24#0 = #10#3;
+     |LEE 000#24=;
+     |SI FSalida ! 0; |DDEFECTO #24; |FINSI;
+     |CIERRA #24;
+
+     |ABRE #225;
+     #225#0 = #24#205;
+     |LEE 000#225=;
+     |SI FSalida ! 0; |DDEFECTO #225; |FINSI;
+     |CIERRA #225;
+     aAlfa = #225#1 > ""; |QBF aAlfa;
+
+     aPais = "00";
+     |SI aAlfa = "ESPA¥A"; aPais = "00"; |FINSI;
+     |SI aAlfa = "PORTUGAL"; aPais = "01"; |FINSI;
+     |SI aAlfa = "FRANCIA"; aPais = "02"; |FINSI;
+     |SI aAlfa = "ALEMANIA"; aPais = "11"; |FINSI;
+     |SI aAlfa = "AUSTRIA"; aPais = "12"; |FINSI;
+     |SI aAlfa = "BELGICA"; aPais = "13"; |FINSI;
+     |SI aAlfa = "DINAMARCA"; aPais = "14"; |FINSI;
+     |SI aAlfa = "FINLANDIA"; aPais = "15"; |FINSI;
+     |SI aAlfa = "HOLANDA"; aPais = "17"; |FINSI;
+     |SI aAlfa = "HUNGRIA"; aPais = "18"; |FINSI;
+     |SI aAlfa = "IRLANDA"; aPais = "19"; |FINSI;
+     |SI aAlfa = "ITALIA"; aPais = "20"; |FINSI;
+     |SI aAlfa = "LUXEMBURGO"; aPais = "21"; |FINSI;
+     |SI aAlfa = "NORUEGA"; aPais = "22"; |FINSI;
+     |SI aAlfa = "REINO UNIDO"; aPais = "23"; |FINSI;
+     |SI aAlfa = "REPUBLICA CHECA"; aPais = "24"; |FINSI;
+     |SI aAlfa = "SUECIA"; aPais = "25"; |FINSI;
+     |SI aAlfa = "SUIZA"; aPais = "26"; |FINSI;
+|FPRC;
+
+|PROCESO Lineas;
+     #19#0 = #71#2;
+     |LEE 000#19=;
+     |SI FSalida = 0;
+          nKilos = nKilos + (#71#5 * #19#102);
+     |FINSI;
+|FPRC;
+
+|PROCESO Dato;
+/*
+     nKilos = 0;
+     |ABRE #19;
+     |BUCLELIN 2 Lineas #10;
+     |CIERRA #19;
+*/
+     ||ALBARAN   Número de expedición     N    6
+     aDato = ("000000" + #10#0) % -106;
+
+     ||NREMITENTE     Código del remitente.    N    2
+     aDato = aDato + "01";
+
+     ||CNOMBRE   Nombre del consignatario.     C    32
+     aDato = aDato + (#10#29 % 132);
+
+     ||CDIRECCION     Dirección del consignatario   C    32
+     aDato = aDato + (#10#30 % 132);
+
+     ||CPOBLACION     Población del consignatario   C    27
+     aDato = aDato + (#10#31 % 127);
+
+     ||CPOSTAL   Código postal del consignatario.   N    5
+     aDato = aDato + #10#62;
+
+     ||CDPAIS    Código del país del consignatario. N    2
+     |HAZ Pais;
+     aDato = aDato + aPais;
+
+     ||BULTOS    Bultos de la expedición  N    3
+     aDato = aDato + (("000" + #10#2) % -103);
+
+     ||KILOS     Kilos de la expedición   N    5
+     nKilos = #10#2 * 10;
+     aDato = aDato + (("00000" + nKilos) % -105);
+
+     ||TMERCANCIA     Tipo de mercancía.  N    1
+     aDato = aDato + "0";
+
+     aAlfa = " " * 38;
+     ||OBSERVACIONES A     Observaciones que aparecen en albaran y etiqueta  C    38
+     aDato = aDato + aAlfa;
+
+     ||OBSERVACIONES B     Observaciones que aparecen en albaran y etiqueta  C    38
+     aDato = aDato + aAlfa;
+
+     aAlfa = " " * 50;
+     ||OBSERVACIONES C     Observaciones que aparecen solo en la etiqueta    C    50
+     aDato = aDato + aAlfa;
+
+     ||PORTES    Tipo de portes N    1
+     |SI #10#64 = "P"; |O #10#64 = " ";
+          aDato = aDato + "0";
+     |SINO;
+          aDato = aDato + "1";
+     |FINSI;
+
+     ||REEMBOLSO Importe del reembolso    N    7
+     |ABRE #91;
+     #91#0 = #10#8;
+     |LEE 000#91=;
+     |SI FSalida ! 0; |DDEFECTO #91; |FINSI;
+     |CIERRA #91;
+     |SI #91#69 = #1#37;
+          nReembolso = #10#78 ! 2;
+          |MENAV "0000Expedición con reembolso, revise importe...";
+     |SINO;
+          nReembolso = 0;
+     |FINSI;
+     nReembolso = nReembolso * 100;
+     aDato = aDato + (("0000000" + nReembolso) % -107);
+
+     ||RCOMISION Tipo de comisión del reembolso     N    1
+     |SI #10#64 = "P"; |O #10#64 = " ";
+          aDato = aDato + "0";
+     |SINO;
+          aDato = aDato + "1";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aSer = PARAMETRO % 105;
+     aNum = PARAMETRO % 606;
+
+     |ABRE #1; |LEE 000#1p; |CIERRA #1;
+
+     aPath = #1#36; |QBF aPath;
+     |SI aPath = ""; |ACABA; |FINSI;
+     aAlfa = aPath % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPath = aPath + "/"; |FINSI;
+
+     |ABRE #10;
+     #10#52 = aSer;
+     #10#0 = aNum;
+     |LEE 000#10=;
+     |SI FSalida = 0;
+          aFic = #10#52 + (("000000" + #10#0) % -106);
+          |QBT aFic;
+          aFic = aPath + aFic;
+          |XABRE "CW", aFic, nHandle;
+          |SI FSalida ] 0;
+               |HAZ Dato;
+               |XGRABA nHandle, aDato;
+               |XCIERRA nHandle;
+          |FINSI;
+     |FINSI;
+     |CIERRA #10;
+|FPRO;

@@ -1,0 +1,1409 @@
+|FICHEROS;
+    cabasitu #0;
+    cacuenta #1;         || cuentas
+    caparbal #2;         || partidas de balance
+    cabaexp0 #3;         || temporal cuentas totales
+    cabaexp1 #4;         || temporal existencias
+    cabaexp2 #5;         || temporal SITUACION (por si compara)
+    caexistc #6;         || descarga cabs.
+    caexistl #7;         || descarga lins.
+    canempre #30;        || empresas
+    caconimp #8;
+    cabucem1 #100;
+
+    caconcep #22;
+    camaasil #23;
+    caseslin #110;
+|FIN;
+
+|VARIABLES;
+  aFichero = "";
+  v_nombre = "cabaexp2";
+  &pathbal = "";
+  &balance = 1;
+  &Ejercicio = 0;
+  &enEjer    = 0;
+    &entrada = 1;
+    varcamp = 0;
+    mes = 0;
+    nivel = 0;
+    linea = 0;
+    FEstado = 0;
+    posici = 0;
+    activo = 0;
+    pasivo = 0;
+    activ1 = 0;
+    pasiv1 = 0;
+    explo = 0;
+    expl1 = 0;
+    debe1 = 0;
+    haber1 = 0;
+    x = 0;
+    &eldesde = 0;
+    &elhasta = 0;
+    sw = 0;
+    agrupaci = 0;
+    epigrafe = 0;
+    sw_epi = 0;
+    letrames = "";
+    d = "A";
+    h = "P";
+    tipo = "";
+    tipo1 = "";
+    cue_perdi = "";
+    dig_perdi = 0;
+    &sw_inf = 0;
+    &cantidad = 0;
+    &variable = "";
+    &canti = 0;
+    &doh = "";
+    mes_fin = 0;
+    descar = 0;
+    traraf = 0;
+    nume1 = 0;
+    informe = "";
+    alfa1 = "";
+   &r_emp = 0;
+   &r_per = 0;
+   &anu1 = 0;
+   &anu  =0;
+   dos = 0;
+   acumula = 0;
+   acumul2 = 0;
+   &cta = "";
+   &nom = "";
+   &canti2 = 0;
+   &cantidad2 = 0;
+   e1 = 0;
+   e2 = 0;
+   e3 = 0;
+   e4 = 0;
+   act_cuent = "";
+   alfa2 = "";
+   alfa3 = "";
+   tracan5 = 0;
+       &d_mes = 0;
+       &h_mes = 0;
+       &estru = 0;
+       &r_eje = 0;
+       &r_nom = "";
+   nom1 = "";
+   &aparam = "";
+   sw_exp = 0;
+   descn = 0;
+   swexis = 0;
+
+   Comodin = "";
+
+   nDEstru = 0;
+   nHEstru = 0;
+   d_cuen  = "";
+   h_cuen  = "";
+   d_digi  = 0;
+   h_digi  = 0;
+  &eaFicbal = "";
+  &eaNomSes = "";
+  &enNumSes = 0;
+  &eaDepSes = "";
+  &eaDesDep = "";
+  &enMasDep = 0;
+  nswPrim  = 0;
+  nSwError = 0;
+  nSwPrint = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE digito_i;
+|INCLUYE dsmone_i;
+
+|PROCESO antesque;
+  aparam = PARAMETRO; |QBF aparam;
+  |SI aparam = "fech";
+      |HAZ AntesSesion;
+      |NOME_DAT #1 eaFicbal;
+  |FINSI;
+|FPRC;
+
+|PROCESO PintoSes; |TIPO 7;
+  aparam = PARAMETRO; |QBF aparam;
+  |SI aparam = "fech";
+      |HAZ AntesSesion;
+      |SI eaNomSes > "";
+          |ATRI I; |PINTA 0505, "SESION: "; |PINTA 0513,eaNomSes;
+          |SI eaDepSes > "";
+              |PINTA 0558, "Departamento: "; |PINTA 0572, eaDepSes;
+          |FINSI;
+          |ATRI 0;
+      |FINSI;
+  |FINSI;
+|FPRC;
+|| ========================================================================
+||                        CALCULOS PANTALLA
+|| ========================================================================
+
+|PROCESO mayor;
+  alfa1 = #0Campo > " ";
+  #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO mayor1;
+  |HAZ mayor;
+  |SI #0Campo = "N";
+      #0#14 = empre;
+      #0#15 = ejerc;
+      |CAMPO_MODIFICA #0#14,1,"N";
+      |CAMPO_MODIFICA #0#15,1,"N";
+      |PINTA #0#14;
+      |PINTA #0#15;
+  |SINO;
+      |CAMPO_MODIFICA #0#14,1,"S";
+      |CAMPO_MODIFICA #0#15,1,"S";
+  |FINSI;
+|FPRC;
+
+|PROCESO deentrada;  |TIPO 7;
+  |SI #0#14 = 0;  |Y #0#15 = 0;
+      #0#14 = empre;
+      #0#15 = ejerc - 1;
+      |SI #0#15 < 0; #0#15 = 9; |FINSI;
+      |PINTA #0#14;
+      |PINTA #0#15;
+  |FINSI;
+|FPRC;
+
+|PROCESO esbuena;
+  |SI FSalida = 9;  |ACABA;  |FINSI;
+  |ABRE #30;
+  #30#2 = #0#14;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #0#14;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+|PROCESO consulta;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+  |CIERRAT #30;
+  r_emp = 0;
+  |SUB_EJECUTA "caconemp";
+  |ABRET #30;
+  |ERROR;
+      #0#14 = r_emp;
+      #0#15 = r_per;
+      |PTEC 802;
+      |PTEC 802;
+|FPRC;
+
+|PROCESO esbuena1;
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |ABRE #30;
+  #30#2 = #0#14;
+  #30#3 = #0#15;
+  |LEE 011#30=;
+  |SI FSalida ! 0;
+      |MENAV "     NO Existe Periodo en la empresa Contable";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI #30#13 ! dig3;  |O #30#14 ! dig4;  |O #30#15 ! dig5;
+                      |O #30#16 ! dig6;  |O #30#17 ! dig7;
+                      |O #30#18 ! dig8;  |O #30#19 ! dig9;
+      |MENAV "     NO CORRESPONDEN LOS NIVELES";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  #0#16 = #30#1;
+  anu1 = 1900 + #30#26;
+  |SI anu1 [ 1970;
+      anu1 = anu1 + 100;
+  |FINSI;
+  |PINTA #0#16;
+  nom1 = #30#1;
+  #30#2 = empre;
+  #30#3 = ejerc;
+  |LEE 011#30=;
+  anu = 1900 + #30#26;
+  |SI anu [ 1970;
+      anu = anu + 100;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+
+|PROCESO pintames; |TIPO 0;
+  varcamp = Campo + 2;                || Coge el campo del nombre del mes
+  |SI #0Campo ! 0; |Y #0Campo ! 13;
+      mes = #30#11 + (#0Campo - 1);   || Operacion para saber que mes es
+      |SI mes > 12; mes = mes - 12; |FINSI;
+  |SINO;
+      mes = #0Campo;
+  |FINSI;
+  |HAZ mesletra;                          || Recoge el mes en letra
+  #0varcamp = letrames;
+  |PINTA #0varcamp;                       || Pinta el nombre del mes
+
+  |SI Campo = 1; |Y  #0#0 > #0#1;
+      |MENAV "    Error de Entrada ...";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO pintames2; |TIPO 0;
+  |SI #0Campo ! 0; |Y #0Campo ! 13;
+      mes = #30#11 + (#0Campo - 1);   || Operacion para saber que mes es
+      |SI mes > 12; mes = mes - 12; |FINSI;
+  |SINO;
+      mes = #0Campo;
+  |FINSI;
+  |HAZ mesletra;
+  |ATRI I;
+  |SI Campo = 7;  |PINTA 1827, letrames;  |FINSI;
+  |SI Campo = 8;  |PINTA 1927, letrames;  |FINSI;
+  |ATRI 0;
+  |SI Campo = 8;  |Y #0#7 > #0#8;
+      |MENAV "    Error de Entrada ...";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO mesletra;
+  |SI mes = 0;  letrames = "Apertura  "; |FINSI;
+  |SI mes = 1;  letrames = "Enero     "; |FINSI;
+  |SI mes = 2;  letrames = "Febrero   "; |FINSI;
+  |SI mes = 3;  letrames = "Marzo     "; |FINSI;
+  |SI mes = 4;  letrames = "Abril     "; |FINSI;
+  |SI mes = 5;  letrames = "Mayo      "; |FINSI;
+  |SI mes = 6;  letrames = "Junio     "; |FINSI;
+  |SI mes = 7;  letrames = "Julio     "; |FINSI;
+  |SI mes = 8;  letrames = "Agosto    "; |FINSI;
+  |SI mes = 9;  letrames = "Septiembre"; |FINSI;
+  |SI mes = 10; letrames = "Octubre   "; |FINSI;
+  |SI mes = 11; letrames = "Noviembre "; |FINSI;
+  |SI mes = 12; letrames = "Diciembre "; |FINSI;
+  |SI mes = 13; letrames = "Cierre    "; |FINSI;
+|FPRC;
+
+|PROCESO nivel; |TIPO 7;
+  |SI #0#4 = "N";
+      |CAMPO_MODIFICA #0#5,1,"N";
+  |SINO;
+      |CAMPO_MODIFICA #0#5,1,"S";
+  |FINSI;
+|FPRC;
+
+|PROCESO miraniv; |TIPO 0;
+  nivel = #0#5;
+  |SI nivel = 1;|Y dig4 = 0;  |AVISO;  |ERROR;  |FINSI;
+  |SI nivel = 2;|Y dig5 = 0;  |AVISO;  |ERROR;  |FINSI;
+  |SI nivel = 3;|Y dig6 = 0;  |AVISO;  |ERROR;  |FINSI;
+  |SI nivel = 4;|Y dig7 = 0;  |AVISO;  |ERROR;  |FINSI;
+  |SI nivel = 5;|Y dig8 = 0;  |AVISO;  |ERROR;  |FINSI;
+  |SI nivel = 6;|Y dig9 = 0;  |AVISO;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO estruct; |TIPO 0;
+    |SI #0#6 = 0; |Y aparam = "";
+        |ERROR;
+        |ACABA;
+    |FINSI;
+
+  |SI #0#6 = 0;
+      |SI #0#0 ! 0; |O #0#1 ! 12;
+          |MENAV "    Para informar Estructura 00, seleccione ejercicio completo";
+          |ERROR;
+          |ACABA;
+      |FINSI;
+      |CUADRO 0949 1278;
+      |ATRI S; |PINTA 1051, "Concepto Explotacion "; |ATRI 0;
+      |C_M #0#17,1,"S";
+      |C_V #0#17,1,"S";
+      #0#17 = 1; |PINTA #0#17;
+  |SINO;
+      |PINTA 0949, "                              ";
+      |PINTA 1049, "                              ";
+      |PINTA 1149, "                              ";
+      |PINTA 1249, "                              ";
+      |C_M #0#17,1,"N";
+      |C_V #0#17,1,"N";
+      #0#17 = 1;
+  |FINSI;
+
+  |ABRE #6;
+  |SI #0#6 = 0;
+      |LEE 040#6p;
+  |SINO;
+      #6#0 = #0#6;
+      |LEE 040#6=;
+  |FINSI;
+  |SI FSalida ! 0;
+      |MENAV "    No existe la estructura de descarga.";
+      |CIERRA #6;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |CIERRA #6;
+  |HAZ cue_per;
+|FPRC;
+
+|PROCESO cue_per; || calcula la cuenta de perdidas y ganancias
+  cue_perdi = #6#2;
+  dig_perdi = #6#3;
+  |SI #0#4 = "N";  nivel = #6#3;  |FINSI;
+  |SI nivel < #6#3;
+      |SI nivel = 1;  traraf = 100 + dig4;  |FINSI;
+      |SI nivel = 2;  traraf = 100 + dig5;  |FINSI;
+      |SI nivel = 3;  traraf = 100 + dig6;  |FINSI;
+      |SI nivel = 4;  traraf = 100 + dig7;  |FINSI;
+      |SI nivel = 5;  traraf = 100 + dig8;  |FINSI;
+      cue_perdi = #6#2 % traraf;
+      dig_perdi = nivel;
+  |FINSI;
+  cue_perdi = cue_perdi + "            ";
+  cue_perdi = cue_perdi % 112;
+|FPRC;
+
+|PROCESO LeoConcep;
+ |C_M #0#17,0,alfa1;
+ |SI alfa1 = "N"; |ACABA; |FINSI;
+
+ |ABRE #22;
+ #22#0 = #0#17;
+ |LEE 001#22=;
+ |SI FSalida ! 0;
+     |MENAV "    Error. No existe Concepto";
+     |ERROR;
+ |SINO;
+     alfa1 = #22#1; alfa1 = alfa1 % 123;
+     |ATRI I; |PINTA 1155, alfa1; |ATRI 0;
+ |FINSI;
+ |CIERRA #22;
+|FPRC;
+
+|PROCESO conexi;
+
+  nCam1 = empre;
+  nCam2 = ejerc;
+
+  d_mes = #0#7;
+  h_mes = #0#8;
+  estru = #0#6;
+  r_emp = empre;
+  r_per = ejerc;
+  r_eje = #30#26;
+  r_nom = #30#1;
+  Ejercicio = #30#26 + 1900;
+  |SI Ejercicio < 1980;
+      Ejercicio = #30#26 + 2000;
+  |FINSI;
+
+  |SI #0#6 = 0; |ACABA; |FINSI;
+  |SUB_EJECUTA "caexicon.run";
+
+  |SI #0#13 = "N"; |ACABA; |FINSI;
+  r_emp = #0#14;
+  r_per = #0#15;
+  r_eje = anu1 - 2000; |SI r_eje < 0; r_eje = anu1 - 1900; |FINSI;
+  r_nom = nom1;
+  |SUB_EJECUTA "caexicon.run";
+  empre = nCam1;
+  ejerc = nCam2;
+
+  eaMoneda = aMonedaA; |HAZ MonedasI;
+|FPRC;
+
+|| ***************************************************************************
+|| *********************  GRABACION DE TEMPORALES Y CALCULOS *****************
+|| ***************************************************************************
+
+|PROCESO miracuen;
+  |SI #4#1 = #1#0; |Y #4#2 = #1#1;        || existencias
+       swexis = 1;
+       cantidad = cantidad + #4#5;    ||este rem para  sume existencias
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE cabasitu3;
+ #4#1;
+ ;
+ nDEstru, 001;
+ nHEstru, 999;
+ e;
+ NULL, miracuen;
+|FIN;
+
+|PROCESO cuentas;
+  |HAZ digitos2;
+  |SI d_error ! 0;  |ACABA;  |FINSI;
+  sw_inf = 6;
+  |SI #0#4 = "N"; |Y #1#3 = "N";                     |ACABA;  |FINSI;
+  |SI #0#4 = "S"; |Y #1#55 > nivel;                  |ACABA;  |FINSI;
+  |SI #0#4 = "S"; |Y #1#3 = "N";  |Y #1#55 ! nivel;  |ACABA;  |FINSI;
+  cantidad  = 0;
+  cantidad2 = 0;
+  alfa1 = #1#0 % 101;
+  swexis = 0;
+  |SI alfa1 = "3";  |BUCLE cabasitu3; |FINSI;              || ES DE EXISTENCIAS;
+  |SI #0#6 = 0;
+      alfa1 = #1#0; alfa1 = alfa1 % 103;
+      |SI alfa1 = "129"; |ACABA; |FINSI;
+  |FINSI;
+  |SI swexis = 0;
+      |HAZ recuenta;
+      |SI cue_perdi = #1#0; |Y dig_perdi = #1#1;
+          cantidad  = expl1 + cantidad;
+          cantidad2 = explo + cantidad2;
+      |FINSI;
+  |FINSI;
+  cantidad = cantidad ! EURODB;
+  |SI cantidad ! 0;
+      |PRINT;
+  |FINSI;
+|FPRC;
+
+|PROCESO cuenta1;
+  sw_inf = 6;
+  cantidad = 0;
+  cantidad2 = 0;
+      cta = #5#5;  #1#0 = #5#5;
+      nom = #5#7;  #1#2 = #5#7;
+      cantidad  = #5#11 ! EURODB;
+      cantidad2 = #5#12 ! EURODB;
+  |SI cantidad ! 0;|O cantidad2 ! 0;
+      |PRINT;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE cabasitu4;
+ #1#4;
+ ;
+ #3#0, #3#1, #3#2, #3#3, #3#4;
+ #3#0, #3#1, #3#2, #3#3, #3#4;
+ e;
+ NULL, NULL, NULL, NULL, NULL, cuentas;
+ #1#0, #1#1;
+|FIN;
+
+|DEFBUCLE cabasitu5;
+ #5#1;
+ ;
+ #3#0, #3#1, #3#2, #3#3, #3#4, "            ", 0;
+ #3#0, #3#1, #3#2, #3#3, #3#4, "zzzzzzzzzzzz", 9;
+ e;
+ NULL, NULL, NULL, NULL, NULL, cuenta1;
+ #5#5, #5#6;
+|FIN;
+
+|PROCESO calculit;
+  |HAZ digitos2;
+  |SI d_error ! 0;  |ACABA;  |FINSI;
+  |SI #0#4 = "N";  |Y #1#3 = "N";                     |ACABA;  |FINSI;
+  |SI #0#4 = "S";  |Y #1#55 > nivel;                  |ACABA;  |FINSI;
+  |SI #0#4 = "S";  |Y #1#3 = "N";  |Y #1#55 ! nivel;  |ACABA;  |FINSI;
+
+  act_cuent = #1#0 % 101;
+  swexis = 0;
+  |SI act_cuent = "3"; |BUCLE cabasitu3; |FINSI;
+
+  |SI swexis = 0;  |HAZ grabatra; |FINSI;
+
+  |SI #0#13 = "N"; |ACABA; |FINSI;
+  |SI #0#4 = "N"; |ACABA; |FINSI;
+
+  |SI #0#6 ! 0; |Y #1#0 = cue_perdi;
+      |ACABA;
+  |FINSI;
+  |SI #0#6 = 0;
+      alfa1 = #1#0; alfa1 = alfa1 % 103;
+      |SI alfa1 = "129"; |ACABA; |FINSI;
+  |FINSI;
+
+  act_cuent = #1#0 % 101;
+  swexis = 0;
+
+  |SI act_cuent = "3"; |BUCLE cabasitu3; |FINSI;
+  |SI swexis = 0;
+      |HAZ grabatr4;
+  |FINSI;
+|FPRC;
+
+|PROCESO grabatra;            || resto de cuentas
+  #3#0 = #1#5;
+  #3#1 = #1#4;
+  #3#2 = #1#6;
+  #3#3 = #1#7;
+  #3#4 = #1#8;
+  |LEE 101#3=;
+  FEstado = FSalida;
+  |SI FEstado ! 0;
+      |DDEFECTO #3;
+      #3#0 = #1#5;
+      #3#1 = #1#4;
+      #3#2 = #1#6;
+      #3#3 = #1#7;
+      #3#4 = #1#8;
+      |HAZ leexplot;
+      #3#5 = #2#2;
+      #3#6 = #2#4;
+      #3#7 = #2#6;
+  |FINSI;
+  alfa1 = #1#0 % 101;
+||  |SI #3#9 = 1; |Y alfa1 = "3";  |LIBERA #3;  |ACABA;  |FINSI;
+  |HAZ calsitua;
+      |SI FEstado = 0;
+          |GRABA 020#3a;
+      |SINO;
+          |GRABA 020#3n;
+      |FINSI;
+  |LIBERA #3;
+|FPRC;
+
+|PROCESO grabatr1;            || existencias al exp0
+
+  |DDEFECTO #1;
+  #1#0 = #4#1;
+  #1#1 = #4#2;
+  |LEE 001#1=;           || lee cta. existencias
+  |SI FSalida ! 0;  |CIERRA #1; |ACABA;  |FINSI;
+  #3#0 = #1#5;
+  #3#1 = #1#4;
+  #3#2 = #1#6;
+  #3#3 = #1#7;
+  #3#4 = #1#8;
+  |LEE 101#3=;
+  FEstado = FSalida;
+  |SI FEstado ! 0;
+      |DDEFECTO #3;
+      #3#0 = #1#5;
+      #3#1 = #1#4;
+      #3#2 = #1#6;
+      #3#3 = #1#7;
+      #3#4 = #1#8;
+      |HAZ leexplot;
+      #3#5 = #2#2;
+      #3#6 = #2#4;
+      #3#7 = #2#6;
+  |FINSI;
+  |SI #1#5 = "P"; #4e2 = - #4e2; |FINSI; || (cambio signo)
+
+  #3acumula = #3acumula + #4e2;
+  |SI #1#5 = "A";
+      activo = activo + #4e2;
+  |SINO;
+      pasivo = pasivo + #4e2;
+  |FINSI;
+  #3#9 = 1;
+  |SI FEstado = 0; |GRABA 020#3a; |SINO; |GRABA 020#3n; |FINSI;
+  |LIBERA #3;
+|FPRC;
+
+|PROCESO grabatr3;       || perdidas y ganacias
+  #1#0 = cue_perdi;
+  #1#1 = dig_perdi;
+  |LEE 040#1=;
+  |SI FSalida ! 0;  |CIERRA #1;  |ACABA;  |FINSI;
+  #3#0 = #1#5;
+  #3#1 = #1#4;
+  #3#2 = #1#6;
+  #3#3 = #1#7;
+  #3#4 = #1#8;
+  |LEE 101#3=;
+  FEstado = FSalida;
+  |SI FEstado ! 0;
+      |DDEFECTO #3;
+      #3#0 = #1#5;
+      #3#1 = #1#4;
+      #3#2 = #1#6;
+      #3#3 = #1#7;
+      #3#4 = #1#8;
+      |HAZ leexplot;
+      #3#5 = #2#2;
+      #3#6 = #2#4;
+      #3#7 = #2#6;
+  |FINSI;
+  #3acumula = explo;
+  |SI #1#5 = "A";
+      activo = activo + explo;
+  |SINO;
+      pasivo = pasivo + explo;
+  |FINSI;
+  #3#9 = 1;
+||  |SI #3#8 ! 0; |O #3#10 ! 0;
+     |SI FEstado = 0; |GRABA 020#3a; |SINO; |GRABA 020#3n; |FINSI;
+||  |FINSI;
+  |LIBERA #3;
+|FPRC;
+
+|PROCESO grabatr2; || graba cuenta de EXISTENCIAS y perdidas trabajo exp2
+      |HAZ cargatra;
+      #5acumul2 = #5acumul2 + tracan5;
+      |GRABA 020#5a;
+      |LIBERA #5;
+|FPRC;
+
+|PROCESO grabatr4; || graba cuenta de trabajo exp2
+      |HAZ cargatra;
+      |SI #1#5 = "A";
+          |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+                impMoneda = #1x;
+                |SI aMonedaC ! aMonedaA; |Y dos = 2;
+                    |HAZ ElCMoneda;
+                |FINSI;
+                #5acumul2 = #5acumul2 + impMoneda;
+          |SIGUE;
+      |SINO;
+          |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+                impMoneda = #1x;
+                |SI aMonedaC ! aMonedaA; |Y dos = 2;
+                    |HAZ ElCMoneda;
+                |FINSI;
+                #5acumul2 = #5acumul2 + (impMoneda * -1);
+           |SIGUE;
+      |FINSI;
+      |GRABA 020#5a;
+      |LIBERA #5;
+|FPRC;
+
+|PROCESO cargatra;
+  #5#0 = #1#5;
+  #5#1 = #1#4;
+  #5#2 = #1#6;
+  #5#3 = #1#7;
+  #5#4 = #1#8;
+  |HAZ acortacuen;
+  #5#5 = #1#0;
+  #5#6 = #1#1;
+  #5#7 = #1#2;
+  |LEE 001#5=;
+  |SI FSalida ! 0;
+      |DDEFECTO #5;
+      #5#0 = #1#5;
+      #5#1 = #1#4;
+      #5#2 = #1#6;
+      #5#3 = #1#7;
+      #5#4 = #1#8;
+      |HAZ acortacuen;
+      #5#5 = #1#0;
+      #5#6 = #1#1;
+      #5#7 = #1#2;
+      #5#11 = 0;
+      #5#12 = 0;
+      |GRABA 020#5b;
+  |FINSI;
+ |DDEFECTO #2;
+  #2#0 = #1#5;
+  #2#1 = #1#6;
+  #2#3 = #1#7;
+  #2#5 = #1#8;
+  |LEE 000#2=;
+  |SI FSalida ! 0;
+      #2#2 = "";
+      #2#4 = "";
+      #2#6 = "";
+  |FINSI;
+  #5#8 = #2#2;
+  #5#9 = #2#4;
+  #5#10 = #2#6;
+|FPRC;
+
+|PROCESO acortacuen;
+  |SI nivel < #1#1;
+      |SI nivel = 1;  traraf = 100 + dig4;  |FINSI;
+      |SI nivel = 2;  traraf = 100 + dig5;  |FINSI;
+      |SI nivel = 3;  traraf = 100 + dig6;  |FINSI;
+      |SI nivel = 4;  traraf = 100 + dig7;  |FINSI;
+      |SI nivel = 5;  traraf = 100 + dig8;  |FINSI;
+      #1#0 = #1#0 % traraf;
+      #1#1 = #0#5;
+      #1#0 = #1#0 + "              ";
+      #1#0 = #1#0 % 112;
+  |FINSI;
+|FPRC;
+
+|PROCESO ver_exp;
+ |SI #4e3 = #1#0; |Y #4e4 = #1#1;
+     sw_exp = 1;
+       descar = (#4e1-#4e2);
+       |SI #1#5 = "H"; descar = -descar; |FINSI;
+       descn = descn + descar;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE cabasitu9;
+ #4#1;
+ ;
+ nDEstru, 001;
+ nHEstru, 999;
+ e;
+ NULL, ver_exp;
+|FIN;
+
+|PROCESO calexpl01;
+  |HAZ digitos2;
+  |SI d_error ! 0;  |ACABA;  |FINSI;
+  sw_exp = 0;
+  descn  = 0;
+  |BUCLE cabasitu9;
+  |SI sw_exp = 1
+      |SI #1#5 = "D";
+          |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+               impMoneda = #1x;
+               |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+               debe1 = debe1 - impMoneda;
+          |SIGUE;
+          debe1 = debe1 + descn;
+      |SINO;
+          |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+               impMoneda = #1x;
+               |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+                haber1 = haber1 - (impMoneda * -1);
+          |SIGUE;
+          haber1 = haber1 + descn;
+    |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE calexpl0;
+ #1#4;
+ 3;
+ "D", 1, 01, 00, 00,"S";
+ "H", 4, 99, 99, 99,"S";
+ e;
+ NULL,calexpl01;
+|FIN;
+
+|PROCESO calexplo1;
+  |HAZ digitos2;
+  |SI d_error ! 0;  |ACABA;  |FINSI;
+  |SI #1#5 = "D";
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+           impMoneda = #1x;
+           |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+            debe1 = debe1 + impMoneda;
+      |SIGUE;
+  |SINO;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+           impMoneda = #1x;
+           |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+            haber1 = haber1 + (impMoneda * -1);
+      |SIGUE;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE calexplo;
+ #1#4;
+ 3;
+ "D", 1, 01, 00, 00,"S";
+ "H", 4, 99, 99, 99,"S";
+ e;
+ NULL,calexplo1;
+|FIN;
+
+|PROCESO explota;
+  |BUCLE calexpl0;
+  |BUCLE calexplo;
+  canti = haber1 - debe1;
+  explo = canti;
+  |ABRE #1;
+  |HAZ grabatr3;
+  |CIERRA #1;
+
+  |SI #0#13 = "S"; |Y #0#4 = "S";
+      |SI #0#6 ! 0;
+          #1#0 = cue_perdi;
+          #1#1 = dig_perdi;
+          |LEE 001#1=;           || lee cta. Perdidas y Ganancias
+          tracan5 = canti;
+             |SI #1#5 = "A";
+                 |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+                      impMoneda = #1x;
+                      |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+                      tracan5 = tracan5 + impMoneda;
+                 |SIGUE;
+             |FINSI;
+             |SI #1#5 = "P";
+                 |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+                      impMoneda = #1x;
+                      |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+                       tracan5 = tracan5 + (impMoneda * -1);
+                 |SIGUE;
+             |FINSI;
+             |HAZ grabatr2;
+      |SINO;
+            |HAZ TodasLas129;
+      |FINSI;
+  |SINO;
+      |SI #0#4 = "S"; |Y #0#6 = 0;
+          |HAZ TodasLas129;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|| *************************************************************************
+|PROCESO AstoExplota;
+ |SI #23#8 = "D";
+     tracan5 = tracan5 + #23#9;
+ |SINO;
+     tracan5 = tracan5 - #23#9;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE AstoExplota;
+ #23#3;
+ 6;
+ #1#0, #1#1, "01.01.0000", 000001, #0#17;
+ #1#0, #1#1, "31.12.2999", 999999, #0#17;
+ e;
+ NULL, AstoExplota;
+|FIN;
+
+|PROCESO grabar129;
+ tracan5 = 0;
+ |BUCLE AstoExplota;
+ |SI #1#5 = "P";
+     tracan5 = - tracan5;
+ |FINSI;
+ |SI tracan5 ! 0;
+     |HAZ grabatr2;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE grabar129;
+ #1#1;
+ 3;
+ d_cuen, d_digi, "S";
+ h_cuen, h_digi, "S";
+ e;
+ NULL, grabar129;
+|FIN;
+
+|PROCESO TodasLas129;
+ d_cuen  = "129         "; d_digi = 0;
+ h_cuen  = "129zzzzzzzzz"; h_digi = 9;
+ |BUCLE grabar129;
+|FPRC;
+
+|| *************************************************************************
+
+|PROCESO calsitua;    || Calculamos cada cuenta
+  |SI #1#5 = "A";
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #1x;
+            |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+            #3acumula = #3acumula + impMoneda;
+            activo = activo + impMoneda;
+      |SIGUE;
+  |FINSI;
+
+  |SI #1#5 = "P";
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #1x;
+            |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+            #3acumula = #3acumula + (impMoneda * -1);
+            pasivo = pasivo + (impMoneda * -1);
+    |SIGUE;
+  |FINSI;
+|FPRC;
+
+
+|PROCESO leexplot;
+  #2#0 = #3#0;
+  #2#1 = #3#2;
+  #2#3 = #3#3;
+  #2#5 = #3#4;
+  |LEE 040#2=; |SI FSalida ! 0; |DDEFECTO #2; |FINSI;
+|FPRC;
+
+|| ***************************************************************************
+|| *********************  CALCULO DE IMPRESION *******************************
+|| ***************************************************************************
+
+|PROCESO impresio;
+  |SI #3#8 = 0;|Y #3#10 = 0;  |ACABA;  |FINSI;
+  |SI sw = 0;
+      tipo = #3#0;
+      agrupaci = #3#2;
+      epigrafe = #3#3;
+      |SI #3#0 = "A"; doh = "ACTIVO"; |FINSI;
+      |SI #3#0 = "P"; doh = "PASIVO"; |FINSI;
+      |HAZ agrupacion;
+      sw = 1;
+  |FINSI;
+
+  |SI tipo ! #3#0;
+      sw_inf = 5;  |PRINT;  |PRINT;
+      sw_inf = 1;
+      |SI tipo = "A";
+          variable = "                        T O T A L   A C T I V O:";
+          canti = activ1;
+          canti2 = activo;
+      |SINO;
+          variable = "                        T O T A L   P A S I V O:";
+          canti = pasiv1;
+          canti2 = pasivo;
+      |FINSI;
+      |PRINT;
+      doh = "PASIVO";
+      |PIEINF;
+      tipo = #3#0;
+      agrupaci = #3#2;
+      epigrafe = #3#3;
+      |HAZ agrupacion;
+  |FINSI;
+  |HAZ epigraf;
+|FPRC;
+
+|PROCESO epigraf;
+  |SI agrupaci ! #3#2;
+      sw_inf = 5;  |PRINT;       || linea en blanco
+      |HAZ agrupacion;
+      agrupaci = #3#2;
+  |FINSI;
+  |HAZ rotura;
+  sw_epi = 0;
+  epigrafe = #3#3;
+|FPRC;
+
+|PROCESO rotura;
+  |SI epigrafe ! #3#3; |O sw_epi = 1;
+      |SI #3#3 ! 0;
+          sw_inf = 2;  |PRINT;        || epigrafe
+      |FINSI;
+  |FINSI;
+  |HAZ partida;                                       || partida
+  |HAZ detalle;                                       || cuentas
+|FPRC;
+
+|PROCESO agrupacion;
+  sw_epi = 1;                || fuerza la impresion del epigrafe
+  |SI #3#3 = 0;              || epigrafe=0
+      sw_inf = 7;  |PRINT;   || agrupacion (con importe)
+  |SINO;
+      sw_inf = 0;  |PRINT;   || agrupacion (sin importe)
+  |FINSI;
+|FPRC;
+
+|PROCESO partida;        || imprime titulo de partidas
+  |SI #3#4 ! 0;
+      sw_inf = 3;
+      |PRINT;
+  |FINSI;
+|FPRC;
+
+|PROCESO detalle;        || imprime detalle de cuentas
+|SI #0#4 = "S";
+    |SI #0#13 = "N";
+        |BUCLE cabasitu4;
+        |SI #0#6 = 0; |BUCLE cabasitu5; |FINSI;
+    |SINO;
+        |BUCLE cabasitu5;
+    |FINSI;
+    sw_inf=5;
+    |PRINT;
+|FINSI;
+|FPRC;
+
+|PROCESO recuenta;    || Calculamos cada cuenta
+  |SI #1#5 = "A";
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #1x;
+            |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+            cantidad = cantidad + impMoneda;
+      |SIGUE;
+  |SINO;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #1x;
+            |SI aMonedaA ! aMonedaC; |Y dos = 2; |HAZ ElCMoneda; |FINSI;
+            cantidad = cantidad + (impMoneda * -1);
+      |SIGUE;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE cabasitu0;
+ #1#1;
+5,4,6,7,8;
+"            ", 0, "A", 0, 01, 00, 00;
+"zzzzzzzzzzzz", 9, "P", 0, 99, 99, 99;
+ e;
+ NULL,calculit;
+|FIN;
+
+|DEFBUCLE cabasitu1;
+ #3#1;
+ ;
+ "A", 0, 01, 00, 00;
+ "P", 0, 99, 99, 99;
+ e;
+ NULL,impresio;
+|FIN;
+
+|PROCESO Borrar;
+    activo = 0;
+    pasivo = 0;
+    activ1 = 0;
+    pasiv1 = 0;
+    explo = 0;
+    expl1 = 0;
+    debe1 = 0;
+    haber1 = 0;
+    sw = 0;
+    agrupaci = 0;
+    epigrafe = 0;
+    sw_epi = 0;
+|FPRC;
+
+|PROCESO HagoTodo;
+  |HAZ Borrar;
+  eldesde = (#0#0 * 3) + 11;
+  elhasta = (#0#1 * 3) + 11;
+
+  nDEstru = #0#6; nHEstru = #0#6;
+  |SI #0#6 = 0; nDEstru = 01; nHEstru = 99; |FINSI;
+
+|PARA dos = 1; |SI dos [ 2; |HACIENDO dos = dos + 1;
+      acumula = 8;
+      acumul2 = 11;
+      e1 = 4;
+      e2 = 5;
+      e3 = 6;
+      e4 = 7;
+      |SI dos = 2; |Y #0#13 = "N";
+        activ1 = activo;
+        pasiv1 = pasivo;
+        expl1 = explo;
+        |SAL;
+      |FINSI;
+      |SI dos = 2;
+          activ1 = activo;
+          pasiv1 = pasivo;
+          expl1 = explo;
+          activo = 0;
+          pasivo = 0;
+          explo = 0;
+          debe1 = 0;
+          haber1 = 0;
+          acumula = 10;
+          acumul2 = 12;
+          e1 =  9;
+          e2 = 10;
+          e3 = 11;
+          e4 = 12;
+          |DBASE dir_fich;
+          dir_fich = dir_fich + "fich/";
+          alfa1 = #0#14;   alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+          alfa2 = #0#15;   alfa2 = "0"   + alfa2;   alfa2 = alfa2 % -101;
+          alfa3 = dir_fich + alfa1 + alfa2 + "/";
+          |PATH_DAT #1 alfa3;
+          |PATH_DAT #2 alfa3;
+          |PATH_DAT #6 alfa3;
+          |PATH_DAT #7 alfa3;
+          |PATH_DAT #8 alfa3;
+          |PATH_DAT #23 alfa3;
+          |ABRE #30;
+          #30#2 = #0#14;
+          #30#3 = #0#15;
+          |LEE 011#30=;
+          |CIERRA #30;
+          enEmpresa = #0#14;
+          enPeriodo = #0#15;
+          |HAZ LeeMonedaI;
+          aMonedaC = eaMoneda;
+          |SI aMonedaA = "E"; EURODB = 2; |FINSI;
+     |FINSI;
+
+  |ABRE #8;
+  |LEE 111#8p;
+  |SI #8#2 = "S";  |Y #8#3 = "N";  |Y aparam = "";
+      |SI dos = 2;
+          pathbal = alfa3;
+      |SINO;
+          |DFICE pathbal;
+      |FINSI;
+      balance = 1;
+      |CIERRA #8;
+      |SUB_EJECUTA "careccue.tab";
+  |FINSI;
+  |CIERRA #8;
+
+||... Modificar Cuentas a balance segun saldo
+  |SI dos = 1;
+      r_emp = empre;
+      r_per = ejerc;
+  |SINO;
+      r_emp = #0#14;
+      r_per = #0#15;
+  |FINSI;
+  |SI aparam = ""; |SUB_EJECUTA "carecsig.run"; |FINSI;
+|| ---------------------------------------------------------------------
+  |SI aMonedaA = "E"; EURODB = 2; |FINSI;
+
+  |ABRET #1;
+  |ABRE #2;
+  |ABRE #3;
+  |ABRET #4;
+  |ABRE #5;
+  |ABRE #6;
+  |ABRET #7;
+  |HAZ pidepan;         || calcula existencias y graba
+  |CIERRA #6;
+  |CIERRAT #7;
+
+  |HAZ explota;         || calcula la explotacion
+  |BUCLE cabasitu0;     || calcula resto de cuentas
+  |CIERRA #2;
+  |CIERRA #3;
+  |CIERRAT #4;
+  |CIERRAT #1;
+  |CIERRA #5; || si pide comparara y con cuentas cerramos
+|SIGUE; || ==================================================================
+
+          |ABRE #30;
+          #30#2 = empre;
+          #30#3 = ejerc;
+          |LEE 011#30=;
+          |CIERRA #30;
+          eaMoneda = aMonedaA; |HAZ MonedasI;
+
+  |ABRET #1;
+  |ABRET #2;
+  |ABRET #3;
+  |ABRET #4;
+        sw = 0;
+        |ABRET #5;
+        |BUCLE cabasitu1;
+        |HAZ final;
+  |CIERRAT #1;
+  |CIERRAT #2;
+  |CIERRAT #3;
+  |CIERRAT #4;
+  |CIERRAT #5;
+  |PIEINF;
+
+
+  |DELINDEX #3;
+  |DELINDEX #4;
+  |DELINDEX #5;
+|FPRC;
+
+|PROCESO PorSesiones;
+   eaDepSes = #110#1;
+   eaDesDep = #110#7;
+
+   alfa1 = #110#6; |QBF alfa1;
+   |SI alfa1 ! "";
+       eaFicbal  = alfa1;
+       |NOME_DAT #1 eaFicbal;
+       |HAZ HagoTodo;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE PorSesiones;
+ #110#1;
+ ;
+ enNumSes, "  ";
+ enNumSes, "zz";
+ ;
+ NULL, PorSesiones;
+|FIN;
+
+|PROCESO impre; |TIPO 3;
+
+  aMonedaA = eaMoneda;
+  |SI #0#13 = "N"; aMonedaC = aMonedaA; |FINSI;
+  |HAZ antesque;
+  |HAZ conexi;
+
+  aFichero = ("3b" + Usuario) % 108;
+  |NOME_DAT #3 aFichero;
+  aFichero = ("4b" + Usuario) % 108;
+  |NOME_DAT #4 aFichero;
+  aFichero = ("5b" + Usuario) % 108;
+  |NOME_DAT #5 aFichero;
+
+  |ABRE #3; |CIERRA #3; |DELINDEX #3;
+  |ABRE #4; |CIERRA #4; |DELINDEX #4;
+  |ABRE #5; |CIERRA #5; |DELINDEX #5;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |HAZ los_informes;
+  |SI #0#13 = "N";
+      informe = que_i1;
+  |SINO;
+      informe = que_i2;
+  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0;
+      |MENAV "     Error en informe.";
+      |FINIMP;
+      |ACABA;
+  |FINSI;
+
+    |SI enMasDep = 0;
+        |HAZ HagoTodo;
+    |SINO;
+        |BUCLE PorSesiones;
+        eaDepSes = "TODOS";
+    |FINSI;
+    |FININF;
+    |FINIMP;
+|FPRC;
+
+|PROCESO final;
+  sw_inf = 5; |PRINT; |PRINT;
+  sw_inf = 1;
+  |SI tipo = "A";
+      variable = "                        T O T A L   A C T I V O:";
+      canti  = activ1;
+      canti2 = activo;
+      doh = "PASIVO";
+  |SINO;
+      variable = "                        T O T A L   P A S I V O:";
+      canti  = pasiv1;
+      canti2 = pasivo;
+  |FINSI;
+  |PRINT;
+|FPRC;
+
+|| ......................................................................
+|PROCESO descarg;
+  |HAZ digitos2;
+  |SI d_error ! 0;  |ACABA;  |FINSI;
+  linea = linea + 1;
+  #4#0 = linea;
+  #4#8 = #0#6;
+  |LEE 001#4=;
+  |SI FSalida = 0;  |BORRA 020#4a;  |FINSI;
+  |DDEFECTO #4;
+  #4#0 = linea;    || linea
+  #4#8 = #0#6;     || estructura
+  #4#1 = #1#0;     || cuenta
+  #4#2 = #1#1;     || digito
+  #4#3 = #1#2;     || descripcion
+
+  mes_fin = #0#7 + 11;  || mes iniciales
+ #4e1 = #7mes_fin;    || exist. iniciales
+  mes_fin = #0#8 + 11;  || mes finales
+ #4e2 = #7mes_fin;    || exist. finales
+
+  tracan5 = #7mes_fin;
+  |SI #1#5 = "P"; tracan5 = -tracan5; |FINSI; || (cambio signo)
+
+  |SI aMonedaC ! aMonedaA; |Y dos = 2;
+      impMoneda = #4e1;    |HAZ ElCMoneda; #4e1 = impMoneda;
+      impMoneda = #4e2;    |HAZ ElCMoneda; #4e2 = impMoneda;
+      impMoneda = tracan5; |HAZ ElCMoneda; tracan5 = impMoneda;
+  |FINSI;
+
+  descar = #4e1 - #4e2; || ... iniciales - finales
+  |SI descar ] 0;
+      #4e3 = #7#5;     || cuenta descarga D
+      #4e4 = #7#6;     || digito descarga D
+  |SINO;
+      #4e3 = #7#8;     || cuenta descarga H
+      #4e4 = #7#9;     || digito descarga H
+  |FINSI;
+  |SI #0#4 = "N";  nivel = #1#1;  |FINSI;
+  |SI nivel < #1#1;
+      |SI nivel = 1;  traraf = 100 + dig4;  |FINSI;
+      |SI nivel = 2;  traraf = 100 + dig5;  |FINSI; || trata cta. existencias
+      |SI nivel = 3;  traraf = 100 + dig6;  |FINSI;
+      |SI nivel = 4;  traraf = 100 + dig7;  |FINSI;
+      |SI nivel = 5;  traraf = 100 + dig8;  |FINSI;
+      #4#1 = #4#1 % traraf;
+      #4#2 = nivel;
+      #4#1 = #4#1 + "              ";
+      #4#1 = #4#1 % 112;
+  |FINSI;
+  |GRABA 020#4n;
+  |SI #0#13 = "S"; |Y #0#4 = "S"; |HAZ grabatr2; |FINSI;
+  |HAZ grabatr1;
+|FPRC;
+
+|PROCESO lineades;
+  #1#0 = #7#2;
+  #1#1 = #7#3;
+  |LEE 000#1=;
+  |SI FSalida = 0;
+      |HAZ descarg;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE LeeDescarga;
+ #7#1;
+ ;
+ nDEstru, 01;
+ nHEstru, 99;
+ ;
+ NULL, lineades;
+|FIN;
+
+|PROCESO pidepan;
+  posici = 100;
+              || linea = 0; -- no borra la linea para continuar con la 2¦ emp.
+  |SI #0#6 ! 0;
+      #6#0 = #0#6;
+      |LEE 001#6=;
+      |HAZ cue_per;
+      |BUCLELIN 2lineades#6;
+  |SINO;
+      || cue_perdi = "129";
+      |BUCLE LeeDescarga;
+  |FINSI;
+|FPRC;
+|| ......................................................................
+
+
+|PROCESO Empresas;
+   #48#2 = #cabucem1#0;
+   #48#3 = #cabucem1#1;
+   |LEE 000#48=;
+   |SI FSalida = 0;
+      |DBASE fich_alta; |QBF fich_alta;
+      fich_alta = fich_alta + "fich/" + (("00000" + #cabucem1#0) % -105) + #cabucem1#1 + "/";
+      |PATH_DAT #0 fich_alta; |PATH_DAT #1 fich_alta;
+      |PATH_DAT #2 fich_alta; |PATH_DAT #3 fich_alta;
+      |PATH_DAT #4 fich_alta; |PATH_DAT #5 fich_alta;
+      |PATH_DAT #6 fich_alta; |PATH_DAT #7 fich_alta;
+      |PATH_DAT #8 fich_alta; |PATH_DAT #23 fich_alta;
+      |HAZ inicio;
+      aMonedaA = eaMoneda;
+      |SI #0#13 = "N"; aMonedaC = aMonedaA; |FINSI;
+      |HAZ impre;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Empresas;
+#cabucem1#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Empresas;
+|FIN;
+
+|PROGRAMA;
+   aparam = PARAMETRO; |QBF aparam;
+
+   |SI aparam = ""; |O aparam = "fech";
+      |HAZ inicio;
+      enEjer = #30#26 + 2000;
+      |SI #30#26 ] 80;
+          enEjer = #30#26 + 1900;
+      |FINSI;
+      |CLS;
+      |CABEZA "Balance de Situacion";
+      |PINPA #0#0; |PINDA #0#0;
+      |ENDATOS #1#0;
+      |SI FSalida = 0;
+          |HAZ impre;
+      |FINSI;
+   |SINO;
+      |ABRE #48; |BUCLE Empresas; |CIERRA #48;
+   |FINSI;
+|FPRO;

@@ -1,0 +1,133 @@
+|FICHEROS;
+   dscam071 #0;
+   dscam070 #1;
+
+   Tempo001@ #100;
+|FIN;
+
+|VARIABLES;
+   Salir = 0; Tecla = "";
+   DesdeFecha = ""; HastaFecha = "";
+   DesdeTipo  = ""; HastaTipo  = "";
+   DesdeNum   = ""; HastaNum   = "";
+
+   Comodin = "";
+   aAlfa = "";
+|FIN;
+/*
+|PROCESO inf070;
+   #dscam070#0 = 000000000001;
+   #dscam070#2 = DesdeFecha;
+   #dscam070#5 = DesdeTipo;
+   #dscam070#6 = DesdeNum;
+|FPRC;
+
+|PROCESO sup070;
+   #dscam070#0 = 999999999999;
+   #dscam070#2 = HastaFecha;
+   #dscam070#5 = HastaTipo;
+   #dscam070#6 = HastaNum;
+|FPRC;
+*/
+
+|PROCESO inf070;
+   #Tempo001@#0 = 000000000001;
+   #Tempo001@#2 = "01.01.0000";
+   #Tempo001@#5 = "  ";
+   #Tempo001@#6 = "               ";
+|FPRC;
+
+|PROCESO sup070;
+   #Tempo001@#0 = 999999999999;
+   #Tempo001@#2 = "31.12.9999";
+   #Tempo001@#5 = "zz";
+   #Tempo001@#6 = "zzzzzzzzzzzzzzz";
+|FPRC;
+
+|PROCESO Vacia;
+   |SI FSalida = 10;
+      #dscam071#2 = "00.00.0000"; |PINTA #dscam071#2;
+   |FINSI;
+|FPRC;
+
+|PROCESO Corta;
+   |SI FSalida = 10;
+      |PUSHV 0702 1667;
+      |CUADRO 0702 1667;
+      |BLANCO 0803 1566;
+      |ATRI R;
+      |PINTA 0803, " CB - Cobros        EN - Enlaces        CG - Ctrl.Riesgo Gest. ";
+      |PINTA 0903, " PG - Pagos         AV - Agrup.Ventas   CA - Ctrl.Recibos Cont.";
+      |PINTA 1003, " RE - Remesas       AC - Agrup.Compras  Cg - Ctrl.Recibos Gest.";
+      |PINTA 1103, " PA - Pagares       DV - Div.Ventas     PT - Pag/Tal clientes  ";
+      |PINTA 1203, " TA - Talones       DC - Div.Compras    EA - Entrega a cuenta  ";
+      |PINTA 1303, " CF - Confirme      CC - Cred.& Caucion    - Todos             ";
+      |PINTA 1403, " RI - Riesgo        CR - Clasif.Riesgo                         ";
+      |PINTA 1503, " RC - Asig.Cobrador AP - Actua.Patrones                        ";
+      |ATRI N;
+      |LEETECLA Tecla; |ERROR;
+      |POPV;
+   |SINO;
+      |SI #dscam071#0 = "  ";
+         |C_M #dscam071#1,1,"N";
+      |SINO;
+         |C_M #dscam071#1,1,"S";
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Cuadro;
+   |SI FSalida ! 10; |ACABA; |FINSI;
+
+   |CUADRO 1030 1670;
+   |ATRI R;  |BLANCO 1030 1670;  |ATRI N;
+
+   |LEETECLA Comodin;
+|FPRC;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Auditoria aplicacion";
+
+   |PINPA #0#0; |PINDA #0#0;
+
+   ||ENTLINEAL #1#dscam070,-1,7,20,1,inf070,sup070;
+
+   |ENDATOS #1#dscam071;
+   |SI FSalida = 0;
+      |SI #dscam071#0 = "  ";
+         DesdeTipo = ""; HastaTipo = "zz";
+         DesdeNum  = ""; HastaNum  = "zzzzzzzzzzzzzzzzzzzz";
+      |SINO;
+         DesdeTipo = #dscam071#0; HastaTipo = #dscam071#0;
+         aAlfa = #dscam071#1; |QBF aAlfa;
+         |SI aAlfa = "";
+            DesdeNum  = "                    ";
+            HastaNum  = "zzzzzzzzzzzzzzzzzzzz";
+         |SINO;
+            DesdeNum  = #dscam071#1; HastaNum  = #dscam071#1;
+         |FINSI;
+      |FINSI;
+      |SI #dscam071#2 = "00.00.0000";
+         DesdeFecha = "01.01.1900"; HastaFecha = "31.12.2999";
+      |SINO;
+         DesdeFecha = #dscam071#2; HastaFecha = #dscam071#2;
+      |FINSI;
+      aAlfa = "SELECT * FROM dscam070 INTO Tempo001.def WHERE ";
+      aAlfa = aAlfa + "2 BETWEEN " + DesdeFecha + "," + HastaFecha + " AND ";
+      aAlfa = aAlfa + "5 BETWEEN " + DesdeTipo + ", " + HastaTipo  + " AND ";
+      aAlfa = aAlfa + "6 BETWEEN " + DesdeNum  + ", " + HastaNum;
+      |SQL aAlfa;
+      |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "def/Tempo001.mas";
+      |CARGA_DEF aAlfa, Tempo001@;
+      |SI FSalida = 0;
+         ||ENTLINEAL #1#dscam070,-1,4,20,1,inf070,sup070;
+         |ENTLINEAL #1#Tempo001@,-1,4,20,1,inf070,sup070;
+      |SINO;
+         |MENSA "    No puedo abrir la tabla de auditoria";
+      |FINSI;
+      |DESCARGA_DEF #Tempo001@;
+      |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "def/Tempo001.mas";
+      |FBORRA aAlfa;
+   |FINSI;
+|FPRO;

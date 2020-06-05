@@ -1,0 +1,221 @@
+|FICHEROS;
+     marhu321 #0;
+     marhu322 #1;
+|FIN;
+
+|VARIABLES;
+     &Tempo    = "";
+     aTempo1   = "";
+     aNomUsu   = "Administra";
+     aInforme  = "marhu321";
+
+     &eAlfa    = "";
+ {-1}Menu      = "";
+     Menu1     = "2400";
+     Menu2     = "1";
+     Menu3     = "";
+     Menu4     = "GIPC";
+     Menu5     = " Generar ";
+     Menu6     = " Inicializar ";
+     Menu7     = " Imprimir ";
+     Menu8     = " Cancelar ";
+     aFic      = "";
+     nHandle   = 0;
+     aAlfa     = "";
+     aNom      = "";
+     aClave    = "";
+     aAlf1     = "";
+     aAlf2     = "";
+     aBarra    = "";
+     i         = 0;
+     j         = 0;
+     nConta    = 0;
+     nNume     = 0;
+     aPar      = "";
+     aImpar    = "";
+     nSuma     = 0;
+     nResto    = 0;
+     nDecena   = 0;
+     nDigCtrl  = 0;
+
+     alfa1 = "";
+     alfa2 = "";
+     nume1 = 0;
+     para1 = 0;
+     camuf = 0;
+     camufz = "";
+     clave = "";
+|FIN;
+
+|PROCESO EAN13;
+     nSuma = 0;
+     |PARA j = 1201; |SI j ] 101; |HACIENDO j = j - 200;
+          nNume = j - 100;
+          aImpar = aBarra % j;
+          aPar = aBarra % nNume;
+          nNume = aImpar;
+          nSuma = nSuma + (nNume * 3) + aPar; || Suma Impares*3 + Pares
+     |SIGUE;
+     nResto = (nSuma $ 10) / 10;              || Halla decena superior
+     |SI nResto ! 0;
+          nDecena = ((nSuma/10) - nResto) * 10 + 10;
+     |SINO;
+          nDecena = nSuma;
+     |FINSI;
+     nDigCtrl = nDecena - nSuma;               ||DC = Decena Superior - Suma
+     aBarra = aBarra + nDigCtrl;
+|FPRC;
+
+|PROCESO Genera;
+     |SI #0#3 = 0; #0#3 = 1; |FINSI;
+     |ENCAMPO #3#0;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     nConta = #0#2;
+     |DELINDEX #1;
+     |ABRE #1;
+     |PARA; i = 1; |SI i [ #0#3; |HACIENDO i = i + 1;
+          aAlf1 = #0#1;   aAlf1 = ("0000000" + aAlf1) % -107;
+          aAlf2 = nConta; aAlf2 = ("00000" + aAlf2) % -105;
+          aBarra = aAlf1 + aAlf2;
+          |HAZ EAN13;
+          #1#0 = aBarra;
+          |GRABA 020#1n;
+          nConta = nConta + 1;
+     |SIGUE;
+     |CIERRA #1;
+     |ENTLINEAL #1#1, -1, 4, 22, 0, Min, Max;
+|FPRC;
+
+|PROCESO Imprime1;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE Imprime1;
+     #1#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Imprime1;
+|FIN;
+
+|PROCESO Imprime;
+     |SI nConta = 0;
+          |MENAV "0000Hay que generar primero!!!";
+          |ACABA;
+     |FINSI;
+
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR aInforme;
+          |SI FSalida = 0;
+               |BUCLE Imprime1;
+               #0#2 = nConta;  |PINTA #0#2;
+               |GRABA 020#0a;
+               |PIEINF;
+               |FININF;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+|FPRC;
+
+|PROCESO Desencripta;
+     clave = aClave;
+     camufz = "";
+     |PARA para1 = 1; |SI para1 [ 20; |HACIENDO para1 = para1 + 2;
+          nume1 = (para1 * 100) + 1;           alfa1 = clave % nume1;
+          nume1 = ((para1 + 1) * 100) + 1;     alfa2 = clave % nume1;
+
+          nume1 = &alfa2;
+          nume1 = nume1 - 65;
+
+          camuf = &alfa1;
+          camuf = camuf - 65;
+          camuf = ((camuf * 26) + nume1) / 2;
+
+          camufz = camufz + &camuf;
+     |SIGUE;
+     aClave = camufz;
+|FPRC;
+
+|PROCESO Inicia;
+     |DBASS aFic;
+     aFic = aFic + "dev/usr/ds_sys.psw";
+     |XABRE "U", aFic, nHandle;
+     |SI FSalida = 0;
+          |XLEE nHandle, 250, aAlfa;
+          |PARA; |SI FSalida > 0; |HACIENDO;
+               aNom = aAlfa % 410; |QBF aNom;
+               aClave = aAlfa % 1420;
+               |SI aNom = aNomUsu;
+                    |HAZ Desencripta;
+                    |SAL;
+               |FINSI;
+               |XLEE nHandle, 250, aAlfa;
+          |SIGUE;
+          |XCIERRA nHandle;
+          |SI aNom ! aNomUsu;
+               aAlfa = "0000Usuario [" + aNomUsu + "] no encontrado...";
+               |MENAV aAlfa;
+          |SINO;
+               |PUSHV 0501 2480;
+               aAlfa = "";
+               E_sup = 10;
+               E_inf = "";
+               |ATRI I;
+               |PINTA 2411, "Introduzca la Clave:"
+               |ATRI 0;
+               aAlfa = 2435 ? -1;
+               |POPV;
+               |SI aAlfa ! aClave;
+                    |MENAV "0000Clave Incorrecta...";
+                    |ACABA;
+               |FINSI;
+               |ENCAMPO #1#0;
+               |SI FSalida = 0;
+                    |ENCAMPO #2#0;
+                    |SI FSalida = 0;
+                         |GRABA 020#0a;
+                    |SINO;
+                         |MENAV "0000Anulado...";
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          |MENAV "0000Error al abrir fichero usuarios...";
+     |FINSI;
+|FPRC;
+
+|PROCESO Min;
+     #1#0 = 0;
+|FPRC;
+
+|PROCESO Max;
+     #1#0 = 9999999999999;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ CreaTempo; aTempo1 = Tempo;
+     |NOME_DAT #1 aTempo1; |DELINDEX #1;
+
+     |CLS;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     #0#3 = 0;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENTLINEAL #1#1, 1, 7, 22, 0, Min, Max;
+     |PARA; |SI Menu2 ] 1; |Y Menu2 [ 3; |HACIENDO;
+          |MENU Menu;
+          Menu2 = FSalida;
+          |SI Menu2 = 1; |HAZ Genera; |FINSI;
+          |SI Menu2 = 2; |HAZ Inicia; |FINSI;
+          |SI Menu2 = 3; |HAZ Imprime;|FINSI;
+     |SIGUE;
+     |GRABA 020#0a;
+     |CIERRA #0;
+
+     |DELINDEX #1;  Tempo = aTempo1; |HAZ BoraTempo;
+|FPRO;

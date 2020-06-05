@@ -1,0 +1,166 @@
+|FICHEROS;
+     eoszp013 #0;
+     eosclpre #1;
+     eosclien #2;
+
+     eosaplic #96;
+     :/agicli/def/agicontr #97;
+     eosclipr #98;
+|FIN;
+
+|VARIABLES;
+     PathFich98 = "";
+     PathPan98  = "";
+
+     CEmp       = 0;
+     CNif       = 0;
+     Registro   = 0;
+
+     aNifQbf1   = "";
+     aNifQbf2   = "";
+
+     &eaVarDni  = "";
+     &enCalcCif = 0;
+|FIN;
+
+|INCLUYE i_consul;
+
+|PROCESO letrarel;
+     |SI FSalida = 9;
+         eaVarDni   = #0Campo;
+         enCalcCif  = 1;
+         |HAZ CalculoDNI;
+         #0Campo = eaVarDni;
+         |PINTA #0Campo;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #0Campo;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+
+     aNifQbf1 = #0Campo;   |QBF aNifQbf1;
+     aNifQbf2 = eaVarDni;  |QBF aNifQbf2;
+
+     |SI aNifQbf1 ! aNifQbf2; |Y aNifQbf1 ! "";
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #0Campo = eaVarDni;  |PINTA #0Campo;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO DeDonde; |TIPO 8;
+|ABRE #96;
+|LEE 040#96p;
+|SI FSalida ! 0; |DDEFECTO #96; |FINSI;
+|CIERRA #96;
+
+|DBASS PathFich98;
+|PATH_DAT #97 PathFich98;
+
+|SI #96#11 = 1; |ACABA; |FINSI;
+
+|ABRE #97;
+|LEE 040#97p;
+|SI FSalida ! 0; |CIERRA #97; |ACABA; |FINSI;
+|CIERRA #97;
+
+PathFich98 = #97#8; |QBF PathFich98;
+|SI PathFich98 = "*"; |ACABA; |FINSI;
+PathPan98 = (PathFich98 - "fich/") + "pan/";
+
+|PATH_DAT #98 PathFich98;
+|PATH_PAN #98 PathPan98;
+|FPRC;
+
+|PROCESO ExisteEmpresa; |TIPO 0;
+|SI #0Campo = 0; |ACABA; |FINSI;
+
+|ABRE #2;
+#2#0 = #0Campo;
+|LEE 040#2=;
+|SI FSalida ! 0;
+    |MENAV "     No existe Empresa";
+    |ERROR;
+|FINSI;
+|CIERRA #2;
+|FPRC;
+
+|PROCESO GrabaProveedor;
+|SELECT #3#1;
+#1#0 = #0CEmp;
+#1#2 = 2;
+#1#3 = #0CNif;
+|LEE 040#1=;
+|SI FSalida = 0; |ACABA; |FINSI;
+
+#2#0 = #0CEmp;
+|LEE 040#2=;
+|SI FSalida ! 0; |DDEFECTO #2; |FINSI;
+
+#98#0 = #0CNif;
+|LEE 040#98=;
+|SI FSalida ! 0; |ACABA; |FINSI;
+
+|SELECT #1#1;
+Registro = 1;
+
+|ET Leer;
+    #1#0     = #0CEmp;
+    #1#2     = 2;
+    #1#1     = Registro;
+    |LEE 040#1=;
+    |SI FSalida = 0;
+        Registro = Registro + 1;
+        |SI Registro = 99999; |ACABA; |FINSI;
+        |VETE Leer;
+    |FINSI;
+
+|DDEFECTO #1;
+
+#1#0  = #0CEmp;
+#1#2  = 2;
+#1#1  = Registro;
+#1#3  = #98#0;
+#1#4  = #98#1;
+#1#5  = #98#2;
+#1#6  = #98#3;
+#1#7  = #98#4;
+#1#8  = #98#5;
+#1#9  = #98#6;
+#1#10 = #98#7;
+#1#11 = #98#8;
+#1#12 = #98#9;
+#1#13 = #98#10;
+#1#14 = #98#11;
+#1#15 = #98#12;
+#1#18 = #98#13;
+#1#19 = #2#2;
+
+|GRABA 140#1n;
+|LIBERA #1;
+|FPRC;
+
+
+|PROCESO Tipo3; |TIPO 3;
+|ABRE #2;
+|ABRE #98;
+|ABRE #1;
+
+|PARA CNif = 0; |SI CNif [ 19; |HACIENDO CNif = CNif + 1;
+      |SI #0CNif ! "            ";
+          |PARA CEmp = 20; |SI CEmp [ 39; |HACIENDO CEmp = CEmp + 1;
+                |SI #0CEmp ! 0;
+                    |HAZ GrabaProveedor;
+                |FINSI;
+          |SIGUE;
+      |FINSI;
+|SIGUE;
+
+|CIERRA #2;
+|CIERRA #98;
+|CIERRA #1;
+|FPRC;

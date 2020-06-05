@@ -1,0 +1,369 @@
+||Programa de Ejemplo de excel y correo dsarchi/dpnty001
+
+|FICHEROS;
+    dsmow030;
+    dsmow172;
+    dsmow173;
+|FIN;
+
+|VARIABLES;
+     aBase               = "";
+     nPausa              = 0;
+     aAlfa               = "";
+     aAlfa1              = "";
+     aEjecuta            = "";
+     nLinea              = 0;
+     nXls                = 0;
+     aCol                = "";
+     aIDCampo            = "";
+     nPara1              = 0;
+     nNumCampos          = 0;
+     aNumCampos          = "";
+     aQueQuiero          = "";
+     aDocumento          = "";
+     aIPRemoto           = "";
+     nNume1              = 0;
+
+     aExcel              = "";
+     aTemporal           = "";
+
+     &enError            = 0;
+     &eaPathDoc          = "";
+     &eaPathLocal        = "";
+     &eaAbre             = "";
+     &enHandle           = 0;
+     &enCab              = 0;
+     &eaNomFic           = "";
+     &eaNomProg          = "";
+     &eaAlfa             = "";
+     &eaTCampo           = "";
+     &eaUnidadBasico     = "";
+     &eaOrigen           = "";
+     &eaDestino          = "";
+     &aTipoIVA           = "";
+
+     &aTipo              = "";
+     &aTipoRS            = "";
+     &efFechaEmi         = @;
+     &nFactura           = 0;
+     &nPagina            = 0;
+     &SwPrim             = 0;
+     &SwLinea            = 0;
+     &nLBase             = 0;
+     &nLTipoI            = 0;
+     &nLCuoI             = 0;
+     &nLCuoIN            = 0;
+     &nLTipoR            = 0;
+     &nLCuoR             = 0;
+     &nLCuoRN            = 0;
+     &nLBasP             = 0;
+     &nLTipP             = 0;
+     &nLCuoP             = 0;
+     &eSwReten           = 0;
+     &referencia         = "";
+     &eaTituloL          = "";
+
+|FIN;
+
+|PROCESO AsignaCabecera;
+ ||.... Sin cabecera, tarea 13162 07.03.2019
+ ||  aAlfa = eaNomFic - ".xls";
+ ||  aAlfa = "B1," + eaTituloL + "(Nombre del fichero: " + aAlfa + ")";
+ ||  |ALFACALLDLL "agixl97.dll","poke_dato",aAlfa;
+
+ ||  aAlfa = "A2, Ejercicio: " + #dsmow030#12;
+ ||  |ALFACALLDLL "agixl97.dll","poke_dato",aAlfa;
+
+ ||  aAlfa = "A3, NIF: " + #dsmow030#1;
+ ||  |ALFACALLDLL "agixl97.dll", "poke_dato", aAlfa;
+
+ ||  aAlfa = "A4, NOMBRE O RAZON SOCIAL: " + #dsmow030#2;
+ ||  |ALFACALLDLL "agixl97.dll", "poke_dato", aAlfa;
+ ||  nXls = 7;
+
+     nXls = 3;
+|FPRC;
+
+|PROCESO Una;
+     ||| aCol contiene la columna, "A", "B" y nXls la fila
+
+     |QBF eaAlfa; |HAZ QuitaRarosCsv;
+     |SI eaAlfa ! "";
+         aAlfa = aCol + nXls + "," + eaAlfa;
+         |ALFACALLDLL "agixl97.dll", "poke_dato", aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaExcel;
+     nXls = nXls + 1;
+     |PARA nPara1 = 1; |SI nPara1 [ nNumCampos; |HACIENDO nPara1 = nPara1 + 1;
+
+           aAlfa1 = ("000" + nPara1) % -103;
+           aQueQuiero = "|C" + aAlfa1 + "IDCAMPO";
+           |SI aTipoIVA = "S";
+               aIDCampo   = #dsmow172#aQueQuiero#; |QBF aIDCampo;
+           |SINO;
+               aIDCampo   = #dsmow173#aQueQuiero#; |QBF aIDCampo;
+           |FINSI;
+           aCol       = aIDCampo;
+
+           aQueQuiero = "|C" + aAlfa1 + "TIPO";
+           |SI aTipoIVA = "S";
+               eaTCampo = #dsmow172#aQueQuiero#;
+               eaAlfa   = #dsmow172#nPara1#;
+           |SINO;
+               eaTCampo = #dsmow173#aQueQuiero#;
+               eaAlfa   = #dsmow173#nPara1#;
+           |FINSI;
+
+           |SI eaTCampo = "N";
+               nNume1 = eaAlfa;
+               |SI nNume1 = 0;
+                   eaAlfa = "";
+               |SINO;
+                   eaAlfa = "=" + eaAlfa;
+               |FINSI;
+           |FINSI;
+
+           |HAZ Una;
+     |SIGUE;
+|FPRC;
+
+|PROCESO PresentaDocExcel;
+     |RFBORRA aExcel;
+
+     |ALFACALLDLL "agixl97.dll", "fichero_destino", aExcel;
+     |ALFACALLDLL "agixl97.dll", "fin_book", "salva";
+     |DESCARGADLL "agixl97.dll";
+|FPRC;
+
+|PROCESO CopiaFichero;
+     aAlfa1= (Usuario % -108); |QBF aAlfa1;
+     aAlfa = eaUnidadBasico + "\DOCUMENTOS";               |RMKDIR aAlfa;
+     aAlfa = eaUnidadBasico + "\DOCUMENTOS\tmp";           |RMKDIR aAlfa;
+     aAlfa = eaUnidadBasico + "\DOCUMENTOS\tmp\" + aAlfa1; |RMKDIR aAlfa;
+
+     |DBASE aBase;
+     eaOrigen   = aBase + "/hacienda/" + aDocumento;
+     eaDestino  = aAlfa + "\vacia.xls";
+
+     |HAZ EnviaFicheroConMD5;
+     |SI FSalida ! 0;
+         |MENAV "0000No existe planilla Excel. ";
+         |MENAV "0000Instalela por Mantenimiento de Documentos Word";
+         enError = 1;
+     |FINSI;
+
+     aTemporal  = eaDestino;
+
+     eaPathLocal = eaUnidadBasico + "\MODELOS";          |RMKDIR eaPathLocal;
+     eaPathLocal = eaUnidadBasico + "\MODELOS\IVA";      |RMKDIR eaPathLocal;
+     eaPathLocal = eaUnidadBasico + "/MODELOS/IVA/";
+     aExcel      = eaPathLocal + eaNomFic;
+|FPRC;
+
+|PROCESO PorExcel_2;
+
+     enError = 0;
+     eaNomFic = eaNomFic + ".xls";
+     |HAZ CopiaFichero;
+     |SI enError ! 0; |ACABA; |FINSI;
+
+     enError = 0;
+     |CARGADLL "agixl97.dll";
+     |SI FSalida < 0;  enError = 1; |ACABA;  |FINSI;
+
+     |ALFACALLDLL "agixl97.dll", "carga_book", aTemporal;
+
+     |MENSA "      Cargando Campos al Documento, espere un Momento.";
+
+     |ALFACALLDLL "agixl97.dll", "selecciona_hoja", aTipo;
+     |HAZ AsignaCabecera;
+|FPRC;
+
+|PROCESO PorExcel_1;
+     enError = 0;
+     |DBASS aBase;   |QBF aBase;
+
+     |CARGADLL "agixl97.dll";
+     |SI FSalida < 0;
+         |MENAV "0000No tiene instalada el agixl97.dll, Consulte a su Distribuidor";
+         enError = 1;
+         |ACABA;
+     |FINSI;
+     |DESCARGADLL "agixl97.dll";
+
+     aQueQuiero = "|NC";
+     aDocumento = "exces003.xls";
+     aNumCampos = #dsmow172#aQueQuiero#;
+     |SI aTipoIVA = "R";
+          aDocumento = "excer003.xls";
+          aNumCampos = #dsmow173#aQueQuiero#;
+     |FINSI;
+     nNumCampos = aNumCampos;
+     nNumCampos = nNumCampos - 1;
+|FPRC;
+
+|| *********************************************************************
+|| ... Csv
+|PROCESO GrabaCsv_Cab;
+    eaAlfa = &13 + &10;
+    |XGRABA enHandle, eaAlfa;
+
+    |SI aTipoIVA = "R";
+        eaAlfa = "Fecha Expedici¢n";                      |HAZ GrDatoCsv;  || a
+        eaAlfa = "Fecha Operaci¢n";                       |HAZ GrDatoCsv;  || b
+        eaAlfa = "Serie-Identificaci¢n de la Factura";    |HAZ GrDatoCsv;  || c
+        eaAlfa = "N£mero-Identificaci¢n de la Factura";   |HAZ GrDatoCsv;  || d
+        eaAlfa = "N£mero Final-Identificaci¢n de la Fra"; |HAZ GrDatoCsv;  || d
+        eaAlfa = "Tipo-NIF Destinatario";                 |HAZ GrDatoCsv;  || f
+        eaAlfa = "C¢digo Pa¡s-NIF Destinatario";          |HAZ GrDatoCsv;  || e
+        eaAlfa = "Identificaci¢n-NIF Destinatario";       |HAZ GrDatoCsv;  || g
+        eaAlfa = "Nombre Destinatario";                   |HAZ GrDatoCsv;  || h
+
+        eaAlfa = "Factura Sustitutiva";                   |HAZ GrDatoCsv;  || h
+        eaAlfa = "Clave Operaci¢n";                       |HAZ GrDatoCsv;  || o
+        eaAlfa = "Total Factura";                         |HAZ GrDatoCsv;  || n
+
+        eaAlfa = "Base Imponible";                        |HAZ GrDatoCsv;  || i
+        eaAlfa = "Tipo IVA";                              |HAZ GrDatoCsv;  || j
+        eaAlfa = "Cuota IVA Repercutida";                 |HAZ GrDatoCsv;  || k
+
+        eaAlfa = "Tipo de Recargo Eq.";                   |HAZ GrDatoCsv;  || l
+        eaAlfa = "Cuota Recargo Eq.";                     |HAZ GrDatoCsv;  || m
+
+        eaAlfa = "Fecha-Cobro";                           |HAZ GrDatoCsv;  || p
+        eaAlfa = "Importe-Cobro";                         |HAZ GrDatoCsv;  || q
+        eaAlfa = "Medio Utilizado-Cobro";                 |HAZ GrDatoCsv;  || r
+        eaAlfa = "Identificaci¢n Medio Utilizado-Cobro";  |HAZ GrDatoCsv;  || s
+    |FINSI;
+
+    |SI aTipoIVA = "S";
+        eaAlfa = "Fecha Expedici¢n";                      |HAZ GrDatoCsv;  || a
+        eaAlfa = "Fecha Operaci¢n";                       |HAZ GrDatoCsv;  || b
+        eaAlfa = "Serie-N£mero Identificaci¢n Fra del Expedidor";  |HAZ GrDatoCsv;  || c
+        eaAlfa = "N£mero Final-Identificaci¢n Fra del Expedidor"; |HAZ GrDatoCsv;  || d
+        eaAlfa = "N£mero Recepci¢n";                       |HAZ GrDatoCsv;  || e
+        eaAlfa = "N£mero Recepci¢n Final";                 |HAZ GrDatoCsv;  || e
+        eaAlfa = "Tipo-NIF Expedidor";                          |HAZ GrDatoCsv;  || g
+        eaAlfa = "C¢digo Pa¡s-NIF Expedidor";                   |HAZ GrDatoCsv;  || f
+        eaAlfa = "Identificaci¢n-NIF Expedidor";                |HAZ GrDatoCsv;  || h
+        eaAlfa = "Nombre Expedidor";                            |HAZ GrDatoCsv;  || i
+        eaAlfa = "Factura sustitutiva";                         |HAZ GrDatoCsv;  || i
+        eaAlfa = "Clave Operaci¢n";                             |HAZ GrDatoCsv;  || o
+        eaAlfa = "Total Factura";                         |HAZ GrDatoCsv;  || n
+
+        eaAlfa = "Base Imponible";                        |HAZ GrDatoCsv;  || j
+        eaAlfa = "Tipo IVA";                              |HAZ GrDatoCsv;  || k
+        eaAlfa = "Cuota IVA Soportado";                   |HAZ GrDatoCsv;  || l
+        eaAlfa = "Cuota Deducible";                       |HAZ GrDatoCsv;  || m
+        eaAlfa = "Tipo de Recargo Eq.";                   |HAZ GrDatoCsv;  || k
+        eaAlfa = "Cuota Recargo Eq.";                     |HAZ GrDatoCsv;  || k
+
+        eaAlfa = "Fecha-Pago";                            |HAZ GrDatoCsv;  || p
+        eaAlfa = "Importe-Pago";                          |HAZ GrDatoCsv;  || q
+        eaAlfa = "Medio Utilizado-Pago";                  |HAZ GrDatoCsv;  || r
+        eaAlfa = "Identificaci¢n Medio Utilizado-Pago";   |HAZ GrDatoCsv;  || s
+    |FINSI;
+
+    eaAlfa = &13 + &10;
+    |XGRABA enHandle, eaAlfa;
+    enCab = 1;
+|FPRC;
+
+|PROCESO GrabaCsv;
+
+    |SI enCab = 0;
+        nLinea = 0;
+        |HAZ GrabaCsv_Cab;
+    |FINSI;
+
+    nLinea = nLinea + 1;
+    |PARA nPara1 = 1; |SI nPara1 [ nNumCampos; |HACIENDO nPara1 = nPara1 + 1;
+
+           aAlfa1 = ("000" + nPara1) % -103;
+           aQueQuiero = "|C" + aAlfa1 + "IDCAMPO";
+           |SI aTipoIVA = "S";
+               aIDCampo = #dsmow172#aQueQuiero#;
+           |SINO;
+               aIDCampo = #dsmow173#aQueQuiero#;
+           |FINSI;
+           |QBF aIDCampo;
+           aCol = aIDCampo;
+
+           aQueQuiero = "|C" + aAlfa1 + "TIPO";
+           |SI aTipoIVA = "S";
+               eaTCampo = #dsmow172#aQueQuiero#;
+               eaAlfa   = #dsmow172#nPara1#;
+           |SINO;
+               eaTCampo = #dsmow173#aQueQuiero#;
+               eaAlfa   = #dsmow173#nPara1#;
+           |FINSI;
+
+           |SI eaTCampo = "N";
+               nNume1 = eaAlfa;
+               |SI nNume1 = 0; eaAlfa = ""; |FINSI;
+           |FINSI;
+
+           |HAZ GrDatoCsv;
+    |SIGUE;
+
+    eaAlfa = &13 + &10;
+    |XGRABA enHandle, eaAlfa;
+|FPRC;
+
+|PROCESO GrDatoCsv;
+     |QBF eaAlfa;
+     |HAZ QuitaRarosCsv;
+
+     eaAlfa = eaAlfa + ";";
+     |XGRABA enHandle, eaAlfa;
+
+     eaTCampo = "";
+|FPRC;
+
+|PROCESO PresentaDocCsv;
+     |XCIERRA enHandle;
+
+     |SI enCab = 0;
+         |FBORRA eaAbre;
+     |FINSI;
+
+     |XABRE "E", eaAbre, 0;
+     |SI FSalida < 0;
+         |ACABA;
+     |FINSI;
+
+     |HAZ LeeUnidadBasico;
+
+     eaPathLocal = eaUnidadBasico + "\MODELOS";          |RMKDIR eaPathLocal;
+     eaPathLocal = eaUnidadBasico + "\MODELOS\IVA";      |RMKDIR eaPathLocal;
+     eaPathLocal = eaUnidadBasico + "/MODELOS/IVA/";
+
+     eaOrigen  = eaPathDoc + eaNomFic;
+     eaDestino = eaPathLocal + eaNomFic;
+     |HAZ EnviaFicheroConMD5;
+|FPRC;
+
+|PROCESO PorCsv_2;
+     enCab    = 0;
+     eaNomFic = eaNomFic + ".csv";
+     eaAbre   = eaPathDoc + eaNomFic;
+     |XABRE "WB", eaAbre, enHandle;
+
+     aQueQuiero = "|NC";
+     |SI aTipoIVA = "S";
+         aNumCampos = #dsmow172#aQueQuiero#;
+     |SINO;
+         aNumCampos = #dsmow173#aQueQuiero#;
+     |FINSI;
+     nNumCampos = aNumCampos;
+     nNumCampos = nNumCampos - 1;
+|FPRC;
+
+|PROCESO PorCsv_1;
+     |DBASE aBase;
+     eaPathDoc = aBase + "tmp";             |MKDIR eaPathDoc;
+     eaPathDoc = aBase + "tmp/" + Usuario;  |MKDIR eaPathDoc;
+     eaPathDoc = aBase + "tmp/" + Usuario + "/";
+|FPRC;

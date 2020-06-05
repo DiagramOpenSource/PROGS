@@ -1,0 +1,5 @@
+SeparaImporte,zdatoplb
+CargaTabla,zdatoplb
+SacaTabla,zdatoplb
+CompruebaTabla,zdatoplb
+FinTabla,zdatoplb

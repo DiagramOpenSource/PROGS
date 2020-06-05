@@ -1,0 +1,419 @@
+|FICHEROS;
+  casaldos #0;
+  cacuenta #3;
+  catracie #4;
+  cacuebal #102;
+
+  ca8comay #401;  ||Control Cuentas de mayor
+  ca8m0002 #422;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   numero = 0;
+   avisillo = "";
+   cuenta = "";
+   men1   = "    NO EXISTE EMPRESA";
+   desde = "            ";
+   hasta = "zzzzzzzzzzzz";
+   rafa = 0;
+   jose = 0;
+   alfa1 = "";
+   r_emp = 0;
+   r_per = 0;
+   sw = 0;
+
+   nEjerActual   = 0;
+   nEjerAnterior = 0;
+   aAlfa1        = "";
+   aAlfa2        = "";
+   nNume1        = 0;
+   nNume         = 0;
+   aCtazzz       = "";
+   nSw           = 0;
+   nPOrigen      = 0;
+
+   &pathbal = "";
+   &balance = 0;
+   &swqueh  = 0;
+   fFecha   = @;
+   nNivelMD = 0;
+   nNivelMO = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE dsmone_i;
+|INCLUYE varnue_i;
+|INCLUYE defec1_i;
+
+|| **************************************************************************
+
+|PROCESO deentrada;  |TIPO 7;
+  |SI sw = 0;
+      #0#0 = empre;
+      #0#1 = ejerc + 1; |SI #0#1 = 10; #0#1 = 0; |FINSI;
+
+      |PINTA #0#0;
+      |PINTA #0#1;
+      sw = 1;
+  |FINSI;
+|FPRC;
+
+|PROCESO esbuena;
+  |SI FSalida = 9;  |ACABA;  |FINSI;
+  |ABRE #30;
+  #30#2 = #0#0;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #0#0;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+|PROCESO consulta;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+  |CIERRAT #30;
+  r_emp = 0;
+  |SUB_EJECUTA "caconemp.run";
+  |ABRET #30;
+  |ERROR;
+  #0#0 = r_emp;
+  #0#1 = r_per;
+  |PTEC 802;
+  |PTEC 802;
+|FPRC;
+
+
+|PROCESO esbuena1;
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |SI #0#0 = empre; |Y #0#1 = ejerc;
+      |MENAV "    La Empresa y periodo seleccionados son los ACTUALES ";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+
+  |ABRE #30;
+  #30#2 = #0#0;
+  #30#3 = #0#1;
+  |LEE 011#30=;
+  |SI FSalida ! 0;
+      |MENAV "     NO Existe Periodo en la empresa Contable";
+      |ERROR;
+      |VETE Fin;
+  |SINO;
+       #0#2 = #30#1; |PINTA #0#2;
+       swOperacion = 0;
+       enEmpresa = #0#0;
+       enPeriodo = #0#1;
+       |SUB_EJECUTA_NP "camoneda";
+       aMonedaA = eaMoneda;   ||Moneda de Apertura
+       |SI #30#26 < 80;
+           nEjerActual = #30#26 + 2000;
+       |SINO;
+           nEjerActual = #30#26 + 1900;
+       |FINSI;
+       |SI #30#13 = 1; nNivelMO = #30#14; |FINSI;
+       |SI #30#13 = 2; nNivelMO = #30#15; |FINSI;
+       |SI #30#13 = 3; nNivelMO = #30#16; |FINSI;
+       |SI #30#13 = 4; nNivelMO = #30#17; |FINSI;
+       |SI #30#13 = 5; nNivelMO = #30#18; |FINSI;
+       |SI #30#13 = 6; nNivelMO = #30#19; |FINSI;
+
+       |SI #30#13 ! dig3;  |O #30#14 ! dig4;  |O #30#15 ! dig5;
+                           |O #30#16 ! dig6;  |O #30#17 ! dig7;
+                           |O #30#18 ! dig8;  |O #30#19 ! dig9;
+            |SI nNivelMO = nNivelMD; |Y nEjerActual ! enEjercicio; |Y nEjerActual = 2008;
+              |CONFI "    SNO CORRESPONDEN LOS NIVELES, CONTINUAR ";
+              |SI FSalida ! 0;
+                  |ERROR;
+                  |VETE Fin;
+              |FINSI;
+           |SINO;
+              |MENAV "     NO CORRESPONDEN LOS NIVELES ";
+               #0#2 = "NO CORRESPONDEN LOS NIVELES"; |PINTA #0#2;
+              |ERROR;
+              |VETE Fin;
+           |FINSI;
+        |FINSI;
+   |FINSI;
+
+   eSwC2008    = 0;
+   |SI nEjerActual ] 2008; |Y enEjercicio < 2008;  eSwC2008 = 1; |FINSI;
+   |SI nEjerActual ] 2008; |HAZ LeoTabla; |FINSI;
+   |C_M #0#4,1,"N";
+   |SI eSwC2008 = 1; |C_M #0#4, 1, "S"; |FINSI;
+
+   |ET Fin;
+   #30#2 = empre;
+   #30#3 = ejerc;
+   |LEE 011#30=;
+   |CIERRA #30;
+|FPRC;
+
+|PROCESO LeoTabla;
+     |ABRE #400;
+     |DDEFECTO #400;
+     #400#0 = enEmpresa;
+     #400#1 = enPeriodo;
+     |LEE 001#400=;
+     |SI FSalida = 0;
+         #0#4 = #400#2; |PINTA #0#4;
+     |SINO;
+         #400#0 = #0#0;
+         #400#1 = #0#1;
+         |LEE 001#400=;
+         |SI FSalida = 0;
+             #0#4 = #400#2; |PINTA #0#4;
+         |FINSI;
+     |FINSI;
+     |CIERRA #400;
+|FPRC;
+
+|PROCESO CodCta7; |TIPO 7;
+   |SI nEjerActual < 2008;
+       #0#4 = 0; |PINTA #0#4;
+       |ACABA;
+   |FINSI;
+|FPRC;
+
+|PROCESO CodCta0; |TIPO 6;
+  |SI nEjerActual < 2008; |ACABA; |FINSI;
+  |ABRE #401;
+  #401#0 = #0#4;
+  |LEE 001#401=;
+  |SI FSalida ! 0;
+      |MENAV "    Error, no existe Codigo de Cuentas de Mayor";
+      |ERROR;
+  |SINO;
+      |C_A #401#1,1,31; |PINTA 1842, #401#1;
+  |FINSI;
+  |CIERRA #401;
+|FPRC;
+
+|PROCESO mayus; |TIPO 0;
+  alfa1 = #0Campo > " ";
+  #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|| *********************************************************************
+||                             COMIENZO
+|| *********************************************************************
+
+|PROGRAMA;
+  |CLS;
+  |CABEZA "Traspaso de Saldos";
+  |HAZ inicio;   aMonedaC = eaMoneda; ||Lee la Moneda Actual
+  |HAZ eVarEmpresa;
+       |SI #30#13 = 1; nNivelMD = #30#14; |FINSI;
+       |SI #30#13 = 2; nNivelMD = #30#15; |FINSI;
+       |SI #30#13 = 3; nNivelMD = #30#16; |FINSI;
+       |SI #30#13 = 4; nNivelMD = #30#17; |FINSI;
+       |SI #30#13 = 5; nNivelMD = #30#18; |FINSI;
+       |SI #30#13 = 6; nNivelMD = #30#19; |FINSI;
+  nPOrigen = cod2;
+
+  |PINPA #0#0;
+  |DDEFECTO #0;
+  |PINDA #0#0;                    || Pinta los datos por defecto
+  |ENDATOS #1#0;
+  |SI FSalida = 0;                || Si el conforme es igua a S
+      |HAZ cierre;
+      |HAZ apertura;
+  |FINSI;
+|FPRO;
+|| ***********************************************************************
+
+|PROCESO grabacion;
+  #4#0 = #3#0;
+  #4#1 = #3#1;
+  #4#2 = #3#58;
+  |SI #3#53 [ 0;
+      #4#3 = "H";
+      #4#4 = -#3#53;
+  |SINO;
+      #4#3 = "D";
+      #4#4 = #3#53;
+  |FINSI;
+  #4#5 = #3#2;
+  #4#6 = #3#3;
+  #4#7 = #3#4;
+  #4#8 = #3#5;
+  #4#9 = #3#6;
+  #4#10 = #3#7;
+  #4#11 = #3#8;
+  #4#12 = #3#54;
+  #4#13 = #3#55;
+  |GRABA 040#4n;
+|FPRC;
+
+|PROCESO aceroplan;
+  avisillo = "2401               Tratando Cuenta: " + #3#0;
+  |MENSA avisillo;
+  |HAZ grabacion;
+  |LIBERA #3;
+|FPRC;
+
+|DEFBUCLE cacierre0;
+ #3#1;
+ ;
+ desde,0;
+ hasta,9;
+ be;
+ NULL,aceroplan;
+|FIN;
+
+|PROCESO cierre;
+  eaMoneda = aMonedaC;
+  |HAZ MoCierre;      ||Carga Variables Moneda
+
+  |DELINDEX #4;
+
+  |ABRE #4;
+  |BUCLE cacierre0;
+  |CIERRA #4;
+
+|FPRC;
+
+|PROCESO grabacuen;
+  aAlfa1 = #4#0; |QBF aAlfa1;
+  |SI eSwC2008 = 1;
+      aAlfa2 = aAlfa1 % 0;
+      nNume1 = aAlfa2;
+      |SI nNume1 [ 4; |ACABA; |FINSI;
+  |FINSI;
+  |SI #4#6 = "N"; |Y eSwC2008 = 1; |ACABA; |FINSI;
+
+  eaCuenta = #4#0;
+  eaNomCta = #4#5;
+  enNivel  = #4#1;
+  aCtazzz  = #4#12
+  |SI eSwC2008 = 1;
+      |HAZ CambioCta08;
+      eaCuenta = eaCta2008;
+      aCtazzz  = eaCuenta; |QBF aCtazzz;
+      aCtazzz  = (aCtazzz + "zzzzzzzzzzzz") % 112;
+      |SI eaCuenta = "PDTE        "; |ACABA; |FINSI;
+  |FINSI;
+
+  #3#0 = eaCuenta;
+  #3#1 = enNivel;
+  |LEE 040#3=;
+  |SI FSalida ! 0;
+      |DDEFECTO #3;
+      #3#0 = eaCuenta;
+      #3#1 = enNivel;
+      #3#2 = #4#5;
+      #3#3 = #4#6;
+      |HAZ defect1;
+      #3#54 = aCtazzz;
+      #3#55 = enNivel;
+      |GRABA 020#3c;
+      #3#58 = #4#2;
+  |FINSI;
+
+  |SI #0#3 = "S";
+      #3#9 = 0;
+      #3#10 = 0;
+  |FINSI;
+  |SI #4#3 = "D";
+       #3#9 = #3#9 + #4#4;
+  |SINO;
+       #3#10 = #3#10 + #4#4;
+  |FINSI;
+
+  #3#11 = #3#9 - #3#10;
+  #3#51 = 0;
+  #3#52 = 0;
+  |PARA rafa = 9; |SI rafa [ 48; |HACIENDO rafa = rafa + 3;
+        jose = rafa + 1;
+        #3#51 = #3#51 + #3rafa;
+        #3#52 = #3#52 + #3jose;
+  |SIGUE;
+  #3#53 = #3#51 - #3#52;
+  |GRABA 040#3a;
+  nSw = 1;
+|FPRC;
+
+|PROCESO leeape;
+  avisillo = "2401               Grabando Cuenta: " + #4#0;
+  |MENSA avisillo;
+  |SI aMonedaC ! aMonedaA;
+      impMoneda = #4#4;
+      |HAZ ElCambioMoneda;
+      #4#4= impMoneda;
+  |FINSI;
+  |HAZ grabacuen;
+|FPRC;
+
+|DEFBUCLE cacierre1;
+ #4#1;
+ ;
+ desde,0;
+ hasta,9;
+ e;
+ NULL,leeape;
+|FIN;
+
+|PROCESO apertura;
+
+  eaMoneda = aMonedaA;
+  |HAZ MoCierre;      ||Carga Variables Moneda
+
+  |DBASE dir_fich;
+  dir_fich = dir_fich + "fich/";
+  numero  = 10000000 + (#0#0 * 10) + #0#1;
+  cuenta  = numero;
+  avisillo = cuenta % -106;
+  dir_fich=dir_fich + avisillo + "/";
+  eSwC2008 = 0;
+  |SI nEjerActual ] 2008; |Y enEjercicio < 2008; eSwC2008 = 1; |FINSI;
+
+  nNume = enEjercicio;
+  enEjercicio = nEjerActual;
+  eaPath2008 = dir_fich;
+
+  |SI enEjercicio ] 2008;
+      |ABRE #400;
+      |DDEFECTO #400;
+      #400#0 = #0#0;
+      #400#1 = #0#1;
+      |LEE 101#400=;
+      |SI FSalida ! 0;
+          #400#0 = #0#0;
+          #400#1 = #0#1;
+          |GRABA 020#400b;
+      |FINSI;
+      #400#2 = #0#4;
+      #400#3 = enEmpresa;
+      #400#4 = enPeriodo;
+      #400#5 = 0;
+      fFecha = ~;             #400#6 = fFecha;
+      aAlfa1 = Usuario % 810; #400#7 = aAlfa1;
+      |GRABA 020#400a;
+      |LIBERA #400;
+      |CIERRA #400;
+  |FINSI;
+  |PATH_DAT #102 dir_fich;
+  |PATH_DAT #3 dir_fich;
+
+  nSw = 0;
+  |ABRE #3;
+  |BUCLE cacierre1;
+  |CIERRA #3;
+  |DELINDEX #4;
+
+  |SI nSw = 1; |Y eSwC2008 = 1;
+      pathbal = eaPath2008;
+      balance = 1;
+      swqueh  = 1;
+      aAlfa1 = #0#0; aAlfa1 = ("00000" + aAlfa1) % -105;
+      aAlfa2 = #0#1; aAlfa2 = ("0"     + aAlfa2) % -101;
+      aAlfa1 = "careccue canempr1 " + aAlfa1 + aAlfa2;
+      |SUB_EJECUTA_NP aAlfa1;
+  |FINSI;
+
+  enEjercicio = nNume;
+|FPRC;

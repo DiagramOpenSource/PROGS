@@ -1,0 +1,755 @@
+||Este PLB se utiliza para enviar documentos al DSARCHI.
+
+||Para enviar los documentos desde cualquier aplicacion seguiremos estos pasos.
+
+||IniEnvioDocDSArchi
+||Para cada documento
+     || Enviardocumento (DocFisicoDSArchi). Controlando si existe.
+     || Enviar uno a uno los campos a rellenar del registro documental (MeteCampoDSArchi)
+||FinEnvioDocDSArchi
+
+|| En dsarchi, consultar el documento "reg_docs.txt", para ver la estructura
+|| del dsarm005 (Registro de Documentos).
+
+|FICHEROS;
+     referen@  #500;
+
+     dsarm009@ #509;          || Cache Usuarios
+
+     dsarm001@ #501;          || Parametros
+     dsarm073@ #502;          || Carpetas archivado documentos contabilidad
+
+     dsarm002@ #503;
+     dsarm003@ #504;
+     dsarm004@ #505;
+
+     :/basica/def/agitab99;
+|FIN;
+
+|VARIABLES;
+     nSwPideEstructura = 0;
+     aIntePara = "";
+     nHandle = 0;
+     aLinea = "";
+
+     &enGrupoTres = 0;
+     &enSubGTres = 0;
+     &enTipoTres = 0;
+     &enSwMeteGrupoSubTipo = 0;
+
+     &enSwDesde9 = 0;              ||Sirve para indicar si lanzamos el proceso desde 9 o desde X.
+
+     &enSwCDefOk = 0;              ||Nos indica si el CARGA_DEF ha sido Correcto
+     &eaDocumentoArchi = "";       ||Ubicacion completa del documento
+     &eaNomDocArchi = "";          ||Nombre del documento (con extension)
+
+     &enSwExisteDoc = 0;           ||Indica si existe fisicamente el documento
+                                   ||y si tengo permisos de lectura.
+
+     &enNumCampoArchi = 0;         ||Numero de campo del Registro
+     &eaValorArchi = "";           ||Valor a guardar en el Registro.
+
+     &enNumeroRegistro = 0;        ||Numero de registro en el temporal (AUTO)
+
+     &enSwUbicacionDoc = "";       ||Indica si los documentos esta en el
+                                   ||"C"liente o en el "S"ervidor.
+                                   ||Se carga en el Inicio del Proceso
+
+     &eaNomTemporal = "";          ||Nombre temporal que se usa para los datos a DSARCHI
+     &enSwErrorRecDoc = 0;         ||No la devuelve el DSARCHI indicado si todo correcto o ERROR
+
+     aBass = "";
+     aMas = "";
+     nSwEstaDsArchi = 0;
+     aMensaje = "";
+     aUnidad = "";
+     aDef = "";
+     aUsuario = "";
+     aPathDatos = "";
+     aOrigen = "";
+     aDestino = "";
+     aIPRemoto = "";
+     aEjecuta = "";
+
+     aPathTmpUsu = "";
+     aUsuTmp = "";
+     aFicTar = "";
+
+     aBorra = "";
+     aExtension = "";
+     aSinExtension = "";
+     aNombre = "";
+     aAux = "";
+     aBase = "";
+     aBaseArchi = "";
+
+
+     ||Aleatorio
+     rnd        = 0;
+     r_semilla  = 0;
+     r_vuelta   = 0;
+     r_bucle    = 0;
+     r_hora     = "";
+     r_beta     = "";
+     r_punto    = "";
+     r_pi       = 3.141592;
+     r_producto = 0.000000;
+     &enSwNomina = 0;
+     &enSwNominaEmpCen = 0;
+
+     &nTipo = 0;
+     &eaSwEnvioCorreo = "";
+     &nDesdeMes = 0;
+     &nHastaMes = 0;
+
+     &eaVengoDe = "";
+     &nModelo = 0;
+
+     aAlfa = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aAlfa3 = "";
+     aAlfa4 = "";
+     aAlfa5 = "";
+     aAlfa6 = "";
+     &swNoArchives = 0;
+     nContador = 0;
+|FIN;
+
+
+|PROCESO ActivaPLB_arc1;
+     ||NADA
+     ||Sirve para que no de error de compilacion, permitiendo que
+     ||se carge primero este modulo y no indique que no encuentra los procesos
+|FPRC;
+
+|PROCESO ExisteDocFisico;
+     aAux = eaDocumentoArchi;
+     |SI enSwUbicacionDoc = "S";
+          |XABRE "E", aAux, 0;
+     |SINO;
+          |XABRE "CE", aAux, 0;
+     |FINSI;
+     |SI FSalida ] 0;
+          enSwExisteDoc = 1;
+     |SINO;
+          enSwExisteDoc = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO EstaDsArchi;
+     |SI enSwUbicacionDoc = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+         |SI aIPRemoto ! "";
+              enSwUbicacionDoc = "S";  || lo guardo en el servidor
+         |SINO;
+              enSwUbicacionDoc = "C";  || lo guardo en local
+         |FINSI;
+     |FINSI;
+
+     |DBASS aBass;
+     |QBF aBass;
+     aMas = aBass + "dsarchi/def/dsarm001.mas";
+     |XABRE "E", aMas, 0;
+     |SI enSwUbicacionDoc = "S";
+          |XABRE "E", aMas, 0;
+     |SINO;
+          |XABRE "CE", aMas, 0;
+     |FINSI;
+     |SI FSalida ] 0;
+          nSwEstaDsArchi = 1;
+     |SINO;
+          nSwEstaDsArchi = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO DimeUnidad;
+     ||OUT   aUnidad
+
+     aDef = aBass + "dsarchi/def/dsarm009.mas";
+     |CARGA_DEF aDef, dsarm009@;
+     |SI FSalida ! 0;
+          |ACABA;
+     |FINSI;
+
+     aPathDatos = aBass + "dsarchi/fich/";
+     |PATH_DAT #509 aPathDatos;
+
+     |ABRE #dsarm009@;
+     aUsuario = Usuario % 810;
+     |QBF aUsuario;
+
+     |DDEFECTO #dsarm009@;
+     #dsarm009@#0 = aUsuario;
+     |LEE 000#dsarm009@.=;
+     |SI FSalida ! 0;
+          aUnidad = "C";
+     |SINO;
+          aUnidad = #dsarm009@#1;
+          |QBF aUnidad;
+          |SI aUnidad = ""; aUnidad = "C"; |FINSI;
+     |FINSI;
+     |CIERRA #dsarm009@;
+
+     |DESCARGA_DEF #dsarm009@;
+|FPRC;
+
+|PROCESO LeeDescripcion;
+     |SI #dsarm073@#3 ! 000;
+
+         #dsarm002@#0 = #dsarm073@#3;
+         |LEE 000#dsarm002@.=;
+         |SI FSalida = 0;
+             #dsarm073@#6 = #dsarm002@#1;
+         |FINSI;
+
+         |SI #dsarm073@#4 ! 000;
+             #dsarm003@#0 = #dsarm073@#3;
+             #dsarm003@#1 = #dsarm073@#4;
+             |LEE 000#dsarm003@.=;
+             |SI FSalida = 0;
+                 #dsarm073@#7 = #dsarm003@#2;
+             |FINSI;
+
+             |SI #dsarm073@#5 ! 000;
+                 #dsarm004@#0 = #dsarm073@#3;
+                 #dsarm004@#1 = #dsarm073@#4;
+                 #dsarm004@#2 = #dsarm073@#5;
+                 |LEE 000#dsarm004@.=;
+                 |SI FSalida = 0;
+                     #dsarm073@#8 = #dsarm004@#3;
+                 |FINSI;
+             |FINSI;
+
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaModelo;
+     aAlfa1 = aAlfa % 103;
+     aAlfa2 = aAlfa % 502;
+     aAlfa3 = aAlfa % 1240;
+     aAlfa4 = aAlfa % 5203;
+     aAlfa5 = aAlfa % 5503;
+     aAlfa6 = aAlfa % 5803;
+
+     #dsarm073@#0 = aAlfa1;
+     #dsarm073@#1 = aAlfa2;
+     |LEE 040#dsarm073@.=;
+     |SI FSalida = 0;  |ACABA;  |FINSI;
+
+     |DDEFECTO #dsarm073@;
+     #dsarm073@#0 = aAlfa1;
+     #dsarm073@#1 = aAlfa2;
+     #dsarm073@#2 = aAlfa3;
+     #dsarm073@#3 = aAlfa4;
+     #dsarm073@#4 = aAlfa5;
+     #dsarm073@#5 = aAlfa6;
+     #dsarm073@#9 = " ";
+     |HAZ LeeDescripcion;
+     |GRABA 020#dsarm073@.n;
+|FPRC;
+
+|PROCESO GrabaFijos;   || proceso igual al de dsarchi: dsarw118
+     |ABRE #agitab99;
+     #agitab99#0 = 950;
+     |LEE 000#agitab99.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #agitab99;
+         #agitab99#0 = 950;
+         #agitab99#1 = "INFORMES CONTABLES VARIOS";
+         #agitab99#2 = "INFORMES CONTABLES VARIOS (EXTRACTOS, ANOTACIONES DE REVISION CONTABLE";
+         #agitab99#3 = "INFORMES AGRUPADOS, ETC)";
+         #agitab99#4 = "N";
+         #agitab99#5 = "C";
+         #agitab99#6 = "M";
+         #agitab99#7 = "N";
+         #agitab99#8 = "N";
+         |GRABA 020#agitab99.n;
+         |LIBERA #agitab99;
+     |FINSI;
+     |CIERRA #agitab99;
+
+     aAlfa  = "909/01     BALANCE DE SITUACION                    003003001";  |HAZ GrabaModelo;
+     aAlfa  = "909/02     CUENTA PERDIDAS Y GANANCIAS             003003001";  |HAZ GrabaModelo;
+     aAlfa  = "909/03     ESTADO DE INGRESOS Y GASTOS RECONOCIDOS 003003001";  |HAZ GrabaModelo;
+     aAlfa  = "909/04     E.C.P.N.                                003003001";  |HAZ GrabaModelo;
+     aAlfa  = "909/05     E.F.E.                                  003003001";  |HAZ GrabaModelo;
+     aAlfa  = "909/06     BALANCE DE SUMAS Y SALDOS               003003001";  |HAZ GrabaModelo;
+     aAlfa  = "908/01     LIBRO DIARIO                            003004001";  |HAZ GrabaModelo;
+     aAlfa  = "950/01     MAYORES / EXTRACTOS                     003003002";  |HAZ GrabaModelo;
+     aAlfa  = "950/02     ANOTACIONES DE REVISION CONTABLE        003003003";  |HAZ GrabaModelo;
+
+|| Mas adelante    aAlfa  = "950/03     INFORMES AGRUPADOS                      003003003";  |HAZ GrabaModelo;
+||                 aAlfa  = "951/01     LEGALIZACION LIBROS CONTABLES           003006001";  |HAZ GrabaModelo;
+||                 aAlfa  = "951/02     LEGALIZACION CCAA                       003006002";  |HAZ GrabaModelo;
+|FPRC;
+
+|PROCESO CreaDefectos;
+     |ABRE #dsarm002@;
+     |ABRE #dsarm003@;
+     |ABRE #dsarm004@;
+     |ABRE #dsarm073@;
+     |HAZ GrabaFijos;
+     |CIERRA #dsarm073@;
+     |CIERRA #dsarm004@;
+     |CIERRA #dsarm003@;
+     |CIERRA #dsarm002@;
+|FPRC;
+
+|PROCESO TipoModelo;
+     ||TODO CCC. Adaptar para obtener el TipoModelo
+
+     aAlfa = eaVengoDe % 104;
+     |SI aAlfa = "ca8y"; |O aAlfa = "cayc";
+          nModelo = 909;
+          |SI eaVengoDe = "ca8ys001"; nTipo = 1; |FINSI;
+          |SI eaVengoDe = "ca8ye001"; nTipo = 2; |FINSI;
+          |SI eaVengoDe = "ca8yp001"; nTipo = 3; |FINSI;
+          |SI eaVengoDe = "ca8yc001"; nTipo = 4; |FINSI;
+          |SI eaVengoDe = "ca8yf001"; nTipo = 5; |FINSI;
+          |SI eaVengoDe = "caycosy0"; nTipo = 6; |FINSI;
+     |FINSI;
+
+     |SI eaVengoDe = "cadiario";
+          nModelo = 908;
+          nTipo   = 1;
+     |FINSI;
+
+     |SI aAlfa = "caex";
+          nModelo = 950;
+          |SI eaVengoDe = "caextrim"; nTipo = 1; |FINSI;
+          |SI eaVengoDe = "caextinf"; nTipo = 2; |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CompruebaModelo;
+     |DBASS aBass;
+     aDef = aBass + "dsarchi/def/dsarm073.mas";
+     |CARGA_DEF aDef, dsarm073@;
+     |SI FSalida ! 0;
+          |ACABA;
+     |FINSI;
+     aDef = aBass + "dsarchi/def/dsarm002.mas";
+     |CARGA_DEF aDef, dsarm002@;
+     |SI FSalida ! 0;
+          |DESCARGA_DEF #dsarm073@;
+          |ACABA;
+     |FINSI;
+
+     aDef = aBass + "dsarchi/def/dsarm003.mas";
+     |CARGA_DEF aDef, dsarm003@;
+     |SI FSalida ! 0;
+          |DESCARGA_DEF #dsarm002@;
+          |DESCARGA_DEF #dsarm073@;
+          |ACABA;
+     |FINSI;
+
+     aDef = aBass + "dsarchi/def/dsarm004.mas";
+     |CARGA_DEF aDef, dsarm004@;
+     |SI FSalida ! 0;
+          |DESCARGA_DEF #dsarm003@;
+          |DESCARGA_DEF #dsarm002@;
+          |DESCARGA_DEF #dsarm073@;
+          |ACABA;
+     |FINSI;
+
+     aPathDatos = aBass + "dsarchi/fich/";
+     |PATH_DAT #502 aPathDatos;
+     |PATH_DAT #503 aPathDatos;
+     |PATH_DAT #504 aPathDatos;
+     |PATH_DAT #505 aPathDatos;
+
+     |HAZ CreaDefectos;
+
+     swNoArchives = 0;
+
+     |ABRE #dsarm073@;
+     |DDEFECTO #dsarm073@;
+     #dsarm073@#0 = nModelo;
+     #dsarm073@#1 = nTipo;
+     |LEE 000#dsarm073@.=;
+     |SI FSalida = 0;
+         enGrupoTres = #dsarm073@#3;
+         enSubGTres  = #dsarm073@#4;
+         enTipoTres  = #dsarm073@#5;
+         |SI #dsarm073@#9 = "S";
+              nSwPideEstructura = 1;
+         |SINO;
+              nSwPideEstructura    = 0;
+              enSwMeteGrupoSubTipo = 1;
+         |FINSI;
+     |SINO;
+          || SI EL MODELO NO EXISTE, NO SE ARCHIVA NADA
+          nSwPideEstructura = 0;
+          swNoArchives      = 1;
+     |FINSI;
+
+     |CIERRA #dsarm073@;
+
+     |DESCARGA_DEF #dsarm004@;
+     |DESCARGA_DEF #dsarm003@;
+     |DESCARGA_DEF #dsarm002@;
+     |DESCARGA_DEF #dsarm073@;
+|FPRC;
+
+|PROCESO FicIntepara;
+
+       |DBASS aBass; |QBF aBass;
+       aIntePara = aBass + "dsarchi/intepara/";
+       |MKDIR aIntePara;
+
+       aIntePara = aBass + "dsarchi/intepara/" + Usuario + "parametro.txt";
+       |FBORRA aIntePara;
+
+       |XABRE "W", aIntePara, nHandle;
+       |SI FSalida ] 0;
+           aLinea = (("000" + enGrupoTres) % -103) + (("000" + enSubGTres) % -103) + (("000" + enTipoTres) % -103);
+           |XGRABA nHandle, aLinea;
+       |FINSI;
+       |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO CtrlPedirGrupoDsArchi;
+
+     nSwEstaDsArchi = 0;
+     |HAZ EstaDsArchi;
+
+     nContador = nContador + 1;
+     |HAZ TipoModelo;
+
+     swNoArchives = 0;
+     |HAZ CompruebaModelo;
+
+     |SI nSwEstaDsArchi ! 0; |Y swNoArchives = 0;
+          |SI nModelo = 990; |O nModelo = 994;
+               |SI nContador > 1;
+                    || estoy en resumenes o nomina y ya tengo el grupo
+                    || subgrupo o tipo porque lo he pedido en la primera
+
+                    enSwMeteGrupoSubTipo = 1;
+
+                    |ACABA;
+               |FINSI;
+          |SINO;
+               || continua
+          |FINSI;
+          enGrupoTres = 0;
+          enSubGTres = 0;
+          enTipoTres = 0;
+
+          ||CARGA_DEF
+
+          |DBASS aBass;
+          aDef = aBass + "dsarchi/def/dsarm001.mas";
+          |CARGA_DEF aDef, dsarm001@;
+          |SI FSalida ! 0;
+               |ACABA;
+          |FINSI;
+
+          aPathDatos = aBass + "dsarchi/fich/";
+          |PATH_DAT #501 aPathDatos;
+
+          |ABRE #dsarm001@;
+          |DDEFECTO #dsarm001@;
+          |LEE 000#dsarm001@.=;
+          |SI #dsarm001@#123 = "S";
+               nSwPideEstructura = 1;
+          |SINO;
+               nSwPideEstructura = 0;
+          |FINSI;
+
+          |CIERRA #dsarm001@;
+          |DESCARGA_DEF #dsarm001@;
+
+          || la variable nSwPideEstructura ya no se usa de manera global
+          || se usa lo que se ponga para cada documento
+
+          |HAZ TipoModelo;
+          |HAZ CompruebaModelo;
+
+          |SI nSwPideEstructura = 1;
+               |SI enSwDesde9 = 0;
+                    aEjecuta = ":dsarchi/dsarz003;DAMETRE";
+               |SINO;
+                    |HAZ FicIntepara;
+
+                    aEjecuta = "|:dsarchi/dsarz003;DAMETRE" + Usuario + "parametro.txt";
+               |FINSI;
+
+               |SUB_EJECUTA_NP aEjecuta;
+               |PULSATECLA;
+               |PULSATECLA;
+               |PULSATECLA;
+               |PULSATECLA;
+               |PULSATECLA;
+
+               |SI enSwDesde9 = 1;
+                   |XABRE "U", aIntePara, nHandle;
+                   |SI FSalida ] 0;
+                        |XLEE nHandle, 250, aLinea;
+                        |SI FSalida ] 0;
+                             |QBF aLinea;
+
+                             aAux = aLinea % 103;
+                             enGrupoTres = aAux;
+                             aAux = aLinea % 403;
+                             enSubGTres = aAux;
+                             aAux = aLinea % 703;
+                             enTipoTres = aAux;
+                        |FINSI;
+                   |FINSI;
+                   |XCIERRA nHandle;
+                   |FBORRA aIntePara;
+               |FINSI;
+               |SI enGrupoTres = 0; |Y enSubGTres = 0; |Y enTipoTres = 0;
+                   swNoArchives = 1;
+               |FINSI;
+
+               |SI enGrupoTres ! 0;
+                    enSwMeteGrupoSubTipo = 1;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO IniEnvioDocDSArchi;
+     enSwCDefOk = 0;
+
+     nSwEstaDsArchi = 0;
+     |HAZ EstaDsArchi;
+     |SI nSwEstaDsArchi = 0;
+          aMensaje = "0000Atenci¢n: Modulo DSARCHI no instalado.";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |DBASS aBass;
+     |QBF aBass;
+
+     aUsuTmp = Usuario;
+     |QBF aUsuTmp;
+     aUsuTmp = "rd" + aUsuTmp;
+
+     |SI enSwUbicacionDoc = "S";
+          aBaseArchi = aBass + "dsarchi/";
+          aPathTmpUsu = aBaseArchi + "rec_doc/";
+          |MKDIR aPathTmpUsu;
+     |SINO;
+          aUnidad = "C";
+          |HAZ DimeUnidad;
+
+          aPathTmpUsu = aUnidad + ":\DOCUMENTOS\";
+          |RMKDIR aPathTmpUsu;
+          aPathTmpUsu = aPathTmpUsu + "DSARCHI\";
+          |RMKDIR aPathTmpUsu;
+
+          aUsuTmp = Usuario;
+          |QBF aUsuTmp;
+          aUsuTmp = "rd" + aUsuTmp;
+          aPathTmpUsu = aPathTmpUsu + aUsuTmp + "\";
+
+          ||Borro todo lo que haya en esta carpeta
+          ||pero el RRMDIR, solo borra si la carpeta esta vacia.
+          ||necesito un R_PDIR
+          aBorra = aPathTmpUsu + "*.*";
+          |R_PDIR aBorra;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               |RFBORRA aBorra;
+               |R_SDIR aBorra;
+          |SIGUE;
+
+          |RRMDIR aPathTmpUsu;
+
+          |RMKDIR aPathTmpUsu;
+     |FINSI;
+
+     aDef = aBass + "dsarchi/def/dsarm005.mas";
+     |CARGA_DEF aDef, referen@;
+     |SI FSalida ! 0;
+          enSwCDefOk = 0;
+          aMensaje = "0000Problemas al cargar el fichero: " + aDef;
+          |MENAV aMensaje;
+          |ACABA;
+     |SINO;
+          enSwCDefOk = 1;
+     |FINSI;
+
+     aPathDatos = aBass + "dsarchi/fich/";
+     |PATH_DAT #500 aPathDatos;
+     |NOME_DAT #500 aUsuTmp;
+
+     |ABRE #500;
+     |CIERRA #500;
+     |DELINDEX #500;
+
+     |ABRE #500;
+|FPRC;
+
+|PROCESO FinEnvioDocDSArchi;
+     nSwEstaDsArchi = 0;
+     |HAZ EstaDsArchi;
+     |SI nSwEstaDsArchi = 0;
+          aMensaje = "0000Atenci¢n: Modulo DSARCHI no instalado.";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |SI enNumeroRegistro ! 0;
+          |GRABA 020#500.a;
+          |LIBERA #500;
+     |FINSI;
+
+     |CIERRA #500;
+
+     |SI enSwCDefOk = 1;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+
+     enSwDesde9 = 1;
+
+     |SI enSwUbicacionDoc = "S";
+          eaNomTemporal = aUsuTmp;
+          aEjecuta = ":dsarchi/dsarz032";
+          |SUB_EJECUTA_NP aEjecuta;
+          |PULSATECLA;
+          |PULSATECLA;
+          |PULSATECLA;
+          |PULSATECLA;
+          |PULSATECLA;
+
+          |SI enSwErrorRecDoc = 1;
+               aMensaje = "0000Ha ocurrido un error al archivar los documentos en DSARCHI. Revise los logs [rec_doc.log]";
+               |MENAV aMensaje;
+               |ACABA;
+          |FINSI;
+     |SINO;
+          |DBASS aBass;
+          |QBF aBass;
+          aUnidad = "C";
+          |HAZ DimeUnidad;
+
+          aPathTmpUsu = aUnidad + ":\DOCUMENTOS\";
+          |RMKDIR aPathTmpUsu;
+          aPathTmpUsu = aPathTmpUsu + "DSARCHI\";
+          |RMKDIR aPathTmpUsu;
+
+          aUsuTmp = Usuario;
+          |QBF aUsuTmp;
+          aUsuTmp = "rd" + aUsuTmp;
+          aPathTmpUsu = aPathTmpUsu + aUsuTmp + "\";
+
+          ||Comprimir
+          aFicTar = aPathTmpUsu + aUsuTmp + ".tar" + " 000*.*";
+          |RATAR aFicTar, aPathTmpUsu;
+          |SI FSalida = 0;
+               aFicTar = aPathTmpUsu + aUsuTmp + ".tar";
+               |RCOMPRIME aFicTar;
+               |SI FSalida = 0;
+                    aOrigen = aPathTmpUsu + aUsuTmp + ".tgz";
+                    aDestino = aBass + "dsarchi/rec_doc/" + aUsuTmp + ".tgz";
+
+                    aIPRemoto = "";
+                    |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+                    |SI aIPRemoto ! "";
+                         |RECIBE_FICHERO aOrigen, aDestino;
+                    |SINO;
+                         |COPIA_FICHERO aOrigen, aDestino;
+                    |FINSI;
+
+                    eaNomTemporal = aUsuTmp;
+                    aEjecuta = ":dsarchi/dsarz032";
+                    |SUB_EJECUTA_NP aEjecuta;
+                    |PULSATECLA;
+                    |PULSATECLA;
+                    |PULSATECLA;
+                    |PULSATECLA;
+                    |PULSATECLA;
+
+                    |SI enSwErrorRecDoc = 1;
+                         aMensaje = "0000Ha ocurrido un error al archivar los documentos en DSARCHI. Revise los logs [rec_doc.log]";
+                         |MENAV aMensaje;
+                         |ACABA;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO DocFisicoDSArchi;
+     nSwEstaDsArchi = 0;
+     |HAZ EstaDsArchi;
+     |SI nSwEstaDsArchi = 0;
+          |ACABA;
+     |FINSI;
+
+     |DBASS aBass;
+     |QBF aBass;
+
+     |SI enNumeroRegistro ! 0;
+          |GRABA 020#500.a;
+          |LIBERA #500;
+     |FINSI;
+
+     |DDEFECTO #500;
+
+     |LEE 000#500.u;
+     |SI FSalida = 0;
+          enNumeroRegistro = #500#0 + 1;
+     |SINO;
+          |HAZ Random;  rnd = rnd $ 999999; rnd = rnd + 1;
+          enNumeroRegistro = rnd;
+     |FINSI;
+
+     |DDEFECTO #500;
+     #500#0 = enNumeroRegistro;
+     |LEE 101#500.=;
+     |SI FSalida ! 0; |GRABA 020#500.b; |FINSI;
+
+     aExtension = eaNomDocArchi % -104;
+     aSinExtension = (("000000000") + enNumeroRegistro) % -109;
+     aNombre = aSinExtension + aExtension;
+     #500#9 = aNombre;
+
+     aOrigen = eaDocumentoArchi;
+     aDestino = aPathTmpUsu + aSinExtension + aExtension;
+
+     |SI enSwUbicacionDoc = "S";
+          |COPIA_FICHERO aOrigen, aDestino;
+     |SINO;
+          |RCOPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+
+     #500#93 = eaNomDocArchi;
+|FPRC;
+
+|PROCESO MeteCampoDSArchi;
+     |QBF eaValorArchi;
+     #500#enNumCampoArchi# = eaValorArchi;
+|FPRC;
+
+||-------------------- Proceso que genera aleatorios (variable 'rnd')-------
+|| El numero aleatorio se devuelve en la variable 'rnd'
+|| Ej: obtener un numero comprendido entre 1 y 100:
+||  |HAZ Random;  rnd = rnd $  100; rnd = rnd + 1;  --->   1 ] rnd [ 100
+
+|PROCESO Random;
+     r_vuelta = r_vuelta + 1;
+     |SI r_semilla [ 0; |O r_vuelta > 200;
+          |HORA r_hora;
+          r_beta = r_hora % 702;
+          r_semilla = r_beta;
+          r_vuelta = 0;
+     |FINSI;
+     r_producto = r_semilla / r_pi;
+     r_beta = r_producto;
+     |PARA r_bucle = 101;|SI r_bucle < 1000;|HACIENDO r_bucle = r_bucle + 100;
+          r_punto = r_beta % r_bucle;
+          |SI r_punto = "."; |SAL; |FINSI;
+     |SIGUE;
+     r_bucle = r_bucle + 104;
+     r_beta = r_beta % r_bucle;
+     r_semilla = r_beta;
+     rnd = r_semilla;
+|FPRC;

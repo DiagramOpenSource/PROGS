@@ -1,0 +1,258 @@
+|FICHEROS;
+     iberz209  #0;
+     iber0023  #1;
+     iber0023@ #2;  ||Historico del central situado en el fich
+     agift555  #3;
+     dsm00201;
+|FIN;
+
+|VARIABLES;
+     aAlfa     = "";
+     aDef      = "";
+     aFic      = "";
+     aPathDes  = "";
+     aAvPag    = "";
+     aTecla    = "";
+     aOrg      = "";
+     aDes      = "";
+     aHora     = "";
+     fFecha    = @;
+     nCentro   = 0;
+     nSw       = 0;
+     nPaquete  = 0;
+     nNoHay    = 0;
+
+     aDAlfa    = "";
+     aMensaje  = "";
+     aMenLog   = "";
+     aDBase    = "";
+     aDMenu    = "";
+     aDNMen    = "002472.men";
+     aDsk      = "";
+     aNombre   = "";
+     aTxt      = "";
+     aFicPaq   = "";
+     aFichero  = "";
+     aPathPaq  = "";
+     aTipo     = "";
+     aFicTxt   = "";
+     aFecha    = "";
+     aVarHora  = "";
+     aConta    = "";
+     aOrigen   = "";
+     aDVers    = "";
+     aDirOri   = "";
+     nErrLog   = 0;
+     nDHand    = 0;
+     nHandle   = 0;
+     nBytes    = 0;
+     nCampo    = 0;
+     nSwTar    = 0;
+|FIN;
+
+|PROCESO Tipo7; |TIPO 7;
+     |DFICE aAlfa;
+     aAlfa = aAlfa % -403;
+     nCentro = aAlfa;
+
+     |DBASE aAlfa;
+     aAlfa = aAlfa + "fich/iber0023.dat";
+     |XABRE "E", aAlfa, 0;
+     |SI FSalida ! 0;
+          aAlfa = "0000No existe fichero " + aAlfa;
+          |MENAV aAlfa;
+          |PTEC 807;
+     |SINO;
+          |DBASE aAlfa;
+          aPathDes = aAlfa + "pendientes/";
+          |MKDIR aPathDes;
+     |FINSI;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO Log;
+     aMensaje = aMenLog;
+     |MENAV aMensaje;
+|FPRC;
+
+|PROCESO SacaVersion;
+     aDVers = "00.00.000";
+     |DBASE aDBase;
+     aDMenu = aDBase + "/" + aDNMen;
+     |XABRE "U", aDMenu, nDHand;
+     |SI FSalida ] 0;
+          |XLEE nDHand, 250, aDAlfa;
+          aDVers = (aDAlfa % -105) + "." + (aDAlfa % 403);
+          |XCIERRA nDHand;
+     |FINSI;
+|FPRC;
+
+|PROCESO CreaPaqTgz;
+     ||Une el txt y el paquete, con un ATAR, luego los comprime.
+     aDsk = aNombre;
+     aTxt = aNombre + ".txt";
+     aFicPaq = aFichero + ".tar";
+     aAlfa = aFicPaq + " " + aDsk + " " + aTxt;
+     |ATAR aAlfa, aPathDes;
+     |SI FSalida = 0;
+          nSwTar = 1;
+     |SINO;
+          nSwTar = 0;
+          aMenLog = "    Problemas al comprimir [" + aFicPaq + "]";
+          nErrLog = 1;
+          |HAZ Log;
+     |FINSI;
+|FPRC;
+
+|PROCESO CreaTxt;
+     aTipo = "60";
+
+     aFicTxt = aFichero + ".txt";
+     |XABRE "W", aFicTxt, nHandle;
+     |SI FSalida < 0;
+          aMenLog = "    No se pudo crear [" + aFicTxt + "].";
+          nErrLog = 1;
+          |HAZ Log;
+     |SINO;
+          aAlfa = aTipo;  |XGRABA nHandle, aAlfa;
+          aAlfa = aFecha; |XGRABA nHandle, aAlfa;
+          aAlfa = aVarHora;  |XGRABA nHandle, aAlfa;
+          aAlfa = "PAQ." + aNombre;
+          |XGRABA nHandle, aAlfa;
+          |PARA nCampo = 1; |SI nCampo [ 12; |HACIENDO nCampo = nCampo + 1;
+               aAlfa = "";         || Des + Obs
+               |XGRABA nHandle, aAlfa;
+          |SIGUE;
+          aAlfa = aNombre; |XGRABA nHandle, aAlfa;
+          aAlfa = nBytes;  |XGRABA nHandle, aAlfa;
+          aConta = aNombre % -103;
+          |QBF aConta;
+          |XGRABA nHandle, aConta;
+          |XGRABA nHandle, aOrigen;
+          |XGRABA nHandle, aDVers;
+          aAlfa = aDirOri; |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+     |FINSI;
+|FPRC;
+
+|PROCESO PaqueteNuevo;
+     |ABRE #dsm00201;
+     |LEE 010#dsm00201.p;
+     |CIERRA #dsm00201;
+
+     aOrigen = #dsm00201#6;
+     |QBF aOrigen;
+     aDirOri = #dsm00201#7;
+     |QBF aDirOri;
+
+     |XABRE "B", aFichero, nHandle;
+     |SI FSalida < 0;
+          aMenLog = "    Longitud de [" + aFichero + "] inaccesible.";
+          nErrLog = 1;
+          |HAZ Log;
+          |ACABA;
+     |SINO;
+          nBytes = 0;
+          |XPOSICION nHandle, nBytes, 2;
+          |XCIERRA nHandle;
+     |FINSI;
+     |HAZ SacaVersion;
+     |HAZ CreaTxt;
+     |HAZ CreaPaqTgz;
+|FPRC;
+
+|PROCESO Paquete;
+     nSw = 0;
+     aOrg = #3#2;            |QBF aOrg
+     aOrg = aOrg + #1#5;     |QBF aOrg;
+     |XABRE "E", aOrg, 0;
+     |SI FSalida ! 0;
+          nSw = 1;
+          aOrg = aOrg + ".tar"; || Los nuevos terminan en '.tar'
+          |XABRE "E", aOrg, 0;
+     |FINSI;
+
+     |SI FSalida ! 0;
+          aAlfa = "0000No existe: " + #1#5;
+          |MENAV aAlfa;
+          nNoHay = nNoHay + 1;
+     |SINO;
+          aDes = aPathDes + #1#5; |QBF aDes;
+          |COPIA_FICHERO aOrg, aDes;
+     |FINSI;
+     |SI nSw = 0;
+          aFichero = aPathDes + #1#5; |QBF aFichero;
+          aNombre = #1#5;             |QBF aNombre;
+          |HAZ PaqueteNuevo;
+          ||컴컴컴컴컴컴컴�
+          aAlfa = aFichero;
+          |FBORRA aAlfa;
+          aAlfa = aFichero + ".txt";
+          |FBORRA aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO iber0023;
+     #2#0 = "I";
+     #2#6 = #1#6;
+     #2#5 = #1#5;
+     |LEE 000#2=;
+     |SI FSalida ! 0;
+          nPaquete = nPaquete + 1;
+          |HAZ Paquete;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE iber0023;
+     #1#3;
+     1;
+     "E", nCentro, "               ", #0#0;
+     "E", nCentro, "zzzzzzzzzzzzzzz", #0#1;
+     ;
+     NULL, iber0023;
+|FIN;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#2 ! "SI"; |ACABA; |FINSI;
+
+     |ABRE #3; |LEE 000#3p; |CIERRA #3;
+     fFecha = ~;
+     aFecha = fFecha;
+     |HORA aHora;
+     aVarHora = aHora % 105;
+
+     |DDEF aDef;
+     aDef = aDef + "iber0023";
+     |CARGA_DEF aDef, iber0023@;
+     |SI FSalida = 0;
+          |DBASE aFic;
+          aFic = aFic + "fich/";
+          |PATH_DAT #2 aFic;
+          |ABRE #2;
+          |SELECT #3#2;
+          |BUCLE iber0023;
+          |CIERRA #2;
+          |SI nPaquete = 0;
+               |MENAV "0000No hay paquetes pendientes...";
+          |SINO;
+               aAlfa = "Paquetes pendientes: " + nPaquete + " situados en:";
+               |ATRI I;
+               |PINTA 1820, aAlfa;
+               |PINTA 1920, aPathDes;
+               |SI nNoHay ! 0;
+                    |ATRI S;
+                    aAlfa = "Paquetes no encontrados: " + nNoHay;
+                    |PINTA 2020, aAlfa;
+               |FINSI;
+               |ATRI 0;
+               |PINTA 2120, "Pulse Av.Pag. para terminar...";
+               aAvPag = &255 + 815;
+               |PARA; |SI; |HACIENDO;
+                    |LEETECLA aTecla;
+                    |SI aTecla = aAvPag; |SAL; |FINSI;
+               |SIGUE;
+          |FINSI;
+     |SINO;
+          aDef = "0000Error al cargar " + aDef;
+          |MENAV aDef;
+     |FINSI;
+|FPRC;

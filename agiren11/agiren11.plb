@@ -1,0 +1,11 @@
+SeparaImporte,zdatoplb
+CargaTabla,zdatoplb
+SacaTabla,zdatoplb
+CompruebaTabla,zdatoplb
+FinTabla,zdatoplb
+LeeUnidadBasico,zdatoplb
+QuitaBotonSalir,zdatoplb
+PonBotonSalir,zdatoplb
+CargaColores,zdatoplb
+;
+CalculoDNI,dsaw9999

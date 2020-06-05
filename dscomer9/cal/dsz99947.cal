@@ -1,0 +1,201 @@
+               JESMAR plb
+|FICHEROS;
+     jesmg021@ #21;
+     jesmg038@ #38;
+     jesmg034@ #34;
+     agifa010 #10;
+     agifa059 #59;
+     agifa134 #134;
+|FIN;
+
+|VARIABLES;
+     aDef = "";
+     aFactu = "";
+     nNume = 0;
+     &eaSerAlb = "";
+     &enNumAlb = 0;
+     nError = 0;
+     &efJesFecVto = @;
+|FIN;
+
+|PROCESO CargaJes38;
+     |DDEF aDef;
+     aDef = aDef + "jesmg038";
+     |CARGA_DEF aDef, jesmg038@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar jesmg038";
+     |FINSI;
+|FPRC;
+
+|PROCESO CargaJes34;
+     |DDEF aDef;
+     aDef = aDef + "jesmg034";
+     |CARGA_DEF aDef, jesmg034@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar jesmg034";
+     |FINSI;
+|FPRC;
+
+|PROCESO CargaJes21;
+     |DDEF aDef;
+     aDef = aDef + "jesmg021";
+     |CARGA_DEF aDef, jesmg021@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar jesmg021";
+     |FINSI;
+|FPRC;
+
+|PROCESO JesFacPinta;
+     |HAZ CargaJes38;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |DDEFECTO #38;
+     |ABRE #38;
+     #38#0 = #134#49;
+     #38#1 = #134#0;
+     |LEE 000#38=;
+     |SI FSalida ! 0; |GRABA 020#38n; |FINSI;
+     |CIERRA #38;
+     |PINTA 1001," Factura Orien:      /          Factura Abono:      /      ";
+     |PINTA 1017, #38#2;
+     |PINTA 1023, #38#3;
+     |PINTA 1048, #38#4;
+     |PINTA 1055, #38#5;
+     |DESCARGA_DEF #jesmg038@;
+|FPRC;
+
+|PROCESO JesAlbPreSer;
+     |HAZ CargaJes34;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |DDEFECTO #34;
+     |ABRE #34;
+     #34#52 = #10#52;
+     #34#0 = #10#0;
+     |LEE 000#34=;
+     |CIERRA #34;
+     eaSerAlb = #34#99;
+     enNumAlb = #34#100;
+     |DESCARGA_DEF #jesmg034@;
+
+     |SI enNumAlb ! 0;
+          FSalida = 0;   ||Tiene Albaran de Prestacion Servicio
+     |SINO;
+          FSalida = 1;   || No tiene
+     |FINSI;
+|FPRC;
+
+|PROCESO JesFacPreSer;
+     |HAZ CargaJes21;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |ABRE #21; |LEE 000#21p; |CIERRA #21;
+     aFactu = #21#8;
+     |DESCARGA_DEF #jesmg021@;
+
+     |HAZ CargaJes38;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |DDEFECTO #38;
+     |ABRE #38;
+     #38#0 = #134#49;
+     #38#1 = #134#0;
+     |LEE 000#38=;
+     |CIERRA #38;
+     nNume = #38#3;
+     |DESCARGA_DEF #jesmg038@;
+     |SI nNume ! 0;
+           FSalida = 0;   ||Es Factura de Prestacion Servicio
+           |SI aFactu = "S"; FSalida = 1; |FINSI; || se puede modificar
+     |SINO;
+          FSalida = 1;   || No tiene
+     |FINSI;
+|FPRC;
+
+|PROCESO JesFacBaja;
+     |HAZ CargaJes38;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |DDEFECTO #38;
+     |ABRE #38;
+     #38#0 = #134#49;
+     #38#1 = #134#0;
+     |LEE 000#38=;
+     |CIERRA #38;
+     #134#49 = #38#4;
+     #134#0 = #38#5;
+     |DESCARGA_DEF #jesmg038@;
+     |LEE 101#134=;
+     |SI FSalida = 0;
+          |HAZ JesBorAuxFax;
+          |BUCLELIN  1 NULL #134;
+          FSalida = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO JesAlbFactu;
+     |HAZ CargaJes21;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |ABRE #21; |LEE 000#21p; |CIERRA #21;
+     aFactu = #21#8;
+     |DESCARGA_DEF #jesmg021@;
+
+     |SI aFactu = "N"
+          nError = 1;  || No es facturable
+     |SINO;
+          nError = 1;  || No es facturable
+          |HAZ CargaJes34;
+          |SI FSalida ! 0; |ACABA; |FINSI;
+          |ABRE #34;
+          #34#52 = #59#15;
+          #34#0 = #59#2;
+          |LEE 000#34=;
+          |SI FSalida = 0;
+               #34#52 = #34#103;
+               #34#0 = #34#104;
+               |LEE 000#34=;       || Lee el original
+               |SI FSalida = 0;
+                    |SI #34#99 = #59#15; |Y #34#100 = #59#2;
+                         || si es albaran de prestacion
+                         || lo deja facturar
+                         nError = 0;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |CIERRA #34;
+          |DESCARGA_DEF #jesmg034@;
+     |FINSI;
+     FSalida = nError;
+|FPRC;
+
+|PROCESO JesVtoFijo;
+     efJesFecVto = "01.01.0000";
+     |ABRE #59;
+     #59#14 = #134#49;
+     #59#0 = #134#0;
+     #59#1 = 1;
+     |LEE 000#59];
+     |SI FSalida = 0; |Y #59#14 = #134#49; |Y #59#0 = #134#0;
+          |HAZ CargaJes34;
+          |SI FSalida ! 0; |ACABA; |FINSI;
+          |ABRE #34;
+          #34#52 = #59#15;
+          #34#0 = #59#2;
+          |LEE 000#34=;
+          |SI FSalida = 0;
+               efJesFecVto = #34#114;
+          |FINSI;
+          |CIERRA #34;
+          |DESCARGA_DEF #jesmg034@;
+     |FINSI;
+     |CIERRA #59;
+|FPRC;
+
+|PROCESO JesBorAuxFax;
+     |HAZ CargaJes38;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |ABRE #38;
+     #38#0 = #134#49;
+     #38#1 = #134#0;
+     |LEE 101#38=;
+     |SI FSalida = 0;
+          |BORRA 020#38a;
+     |FINSI;
+     |CIERRA #38;
+     |DESCARGA_DEF #jesmg038@;
+|FPRC;

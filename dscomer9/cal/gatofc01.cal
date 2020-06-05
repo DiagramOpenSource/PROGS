@@ -1,0 +1,261 @@
+|FICHEROS;
+     gatofe01 #0;
+     gatofe02 #2;
+     agifa501 #501;
+     agifa502 #502;
+|FIN;
+
+|VARIABLES;
+     nLineas = 0;
+     i = 0;
+     nEmp = 0;
+     aEmp = "";
+     aAlfa = "";
+     aBase = "";
+     nDifTar = 0;
+     nDifEfe = 0;
+     nIncTar = 0;
+     nIncEfe = 0;
+     nNume = 0;
+     nNegativo = 0;
+     nSw = 0;
+     nUni = 0;
+     nPre = 0;
+     nTotal = 0;
+     nSuma = 0;
+     nAcuTar = 0;
+     nAcuEfe = 0;
+     nVuelta = 0;
+     nOrgTar = 0;
+     nOrgEfe = 0;
+     nSwSinTar = 0;
+     nSwSinEfe = 0;
+     &enIva = 0;
+     &enRec = 0;
+     &eaCli = "";
+     &enTiva = 0;
+     &efFiva = @;
+|FIN;
+
+|PROCESO TotalCab; || TODOS LOS SON DE IVA 2
+      eaCli = #501#1; enTiva = 2; efFiva = #501#14; |HAZ IVACli;
+      ||#501#9 =  ||total
+      #501#3 =  #501#9 / (1 + (enIva - enRec) / 100); ||bruto
+      #501#23 = #501#3;                               ||base
+      #501#24 = #501#3 * enIva / 100;                 ||cuota
+      #501#25 = #501#3 * enRec / 100;                 ||recargo
+
+      ||iva
+      #501#4=#501#21+#501#22+#501#24+#501#25+#501#27+#501#47+#501#49+#501#50+#501#52+#501#53;
+
+      #501#84 = #501#10;
+      #501#85 = #501#28;
+      #501#86 = #501#79;
+      #501#87 = #501#38;
+      #501#88 = #501#40;
+      #501#89 = #501#39;
+      #501#90 = #501#9;
+|FPRC;
+
+|PROCESO CalcuEfe;
+     nTotal = nUni * (nPre + nIncEfe);
+     nSuma = nTotal - #502#7;
+     nNume = nDifEfe - nSuma;
+
+     |SI nOrgEfe < 0;
+          nNume = -nNume;
+     |FINSI;
+
+     |SI nNume ] 0;
+          #502#6 = (nPre + nIncEfe);
+          #502#7 = nTotal;
+
+          #501#9 = #501#9 + nSuma;
+          #501#38 = #501#38 + nSuma;
+
+          nAcuEfe = nAcuEfe + nSuma;
+          nDifEfe = nDifEfe - nSuma;
+     |SINO;
+          |SI nUni = 1;
+               #502#6 = #502#6 + nDifEfe;
+               #502#7 = #502#7 + nDifEfe;
+
+               #501#9 = #501#9 + nDifEfe;
+               #501#38 = #501#38 + nDifEfe;
+
+               nAcuEfe = nAcuEfe + nDifEfe;
+               nDifEfe = 0;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CalcuTar;
+     nTotal = nUni * (nPre + nIncTar);
+     nSuma = nTotal - #502#7;
+     nNume = nDifTar - nSuma;
+
+     |SI nOrgTar < 0;
+          nNume = -nNume;
+     |FINSI;
+
+     |SI nNume ] 0;
+          #502#6 = (nPre + nIncTar);
+          #502#7 = nTotal;
+
+          #501#9 = #501#9 + nSuma;
+          #501#40 = #501#40 + nSuma;
+
+          nAcuTar = nAcuTar + nSuma;
+          nDifTar = nDifTar - nSuma;
+     |SINO;
+          |SI nUni = 1;
+               #502#6 = #502#6 + nDifTar;
+               #502#7 = #502#7 + nDifTar;
+
+               #501#9 = #501#9 + nDifTar;
+               #501#40 = #501#40 + nDifTar;
+
+               nAcuTar = nAcuTar + nDifTar;
+               nDifTar = 0;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecalLinTiquet;
+     |SI nSw = 1;
+          nLineas = nLineas + 1;
+          |SI #502#7 < 0;
+               nNegativo = 1;
+          |FINSI;
+     |SINO;
+          |SI #502#7 ! 0; |Y #502#14 = 0;
+               nUni = #502#5;
+               nPre = #502#6;
+               |SI #501#38 ! 0; |Y nDifEfe ! 0;
+                    |HAZ CalcuEfe;
+               |FINSI;
+               |SI #501#40 ! 0; |Y nDifTar ! 0;
+                    |HAZ CalcuTar;
+               |FINSI;
+
+               || No hay tiquets con cobro tarjeta
+               |SI nSwSinTar = 1; |Y #501#38 ! 0; |Y nDifTar ! 0;
+                    |HAZ CalcuTar;
+               |FINSI;
+               || No hay tiquets con cobro efectivo
+               |SI nSwSinEfe = 1; |Y #501#40 ! 0; |Y nDifEfe ! 0;
+                    |HAZ CalcuEfe;
+               |FINSI;
+               |GRABA 020#502a;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE RecalLinTiquet;
+     #502#1;
+     ;
+     #501#36, #501#0, 001;
+     #501#36, #501#0, 999;
+     be;
+     NULL, RecalLinTiquet;
+|FIN;
+
+|PROCESO RecalTiquet;
+|SI #501#0 = 4124;
+||DEBUG;
+|FINSI;
+     |SI #501#9 ! 0;
+          nLineas = 0;
+          nNegativo = 0;
+          nSw = 1; |BUCLE RecalLinTiquet;
+          |SI nNegativo = 0; |O nLineas = 1;
+               nSw = 2; |BUCLE RecalLinTiquet;
+               |HAZ TotalCab;
+               |GRABA 020#501a;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE RecalTiquet;
+     #501#3;
+     ;
+     #2#0, "      ", " ", "     ", 000000;
+     #2#0, "zzzzzz", "z", "zzzzz", 999999;
+     be;
+     NULL, RecalTiquet;
+|FIN;
+
+|PROCESO RecalFecha;
+     |DBASE aBase;
+     |PARA i = 3; |SI i [ 12; |HACIENDO i = i + 1;
+          nEmp = #0i;
+          |SI nEmp > 0;
+               aEmp = ("00000" + nEmp) % -105;
+               aAlfa = aBase + "fich/" + aEmp + "/";
+               |PATH_DAT #501#aAlfa#;
+               |PATH_DAT #502#aAlfa#;
+               |ABRE #501;
+               |BUCLE RecalTiquet;
+               |CIERRA #501;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Recalcula;
+     |LEE 000#2p;
+
+||#2#0 = "31.03.2013";
+||LEE 000#2=;
+||DEBUG;
+
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          |PINTA 1502, #2#0;
+
+|SI #2#0 = "03.01.2012";
+||DEBUG;
+|FINSI;
+
+          nDifTar = #2#1 - #2#5;  nOrgTar = nDifTar;
+          nDifEfe = #2#2 - #2#6;  nOrgEfe = nDifEfe;
+
+          nIncTar = (nDifTar / #2#4) ! 0;
+          |SI nIncTar = 0;
+               |SI nOrgTar ] 0; nIncTar = 1; |SINO; nIncTar = -1; |FINSI;
+          |FINSI;
+
+          nIncEfe = (nDifEfe / #2#4) ! 0;
+          |SI nIncEfe = 0;
+               |SI nOrgEfe ] 0; nIncEfe = 1; |SINO; nIncEfe = -1; |FINSI;
+          |FINSI;
+
+          nAcuTar = 0; nAcuEfe = 0; nVuelta = 0;
+          nSwSinTar = 0; nSwSinEfe = 0;
+          |PARA; |SI; |HACIENDO;
+               nVuelta = nVuelta + 1;
+               aAlfa = nVuelta + "      ";
+               |PINTA 1514, aAlfa;
+
+               |HAZ RecalFecha;
+               |SI nDifEfe = 0; |Y nDifTar = 0;
+                    |SAL;
+               |FINSI;
+               |SI nVuelta ] 15;
+                    |SI nAcuTar = 0; |Y nDifEfe = 0; |Y nSwSinTar = 0;
+                         nSwSinTar = 1;
+                         nVuelta = 0;
+                    |SINO;
+                         |SI nAcuEfe = 0; |Y nDifTar = 0; |Y nSwSinEfe = 0;
+                              nSwSinEfe = 1;
+                              nVuelta = 0;
+                         |SINO;
+                              |MENAV "0000No puedo recalcular esta fecha";
+                              |CONFI "0000S¿Salir del recalculo?";
+                              |SI FSalida = 0; |ACABA; |FINSI;
+                              |SAL;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SIGUE;
+          |LEE 000#2s;
+     |SIGUE;
+|FPRC;

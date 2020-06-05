@@ -1,0 +1,178 @@
+|FICHEROS;
+     dspase00 #0;
+     dspase94 #94;
+     :/modelos/def/dsmom033 #33;
+     :/modelos/def/dsmom030 #30;
+
+     refer00@ #900;
+     refer01@ #901;
+|FIN;
+
+|VARIABLES;
+     aPathDefFiscal  = "";
+     aPathFichFiscal = "";
+     aPathAnterior   = "";
+     aDef            = "";
+     aBase           = "";
+     aPathPases      = "";
+     aOrigen         = "";
+     aDestino        = "";
+
+     &eaTipoCultivo  = 0;
+     &enCultivo      = 0;
+     &eaCta          = "";
+     aAlfa           = "";
+|FIN;
+
+|PROCESO MCta; |TIPO 0;
+     eaCta = #94Campo;
+     |SI Campo = 12; |O Campo = 13;
+         |QBF eaCta; aAlfa = eaCta % -101;
+         |SI aAlfa = "*"; |ACABA; |FINSI;
+     |FINSI;
+     |HAZ MFiltraPtos;
+     #94Campo = eaCta; |PINTA #94Campo;
+|FPRC;
+
+|PROCESO ConceptoIrpf;
+     |SI #94Campo ! 0;
+         |ABRE #30;
+         #30#0 = #94Campo;
+         |LEE 040#30=;
+         |SI FSalida ! 0;  |DDEFECTO #30;  |FINSI;
+         |CIERRA #30;
+
+         |SI #30#5 ! "S";
+             |MENAV "      El Concepto no es de IRPF.";
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Agricola;  |TIPO 7;
+     |C_M #94#26, 1, "S";
+     |SI #94#25 = 0;
+         |C_M #94#26, 1, "N";
+         #94#26 = 0;   |PINTA #94#26;
+         #94#27 = "";  |PINTA #94#27;
+     |FINSI;
+|FPRC;
+
+|PROCESO NombreCultivo;
+     |ABRE #33;
+     #33#0 = #94#26;
+     |LEE 040#33=;
+     |SI FSalida ! 0;  |DDEFECTO #33;  |FINSI;
+     |CIERRA #33;
+
+     #94#27 = #33#1;  |PINTA #94#27;
+|FPRC;
+
+|PROCESO SacaCultivo;  |TIPO 0;
+     |SI FSalida ! 10;  |HAZ NombreCultivo;  |ACABA;  |FINSI;
+
+     eaTipoCultivo = "";
+     |SUB_EJECUTA_NP ":modelos/dsmom033";
+     #94#26 = enCultivo;   |PINTA #94#26;
+     |HAZ NombreCultivo;
+|FPRC;
+
+
+|PROCESO CreaEsto;
+     #901#0 = #900#0;
+     |LEE 040#901=;
+     |SI FSalida ! 0;  |DDEFECTO #901;  |FINSI;
+
+     #94#0 = #900#0;
+     |LEE 101#94=;
+     |SI FSalida ! 0;
+         #94#0  = #900#0;
+         #94#1  = #900#1;
+         |GRABA 020#94b;
+     |FINSI;
+
+     #94#2  = #900#2;
+     #94#3  = #900#3;
+     #94#4  = #900#6;
+     #94#5  = #900#7;
+     #94#6  = #900#10;
+     #94#7  = #900#14;
+     #94#8  = #900#12;
+     #94#9  = #900#13;
+     #94#25 = #901#7;
+     |GRABA 020#94a;
+     |LIBERA #94;
+|FPRC;
+
+|DEFBUCLE eosconce;
+     #900#1001;
+     ;
+     01;
+     99;
+     ;
+     NULL, CreaEsto;
+|FIN;
+
+|RUTINA ClaveBaja1;
+     #94#0 = 01;
+|FRUT;
+
+|RUTINA ClaveAlta1;
+     #94#0 = 99;
+|FRUT;
+
+|PROGRAMA;
+     |ABRE #0;
+     |LEE 040#0p;
+     |SI FSalida ! 0;
+         |MENAV "     Pase de Ficheros Generales no Realizado";
+         |CIERRA #0;
+         |ACABA;
+     |FINSI;
+     |CIERRA #0;
+
+     aPathAnterior   = #0#0;  |QBT aPathAnterior;
+     aPathDefFiscal  = aPathAnterior + "agieos/def/";
+     aPathFichFiscal = aPathAnterior + "agieos/fich/";
+
+     aDef = aPathDefFiscal + "eosconce.mas";
+     |CARGA_DEF aDef, refer00@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     aDef = aPathDefFiscal + "eosconcd.mas";
+     |CARGA_DEF aDef, refer01@;
+     |SI FSalida ! 0;
+         |DESCARGA_DEF #refer00@;
+         |ACABA;
+     |FINSI;
+
+     |PATH_DAT #900 aPathFichFiscal;
+     |PATH_DAT #901 aPathFichFiscal;
+
+     |DBASE aBase;  |QBF aBase;
+     aPathPases = aBase + "pases";  |MKDIR aPathPases;
+     aPathPases = aPathPases + "/";
+
+     |PATH_DAT #94 aPathPases;
+
+     |ABRE #94;
+     |LEE 040#94p;
+     |SI FSalida ! 0;
+         |CIERRA #94;
+         aOrigen  = aBase + "fich/dspase94.dat";
+         aDestino = aPathPases + "dspase94.dat";
+         |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+     |CIERRA #94;
+
+     |ABRE #94;
+     |ABRE #901;
+     |BUCLE eosconce;
+     |CIERRA #901;
+     |CIERRA #94;
+
+     |DESCARGA_DEF #refer01@;
+     |DESCARGA_DEF #refer00@;
+
+     |ENTLINEAL #1#94, -1, 2, 22, 1, ClaveBaja1, ClaveAlta1;
+|FPRO;

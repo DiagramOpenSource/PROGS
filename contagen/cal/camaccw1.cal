@@ -1,0 +1,577 @@
+|FICHEROS;
+  camaniva #0;
+  caivalin #1;
+
+  camaccw1 #599;
+
+  camacc01 #501;
+  camacc02 #502,MANTE;
+  camacc03 #503;
+
+  camacc12 #512,MANTE;
+|FIN;
+
+|VARIABLES;
+  nLinea  = 0;
+  nDLinea = 0;
+  nHLinea = 0;
+  nNumero = 0;
+  aAlfa   = "";
+  aAlfa1  = "";
+  aAlfa2  = "";
+  fFecha1 = @;
+  nNume1  = 0;
+  nNume2  = 0;
+  nNume3  = 0;
+  nTp     = 0;
+  nModo   = 0;
+
+  nSuma1    = 0;
+  nSuma2    = 0;
+  nSuma3    = 0;
+  nNumBase  = 0;
+  nLineaUlt = 0;
+  nSwOp     = 0;
+  &eSwCambio = 0;
+  &ePrograma = 0;
+  &eMenCaja  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+
+|PROCESO PrimeraSuma;
+  |SI #512#2 > nHLinea;
+      |BORRA 020#512a;
+  |SINO;
+      #599#16 = #599#16 + #512#5;
+      #599#18 = #599#18 + #512#8;
+      #599#19 = #599#19 + #512#6;
+      #599#20 = #599#20 + #512#7;
+  |FINSI;
+  |LIBERA #512;
+|FPRC;
+
+|DEFBUCLE PrimeraSuma;
+  #512#1;
+  ;
+  #599#0, nNumero, 01;
+  #599#0, nNumero, 99;
+  be;
+  NULL, PrimeraSuma;
+|FIN;
+|| ///////////////////////////
+
+|CALCULO Tipo12CC12; |TIPO 12;
+  || Para que no pregunte conforme
+|FCAL;
+
+|CALCULO Tipo11CC12; |TIPO 11;
+|FCAL;
+
+|CALCULO Tipo0CC12; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1; |Y #599#16 = #599#10;
+         aAlfa = "    NFactura cobrada. Desea dar de alta otra linea";
+         |SI #599#13 = "S";
+             aAlfa = "    NFactura pagada. Desea dar de alta otra linea";
+         |FINSI;
+         |CONFI aAlfa;
+         |SI FSalida ! 0;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+     |SI nModo = 1; |Y #512#2 = 1;
+         #512#3 = #599#4; |PINTA #512#3;
+         aAlfa1 = #512#3; aAlfa1 = aAlfa1 % 0402;
+         #512#4 = aAlfa1; |PINTA #512#4;
+     |FINSI;
+|FCAL;
+
+|CALCULO Tipo2CC12; |TIPO 2;
+      #599#16 = #599#16 +. #512#5;
+      #599#18 = #599#18 +. #512#8;
+      #599#19 = #599#19 +. #512#6;
+      #599#20 = #599#20 +. #512#7;
+      |PINTA 2221, #599#16;
+      |PINTA 2237, #599#18;
+|FCAL;
+
+|PROCESO CalPeriodo;
+   aAlfa1 = #512#3;
+   aAlfa1 = aAlfa1 % 0402;
+   #512#4 = aAlfa1; |PINTA #512#4;
+|FPRC;
+
+|CALCULO Tipo0CC1203; |TIPO 0;   || Fecha
+
+   |C_M #512Campo,0,aAlfa;
+   |SI aAlfa = "N"; |ACABA; |FINSI;
+
+   |SI #512#3 < #599#4;
+       aAlfa = "    NError. Fecha del cobro inferior a la Fecha de la Factura. Continuar";
+       |SI #599#13 = "S";
+           aAlfa = "    NError. Fecha del pago inferior a la Fecha de la Factura. Continuar";
+       |FINSI;
+       |CONFI aAlfa;
+       |SI FSalida ! 0;
+           |ERROR;
+           |ACABA;
+       |FINSI;
+   |FINSI;
+
+   fFecha1 = Contenido;
+   |SI fFecha1 ! #512#3;
+       |HAZ CalPeriodo;
+   |FINSI;
+|FCAL;
+
+|CALCULO Tipo7CC1205; |TIPO 7;
+   aAlfa = "    Pulse <F2> para cuadrar Importe Total ";
+   |SI #599#13 = "S";
+       aAlfa = aAlfa + "pagado";
+   |SINO;
+       aAlfa = aAlfa + "cobrado";
+   |FINSI;
+   |MENSA aAlfa;
+|FCAL;
+
+|CALCULO Tipo0CC1205; |TIPO 0;   || Total Cobrado.
+   |SI FSalida = 10;
+       #512#5 = #599#10 - #599#16; |PINTA #512#5;
+   |FINSI;
+
+   nNume1 = (#599#16 + #512#5) ! 2;
+   |SI nNume1 > #599#10; |Y #599#10 > 0;
+       |MENAV "1234Error, Importe superior al Total Factura";
+       |ERROR;
+       |ACABA;
+   |FINSI;
+
+   |SI nNume1 < #599#10; |Y #599#10 < 0;
+       |MENAV "1234Error, Importe superior al Total Factura";
+       |ERROR;
+       |ACABA;
+   |FINSI;
+
+   nNume3 = #599#8 + #599#9;
+   |SI #599#10 = #512#5;
+       nTp = 100;
+       #512#6 = #599#8;
+       #512#7 = #599#9;
+   |SINO;
+       nTp   = ((#512#5 * 100) / #599#10) ! 4;
+       #512#6 = (#599#8 % nTp) ! 2;
+       #512#7 = (#599#9 % nTp) ! 2;
+       |SI nNume1 = #599#10;
+           nTp = (100 - #599#18) ! 4;
+           #512#6 = #599#8 - #599#19;
+           #512#7 = #599#9 - #599#20;
+       |FINSI;
+       |SI nNume3 = #599#10;   ||no hay IRPF
+           nNume2 = #512#6 + #512#7;
+           |SI nNume2 ! #512#5;     ||para cuadrar lo mas posible
+               #512#7 = (#512#7 + (#512#5 - nNume2)) ! 2;
+          |FINSI;
+       |FINSI;
+   |FINSI;
+   #512#8 = nTp;
+|FCAL;
+
+|| ///////////////////////////
+|PROCESO PagoUnico;
+      #512#0 = #599#0;
+      #512#1 = nNumero;
+      #512#2 = 1;
+      |LEE 141#512=;
+      |SI FSalida ! 0;
+          |DDEFECTO #512;
+          #512#0 = #599#0;
+          #512#1 = nNumero;
+          #512#2  = 1;
+          |GRABA 020#512b;
+      |FINSI;
+
+      #512#3 = #599#15;
+      |HAZ CalPeriodo;
+      || ... #512#4 = #599#17;
+
+      #512#5 = #599#10;
+      #512#6 = #599#8;
+      #512#7 = #599#9;
+      #512#8 = 100;
+      #512#11 = #599#3;
+      #512#12 = #599#2;
+      |GRABA 020#512a;
+      |LIBERA #512;
+|FPRC;
+
+|PROCESO ClaveAlta12;
+  #512#0 = #599#0;
+  #512#1 = nNumero;
+  #512#2 = nDLinea;
+|FPRC;
+
+|PROCESO ClaveBaja12;
+  #512#0 = #599#0;
+  #512#1 = nNumero;
+  #512#2 = nHLinea;
+|FPRC;
+
+|| ////////////////////// proceso para Cainliva (Introduccion Facturas)
+|PROCESO TrataCainliva;
+
+  nNumero = #599#1;
+  #599#16 = 0;
+  #599#18 = 0;
+  #599#19 = 0;
+  #599#20 = 0;
+  nHLinea = -1;
+  |SI #599#14 = "P";
+      nDLinea = 1;
+      nHLinea = 1;
+  |SINO;
+      |SI amCCaja = "M";
+          nDLinea =  1;
+          nHLinea = 99;
+      |FINSI;
+  |FINSI;
+
+  aAlfa1 = "S";
+  |SI nHLinea = 1; |Y eModoCaja ! 14;  || Si cobro entero con P una solo linea con el total
+      |ABRE #512;
+      |HAZ PagoUnico;
+      |CIERRA #512;
+      aAlfa1 = "N";
+  |FINSI;
+
+  |C_M #512#3,1,aAlfa1;
+  |C_M #512#4,1,aAlfa1;
+  |C_M #512#5,1,aAlfa1;
+
+  |BUCLE PrimeraSuma;
+  |SI nHLinea = -1; |ACABA; |FINSI;
+
+  |SI eModoCaja ! 14; |Y nHLinea > 1;
+      aAlfa1 =  "2400NFra. de Critero de Caja. Desea introducir los datos de Cobro/Pago";
+      |SI eModoCaja = 12;
+          aAlfa1 =  "2400NFra. de Critero de Caja. Desea modificar los datos de Cobro/Pago";
+      |FINSI;
+      |AVISO;
+      |CONFI aAlfa1;
+      |SI FSalida ! 0; |ACABA; |FINSI;
+  |FINSI;
+
+  |PINPA #0#512;
+  |SI #599#13 = "S";
+      |ATRI R; |PINTA 1513, "Pago ";       |ATRI 0;
+      |ATRI P; |PINTA 2210, "Pagado ..: "; |ATRI 0;
+               |PINTA 1625, "Pagado  ";
+               |PINTA 1643, "Pago  ";
+  |FINSI;
+
+  |PINDA #0#599;
+  |SI nHLinea ! 1;
+      |ATRI R;
+      |PINTA 1545, "(Control Manual)";
+      |ATRI 0;
+  |FINSI;
+
+  |PINTA #599#16;
+  |PINTA #599#18;
+  |SI eModoCaja = 14;
+      |ENTLINEAL #1#512, -3, 5, 20, 0, ClaveAlta12, ClaveBaja12;
+      |ACABA;
+  |FINSI;
+
+  |SI nHLinea = 1;
+      |ENTLINEAL #1#512, -3, 7, 20, 0, ClaveAlta12, ClaveBaja12;
+      |ABRE #512;
+      #512#0 = #599#0;
+      #512#1 = nNumero;
+      #512#2 = 1;
+      |LEE 141#512=;
+
+      |ENDATOS #2#512;
+      |SI FSalida = 0;
+          |GRABA 020#512a;
+      |FINSI;
+      |LIBERA #512;
+      |CIERRA #512;
+  |SINO;
+      |ENTLINEAL #1#512, -3, 2, 20, 0, ClaveAlta12, ClaveBaja12;
+  |FINSI;
+|FPRC;
+|| /////////////////////////////////////////////////////////////////////
+|PROCESO LeoMacc03;
+     nNumBase = #503#3;
+     #caivalin#0 = #503#0;
+     #caivalin#1 = #503#1;
+     #caivalin#2 = nNumBase;
+     |LEE 141#caivalin.=;
+     |SI FSalida ! 0;
+         |BORRA 020#503a;
+         |LIBERA #503;
+         |ACABA;
+     |SINO;
+         |SI #503#3 = nLineaUlt;
+             #503#4 = #503#4 + (#502#10 - nSuma1);
+             #503#5 = #503#5 + (#502#11 - nSuma2);
+             #503#6 = #503#6 + (#502#12 - nSuma3);
+             |GRABA 020#503a;
+             || hacer cuadre
+         |FINSI;
+     |FINSI;
+     |LIBERA #503;
+|FPRC;
+
+|DEFBUCLE LeoMacc03;
+    #503#1;
+    ;
+    #502#17, #502#0, #502#1, #502#2, 01;
+    #502#17, #502#0, #502#1, #502#2, 99;
+    be;
+    NULL, LeoMacc03;
+|FIN;
+
+|PROCESO LeoLineaIVA;
+     nNumBase = #caivalin#2;
+     |DDEFECTO #503;
+     #503#0 = #502#0;
+     #503#1 = #502#1;
+     #503#2 = #502#2;
+     #503#3 = nNumBase;
+     #503#7 = #502#17;
+     |LEE 141#503=;
+     |SI FSalida ! 0;
+         |DDEFECTO #503;
+         #503#0 = #502#0;
+         #503#1 = #502#1;
+         #503#2 = #502#2;
+         #503#3 = nNumBase;
+         #503#7 = #502#17;
+         |GRABA 020#503b;
+     |FINSI;
+
+|| .. asi el calcul
+     #503#4 = ((#caivalin#6 + #caivalin#8 - #caivalin#22) % #502#13) ! 2;
+     #503#5 = (#caivalin#6 % #502#13) ! 2;
+     #503#6 = (#caivalin#8 % #502#13) ! 2;
+
+     nSuma1 = (nSuma1 + #503#4) ! 2;
+     nSuma2 = (nSuma2 + #503#5) ! 2;
+     nSuma3 = (nSuma3 + #503#6) ! 2;
+     nLineaUlt = #caivalin#2;
+
+     |GRABA 020#503a;
+     |LIBERA #503;
+|FPRC;
+
+|DEFBUCLE LeoLineaIVA;
+  #caivalin#1;
+  ;
+  #599#0, #599#1, 01;
+  #599#0, #599#1, 99;
+  e;
+  NULL, LeoLineaIVA;
+|FIN;
+
+|PROCESO PrimeraSuma2;
+      #599#16 = #599#16 + #502#10;
+      #599#18 = #599#18 + #502#13;
+      #599#19 = #599#19 + #502#11;
+      #599#20 = #599#20 + #502#12;
+      nLinea = #502#2;
+      #501#6  = #501#6  + #502#11;
+      #501#7  = #501#7  + #502#12;
+      #501#12 = #501#12 + #502#10;
+      #501#16 = #501#16 + #502#13;
+
+      |SI nSwOp = 2; |Y eSwCambio = 1;
+
+          |CIERRA #0;
+          |CIERRA #1; ePerioCaja = #501#18; |HAZ ePathCaja;
+          |PATH_DAT #0 ePathCaja;
+          |PATH_DAT #1 ePathCaja;
+
+          nSuma1 = 0; nSuma2 = 0; nSuma3 = 0; nLineaUlt = 0;
+          |ABRE #503;      |BUCLE LeoLineaIVA; |CIERRA #503;
+          |ABRE #caivalin; |BUCLE LeoMacc03;   |CIERRA #caivalin;
+      |FINSI;
+      |LIBERA #502;
+|FPRC;
+
+|DEFBUCLE PrimeraSuma2;
+  #502#1;
+  ;
+  #501#17, #501#0, nNumero, 01;
+  #501#17, #501#0, nNumero, 99;
+  be;
+  NULL, PrimeraSuma2;
+|FIN;
+
+
+|PROCESO ClaveAlta02;
+  #502#0  = #599#0;
+  #502#1  = nNumero;
+  #502#2  = nDLinea;
+  #502#17 = #599#26;
+|FPRC;
+
+|PROCESO ClaveBaja02;
+  #502#0  = #599#0;
+  #502#1  = nNumero;
+  #502#2  = nHLinea;
+  #502#17 = #599#26;
+|FPRC;
+|| ////////////////////// proceso para Camaniva
+
+|PROCESO TrataCamaniva;
+
+  |ABRE #501;
+  #501#0  = #599#0;
+  #501#1  = #599#1;
+  #501#17 = #599#26;
+  |LEE 141#501=;
+  |SI FSalida ! 0;
+      |DDEFECTO #501;
+      #501#0  = #599#0;
+      #501#1  = #599#1;
+      #501#17 = #599#26;
+      #501#18 = #599#27;
+      |GRABA 020#501b;
+  |FINSI;
+
+  #501#2 = #599#21;
+  #501#3 = #599#22;
+  #501#4 = #599#23;
+
+  #501#13 = #599#13;
+  #501#14 = #599#3;
+  #501#15 = #599#2;
+
+  nNumero = #599#1;
+  #599#16 = 0; #501#12 = 0;
+  #599#18 = 0; #501#16 = 0;
+  #599#19 = 0; #501#6 = 0;
+  #599#20 = 0; #501#7 = 0;
+  nDLinea =  1;
+  nHLinea = 99;
+  nLinea  = 0;
+  nSwOp   = 1;
+  |BUCLE PrimeraSuma2;
+
+  |SI nLinea = 0;
+      |SI eModoCaja = 4;
+          |MENAV "    No existen Cobros/Pagos de esta Factura. ";
+          |VETE ParaSalir;
+      |FINSI;
+      |SI amCCaja = "A";
+          |SI eMenCaja = 1;
+              |MENAV "0000Fra sin Cobros/Pagos asignados";
+          |FINSI;
+          |VETE ParaSalir;
+      |FINSI;
+  |FINSI;
+
+  |SI eModoCaja ! 4; |Y nForzCaja ! 1;
+      aAlfa1 =  "2400NFra. de Critero de Caja. Desea introducir los datos de Cobro/Pago";
+      |SI eModoCaja = 2; |O amCCaja = "A";
+          aAlfa1 =  "2400NFra. de Critero de Caja. Desea modificar los datos de Cobro/Pago";
+      |FINSI;
+      |AVISO;
+      |CONFI aAlfa1;
+      |SI FSalida ! 0;
+          |VETE ParaSalir;
+      |FINSI;
+  |FINSI;
+  |SI nForzCaja = 1; |Y eModoCaja = 4; ePrograma = 1; |FINSI;
+
+  |PINPA #0#599;
+  |PINPA #0#502;
+  |SI #599#13 = "S";
+      |ATRI R; |PINTA 1511, "Pago para IVA Criterio de Caja  "; |ATRI 0;
+               |PINTA 2203, "                 Total Pagado ..:                (         %)";
+      |ATRI P; |PINTA 2203, "                 Total Pagado ..: "; |ATRI 0;
+               |PINTA 1641, "Pagado  ";
+               |PINTA 1659, "Pago ";
+  |SINO;
+               |PINTA 2203, "                 Total Cobrado .:                (         %)";
+      |ATRI P; |PINTA 2203, "                 Total Cobrado .: "; |ATRI 0;
+  |FINSI;
+  |C_P #599#16,1,2237;
+  |C_P #599#18,1,2253;
+
+  |PINDA #0#599;
+  aAlfa1 = "N";
+  |SI amCCaja = "M";
+      |ATRI R;
+      |PINTA 1543, "(Control Manual)";
+      |ATRI 0;
+      aAlfa1 = "S";
+  |FINSI;
+
+  |C_M #502#4,  1, aAlfa1;
+  |C_M #502#10, 1, aAlfa1;
+
+  |SI #501#17 = 0; |Y #501#18 ! -1;
+      |SI eModoCaja ! 4;
+          |MENAV "    Exportada al ejercicio posterior. Solo Consulta";
+      |FINSI;
+      eModoCaja = 4;
+  |FINSI;
+
+  |PINTA #599#16;
+  |PINTA #599#18;
+  |SI eModoCaja = 4;
+      |ENTLINEAL #1#502, -4, 5, 20, 0, ClaveAlta02, ClaveBaja02;
+  |SINO;
+      |SI amCCaja = "M";
+         |ENTLINEAL #1#502, -4, 2, 20, 0, ClaveAlta02, ClaveBaja02;
+      |SINO;
+         |ENTLINEAL #1#502, -4, 4, 20, 0, ClaveAlta02, ClaveBaja02;
+      |FINSI;
+  |FINSI;
+
+|ET ParaSalir;
+  #599#16 = 0; #501#12 = 0;
+  #599#18 = 0; #501#16 = 0;
+  #599#19 = 0; #501#6 = 0;
+  #599#20 = 0; #501#7 = 0;
+  nDLinea =  1;
+  nHLinea = 99;
+  nLinea  = 0;
+  nSwOp   = 2;
+  |BUCLE PrimeraSuma2;
+  #501#5 = "N";
+  |SI #501#6 = #599#8; |Y #501#7 = #599#9;
+      #501#5 = "S";
+  |FINSI;
+
+   |GRABA 020#501a;
+   |LIBERA #501;
+   |CIERRA #501;
+
+|FPRC;
+|| ///////////////////////////////////////////////////////////////////////
+
+|PROGRAMA;
+  |NOME_DAT #599 eaFicCaja;
+
+  |ABRE #599;
+  |LEE 020#599p;
+  |SI FSalida ! 0;
+      |CIERRA #599;
+      |ACABA;
+  |FINSI;
+
+  |SI eModoCaja > 10;
+      |HAZ TrataCainliva;
+  |SINO;
+      |HAZ TrataCamaniva;
+  |FINSI;
+
+  |BORRA 020#599a;
+  |CIERRA #599;
+  eSwCambio = 0;
+|FPRO;

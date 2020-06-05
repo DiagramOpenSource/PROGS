@@ -1,0 +1,209 @@
+      Los procesos marcados con (*) son los necesarios para
+      simular un cabeceras/lineas
+
+|FICHEROS;
+     gestrm09 #0;
+     gestrm10 #1,MANTE;
+     agifa019 #19;
+     agifa024 #24;
+     dsm00010 #910;
+     agifa321 #321;
+     agifa324 #324;
+|FIN;
+
+|INCLUYE i_varart;
+|INCLUYE i_cdbarr;
+
+|VARIABLES;
+     aAlfa = "";
+     nGrid1 = -1;
+     nRango = 0;
+     nPos1 = 0;
+     nPos2 = 0;
+     nModo = 0;
+     nHay = 0;
+
+     &nDeci_PreVis  = 0;
+     &precio_divisa  = 0;
+     &precio_base    = 0;
+     &decim_base     = 0;
+|FIN;
+
+|PROCESO Min;
+     #1#0 = #0#0;
+     #1#1 = "                    ";
+|FPRC;
+
+|PROCESO Max;
+     #1#0 = #0#0;
+     #1#1 = "zzzzzzzzzzzzzzzzzzzz";
+|FPRC;
+
+|PROCESO Tipo14; |TIPO 14;    ||(*)
+     |SI nGrid1 = -1;
+          nRango = 1 + 4 + 8 + 16 + 32;
+          nPos1 = 1402;
+          nPos2 = 2998;
+          |LINEAL_SIMPLE #1#1, nRango, nPos1, nPos2, Min, Max, NULL;
+          nGrid1 = FSalida;
+     |SINO;
+          |REFRESCACONTROL nGrid1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo8; |TIPO 8; ||(*)
+     |ABRET #1;
+|FPRC;
+
+|PROCESO Tipo9; |TIPO 9; ||(*)
+     |CIERRAT #1;
+|FPRC;
+
+|PROCESO BorraLin;
+     |BORRA 020#1a;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE BorraLin;
+     #1#1;
+     ;
+     #0#0, "                    ";
+     #0#0, "zzzzzzzzzzzzzzzzzzzz";
+     be;
+     NULL, BorraLin;
+|FIN;
+
+|PROCESO Tipo2; |TIPO 2; ||(*)
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+          |BUCLE BorraLin;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo0; |TIPO 0;     ||(*)
+     |REFRESCACONTROL nGrid1;
+|FPRC
+
+|PROCESO Tipo12; |TIPO 12;    ||(*)
+     || No quitar
+|FPRC;
+
+|PROCESO Tipo30; |TIPO 30;    ||(*)
+     nModo = (FEntrada / 100) ! 0;
+     |ABRE #1;
+     #1#0 = #0#0;
+     #1#1 = "";
+     |LEE 000#1];
+     |SI FSalida ! 0; |O #1#0 ! #0#0;
+          |SI nModo = 1;
+               |MENAV "0000Se anulan los datos entrados.";
+          |SINO;
+               |MENAV "0000No existen lineas, se borra la cabecera.";
+          |FINSI;
+          |BORRA 020#0a;
+          |ERROR;
+     |FINSI;
+     |CIERRA #1;
+|FPRC;
+------------------------------
+|PROCESO T80; |TIPO 80;
+     FSalida = 3099;
+|FPRC;
+
+|PROCESO T13; |TIPO 13;
+     |HAZ LeeMon0;
+|FPRC;
+
+|PROCESO LeeMon0;
+     |ABRE #321;
+     |ABRE #324;
+     |LEE 010#321p;
+     #324#0 = #321#9;
+     |LEE 010#324=;
+     decim_base = #324#7;
+     precio_base = #324#9;
+     |CIERRA #324;
+     |CIERRA #321;
+
+     |ABRE #24;
+     #24#0 = #0#0;
+     |LEE 000#24=;
+     |CIERRA #24;
+
+     |ABRE #324;
+     |SI #0#1 = "S";
+          #324#0 = #0#2;
+     |SINO;
+          #324#0 = #24#192;
+     |FINSI;
+     |LEE 000#324=;          || Leo la divisa
+     |CIERRA #324;
+     precio_divisa = #324#9;  || Decimales en el precio de la divisa
+
+     |SI #24#193 = "B";           || Si trabajo con la moneda base ...
+          nDeci_PreVis   = precio_divisa;
+     |SINO;                        || Si trabajo con la divisa ...
+          nDeci_PreVis   = precio_base;
+     |FINSI;
+     |PINTA 1120, #24#1;
+     |PINTA 1241, #324#1;
+|FPRC;
+
+|PROCESO Divisa7; |TIPO 7;
+     |SI #0#1 = "N";
+          |C_M #0#2, 1, "N";
+          #0#2 = "";
+     |SINO;
+          |C_M #0#2, 1, "S";
+          |SI #0#2 = "   ";
+               #0#2 = #321#9;
+          |FINSI;
+     |FINSI;
+     |PINTA #0#2;
+|FPRC;
+------------------------Lineas
+|PROCESO Calc623;  |TIPO 6;
+     nModo = (FEntrada / 100) ! 0;
+
+     enAlta = 0;
+     eaArticulo = #1Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #1Campo = eaArticulo;
+          |PINTA #1Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO PideArt23;  |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+
+     |ABRE #910; |LEE 000#910p; |CIERRA #910;
+
+     |SI #910#2 [ 2;    |ACABA;  |FINSI;
+
+     eAlfa = #1Campo;
+     |SUB_EJECUTA_NP "dsz99990";                 || Por Pantalla
+     |SI eAlfa = "-1";  |PTEC 807;  |ACABA;  |FINSI;
+     |SI eAlfa = "-2";              |ACABA;  |FINSI;
+
+     eaArticulo = eAlfa;
+
+     #1Campo = eAlfa;
+     |PINTA #1Campo;
+     |PTEC 802;
+|FPRC;
+
+|PROCESO Arti; |TIPO 0;
+     |ABRE #19;
+     #19#0 = #1#1;
+     |LEE 000#19=;
+     |SI FSalida = 0;
+          #1#2 = #19#1; |PINTA #1#2;
+     |SINO;
+          |MENAV "0000No existe c¢digo de art¡culo...";
+          |ERROR;
+     |FINSI;
+     |CIERRA #19;
+|FPRC;

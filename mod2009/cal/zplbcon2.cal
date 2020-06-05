@@ -1,0 +1,990 @@
+|| ----------------------------- Calculo de Amortizaciones
+|| ----------------- CalculaAmor   --> calculo anual
+|| ----------------- CalAmorModulo --> para modulos
+
+|FICHEROS;
+    dsmom041 #1;
+    dsmom042 #2;
+
+    dsmom107 #107;
+    :/contagen/def/cafinanc #360;
+    :/contagen/def/cafinanl #361;
+
+|FIN;
+
+|VARIABLES;
+  &eaError = "";
+  diasanyo = 0;
+  feclin   = "";
+  mensaje  = "";
+  trab1    = "";
+  &dias    = 0;
+  dias1    = 0;
+  ultfis   = @;
+  ultcon   = @;
+  canamort = 0;
+  coefi    = 0.0;
+  fecpri   = @;
+  fecult   = @;
+  FechaLimite = @;
+  FechaPrueba = @;
+  valorele    = 0;
+  fecha       = @;
+  &cuotamor    = 0;
+  nume1       = 0;
+  nume2       = 0;
+  cuodig      = 0;
+  x           = 0;
+  &topfisc    = @;
+  topcont     = @;
+  diastot     = 0;
+  diasprim    = 0;
+  SumaFechas  = 0;
+  Comodin     = "";
+  ComodNum    = 0;
+  &SiMen      = 0;
+
+  &nAmordef   = 0;
+  &nAmorpro   = 0;
+  nAcumD    = 0;
+  nRestD    = 0;
+  nAcumP    = 0;
+  nRestP    = 0;
+  fUltAmor  = @;
+  fFecha    = @;
+  swExiste  = 0;
+  nVAnyo    = 0;
+  nCAnyo    = 0;
+  nAnyUlt   = 0;
+  aAlfa1    = "";
+  aAlfa2    = "";
+  aAlfa3    = "";
+  nNume1    = 0;
+  nNume2    = 0;
+  nNume3    = 0;
+  nNume4    = 0;
+  nNume7    = 0;
+  elAny     = 0;
+  nDias     = 0;
+  nDias7    = 0;
+  aUltLinF  = "";
+  aUltLinC  = "";
+
+  &importe    = 0;
+  &fFinPago   = @;
+  &enCodOpe   = 0;
+  &enMulFis   = 0;
+  &enAcumFiscal = 0;
+
+  nAny        = 0;
+  nAnyFin     = 0;
+  nPagado     = 0;
+  nPagEste    = 0;
+  nPendiente  = 0;
+
+  fUltFecha   = @;
+  fAmorFin    = @;
+  nUltPago    = 0;
+
+  nImpPorDia  = 0;
+  nTopeFiscal = 0;
+  nCantAmor   = 0;
+  nSalAmor    = 0;
+|FIN;
+
+|INCLUYE i_varcon;
+|INCLUYE i_variar;
+
+|PROCESO normfisc;
+  fecpri = #dsmom041#9;
+  fecult = fFechaAmor;
+  |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+      fecult = #dsmom041#26;
+  |FINSI;
+  diastot = fecult - #dsmom041#9 + 1;  || suma un dia atencion
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = ((#dsmom041#10 * #dsmom041#14) / 100) ! EURODBMOD;
+         fecha = fecult - fecpri;
+         |SI fecha ] "01.01.0000";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecult = fecult - nume1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorfis = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+             canamort = canamort + amorfis;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorfis = canamort - #dsmom041#15;
+|FPRC;
+
+|PROCESO degrfisc;
+  coefi = 2.5;
+  |SI #dsmom041#17 < 8;  coefi = 2;    |FINSI;
+  |SI #dsmom041#17 < 5;  coefi = 1.5;  |FINSI;
+  coefi = (coefi * #dsmom041#14) / 100;
+  fecpri = #dsmom041#9;
+  fecult = fFechaAmor;
+  ComodNum = ((100 / #dsmom041#17) * diasanyo) ! 0;   ||AQUI
+  SumaFechas = ComodNum;
+  SumaFechas = SumaFechas + fecpri;
+  FechaLimite = SumaFechas;
+  |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+      fecult = #dsmom041#26;
+  |FINSI;
+  canamort = 0;
+  valorele = #dsmom041#10;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+     Comodin = fecpri % 0704;
+     ComodNum = Comodin;
+     ComodNum = ComodNum + 1;
+     Comodin = fecpri % 0106;
+     Comodin = Comodin + ComodNum;
+     FechaPrueba = Comodin;
+     |SI FechaPrueba > FechaLimite;
+         |SI #dsmom041#26 [ "01.01.0000";
+            canamort = #dsmom041#10;
+         |SINO;
+            fecha = #dsmom041#26 - fecpri;
+            ComodNum = fecha;
+            cuotamor = (valorele * coefi) ! EURODBMOD;
+            amorfis = (ComodNum * cuotamor) / diasanyo;   ||aqui
+            canamort = canamort + amorfis;
+            valorele = valorele - amorfis;
+         |FINSI;
+         |SAL;
+     |SINO;
+         cuotamor = (valorele * coefi) ! EURODBMOD;
+         fecha = fecult - fecpri;
+         |SI fecha > "01.01.0000";
+             Comodin = fecpri % 0105;
+             |QBF Comodin;
+             |SI Comodin ! "31.12";
+                 Comodin = fecpri % 0704;
+                 |QBF Comodin;
+                 dias1 = 365;
+                 |SI Comodin = "1980"; |O Comodin = "1984"; |O Comodin = "1988";
+                    |O Comodin = "1992"; |O Comodin = "1996"; |O Comodin = "2000";
+                    |O Comodin = "2004"; |O Comodin = "2008"; |O Comodin = "2012";
+                       dias1 = 366;
+                 |FINSI;
+                 Comodin = "31.12." + Comodin;
+                 fecha = Comodin;
+                 dias = fecha - fecpri;
+                 amorfis = ((dias * cuotamor) / dias1) ! EURODBMOD;
+                 canamort = canamort + amorfis;
+                 valorele = valorele - amorfis;
+                 fecpri = fecha;
+             |SINO;
+                 canamort = canamort + cuotamor;
+                 valorele = valorele - cuotamor;
+                 nume1 = 1 / 1000000;
+                 fecpri = fecpri + nume1;
+             |FINSI;
+         |SINO;
+             dias = fecult - fecpri;
+             amorfis = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+             canamort = canamort + amorfis;
+             |SAL;
+         |FINSI;
+      |FINSI;
+  |SIGUE;
+  amorfis = canamort - #dsmom041#15;
+|FPRC;
+
+|PROCESO acelfisc;
+  nume1 = 0;
+  |PARA x = 1;  |SI x [ #dsmom041#17;  |HACIENDO x = x + 1;
+        nume1 = nume1 + x;
+  |SIGUE;
+  cuodig = #dsmom041#10 / nume1;
+  x = #dsmom041#17;
+  fecpri = #dsmom041#9;
+  fecult = fFechaAmor;
+  |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+      fecult = #dsmom041#26;
+  |FINSI;
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = (cuodig * x) ! EURODBMOD;
+         fecha = fecult - fecpri;
+         |SI fecha > "01.01.0000";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+             x = x - 1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorfis = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+             canamort = canamort + amorfis;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorfis = canamort - #dsmom041#15;
+|FPRC;
+
+
+|PROCESO normcont;
+  fecpri = #dsmom041#9;
+  fecult = fFechaAmor;
+  |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+      fecult = #dsmom041#26;
+  |FINSI;
+  diastot = fecult - #dsmom041#9 + 1; || Suma un dia atencion
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = ((#dsmom041#10 * #dsmom041#20) / 100) ! EURODBMOD;
+         fecha = fecult - fecpri;
+         |SI fecha > "01.01.0000";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorcon = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+             canamort = canamort + amorcon;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorcon = canamort - #dsmom041#21;
+|FPRC;
+
+|PROCESO degrcont;
+  coefi = 2.5;
+  |SI #dsmom041#23 < 8;  coefi = 2;    |FINSI;
+  |SI #dsmom041#23 < 5;  coefi = 1.5;  |FINSI;
+  coefi = (coefi * #dsmom041#20) / 100;
+  fecpri = #dsmom041#9;
+  fecult = fFechaAmor;
+  ComodNum = (100 / #dsmom041#23) * diasanyo;  ||aqui
+  SumaFechas = ComodNum;
+  SumaFechas = SumaFechas + fecpri;
+  FechaLimite = SumaFechas;
+  |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+      fecult = #dsmom041#26;
+  |FINSI;
+  canamort = 0;
+  valorele = #dsmom041#10;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+     Comodin = fecpri % 0704;
+     ComodNum = Comodin;
+     ComodNum = ComodNum + 1;
+     Comodin = fecpri % 0106;
+     Comodin = Comodin + ComodNum;
+     FechaPrueba = Comodin;
+     |SI FechaPrueba > FechaLimite;
+         |SI #dsmom041#26 [ "01.01.0000";
+            canamort = #dsmom041#10;
+         |SINO;
+            fecha = #dsmom041#26 - fecpri;
+            ComodNum = fecha;
+            cuotamor = (valorele * coefi) ! EURODBMOD;
+            amorfis = (ComodNum * cuotamor) / diasanyo;  ||aqui
+            canamort = canamort + amorfis;
+            valorele = valorele - amorfis;
+         |FINSI;
+         |SAL;
+     |SINO;
+         cuotamor = (valorele * coefi) ! EURODBMOD;
+         fecha = fecult - fecpri;
+         |SI fecha > "01.01.0000";
+             Comodin = fecpri % 0105;
+             |QBF Comodin;
+             |SI Comodin ! "31.12";
+                Comodin = fecpri % 0704;
+                |QBF Comodin;
+                dias1 = 365;
+                |SI Comodin = "1980"; |O Comodin = "1984"; |O Comodin = "1988";
+                |O Comodin = "1992"; |O Comodin = "1996"; |O Comodin = "2000";
+                |O Comodin = "2004"; |O Comodin = "2008"; |O Comodin = "2012";
+                   dias1 = 366;
+                |FINSI;
+                Comodin = "31.12." + Comodin;
+                fecha = Comodin;
+                dias = fecha - fecpri;
+                amorcon = ((dias * cuotamor) / dias1) ! EURODBMOD;
+                canamort = canamort + amorcon;
+                valorele = valorele - amorcon;
+                fecpri = fecha;
+             |SINO;
+                canamort = canamort + cuotamor;
+                valorele = valorele - cuotamor;
+                nume1 = 1 / 1000000;
+                fecpri = fecpri + nume1;
+             |FINSI;
+         |SINO;
+             dias = fecult - fecpri;
+             amorcon = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+             canamort = canamort + amorcon;
+             |SAL;
+         |FINSI;
+      |FINSI;
+  |SIGUE;
+  amorcon = canamort - #dsmom041#21;
+|FPRC;
+
+|PROCESO acelcont;
+  nume1 = 0;
+  |PARA x = 1;  |SI x [ #dsmom041#23;  |HACIENDO x = x + 1;
+        nume1 = nume1 + x;
+  |SIGUE;
+  cuodig = #dsmom041#10 / nume1;
+  x = #dsmom041#23;
+  fecpri = #dsmom041#9;
+  fecult = fFechaAmor;
+  |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+      fecult = #dsmom041#26;
+  |FINSI;
+  canamort = 0;
+  |PARA; |SI fecpri < fecult; |HACIENDO;
+         cuotamor = (cuodig * x) ! EURODBMOD;
+         fecha = fecult - fecpri;
+         |SI fecha > "01.01.0000";
+             canamort = canamort + cuotamor;
+             nume1 = 1 / 1000000;
+             fecpri = fecpri + nume1;
+             x = x - 1;
+         |SINO;
+             dias = fecult - fecpri;
+             amorcon = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+             canamort = canamort + amorcon;
+             |SAL;
+         |FINSI;
+  |SIGUE;
+  amorcon = canamort - #dsmom041#21;
+|FPRC;
+
+|PROCESO calamor;
+
+  |SI #dsmom042#6 = "C";
+      |SI #dsmom042#11 = 0; #dsmom042#11 = #dsmom042#7; |FINSI;
+  |FINSI;
+
+  |SI #dsmom042#6 ! "V";
+      |SI #dsmom042#9 ] ultfis;
+          |SI #dsmom042#7 ! 0;
+              ultfis = #dsmom042#9; aUltLinF = #dsmom042#6;
+          |SINO;
+              |SI #dsmom041#16 ! 0;
+                  ultfis = #dsmom042#9; aUltLinF = #dsmom042#6;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+      |SI #dsmom042#9 ] ultcon;
+          |SI #dsmom042#11 ! 0;
+              ultcon = #dsmom042#9; aUltLinC = #dsmom042#6;
+          |SINO;
+              |SI #dsmom041#22 ! 0;
+                  ultcon = #dsmom042#9; aUltLinC = #dsmom042#6;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI #dsmom042#4 > ultlin;  ultlin = #dsmom042#4;  |FINSI;
+
+  |SI #dsmom042#6 = "A";
+      #dsmom041#15 = #dsmom041#15 + #dsmom042#7;
+      #dsmom041#21 = #dsmom041#21 + #dsmom042#11;
+      |SI #dsmom042#5 < nAnyFin;
+          enAcumFiscal = enAcumFiscal + #dsmom042#7;
+      |FINSI;
+  |FINSI;
+
+|FPRC;
+
+|DEFBUCLE CalAmorLineas;
+ #dsmom042#1;
+ ;
+ #dsmom041#0,#dsmom041#2,#dsmom041#3,001;
+ #dsmom041#0,#dsmom041#2,#dsmom041#3,999;
+ e;
+ NULL, calamor;
+|FIN;
+
+|| //////////////////////// PROCESOS DE AMORTIZACIONES \\\\\\\\\\\\\\\\\\\
+
+|PROCESO CalculaAmor;    || Calculo de Amortizaciones
+
+  |HAZ LeeEURODBMOD;
+  nT600 = 100000;
+  |SI EURODBMOD = 2;
+      nT600 = (nT600 / 166.386) ! EURODBMOD;
+  |FINSI;
+
+  diasanyo = 365;
+  |SI nAnyAmor = 1980;  |O nAnyAmor = 1984;  |O nAnyAmor = 1988;  |O nAnyAmor = 1992;
+                        |O nAnyAmor = 1996;  |O nAnyAmor = 2000;  |O nAnyAmor = 2004;
+                        |O nAnyAmor = 2008;  |O nAnyAmor = 2012;  |O nAnyAmor = 2016;
+                        |O nAnyAmor = 2020;  |O nAnyAmor = 2024;  |O nAnyAmor = 2028;
+      diasanyo = 366;
+  |FINSI;
+
+  swAmBuena = 0;
+  ultlin = 0;
+  ultfis = #dsmom041#9;  || Puesta en marcha "01.01.0000";
+  ultcon = #dsmom041#9;  || Puesta en marcha "01.01.0000";
+  #dsmom041#15 = 0;
+  #dsmom041#21 = 0;
+
+  enAcumFiscal = 0;
+  aAlfa1  = #dsmom041#37;
+  aAlfa1  = aAlfa1 % -104;
+  nAnyFin = aAlfa1;
+  amorfis   = 0;
+  amorcon   = 0;
+  enImpAmor = 0;
+
+  |SI #dsmom041#9 [ "01.01.1900"; |ACABA; |FINSI;   || esta en marcha
+
+  feclin = #dsmom041#9;       ||Fecha de Inicio Bien
+  feclin = feclin % -104;
+  diasprim = 365;
+  |SI feclin = 1980; |O feclin = 1984;  |O feclin = 1988;  |O feclin = 1992;
+                     |O feclin = 1996;  |O feclin = 2000;  |O feclin = 2004;
+                     |O feclin = 2008;  |O feclin = 2012;  |O feclin = 2016;
+                     |O feclin = 2020;  |O feclin = 2024;  |O feclin = 2028;
+      diasprim = 366;
+  |FINSI;
+
+  aUltLinF = "C";
+  aUltLinC = "C";
+  |BUCLE CalAmorLineas;
+
+  |SI ultfis = #dsmom041#9; |Y aUltLinF ! "A";
+      nNume3 = ultfis;
+      nNume3 = nNume3 - 1;
+      ultfis = nNume3;
+  |FINSI;                          ||Atencion, para sumar
+  |SI ultcon = #dsmom041#9; |Y aUltLinC ! "A";
+      nNume3 = ultcon;
+      nNume3 = nNume3 - 1;
+      ultcon = nNume3;
+  |FINSI;
+                        ||el dia de la compra
+
+  |SI #dsmom041#13 = "N";
+      nume1 = (100 / #dsmom041#14) ! 0;
+      nume1 = nume1 / 1000000;
+      nume2 = 100 $ #dsmom041#14;
+      nume2 = ((diasanyo * nume2 ) / #dsmom041#14 ! EURODBMOD);  || aqui
+      nume1 = nume1 + nume2;
+      topfisc = "31.12.9999";
+  |SINO;
+      nume1 = #dsmom041#17 / 1000000;
+      topfisc = #dsmom041#9 + nume1;
+  |FINSI;
+
+  |SI #dsmom041#19 = "N";
+      nume1 = (100 / #dsmom041#20) ! 0;
+      nume1 = nume1 / 1000000;
+      nume2 = 100 $ #dsmom041#20;
+      nume2 = ((diasanyo * nume2 ) / #dsmom041#20 ! EURODBMOD);  ||aqui
+      nume1 = nume1 + nume2;
+      topcont = "31.12.9999";
+  |SINO;
+      nume1 = #dsmom041#23 / 1000000;
+      topcont = #dsmom041#9 + nume1;
+  |FINSI;
+
+  |SI enTpEm = 7;  || Para las Empresas con ESTIMACION OBJETIVA
+      aAlfa1 = fFechaAmor;  aAlfa1 = aAlfa1 % -104; nAnyAmor = aAlfa1;
+      |SI feclin = nAnyAmor;   || ... |Y #dsmom041#10 [ nT600; Jose 30.06
+          |SI #dsmom041#14 = 100;
+              amorfis = #dsmom041#10;
+          |FINSI;
+          |SI #dsmom041#20 = 100;
+              amorcon = #dsmom041#10;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI amorcon = 0;
+      |HAZ CalAmorConta;
+  |FINSI;
+  |SI amorfis = 0;
+      |HAZ CalAmorFiscal;
+  |FINSI;
+  enImpAmor = amorcon;
+
+|FPRC;
+
+
+|PROCESO CalAmorFiscal;
+  |SI #dsmom041#16 ! 0;
+
+      |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+          dias = #dsmom041#26 - ultfis;  ||  Suma un dia
+      |SINO;
+          dias = fFechaAmor - ultfis;    ||  Suma un dia
+      |FINSI;
+      |SI dias [ 0;  |O dias > diasanyo;
+          mensaje = "     ATENCION!!  ERROR EN FECHAS AMORTIZACION ELEMENTO "
+          trab1 = #dsmom041#2;
+          mensaje = mensaje + trab1 + "/";
+          trab1 = #dsmom041#3;
+          mensaje = mensaje + trab1;
+          |SI SiMen = 1;  |MENAV mensaje; |FINSI;
+          ||  swAmBuena = 1;
+          |ACABA;
+      |FINSI;
+
+      |SI #dsmom041#13 = "F"; |Y #dsmom041#36 ! 0;
+          enCodOpe = #dsmom041#36;
+          fFinPago = #dsmom041#37;
+          enMulFis = #dsmom041#39; || limite
+          importe  = #dsmom041#10;
+          |HAZ CalAmorOpera;
+          |ACABA;
+      |FINSI;
+
+      |SI #dsmom041#13 = "N";
+          cuotamor = ((#dsmom041#10 * #dsmom041#14) / 100) ! EURODBMOD;
+          amorfis = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+      |SINO;
+          |SI #dsmom041#13 = "D";
+              |HAZ degrfisc;
+          |SINO;
+              |HAZ acelfisc;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+      |SI #dsmom041#26 > "01.01.0000";
+          aAlfa1 = fFechaAmor;   aAlfa1 = aAlfa1 % -104; nAnyAmor = aAlfa1; || A¤o a amortizar
+          aAlfa1 = #dsmom041#26; aAlfa1 = aAlfa1 % -104; nVAnyo   = aAlfa1; || a¤o venta
+          |SI nAnyAmor = nVAnyo; |Y nAnyAmor ] 2005;
+              amorfis = (#dsmom041#21 + amorcon - #dsmom041#15);
+          |FINSI;
+      |FINSI;
+|FPRC;
+
+|PROCESO CalAmorConta;
+  |SI #dsmom041#22 ! 0;
+      |SI #dsmom041#26 > "01.01.0000"; |Y #dsmom041#26 < fFechaAmor;
+          dias = #dsmom041#26 - ultcon;   || Suma Un Dia
+      |SINO;
+          dias = fFechaAmor - ultcon;
+      |FINSI;
+      |SI dias [ 0;  |O dias > diasanyo;
+          mensaje = "     ATENCION!!  ERROR EN FECHAS AMORTIZACION EN ELEMENTO "
+          swAmBuena = 1;
+          |SI dias > diasanyo;
+              eaError = "ERROR, PERIODO DE AMORTIZACION SUPERIOR A 365 DIAS";
+          |SINO;
+              eaError = "ERROR, AMORTIZADO ANTERIORMENTE";
+          |FINSI;
+          |SI dias = 0;
+              swAmBuena = 0;
+          |FINSI;
+          |SI #dsmom041#26 > "01.01.0000";
+              aAlfa1 = #dsmom041#26;
+              aAlfa1 = aAlfa1 % -104;
+              nVAnyo = aAlfa1; || a¤o venta
+              |SI nAnyAmor = nVAnyo;
+                  swAmBuena = 0; amorcon = 0;
+              |FINSI;
+          |FINSI;
+          trab1 = #dsmom041#2;
+          mensaje = mensaje + trab1 + "/";
+          trab1 = #dsmom041#3;
+          mensaje = mensaje + trab1;
+          |SI SiMen = 1;  |MENAV mensaje; |FINSI;
+          |ACABA;
+      |FINSI;
+
+      |SI #dsmom041#19 = "N";
+          cuotamor = ((#dsmom041#10 * #dsmom041#20) / 100) ! EURODBMOD;
+          amorcon = ((dias * cuotamor) / diasanyo) ! EURODBMOD;
+      |SINO;
+          |SI #dsmom041#19 = "D";
+              |HAZ degrcont;
+          |SINO;
+              |HAZ acelcont;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+|| //////////////////////////////////////////////////////////////////////
+
+|PROCESO GrabaAmor;        ||Proceso para crear Linea y Actualizar Cabecera
+  |ABRE #dsmom042;
+  |DDEFECTO #dsmom042;
+  |SI #dsmom041#10 > 0;
+      |SI #dsmom041#16 < amorfis;  amorfis = #dsmom041#16;  |FINSI;
+      |SI #dsmom041#22 < amorcon;  amorcon = #dsmom041#22;  |FINSI;
+  |SINO;
+      |SI #dsmom041#16 > amorfis;  amorfis = #dsmom041#16;  |FINSI;
+      |SI #dsmom041#22 > amorcon;  amorcon = #dsmom041#22;  |FINSI;
+  |FINSI;
+  #dsmom041#15 = #dsmom041#15 + amorfis;
+  #dsmom041#16 = #dsmom041#16 - amorfis;
+  #dsmom041#21 = #dsmom041#21 + amorcon;
+  #dsmom041#22 = #dsmom041#22 - amorcon;
+  |SI #dsmom041#16 ! 0;
+      |SI #dsmom041#26 > "01.01.0000";
+          |SI #dsmom041#26 [ fFechaAmor;
+              #dsmom041#16 = 0;
+          |FINSI;
+      |SINO;
+          |SI topfisc [ fFechaAmor;
+              amorfis = amorfis + #dsmom041#16;
+              #dsmom041#15 = #dsmom041#15 + #dsmom041#16;
+              #dsmom041#16 = 0;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  |SI #dsmom041#22 ! 0;
+      |SI #dsmom041#26 > "01.01.0000";
+          |SI #dsmom041#26 [ fFechaAmor;
+              #dsmom041#22 = 0;
+          |FINSI;
+      |SINO;
+          |SI topcont [ fFechaAmor;
+              amorcon = amorcon + #dsmom041#22;
+              #dsmom041#21 = #dsmom041#21 + #dsmom041#22;
+              #dsmom041#22 = 0;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  #dsmom042#0 = #dsmom041#0;
+  #dsmom042#1 = #dsmom041#1;
+  #dsmom042#2 = #dsmom041#2;
+  #dsmom042#3 = #dsmom041#3;
+
+  #dsmom042#4 = nLineaAmor;
+  #dsmom042#5 = nAnyAmor;
+  #dsmom042#6 = "A";
+  #dsmom042#7 = amorfis;
+  #dsmom042#8 = "N";
+  #dsmom042#9 = fFechaAmor;
+  #dsmom042#10 = aConcpAmor;
+  #dsmom042#11 = amorcon;
+  #dsmom042#12 = nConcpAmor;
+  #dsmom042#13 = #dsmom042#11 - #dsmom042#7;
+
+ |ABRE #107;
+ |DDEFECTO #107;
+ |LEE 040#107p;
+ |CIERRA #107;
+ |SI #107#18 = "S"; |Y #dsmom041#26 > "01.01.0000";
+      aAlfa1 = fFechaAmor;   aAlfa1 = aAlfa1 % -104; nAnyAmor = aAlfa1; || A¤o a amortizar
+      aAlfa1 = #dsmom041#26; aAlfa1 = aAlfa1 % -104; nVAnyo   = aAlfa1; || a¤o venta
+      |SI nAnyAmor = nVAnyo;
+          |SI #dsmom041#26 < fFechaAmor;
+              #dsmom042#9 = #dsmom041#26;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI eSWGrabar = 0;
+      |SI #dsmom042#11 ! 0; |O #dsmom042#7 ! 0;
+          |GRABA 021#dsmom042.n;
+          |GRABA 020#dsmom041.a;
+      |SINO;
+          nLineaAmor = nLineaAmor - 1;
+      |FINSI;
+  |FINSI;
+  |LIBERA #dsmom041;
+  |CIERRA #dsmom042;
+|FPRC;
+
+|| ***************************** Calculo para Modulos
+|PROCESO calamor0;
+  |SI #dsmom042#9 ] fFechaAmor;
+      |SI #dsmom042#9 = fFechaAmor;
+          swExiste = 1;
+      |FINSI;
+      |ERROR10;
+  |SINO;
+      |SI #dsmom042#6 ! "V"; |Y  #dsmom042#9 > fUltAmor;
+          |SI #dsmom042#11 ! 0; |O #dsmom041#22 ! 0;
+              fUltAmor = #dsmom042#9;
+          |FINSI;
+          aUltLinC  = #dsmom042#6;
+      |FINSI;
+      |SI #dsmom042#6 = "A";
+          nAcumD = nAcumD + #dsmom042#11;
+          nRestD = nRestD - #dsmom042#11;
+          nAcumP = nAcumP + #dsmom042#11;
+          nRestP = nRestP - #dsmom042#11;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE CalAmorL0;
+ #dsmom042#1;
+ ;
+ #dsmom041#0,#dsmom041#2,#dsmom041#3,001;
+ #dsmom041#0,#dsmom041#2,#dsmom041#3,999;
+ e;
+ NULL, calamor0;
+|FIN;
+
+
+|PROCESO CalAmorModulo;    || Calculo de Amortizaciones para modulos
+
+  |HAZ LeeEURODBMOD;
+  nT600 = 100000;
+  |SI EURODBMOD = 2;
+      nT600 = (nT600 / 166.386) ! EURODBMOD;
+  |FINSI;
+  |ABRE #107;
+  |DDEFECTO #107;
+  |LEE 040#107p;
+  |CIERRA #107;
+
+||  |SI #dsmom041#16 =  0;  |ACABA; |FINSI;     || Todo Amortizado
+
+  nAcumD    = 0;
+  nRestD    = #dsmom041#10;
+  nAmordef  = 0;
+
+  nAcumP    = 0;
+  nRestP    = #dsmom041#10;
+  nAmorpro  = 0;
+
+  |SI #dsmom041##9 [ "01.01.1900";  |ACABA; |FINSI;
+  |SI #dsmom041#40 = "I";
+      |SI #dsmom041#26 < "01.01.1000";  || inactivo sin venta
+          |ACABA;
+      |SINO;
+          aAlfa1 = fFechaAmor;   aAlfa1 = aAlfa1 % -104; nAnyAmor = aAlfa1; || A¤o a amortizar
+          aAlfa1 = #dsmom041#26; aAlfa1 = aAlfa1 % -104; nVAnyo   = aAlfa1; || a¤o venta
+          |SI nAnyAmor ! nVAnyo;
+              |ACABA;  || inactivo con venta ! anyo
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  |SI #dsmom041#26 > "01.01.1000";
+      aAlfa1 = fFechaAmor;   aAlfa1 = aAlfa1 % -104; nAnyAmor = aAlfa1; || A¤o a amortizar
+      aAlfa1 = #dsmom041#26; aAlfa1 = aAlfa1 % -104; nVAnyo   = aAlfa1; || a¤o venta
+      |SI nAnyAmor ! nVAnyo;
+          |ACABA;  || inactivo con venta ! anyo
+      |FINSI;
+  |FINSI;
+
+  aUltLinC  = "C";
+  fUltAmor  = "01.01.0000";
+  swExiste  = 0;
+  |BUCLE CalAmorL0;
+
+  aAlfa1 = fFechaAmor;   aAlfa2   = aAlfa1 %  106;    || El resto fecha
+  aAlfa1 = fFechaAmor;   aAlfa1   = aAlfa1 % -104; nAnyAmor = aAlfa1; || A¤o a amortizar
+  aAlfa1 = fUltAmor;     aAlfa1   = aAlfa1 % -104; nAnyUlt  = aAlfa1; || ultima amortizacion
+  aAlfa1 = #dsmom041#9;  aAlfa1   = aAlfa1 % -104; nCAnyo   = aAlfa1; || a¤o compra
+  aAlfa1 = #dsmom041#26; aAlfa1   = aAlfa1 % -104; nVAnyo   = aAlfa1; || a¤o venta
+
+|| ------------------------------------ El Para
+  nNume4 = nAnyUlt; |SI aUltLinC = "A"; nNume4 = nNume4 + 1; |FINSI;
+
+  |PARA elAny = nNume4; |SI elAny [ nAnyAmor; |HACIENDO elAny = elAny + 1;
+
+        diasanyo = 365;
+        |SI elAny = 1980;  |O elAny = 1984;  |O elAny = 1988;  |O elAny = 1992;
+                           |O elAny = 1996;  |O elAny = 2000;  |O elAny = 2004;
+                           |O elAny = 2008;  |O elAny = 2012;  |O elAny = 2016;
+                           |O elAny = 2020;  |O elAny = 2024;  |O elAny = 2028;
+            diasanyo = 366;
+        |FINSI;
+
+        aAlfa3   = elAny; |QBF aAlfa3;
+        aAlfa3   = aAlfa2 + aAlfa3;
+        fFecha   = aAlfa3;
+        nAmorpro = 0;
+        nAmordef = 0;
+        nDias    = 0;
+        nDias7   = 0;
+
+     |SI elAny = nCAnyo;                          || Mismo A¤o de Compra
+         |SI elAny = nVAnyo;  ||Mismo a¤o venta
+             nNume1 = #dsmom041#26;    || Fecha Venta
+         |SINO;
+             nNume1 = fFecha;          || Fecha Amortizacion
+         |FINSI;
+         nNume7 = fFecha;
+         nNume2 = #dsmom041#9;
+         nDias  = nNume1 - nNume2 + 1;  || Fecha Compra
+         nDias7 = nNume7 - nNume2 + 1;
+     |SINO;
+         |SI elAny = nVAnyo;
+             nNume1 = #dsmom041#26;
+             nNume7 = fFecha;
+         |SINO;
+             nNume1 = fFecha;
+             nNume7 = fFecha;
+         |FINSI;
+         nNume2 = fUltAmor;
+         nDias  = nNume1 - nNume2;
+         nDias7 = nNume7 - nNume2;
+     |FINSI;
+
+     |SI nDias > 0;
+          |SI nCAnyo [ 1997;  |Y elAny [ 1997;      || Compra Menor A¤o 1998
+              cuotamor = ((#dsmom041#10 * #dsmom041#31) / 100) ! EURODBMOD;
+              nAmorpro  = (( nDias * cuotamor) / diasanyo) ! EURODBMOD;
+              nAmordef  = nAmorpro;
+          |SINO;                                    ||Compra Mayor 1997
+              cuotamor = ((#dsmom041#10 * #dsmom041#29) / 100) ! EURODBMOD;
+              nAmorpro  = (( nDias7 * cuotamor) / diasanyo) ! EURODBMOD;
+              cuotamor = ((#dsmom041#10 * #dsmom041#30) / 100) ! EURODBMOD;
+              nAmordef  = (( nDias * cuotamor) / diasanyo) ! EURODBMOD;
+          |FINSI;
+
+          |SI #107#16 = "S";   || Pepe Sirera 16/3/06
+              |SI nAmorpro > nRestP; nAmorpro = nRestP; |FINSI;
+          |FINSI;
+
+               || 16/1/06 PRIEGO<>FAJARDO
+          |SI nAmorpro > nRestP;|Y nRestP [ 0;  ||si no hay valor residual
+              nAmorpro = 0;                     ||dejamos la amort. prov. = 0
+          |FINSI;
+          |SI #dsmom041#26 > "01.01.1900";      ||si el elemento esta vendido
+              nAmorpro = 0;                     ||dejamos la amort. prov. = 0
+          |FINSI;
+
+          |SI nAmordef > nRestD; nAmordef = nRestD; |FINSI;
+          |SI #107#16 = "I";   || Pepe Sirera 16/3/06
+              nAmorpro = nAmordef;
+          |FINSI;
+
+           nRestP = nRestP - nAmorpro; nRestD = nRestD - nAmordef;
+           nAcumP = nAcumP + nAmorpro; nAcumD = nAcumD - nAmordef;
+
+           |SI elAny ! nAnyAmor;
+               fUltAmor = fFecha;
+           |FINSI;
+      |FINSI;
+  |SIGUE;
+
+  |SI enTpEm = 7;  || Para las Empresas con ESTIMACION OBJETIVA
+      |SI nCAnyo = nAnyAmor; || ... |Y #dsmom041#10 [ nT600; Jose 30.06
+          |SI #dsmom041#29 = 100;
+              nAmorpro = #dsmom041#10;
+          |FINSI;
+          |SI #dsmom041#30 = 100;
+              nAmordef = #dsmom041#10;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  |SI swExiste = 1; nAmordef = #dsmom042#11; |FINSI;
+
+  |SI nAmordef < 0; nAmordef = 0; |FINSI;
+  |SI nAmorpro < 0; nAmorpro = 0; |FINSI;
+|FPRC;
+
+|| ***************** Amorizacion Fiscal de Operaciones Financieras
+
+|PROCESO LinOperFina;
+ aAlfa1 = #361#3;
+ aAlfa1 = aAlfa1 % -104;
+ nAny   = aAlfa1;
+
+ |SI nAny [ nAnyAmor;
+     nPagado = nPagado + #361#4;
+ |FINSI;
+ |SI nAny = nAnyFin;
+     nPagEste = nPagEste + #361#4;
+ |FINSI;
+
+ |SI #361#3 > fUltFecha;
+     fUltFecha = #361#3;
+     nUltPago  = #361#4;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE LinOperFina;
+ #361#1;
+ ;
+ enEmpresa, enCodOpe, 001;
+ enEmpresa, enCodOpe, 999;
+ e;
+ NULL, LinOperFina;
+|FIN;
+
+|PROCESO CalAmorOpera;
+
+ nTopeFiscal = amorcon * enMulFis;
+
+ aAlfa1   = fFinPago;
+ aAlfa1   = aAlfa1 % -104;
+ nAnyFin  = aAlfa1;
+ aAlfa2   = "31.12." + aAlfa1;
+ fAmorFin = aAlfa2;
+
+ nImpPorDia = 0;
+ amorfis    = 0;
+ nPagado    = 0;
+ nPagEste   = 0;
+ nUltPago   = 0;
+ fUltFecha  = "01.01.0000";
+ |BUCLE LinOperFina;
+
+ nPagado  = nPagado - enAcumFiscal;  |SI nPagado < 0; nPagado = 0; |FINSI;
+                                     || Lo pagado menos lo amortizado antes de finalizar el pago.
+
+ |SI nAnyAmor ] nAnyFin;
+     |HAZ CalPorDia;
+ |FINSI;
+|| ////////////////////////////////////////////////////////////////////////
+
+ |SI nAnyAmor < nAnyFin;
+     amorfis = nPagado;
+ |SINO;
+     |SI nAnyFin = nAnyAmor;
+         nNume1 = fFinPago;
+         nNume2 = fFechaAmor;
+         nNume3 = nNume2 - nNume1 + 1; |SI nNume3 < 0; nNume3 = 0; |FINSI;
+         nNume4 = (nImpPorDia * nNume3) ! EURODBMOD;
+         amorfis = nPagado - nUltPago + nNume4;
+     |SINO;
+         amorfis = (nImpPorDia * dias) ! EURODBMOD;
+     |FINSI;
+ |FINSI;
+
+ |SI amorfis > nTopeFiscal;
+     amorfis = nTopeFiscal;
+ |FINSI;
+|FPRC;
+
+|PROCESO ImpPorDia;
+     nNume1  = fFinPago;
+     nNume2  = topfisc;
+     nNume3  = nNume2 - nNume1;
+     |SI nNume3 < 0; nNume3 = 0; |FINSI;
+     nImpPorDia =  (nUltPago / nNume3);   ||cuota por dia
+|FPRC;
+
+|PROCESO CalPorDia;
+
+|| ... Calculo de la ultima cuota para repartir en el resto de a¤os
+  nPendiente = nPagado - nPagEste; || lo pagado - lo amortizado
+                                   || antes de ultimo a¤o
+                                   || menos lo del ultimo a¤o
+                                   || = lo que tenemos pendiente
+  |SI nPendiente < 0; nPendiente = 0; |FINSI;
+  nUltPago = nPendiente + nUltPago;        || lo pendiente + ultima cuota
+                                           || = cantidad a repartir
+  nSalAmor = 1;
+  |PARA; |SI nSalAmor = 1; |HACIENDO;
+
+         |HAZ ImpPorDia;
+         nNume1 = fFinPago;
+         nNume2 = fAmorFin;
+         nNume3 = nNume2 - nNume1 + 1; |SI nNume3 < 0; nNume3 = 0; |FINSI;
+         nNume4 = (nImpPorDia * nNume3) ! EURODBMOD;
+
+         nCantAmor = (nPagado - nUltPago + nNume4) ! EURODBMOD;
+         |SI nCantAmor  > nTopeFiscal;
+             nPendiente = nCantAmor - nTopeFiscal; ||quedaria pendiente
+             nUltPago   = nUltPago + nPendiente;
+             nSalAmor = 1;
+         |SINO;
+             nSalAmor = 0;
+         |FINSI;
+    |SIGUE;
+|FPRC;
+|| ////////////////////////////////////////////////////////////////////////

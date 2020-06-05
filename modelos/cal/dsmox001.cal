@@ -1,0 +1,425 @@
+|FICHEROS;
+     dsmox001;
+
+     dsmom902;
+|FIN;
+
+|INCLUYE mox001in;
+
+|PROCESO SacaNumero;
+     nCol = 0;
+
+     |SI aCol = ""; |ACABA;  |FINSI;
+
+     aCol   = aCol > "";
+     aLong  = aCol % 0;
+     nLong  = aLong;
+
+     aCadena = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+     |SI nLong = 1;
+         aAlfa   = aCadena - aCol;
+         aAlfa   = FSalida - "01";
+         nCol = aAlfa;
+     |FINSI;
+
+     |SI nLong = 2;
+         aAlfa  = aCol % 101;
+         aAlfa  = aCadena - aAlfa;
+         aAlfa  = FSalida - "01";
+         nNume1 = aAlfa;
+
+         aAlfa  = aCol % 201;
+         aAlfa  = aCadena - aAlfa;
+         aAlfa  = FSalida - "01";
+         nNume2 = aAlfa;
+
+         nCol = (nNume1 * 26) + nNume2;
+     |FINSI;
+|FPRC;
+
+|PROCESO PideColumna;
+     |VENTANA 0501, 0715, -1, 16, "Columna EXCEL";
+     n1Vent = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = n1Vent;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     E_inf = "";
+     E_sup = "2";
+     nCol  = 0;
+
+     |PARA;  |SI;  |HACIENDO;
+          aCol  = #dsmom902#5;
+          aCol  = 0608 ? 1;
+          aCol  = aCol > "";  |QBF aCol;
+
+          |SI aCol ! "";  |SAL;  |FINSI;
+
+          |SI #dsmom902#4 = "N";
+              |SAL;
+          |FINSI;
+
+          |MENAV "0000Campo obligatorio precisa de una columna";
+     |SIGUE;
+
+     |SI aCol ! "";
+         |HAZ SacaNumero;
+     |FINSI;
+
+     |LEE 101#dsmom902.=;
+     |SI FSalida = 0;
+         #dsmom902#5 = aCol;
+         #dsmom902#6 = nCol;
+         |GRABA 020#dsmom902.a;
+         |LIBERA #dsmom902;
+     |FINSI;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = n1Vent;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA n1Vent;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO EvntGrid;
+     |SI FSalida = 1;  |O FSalida = 2;
+         |LEE 000#dsmom902.=;
+     |FINSI;
+
+     |SI FSalida = 4;
+         |HAZ PideColumna;
+
+         |REFRESCACONTROL nGrid;
+     |FINSI;
+|FPRC;
+
+|PROCESO Conversion;
+     nError  = 0;
+
+     aAlfa = aPathLocal + "*.csv";
+     |R_PDIR aAlfa;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          |RFBORRA aAlfa;
+
+          |R_SDIR aAlfa;
+     |SIGUE;
+
+     aParam2 = aPathLocal + "imporcsv.txt";  |RFBORRA aParam2;
+
+     aVer1   = "";
+     aVer2   = "";
+     aConte  = aBase + "plugins/dsofficetxt.exe";
+     |ESPECIFICA "MD5", aConte;
+     aVer1 = FSalida;
+
+     aConte  = aPathLocal + "dsofficetxt.exe";
+     |ESPECIFICA "REMOTOMD5", aConte;
+     aVer2 = FSalida;
+
+     |SI aVer1 ! aVer2;
+         aOrigen  = aBase + "plugins/dsofficetxt.exe";
+         aDestino = aPathLocal + "dsofficetxt.exe";
+
+         |SI aIP = "";
+             |COPIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+
+         aAlfa = aPathLocal + "dsofficetxt.exe";
+         |XABRE "EC", aAlfa, 0;
+         |SI FSalida < 0;
+             |MENAV "0000No encuentro el conversor a CSV, por favor consulte con su administrador informatico.";
+             aFicBrowse = "";
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     aProg   = aPathLocal + "dsofficetxt.exe";
+     aParam1 = aFicBrowse;
+     aParam2 = aPathLocal + "imporcsv.csv";
+     aParam3 = "";
+
+     aAlfa  = "cmd " + &34 + "/c START /WAIT " + aProg + " " + aParam1 + " " + aParam2 + aParam3 + &34;
+     |RSYSTEM aAlfa;
+
+     |XABRE "EC", aParam2, 0;
+     |SI FSalida < 0;
+         aFicBrowse = "";
+         |MENAV "0000No se ha podido convertir a CSV el fichero seleccionado.";
+         |ACABA;
+     |FINSI;
+
+     aFicBrowse = aParam2;
+|FPRC;
+
+|PROCESO Browse;
+     aFicBrowse = "F*.*";
+     |BROWSE aFicBrowse;
+
+     aAlfa      = aFicBrowse;   |QBF aAlfa;
+     aFicBrowse = "";
+     aLong      = aAlfa % 0;
+     nLong      = aLong;
+     |PARA nCarac = 2;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+           nPos  = (nCarac * 100) + 1;
+           aFicBrowse = aFicBrowse + (aAlfa % nPos);
+     |SIGUE;
+
+     |SI aFicBrowse = "";
+         |ACABA;
+     |FINSI;
+
+     |HAZ Conversion;
+|FPRC;
+
+|PROCESO Ubica;
+     nFSalida = FSalida;
+
+     |ESTADO_CONTROL nBtnCar1, "DISABLE";
+
+     |HAZ Browse;
+
+     |ESTADO_CONTROL nBtnCar1, "ENABLE";
+
+     |SI aFicBrowse = "";  |ACABA;  |FINSI;
+
+     |SI nFSalida = nBtnCar1;
+         aOrigen  = aFicBrowse;
+         aDestino = aPathTmp + "impor" + #dsmox001#5 + ".csv";
+
+         |SI aIP = "";
+             |COPIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |RECIBE_FICHERO aOrigen, aDestino;
+         |FINSI;
+
+         #dsmox001#0 = aDestino;  |PINTA #dsmox001#0;
+     |FINSI;
+|FPRC;
+
+|PROCESO Filas;
+     aAlfa = "|C001WID";
+     aID   = #dsmox001#aAlfa#;
+     nID   = aID;
+
+     aPopup1  = nID;  || Si fuera -1 en la posicion
+
+     aPopup2  = 30;
+     aPopup3  = "01";
+     aPopup4  = "02";
+     aPopup5  = "03";
+     aPopup6  = "04";
+     aPopup7  = "05";
+     aPopup8  = "06";
+     aPopup9  = "07";
+     aPopup10 = "08";
+     aPopup11 = "09";
+     aPopup12 = "10";
+     aPopup13 = "11";
+     aPopup14 = "12";
+     aPopup15 = "13";
+     aPopup16 = "14";
+     aPopup17 = "15";
+     aPopup18 = "16";
+     aPopup19 = "17";
+     aPopup20 = "18";
+     aPopup21 = "19";
+     aPopup22 = "20";
+     aPopup23 = "21";
+     aPopup24 = "22";
+     aPopup25 = "23";
+     aPopup26 = "24";
+     aPopup27 = "25";
+     aPopup28 = "26";
+     aPopup29 = "27";
+     aPopup30 = "28";
+     aPopup31 = "29";
+     aPopup32 = "30";
+
+     IaPopup  = aPopup1  <-;
+     |ESPECIFICA "TRACKPOPUP", aPopup;
+     |SI FSalida ! 0;
+         IaPopup  = aPopup3  <-;
+         IaPopup  = IaPopup + (FSalida - 1);
+
+         aAlfa        = aPopup % 102;
+
+         #dsmox001#1 = aAlfa;  |PINTA #dsmox001#1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Cancelar;
+     |PTEC 807;
+|FPRC;
+
+|PROCESO Ptec806;
+     |PTEC 806;
+|FPRC;
+
+|PROCESO dsmom902Cheq;
+     |SI #dsmom902#5 ! "  ";
+         |ACABA;
+     |FINSI;
+
+     nError = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE dsmom902Cheq;
+     #dsmom902#1;
+     4;
+     aMod, 000, "S";
+     aMod, 999, "S";
+     ;
+     NULL, dsmom902Cheq;
+|FIN;
+
+|PROCESO Chequeo;
+     aAlfa = #dsmox001#0;  |QBF aAlfa;
+     |SI aAlfa = "";
+         |MENAV "0000Introduzca una fichero excel para poder importar.";
+         nError = 1;
+         |ACABA;
+     |FINSI;
+
+     |BUCLE dsmom902Cheq;
+     |SI nError = 1;
+         |MENAV "0000Hay registros en verde sin columna asignada";
+     |FINSI;
+|FPRC;
+
+|PROCESO Baja902;
+     #dsmom902#0 = aMod;
+     #dsmom902#3 = 1;
+|FPRC;
+
+|PROCESO Alta902;
+     #dsmom902#0 = aMod;
+     #dsmom902#3 = 999;
+|FPRC;
+
+|PROGRAMA;
+     aAlfa = (("00000" + #dsmox001#2) % -105) + " " + #dsmox001#8;
+     |VENTANA 0501, 3199, -1, 16, aAlfa;
+     n0Vent = FSalida;
+
+     |PINPA #0#dsmox001;  nPanta = FSalida;
+     |PINDA #0#dsmox001;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 0785, 0787, Ubica; nBtnCar1 = FSalida;
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 0929, 0931, Filas;
+
+     aAlfa = "LABEL,{{15}}IMPORTACION MODELO " + #dsmox001#5 + "  EJERCICIO " + #dsmox001#3;
+     |CONTROL_SIMPLE nPanta, aAlfa, 0955, 0998, NULL;
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{11}}Doble click o INTRO en el registro para introducir la columna excel", 1145, 1198, NULL;
+     |CONTROL_SIMPLE 0, "LABEL,{{11}}En verde registros obligatorios de introducci¢n de columna", 3102, 3160, NULL;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{207}}Cancelar", 3170, 3182, Cancelar;
+     nBtnCan = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,{{230}}Continuar", 3185, 3198, Ptec806;
+     nBtnCon = FSalida;
+
+     nRango   = 2 + 4 + 8 + 16 + 32 + 128 + 256;
+     |LINEAL_SIMPLE #2#dsmom902, nRango, 1325, 3275, Baja902, Alta902, EvntGrid;
+     nGrid = FSalida;
+
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+          FSalida = "::," + nGrid;
+          |LEETECLA aTecla;
+
+          |SI aTecla = aEsc1;
+              nError = 0;
+              |HAZ Chequeo;
+              |SI nError = 0;  |SAL;  |FINSI;
+          |FINSI;
+
+          |SI aTecla = aEsc2;  |SAL;  |FINSI;
+
+          |SI aTecla = aRetu;
+              |HAZ PideColumna;
+
+              |REFRESCACONTROL nGrid;
+          |FINSI;
+     |SIGUE;
+
+     |FIN_CONTROL_WINDOWS nBtnCar1;
+
+     |SI aTecla = aEsc2;
+         |MENAV "0000Proceso cancelado.";
+         |ACABA;
+     |FINSI;
+
+     |HAZ Importacion;
+
+     |FINVENTANA n0Vent;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRO;
+
+|PROCESO Tipo80;  |TIPO 80;
+     |DDEFECTO #dsmox001;
+
+     aAlfa = PARAMETRO % 105;   #dsmox001#2 = aAlfa;
+     aAlfa = PARAMETRO % 604;   #dsmox001#3 = aAlfa;
+     aAlfa = PARAMETRO % 1002;  #dsmox001#4 = aAlfa;
+     aAlfa = PARAMETRO % 1203;  #dsmox001#5 = aAlfa
+     aAlfa = PARAMETRO % 1502;  #dsmox001#6 = aAlfa;
+     aAlfa = PARAMETRO % 1702;  #dsmox001#7 = aAlfa;
+     aAlfa = PARAMETRO % 1940;  #dsmox001#8 = aAlfa
+
+     aMod  = #dsmox001#5;
+
+     |ABRET #dsmom902;
+     |HAZ Estructuras;
+
+     #dsmom902#0 = #dsmox001#5;
+     #dsmom902#1 = 999;
+     |LEE 000#dsmom902.=;
+
+     #dsmox001#1 = #dsmom902#6;
+     |SI #dsmox001#1 = 0;
+         #dsmox001#1 = 1;
+     |FINSI;
+
+     aIP     = "";  |IP_REMOTO aIP;
+
+     |HAZ LeeUnidadBasico;
+
+     aPathLocal = eaUnidadBasico + "\documentos";   |RMKDIR aPathLocal;
+     aPathLocal = aPathLocal + "\tmp";              |RMKDIR aPathLocal;
+     aPathLocal = aPathLocal + "\";
+
+     |DBASE aBase;
+     aPathTmp   = aBase     + "tmp";           |MKDIR aPathTmp;
+     aPathTmp   = aPathTmp  + "/" + Usuario;   |MKDIR aPathTmp;
+     aPathTmp   = aPathTmp  + "/";
+|FPRC;
+
+|PROCESO Tipo90;  |TIPO 90;
+     aAlfa = aPathTmp + "*.csv";
+     |_PDIR aAlfa;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          |FBORRA aAlfa;
+
+          |_SDIR aAlfa;
+     |SIGUE;
+
+     |CIERRAT #dsmom902;
+|FPRC;

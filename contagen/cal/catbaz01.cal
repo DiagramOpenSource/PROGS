@@ -1,0 +1,852 @@
+|FICHEROS;
+   catbaz01;
+
+   :/modelos/def/dsmom030;
+   caivaasi;
+   cientasc;
+   cientasl;
+   cacuenta,MANTE;
+   cisalant;
+   cientcon;
+   caclipro;
+
+   catbaw01;
+   dscsvw10;
+
+   cacuebal #15;
+   ca8m0002 #422;
+   ca8cumay #410;
+|FIN;
+
+|VARIABLES;
+    &entrada    = 1;
+
+    aFichero    = "";
+    aAlfa       = "";
+    aAlfa1      = "";
+    aAlfa2      = "";
+    aAlfa3      = "";
+    aFecha      = "";
+
+    aVer1       = "";
+    aVer2       = "";
+ {1}aConte      = "";
+    aBaseConta  = "";
+    aPathLocal  = "";
+    aPathTmp    = "";
+    aPathContagen = "";
+    aFicBrowse  = "";
+    aProg       = "";
+
+    aParam1     = "";
+    aParam2     = "";
+    aParam3     = "";
+    nInkey      = 0;
+    aError      = "";
+    nError      = 0;
+    nBarra      = 0;
+    aLong       = "";
+    nLong       = 0;
+    nCarac      = 0;
+    nPos        = 0;
+    aCarac      = "";
+    aLongVar    = "";
+    nLongVar    = 0;
+    nCarVar     = 0;
+    nPosVar     = 0;
+    aCarVar     = "";
+    aC10        = "";
+    aC13        = "";
+    aLee        = "";
+    aVar        = "";
+    nCampo      = 0;
+    SwError     = 0;
+    nSwHay      = 0;
+    nSwHayC     = 0;
+    nSwHayP     = 0;
+    nOk         = 0;
+    aAbre       = "";
+    nTotCmp     = 0;
+    aTabla      = "";
+    nCmp        = 0;
+    nReg        = 0;
+    nHandle     = 0;
+    nTCampos    = 0;
+    nTValor     = 0;
+    nPorce      = 0;
+    nDia        = 0;
+    nMes        = 0;
+    nAny        = 0;
+    aComilla    = "";
+    aQueQuiero  = "";
+    aTipoCampo  = "";
+    nLinea      = 0;
+    aCuenta     = "";
+
+   &eaUnidadBasico = "";
+   &eaOrigen       = "";
+   &eaDestino      = "";
+   &eaIP           = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE defec1_i;
+
+|| ////////////////////////////////////////////////////////////////////////
+|PROCESO Conversion;
+     nError  = 0;
+
+     aAlfa = aPathLocal + "*.csv";
+     |R_PDIR aAlfa;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          |RFBORRA aAlfa;
+
+          |R_SDIR aAlfa;
+     |SIGUE;
+
+     aParam2 = aPathLocal + "ficcsv.txt";  |RFBORRA aParam2;
+
+     aVer1   = "";
+     aVer2   = "";
+     aConte  = aBaseConta + "plugin/dsofficetxt.exe";
+     |ESPECIFICA "MD5", aConte;
+     aVer1 = FSalida;
+
+     aConte  = aPathLocal + "dsofficetxt.exe";
+     |ESPECIFICA "REMOTOMD5", aConte;
+     aVer2 = FSalida;
+
+     |SI aVer1 ! aVer2;
+         eaOrigen  = aBaseConta + "plugin/dsofficetxt.exe";
+         eaDestino = aPathLocal + "dsofficetxt.exe";
+
+         |SI eaIP = "";
+             |COPIA_FICHERO eaOrigen, eaDestino;
+         |SINO;
+             |ENVIA_FICHERO eaOrigen, eaDestino;
+         |FINSI;
+
+         aAlfa = aPathLocal + "dsofficetxt.exe";
+         |XABRE "EC", aAlfa, 0;
+         |SI FSalida < 0;
+             |MENAV "0000No encuentro el conversor a CSV, por favor consulte con su administrador informatico.";
+             aFicBrowse = "";
+             nError     = 1;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     aProg   = aPathLocal + "dsofficetxt.exe";
+     aParam1 = aFicBrowse;
+     aParam2 = aPathLocal + "ficcsv.csv";
+     aParam3 = "";
+
+     aAlfa  = "cmd " + &34 + "/c START /WAIT " + aProg + " " + aParam1 + " " + aParam2 + aParam3 + &34;
+     |RSYSTEM aAlfa;
+
+     |XABRE "EC", aParam2, 0;
+     |SI FSalida < 0;
+         aFicBrowse = "";
+         |MENAV "0000No se ha podido convertir a CSV el fichero seleccionado.";
+         nError     = 1;
+         |ACABA;
+     |FINSI;
+
+     aFicBrowse = aParam2;
+|FPRC;
+
+|PROCESO MiniBrowse;
+     aFicBrowse = "F*.*";
+     |BROWSE aFicBrowse;
+
+     aAlfa      = aFicBrowse;   |QBF aAlfa;
+     aFicBrowse = "";
+     aLong      = aAlfa % 0;
+     nLong      = aLong;
+     |PARA nCarac = 2;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+           nPos  = (nCarac * 100) + 1;
+           aFicBrowse = aFicBrowse + (aAlfa % nPos);
+     |SIGUE;
+|FPRC;
+
+|PROCESO Browse;
+     |HAZ MiniBrowse;
+
+     |SI aFicBrowse = "";
+         |ACABA;
+     |FINSI;
+
+     |HAZ Conversion;
+|FPRC;
+
+|CALCULO PonFichero; |TIPO 0;
+     |SI FSalida = 10;
+         #catbaz01#2 = "";
+         |HAZ Browse;
+         |SI aFicBrowse ! "";
+             eaOrigen  = aFicBrowse;
+             eaDestino = aPathTmp + "movbancos.csv";
+
+             |SI eaIP = "";
+                 |COPIA_FICHERO eaOrigen, eaDestino;
+             |SINO;
+                 |RECIBE_FICHERO eaOrigen, eaDestino;
+             |FINSI;
+
+             #catbaz01#2 = eaDestino;  |PINTA #catbaz01#2;
+         |FINSI;
+     |FINSI;
+
+     aAlfa = #catbaz01#2; |QBF aAlfa;
+     |SI aAlfa = "";
+         |MENAV "0000Error. Introduzca Fichero a Importar";
+         |ERROR;
+     |FINSI;
+|FCAL;
+
+|CALCULO Tipo0C3;  |TIPO 0;
+   enFilConc = 1;          || Concepto de IVA
+   enConcepto = #catbaz01#3;
+   |HAZ FiltroConcepto;
+   |SI eswLect ! 0; |ACABA; |FINSI;
+   #catbaz01#4 = #dsmom030#1; |PINTA #catbaz01#4;
+|FCAL;
+
+|PROCESO Uno1;
+   #cisalant#0 = doce;
+|FPRC;
+
+|PROCESO Dos1;
+   #cisalant#0 = "zzzzzzzzzzzz";
+|FPRC;
+
+|CALCULO Tipo6C0;  |TIPO 6;
+   nInkey = FSalida;
+
+  |ABRE #cisalant;
+  #cisalant#0 = doce;
+  |LEE 040#cisalant.=;
+  |SI FSalida ! 0;
+      |DDEFECTO #cisalant;
+      |GRABA 020#cisalant.n;
+  |FINSI;
+  |CIERRA #cisalant;
+
+  |SI nInkey = 10;
+      |PUSHV 0501 2380;
+      |ABRE #cisalant;
+      #cisalant#0 = #catbaz01#0;
+      |CONSULTA_F_CLAVE #1#cisalant, Uno1, Dos1;
+      |CIERRA #cisalant;
+      |POPV;
+      #catbaz01#0 = #cisalant#0;
+  |FINSI;
+
+  eaCuenta = #catbaz01#0; |QBF eaCuenta;
+  |SI eaCuenta = "";
+      |MENAV "    Cuenta Erronea ";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+
+  salidas  = nInkey;
+  |HAZ FiltraPuntos;
+  #catbaz01#0 = eaCuenta;
+  |PINTA #catbaz01#0;
+|FCAL;
+
+|CALCULO Tipo0C0;  |TIPO 0;
+   emCta    = 1;
+   eaCuenta = #catbaz01#0;
+   |HAZ SacaNivel;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+   |HAZ LeeCuenta;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   |ABRE #cientasl;
+   #cientasl#0 = #catbaz01#0;
+   #cientasl#2 = 1;
+   |LEE 041#cientasl.];
+   |SI FSalida = 0; |Y #cientasl#0 = #catbaz01#0;
+       |CONFI "0000SHay Apuntes introducidos pendientes de Actualizar. Incorporar ";
+       |SI FSalida ! 0;
+           |CIERRA #cientasl;
+           |ERROR;
+           |ACABA;
+       |FINSI;
+   |FINSI;
+   |CIERRA #cientasl;
+
+   |ABRE #cisalant;
+   #cisalant#0 = #catbaz01#0;
+   |LEE 020#cisalant.=;
+   |SI FSalida ! 0;
+       |MENAV "0000Error no existe la cuenta en Saldo Anterior";
+       |ERROR;
+   |SINO;
+       #catbaz01#3 = #cisalant#8;  |PINTA #catbaz01#3;
+       #catbaz01#4 = #cisalant#10; |PINTA #catbaz01#4;
+   |FINSI;
+   |CIERRA #cisalant;
+|FCAL;
+
+|PROCESO Tipo12_z; |TIPO 12;
+   || .... Para que no pregunte conforme S/N
+|FPRC;
+
+
+|| //////////////////////////////////////////////////////
+|PROCESO CalculaFecha;
+     |QBT aFecha;
+     aLongVar = aFecha % 0;
+     nLongVar = aLongVar;
+     nBarra   = 0;
+     aAlfa1   = "";
+     aAlfa2   = "";
+     aAlfa3   = "";
+     |PARA nCarVar = 1;  |SI nCarVar [ nLongVar;  |HACIENDO nCarVar = nCarVar + 1;
+           nPosVar = (nCarVar * 100) + 1;
+           aCarVar = aFecha % nPosVar;
+
+           |SI  aCarVar = "0"; |O aCarVar = "1"; |O aCarVar = "2";
+             |O aCarVar = "3"; |O aCarVar = "4"; |O aCarVar = "5";
+             |O aCarVar = "6"; |O aCarVar = "7"; |O aCarVar = "8";
+             |O aCarVar = "9";
+                |SI nBarra = 0;  aAlfa1 = aAlfa1 + aCarVar;  |FINSI;
+                |SI nBarra = 1;  aAlfa2 = aAlfa2 + aCarVar;  |FINSI;
+                |SI nBarra = 2;  aAlfa3 = aAlfa3 + aCarVar;  |FINSI;
+           |SINO;
+                |SI aCarVar = ".";  |O aCarVar = "/";  |O aCarVar = "\";
+                   |O aCarVar = "-";
+                    nBarra = nBarra + 1;
+               |FINSI;
+           |FINSI;
+      |SIGUE;
+
+      |QBF aAlfa1;
+      |QBF aAlfa2;
+      |QBF aAlfa3;
+
+      nDia = aAlfa1;
+      nMes = aAlfa2;
+      nAny = aAlfa3;
+
+      |SI nAny < 1000;
+          nAny = 2000 + nAny;
+      |FINSI;
+
+      |SI nDia = 0;  nDia = 1;            |FINSI;
+      |SI nMes = 0;  nMes = 1;            |FINSI;
+      |SI nAny = 0;  nAny = enEjercicio;  |FINSI;
+
+      aFecha = (("00" + nDia) % -102);
+      aFecha = aFecha + "." + (("00" + nMes) % -102);
+      aFecha = aFecha + "." + (("0000" + nAny) % -104);
+|FPRC;
+
+|PROCESO QuitaPuntos;
+     |QBT aAlfa;
+     aLongVar = aAlfa % 0;
+     nLongVar = aLongVar;
+     aAlfa1   = "";
+     |PARA nCarVar = 1;  |SI nCarVar [ nLongVar;  |HACIENDO nCarVar = nCarVar + 1;
+           nPosVar = (nCarVar * 100) + 1;
+           aCarVar = aAlfa % nPosVar;
+
+           |SI  aCarVar ! ".";
+                aAlfa1 = aAlfa1 + aCarVar;
+           |FINSI;
+      |SIGUE;
+
+      aAlfa = aAlfa1;
+|FPRC;
+
+|PROCESO QuitaComillas;
+     aLongVar = aAlfa % 0;
+     nLongVar = aLongVar;
+
+     aAlfa1   = "";
+     aComilla = &34;
+     |PARA nCarVar = 1;  |SI nCarVar [ nLongVar;  |HACIENDO nCarVar = nCarVar + 1;
+           nPosVar = (nCarVar * 100) + 1;
+           aCarVar = aAlfa % nPosVar;
+
+           |SI aCarVar ! aComilla;
+                aAlfa1 = aAlfa1 + aCarVar;
+           |FINSI;
+     |SIGUE;
+
+     aAlfa = aAlfa1;
+|FPRC;
+
+|| //////////////////////////////////////////////////////
+|PROCESO dscsvw10Campos;
+     nTCampos  = nTCampos + 1;
+|FPRC;
+
+|DEFBUCLE dscsvw10Campos;
+     #dscsvw10#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, dscsvw10Campos;
+|FIN;
+
+|PROCESO dscsvw10Carga;
+    nCampo = #dscsvw10#0;
+    aAlfa  = #dscsvw10#1;
+
+    aQueQuiero = "|C" + (("000" + nCampo) % -103) + "TIPO";
+    aTipoCampo = #catbaw01#aQueQuiero#;
+
+    |SI aTipoCampo = "F";
+        aFecha = aAlfa; |HAZ CalculaFecha; aAlfa = aFecha;
+    |FINSI;
+    |SI aTipoCampo = "N"; |HAZ QuitaPuntos; |FINSI;
+
+    #catbaw01#0 = nReg;
+    #catbaw01#nCampo# = aAlfa;
+|FPRC;
+
+|DEFBUCLE dscsvw10Carga;
+     #dscsvw10#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, dscsvw10Carga;
+|FIN;
+
+|PROCESO GrabaDatos;
+     |CIERRA #dscsvw10;
+     nTCampos = 0;
+     |BUCLE dscsvw10Campos;
+
+     nTValor  = nTotCmp;
+     |SI nTCampos < nTValor;
+         |DELINDEX #dscsvw10;
+         |ACABA;
+     |FINSI;
+
+     nPorce = ((nTValor * 100) / nTCampos) ! 0;
+     |SI nPorce < 70;
+         |DELINDEX #dscsvw10;
+         |ACABA;
+     |FINSI;
+
+     nReg = nReg + 1;
+     |SI nReg = 1;
+         |DELINDEX #dscsvw10;
+         |ACABA;
+     |FINSI;
+
+     |DDEFECTO #catbaw01;
+     |BUCLE dscsvw10Carga;
+
+     |GRABA 020#catbaw01.n;
+     |LIBERA #catbaw01;
+
+     |DELINDEX #dscsvw10;
+|FPRC;
+
+|PROCESO Grabaw10;
+     #dscsvw10#0 = nCmp;
+     #dscsvw10#1 = aVar;
+     |GRABA 020#dscsvw10.n;
+     |LIBERA #dscsvw10;
+|FPRC;
+
+|PROCESO SacaDatos;
+     aLong  = aLee % 0;
+     nLong  = aLong;
+     aC10   = &10;
+     aC13   = &13;
+     |PARA nCarac = 1;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+           nPos   = (nCarac * 100) + 1;
+           aCarac = aLee % nPos;
+
+           |SI aCarac = aC13;
+               aCarac = ";";
+           |FINSI;
+
+           |SI aCarac = ";";
+               nCmp   = nCmp + 1;
+               |HAZ Grabaw10;
+
+               aVar   = "";
+               aCarac = "";
+           |FINSI;
+
+           |SI aCarac = aC10;
+               aCarac = "";
+           |FINSI;
+
+           |SI nCmp = nTotCmp;  |Y nCmp ! 0;
+               |HAZ GrabaDatos;
+
+               |ABRE #dscsvw10;
+
+               nCmp = 0;
+           |FINSI;
+
+           aVar = aVar + aCarac;
+      |SIGUE;
+|FPRC;
+
+|PROCESO LeeCSV;
+     aAlfa = "Procesando registros del fichero " + aTabla;
+     |ATRI I; |PINTA 2105, aAlfa; |ATRI 0;
+
+     |ABRE #dscsvw10;
+
+     nCmp  = 0;
+     nReg  = 0;
+     |XABRE "B", aAbre, nHandle;
+     |PARA;  |SI;  |HACIENDO;
+          |XLEE nHandle, 255, aLee;
+          |SI FSalida [ 0;  |SAL;  |FINSI;
+
+          |HAZ SacaDatos;
+     |SIGUE;
+     |XCIERRA nHandle;
+
+     |LEE 000#dscsvw10.p;
+     |SI FSalida = 0;
+         nCmp   = nCmp + 1;
+         |HAZ Grabaw10;
+         |HAZ GrabaDatos;
+     |FINSI;
+
+     |ABRE #dscsvw10; |CIERRA #dscsvw10; |DELINDEX #dscsvw10;
+|FPRC;
+
+|| //////////////////////////////////////////////////////
+|PROCESO Errores;
+     nOk = 1;
+     |SI SwError = 1;
+         aError = "0000No hay datos para Importar";
+     |FINSI;
+
+     |SI SwError = 2;
+         |SI nError = nSwHay;
+             |SI nSwHayC = 1;
+                 aError = "Los apuntes no corresponden a la Cuenta informada";
+             |FINSI;
+             |SI nSwHayP = 1;
+                 aError = "Los apuntes no corresponden al ejercicio";
+             |FINSI;
+             |SI nSwHayC = 1; |Y nSwHayP = 1;
+                 aError = "Los aptes no corresponden a la Cuenta ni al ejercicio";
+             |FINSI;
+             aError = "0000" + aError;
+         |SINO;
+             nOk = 0;
+             |SI nSwHayC = 1;
+                 aError = "Hay apuntes que no son de la Cuenta";
+             |FINSI;
+             |SI nSwHayP = 1;
+                 aError = "Hay apuntes fuera del ejercicio";
+             |FINSI;
+             |SI nSwHayC = 1; |Y nSwHayP = 1;
+                 aError = "Hay aptes que no son de la cuenta y fuera del ejercicio";
+             |FINSI;
+             aError = "0000N" + aError + ". Continuar";
+         |FINSI;
+     |FINSI;
+     |SI nOk = 1;
+         |MENAV aError;
+     |SINO;
+         nOk = 1;
+         |CONFI aError;
+         |SI FSalida = 0;
+             nOk = 0;
+             |MENAV "0000Los Apuntes erroreos no se pasaran";
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO catbaw01Cheq;
+  nSwHay = nSwHay + 1;
+  |SI #catbaw01#6 ! #catbaz01#0; |Y #catbaw01#7 ! #catbaz01#0;
+      nError  = nError + 1;
+  |SINO;
+      |SI #catbaw01#1 < fec1; |O #catbaw01#1 > fec2;
+          nError  = nError + 1;
+      |FINSI;
+  |FINSI;
+  |SI #catbaw01#6 ! #catbaz01#0; |Y #catbaw01#7 ! #catbaz01#0;
+      nSwHayC = 1;
+  |FINSI;
+  |SI #catbaw01#1 < fec1; |O #catbaw01#1 > fec2;
+       nSwHayP = 1;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE catbaw01Cheq;
+   #catbaw01#1;
+   ;
+   0000000001;
+   9999999999;
+   ;
+   NULL, catbaw01Cheq;
+|FIN;
+
+|PROCESO PasoFichero;
+     aAbre = #catbaz01#2;  |QBF aAbre;
+     |SI aAbre = "";  |ACABA;  |FINSI;
+
+     nTotCmp  = 7;
+     |ABRE #catbaw01;
+     aTabla = "movimientos";
+     |HAZ LeeCSV;
+     |CIERRA #catbaw01;
+
+     |BUCLE catbaw01Cheq;
+     |SI nSwHay = 0; SwError = 1; |FINSI;
+     |SI nSwHayC ! 0; |O nSwHayP ! 0; SwError = 2; |FINSI;
+
+|FPRC;
+
+|| //////////////////////////////////////////////////////
+|PROCESO Actualiza;
+
+    |DDEFECTO #cacuenta;
+    #cacuenta#0 = eaCuenta;
+    |LEE 141#cacuenta.=;
+    |SI FSalida ! 0;
+        #cacuenta#0 = eaCuenta;
+        #cacuenta#1 = enNivel;
+        #cacuenta#3 = "S";
+        |HAZ defect1;
+        mascara = #cacuenta#0; |QBF mascara;
+        mascara = mascara + "zzzzzzzzzzzz";
+        mascara = mascara % 112;
+        #cacuenta#54 = mascara;
+        #cacuenta#55 = #cacuenta#1;
+
+        |GRABA 020#cacuenta.b;
+
+        |PUSHV 0501 2480;
+        |PINPA #0#cacuenta;
+        |PINDA #0#cacuenta;
+        |ENDATOS #1#cacuenta;
+        |SI FSalida = 0;
+            |GRABA 020#cacuenta.a;
+        |SINO;
+            |BORRA 020#cacuenta.a;
+        |FINSI;
+        |POPV;
+    |FINSI;
+    |LIBERA #cacuenta;
+|FPRC;
+
+|PROCESO catbaw01Paso;
+
+  nOk = 0;
+  |SI #catbaw01#6 ! #catbaz01#0; |Y #catbaw01#7 ! #catbaz01#0;
+      nOk = 1;
+  |FINSI;
+  |SI #catbaw01#1 < fec1; |O #catbaw01#1 > fec2;
+      nOk = 1;
+  |FINSI;
+
+  |SI nOk = 0;
+      nSwHay = nSwHay + 1;
+      nLinea = nLinea + 1;
+
+      |DDEFECTO #cientasl;
+      #cientasl#0 = #cientasc#0;
+      #cientasl#1 = enNivel;
+      #cientasl#2 = nLinea;
+      #cientasl#3 = #catbaw01#1;
+      #cientasl#4 = #catbaz01#3;
+      #cientasl#5 = #catbaw01#2;
+
+      |SI #catbaw01#5 = "D";
+          |SI #cientasc#0 = #catbaw01#6;
+              #cientasl#6 = "D";
+              #cientasl#8 = #catbaw01#7;
+          |SINO;
+              #cientasl#6 = "H";
+              #cientasl#8 = #catbaw01#6;
+          |FINSI;
+      |SINO;
+          |SI #cientasc#0 = #catbaw01#6;
+              #cientasl#6 = "H";
+              #cientasl#8 = #catbaw01#7;
+          |SINO;
+              #cientasl#6 = "D";
+              #cientasl#8 = #catbaw01#6;
+          |FINSI;
+      |FINSI;
+
+      #cientasl#7  = #catbaw01#3;
+      #cientasl#9  = enNivel;
+      #cientasl#10 = #cientasl#4;
+      #cientasl#11 = #cientasl#5;
+      #cientasl#12 = eaDfDepC;
+      #cientasl#13 = eaDfSubC;
+      #cientasl#17 = #catbaw01#4;
+
+      |GRABA 040#cientasl.n;
+
+      |SI #cientasl#6 = "D";
+          #cientasc#5 = #cientasc#5 + #cientasl#7;
+      |SINO;
+          #cientasc#6 = #cientasc#6 + #cientasl#7;
+      |FINSI;
+      #cientasc#7 = #cientasc#4 + #cientasc#5 - #cientasc#6;
+
+      |SI #cientasc#3 > #cientasl#3;
+          #cientasc#3 = #cientasl#3;
+      |FINSI;
+
+      eaCuenta = #cientasl#8;
+      |HAZ Actualiza;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE PasaAuxiliar;
+   #catbaw01#1;
+   ;
+   0000000001;
+   9999999999;
+   ;
+   NULL, catbaw01Paso;
+|FIN;
+
+|PROCESO PasoDatos;
+     |CONFI "0000SRegistros de movimientos preparados para importar. Quiere consultarlos antes?";
+     |SI FSalida = 0;
+         |ABRE #catbaw01;
+         |CONSULTA_CLAVE #1#catbaw01;
+         |CIERRA #catbaw01;
+     |FINSI;
+
+     eaCuenta = #catbaz01#0;
+     |HAZ SacaNivel;
+
+|| ... Abre saldo anterior  cisalant
+     |ABRE #cisalant;
+     |DDEFECTO #cisalant;
+     #cisalant#0 = #catbaz01#0;
+     |LEE 041#cisalant.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #cisalant;
+         #cisalant#0 = #catbaz01#0;
+         #cisalant#1 = enNivel;
+         #cisalant#2 = #catbaz01#1;
+         |GRABA 020#cisalant.n;
+     |FINSI;
+     |CIERRA #cisalant;
+
+|| ... Abre cabacera de apuntes a introducir cientasc;
+     |ABRE #cientasc;
+     |DDEFECTO #cientasc;
+     #cientasc#0 = #catbaz01#0;
+     |LEE 141#cientasc.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #cientasc;
+         #cientasc#0 = #catbaz01#0;
+         #cientasc#1 = enNivel;
+         #cientasc#2 = #catbaz01#1;
+         #cientasc#3 = #cisalant#4;
+         #cientasc#4 = #cisalant#3;
+         |GRABA 020#cientasc.b;
+     |FINSI;
+
+     nSwHay = 0;
+     nLinea = 0;
+     |ABRE #cientasl;
+     #cientasl#0 = #cientasc#0;
+     #cientasl#2 = 1;
+     |LEE 041#cientasl.];
+     |SI FSalida = 0; |Y #cientasl#0 = #cientasc#0;
+         nLinea = #cientasl#2;
+     |FINSI;
+
+     |ABRE #cacuenta;
+     |BUCLE PasaAuxiliar;
+     |CIERRA #cacuenta;
+     |CIERRA #cientasl;
+
+     |GRABA 020#cientasc.a;
+     |LIBERA #cientasc;
+     |CIERRA #cientasc;
+
+     aAlfa = nSwHay;
+     aAlfa = "0000" + aAlfa + " Apuntes pasados a la Introduccion por Cuentas";
+     |MENAV aAlfa;
+|FPRC;
+
+|PROCESO HazOperacion;
+
+   aFichero = "catbaw01" + Usuario;  |NOME_DAT #catbaw01#aFichero#;
+   aFichero = "dscsvw10" + Usuario;  |NOME_DAT #dscsvw10#aFichero#;
+
+   |ABRE #catbaw01;
+   |CIERRA #catbaw01;
+   |DELINDEX #catbaw01;
+
+   nOk     = 0;
+   SwError = 0;
+   nSwHay  = 0;
+   nSwHayC = 0;
+   nSwHayP = 0;
+   |HAZ PasoFichero;
+   |SI SwError ! 0;
+       |HAZ Errores;
+   |FINSI;
+   |SI nOk = 0;
+       |HAZ PasoDatos;
+   |FINSI;
+
+   |DELINDEX #catbaw01;
+|FPRC;
+
+|PROCESO LosPaths;
+     eaIP     = "";
+     |IP_REMOTO eaIP;
+
+     |HAZ LeeUnidadBasico;
+
+     aPathLocal = eaUnidadBasico + "\documentos";   |RMKDIR aPathLocal;
+     aPathLocal = aPathLocal + "\tmp";              |RMKDIR aPathLocal;
+     aPathLocal = aPathLocal + "\";
+
+     |DBASE aBaseConta;
+     aPathTmp   = aBaseConta + "tmp";          |MKDIR aPathTmp;
+     aPathTmp   = aPathTmp  + "/" + Usuario;   |MKDIR aPathTmp;
+     aPathTmp   = aPathTmp  + "/";
+
+     aPathContagen = eaUnidadBasico + "\documentos";   |RMKDIR aPathContagen;
+     aPathContagen = aPathContagen + "\contagen\";     |RMKDIR aPathContagen;
+
+     aAlfa = aPathTmp + "movbancos.csv";       |FBORRA aAlfa;
+|FPRC;
+
+|PROGRAMA;
+
+   |CLS;
+   |CABEZA "Importacion Bancos";
+
+   |HAZ inicio;
+
+   |HAZ LosPaths;
+
+   |ABRE #caivaasi;
+   |DDEFECTO #caivaasi;
+   |LEE 041#caivaasi.p;
+   |CIERRA #caivaasi;
+
+   |PINPA #0#catbaz01;
+   |PINDA #0#catbaz01;
+   |ENDATOS #1#catbaz01;
+   |SI FSalida = 0;
+       |SI #catbaz01#5 = "SI";
+           |HAZ HazOperacion;
+       |FINSI;
+   |FINSI;
+   aAlfa = aPathTmp + "movbancos.csv"; |FBORRA aAlfa;
+|FPRO;

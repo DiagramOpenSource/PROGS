@@ -1,0 +1,184 @@
+|FICHEROS;
+   dscam000 #0;
+   canempr@ #1;
+   agif041@ #2;
+
+   dscam051 #3;
+|FIN;
+
+|VARIABLES;
+   &Fichero = "";
+   &Tipo    = "";
+   &Cmp     = "";
+   &CmpNum  = 0;
+
+   Comodin  = "";
+   Comodin1 = "";
+   aOrigen  = "";
+   aDestino = "";
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+
+   Ref1     = "";
+   Ref2     = "";
+   Sistema  = "";
+
+   confi    = "";
+   Cont     = 0;
+   ModoEntrada = 0;
+
+   Tecla    = 0;
+   nHandle  = 0;
+   nChequea = 0;
+
+   &enEmpGestion   = 0;
+   &enEmpCartera   = 0;
+   &eaDirAgicont   = "";
+   &enEmpAgicont   = 0;
+   &enPerAgicont   = 0;
+   &enEmpresa      = 0;
+   &enPeriodo      = 0;
+   &eaPathContagen = "";
+|FIN;
+
+|PROCESO CargaContaExt;
+   Comodin = #dscam000#16; |QBF Comodin;
+   |SI Comodin = "";
+       |ACABA;
+   |FINSI;
+
+   Comodin = Comodin % -101;
+   |SI Comodin ! "/"; |Y Comodin ! "\";
+      Comodin = #dscam000#16;
+      |QBF Comodin;
+      Comodin = Comodin + "/";
+      #dscam000#16 = Comodin;
+   |FINSI;
+
+   Comodin = #dscam000#16; |QBF Comodin;
+   aAlfa = Comodin; |QBF aAlfa;
+   Fichero = "Empresas"; Tipo = "C"; Cmp = ""; |HAZ ObtenFich;
+   Comodin = Comodin + "def/" + Fichero + ".mas";
+   |CARGA_DEF Comodin , canempr@;
+   |SI FSalida ! 0;
+        Ref1 = "N";
+   |SINO;
+        Ref1 = "S";
+   |FINSI;
+|FPRC;
+
+|PROCESO DescargaExternos;
+   |SI Ref1 = "S";
+       Comodin = #dscam000#16;
+       |QBF Comodin;
+       |SI Comodin ! ""; |DESCARGA_DEF #1; |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO ListaConta;
+   Comodin = #dscam000#16; |QBF Comodin;
+   |SI Comodin = ""; |ACABA; |FINSI;
+   Comodin = Comodin + "fich/";
+   |PATH_DAT #1 Comodin;
+
+   |ABRE #canempr@;
+   Fichero = "Empresas"; Tipo = "C"; Cmp = "Codigo Empresa"; |HAZ ObtenDato;
+   #canempr@#CmpNum# = #dscam000#14;
+   Fichero = "Empresas"; Tipo = "C"; Cmp = "Periodo"; |HAZ ObtenDato;
+   #canempr@#CmpNum# = #dscam000#19;
+   |LEE 000#canempr@.=;
+   |SI FSalida = 0;
+       Fichero = "Empresas"; Tipo = "C"; Cmp = "Nombre Comercial"; |HAZ ObtenDato;
+       #dscam000#1  = #canempr@#CmpNum#;
+       Fichero = "Empresas"; Tipo = "C"; Cmp = "Nif/Cif"; |HAZ ObtenDato;
+       #dscam000#2  = #canempr@#CmpNum#;
+       Fichero = "Empresas"; Tipo = "C"; Cmp = "Direccion"; |HAZ ObtenDato;
+       #dscam000#3  = #canempr@#CmpNum#;
+       Fichero = "Empresas"; Tipo = "C"; Cmp = "Codigo Postal"; |HAZ ObtenDato;
+       Comodin = #canempr@#CmpNum# % 0102;
+       #dscam000#8  = Comodin;
+       Comodin = #canempr@#CmpNum# % 0303;
+       #dscam000#9  = Comodin;
+       Fichero = "Empresas"; Tipo = "C"; Cmp = "Poblacion"; |HAZ ObtenDato;
+       #dscam000#10 = #canempr@#CmpNum#;
+       Fichero = "Empresas"; Tipo = "C"; Cmp = "Telefono"; |HAZ ObtenDato;
+       #dscam000#12 = #canempr@#CmpNum#;
+       Fichero = "Empresas"; Tipo = "C"; Cmp = "Fax"; |HAZ ObtenDato;
+       #dscam000#13 = #canempr@#CmpNum#;
+   |FINSI;
+   |CIERRA #canempr@;
+|FPRC;
+
+|PROCESO CopiaPatrones;
+     |DBASE aOrigen;  |QBF aOrigen;  aOrigen = aOrigen + "fich/patrones/*.*";
+     |_PDIR aOrigen;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+        Comodin1 = aOrigen % -112; Comodin1 = Comodin1 % 0108;
+        Comodin = aOrigen % -112;
+        Comodin = Comodin - "ddd"; |SI FSalida ! 0; Comodin = Comodin + "dat"; |FINSI;
+        Comodin = Comodin - "iii"; |SI FSalida ! 0; Comodin = Comodin + "ixx"; |FINSI;
+        Comodin = Comodin - "zzz"; |SI FSalida ! 0; Comodin = Comodin + "ddx"; |FINSI;
+        |SI Comodin1 = "dscam063"; |O Comodin1 = "dscam064";
+            |DBASE aDestino; |QBF aDestino; aDestino = aDestino + "fich/";
+            aAlfa2 = aDestino + "/" + Comodin;
+            nChequea = 1;
+        |SINO;
+            |DFICE aDestino;
+            aAlfa2 = aDestino + (("00000" + #dscam000#0) % -105) + "/" + Comodin;
+            nChequea = 1;
+        |FINSI;
+
+        |SI nChequea = 1;
+           |XABRE "E", aAlfa2, nHandle;
+           |SI FSalida < 0;
+              |QBF aDestino; aDestino = aDestino + (("00000" + #dscam000#0) % -105) + "/" + Comodin;
+              |COPIA_FICHERO aOrigen, aDestino;
+           |FINSI;
+        |SINO;
+           |QBF aDestino; aDestino = aDestino + (("00000" + #dscam000#0) % -105) + "/" + Comodin;
+           |COPIA_FICHERO aOrigen, aDestino;
+        |FINSI;
+        |_SDIR aOrigen;
+     |SIGUE;
+|FPRC;
+
+|PROCESO CreaDir;
+   |DBASE Comodin; |QBF Comodin;
+   Comodin = Comodin + "fich/" + (("00000" + #dscam000#0) % -105) + "/";
+   |MKDIR Comodin;
+   |HAZ CopiaPatrones;
+|FPRC;
+
+|PROGRAMA;
+
+    aAlfa = " ";
+    aAlfa = aAlfa * 10;
+    |ABRE #dscam000;
+    #dscam000#0 = enEmpCartera;
+    |LEE 141#dscam000.=;
+    |SI FSalida ! 0;
+        |DDEFECTO #dscam000;
+        #dscam000#0  = enEmpCartera;
+        #dscam000#18 = aAlfa;
+        |GRABA 020#dscam000.b;
+        |HAZ CreaDir;
+    |FINSI;
+    #dscam000#16 = eaPathContagen;
+    #dscam000#14 = enEmpresa;
+    #dscam000#19 = enPeriodo;
+
+    Comodin = #dscam000#16; |QBF Comodin;
+    |SI Comodin = ""; |CIERRA #dscam000; |ACABA; |FINSI;
+
+    |HAZ CargaContaExt;
+    |SI Ref1 = "N"; |CIERRA #dscam000; |ACABA; |FINSI;
+
+    |HAZ ListaConta;
+
+    |GRABA 020#dscam000.a;
+    |LIBERA #dscam000;
+    |CIERRA #dscam000;
+
+    |HAZ DescargaExternos;
+|FPRO;

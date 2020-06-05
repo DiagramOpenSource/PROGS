@@ -1,0 +1,567 @@
+|FICHEROS;
+   dscam215 #0;
+   dscam018 #1,MANTE;
+   dscam023 #2,MANTE;
+   dscam024 #3;
+   dscam038 #4;
+
+   dscam219 #104;
+   dscam220 #105;        ||Historico Clas. Riesgos.
+
+   Referen@ #1000;       || Para buscar en el mantenimiento de clasificaciones el codigo de cliente
+|FIN;
+
+|VARIABLES;
+   &enBoton = 0;
+   &enSwPonBoton = 0;
+   &enCuadroIni  = 0;
+   &enCuadroFin  = 0;
+   &eaTitulo     = "";
+
+   nUltimo = 0;
+   nBoton = 0;
+   aMensaje = "";
+
+   nFEntradaAnt = 0;
+
+   nFlag    = 0;
+
+   &TipoCliente = ""; &CodCliente = "";
+   &DCampoG = 0; &HCampoG = 0;
+   &DCampoC = 0; &HCampoC = 0;
+
+   &Nombre    = ""; &Direccion = "";
+   &CP1       = ""; &CP2       = "";
+   &Poblacion = ""; &Provincia = "";
+   &DNI       = ""; &Telefono  = "";
+   &Fax       = "";
+   &DirFactura = ""; &CPF1       = ""; &CPF2       = "";
+   &PobFactura = ""; &ProFactura = "";
+
+   &eaUsuario = ""; &enImpAnt = 0;  &enImpAct = 0;  &eaDescr = "";
+   &eaTipoReg = ""; &eaNumero = ""; &eaTipoOp = ""; &eaFicher = ""; &eaClave = "";
+
+   RiesgoUtil = 0;
+   ModoEntrada = 0;
+   Comodin = "";
+   Cont    = 0;
+   nModo   = 0;
+   nTecla  = 0;
+   aAlfa   = "";
+   aAlfa1  = "";
+
+   aNifQbf1   = "";
+   aNifQbf2   = "";
+
+   &eaVarDni  = "";
+   &enCalcCif = 0;
+
+   aAntCli  = "";
+   aDesde   = "";
+   aHasta   = "";
+
+   fFecSolic = @;
+   fFecConce = @;
+   nRieSolic = 0;
+   nRieConce = 0;
+|FIN;
+
+|PROCESO ExistClient215;
+   TipoCliente = "G";
+   CodCliente  = #dscam215#Campo#; DCampoG = 0; HCampoG = 999;
+   |HAZ ExisteCliente;
+
+   |SI TipoCliente = "ERROR";
+      |ERROR;
+   |SINO;
+      nModo = (FEntrada / 100) ! 0;
+      |SI nModo ! 1;
+         |SI aAntCli ! CodCliente;
+            aAlfa = "    NEstá a punto de cambiar el código de cliente del expediente. " + &191 + " Continuar con el cambio ?";
+            |CONFI aAlfa;
+            |SI FSalida ! 0;
+               #dscam215#4 = aAntCli; |PINTA #dscam215#4;
+               |ACABA;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+
+      #dscam215#Campo# = CodCliente;
+      |PINTA #dscam215#Campo#;
+      #dscam215#5  = Nombre;      || Nombre Cliente
+      #dscam215#6  = DirFactura;  || Direccion Cliente
+      #dscam215#7  = CPF1;        || C.P.1 Cliente
+      #dscam215#8  = CPF2;        || C.P.2 Cliente
+      #dscam215#9  = PobFactura;  || Poblacion Cliente
+      #dscam215#10 = ProFactura;  || Provincia Cliente
+      #dscam215#11 = DNI;         || DNI Cliente
+      #dscam215#12 = Telefono;    || Telefono Cliente
+      #dscam215#13 = Fax;         || Fax Cliente
+      |PARA Cont = 5; |SI Cont [ 13; |HACIENDO Cont = Cont + 1;
+         |PINTA #dscam215#Cont#;
+      |SIGUE;
+   |FINSI;
+
+|FPRC;
+
+|PROCESO CalcDNI215;
+     |SI FSalida = 10;
+          eaVarDni  = #dscam215#11;
+          |HAZ CalculoDNI;
+          #dscam215#11 = eaVarDni;
+          |PINTA #dscam215#11;
+          |ERROR; |ACABA;
+     |FINSI;
+
+     eaVarDni  = #dscam215#11;
+     |HAZ CalculoDNI;
+
+     aNifQbf1 = #dscam215#11;   |QBF aNifQbf1;
+     aNifQbf2 = eaVarDni;  |QBF aNifQbf2;
+
+     |SI aNifQbf1 ! aNifQbf2; |Y aNifQbf1 ! "";
+          aAlfa = "0000NEl NIF puede ser erróneo."+&13+"¿Desea calcularlo?";
+          |CONFI aAlfa;
+          |SI FSalida = 0;
+               #dscam215#11 = eaVarDni; |PINTA #dscam215#11;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Recalcula215;
+   |SELECT #4#dscam038;
+   #dscam038#5 = #48#0;
+   #dscam038#6 = #dscam024#1;
+   #dscam038#0 = 0;
+   #dscam038#1 = 1;
+   |LEE 000#dscam038.];
+   |SI FSalida = 0; |Y #dscam038#5 = #48#0; |Y #dscam038#6 = #dscam024#1;
+      |SI #dscam038#8 = "R";
+         RiesgoUtil = RiesgoUtil + #dscam024#2 + #dscam024#3 + #dscam024#4;
+         RiesgoUtil = RiesgoUtil + #dscam024#6 + #dscam024#7 - #dscam024#5;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Recalcula215;
+#dscam024#1;
+;
+#dscam023#0,01;
+#dscam023#0,99;
+;
+NULL,Recalcula215;
+|FIN;
+
+|PROCESO RiesgoDisp215;
+   #dscam024#9 = #dscam023#19 - #dscam023#20;
+   |GRABA 020#dscam024.a; |LIBERA #dscam024;
+|FPRC;
+
+|DEFBUCLE RiesgoDisp215;
+#dscam024#1;
+;
+#dscam023#0,01;
+#dscam023#0,99;
+;
+NULL,RiesgoDisp215;
+|FIN;
+
+|PROCESO BorraObservaciones;
+   |BORRA 020#dscam219.a;
+|FPRC;
+
+|DEFBUCLE BorraObservaciones;
+#dscam219#1;
+;
+aAlfa, 001;
+aAlfa, 999;
+;
+NULL, BorraObservaciones;
+|FIN;
+
+|PROCESO BorraHistorico215;
+   aAlfa = #dscam220#1; |QBF aAlfa;
+   aAlfa = (("000" + #dscam220#0) % -103) + "/" + ((aAlfa + (" " * 20)) % 0120) + "/" + (("000" + #dscam220#2) % -103);
+   |BUCLE BorraObservaciones;
+
+   |BORRA 020#dscam220.a;
+|FPRC;
+
+|DEFBUCLE BorraHistorico215;
+#dscam220#1;
+;
+#dscam215#0, #dscam215#2, 001;
+#dscam215#0, #dscam215#2, 999;
+be;
+NULL, BorraHistorico215;
+|FIN;
+
+|PROCESO Baja020215; |TIPO 1;
+   nFEntradaAnt = FEntrada;
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 3;
+      |BUCLE BorraHistorico215; || PEPE
+
+      |HAZ ModExped215;
+
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "BAJA CLASIFICACION RIESGO (" + (("000" + #dscam215#0) % -103) + "/" + #dscam215#2;
+      eaDescr   = eaDescr + ") DESDE MANTENIMIENTO";
+      eaTipoReg = "CR";  eaNumero = ("000" + #dscam215#0) % -103;
+      eaTipoOp  = "B";   enImpAnt = 0; enImpAct = 0;
+      eaFicher = "dscam215"; eaClave = #dscam215#0 + "/" + #dscam215#2;
+      |HAZ GrabaAudit;
+   |FINSI;
+|FPRC;
+
+|PROCESO GrabaFichaRiesgo;
+   |ABRE #dscam023;
+   #dscam023#0 = #dscam215#4;
+   |LEE 101#dscam023.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam023;
+      #dscam023#0 = #dscam215#4;
+      #dscam023#1 = #dscam215#5;
+      #dscam023#2 = #dscam215#0;
+      #dscam023#3 = #dscam215#1;
+      #dscam023#5 = #dscam215#2;
+      #dscam023#7 = #dscam215#18;
+      #dscam023#8 = #dscam215#19;
+      #dscam023#11 = #dscam215#15;
+      #dscam023#12 = #dscam215#14;
+      #dscam023#13 = #dscam215#17;
+      #dscam023#14 = #dscam215#16;
+      #dscam023#19 = #dscam023#13 + #dscam023#15 + #dscam023#17;
+      |GRABA 020#dscam023.n;
+   |SINO;
+      aAlfa  = #dscam023#5; |QBF aAlfa;
+      aAlfa1 = #dscam215#2; |QBF aAlfa1;
+      |SI aAlfa ! aAlfa1;
+          |SI aAlfa = "";
+               |SI #dscam023#2 = 0;
+                 #dscam023#2 = #dscam215#0;
+                 #dscam023#3 = #dscam215#1;
+                 #dscam023#5 = #dscam215#2;
+                 #dscam023#7 = #dscam215#18;
+                 #dscam023#8 = #dscam215#19;
+                 #dscam023#11 = #dscam215#15;
+                 #dscam023#12 = #dscam215#14;
+                 #dscam023#13 = #dscam215#17;
+                 #dscam023#14 = #dscam215#16;
+                 #dscam023#19 = #dscam023#13 + #dscam023#15 + #dscam023#17;
+                 |GRABA 020#dscam023.a; |LIBERA #dscam023;
+                |FINSI;
+           |SINO;
+             aAlfa = "    NLos datos de clasificacion de riesgo del cliente no son los mismos. " + &191 + " Unificar ?";
+             |CONFI aAlfa;
+             |SI FSalida = 0;
+                 #dscam023#2 = #dscam215#0;
+                 #dscam023#3 = #dscam215#1;
+                 #dscam023#5 = #dscam215#2;
+                 #dscam023#7 = #dscam215#18;
+                 #dscam023#8 = #dscam215#19;
+                 #dscam023#11 = #dscam215#15;
+                 #dscam023#12 = #dscam215#14;
+                 #dscam023#13 = #dscam215#17;
+                 #dscam023#14 = #dscam215#16;
+                 #dscam023#19 = #dscam023#13 + #dscam023#15 + #dscam023#17;
+                 |GRABA 020#dscam023.a; |LIBERA #dscam023;
+               |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+   |CIERRA #dscam023;
+|FPRC;
+
+|PROCESO Tipo02m215; |TIPO 2;
+   |SI FEntrada < 100; FEntrada = nFEntradaAnt; |FINSI;
+   ModoEntrada = (FEntrada / 100) ! 0;
+   |SI ModoEntrada ! 2; |ACABA; |FINSI;
+
+   nFlag = 0 +. 1;
+   |SI nFlag < 0;
+      fFecSolic = #dscam215#14; nRieSolic = #dscam215#15;
+      fFecConce = #dscam215#16; nRieConce = #dscam215#17;
+   |FINSI;
+|FPRC;
+
+|PROCESO Alta020215; |TIPO 3;
+  |SI FEntrada < 100; FEntrada = nFEntradaAnt; |FINSI;
+  ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 1; |O ModoEntrada = 2;
+      |HAZ GrabaHistorico215;
+      |HAZ GrabaFichaRiesgo;
+
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "ALTA CLASIFICACION RIESGO (" + (("000" + #dscam215#0) % -103) + "/" + #dscam215#2;
+      eaDescr   = eaDescr + ") DESDE MANTENIMIENTO";
+      eaTipoReg = "CR";  eaNumero = ("000" + #dscam215#0) % -103;
+      eaTipoOp  = "A";   enImpAnt = 0; enImpAct = 0;
+      eaFicher = "dscam215"; eaClave = #dscam215#0 + "/" + #dscam215#2;
+      |HAZ GrabaAudit;
+   |FINSI;
+
+   |SI ModoEntrada = 2;
+      |SI fFecSolic ! #dscam215#14; |O nRieSolic ! #dscam215#15;
+       |O fFecConce ! #dscam215#16; |O nRieConce ! #dscam215#17;
+          |HAZ GrabaHistorico215;
+      |FINSI;
+
+      |HAZ ModExped215;
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "MODIFICACION CLASIFICACION RIESGO (" + (("000" + #dscam215#0) % -103) + "/" + #dscam215#2;
+      eaDescr   = eaDescr + ") DESDE MANTENIMIENTO";
+      eaTipoReg = "CR";  eaNumero = ("000" + #dscam215#0) % -103;
+      eaTipoOp  = "M";   enImpAnt = 0; enImpAct = 0;
+      eaFicher = "dscam215"; eaClave = #dscam215#0 + "/" + #dscam215#2;
+      |HAZ GrabaAudit;
+   |FINSI;
+|FPRC;
+
+|PROCESO ModExped215;
+      |ABRE #dscam023;   |ABRE #dscam024;
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "fich/"; |PATH_DAT #4 aAlfa;
+      |ABRE #dscam038;
+      #dscam023#0 = #dscam215#4;
+      |LEE 101#dscam023.=;
+      |SI FSalida = 0;
+         |SI #dscam023#2 = #dscam215#0; |Y #dscam023#5 = #dscam215#2;
+            |SI ModoEntrada = 3;
+               #dscam023#2 = 0; #dscam023#5 = "";
+               #dscam023#11 = #dscam023#11 - #dscam215#15;
+               #dscam023#13 = #dscam023#13 - #dscam215#17;
+            |SINO;
+               #dscam023#11 = #dscam215#15;
+               #dscam023#13 = #dscam215#17;
+            |FINSI;
+            #dscam023#7  = #dscam215#18;
+            #dscam023#8  = #dscam215#19;
+            #dscam023#12 = #dscam215#14;
+            #dscam023#14 = #dscam215#16;
+            #dscam023#19 = #dscam023#13 + #dscam023#15 + #dscam023#17;
+
+            RiesgoUtil = 0;
+            |BUCLE Recalcula215;
+            #dscam023#20 = RiesgoUtil;
+            |GRABA 020#dscam023.a; |LIBERA #dscam023;
+            |LEE 000#dscam023.=;
+
+            |BUCLE RiesgoDisp215;
+         |FINSI;
+      |FINSI;
+      |CIERRA #dscam024; |CIERRA #dscam023; |CIERRA #dscam038;
+|FPRC;
+
+|PROCESO GrabaHistorico215;
+     ||TODO CCC
+     |ABRE #dscam220;
+     #dscam220#0 = #dscam215#0;
+     #dscam220#1 = #dscam215#2;
+     #dscam220#2 = 999;
+     |LEE 000#dscam220.];
+     |SI FSalida = 0;
+          |LEE 000#dscam220.a;
+     |SINO;
+          |LEE 000#dscam220.u;
+     |FINSI;
+     |SI FSalida = 0; |Y #dscam220#0 = #dscam215#0; |Y #dscam220#1 = #dscam215#2;
+          nUltimo = #dscam220#2 + 1;
+     |SINO;
+          nUltimo = 1;
+     |FINSI;
+     |DDEFECTO #dscam220;
+     #dscam220#0 = #dscam215#0;
+     #dscam220#1 = #dscam215#2;
+     #dscam220#2 = nUltimo;
+     |LEE 101#dscam220.=;
+     |SI FSalida ! 0;
+          #dscam220#3 = #dscam215#4;
+          #dscam220#4 = #dscam215#14;
+          |SI ModoEntrada = 3;
+               #dscam220#5 = 0;
+          |SINO;
+               #dscam220#5 = #dscam215#15;
+          |FINSI;
+          #dscam220#6 = #dscam215#16;
+          |SI ModoEntrada = 3;
+               #dscam220#7 = 0;
+          |SINO;
+               #dscam220#7 = #dscam215#17;
+          |FINSI;
+          |GRABA 020#dscam220.n
+          |LIBERA #dscam220;
+     |FINSI;
+     |CIERRA #dscam220;
+|FPRC;
+
+|PROCESO inferior105215;
+     #dscam220#0 = #dscam215#0;
+     #dscam220#1 = #dscam215#2;
+     #dscam220#2 = 001;
+|FPRC;
+
+|PROCESO superior105215;
+     #dscam220#0 = #dscam215#0;
+     #dscam220#1 = #dscam215#2;
+     #dscam220#2 = 999;
+|FPRC;
+
+|PROCESO Historico215;
+     ||LEE 000#dscam215.=;
+     ||SI FSalida ! 0; |ACABA; |FINSI;
+     |PUSHV 0501 2380;
+     |ENTLINEAL #1#dscam220,3,4,20,1,inferior105215,superior105215;
+     |POPV;
+     FEntrada = nFEntradaAnt;
+|FPRC;
+
+|PROCESO Dat020215; |TIPO 13;
+     |HAZ TomaDecim;
+
+     |SI nBoton ! 0;
+        nModo = (FEntrada / 100) ! 0;
+        |SI nModo ! 1;
+           |ESTADO_CONTROL nBoton, "ENABLE";
+        |SINO;
+           |ESTADO_CONTROL nBoton, "DISABLE";
+        |FINSI;
+     |FINSI;
+
+     |SI enSwPonBoton = 0;
+          |SI nBoton ! 0; |ACABA; |FINSI;
+     |FINSI;
+
+     |CONTROL_SIMPLE 0, "BOTON, Historico", 1712, 1725, Historico215;
+     nBoton = FSalida;
+     enBoton = nBoton;
+     |ESTADO_CONTROL nBoton, "DISABLE";
+|FPRC;
+
+|PROCESO Tipo90215; |TIPO 90;
+   |SI nBoton = 0; |ACABA; |FINSI;
+
+   |FIN_CONTROL_WINDOWS nBoton;
+   nBoton = 0;
+   enBoton = nBoton;
+|FPRC;
+
+|PROCESO Tipo80215; |TIPO 80;
+     |SUB_EJECUTA_NP "dscaz155";        ||Recalculo del historico si vacio
+|FPRC;
+
+|PROCESO RevisaPlazoCalc;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |SI #dscam215#21 > #dscam215#20;
+      |MENAV "    El plazo de calculo no puede ser superior al plazo m ximo ";
+      |ERROR; |ACABA;
+   |FINSI;
+   |SI #dscam215#21 = 0; |Y #dscam215#17 ! 0;
+      |MENAV "    El plazo de calculo no puede ser cero";
+      |ERROR; |ACABA;
+   |FINSI;
+|FPRC;
+
+|PROCESO ObserLinArt; |TIPO 11;
+   |SI FSalida = 10;
+      enCuadroIni  = 1805;
+      enCuadroFin  = 2275;
+      eaTitulo     = " Observaciones ";
+      aAlfa = (("000" + #dscam220#0) % -103) + "/" + #dscam220#1 + "/" + (("000" + #dscam220#2) % -103);
+      aAlfa = "dscaz200.tab;" + aAlfa;
+      |SUB_EJECUTA aAlfa;
+   |FINSI;
+|FPRC;
+
+|PROCESO AntCodCliente; |TIPO 7;
+   nModo = (FEntrada / 100) ! 0;
+   |SI nModo = 1;
+      |C_M #dscam215#4, 1, "S";
+   |SINO;
+      |C_M #dscam215#4, 1, "N";
+   |FINSI;
+|FPRC;
+
+|PROCESO TrasCodCliente;
+   nFEntradaAnt = FEntrada;
+
+   |DDEF aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscam215.mas";
+
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      |ABRE #Referen@; |SELECT #3#Referen@;
+       |DDEFECTO #Referen@;
+       #Referen@#4 = #dscam215#4;
+       |LEE 000#Referen@.];
+       |PARA; |SI FSalida = 0; |Y #Referen@#4 = #dscam215#4; |HACIENDO;
+           |SI #dscam215#0 ! #Referen@#0; |O #dscam215#2 ! #Referen@#2;
+                aAlfa = "    El cliente [" + (("000000" + #Referen@#4) % -106) + "] " + #Referen@#5; |QBF aAlfa;
+                aAlfa = aAlfa + " existe en la ficha [" + (("000" + #Referen@#0) % -103) + "/" + #Referen@#2; |QBF aAlfa;
+                |MENAV aAlfa; |PTEC 807; |SAL;
+           |FINSI;
+           |LEE 000#Referen@.s;
+       |SIGUE;
+      |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+   |FINSI;
+|FPRC;
+
+|PROCESO ActFichaRiesgo; |TIPO 2;
+   nFEntradaAnt = FEntrada;
+
+   nModo = (FEntrada / 100) ! 0;
+   nFlag = 0 +. 1;
+
+   |SI nFlag > 0;
+      |SI #dscam215#4 ! aAntCli;
+         |ABRE #dscam023;
+         #dscam023#0 = aAntCli;
+         |LEE 101#dscam023.=;
+         |SI FSalida = 0;
+            #dscam023#2 = 0;
+            #dscam023#3 = "";
+            #dscam023#5 = "";
+            |GRABA 020#dscam023.a; |LIBERA #dscam023;
+         |FINSI;
+
+         #dscam023#0 = #dscam215#4;
+         |LEE 101#dscam023.=;
+         |SI FSalida = 0;
+            #dscam023#2 = #dscam215#0;
+            #dscam023#3 = #dscam215#1;
+            #dscam023#5 = #dscam215#2;
+            |GRABA 020#dscam023.a; |LIBERA #dscam023;
+         |FINSI;
+         |CIERRA #dscam023;
+      |FINSI;
+   |SINO;
+      aAntCli = #dscam215#4;
+   |FINSI;
+|FPRC;
+
+|PROCESO EstadoBoton;
+     |SI nBoton ! 0;
+          |SI Campo = 2;
+               aAlfa = #0#2; |QBF aAlfa;
+               |SI aAlfa = "";
+                    |MENAV "0000Se tiene que indicar el Nº Expediente...";
+                    |ERROR; |ACABA;
+               |FINSI;
+          |FINSI;
+
+          nModo = (FEntrada / 100) ! 0;
+          |SI nModo ! 1;
+             |ESTADO_CONTROL nBoton, "ENABLE";
+          |SINO;
+             |ESTADO_CONTROL nBoton, "DISABLE";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO AntesCompany; |TIPO 7;
+  |SI nBoton ! 0;
+     |ESTADO_CONTROL nBoton, "DISABLE";
+  |FINSI;
+|FPRC;

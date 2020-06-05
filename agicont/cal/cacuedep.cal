@@ -1,0 +1,145 @@
+|FICHEROS;
+  cacuedep #0;
+  cacuenta #1;
+  camaasil #3;
+  cacuebal #5;
+  ca8m0002 #422;
+|FIN;
+
+|VARIABLES;
+  &eSwSelec  = 0;
+  &eaDDepar  = "";
+  &eaHDepar  = "";
+  &efDFecha  = @;
+  &efHFecha  = @;
+  &eaNomFDep = "";  ||Nombre del Fichero Creado
+
+  aFichero = "";
+
+  nDebe    = 0;
+  nHaber   = 0;
+
+  afFecha  = "";
+  aMes     = "";
+  nMes     = 0;
+  nMesAc   = 0;
+  nNume1   = 0;
+  nNume2   = 0;
+  nNume3   = 0;
+
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE varnue_i;
+|INCLUYE defec1_i;
+
+|| =======================================================================
+|PROCESO LeeCuenta;
+  |ABRE #1;
+  #1#0 = #0#0;
+  #1#1 = #0#1;
+  |LEE 001#1=;
+  |SI FSalida ! 0;
+      #1#0 = #0#0;
+      #1#1 = #0#1;
+      |HAZ defect1;
+  |FINSI;
+  #0#2  = #1#2;  #0#3 = #1#3;
+  #0#4  = #1#4;  #0#5 = #1#5;
+  #0#6  = #1#6;  #0#7 = #1#7;
+  #0#8  = #1#8;
+  #0#54 = #1#54; #0#55 = #1#55;
+
+  |CIERRA #1;
+|FPRC;
+
+
+|| ========================================================================
+|PROCESO Acumular;
+ #0#0  = #3#4;     || Cuenta
+ #0#1  = #3#5;     || Digito
+ #0#57 = #3#21;    || Departamento
+ |LEE 101#0=;
+ |SI FSalida ! 0;
+     |DDEFECTO #0;
+     #0#0  = #3#4;     || Cuenta
+     #0#1  = #3#5;     || Digito
+     #0#57 = #3#21;    || Departamento
+     |HAZ LeeCuenta;
+     |GRABA 020#0b;
+ |FINSI;
+
+ |SI #3#1 > #0#56;  #0#56 = #3#1; |FINSI;   ||Fecha Ultima Operacion
+
+
+|| .... La Suma
+   |SI #3#8 = "D";
+       nDebe  = #3#9;
+       nHaber = 0;
+   |SINO;
+       nHaber = #3#9;
+       nDebe  = 0;
+   |FINSI;
+
+   |SI #3#0 = 0;                      || Diario 00
+       #0#9  = #0#9  + nDebe;
+       #0#10 = #0#10 + nHaber;
+       #0#11 = #0#9 - #0#10;
+   |SINO;
+       |SI #3#0 = 99;                 || Diario de Cierre
+           #0#48 = #0#48 + nDebe;
+           #0#49 = #0#49 + nHaber;
+           #0#50 = #0#48 - #0#49;
+       |SINO;
+           afFecha = #3#1;
+           aMes    = afFecha % 402;
+           nMes    = aMes;
+           nMesAc  = (nMes - dig1) + 1;
+           |SI nMesAc [ 0;
+               nMesAc = (13 - dig1) + nMes;
+           |FINSI;
+           nNume1 = (nMesAc * 3) + 9;   ||debe
+           nNume2 = nNume1 + 1;         ||haber
+           nNume3 = nNume1 + 2;         ||saldo
+
+           #0nNume1 = #0nNume1 + nDebe;
+           #0nNume2 = #0nNume2 + nHaber;
+           #0nNume3 = #0nNume1 - #0nNume2;
+       |FINSI;
+   |FINSI;
+   #0#51 = #0#51 + nDebe;
+   #0#52 = #0#52 + nHaber;
+   #0#53 = #0#51 - #0#52;
+
+   |GRABA 020#0a;
+   |LIBERA #0;
+|FPRC;
+
+|DEFBUCLE LeeAsientos;
+ #3#1;
+ 21;
+ 00, efDFecha, 000001, 0001, eaDDepar;
+ 99, efHFecha, 999999, 9999, eaHDepar;
+ e;
+ NULL, Acumular;
+|FIN;
+
+|PROGRAMA;
+
+  |HAZ inicio;
+  |HAZ eVarEmpresa;
+  |SI eSwSelec = 0;
+      efDFecha = fec1;
+      efHFecha = fec2;
+      eaDDepar = "  ";
+      eaHDepar = "zz";
+  |FINSI;
+
+  eaNomFDep = ("zdep" + Usuario) % 108;
+  |NOME_DAT #0 eaNomFDep;
+  |ABRE #0;  |CIERRA #0;  |DELINDEX #0;
+
+  |ABRE #0;
+  |BUCLE LeeAsientos;
+  |CIERRA #0;
+|FPRO;

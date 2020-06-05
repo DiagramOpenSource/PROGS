@@ -1,0 +1,925 @@
+|FICHEROS;
+     dsz00002 #0;
+     dsm00004 #904;
+     dsm00005 #905,MANTE;
+     dsm00006 #906;
+     dsm00014 #914;
+     agifa017 #17;
+     agifa019 #19;
+     agifa007 #7;
+     agifa067 #67;
+     agifa073 #73;
+     agifa007 #7;
+|FIN;
+
+|CAMPOS;
+     #19#15  art_pser; #17#42  alm_pser;
+     #19#16  art_prec; #17#43  alm_prec;
+     #19#17  art_pval; #17#4   alm_pval;
+     #19#11  art_nece;
+     #19#12  art_rese; #17#8   alm_rese;
+     #19#14  art_depo; #17#10  alm_depo;
+     #19#13  art_fabr; #17#9   alm_fabr;
+     #19#10  art_vsto; #17#3   alm_vsto;
+     #19#7   art_mini; #17#6   alm_mini;
+     #19#8   art_maxi; #17#7   alm_maxi;
+     #19#6   art_tota; #17#5   alm_tota;
+     #19#104 art_disp; #17#39  alm_disp;
+     #19#9   art_pcm;
+|FIN;
+
+|VARIABLES;
+     nUniIn = 0;
+     nNume         = 0;
+     nOpera        = 0;
+     nCodHisto     = 0;
+     nAlmacen      = 0;
+     nPrecio       = 0;
+     nUnidad1      = 0;
+     nUnidad2      = 0;
+     nFormaGuar    = 0;
+
+     aParametro    = "";
+     aAlfa         = "";
+     aDesp         = "";
+     aOperacion    = "";
+     aCompoAct     = "";
+|FIN;
+
+|INCLUYE i_varart;
+
+|PROCESO LeeArticuloC;
+     #19#0 = #0#3;
+     |LEE 101#19=;
+     |SI FSalida ! 0;
+         |DDEFECTO #19;
+         #19#0 = #0#3;
+         |GRABA 020#19b;
+     |FINSI;
+     |LIBERA #19;
+|FPRC;
+
+|PROCESO LeeComponente;
+     #904#0 = #0#3;
+     #904#1 = #0#4;
+     #904#2 = #905#4;
+     |LEE 101#904=;
+     |SI FSalida ! 0;
+         |DDEFECTO #904;
+         #904#0 = #0#3;
+         #904#1 = #0#4;
+         #904#2 = #905#4;
+         #904#3 = #905#5;
+         |GRABA 020#904b;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeComponenteEnt;
+     #904#0 = #0#3;
+     #904#1 = enAlmacenEnt;
+     #904#2 = #905#4;
+     |LEE 101#904=;
+     |SI FSalida ! 0;
+         |DDEFECTO #904;
+         #904#0 = #0#3;
+         #904#1 = enAlmacenEnt;
+         #904#2 = #905#4;
+         #904#3 = #905#5;
+         |GRABA 020#904b;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaComponente;
+     nNume = #904#12 - #904#6;
+     |SI nNume > 0;
+          #904#24 = nNume * art_pcm;
+     |SINO;
+          #904#24 = 0;
+     |FINSI;
+
+     |GRABA 020#904a;
+     |LIBERA #904;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                        PEDIDOS VENTAS
+ ---------------------------------------------------------------------------
+|PROCESO PedidoVentaComp;
+     |SI eaReservado = "N";
+          #904#4 = #904#4 + enUnidades;
+     |SINO;
+          #904#7  = #904#7  + enUnidades;
+          #904#13 = #904#13 - enUnidades;
+     |FINSI;
+|FPRC;
+ ---------------------------------------------------------------------------
+                        DEPOSITOS
+ ---------------------------------------------------------------------------
+
+|PROCESO DepositoComp;
+     #904#13 = #904#13 - enUnidades;
+     #904#8  = #904#8  + enUnidades;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                        ALBARANES VENTAS
+ ---------------------------------------------------------------------------
+
+|| Albaranes Normales;
+
+|PROCESO AlbaranVentaC;
+     |SI eaDeposito = "S";
+         #904#8  = #904#8  - enUnidades;
+         |SI eaAbono = "N";
+             #904#12 = #904#12 - enUnidades;
+         |SINO;
+             #904#12 = #904#12 + enUnidades;
+         |FINSI;
+     |SINO;
+         |SI eaAbono = "N";               || caso albaran
+             #904#13 = #904#13 - enUnidades;
+             #904#12 = #904#12 - enUnidades;
+         |SINO;                        || caso abono
+             #904#13 = #904#13 + enUnidades;
+             #904#12 = #904#12 + enUnidades;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|| Desde Adjudicacion de Albaranes
+
+|PROCESO ActuaPedidoV;
+     |SI eaAbono = "S";                 || ES DISTINTO  ABONO EN POSITIVO
+         #905#12 = #905#12 - enUnidades
+     |SINO;
+         #905#12 = #905#12 + enUnidades
+     |FINSI;
+
+     |SI eaDespreciar = "S";
+         #905#9 = #905#12 - #905#11;
+     |FINSI;
+
+     #905#6 = #905#11 + #905#9;
+
+     /* Tiquet: 3218/3082 permitir adj unidades no pedidas*/
+     |SI #905#11 = 0; ||Pedidas
+          #905#6 =  #905#12; || unidades
+          #905#9 =  #905#12; || variacion
+     |FINSI;
+     /* */
+
+     #905#8 = #905#6 * #905#7;
+
+     #904#4 = #904#4 - enUnidPend;
+     |SI eaReservado = "S";
+         #904#13 = #904#13 + enUnidPend;
+         #904#7  = #904#7  - enUnidPend;
+     |FINSI;
+
+     #904#13 = #904#13 - enUnidades;
+     #904#12 = #904#12 - enUnidades;
+
+     |SI enForma = -1;   || Restaura Variacion  Tiquet:3218/3297
+          |SI #905#6 > #905#11;
+               #905#9 = 0;
+               #905#6 = #905#11;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ActPedidoVenta;
+     |GRABA 020#905a;
+     |LIBERA #905;
+
+     enUnidades = #905#6 * enForma;
+
+     |SALVA_DATOS #905;
+
+     #905#0 = "PV";
+     #905#1 = eaSeriePedido;
+     #905#2 = enCodigPedido;
+     #905#3 = enLineaPedido;
+     |LEE 101#905=;
+     |SI FSalida = 0;
+          enUnidPend = enUnidades;
+          |SI eaDespreciar = "S";
+              enUnidPend = enUnidades + (enPendiente - enUnidades);
+          |FINSI;
+
+          |HAZ ActuaPedidoV;
+
+
+          |GRABA 020#905a;
+          |LIBERA #905;
+
+          enPendiente = #905#6 - #905#12;
+     |FINSI;
+
+     |REPON_DATOS #905;
+     |LEE 101#905=;
+|FPRC;
+
+|PROCESO CompoNuevoV;
+     |GRABA 020#905a;
+     |LIBERA #905;
+
+     |ABRE #914;
+     #914#0 = eaCompoNue;
+     |LEE 040#914=;
+     |SI FSalida ! 0;  |DDEFECTO #914;  |FINSI;
+     |CIERRA #914;
+
+     |ABRE #19;
+     |ABRE #904;
+
+     |SALVA_DATOS #905;
+     |LIBERA #905;
+
+     nPrecio    = #905#7;
+     nUnidad1   = enUnidAnt;
+     aCompoAct  = #905#4;
+
+     #905#0  = "AV";
+     #905#1  = #0#0;
+     #905#2  = #0#1;
+     #905#3  = #0#2;
+     #905#4  = eaCompoNue;
+     |LEE 101#905=;
+     |SI FSalida = 0;
+         nUnidad2 = #905#6;
+         |BORRA 020#905a;
+         |LIBERA #905;
+
+         enUnidades = -#905#6;
+         enUnidPend = 0;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         #904#13 = #904#13 - enUnidades;
+         #904#12 = #904#12 - enUnidades;
+         |HAZ GrabaComponente;
+
+         nFormaGuar = enForma;
+         enForma    = -1;
+         aOperacion = "AV";
+         nOpera     = -1;
+         |SI eaAbono = "S";  nOpera = 1;  aOperacion = "BV";  |FINSI;
+         nCodHisto  = #0#1;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+         enForma = nFormaGuar;
+     |FINSI;
+
+     #905#0 = "PV";
+     #905#1 = eaSeriePedido;
+     #905#2 = enCodigPedido;
+     #905#3 = enLineaPedido;
+     #905#4 = eaCompoNue;
+     |LEE 101#905=;
+     |SI FSalida ! 0;
+         |DDEFECTO #905;
+         #905#0 = "PV";
+         #905#1 = eaSeriePedido;
+         #905#2 = enCodigPedido;
+         #905#3 = enLineaPedido;
+         #905#4 = eaCompoNue;
+         #905#5 = #914#1;
+         |GRABA 020#905b;
+     |FINSI;
+     #905#12 = #905#12 + nUnidad1;
+     #905#9  = #905#9  + nUnidad1;
+     #905#6  = #905#11 + #905#9;
+     |GRABA 020#905a
+     |LIBERA #905;
+
+     #905#0  = "AV";
+     #905#1  = #0#0;
+     #905#2  = #0#1;
+     #905#3  = #0#2;
+     #905#4  = eaCompoNue;
+     #905#5  = #914#1;
+     #905#6  = nUnidad1 + nUnidad2;
+     #905#7  = nPrecio;
+     #905#8  = #905#6 * #905#7;
+     #905#9  = 0;
+     #905#11 = 0;
+     #905#12 = 1;
+     |GRABA 020#905n;
+     |LIBERA #905;
+
+     #0#8 = #0#8 + #905#6;
+     #0#9 = #0#9 + #905#8;
+
+     enUnidades = #905#6;
+     |HAZ LeeArticuloC;
+     |HAZ LeeComponente;
+     #904#13 = #904#13 - enUnidades;
+     #904#12 = #904#12 - enUnidades;
+     |HAZ GrabaComponente;
+
+     nFormaGuar = enForma;
+     enForma    = 1;
+     aOperacion = "AV";
+     nOpera     = -1;
+     |SI eaAbono = "S";  nOpera = 1;  aOperacion = "BV";  |FINSI;
+     nCodHisto  = #0#1;
+     enAlmacen  = #0#4;
+     |HAZ TrataHisto;
+     enForma = nFormaGuar;
+
+     |CIERRA #19;
+     |CIERRA #904;
+
+     |REPON_DATOS #905;
+     |LEE 101#905=;
+|FPRC;
+
+|| Desde Adjudicacion de Depositos
+
+|PROCESO ActDepositoVenta;
+     |GRABA 020#905a;
+     |LIBERA #905;
+
+     |SALVA_DATOS #905;
+
+     #905#0 = "DP";
+     #905#1 = eaSeriePedido;
+     #905#2 = enCodigPedido;
+     #905#3 = enLineaPedido;
+     |LEE 101#905=;
+     |SI FSalida ! 0;
+         |REPON_DATOS #905;
+         FSalida = 0; |ACABA;
+     |FINSI;
+
+     |SI enUnidades > #905#6;
+         enUnidades = #905#6;
+     |FINSI;
+
+     #905#6 = #905#6 - enUnidades;
+     |SI #905#6 < 0;  #905#6 = 0;  |FINSI;
+
+     |GRABA 020#905a;
+     |LIBERA #905;
+
+     enPendiente = #905#6;
+
+     |REPON_DATOS #905;
+     |LEE 101#905=;
+
+     |SI enForma = 1;
+         #905#6 = enUnidades;  |PINTA #905#6;
+     |FINSI;
+
+     enUnidades = #905#6 * enForma;
+     |HAZ AlbaranVentaC;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                        FACTURAS CONTADO
+ ---------------------------------------------------------------------------
+
+|PROCESO FacturasContadoC;
+     #904#13 = #904#13 - enUnidades;
+     #904#12 = #904#12 - enUnidades;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                        ENTRADAS VALORADAS
+ ---------------------------------------------------------------------------
+
+|PROCESO EntradaValorada;
+     #904#13 = #904#13 + enUnidades;
+     #904#12 = #904#12 + enUnidades;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                        REGULARIZACION DE EXISTENCIAS
+ ---------------------------------------------------------------------------
+
+|PROCESO Regularizacion;
+     |SI eaOpeHisto = "ES";
+         #904#13 = #904#13 + enUnidades;
+         #904#12 = #904#12 + enUnidades;
+     |SINO;
+         #904#13 = #904#13 - enUnidades;
+         #904#12 = #904#12 - enUnidades;
+     |FINSI;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                        MOVIMIENTO ALMACENES
+ ---------------------------------------------------------------------------
+
+|PROCESO Movimiento;
+     #904#13 = #904#13 + (enUnidades * nOpera);
+     #904#12 = #904#12 + (enUnidades * nOpera);
+|FPRC;
+
+
+ ---------------------------------------------------------------------------
+                        PEDIDOS COMPRAS
+ ---------------------------------------------------------------------------
+
+|PROCESO PedidoCompraComp;
+     #904#5 = #904#5 + enUnidades;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                       ALBARANES COMPRAS
+ ---------------------------------------------------------------------------
+
+|PROCESO AlbaranCompraC;
+     |SI eaAbono = "N";
+         #904#12 = #904#12 + enUnidades;
+         #904#13 = #904#13 + enUnidades;
+     |SINO;
+         #904#12 = #904#12 - enUnidades;
+         #904#13 = #904#13 - enUnidades;
+     |FINSI;
+|FPRC;
+
+|| Desde Adjudicacion de Albaranes
+
+|PROCESO ActuaPedidoC;
+     #905#12 = #905#12 + enUnidades;
+
+     |SI eaDespreciar = "S";
+         #905#9 = #905#9 + (#905#12 - #905#11);
+     |FINSI;
+
+     #905#6 = #905#11 + #905#9;
+
+     /* Tiquet: 3218/3082 permitir adj unidades no pedidas*/
+     |SI #905#11 = 0; ||Pedidas
+          #905#6 =  #905#12; || unidades
+          #905#9 =  #905#12; || variacion
+     |FINSI;
+     /* */
+
+     #905#8 = #905#6 * #905#7;
+
+     #904#5  = #904#5  - enUnidPend;
+
+     ||#904#13 = #904#13 + enUnidPend; ||Tiquet:3218/3297
+     #904#13 = #904#13 + enUnidades;
+
+     #904#12 = #904#12 + enUnidades;
+
+     |SI enForma = -1;   || Restaura Variacion  Tiquet:3218/3297
+          |SI #905#6 > #905#11;
+               #905#9 = 0;
+               #905#6 = #905#11;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ActPedidoCompra;
+     |GRABA 020#905a;
+     |LIBERA #905;
+     enUnidades = #905#6 * enForma;
+
+     |SALVA_DATOS #905;
+
+     #905#0 = "PC";
+     #905#1 = eaSeriePedido;
+     #905#2 = enCodigPedido;
+     #905#3 = enLineaPedido;
+     |LEE 101#905=;
+     |SI FSalida ! 0;
+         |REPON_DATOS #905;
+         FSalida = 0;
+         |ACABA;
+     |FINSI;
+
+     enUnidPend = enUnidades;
+     |SI eaDespreciar = "S";
+         enUnidPend = enUnidades + (enPendiente - enUnidades);
+     |FINSI;
+
+     |HAZ ActuaPedidoC;
+
+     |GRABA 020#905a;
+     |LIBERA #905;
+
+     enPendiente = #905#6 - #905#12;
+
+     |REPON_DATOS #905;
+     |LEE 101#905=;
+|FPRC;
+
+|PROCESO CompoNuevoC;
+     |GRABA 020#905a;
+     |LIBERA #905;
+
+     |ABRE #914;
+     #914#0 = eaCompoNue;
+     |LEE 040#914=;
+     |SI FSalida ! 0;  |DDEFECTO #914;  |FINSI;
+     |CIERRA #914;
+
+     |ABRE #19;
+     |ABRE #904;
+
+     |SALVA_DATOS #905;
+     |LIBERA #905;
+
+     nPrecio    = #905#7;
+     nUnidad1   = enUnidAnt;
+     aCompoAct  = #905#4;
+
+     #905#0  = "AC";
+     #905#1  = #0#0;
+     #905#2  = #0#1;
+     #905#3  = #0#2;
+     #905#4  = eaCompoNue;
+     |LEE 101#905=;
+     |SI FSalida = 0;
+         nUnidad2 = #905#6;
+         |BORRA 020#905a;
+         |LIBERA #905;
+
+         enUnidades = -#905#6;
+         enUnidPend = 0;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         #904#13 = #904#13 + enUnidPend;
+         #904#12 = #904#12 + enUnidades;
+         |HAZ GrabaComponente;
+
+         nFormaGuar = enForma;
+         enForma    = -1;
+         aOperacion = "AC";
+         nOpera     = 1;
+         |SI eaAbono = "S";  nOpera = -1;  aOperacion = "BC";  |FINSI;
+         nCodHisto  = #0#1;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+         enForma = nFormaGuar;
+     |FINSI;
+
+     #905#0 = "PC";
+     #905#1 = eaSeriePedido;
+     #905#2 = enCodigPedido;
+     #905#3 = enLineaPedido;
+     #905#4 = eaCompoNue;
+     |LEE 101#905=;
+     |SI FSalida ! 0;
+         |DDEFECTO #905;
+         #905#0 = "PC";
+         #905#1 = eaSeriePedido;
+         #905#2 = enCodigPedido;
+         #905#3 = enLineaPedido;
+         #905#4 = eaCompoNue;
+         #905#5 = #914#1;
+         |GRABA 020#905b;
+     |FINSI;
+     #905#12 = #905#12 + nUnidad1;
+     #905#9  = #905#9  + nUnidad1;
+     #905#6  = #905#11 + #905#9;
+     |GRABA 020#905a
+     |LIBERA #905;
+
+     #905#0  = "AC";
+     #905#1  = #0#0;
+     #905#2  = #0#1;
+     #905#3  = #0#2;
+     #905#4  = eaCompoNue;
+     #905#5  = #914#1;
+     #905#6  = nUnidad1 + nUnidad2;
+     #905#7  = nPrecio;
+     #905#8  = #905#6 * #905#7;
+     #905#9  = 0;
+     #905#11 = 0;
+     #905#12 = 1;
+     |GRABA 020#905n;
+     |LIBERA #905;
+
+     #0#8 = #0#8 + #905#6;
+     #0#9 = #0#9 + #905#8;
+
+     enUnidades = #905#6;
+     enUnidPend = 0;
+     |HAZ LeeArticuloC;
+     |HAZ LeeComponente;
+     #904#13 = #904#13 + enUnidPend;
+     #904#12 = #904#12 + enUnidades;
+     |HAZ GrabaComponente;
+
+     nFormaGuar = enForma;
+     enForma    = -1;
+     aOperacion = "AC";
+     nOpera     = 1;
+     |SI eaAbono = "S";  nOpera = -1;  aOperacion = "BC";  |FINSI;
+     nCodHisto  = #0#1;
+     enAlmacen  = #0#4;
+     |HAZ TrataHisto;
+     enForma = nFormaGuar;
+
+     |CIERRA #19;
+     |CIERRA #904;
+
+     |REPON_DATOS #905;
+     |LEE 101#905=;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                     PROCESOS DEL HISTORICO
+ ---------------------------------------------------------------------------
+|PROCESO ActStockInterno;
+     |ABRE #904;
+     #904#0 = #906#0;
+     #904#1 = #906#1;
+     #904#2 = #906#7;
+     |LEE 121#904=;
+     |SI FSalida = 0;
+          #904#12 = #904#12 + nUniIn;
+          #904#13 = #904#13 + nUniIn;
+          |GRABA 020#904a;
+     |FINSI;
+     |CIERRA #904;
+|FPRC;
+
+|PROCESO TrataHisto;
+     |ABRE #906;
+     |SI enForma = 1;
+          #906#0  = #0#3;
+          #906#1  = enAlmacen;
+          #906#2  = efFecha;
+          #906#3  = aOperacion;
+          #906#4  = #0#0;
+          #906#5  = nCodHisto;
+          #906#6  = #0#2;
+          #906#7  = #905#4;
+          #906#8  = #905#5;
+          #906#9  = #905#6 * nOpera;
+          #906#10 = #905#7;
+          |GRABA 020#906n;
+
+          || |SI aOperacion = "AV"; |O aOperacion = "BV"; |Y #7#37 = "S";
+          || Tiquet:3218/3297
+          |SI aOperacion = "AV"; |O aOperacion = "BV";
+               |SI #7#37 = "S";
+
+                    #906#0  = #0#3;
+                    #906#1  = enAlmacen;
+                    #906#2  = efFecha;
+                    |SI aOperacion = "AV"; #906#3 = "AC"; |SINO; #906#3 = "BC"; |FINSI;
+                    #906#4  = #0#0;
+                    #906#5  = nCodHisto;
+                    #906#6  = #0#2;
+                    #906#7  = #905#4;
+                    #906#8  = #905#5;
+                    #906#9  = -(#905#6 * nOpera);
+                    #906#10 = #905#7;
+                    |GRABA 020#906n;
+
+                    nUniIn = #906#9;
+                    |HAZ ActStockInterno;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          #906#0  = #0#3;
+          #906#1  = enAlmacen;
+          #906#2  = efFecha;
+          #906#3  = aOperacion;
+          #906#4  = #0#0;
+          #906#5  = nCodHisto;
+          #906#6  = #0#2;
+          #906#7  = #905#4;
+          |LEE 101#906=;
+          |SI FSalida = 0;
+               |BORRA 020#906a;
+          |FINSI;
+          || |SI aOperacion = "AV"; |O aOperacion = "BV"; |Y #7#37 = "S";
+          || Tiquet:3218/3297
+          |SI aOperacion = "AV"; |O aOperacion = "BV";
+               |SI #7#37 = "S";
+                    #906#0  = #0#3;
+                    #906#1  = enAlmacen;
+                    #906#2  = efFecha;
+                    |SI aOperacion = "AV"; #906#3 = "AC"; |SINO; #906#3 = "BC"; |FINSI;
+                    #906#4  = #0#0;
+                    #906#5  = nCodHisto;
+                    #906#6  = #0#2;
+                    #906#7  = #905#4;
+                    |LEE 101#906=;
+                    |SI FSalida = 0;
+                         |BORRA 020#906a;
+                         nUniIn = -#906#9;
+                         |HAZ ActStockInterno;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |LIBERA #906;
+     |CIERRA #906;
+|FPRC;
+
+ ---------------------------------------------------------------------------
+                     QUIEN REPARTE SE LLEVA LA MEJOR PARTE
+ ---------------------------------------------------------------------------
+
+|PROCESO ActComponente;
+     |SI #905#0 = "PV";          || Pedidos Ventas Componentes
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         |HAZ PedidoVentaComp;
+         |HAZ GrabaComponente;
+         |CIERRA #19;
+         |CIERRA #904;
+     |FINSI;
+     |SI #905#0 = "DP"; |O #905#0 = "T1";          || Depositos Componentes
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         |HAZ DepositoComp;
+         |HAZ GrabaComponente;
+         |CIERRA #19;
+         |CIERRA #904;
+
+         aOperacion = "DP";
+         nOpera     = -1;
+         |SI #905#0 = "T1";  nOpera = 1;  aOperacion = "DV";  |FINSI;
+         nCodHisto  = #0#1;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+     |FINSI;
+
+     |SI #905#0 = "AV";          || Albaranes Ventas Componentes
+         |ABRE #7; #7#26 = #0#0; |LEE 020#7=; |CIERRA #7;
+
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+
+         |SI eaDeposito = "S";
+             |HAZ ActDepositoVenta;
+         |SINO;
+             ||SI eaSeriePedido = ""; |Y enCodigPedido = 0; |Y enLineaPedido = 0;
+             |SI enLineaPedido = 0;
+                 |HAZ AlbaranVentaC;
+             |SINO;
+                 |HAZ ActPedidoVenta;
+             |FINSI;
+         |FINSI;
+
+         |HAZ GrabaComponente;
+
+         |CIERRA #19;
+         |CIERRA #904;
+
+         aOperacion = "AV";
+         nOpera     = -1;
+         |SI eaAbono = "S";  nOpera = 1;  aOperacion = "BV";  |FINSI;
+         nCodHisto  = #0#1;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+
+         |SI eaDeposito = "S";
+             aOperacion = "DV";
+             nOpera     =  1;
+             nCodHisto  = #0#1;
+             enAlmacen  = #0#4;
+             |HAZ TrataHisto;
+         |FINSI;
+
+         |SI eaCompoNue ! "";
+             |HAZ CompoNuevoV;
+             eaCompoNue = "";
+         |FINSI;
+     |FINSI;
+
+     |SI #905#0 = "FC";          || Facturas Contado
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         |HAZ FacturasContadoC;
+         |HAZ GrabaComponente;
+         |CIERRA #19;
+         |CIERRA #904;
+
+         aOperacion = "FC";
+         nOpera     = -1;
+         nCodHisto  = #0#1;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+     |FINSI;
+
+     |SI #905#0 = "PC";          || Pedidos Compras Componentes
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         |HAZ PedidoCompraComp;
+         |HAZ GrabaComponente;
+         |CIERRA #19;
+         |CIERRA #904;
+     |FINSI;
+
+     |SI #905#0 = "AC";          || Albaranes Compras Componentes
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+
+         ||SI eaSeriePedido = ""; |Y enCodigPedido = 0; |Y enLineaPedido = 0;
+         |SI enLineaPedido = 0;
+             |HAZ AlbaranCompraC;
+         |SINO;
+             |HAZ ActPedidoCompra;
+         |FINSI;
+
+         |HAZ GrabaComponente;
+
+         |CIERRA #19;
+         |CIERRA #904;
+
+         aOperacion = "AC";
+         nOpera     = 1;
+         |SI eaAbono = "S";  nOpera = -1;  aOperacion = "BC";  |FINSI;
+         nCodHisto  = #0#1;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+
+         |SI eaCompoNue ! "";
+             |HAZ CompoNuevoC;
+             eaCompoNue = "";
+         |FINSI;
+     |FINSI;
+
+     |SI #905#0 = "W1";          || Entradas Valoradas de Stocks
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         |HAZ EntradaValorada;
+         |HAZ GrabaComponente;
+         |CIERRA #19;
+         |CIERRA #904;
+
+         aOperacion = "EV";
+         nOpera     = 1;
+         nCodHisto  = #0#1;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+     |FINSI;
+
+     |SI #905#0 = "T3";          || Regularizacion Existencias
+         |ABRE #19;
+         |ABRE #904;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         |HAZ Regularizacion;
+         |HAZ GrabaComponente;
+         |CIERRA #19;
+         |CIERRA #904;
+
+         aOperacion = eaOpeHisto;
+         nCodHisto  = enCodHisto;
+         nOpera     = 1;
+         |SI eaOpeHisto = "SS";
+             nOpera     = -1;
+         |FINSI;
+         #905#7     = 0;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+     |FINSI;
+
+     |SI #905#0 = "T4";          || Movimientos Almacenes
+         |ABRE #19;
+         |ABRE #904;
+
+         nOpera     = -1;
+         |HAZ LeeArticuloC;
+         |HAZ LeeComponente;
+         |HAZ Movimiento;
+         |HAZ GrabaComponente;
+
+         aOperacion = "MS";
+         nCodHisto  = enCodHisto;
+         #905#7     = 0;
+         enAlmacen  = #0#4;
+         |HAZ TrataHisto;
+
+         nOpera     = 1;
+         |HAZ LeeComponenteEnt;
+         |HAZ Movimiento;
+         |HAZ GrabaComponente;
+
+         aOperacion = "ME";
+         nCodHisto  = enCodHisto;
+         nOpera     = 1;
+         #905#7     = 0;
+         enAlmacen  = enAlmacenEnt;
+         |HAZ TrataHisto;
+
+         |CIERRA #19;
+         |CIERRA #904;
+     |FINSI;
+
+|FPRC;

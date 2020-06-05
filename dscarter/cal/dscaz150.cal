@@ -1,0 +1,216 @@
+|FICHEROS;
+   dscaz150 #0;
+
+   dscam003 #10;
+
+   caclipr@ #1000;
+|FIN;
+
+|VARIABLES;
+   aAlfa   = "";
+   aAlfa1  = "";
+   aAlfa2  = "";
+
+   aSerie   = "";
+   aFichErr = "";
+   nFactura = 0;
+   nRecibo  = 0;
+   nLibro   = 0;
+   nDocumto = 0;
+   fFEmis   = @;
+
+   nHandle  = 0;
+   nHandErr = 0;
+   nSwConta = 0;
+   nCalc    = 0;
+   nAvisos  = 0;
+|FIN;
+
+|PROCESO Aviso;
+   |SI nAvisos = -1; |ACABA; |FINSI;
+
+   nAvisos  = nAvisos + 1;
+   aAlfa = "- Encontrado el recibo " + aSerie + "/";
+   aAlfa = aAlfa + (("000000" + nFactura) % -106) + "/";
+   aAlfa = aAlfa + (("000" + nRecibo) % -103) + " [";
+   aAlfa = aAlfa + (("0000000000" + #dscam003#40) % -110);
+   aAlfa = aAlfa + "] ya pasado a la aplicacion y";
+   |XGRABA nHandErr, aAlfa;
+   aAlfa = "  con estado de " + #dscam003#15; |QBF aAlfa; aAlfa = aAlfa + ". No se ha pasado de nuevo.";
+   |XGRABA nHandErr, aAlfa;
+|FPRC;
+
+|PROCESO Importa;
+   nAvisos = 0;
+
+   |DFICE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "er" + Usuario + ".txt"; aFichErr = aAlfa;
+   |XABRE "W", aAlfa, nHandErr;
+   |SI FSalida < 0; nAvisos = -1; |FINSI;
+
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "contagen/def/caclipro.mas";
+   |CARGA_DEF aAlfa, caclipr@;
+   |SI FSalida = 0;
+      nSwConta = 1;
+      |ABRE #caclipr@;
+   |SINO;
+      nSwConta = 0;
+   |FINSI;
+
+   aAlfa = #dscaz150#0; |QBF aAlfa;
+   |XABRE "", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |XLEE nHandle, 240, aAlfa;
+      |PARA; |SI FSalida > 0; |HACIENDO;
+         aSerie = aAlfa % 8302;
+         aAlfa1 = aAlfa % 0106; nFactura = aAlfa1;
+         aAlfa1 = aAlfa % 0703; nRecibo  = aAlfa1;
+         aAlfa1 = aAlfa % 4010; fFEmis   = aAlfa1;
+         #dscam003#0 = aSerie;
+         #dscam003#1 = nFactura;
+         #dscam003#2 = nRecibo;
+         aAlfa2 = #dscam003#0; |QBT aAlfa2; nLibro = aAlfa2;
+         nLibro = nLibro + 90;
+         nDocumto = -1;
+         |DDEFECTO #dscam003;
+         |SELECT #6#dscam003;
+         #dscam003#27 = nLibro;
+         #dscam003#0  = aSerie; aSerie = #dscam003#0;
+         #dscam003#1  = nFactura;
+         #dscam003#2  = nRecibo;
+         |LEE 000#dscam003.];
+         |PARA; |SI FSalida = 0; |Y #dscam003#27 = nLibro;   |Y #dscam003#0  = aSerie;
+                                 |Y #dscam003#1  = nFactura; |Y #dscam003#2  = nRecibo; |HACIENDO;
+            |SI fFEmis = #dscam003#4;
+               |SI #dscam003#14 = "P";
+                  nDocumto = #dscam003#40; |SAL;
+               |SINO;
+                  |HAZ Aviso; |VETE Sigue;
+               |FINSI;
+            |FINSI;
+            |LEE 000#dscam003.s;
+         |SIGUE;
+         |SELECT #1#dscam003;
+
+         |SI nDocumto = -1;
+            |LEE 000#dscam003.u;
+            nDocumto = #dscam003#40 + 1;
+
+            |DDEFECTO #dscam003;
+            #dscam003#40 = nDocumto;
+            |GRABA 020#dscam003.b;
+         |SINO;
+            #dscam003#40 = nDocumto;
+            |LEE 101#dscam003.=;
+         |FINSI;
+
+         aAlfa1 = aAlfa % 0106; || Numero factura
+         #dscam003#1 = aAlfa1;
+         aAlfa1 = aAlfa % 0703; || Numero recibo
+         #dscam003#2 = aAlfa1;
+         aAlfa1 = aAlfa % 1030; || Nombre cliente
+         #dscam003#6 = aAlfa1;
+         aAlfa1 = aAlfa % 4010; || Fecha emision
+         #dscam003#4 = aAlfa1;
+         aAlfa1 = aAlfa % 5010; || Fecha vencimiento
+         #dscam003#3 = aAlfa1;
+         aAlfa1 = aAlfa % 6010; || Importe recibo
+         nCalc = aAlfa1; nCalc = (nCalc / 100) ! 2;
+         #dscam003#22 = nCalc; #dscam003#60 = nCalc;
+         #dscam003#30 = nCalc; #dscam003#64 = nCalc;
+         #dscam003#31 = nCalc; #dscam003#65 = nCalc;
+         aAlfa1 = aAlfa % 7010; || Cuenta contable
+         #dscam003#5 = aAlfa1;
+         aAlfa1 = aAlfa % 8302; || Serie
+         #dscam003#0  = aAlfa1;
+         #dscam003#44 = #48#14;
+         #dscam003#45 = #48#19;
+         #dscam003#14 = "P";
+         #dscam003#15 = "Pendiente de cobro";
+         #dscam003#57 = "EUR";
+         #dscam003#58 = "EURO";
+         #dscam003#59 = 1;
+         aAlfa = #dscam003#0; |QBT aAlfa; #dscam003#27 = aAlfa;
+         #dscam003#27 = #dscam003#27 + 90;
+         |SI nSwConta = 1;
+            #caclipr@#10 = #dscam003#5;
+            #caclipr@#23 = "C";
+            |LEE 000#caclipr@.=;
+            |SI FSalida = 0;
+               #dscam003#7  = #caclipr@#13;
+               #dscam003#8  = #caclipr@#29;
+               #dscam003#9  = #caclipr@#30;
+               #dscam003#10 = #caclipr@#31;
+               #dscam003#11 = #caclipr@#32;
+            |FINSI;
+         |FINSI;
+         |GRABA 020#dscam003.a; |LIBERA #dscam003;
+
+|ET Sigue;
+         |XLEE nHandle, 240, aAlfa;
+      |SIGUE;
+      |XCIERRA nHandle;
+   |FINSI;
+
+   |SI nSwConta = 1;
+      |CIERRA #caclipr@; |DESCARGA_DEF #caclipr@;
+   |FINSI;
+
+   |SI nAvisos ! -1; |XCIERRA nHandErr; |FINSI;
+   |SI nAvisos > 0;
+      aAlfa = "    NSe han encontrado errores. " + &191 + " Desea imprimirlos ? ";
+      |CONFI aAlfa;
+      |SI FSalida = 0;
+         |IMPRE 0;
+         |SI FSalida = 0;
+            aAlfa = "*" * 80; |IMPRIME aAlfa;
+            aAlfa = ("*" * 5) + (" " * 25) + " INFORME DE ERRORES " + (" " * 25) + ("*" * 5); |IMPRIME aAlfa;
+            aAlfa = "*" * 80; |IMPRIME aAlfa;
+            |XABRE "", aFichErr, nHandErr;
+            |SI FSalida ] 0;
+               |XLEE nHandErr, 240, aAlfa;
+               |PARA; |SI FSalida > 0; |HACIENDO;
+                  |IMPRIME aAlfa;
+                  |XLEE nHandErr, 240, aAlfa;
+               |SIGUE;
+            |FINSI;
+            |XCIERRA nHandErr;
+            |FINIMP;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+   |FBORRA aFichErr;
+|FPRC;
+
+|PROCESO MiraFichero;
+   aAlfa = #dscaz150#0; |QBF aAlfa;
+   |XABRE "E", aAlfa, nHandle;
+   |SI FSalida < 0;
+      |MENAV "    Fichero no encontrado"; |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+   |ABRE #dscaz150;
+
+   |LEE 000#dscaz150.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscaz150;
+      |GRABA 000#dscaz150.c;
+   |FINSI;
+
+   |CLS;
+   |CABEZA "Importacion de cobros";
+
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0; |Y #0#1 = "S";
+      |GRABA 000#dscaz150.a;
+      |ABRE #dscam003;
+      nAvisos = 0;
+      |HAZ Importa;
+      |CIERRA #dscam003;
+   |FINSI;
+   |CIERRA #dscaz150;
+|FPRO;

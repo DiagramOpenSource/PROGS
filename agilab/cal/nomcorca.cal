@@ -1,0 +1,244 @@
+|FICHEROS;
+     nomcorca #0;
+     nomcorli,MANTE;
+     nomconca;
+     nomconli;
+     nomdesam;
+     nomlisco;
+     labclean;
+|FIN;
+
+|VARIABLES;
+     &nModo = 0;
+     nModo2 = 0;
+     nForma = 0;
+     FEstado = 0;
+     aAlfa = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aMensa = "";
+     nDesdeConvenio = 0;
+     nHastaConvenio = 0;
+     nConcepto = 0;
+     nCodigoRED = 0;
+     nCampo = 0;
+|FIN;
+
+|PROCESO Paga0004;
+     #nomcorli#5 = 4;
+     #nomcorli#6 = "PAGAS EXTRAORDINARIAS.PRORRATEO";
+     |GRABA 020#nomcorli.a;
+     |LIBERA #nomcorli;
+|FPRC;
+
+|DEFBUCLE Paga0004;
+     #nomcorli#1;
+     ;
+     001, 201;
+     999, 299;
+     be;
+     NULL, Paga0004;
+|FIN;
+
+|PROCESO CodigoPagas;
+     |ABRE #labclean;
+     #labclean#0 = "nomcorli";
+     #labclean#1 = 5;
+     |LEE 101#labclean.=;
+     |SI FSalida ! 0;
+          |BUCLE Paga0004;
+
+          #labclean#0 = "nomcorli";
+          #labclean#1 = 5;
+          |GRABA 020#labclean.n;
+          |LIBERA #labclean;
+     |FINSI;
+|FPRC;
+
+|PROCESO CompConcRED;
+     |SI #nomcorli#5 ! 9999;
+          |ABRE #nomlisco;
+          #nomlisco#0 = #nomcorli#5;
+          |LEE 000#nomlisco.=;
+          |SI FSalida ! 0;
+               |MENAV "    ATENCION: el código del Concepto Retributivo Asociado RED no existe.";
+               |ERROR;
+          |FINSI;
+          |CIERRA #nomlisco;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo20; |TIPO 20;
+     |SI FSalida = "OPCION";
+          FSalida = "Informe";
+     |SINO;
+          aAlfa = #nomcorca#0;
+          |QBF aAlfa;
+          aAlfa = ("000" + aAlfa) % -103;
+          aAlfa = "nomcorin;" + aAlfa;
+          |SUB_EJECUTA aAlfa;
+     |FINSI;
+|FPRC;
+
+/****************************************************************************/
+/**** PROCESOS PARA REALIZAR LA RECARGA DE UNO O DE TODOS LOS CONVENIOS  ****/
+/****************************************************************************/
+
+|PROCESO Pagas;
+     #nomconca#0 = #nomcorli#0;
+     |LEE 000#nomconca.=;
+     |SI FSalida = 0;
+          nCampo = #nomcorli#1 - 200 + 19;
+          |SI #nomconca#nCampo# = 99;
+               nCodigoRED = 0005;
+          |SINO;
+               nCodigoRED = 0004;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecargaCon;
+     |DDEFECTO #nomcorli;
+
+     nConcepto = #nomconli#2;
+     #nomcorli#0 = #nomconli#0;
+     #nomcorli#1 = #nomconli#2;
+     |LEE 000#nomcorli.=;
+     |SI FSalida ! 0;
+          #nomcorli#0 = #nomconli#0;
+          #nomcorli#1 = #nomconli#2;
+          #nomcorli#2 = #nomconli#6;
+
+          #nomdesam#0 = #nomconli#0;
+          #nomdesam#1 = #nomconli#2;
+          |LEE 000#nomdesam.=;
+          |SI FSalida = 0;
+               #nomcorli#3 = #nomdesam#2;
+          |FINSI;
+
+          |SI #nomconli#2 < 400;
+               #nomcorli#4 = "S";
+          |SINO;
+               |SI #nomconli#2 ] 400; |Y #nomconli#2 [ 499;
+                    |SI #nomconli#11 = "S"; |Y #nomconli#12 = "7";
+                         #nomcorli#4 = "S";
+                    |SINO;
+                         #nomcorli#4 = "N";
+                    |FINSI;
+               |SINO;
+                    #nomcorli#4 = "S";
+               |FINSI;
+          |FINSI;
+
+          nCodigoRED = 0001;
+          |SI nConcepto = 125;
+               nCodigoRED = 0006;
+          |FINSI;
+          |SI 301 [ nConcepto; |Y nConcepto [ 305;
+               nCodigoRED = 0003;
+          |FINSI;
+          |SI 306 [ nConcepto; |Y nConcepto [ 310;
+               nCodigoRED = 0002;
+          |FINSI;
+          |SI nConcepto = 125;
+               nCodigoRED = 0006;
+          |FINSI;
+          |SI 201 [ nConcepto; |Y nConcepto [ 299;
+               |HAZ Pagas;
+          |FINSI;
+          |SI nConcepto = 410; |O nConcepto = 415;
+               nCodigoRED = 0054;
+          |FINSI;
+
+          #nomcorli#5 = nCodigoRED;
+          #nomlisco#0 = #nomcorli#5;
+          |LEE 000#nomlisco.=;
+          |SI FSalida = 0;
+               #nomcorli#6 = #nomlisco#1;
+               #nomcorli#7 = #nomlisco#2;
+               #nomcorli#8 = #nomlisco#3;
+          |FINSI;
+
+          |SI nCodigoRED = 0001;
+          |Y nConcepto ! 101; |Y nConcepto ! 102;
+               #nomcorli#9 = "*";
+          |SINO;
+               #nomcorli#9 = "";
+          |FINSI;
+
+          |SI nCodigoRED = 0054;
+               #nomcorli#9 = "*";
+          |FINSI;
+
+          |GRABA 020#nomcorli.n;
+          |LIBERA #nomcorli;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE RecargaCon;
+     #nomconli#1;
+     ;
+     nDesdeConvenio, 000;
+     nHastaConvenio, 999;
+     be;
+     NULL, RecargaCon;
+|FIN;
+
+|PROCESO Recarga;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          |ABRE #nomcorli;
+          |ABRE #nomdesam;
+          |ABRE #nomlisco;
+          nDesdeConvenio = #0#0;
+          nHastaConvenio = #0#0;
+          |BUCLE RecargaCon;
+          |CIERRA #nomlisco;
+          |CIERRA #nomdesam;
+          |CIERRA #nomcorli;
+     |FINSI;
+|FPRC;
+
+|PROCESO Convenios;
+     #nomcorca#0 = #nomconca#0;
+     #nomcorca#1 = #nomconca#1;
+     |GRABA 020#nomcorca.n;
+     |LIBERA #nomcorca;
+|FPRC;
+
+|DEFBUCLE Convenios;
+     #nomconca#1;
+     ;
+     000;
+     999;
+     ;
+     NULL, Convenios;
+|FIN;
+
+|PROCESO RecargaInicial; |TIPO 7;
+     |ABRE #nomconca;
+     |ABRE #nomcorli;
+     |ABRE #nomdesam;
+     |ABRE #nomlisco;
+
+     |ABRE #nomcorca;
+     |LEE 000#nomcorca.p;
+     |SI FSalida ! 0;
+          |BUCLE Convenios;
+
+          nDesdeConvenio = 000;
+          nHastaConvenio = 999;
+          |BUCLE RecargaCon;
+
+          #0#0 = 001;
+          |PINTA #0#0;
+     |FINSI;
+
+     |HAZ CodigoPagas;
+
+     |CIERRA #nomlisco;
+     |CIERRA #nomdesam;
+     |CIERRA #nomcorli;
+     |CIERRA #nomcorca;
+     |CIERRA #nomconca;
+|FPRC;

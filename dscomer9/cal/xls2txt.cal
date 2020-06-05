@@ -1,0 +1,94 @@
+|VARIABLES;
+     &eaSql = "";
+     &eaNomFic = "";
+
+     nHandle = 0;
+     aIP = "";
+     aAlfa = "";
+     aExe = "";
+     aTxtDes = "";
+     aTxt = "";
+  {1}aLocal = "";
+  {1}aContiene = "";
+     aMd5Org = "";
+     aMd5Des = "";
+     aOrg = "";
+     aDes = "";
+     aBase = "";
+|FIN;
+
+|PROCESO TxtImpor;
+     aAlfa = eaNomFic;     || Fichero
+     |SI aIP = "";
+          |XABRE "W", aTxt, nHandle;
+          |SI FSalida ] 0;
+               |XGRABA nHandle, aAlfa;
+               |XGRABA nHandle, eaSql;
+               |XCIERRA nHandle;
+          |FINSI;
+     |SINO;
+          |XABRE "CW", aTxt, nHandle;
+          |SI FSalida ] 0;
+               |XGRABA nHandle, aAlfa;
+               |XGRABA nHandle, eaSql;
+               |XCIERRA nHandle;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO EjecutaExe;
+     aContiene = aOrg;
+     |ESPECIFICA "MD5", aContiene;
+     aMd5Org = FSalida;
+     aContiene = aDes;
+     |ESPECIFICA "MD5", aContiene;
+     aMd5Des = FSalida;
+     |SI aMd5Org ! aMd5Des; |COPIA_FICHERO aOrg, aDes; |FINSI;
+     aAlfa = aDes + " " + aTxt;
+     |SYSTEM aAlfa;
+|FPRC;
+
+|PROCESO EjecutaExeRemoto;
+     aContiene = aOrg;
+     |ESPECIFICA "MD5", aContiene;
+     aMd5Org = FSalida;
+     aContiene = aDes;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aMd5Des = FSalida;
+     |SI aMd5Org ! aMd5Des; |ENVIA_FICHERO aOrg, aDes; |FINSI;
+     aAlfa = aDes + " " + aTxt;
+     |RSYSTEM aAlfa;
+|FPRC;
+
+Variable entrada/salida: eaNomFic
+|PROCESO Xls2Txt;
+     eaSql = "";         || blanco lee la 1§ hoja
+     aExe = "Xls2Txt.exe";
+     aTxtDes = Usuario + ".txt";
+     |DBASE aAlfa;
+     aOrg = aAlfa + "plugins/" + aExe;
+     aIP = ""; |IP_REMOTO aIP; |QBF aIP;
+     |SI aIP = "";
+          |DBASS aBase;
+          aAlfa = aBase + "bin/";
+          aDes = aAlfa + aExe;
+          aTxt = aBase + aTxtDes;
+          |HAZ TxtImpor;
+          |HAZ EjecutaExe;
+          eaNomFic = aTxt;
+     |SINO;
+          |ESPECIFICA "RBASS", aLocal;
+          aBase = aLocal;
+
+          aAlfa = aBase + "bin/";
+          aDes = aAlfa + aExe;
+          aTxt = aBase + aTxtDes;
+          |HAZ TxtImpor;
+          |HAZ EjecutaExeRemoto;
+          |DBASS aAlfa;  || lo mas corto posible porque el recibe_fichero falla
+          aDes = aAlfa + aTxtDes;
+          |RECIBE_FICHERO aTxt, aDes;
+          |RFBORRA aTxt;
+          eaNomFic = aDes;
+     |FINSI;
+|FPRC;

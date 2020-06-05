@@ -1,0 +1,303 @@
+|FICHEROS;
+     dsmozpro #0;
+     dsmom027 #27;
+     dsmow014 #999;
+
+     dsmom030 #30;
+
+     :/contagen/def/canempre #101;
+     :/contagen/def/camaniva #102;
+     :/contagen/def/caivalin #103;
+     :/contagen/def/caivaasi #104;
+
+     :/basica/def/agifige1 #1000,MANTE;
+|FIN;
+
+|VARIABLES;
+     aFichero   = "";
+     aParametro = "";
+     aAlfa      = "";
+
+     nCampo        = 0;
+     nDEmpresa     = 0;
+     nHEmpresa     = 0;
+     enGraba       = 0;
+     nPorCalculado = 0;
+     nBaseImpo     = 0;
+     nCuota        = 0;
+     nDPeriodo     = 0;
+     nHPeriodo     = 0;
+     nEjer         = 0;
+
+     fFecha    = @;
+|FIN;
+
+|INCLUYE i_variar;
+
+|| /////////////////////// PROCESOS ENTRADA POR PANTALLA \\\\\\\\\\\\\\\\\\\\
+
+|PROCESO Ejercicio;  |TIPO 7;
+     fFecha = ~;
+     aAlfa  = fFecha % -104;
+     #0#0   = aAlfa;
+     #0#0   = #0#0 - 1;
+     |PINTA #0#0;
+|FPRC;
+
+|PROCESO Parrilla;
+     |SI #0#1 = 0;
+         #0#1 = 0;  |PINTA #0#1;
+         #0#2 = 0;  |PINTA #0#2;  |C_M #0#2, 1, "N";
+         |PARA nCampo = 3;  |SI nCampo [ 14;  |HACIENDO nCampo = nCampo + 1;
+               |C_M #0nCampo, 1, "S";
+         |SIGUE;
+     |SINO;
+         |SI enEmpresa = 0;
+             |C_M #0#1, 1, "S";
+             |C_M #0#2, 1, "S";
+         |FINSI;
+
+         |PARA nCampo = 3;  |SI nCampo [ 14;  |HACIENDO nCampo = nCampo + 1;
+               |C_M #0nCampo, 1, "N";
+               #0nCampo = 0;  |PINTA #0nCampo;
+         |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO NoMasEmpresas;
+     |SI #0Campo = 0;
+         |PARA nCampo = Campo + 1;  |SI nCampo [ 14;  |HACIENDO nCampo = nCampo + 1;
+               #0nCampo = 0;  |C_M #0nCampo, 1, "N";
+         |SIGUE;
+     |SINO;
+         |PARA nCampo = Campo + 1;  |SI nCampo [ 14;  |HACIENDO nCampo = nCampo + 1;
+               |C_M #0nCampo, 1, "S";
+         |SIGUE;
+     |FINSI;
+|FPRC;
+
+|| /////////////////////// PROCESOS DE TRABAJO \\\\\\\\\\\\\\\\\\\\
+
+|PROCESO Grupo1;
+     nBaseImpo = (#103#6 / enConversor) ! EURODBMOD;
+     nCuota    = (#103#8 / enConversor) ! EURODBMOD;
+
+     |SI #30#73 = "S";
+         |SI nCuota ! 0;  #27#4 = #27#4 + nBaseImpo;  |FINSI;
+         |SI nCuota = 0;  #27#5 = #27#5 + nBaseImpo;  |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeLinea;
+     #30#0 = #103#3;
+     |LEE 040#30=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |SI #30#4 = "N";  |ACABA;  |FINSI;
+
+     |SI #30#26 ! 0;  |HAZ Grupo1;  |FINSI;
+|FPRC;
+
+|DEFBUCLE caivalin;
+     #103#1;
+     ;
+     #102#0, #102#1, 01;
+     #102#0, #102#1, 99;
+     ;
+     NULL, LeeLinea;
+|FIN;
+
+|PROCESO LeeCabecera;
+     |BUCLE caivalin;
+     |LIBERA #102;
+|FPRC;
+
+|DEFBUCLE camaniva;
+     #102#1;
+     5;
+     00, 0000000000, nDPeriodo;
+     99, 9999999999, nHPeriodo;
+     be;
+     NULL, LeeCabecera;
+|FIN;
+
+|PROCESO RealizaPase;
+     enEmpresa   = #999#0;
+     enEjer      = #999#2;
+     enSwOpPar   = 0;
+     |HAZ SituaEmpresa;
+     |SI enSwPartido = 0;
+         aAlfa = #999#2;
+         aAlfa = aAlfa % -102;
+         nEjer = aAlfa;
+
+         |ABRE #101;
+         |SELECT #4#101;
+         #101#2  = #999#0;
+         #101#26 = nEjer;
+         |LEE 040#101=;
+         |SI FSalida ! 0;  |CIERRA #101;  |ACABA;   |FINSI;
+         |CIERRA #101;
+
+         |DBASS aPathConta;   |QBT aPathConta;
+         aPathConta = aPathConta + "contagen/fich/" + (("00000" + #101#2) % -105) + #101#3 + "/";
+
+         enEmpresa  = #101#2;
+         enPerConta = #101#3;
+         eaLaMonEmp = #101#28;
+     |SINO;
+         enPerConta = enPeriodoPar;
+         eaLaMonEmp = "E";
+     |FINSI;
+     |HAZ EnConversor;
+
+     |PATH_DAT #102 aPathConta;
+     |PATH_DAT #103 aPathConta;
+     |PATH_DAT #104 aPathConta;
+
+     |ABRE #104;
+     |LEE 040#104p;
+     |SI FSalida ! 0;  |DDEFECTO #104;  |FINSI;
+     |CIERRA #104;
+
+     |SI #104#46 = "T";
+         nDPeriodo = 1;  nHPeriodo = 4;
+     |SINO;
+         nDPeriodo = 1;  nHPeriodo = 12;
+     |FINSI;
+
+     |ABRE #27;
+     #27#0 = #999#0;
+     #27#1 = #999#1;
+     |LEE 101#27=;
+     |SI FSalida ! 0;
+         |DDEFECTO #27;
+         #27#0 = #999#0;
+         #27#1 = #999#1;
+         |GRABA 020#27b;
+     |FINSI;
+
+     #27#4 = 0;
+     #27#5 = 0;
+     #27#6 = 0;
+
+     |ABRE #30;
+     |BUCLE camaniva;
+     |CIERRA #30;
+
+     #27#6  = #27#4 + #27#5;
+     #27#3  = (((#27#4 / #27#6) * 100) + 0.49) ! 0;
+     |SI #27#3 [ 0;    #27#3 = 100;  |FINSI;
+     |SI #27#3 > 100;  #27#3 = 100;  |FINSI;
+
+     nPorCalculado = #27#3;
+
+     |GRABA 020#27a;
+     |LIBERA #27;
+
+     #27#0 = #999#0;
+     #27#1 = #999#1 + 1;
+     |LEE 101#27=;
+     |SI FSalida ! 0;
+         |DDEFECTO #27;
+         #27#0 = #999#0;
+         #27#1 = #999#1 + 1;
+         |GRABA 020#27b;
+     |FINSI;
+
+     aAlfa = " El Porcentaje calculado de la Empresa " + (("00000" + #27#0) % -105) + " / " + #27#1;
+     aAlfa = aAlfa + " es " + nPorCalculado + " Antes era " + #27#2;
+     |IMPRIME aAlfa;
+
+     #27#2 = nPorCalculado;
+
+     |GRABA 020#27a;
+     |LIBERA #27;
+     |CIERRA #27;
+|FPRC;
+
+|DEFBUCLE dsmow014;
+     #999#1;
+     6;
+     00000, 0000, 00, "S";
+     99999, 9999, 99, "S";
+     ;
+     NULL, RealizaPase;
+|FIN;
+
+|PROCESO dsmom027;
+     #999#0 = #27#0;
+     |LEE 101#999=;
+     |SI FSalida ! 0;
+         #1000#0 = #27#0;
+         |LEE 040#1000=;
+         |SI FSalida ! 0;  |DDEFECTO #1000;  |FINSI;
+
+         #999#0  = #27#0;
+         #999#1  = #27#1;
+         #999#2  = 12;
+         #999#3  = #1000#1;
+         #999#4  = "DICIEMBRE";
+         #999#5  = 300;
+         #999#6  = "N";
+         |GRABA 020#999n;
+
+         enGraba = 1;
+     |FINSI;
+     |LIBERA #999;
+|FPRC;
+
+|DEFBUCLE dsmom027;
+     #27#1;
+     ;
+     nDEmpresa, #0#0;
+     nHEmpresa, #0#0;
+     ;
+     NULL, dsmom027;
+|FIN;
+
+|RUTINA ClaveBaja999;
+     #999#0 = 1;
+|FRUT;
+
+|RUTINA ClaveAlta999;
+     #999#0 = 99999;
+|FRUT;
+
+|PROCESO Tipo3;  |TIPO 3;
+     aFichero = ("pro" + Usuario) % 108;
+     |NOME_DAT #999 aFichero;
+     |ABRE #999;  |CIERRA #999;  |DELINDEX #999;
+
+     |ABRE #999;
+     |ABRE #1000;
+     |SI #0#1 ! 0;
+         nDEmpresa = #0#1;
+         nHEmpresa = #0#2;
+         |BUCLE dsmom027;
+     |SINO;
+         |PARA nCampo = 3;  |SI nCampo [ 14;  |HACIENDO nCampo = nCampo + 1;
+               nDEmpresa = #0nCampo;
+               nHEmpresa = #0nCampo;
+               |BUCLE dsmom027;
+         |SIGUE;
+     |FINSI;
+     |CIERRA #1000;
+     |CIERRA #999;
+
+     |SI enGraba = 1;
+         |HAZ PonBoton;
+         |ENTLINEAL #1#999, -1, 4, 22, 1, ClaveBaja999, ClaveAlta999;
+         |HAZ QuitaBoton;
+         |CONFI "0000SRealizamos el Recalculo en estos momentos : ";
+         |SI FSalida = 0;
+             |IMPRE 0;
+             |BUCLE dsmow014;
+             |FINIMP;
+         |FINSI;
+     |SINO;
+         |MENAV "     Seleccion Vacia.";
+     |FINSI;
+
+     |DELINDEX #999;
+|FPRC;

@@ -1,0 +1,555 @@
+|FICHEROS;
+     gofase09 #0;
+     gopre001 #1;             ||Presupuestos (CAB)
+     gosubive #2;             ||Subfamilias (CAPITULOS)
+     gofase01 #3;             ||Fases Ejecucion (A)
+     gofase02 #4;             ||Fases Ejecucion (B)
+     gofase03 #5;             ||Fases Ejecucion (C)
+     gofatm91 #6,MANTE;       ||Temporal Preparacion Fase 1 (CAPITULOS)
+     gofatm92 #7,MANTE;       ||Temporal Preparacion Fase 2 (PARTIDAS)
+     gofatm93 #8;             ||Temporal Preparacion Fase 3 (DESGLOSE)
+     gopre004 #9;             ||Presupuestos (DESGLOSE)
+     gofatm94 #10;            ||Temporal Preparacion Fase 4 (SUMATORIO)
+     gofase04 #11;
+     gofase07 #12;
+     gofase10 #13;
+     gopre002 #14;
+     gofase02 #15;
+     goparame #100;
+|FIN;
+-----------------------------------------------------------------------------
+|VARIABLES;
+     &eaTipo = "";
+     &enNum  = 0;
+     &eaSer  = "";
+
+
+     nHay           = 0;
+     cFich          = "";
+     nLin1          = 0;
+     nLin2          = 0;
+     nLin3          = 0;
+     nLin4          = 0;
+     nUniTot        = 0;
+
+     &nDeci_Medi    = 0;
+     &nDeci_Meda    = 0;
+     num = 0;
+     aFecha = "";
+     fFecha = @;
+     aFechaIni = "";
+     fFechaIni = @;
+     aFechaFin = "";
+     fFechaFin = @;
+     nDias = 0;
+     nImporte = 0;
+     aAviso = "";
+     aMesIni = "";
+     aAnyoIni = "";
+     aMesFin = "";
+     aAnyoFin = "";
+     aMes = "";
+     aAnyo = "";
+     aClave = "";
+     nClave = 0;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO Inicio; |TIPO 7;
+     |ABRE #1;
+     |LEE 000#1u;
+
+     |SI FSalida = 0;
+          #0#0 = #1#0;             ||SERIE PRESUPUESTO
+          #0#2 = #1#1;             ||NUMERO PRESUPUESTO
+     |FINSI;
+
+     |CIERRA #1;
+     |ABRE #2;
+     |LEE 000#2p;
+
+     |SI FSalida = 0;
+          #0#4 = #2#0;             ||CAPITULO (SUBFAMILIA)
+     |FINSI;
+
+     |LEE 000#2u;
+
+     |SI FSalida = 0;
+          #0#5 = #2#0;             ||CAPITULO (SUBFAMILIA)
+     |FINSI;
+
+     |CIERRA #2;
+     |PINDA #0#0;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO Descom;
+     #8#0 = #5#0;                  ||SERIE PRESUPUESTO
+     #8#1 = #5#1;                  ||NUMERO PRESUPUESTO
+     #8#2 = #5#2;                  ||CAPITULO
+     #8#3 = #5#4;                  ||PARTIDA
+     #8#5 = #9#5;                  ||REFERENCIA DESCOMPOSICION
+     |LEE 000#8=;
+
+     |SI FSalida ! 0;
+          nLin3 = nLin3 + 1;
+          #8#4 = nLin3;            ||LINEA
+          #8#6 = #9#6;             ||DESCRIPCION DESCOMPOSICION
+          #8#7 = #9#7;             ||UNIDAD MEDIDA
+          #8#8 = #9#8;             ||UNIDADES
+          #8#9 = #8#8 * #7#6;      ||UNIDADES PARTIDA
+          |GRABA 020#8c;
+     |SINO;
+          #8#8 = #8#8 + #9#8;      ||UNIDADES
+          #8#9 = #8#8 * #7#6;      ||UNIDADES PARTIDA
+          |GRABA 020#8a;
+     |FINSI;
+
+     #10#0 = #5#0;                 ||SERIE PRESUPUESTO
+     #10#1 = #5#1;                 ||NUMERO PRESUPUESTO
+     #10#2 = #5#2;                 ||CAPITULO
+     #10#5 = #9#5;                 ||REFERENCIA DESCOMPOSICION
+     |LEE 000#10=;
+
+     |SI FSalida ! 0;
+          nLin4 = nLin4 + 1;
+          #10#4 = nLin4;           ||LINEA
+          #10#6 = #9#6;            ||DESCRIPCION DESCOMPOSICION
+          #10#7 = #9#7;            ||UNIDAD MEDIDA
+          #10#8 = #9#8;            ||UNIDAD TOTAL
+          #10#9 = #10#8 * #7#6;    ||UNIDADES TOTALES
+          |GRABA 020#10c;
+     |SINO;
+          nUniTot = #9#8 * #7#6;   ||Calculo el total de unid. x uni.part.
+          #10#8 = #10#8 + #9#8;    ||UNIDAD
+          #10#9 = #10#9 + nUniTot; ||UNIDADES TOTALES
+          |GRABA 020#10a;
+     |FINSI;
+
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE Descom;
+     #9#2;
+     ;
+     #5#0,#5#1,#5#2,#5#4;
+     #5#0,#5#1,#5#2,#5#4;
+     ;
+     NULL, Descom;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO BuscaFase;
+     #6#0 = #5#0;                  ||SERIE PRESUPUESTO
+     #6#1 = #5#1;                  ||NUMERO PRESUPUESTO
+     #6#3 = #5#2;                  ||CAPITULO
+     |LEE 000#6=;
+
+     |SI FSalida ! 0;
+          nLin1 = nLin1 + 1;
+          #6#2 = nLin1;            ||LINEA
+          |ABRE #4;
+          |SELECT #2#4;            ||Miro el "gofase02" para sacar la
+          #4#0 = #6#0;             ||descripcion del capitulo (subfamilia)
+          #4#1 = #6#1;
+          #4#3 = #6#3;
+          |LEE 000#4=;
+          |SI FSalida = 0;
+                #6#7 = #4#4;       ||DESCRIPCION CAPITULO
+          |FINSI;
+          |GRABA 020#6c;
+     |FINSI;
+
+     #7#0 = #5#0;                  ||SERIE PRESUPUESTO
+     #7#1 = #5#1;                  ||NUMERO PRESUPUESTO
+     #7#2 = #5#2;                  ||CAPITULO
+     #7#4 = #5#4;                  ||PARTIDA
+     |LEE 000#7=;
+
+     |SI FSalida ! 0;
+          nLin2 = nLin2 + 1;
+          #7#3 = nLin2;            ||LINEA
+          #7#5 = #5#6;             ||UNIDAD MEDIDA
+          #7#6 = #5#7;             ||UNIDADES
+          #7#7 = #5#5;             ||DESCRIPCION PARTIDA
+          |GRABA 020#7c;
+     |SINO;
+          #7#6 = #7#6 + #5#6;      ||UNIDADES
+          |GRABA 020#7a;
+     |FINSI;
+
+     |BUCLE Descom;
+     nHay = 1;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE BuscaFase;
+     #5#1;
+     ;
+     #0#0,#0#2,#0#4,1;
+     #0#0,#0#2,#0#5,999;
+     ;
+     NULL, BuscaFase;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO BuscaCapi;
+     |BUCLE BuscaFase;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE BuscaCapi;
+     #4#2;
+     ;
+     #0#0,#0#2,#0#4;
+     #0#0,#0#2,#0#5;
+     ;
+     NULL, BuscaCapi;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO BFase;
+     |BUCLE BuscaCapi;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE BuscaPre;
+     #3#1;
+     ;
+     #0#0,#0#2;
+     #0#0,#0#2;
+     ;
+     NULL, BFase;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO Empieza; |TIPO 3;
+     nHay = 0;
+     cFich = Usuario % 105;
+     cFich = cFich + "f91";
+     |NOME_DAT #6 cFich;
+     |DELINDEX #6;
+     |ABRE #6;
+     cFich = Usuario % 105;
+     cFich = cFich + "f92";
+     |NOME_DAT #7 cFich;
+     |DELINDEX #7;
+     |ABRE #7;
+     cFich = Usuario % 105;
+     cFich = cFich + "f93";
+     |NOME_DAT #8 cFich;
+     |DELINDEX #8;
+     |ABRE #8;
+     cFich = Usuario % 105;
+     cFich = cFich + "f94";
+     |NOME_DAT #10 cFich;
+     |DELINDEX #10;
+     |ABRE #10;
+     |ABRE #9;
+     |BUCLE BuscaPre;
+
+     |SI nHay = 1;
+          |ABRE #3;
+          #3#0 = #0#0;
+          #3#1 = #0#2;
+          |LEE 000#3=;
+          |SI FSalida = 0;
+               #0#11 = #3#5;
+               #0#12 = #3#7;
+          |FINSI;
+
+          |SI #0#10 = "P";
+               |ENTLINEAL #2#6,-4,4,12,1,MinCap,MaxCap;
+               |CIERRA #3;
+          |SINO;
+               |HAZ Impresion;
+          |FINSI;
+
+     |FINSI;
+
+     |PTEC 802;
+     |CIERRA #4;
+     |CIERRA #6;
+     |CIERRA #7;
+     |CIERRA #8;
+     |CIERRA #9;
+     |CIERRA #10;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MinCap;
+     #6#0 = "     ";
+     #6#1 = 1;
+     #6#3 = " "*20;
+     #6#2 = 1;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MaxCap;
+     #6#0 = "zzzzz";
+     #6#1 = 999999;
+     #6#3 = "z"*20;
+     #6#2 = 999;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO PLinea;
+     |PRINT;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE ImpTmpFa1;
+     #6#2;
+     ;
+     "     ",1," "*20,1;
+     "zzzzz",999999,"z"*20,999;
+     ;
+     NULL, PLinea;
+|FIN;
+-----------------------------------------------------------------------------
+|DEFBUCLE ImpTmpFa2;
+     #7#2;
+     ;
+     "     ",1," "*20," "*20,1;
+     "zzzzz",999999,"z"*20,"z"*20,999;
+     ;
+     NULL, PLinea;
+|FIN;
+-----------------------------------------------------------------------------
+|DEFBUCLE ImpTmpFa3;
+     #8#2;
+     ;
+     "     ",1," "*20," "*20," "*20,1;
+     "zzzzz",999999,"z"*20,"z"*20,"z"*20,9999;
+     ;
+     NULL, PLinea;
+|FIN;
+-----------------------------------------------------------------------------
+|DEFBUCLE ImpFasPar;
+     #5#1;
+     ;                                          ||Campos Extras.
+     #0#0, #0#2, "                   ",   1;
+     #0#0, #0#2, "zzzzzzzzzzzzzzzzzzz", 999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, PLinea;
+|FIN;
+-------------------------------------------------------------------------------
+|DEFBUCLE Paradas;
+     #12#1;
+     ;                                          ||Campos Extras.
+     #0#0, #0#2, "                    ",   1;
+     #0#0, #0#2, "zzzzzzzzzzzzzzzzzzzz", 999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, PLinea;
+|FIN;
+-------------------------------------------------------------------------------
+|DEFBUCLE gopre002;
+     #gopre002#1;
+     ;                                          ||Campos Extras.
+     #0#0, #0#2,   1;
+     #0#0, #0#2, 999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, PLinea;
+|FIN;
+-------------------------------------------------------------------------------
+|DEFBUCLE gofase10;
+     #gofase10#1;
+     ;                                          ||Campos Extras.
+     1;
+     999999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, PLinea;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO calcula;
+     num = num + 1;
+     fFechaIni = #15#8;
+     fFechaFin = #15#9;
+     nDias = fFechaFin - fFechaIni + 1;
+     |SELECT #6#14;
+     #14#0 = #15#0;
+     #14#1 = #15#1;
+     #14#12 = #15#3;
+     |LEE 000#14=;
+     |SI FSalida = 0;
+          nImporte = #14#7 / nDias;
+     |SINO;
+          aAviso = "    Error en lectura de presupuesto.";
+          |MENAV aAviso;
+     |FINSI;
+     |SELECT #1#14;
+
+|PARA fFecha = fFechaIni; |SI fFecha [ fFechaFin; |HACIENDO fFecha = fFecha + 1;
+
+     aFechaIni = fFechaIni;
+     aFechaFin = fFechaFin;
+     aFecha = fFecha;
+     aMesIni = aFechaIni % 402;
+     aAnyoIni = aFechaIni % -104;
+     aMesFin = aFechaFin % 402;
+     aAnyoFin = aFechaFin % -104;
+     aMes = aFecha % 402;
+     aAnyo = aFecha % -104;
+     aClave = aAnyo + aMes;
+     nClave = aClave;
+
+     #gofase10#0 = nClave;
+     |LEE 000#gofase10.=:
+     |SI FSalida = 0;
+          #gofase10#1 = #gofase10#1 + nImporte;
+          |GRABA 020#gofase10.a;
+     |SINO;
+          #gofase10#0 = nClave;
+          #gofase10#1 = nImporte;
+          #gofase10#2 = #0#0;
+          #gofase10#3 = #0#2;
+          #gofase10#4 = num;
+          |GRABA 020#gofase10.n;
+     |FINSI;
+|SIGUE;
+|FPRC;
+
+|DEFBUCLE gofase02_meses;
+     #15#1;
+     ;                                          ||Campos Extras.
+     #0#0, #0#2,   1;
+     #0#0, #0#2, 999;
+     ;                                          ||b/e Bloqueo-Ordenacion.
+     NULL, calcula;
+|FIN;
+
+|PROCESO TotalMeses;
+     |DELINDEX #13;
+     |ABRE #gofase10;
+     |ABRE #14;           || gopre002
+     |BUCLE gofase02_meses;
+     |CIERRA #14;         || gopre002
+     |CIERRA #gofase10;
+|FPRC;
+------------------------------------------------------------------------------
+|PROCESO Impresion;
+
+     |ABRE #3;
+     #3#0 = #0#0;
+     #3#1 = #0#2;
+     |LEE 000#3=;
+     |SI FSalida = 0;
+          |SUB_EJECUTA_NP "goinform;IMPgofase01";
+          |INFOR "gofase01";
+          |PRINT;
+          |PIEINF;
+          |FININF;
+          |SUB_EJECUTA_NP "goinform;ENVgofase01";
+
+          |SUB_EJECUTA_NP "goinform;IMPgofase02";
+          |INFOR "gofase02";
+          |BUCLELIN 2 PLinea #3;
+          |PIEINF;
+          |FININF;
+          |SUB_EJECUTA_NP "goinform;ENVgofase02";
+     |FINSI;
+     |CIERRA #3;
+
+     |SUB_EJECUTA_NP "goinform;IMPgofase03";
+     |INFOR "gofase03";
+     |BUCLE ImpFasPar;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgofase03";
+
+     |ABRE #11;
+     #11#0 = #0#0;
+     #11#1 = #0#2;
+     |LEE 000#11=;
+     |SI FSalida = 0;
+          |SUB_EJECUTA_NP "goinform;IMPgofase04";
+          |INFOR "gofase04";
+          |PRINT;
+          |PIEINF;
+          |FININF;
+          |SUB_EJECUTA_NP "goinform;ENVgofase04";
+     |FINSI;
+     |CIERRA #11;
+
+     |ABRE #11;
+     #11#0 = #0#0;
+     #11#1 = #0#2;
+     |LEE 000#11=;
+     |SI FSalida = 0;
+          |SUB_EJECUTA_NP "goinform;IMPgofase05";
+          |INFOR "gofase05";
+          |BUCLELIN 2 PLinea #11;
+          |PIEINF;
+          |FININF;
+          |SUB_EJECUTA_NP "goinform;ENVgofase05";
+     |FINSI;
+     |CIERRA #11;
+
+     |SUB_EJECUTA_NP "goinform;IMPgofase06";
+     |INFOR "gofase06";
+     |BUCLE Paradas;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgofase06";
+
+     |SUB_EJECUTA_NP "goinform;IMPgofatm91";
+     |INFOR "gofatm91";
+     |BUCLE ImpTmpFa1;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgofatm91";
+
+     |SUB_EJECUTA_NP "goinform;IMPgofatm92";
+     |INFOR "gofatm92";
+     |BUCLE ImpTmpFa2;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgofatm92";
+
+     |SUB_EJECUTA_NP "goinform;IMPgofatm93";
+     |INFOR "gofatm93";
+     |BUCLE ImpTmpFa3;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgofatm93";
+
+     |SUB_EJECUTA_NP "goinform;IMPgopre002";
+     |INFOR "gopre002";
+     |BUCLE gopre002;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgopre002";
+
+     |SUB_EJECUTA_NP "goinform;IMPgofase10";
+     |INFOR "gofase10";
+     |BUCLE ImpTmpFa3;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgofase10";
+
+     |SUB_EJECUTA_NP "goinform;RUNFASES";
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO Fecha; |TIPO 0;
+     |ABRE #100; |LEE 000#100p; |CIERRA #100;
+     nDeci_Meda = #100#115;
+
+     |ABRE #3;
+     #3#0 = #0#0;
+     #3#1 = #0#2;
+     |LEE 000#3=;
+     |SI FSalida = 0;
+          #0#8 = #3#5;
+          #0#9 = #3#7;
+          nDeci_Medi = #3#10;
+     |SINO;
+          #0#8 = "01.01.2001";
+          #0#9 = ~;
+     |FINSI;
+     |PINTA #0#8;
+     |PINTA #0#9;
+     |CIERRA #3;
+|FPRC;
+-----------------------------------------------------------------------------
+
+|PROCESO ModPresup; |TIPO 6;
+   |ABRE #gopre001;
+   eaTipo = "F"; eaSer = #gofase09#0; enNum = #gofase09#2; |HAZ ModifPres;
+   |SI enNum = -1; |ERROR; |ACABA; |FINSI;
+   #gofase09#2 = enNum; |LEE 000#gofase09.=; |PINTA #gofase09#2;
+   |CIERRA #gopre001;
+|FPRC;
+
+
+|PROCESO Tipo13; |TIPO 13;
+     |ABRE #100; |LEE 000#100p; |CIERRA #100;
+     |SI #100#141 = "O";
+          |ATRI I; |PINTA 930, "O.E........:"; |ATRI 0;
+     |FINSI;
+|FPRC;

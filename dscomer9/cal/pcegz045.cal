@@ -1,0 +1,134 @@
+|FICHEROS;
+     pcegz045 #0;
+     pcegm033 #33;
+|FIN;
+
+|VARIABLES;
+     &eaFichero = "";
+     &enSwAuto = 0;
+     aIP = "";
+     aDir = "";
+     aDSCorreo = "";
+     aUsu = "";
+     aPwd = "";
+     aPop3 = "";
+     aNombre = "";
+     aMensaje = "";
+     nCorreos = 0;
+     i = 0;
+     j = 0;
+     aNom = "";
+     aLon = "";
+     nPos = 0;
+     aAlfa = "";
+     aDes = "";
+     nError = 0;
+|FIN;
+
+|PROCESO SacaNombre;
+     aNom = "";
+     aLon = aNombre % A0;
+     |PARA j = 1; |SI j [ aLon; |HACIENDO j = j + 1;
+          nPos = -(j * 100 + 1);
+          aAlfa = aNombre % nPos;
+          |SI aAlfa = "/"; |O aAlfa = "\"; |SAL; |FINSI;
+          aNom = aAlfa + aNom;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Recoge;
+     aDir = #33#1; |QBF aDir;
+     |SI #33#4 = "F";
+          aDSCorreo = #33#5;  |QBF aDSCorreo;
+     |SINO;
+          |SI #33#4 = "L";   |IP_REMOTO aDSCorreo;    |FINSI;
+          |SI #33#4 = "S";   |IP_LOCAL aDSCorreo;     |FINSI;
+     |FINSI;
+     aPop3 = #33#6; |QBF aPop3;
+     aUsu = #33#7; |QBF aUsu;
+     aPwd = #33#8; |QBF aPwd;
+     aNombre = "";
+
+     aAlfa = "0000Recibiendo [" + aDSCorreo + "]";
+     |MENSA aAlfa;
+
+     aIP = "";
+     |IP_REMOTO aIP;
+     |SI aIP ! "";
+          aDes = aDir;
+          |DFICE aDir;
+     |FINSI;
+
+     || El dscorreo deja el adj en el servidor
+     |DSCORREO_RECIBE aDSCorreo, aPop3, aUsu, aPwd, aDir, aNombre;
+
+     nError = FSalida;
+
+     |SI aIP = "";
+          aAlfa = aDes + "_cuerto_.txt";
+          |FBORRA aAlfa;
+     |FINSI;
+
+     |BLIN 4;
+     |SI nError < 0; |Y enSwAuto = 0;
+          aMensaje = "    Problemas al recibir correo ..." + nError;
+          |MENAV aMensaje;
+     |FINSI;
+     |SI nError = 0;
+          aMensaje = "    Correo recibido con exito [" + nError + "][" + aNombre + "]";
+          |MENSA aMensaje;
+          |SI aIP ! "";
+               |PARA; |SI; |HACIENDO;         || quita los ";"
+                    aNombre = aNombre - ";";
+                    |SI FSalida [ 0; |SAL; |FINSI;
+               |SIGUE;
+
+               || y lo copiamos al local
+               |HAZ SacaNombre;
+               aDes = aDes + aNom;
+               |SI aNom ! "_cuerto_.txt";    || cuando no hay adjunto
+                    |ENVIA_FICHERO aNombre, aDes;
+               |FINSI;
+               || y lo borro del servidor
+               |FBORRA aDir;
+          |FINSI;
+     |FINSI;
+     |SI nError = 1; |Y enSwAuto = 0;
+          |SI nCorreos = 1;
+               |MENAV "    No hay correo ...";
+          |SINO;
+               i = nCorreos - 1;
+               aAlfa = "0000" + i + " Correos recibidos...";
+               |MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Inicio;
+     |ABRE #33; |LEE 000#33p; |CIERRA #33;
+     nCorreos = 0;
+     |PARA; |SI; |HACIENDO;
+          nError = 0;
+          nCorreos = nCorreos + 1;
+          |HAZ Recoge;
+          |SI nError ! 0; |SAL; |FINSI;
+          |SLEEP 2;
+     |SIGUE;
+     |HAZ Importalos;
+|FPRC;
+
+|PROGRAMA;
+     |SI PARAMETRO = "menu";
+          enSwAuto = 0;
+          |CLS;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0; |Y #0#0 = "SI";
+               |HAZ Inicio;
+          |FINSI;
+     |SINO;
+          enSwAuto = 1;
+          |HAZ Inicio;
+     |FINSI;
+|FPRO;

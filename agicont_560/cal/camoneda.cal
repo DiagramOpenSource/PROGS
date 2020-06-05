@@ -1,0 +1,102 @@
+|FICHEROS;
+ camoneda #130;
+|FIN;
+
+|VARIABLES;
+ &EURO = 1;
+ &EURODB = 0;
+ &EURODV = 0;
+ &EUROTEXTO = "Cambio de Moneda";
+ &swOperacion = 0;  || 0 = Lectura / 1 = Alta
+ &enEmpresa = 0;
+ &enPeriodo = 0;
+ &eaMoneda  = "";
+ &eaBase    = "";
+ &eaAplica  = "";
+ &eaEmpresa = "";
+ estado = 0;
+|FIN;
+
+|PROCESO Monedas;
+ |SI eaMoneda = "P";                  || pesetas
+     EURO = 1 / 166.386;
+     EURODB = 0;
+     EURODV = 2;
+ |FINSI;
+ |SI eaMoneda = "E";                  || euros
+     EURO = 166.386;
+     EURODB = 2;
+     EURODV = 0;
+ |FINSI;
+|FPRC;
+
+
+|PROCESO CambiaMoneda;
+     |ACABA;
+     |DBASS eaBase;    |QBF eaBase;
+     |DBASE eaAplica;  |QBF eaAplica;
+     eaAplica  = eaAplica - eaBase;
+     eaAplica  = eaAplica - "/";
+     eaEmpresa = (("00000" + enEmpresa) % -105) + enPeriodo;
+     eaMoneda  = #130#2;
+     |SUB_EJECUTA_NP ":agitool/dsconver";
+
+     |ABRE #camoneda;
+     #camoneda#0 = enEmpresa;
+     #camoneda#1 = enPeriodo;
+     |LEE 101#camoneda.=;
+     |SI FSalida = 0;
+         #130#2 = eaMoneda;
+         |GRABA 020#130a;
+     |FINSI;
+     |LIBERA #130;
+     |CIERRA #camoneda;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #camoneda;
+     #camoneda#0 = enEmpresa;
+     #camoneda#1 = enPeriodo;
+     |LEE 101#camoneda.=;
+     estado = FSalida;
+                                                     || Lectura
+     |SI swOperacion = 0;
+         |SI estado ! 0;       || ... No existe registro, graba defecto 'Pesetas'
+             #camoneda#0 = enEmpresa;
+             #camoneda#1 = enPeriodo;
+             #camoneda#2 = "P";  ||Defecto Pesetas
+             |GRABA 020#camoneda.n;
+             |HAZ CambiaMoneda;
+         |FINSI;
+     |FINSI;
+                                         || Grabar registro
+     |SI swOperacion = 1;|O swOperacion = 99;     || 99 es modificacion(canempre)
+         |PINPA #0#camoneda;
+         |PINDA #0#camoneda;
+         |SI estado = 0;|Y swOperacion = 1;       || Si existe ya, solo Pinta en Pantalla
+            |PINTA #camoneda#2;
+            |MENAV "    La Empresa Ya tiene la Moneda Base Definida !";
+         |SINO;
+            |ENDATOS #1#camoneda;
+            #camoneda#0 = enEmpresa;
+            #camoneda#1 = enPeriodo;
+            |SI estado ! 0;
+                 |GRABA 020#camoneda.n;
+            |SINO;
+                 |GRABA 020#camoneda.a;
+            |FINSI;
+            |LIBERA #camoneda;
+            |HAZ CambiaMoneda;
+         |FINSI;
+     |FINSI;
+                                          ||Borrar
+     |SI swOperacion = 2;
+        |SI estado = 0;       || Si existe ya
+            |BORRA 020#camoneda.a;
+        |FINSI;
+     |FINSI;
+     eaMoneda = #camoneda#2;
+     |HAZ Monedas;
+     |LIBERA #camoneda;
+     |CIERRA #camoneda;
+|FPRO;

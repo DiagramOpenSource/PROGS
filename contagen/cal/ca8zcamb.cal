@@ -1,0 +1,723 @@
+|FICHEROS;
+  ca8m0003 #0,MANTE;
+  cacuenta #1;
+  ca8cumay #2;
+  &cacuent@ #3;
+  ca8m003@ #11;
+
+  :/contagen/def/cacuebal #5;    || cuentas de balance
+  :/contagen/def/caparbal #6;    || partidas balances
+  :/contagen/def/caparexp #7;    || partidas explotacion
+  :/contagen/def/caagrupa #8;    || agrupaciones
+  :/contagen/def/caepigra #9;    || epigrafes
+
+  ca8zcamb #10;
+  canempre #30;
+
+  ca8ctrle #400;  ||Control Empresa
+  ca8comay #401;  ||Control Cuentas de mayor
+  ca8eqmay #402;  ||Tabla General
+  ca8m0002 #422;
+  ca8cuma@ #912;
+|FIN;
+
+|VARIABLES;
+ &nSwQueO  = 0;
+ nInkey    = 0;
+ aAlfa1    = "";
+ aAlfa2    = "";
+ aAlfa3    = "";
+ aAlfa4    = "";
+ nNumero   = 0;
+ nNume1    = 0;
+ nNume2    = 0;
+ nNume3    = 0;
+ nLong1    = 0;
+ nLong2    = 0;
+ nLongMax  = 0;
+ nLongMaxT = 0;
+ aDirBase  = "";
+ nEstado   = 0;
+ aMas      = "";
+ aDef3     = "";
+ aDef11    = "";
+ aDef912   = "";
+ fFecha    = @;
+ nError    = 0;
+ nSwVale   = 0;
+ mesdes    = "";
+ meshas    = "";
+ num       = 0;
+ mes       = "";
+ mascara   = "";
+ &aPathPlan = "";
+ &num_por    = 0;
+ &num_per    = 0;
+ &enEmpreOri = 0;
+ &enPerioOri = 0;
+
+ &aCtaNueva  = "";
+ &aNomNueva  = "";
+ nSalir      = 0;
+ nSalir0     = 0;
+ nOpeEspecial = 0;
+ nSwHayT     = 0;
+ nSwHay      = 0;
+ nCta116     = 0;
+ nHayDif     = 0;
+ nSwNivel    = 0;
+ nNivel      = 0;
+ nEjerActual = 0;
+ aDirSN      = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE defec2_i;
+
+|| ****************************************************************
+|PROCESO PasoNivel;
+   enNivel = 0;
+   aAlfa1  = eaCuenta; |QBF aAlfa1;
+   aAlfa1  = aAlfa1 % 0;
+   nNume1  = aAlfa1;
+   |SI nNume1 = dig4;  enNivel = 1;  |FINSI;
+   |SI nNume1 = dig5;  enNivel = 2;  |FINSI;
+   |SI nNume1 = dig6;  enNivel = 3;  |FINSI;
+   |SI nNume1 = dig7;  enNivel = 4;  |FINSI;
+   |SI nNume1 = dig8;  enNivel = 5;  |FINSI;
+   |SI nNume1 = dig9;  enNivel = 6;  |FINSI;
+
+   |SI nOpeEspecial = 1;
+       enNivel = 0;
+       |SI nNume1 = 4;
+           |SI dig4 = 5; enNivel = 1; |FINSI;
+           |SI dig5 = 5; enNivel = 2; |FINSI;
+           |SI dig6 = 5; enNivel = 3; |FINSI;
+           |SI dig7 = 5; enNivel = 4; |FINSI;
+           |SI dig8 = 5; enNivel = 5; |FINSI;
+           |SI dig9 = 5; enNivel = 6; |FINSI;
+           |SI enNivel ! 0;
+               aAlfa1  = eaCuenta; |QBF aAlfa1;
+               aAlfa1 = aAlfa1 + "0";
+               eaCuenta = aAlfa1;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO LeoPlan;
+   eaCuenta = #912#0;
+   |HAZ PasoNivel;
+   |SI enNivel = 0;  |ACABA;  |FINSI;    || No la Pasa
+
+   |DDEFECTO #1;
+   #1#0 = eaCuenta;    || cuenta aqui
+   |LEE 101#1=;
+   nEstado = FSalida;
+   #1#0  = eaCuenta;    || cuenta aqui
+   #1#2  = #912#9;  || Descripcion Abreviada
+   #1#3  = "N";   || Pase directo
+   nMensa9 = 1;
+   nMensa  = 1;
+   |HAZ defect2;
+   || la 3a clave esta formada por la cta + zzzz y el campo fantasma del nivel;
+   mascara = #1#0;
+   |QBF mascara;
+   mascara = mascara +"zzzzzzzzzzzz";
+   mascara = mascara % 105;
+   #1#54   = mascara;
+   #1#55   = enNivel;
+   #1#56   = mesdes;
+   #1#57   = meshas;
+
+   |SI nEstado = 0;  |GRABA 020#1a;  |FINSI;
+   |SI nEstado ! 0;  |GRABA 020#1n;  |FINSI;
+   |LIBERA #1;
+
+   |PINTA 2250, #1#0;
+|FPRC;
+
+|DEFBUCLE LeoPlan;
+ #912#1003;
+ ;
+ enEjerBal, #400#2, "     ";
+ enEjerBal, #400#2, "zzzzz";
+ e;
+ NULL, LeoPlan;
+|FIN;
+
+|PROCESO RecogePlan;
+ |ABRE #1;
+
+ nOpeEspecial = 0; |BUCLE LeoPlan;
+
+ |SI dig4 = 5; |O dig5 = 5;
+     |O dig6 = 5; |O dig7 = 5;
+       |O dig8 = 5; |O dig9 = 5;
+     nOpeEspecial = 1; |BUCLE LeoPlan;
+ |FINSI;
+ |CIERRA #1;
+|FPRC;
+|| *************************************************************
+
+|PROCESO CreaPlan;
+   |DDEFECTO #1;
+   #1#0 = aCtaNueva;
+   #1#1 = enNivel;
+   #1#2 = aNomNueva;
+   #1#3 = aDirSN;
+   |SI nLongMax = nLongMaxT; #1#3  = "S"; |FINSI; || Pase directo
+   nMensa   = 1;
+   nMensa9  = 1;
+   |HAZ defect2;
+   || la 3a clave esta formada por la cta + zzzz y el campo fantasma del nivel;
+   mascara = #1#0;
+   |QBF mascara;
+   mascara = mascara +"zzzzzzzzzzzz";
+   mascara = mascara % 112;
+   #1#54   = mascara;
+   #1#55   = enNivel;
+   #1#56   = mesdes;
+   #1#57   = meshas;
+   |GRABA 020#1n;
+   |LIBERA #1;
+   |PINTA 2250, #1#0;
+
+   aAlfa1 = #1#0 % 104;
+   |SI aAlfa1 = "1160";
+       aAlfa2 = #1#0 % 508; |QBF aAlfa2;
+       |SI aAlfa2 ! "";
+           nNume1 = aAlfa2;
+           |SI nCta116 < nNume1; nCta116 = nNume1; |FINSI;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO AltaPlan;
+
+  |ABRE #1;
+  #1#0 = aCtaNueva;
+  |LEE 001#1=;
+  |SI FSalida ! 0;
+      |HAZ CreaPlan;
+      |CIERRA #1;
+      |ACABA;
+  |FINSI;
+  |SI nLongMax [ 4;
+      |SI aDirSN = "S";
+          #1#3 = "S";
+          |GRABA 020#1a;
+      |FINSI;
+      |CIERRA #1;
+      |ACABA;
+  |FINSI;
+
+  nSalir = 0;
+  |PARA; |SI nSalir = 0; |HACIENDO;
+        nNume1 = aCtaNueva;
+        nNume1 = nNume1 + 1;
+        aCtaNueva = nNume1;
+        aAlfa1 = aCtaNueva % nNume2;
+        |SI aAlfa1 ! eaPlan8;
+            nSalir = 1;     || no puedo sacarla
+            aCtaNueva = "PDTE";
+            aNomNueva = "NO SE HA PODIDO CREAR";
+        |SINO;
+            #1#0 = aCtaNueva;
+            |LEE 001#1=;
+            |SI FSalida ! 0;
+                |HAZ CreaPlan;
+                nSalir = 2;  ||ya lo grabo
+           |FINSI;
+        |FINSI;
+   |SIGUE;
+   |CIERRA #1;
+|FPRC;
+
+|| *******************************************
+
+|PROCESO LeoCacuenta;
+   eaCuenta = #3#0; |QBF eaCuenta;
+   aAlfa1   = eaCuenta % 0;
+   nLongMax = aAlfa1;    || Longitud de la cuenta
+   |SI nLongMax [ 4; |Y #3#3 = "N"; |ACABA; |FINSI;               ||cambio tambien las de 5.
+   |SI nLongMax = 0; |ACABA; |FINSI;
+
+   |HAZ PasoNivel;
+   |SI enNivel = 0;  |ACABA;  |FINSI;    || No la Pasa
+
+   aDirSN = #3#3;
+   |HAZ BuscaEquiv;
+   |SI eSwTabla = 0;
+       aNomNueva = #3#2;
+       |HAZ AltaPlan;
+   |FINSI;
+
+   |DDEFECTO #0;
+   #0#0 = #3#0;
+   |LEE 101#0=;
+   nEstado = FSalida;
+   |SI nEstado = 0;
+       #0#4 = #0#2;
+       #0#5 = #0#3;
+   |FINSI;
+   #0#0 = #3#0;
+   #0#1 = #3#2;
+   #0#2 = aCtaNueva;
+   #0#3 = aNomNueva;
+   |SI aCtaNueva = "PDTE"; |Y #0#4 = doce; #0#4 = "116000000000"; #0#5 = #0#3; |FINSI;
+   |SI nEstado ! 0; |GRABA 020#0n; |FINSI;
+   |SI nEstado = 0; |GRABA 020#0a; |FINSI;
+   |LIBERA #0;
+   nSwHayT = 1;
+|FPRC;
+
+|DEFBUCLE LeoCacuenta;
+ #3#1001;
+ ;
+ "            ";
+ "zzzzzzzzzzzz";
+ e;
+ NULL, LeoCacuenta;
+|FIN;
+
+|PROCESO CambioAnterior;
+ |ABRE #0;
+ |BUCLE LeoCacuenta;
+ |CIERRA #0;
+|FPRC;
+
+|| ****************************************************************
+|| ****************************************************************
+
+|PROCESO Comprobar;
+   nSwHay = 1;
+
+   nNume1  = nLongMaxT - 3;
+   nNume3  = 0 - (nNume1 + 100);
+
+   aAlfa1  = "0" * nNume1;
+   nCta116 = nCta116 + 1;
+   aAlfa2  = nCta116; |QBF aAlfa2;
+   aAlfa2  = (aAlfa1 + aAlfa2) % nNume3;
+   aAlfa2  = "116" + aAlfa2;
+
+   #0#4 = aAlfa2;
+   #0#5 = #0#1;
+   |GRABA 020#0a;
+   |LIBERA #0;
+|FPRC;
+
+|DEFBUCLE Comprobar;
+ #0#2;
+ 6;
+ "PDTE        ", "            ", " ";
+ "PDTE        ", "zzzzzzzzzzzz", " ";
+ e;
+ NULL, Comprobar;
+|FIN;
+
+|PROCESO Comprobar2;
+   nSwHayT = 1;
+   #0#4 = #0#2;
+   #0#5 = #0#3;
+   #0#2 = "PDTE";
+   #0#3 = #0#5;
+   #0#6 = "X";
+   |GRABA 020#0a;
+   |LIBERA #0;
+
+   eaCuenta = #0#4;
+
+   |ABRE #1;
+   #1#0 = eaCuenta;
+   |LEE 101#1=;
+   |SI FSalida = 0;
+       |BORRA 040#1a;
+   |FINSI;
+   |LIBERA #1;
+   |CIERRA #1;
+   nSwHay = 1;
+|FPRC;
+
+|DEFBUCLE Comprobar2;
+ #0#1;
+ 2;
+ "            ", "116         ";
+ "zzzzzzzzzzzz", "116zzzzzzzzz";
+ e;
+ NULL, Comprobar2;
+|FIN;
+|| ****************************************************************
+
+|PROCESO Comprobar1;
+   aAlfa1 = #0#2;
+   aAlfa2 = #0#3;
+   #0#2 = #0#4
+   #0#3 = #0#5;
+   #0#4 = aAlfa1;
+   #0#6 = " ";
+   |SI #0#2 ! #0#4;
+       #0#6 = "*";
+   |FINSI;
+   |GRABA 020#0a;
+   |LIBERA #0;
+
+  eaCuenta  = #0#2;     |HAZ PasoNivel;
+  aCtaNueva = eaCuenta; |QBF eaCuenta;
+  aNomNueva = #0#3;
+  aAlfa1   = eaCuenta % 0;
+  nLongMax = aAlfa1;    || Longitud de la cuenta
+
+  aDirSN = "N";
+  |SI eaCuenta ! ""; |Y eaCuenta ! "PDTE";
+      |ABRE #1;
+      #1#0 = aCtaNueva;
+      |LEE 001#1=;
+      |SI FSalida ! 0;
+          |HAZ CreaPlan;
+      |FINSI;
+      |CIERRA #1;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE Comprobar1;
+ #0#1;
+ 2;
+ "            ", "PDTE        ";
+ "zzzzzzzzzzzz", "PDTE        ";
+ be;
+ NULL, Comprobar1;
+|FIN;
+
+|| ****************************************************************
+|PROCESO inf1;
+ #0#2 = "PDTE        ";
+ #0#0 = "            ";
+|FPRC;
+
+|PROCESO sup1;
+ #0#2 = "PDTE        ";
+ #0#0 = "zzzzzzzzzzzz";
+|FPRC;
+
+|| ****************************************************************
+|PROGRAMA;
+   nSwHayT = 0;
+   nSwQueO = 1;
+   nError = 0;
+   cod1 = num_por;
+   cod2 = num_per;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   num = #canempre#11; |HAZ ElMes; mesdes = mes;
+   num = #canempre#12; |HAZ ElMes; meshas = mes;
+   nLongMaxT = MaximoDigitos;
+   nHayDif = 0; ||Cambios otros niveles
+   |SI dig8 > 4; |Y dig3 > 5; nHayDif = 1; |FINSI;
+   |SI dig7 > 4; |Y dig3 > 4; nHayDif = 1; |FINSI;
+   |SI dig6 > 4; |Y dig3 > 3; nHayDif = 1; |FINSI;
+   |SI dig5 > 4; |Y dig3 > 2; nHayDif = 1; |FINSI;
+   |SI dig4 > 4; |Y dig3 > 1; nHayDif = 1; |FINSI;
+
+   |QBF fich_alta;
+   |SI fich_alta = "";
+       |DFICE fich_alta;
+   |FINSI;
+
+   |DBASE aMas;
+   aDef912 = aMas + "def/ca8cumay";
+   |CARGA_DEF aDef912, ca8cuma@;
+   |SI FSalida ! 0;
+       |MENAV "    Error al Carga fichero de Cuentas de Mayor";
+       nError    = 1;
+       aDef912   = "";
+       |VETE Terminar;
+   |FINSI;
+
+   |PATH_DAT #0 fich_alta;
+   |PATH_DAT #1 fich_alta;
+   |PATH_DAT #5 fich_alta;
+   |PATH_DAT #6 fich_alta;
+   |PATH_DAT #7 fich_alta;
+   |PATH_DAT #8 fich_alta;
+   |PATH_DAT #9 fich_alta;
+
+   |ABRE #400;
+   |DDEFECTO #400;
+   #400#0 = enEmpresa;
+   #400#1 = enPeriodo;
+   |LEE 101#400=;
+   |SI FSalida ! 0;
+       #400#0 = enEmpresa;
+       #400#1 = enPeriodo;
+       |GRABA 020#400b;
+   |FINSI;
+
+   #400#2 = eNum2008;
+   #400#3 = enEmpreOri;
+   #400#4 = enPerioOri;
+   #400#5 = eNum2208;
+   fFecha = ~;
+   #400#6 = fFecha;
+   aAlfa1 = Usuario % 810;
+   #400#7 = aAlfa1;
+
+   |SI #400#3 ! 0;
+       |ABRE #30;
+       #30#2  = #400#3;
+       #30#3  = #400#4;
+       |LEE 001#30=;
+       |SI FSalida ! 0;
+           |MENAV "    Error. Ya no existe Empresa Anterior";
+           nError    = 1;
+           |CIERRA #30;
+           |VETE Terminar;
+       |FINSI;
+       |CIERRA #30;
+
+       |DBASE aMas;
+       aDef3 = aMas + "def/cacuenta";
+       |CARGA_DEF aDef3, cacuent@;
+       |SI FSalida ! 0;
+           |MENAV "    Error al Carga fichero de Cuentas";
+           nError    = 1;
+           aDef3     = "";
+           |VETE Terminar;
+       |FINSI;
+
+       aAlfa1 = #400#3; aAlfa1 = ("00000" + aAlfa1) % -105;
+       aAlfa2 = #400#4; aAlfa2 = ("0"     + aAlfa2) % -101;
+       |DFICB aPathPlan;
+       aPathPlan = aPathPlan + aAlfa1 + aAlfa2 + "/";
+       |PATH_DAT #3 aPathPlan;
+
+       |DBASE aMas;
+       aDef11 = aMas + "def/ca8m0003";
+       |CARGA_DEF aDef11, ca8m003@;
+       |SI FSalida ! 0;
+           |MENAV "    Error al Carga fichero de Tabla";
+           nError    = 1;
+           aDef11    = "";
+          |VETE Terminar;
+       |FINSI;
+       |PATH_DAT #11 fich_alta;
+   |FINSI;
+
+   |ABRE #401;
+   #401#0 = #400#2;
+   |LEE 001#401=;
+   |SI FSalida ! 0;
+       nError = 1;
+       |MENAV "    Error, no existe Codigo de Cuentas de Mayor";
+       |CIERRA #401;
+       |VETE Terminar;
+   |FINSI;
+   |CIERRA #401;
+
+   #10#0 = enEmpresa;
+   #10#1 = enPeriodo;
+   #10#2 = eaNombreEmp;
+   #10#3 = enEjercicio;
+   #10#4 = #400#3;
+   #10#5 = #400#4;
+   #10#6 = #30#1;
+   |SI #30#26 < 80;
+       #10#7 = #30#26 + 2000;
+   |SINO;
+       #10#7 = #30#26 + 1900;
+   |FINSI;
+
+   #10#8 = #400#2;
+   #10#9 = #401#1;
+
+   |SI #400#5 = 0;
+       #10#10 = "Creacion";
+   |SINO;
+       #10#10 = "Apertura";
+   |FINSI;
+   #10#11 = #400#6;
+   #10#12 = #400#7;
+
+   |SI eSwC2008 = 1;
+       |DELINDEX #0;  ||elimina la tabla
+       |SI #400#3 ! 0; |DELINDEX #1; |FINSI;
+   |FINSI;
+
+   nCta116 = 0;
+   |HAZ RecogePlan;
+   |SI #400#3 ! 0;
+       |HAZ CambioAnterior;
+   |FINSI;
+
+|ET Terminar;
+
+   |SI nError ! 0; |BORRA 020#400a; |FINSI;
+   |SI nError = 0; |GRABA 020#400a; |FINSI;
+   |LIBERA #400;
+   |CIERRA #400;
+
+   nSwHay = 0;
+   |BUCLE Comprobar2;
+   |BUCLE Comprobar;
+   |SI nSwHay = 1;
+       |CLS;
+       |CABEZA "Equiv. Plan 1990 a Plan 2008";
+
+       |PINPA #0#10;
+       |PINDA #0#10;
+
+       |C_M #0#2, 1, "N"; |C_V #0#2, 1, "N";
+       |C_M #0#3, 1, "N"; |C_V #0#3, 1, "N";
+       |C_M #0#4, 1, "S"; |C_V #0#4, 1, "S";
+       |C_M #0#5, 1, "S"; |C_V #0#5, 1, "S";
+
+       nSalir0 = 0;
+       |PARA; |SI nSalir0 = 0; |HACIENDO;
+              |ENTLINEAL #2#0, -2, 4, 22, 0, inf1, sup1;
+              |CONFI "    SConforme con Equivalencias ";
+              |SI FSalida = 0;
+                  |BUCLE Comprobar1;
+                  nSalir0 = 1;
+              |FINSI;
+       |SIGUE;
+   |FINSI;
+
+   |SI aDef912 ! ""; |DESCARGA_DEF #ca8cuma@; |FINSI;
+   |SI aDef11  ! ""; |DESCARGA_DEF #ca8m003@; |FINSI;
+   |SI aDef3   ! ""; |DESCARGA_DEF #cacuent@; |FINSI;
+
+
+   |SI nSwHayT ! 0; |SUB_EJECUTA_NP "ca8zcamm"; |FINSI;
+|FPRO;
+
+|PROCESO ElMes;
+   |SI num =  1; mes = "Enero";     |FINSI;
+   |SI num = 12; mes = "Diciembre"; |FINSI;
+   |SI num =  2; mes = "Febrero";   |FINSI;
+   |SI num =  3; mes = "Marzo";     |FINSI;
+   |SI num =  4; mes = "Abril";     |FINSI;
+   |SI num =  5; mes = "Mayo";      |FINSI;
+   |SI num =  6; mes = "Junio";     |FINSI;
+   |SI num =  7; mes = "Julio";     |FINSI;
+   |SI num =  8; mes = "Agosto";    |FINSI;
+   |SI num =  9; mes = "Septiembre";|FINSI;
+   |SI num = 10; mes = "Octubre";   |FINSI;
+   |SI num = 11; mes = "Noviembre"; |FINSI;
+|FPRC;
+
+|PROCESO BuscaEquiv;
+   eSwTabla = 0;
+
+   |ABRE #402;
+   |DDEFECTO #402;
+
+   |SI nHayDif = 1;
+       |HAZ VeoNivelSup;
+       |SI nSwNivel = 1;
+           |HAZ Datos;
+           |ACABA;
+       |FINSI;
+   |FINSI;
+
+   uno = eaCuenta; |QBF uno;
+   dos = uno + "000000000000";
+
+/*
+   uno = dos % A105; nLong1 = 5;  || no doy opcion a la de 5
+   #402#0 = eNum2008;
+   #402#1 = uno;
+   |LEE 040#402=;
+   |SI FSalida = 0;  |HAZ Datos;  |ACABA;  |FINSI;
+*/
+
+   uno = dos % A104; nLong1 = 4;
+   #402#0 = eNum2008;
+   #402#1 = uno;
+   |LEE 040#402=;
+   |SI FSalida = 0;  |HAZ Datos;  |ACABA;  |FINSI;
+
+   uno = dos % A103; nLong1 = 3;
+   #402#0 = eNum2008;
+   #402#1 = uno;
+   |LEE 040#402=;
+   |SI FSalida = 0;  |HAZ Datos;  |ACABA;  |FINSI;
+
+   uno = dos % A102; nLong1 = 2;
+   #402#0 = eNum2008;
+   #402#1 = uno;
+   |LEE 040#402=;
+   |SI FSalida = 0;  |HAZ Datos;  |ACABA;  |FINSI;
+
+   uno = dos % A101; nLong1 = 1;
+   #402#0 = eNum2008;
+   #402#1 = uno;
+   |LEE 040#402=;
+   |SI FSalida = 0;
+       |HAZ Datos;
+   |SINO;
+       aCtaNueva = "PDTE";
+       aNomNueva = "No existe Tabla equivalencia";
+       eSwTabla  = 2;
+       |CIERRA #402;
+   |FINSI;
+|FPRC;
+
+|PROCESO Datos;
+   eSwTabla = 0;
+   eaPlan8  = #402#3;
+   |QBF eaPlan8;
+   |CIERRA #402;
+
+   aAlfa1 = eaPlan8 % 0;
+   nNume1 = aAlfa1;    || Longitud del Cambio
+   nNume2 = nNume1 + 100; nLong2 = nNume1;
+
+   |SI eaPlan8 = "PDTE";
+       aCtaNueva = eaPlan8;
+       aNomNueva = #402#4;
+       eSwTabla = 1;
+       |ACABA;
+   |FINSI;
+
+   nNume3 = 0 - ((nLongMax - nLong2) + 100)
+   aAlfa1 = eaCuenta % nNume2;
+   aAlfa2 = eaCuenta % nNume3;
+
+   |SI aAlfa1 = eaPlan8;
+       aCtaNueva = eaCuenta;
+   |SINO;
+       aCtaNueva = eaPlan8 + aAlfa2;
+   |FINSI;
+
+   |SI nHayDif = 1;
+       nNivel = enNivel;
+   |FINSI;
+|FPRC;
+
+|PROCESO VeoNivelSup;
+  nSwNivel = 0;
+
+  nNivel = enNivel - 1;
+  |SI nNivel = 1; nNume1 = dig4; |FINSI;
+  |SI nNivel = 2; nNume1 = dig5; |FINSI;
+  |SI nNivel = 3; nNume1 = dig6; |FINSI;
+  |SI nNivel = 4; nNume1 = dig7; |FINSI;
+  |SI nNivel = 5; nNume1 = dig8; |FINSI;
+
+  |SI nNume1 [ 4; |ACABA; |FINSI; ||cambio correcto;
+
+  nNume1 = 100 + nNume1;
+  aAlfa4 = eaCuenta % nNume1;
+  |ABRE #11;
+  #11#0  = aAlfa4;
+  |LEE 000#11=;
+  |SI FSalida = 0;
+      nSwNivel = 1;
+      #402#3 = #11#2;
+      #402#4 = #11#3;
+  |FINSI;
+  |CIERRA #11;
+|FPRC;

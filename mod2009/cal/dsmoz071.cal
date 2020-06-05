@@ -1,0 +1,203 @@
+|FICHEROS;
+     dsmoz071 #0;
+
+     dsmom080 #80;
+     dsmom081 #81;
+     dsmom082 #82;
+     dsmom083 #83;
+|FIN;
+
+|VARIABLES;
+   nSwEx80 = 0;
+   nSwEx82 = 0;
+   enSwError = 0;
+   nInkey = 0;
+   aCam10 = "";
+   aAlfa  = "";
+   &aCm9  = "";
+   &aCm11 = "";
+   &aCm13 = "";
+   nNume1 = 0;
+|FIN;
+
+|INCLUYE i_variar;
+
+
+|PROCESO Nosi; |TIPO 12;
+|FPRC;
+
+|PROCESO LaFuncion;
+ nInkey = FSalida;
+
+ |SI nInkey = 10; |O nInkey = 11;
+
+     |PUSHV 0924 2380;
+     |SI nInkey = 10;
+         |SUB_EJECUTA_NP "dsmom080";
+     |FINSI;
+     |POPV;
+
+     |SI nInkey = 11;
+         |SI aCm11 = "X";
+             |MENAV "     Modelo ya Remesado. No se puede calcular Importe Prorrata";
+             |ACABA;
+         |FINSI;
+
+         |SI aCm13 = "X";
+             |MENAV "     Modelo ya Archivado. No se puede calcular Importe Prorrata";
+             |ACABA;
+        |FINSI;
+
+         aAlfa = "Desea volver a Calcular el Importe Prorrata ?";
+         |SI aCm9 = "X";
+             aAlfa = "Modelo ya Impreso. " + aAlfa;
+         |FINSI;
+         aAlfa = "0000N" + aAlfa;
+
+         |CONFI aAlfa;
+         |SI FSalida = 0;
+             |HAZ GrabaNoEl82;
+             |MENAV "0000RECUERDE QUE DEBE VOLVER A CALCULAR EL MODELO";
+             enSwError = 0;
+             |SUB_EJECUTA_NP "dsmozp81";
+             |SI enSwError = 1;
+                 |MENAV "    EMPRESA SIN PRORRATA";
+             |SINO;
+                  |HAZ LeeEl82;
+                  |HAZ PintaDatos;
+             |FINSI;
+         |SINO;
+             nInkey = 0;
+         |FINSI;
+     |FINSI;
+     |ERROR;
+ |FINSI;
+
+ |SI #82#61 = "N";
+     #0#10 = aCam10; |PINTA #0#10;
+ |FINSI;
+
+ |SI #0#10 ! #82#30;
+     |SI #0#10 = "S";
+         #0#9  = #82#3 - #82#5;
+         #0#12 = #82#5;
+         |SI enPeriodo = 12;
+              #0#12 = #82#5 - #82#31;
+         |FINSI;
+     |SINO;
+         #0#9  = 0;
+         #0#12 = #82#3;
+         |SI enPeriodo = 12;
+             #0#12 = #82#3 - #82#31;
+         |FINSI;
+     |FINSI;
+ |SINO;
+     #0#9  = #82#6;   || Diferencia (prorrata)
+     #0#12 = #82#39;  || deducido ese periodo
+ |FINSI;
+
+ |PINTA #0#9;
+ |PINTA #0#12;
+|FPRC;
+
+|PROCESO PintaDatos;
+         #0#3 = #82#7;
+         |SI enPeriodo = 12;
+             #0#4 = #80#4;
+         |SINO;
+             #0#4 = #80#2;
+         |FINSI;
+         #0#7  = #82#8;
+
+         #0#5  = #82#4;
+         #0#6  = #82#3;
+         #0#8  = #82#5;
+         #0#9  = #82#6;
+         #0#12 = #82#39;
+         #0#10 = #82#30;
+         |PINDA #0#0;
+         aCam10 = #0#10;
+|FPRC;
+
+|PROCESO LeeEl80;
+   nSwEx80 = 0;
+   |ABRE #80;
+   #80#0 = enEmpresa;
+   #80#1 = enEjer;
+   |LEE 001#80=;
+   |SI FSalida ! 0;
+       nSwEx80 = 1;
+   |FINSI;
+   |CIERRA #80;
+|FPRC;
+
+|PROCESO LeeEl82;
+   nSwEx82 = 0;
+   |ABRE #82;
+   #82#0 = enEmpresa;
+   #82#1 = enEjer;
+   #82#2 = enPeriodo;
+   |LEE 001#82=;
+   |SI FSalida ! 0;
+       nSwEx82 = 1;
+   |FINSI;
+   |CIERRA #82;
+|FPRC;
+
+|PROCESO GrabaNoEl82;
+   |ABRE #82;
+   #82#0 = enEmpresa;
+   #82#1 = enEjer;
+   #82#2 = enPeriodo;
+   |LEE 101#82=;
+   |SI FSalida = 0;
+       #82#61 = "S";
+       |GRABA 020#82a;
+   |FINSI;
+   |LIBERA #82;
+   |CIERRA #82;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ LeeCtrlProrr;
+|| texto para la Pantalla:
+|| (Para no aplicar, dar alta en Empresas sin Prorrata)
+     |SI enSwProrr = 2; |O enEjer < enEjerPro;
+         |ACABA;
+     |FINSI;
+
+     #0#0 = enEmpresa;
+     #0#1 = enEjer;
+     #0#2 = enPeriodo;
+
+     |SI enTipoEntrada = 4;              || Consulta del Modelo
+
+         |HAZ LeeEl80;
+         |SI nSwEx80 = 1;
+             |MENAV "    EMPRESA SIN PRORRATA";
+             |ACABA;
+         |FINSI;
+
+         |HAZ LeeEl82;
+         |SI nSwEx82 = 1;
+             |CONFI "    SImporte de Prorrata No Calculado. Desea Calcular ahora S/N";
+             |SI FSalida = 0;
+                 enSwError = 0;
+                 |SUB_EJECUTA_NP "dsmozp81";
+                 |SI enSwError = 1;
+                     |MENAV "    EMPRESA SIN PRORRATA";
+                     |ACABA;
+                 |SINO;
+                     |HAZ LeeEl82;
+                     |SI nSwEx82 = 1; |ACABA; |FINSI;
+                 |FINSI;
+             |SINO;
+                 |ACABA;
+             |FINSI;
+         |FINSI;
+
+         |PINPA #0#0;
+         |HAZ PintaDatos;
+         |ENDATOS #1#0;
+   |FINSI;
+|FPRO;

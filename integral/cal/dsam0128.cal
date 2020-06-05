@@ -1,0 +1,173 @@
+|FICHEROS;
+    dsam0128;
+
+    :facturar/facemp1;
+    asconce@;
+    ascontr@;
+|FIN;
+
+|VARIABLES;
+     aAlfa     = "";
+     aLetra    = "";
+     aBase     = "";
+     aDef      = "";
+     aPath     = "";
+     aPathFich = "";
+
+     nCanal    = 0;
+     nExisteF  = 0;
+     nInkey    = 0;
+
+     nCamp1    = 0;
+     nCamp2    = 0;
+     nCamp3    = 0;
+
+     &eaPathFacturar = "";
+|FIN;
+
+|PROCESO ClaveBaja1;
+   #ascontr@#0  = 00;
+|FPRC;
+
+|PROCESO ClaveAlta1;
+   #ascontr@#0  = 99;
+|FPRC;
+
+|PROCESO Tipo0C11m128; |TIPO 0;
+     nInkey = FSalida;
+
+     |SI nExisteF = 1;
+         aDef  = eaPathFacturar + "def/ascontrt";
+         |CARGA_DEF aDef, ascontr@;
+         |SI FSalida ! 0; |ACABA; |FINSI;
+
+         aPath = aPathFich + (("00" + #dsam0128#2) % -102) + "/";
+         |PATH_DAT #ascontr@#aPath#;
+
+         |ABRE #ascontr@;
+         |SI nInkey = 10;
+             #ascontr@#0 = #dsam0128#Campo#;
+             |CONSULTA_F_CLAVE #1#ascontr@, ClaveBaja1, ClaveAlta1
+             #dsam0128#Campo# = #ascontr@#0; |PINTA #dsam0128#Campo#;
+         |FINSI;
+
+         #ascontr@#1 = #dsam0128#Campo#;
+         |LEE 041#ascontr@.=;
+         |SI FSalida ! 0;
+             |MENAV "0000No existe control";
+             |ERROR;
+         |FINSI;
+         |CIERRA #ascontr@;
+         |DESCARGA_DEF #ascontr@;
+    |FINSI;
+|FPRC;
+
+|PROCESO ClaveBaja;
+   #asconce@#0  = "    ";
+   #asconce@#1  = "  ";
+|FPRC;
+
+|PROCESO ClaveAlta;
+   #asconce@#0  = "zzzz";
+   #asconce@#1  = "zz";
+|FPRC;
+
+|PROCESO Tipo0C4y6m128; |TIPO 0;
+     nInkey = FSalida;
+
+     |SI Campo = 4; |O Campo = 5;
+         aLetra = "H"; aAlfa = "Honorario"; nCamp1 = 4;
+     |FINSI;
+     |SI Campo = 7; |O Campo = 8;
+         aLetra = "S"; aAlfa = "Suplido";   nCamp1 = 7;
+     |FINSI;
+     nCamp2 = nCamp1 + 1;
+     nCamp3 = nCamp1 + 2;
+
+     |SI nExisteF = 1;
+         aDef  = eaPathFacturar + "def/asconcep";
+         |CARGA_DEF aDef, asconce@;
+         |SI FSalida ! 0; |ACABA; |FINSI;
+
+         aPath = aPathFich + (("00" + #dsam0128#2) % -102) + "/";
+         |PATH_DAT #asconce@#aPath#;
+
+         |ABRE #asconce@;
+         |SI nInkey = 10;
+             #asconce@#0 = #dsam0128#nCamp1#;
+             #asconce@#1 = #dsam0128#nCamp2#;
+             |CONSULTA_F_CLAVE #1#asconce@, ClaveBaja, ClaveAlta;
+             #dsam0128#nCamp1# = #asconce@#0; |PINTA #dsam0128#nCamp1#;
+             #dsam0128#nCamp2# = #asconce@#1; |PINTA #dsam0128#nCamp2#;
+             #dsam0128#nCamp3# = #asconce@#2; |PINTA #dsam0128#nCamp3#;
+         |FINSI;
+
+         |SI Campo = 5; |O Campo = 8;
+             #asconce@#1 = #dsam0128#nCamp2#;
+             #asconce@#0 = #dsam0128#nCamp1#;
+             |LEE 041#asconce@.=;
+             |SI FSalida ! 0;
+                 |MENAV "0000No existe concepto";
+                 |ERROR;
+             |SINO;
+                 |SI #asconce@#3 ! aLetra;
+                     aAlfa = "0000NEste concepto no es un " + aAlfa;
+                     aAlfa = aAlfa + ". Continuar ";
+                     |CONFI aAlfa;
+                     |SI FSalida ! 0;
+                         |ERROR;
+                     |FINSI;
+                 |FINSI;
+                 #dsam0128#nCamp3# = #asconce@#2; |PINTA #dsam0128#nCamp3#;
+             |FINSI;
+         |FINSI;
+         |CIERRA #asconce@;
+         |DESCARGA_DEF #asconce@;
+    |FINSI;
+|FPRC;
+
+|PROCESO Tipo66C2m128; |TIPO 66;
+     |ABRE #facemp1;
+     #facemp1#0 = #dsam0128#2;
+     |CONSULTA_CLAVE #1#facemp1;
+     #dsam0128#2 = #facemp1#0;
+     |PINTA #dsam0128#2;
+     |CIERRA #facemp1;
+|FPRC;
+
+|PROCESO Tipo0C2m128; |TIPO 0;
+
+     nExisteF = 0;
+     |ABRE #facemp1;
+     #facemp1#0 = #dsam0128#2;
+     |LEE 041#facemp1.=;
+     |SI FSalida = 0;
+         #dsam0128#3 = #facemp1#1;
+         |PINTA #dsam0128#3;
+         nExisteF = 1;
+     |SINO;
+         |ERROR;
+     |FINSI;
+     |CIERRA #facemp1;
+|FPRC;
+
+|PROGRAMA;
+    |CLS;
+    |CABEZA "Ctrl.Empresa fra para Gestoria";
+
+     eaPathFacturar = "";
+     |DBASS aBase;
+     aAlfa = aBase + "facturar/def/facemp.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |SI FSalida ] 0;
+         eaPathFacturar  = aBase + "facturar/";
+     |SINO;
+         |MENAV "0000No existe facturacion";
+         |ACABA;
+     |FINSI;
+     aPathFich = eaPathFacturar + "fich/";
+
+     |PATH_DAT #facemp1#aPathFich#;
+
+     |MANTE #dsam0128;
+|FPRO;

@@ -1,0 +1,108 @@
+|FICHEROS;
+   dscam003 #10;
+   dscam023 #11;
+
+   dscam216 #20;
+
+   dscaw204 #50;
+|FIN;
+
+|VARIABLES;
+   &PRMNT_enSwError = 0;
+
+   aSerie = "";
+   aAlfa  = "";
+|FIN;
+
+|PROCESO Recibos;
+   |SI #dscam003#0 = "     "; |Y #dscam003#1 = 000000; |ACABA; |FINSI;
+   |SI #dscam003#14 = "L"; |ACABA; |FINSI;
+
+   || Primero compruebo si en cliente tiene formas de pago abiertas. Esto es
+   ||     asi cuando no tiene ningun tipo de recibo no permitido
+   #dscam216#0 = #dscam003#32;
+   #dscam216#1 = 0;
+   |LEE 000#dscam216.];
+   |SI FSalida ! 0; |O #dscam216#0 ! #dscam003#32; |ACABA; |FINSI;
+
+   || Si tiene alguna forma de pago no permitida, debo de cotejarla con la
+   ||     factura del recibo que estoy mirando
+   #dscam216#0 = #dscam003#32;
+   #dscam216#1 = #dscam003#12;
+   |LEE 000#dscam216.=;
+   |SI FSalida = 0;
+      #dscaw204#0 = #dscam003#0;
+      #dscaw204#1 = #dscam003#1;
+      |LEE 000#dscaw204.=;
+      |SI FSalida ! 0;
+         |DDEFECTO #dscaw204;
+         #dscaw204#0 = #dscam003#0;
+         #dscaw204#1 = #dscam003#1;
+         #dscaw204#2 = #dscam003#32;
+         #dscaw204#3 = #dscam003#6;
+         #dscaw204#4 = #dscam216#1;
+         #dscaw204#5 = #dscam216#2;
+         |GRABA 020#dscaw204.n;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Recibos;
+#dscam003#11;
+;
+#dscam023#0, "01.01.0000", "     ";
+#dscam023#0, "31.12.9999", "zzzzz";
+;
+NULL, Recibos;
+|FIN;
+
+|PROCESO Clientes;
+   |BUCLE Recibos;
+|FPRC;
+
+|DEFBUCLE Clientes;
+#dscam023#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Clientes;
+|FIN;
+
+|PROCESO Imprime;
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE Imprime;
+#dscaw204#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Imprime;
+|FIN;
+
+|PROGRAMA;
+   aAlfa = "tnp" + Usuario; |NOME_DAT #dscaw204#aAlfa#;
+   |DELINDEX #dscaw204; |ABRE #dscaw204;
+
+   |ABRE #dscam216; |BUCLE Clientes; |CIERRA #dscam216;
+
+   |LEE 000#dscaw204.p;
+   |SI FSalida = 0;
+      PRMNT_enSwError = 0;
+      |IMPRE 0;
+      |SI FSalida = 0;
+         |INFOR "dscaz197";
+         |SI FSalida = 0;
+            |BUCLE Imprime;
+            |PIEINF; |FININF;
+         |FINSI;
+         |FINIMP;
+      |FINSI;
+   |SINO;
+      PRMNT_enSwError = 1;
+   |FINSI;
+
+   |CIERRA #dscaw204; |DELINDEX #dscaw204;
+|FPRO;

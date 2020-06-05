@@ -1,0 +1,645 @@
+|FICHEROS;
+     salud001 #0; ||Este Def.
+     cacuenta #1; ||cuentas AGICONT
+     caenlace #2; ||Enlace Apuntes Contables.
+     calibros #14;||Libros Iva
+     caclipro #3; ||Datos Clientes Proveedores.
+
+    :/modelos/def/dsmom030 #130;
+     caivaasi #200;
+     saludw01 #999;
+|FIN;
+
+|VARIABLES;
+    &eaOrigen  = "";
+    &eaDestino = "";
+    &enErrPas  = 0;
+    nCopio   = 0;
+     handle = 0;
+     nPor   = 0;
+     nReg   = 0;
+     nIni   = 0;
+     aIni   = "";
+     aDesso = "";
+     aDesre = "";
+     aProg  = "";
+     aPath  = "";
+     swPri  = 0;
+     nAsi   = 0;
+     nCon   = 0;
+     nAno   = 0;
+     aMil   = "";
+     aDia   = "";
+     aMes   = "";
+     aAno   = "";
+     nSal   = 0;
+     nSal1  = 0;
+     aFich  = "";
+     aDire  = "";
+     sw_Eof = "";
+     nFlag  = 0;
+     aDatos = "";
+     aDato1 = "";
+     aDato2 = "";
+     aDato3 = "";
+     aDato4 = "";
+     nMenos = 0;
+     nAlfa  = 0;
+     aAlfa  = "";
+     bAlfa  = "";
+     cAlfa  = "";
+     dAlfa  = "";
+     eAlfa  = "";
+     nNume  = 0;
+     nDigcu = 0;
+     aMensa = "";
+     nRegis = 0;
+
+     aAlfa1 = "";
+     nNume1 = 0;
+
+   &libro     = 0;  &serie   = ""; &orden     = 0;  &depart = ""; &pesetas = 0;
+   &cuenta    = ""; &emision = ""; &nConcep   = 0;  &aDesc  = ""; &digito  = 0;
+   &enModoEsc = 0;  &eaPath  = ""; &eaRetorno = "";
+
+   &enPCAut = 0;
+   &eaRef   = "";
+   &enAux   = 0;
+
+   nTotal   = 0;
+   atipo    = "";
+   aEl13    = "";
+   aEl10    = "";
+   aFichero = "";
+   nHayCP   = 0;
+|FIN;
+
+
+|INCLUYE dscont_i;
+
+|CALCULO LeoConc7; |TIPO 7;
+  |C_M #0Campo,1,"S";
+  nNume1 = Campo - 5;
+  aAlfa1 = #0nNume1;
+  |QBF aAlfa1;
+  |SI aAlfa1 = "";
+      |C_M #0Campo,1,"N";
+  |FINSI;
+|FCAL;
+
+|CALCULO LeoConc0;  |TIPO 0;
+   |C_M #0Campo, 0, aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI #0Campo ! 0;
+       |SI Campo = 7; eaCuenta = #0#2;  enLibIVA = #200#3;  aTipoIVA = "R"; enFilConc = 2; |FINSI;
+       |SI Campo = 8; eaCuenta = #0#3;  enLibIVA = #200#29; aTipoIVA = "S"; enFilConc = 2; |FINSI;
+       |SI Campo = 9; eaCuenta = #0#4;  enLibIVA = #200#3;  aTipoIVA = "N"; enFilConc = 1; |FINSI;
+       enConcepto = #0Campo;
+       |HAZ FiltroConcepto;  |SI eswLect ! 0; |ACABA; |FINSI;
+   |SINO;
+       #dsmom030#1 = "Concepto del fichero Secuencial";
+   |FINSI;
+   nNume1   = Campo + 3;
+   #0nNume1 = #dsmom030#1; |PINTA #0nNume1;
+|FCAL;
+
+|| //////////////////////////////////////////////////////////////////
+|PROCESO LeoUnoaUno;
+       sw_Eof = 0;
+       aDatos = "";
+       nNume1 = 0;
+       |PARA; |SI sw_Eof = 0; |HACIENDO;
+              |XLEE handle, 1, aAlfa1;
+              |SI FSalida > 0;
+                  |SI aAlfa1 = aEl10;
+                      sw_Eof = 1;
+                  |SINO;
+                      |SI aAlfa1 ! aEl13;
+                          aDatos = aDatos + aAlfa1;
+                          nNume1 = nNume1 + 1;
+                      |FINSI;
+                  |FINSI;
+              |SINO;
+                   sw_Eof = 1;
+              |FINSI;
+        |SIGUE;
+        FSalida = nNume1;
+|FPRC;
+|| //////////////////////////////////////////////////////////////////
+
+|PROCESO GrabaCobros;
+     |DDEFECTO #2;
+     #2#0 = #0#6;                                  ||Diario
+     aAlfa = aDatos % 3210;
+     #2#1 = aAlfa;                                 ||Fecha
+     aAlfa = aDatos % 1606;
+     #2#2 = aAlfa;                                 ||Asiento
+
+     |SI nAsi ! #2#2;
+          #2#3 = 0;
+          #2#25 = "S";
+          |GRABA 000#2n;
+          nCon = 0;
+          nAsi = #2#2;
+     |FINSI;
+
+     nCon = nCon + 1;
+     #2#3 = nCon;                            ||Apunte.
+
+     aAlfa = aDatos % 7709;
+     |QBF aAlfa;
+     bAlfa = aAlfa % 102;
+     |SI bAlfa = "00";
+          cAlfa = aAlfa % 303;
+          dAlfa = aAlfa % -104;
+          aAlfa = cAlfa + bAlfa + dAlfa;
+     |FINSI;
+     nDigcu = 0;
+     bAlfa = aAlfa % 0;
+     nNume = bAlfa;
+     |SI nNume = dig4;  nDigcu = 1;  |FINSI;
+     |SI nNume = dig5;  nDigcu = 2;  |FINSI;
+     |SI nNume = dig6;  nDigcu = 3;  |FINSI;
+     |SI nNume = dig7;  nDigcu = 4;  |FINSI;
+     |SI nNume = dig8;  nDigcu = 5;  |FINSI;
+     |SI nNume = dig9;  nDigcu = 6;  |FINSI;
+     |SI nNume = 0;     nDigcu = 0;  |FINSI;
+     |SI nDigcu = 0;
+          aMensa =  "    Cuenta Fuera de NIVEL: " + aAlfa;
+          |MENAV aMensa;
+          |ACABA;
+     |FINSI;
+
+     aAlfa = (aAlfa + "            ") % 112;
+     #2#4  = aAlfa;                                  ||Cuenta
+     #2#5  = nDigcu;                                 ||Digito
+     aAlfa = aDatos % 4430;
+     #2#7  = aAlfa;                                  ||Concepto.
+     aAlfa = aDatos % 8601;
+     #2#8 = aAlfa;
+     aAlfa = aDatos % 4202;
+     #2#6 = aAlfa;                                   ||Cod.Concepto.
+     |SI #0#9 ! 0;
+         #2#6 = #0#9;
+     |FINSI;
+
+     aAlfa = aDatos % 8712;
+     #2#9 = aAlfa;                                   ||Importe.
+     #2#25 = "N";
+     |GRABA 020#2n;
+|FPRC;
+
+|PROCESO CargaCobros;
+
+     aAlfa = #0#4;
+     |QBF aAlfa;
+     |SI aAlfa = ""; |ACABA; |FINSI;
+     nAsi = 0;
+
+     |ABRE #2;
+     |ABRE #3;
+     |SELECT #4#3;
+     aFich = #0#4; |QBF aFich;
+     |HAZ nombre;
+
+     |XABRE "UB", aFich, handle;
+     |SI FSalida < 0;
+         |XABRE "CUB", aFich, handle;
+     |FINSI;
+     |SI FSalida ] 0;
+         nFlag  = FSalida;
+         |PARA; |SI; |HACIENDO;
+                |HAZ LeoUnoaUno;
+                |SI nNume1 ! 0;
+                    |HAZ GrabaCobros;
+                |SINO;
+                    |SAL;
+                |FINSI;
+          |SIGUE;
+          FSalida = nFlag;
+          |XCIERRA handle;
+          Pos = nMenos;
+     |SINO;
+          |MENAV "    Fichero de Cobros no encontrado";
+     |FINSI;
+     |CIERRA #3;
+     |CIERRA #2;
+|FPRC;
+
+|PROCESO GrabaCompra;
+     |DDEFECTO #2;
+     #2#0 = #0#6;                                  ||Diario.
+     aAlfa = aDatos % 3210;
+     #2#1 = aAlfa;                                 ||Fecha
+     aAlfa = aDatos % 1006;
+     #2#2 = aAlfa;                                 ||Asiento;
+
+     |SI nAsi ! #2#2;
+          #2#3  = 0;
+          #2#25 = "S";
+          |GRABA 000#2n;
+          nCon     = 0;
+          nAsi     = #2#2;
+          nTotal   = 0;
+          eaCuenta = "";
+     |FINSI;
+
+     nCon = nCon + 1;
+     #2#3 = nCon;                            ||Apunte.
+
+     cAlfa = "";
+     aAlfa = aDatos % 7409;
+     |QBF aAlfa;
+     eAlfa = aAlfa % 101;
+     dAlfa = aAlfa % -101;
+     |SI eAlfa > "9"; |O dAlfa > "9";
+          |DDEFECTO #3;
+          #3#9 = aAlfa;
+          |LEE 101#3=;
+          |SI FSalida = 0;
+               aAlfa = #3#10;
+          |SINO;
+               cAlfa = aAlfa;
+               bAlfa = aAlfa + " No Existe Introduzca Cta.: ";
+               |PINTA 2410 , bAlfa;
+               aAlfa = "";
+               E_sup = 12;
+               E_inf = "";
+               aAlfa = 2450 ? 1;
+          |FINSI;
+     |FINSI;
+     |QBF aAlfa;
+     nDigcu = 0;
+     bAlfa = aAlfa % 0;
+     nNume = bAlfa;
+     |SI nNume = dig4;  nDigcu = 1;  |FINSI;
+     |SI nNume = dig5;  nDigcu = 2;  |FINSI;
+     |SI nNume = dig6;  nDigcu = 3;  |FINSI;
+     |SI nNume = dig7;  nDigcu = 4;  |FINSI;
+     |SI nNume = dig8;  nDigcu = 5;  |FINSI;
+     |SI nNume = dig9;  nDigcu = 6;  |FINSI;
+     |SI nNume = 0;     nDigcu = 0;  |FINSI;
+     |SI nDigcu = 0;
+          aMensa =  "    Cuenta Fuera de NIVEL: " + aAlfa;
+          |MENAV aMensa;
+          |ACABA;
+     |FINSI;
+
+     aAlfa = (aAlfa + "            ") % 112;
+     #2#4  = aAlfa;                                  ||Cuenta
+     #2#5  = nDigcu;                                 ||Digito
+     |SI cAlfa ! "";
+          #3#10 = aAlfa;
+          #3#9  = cAlfa;
+          #3#23 = "P";
+          #3#11 = nDigcu;
+          |GRABA 020#3n;
+     |FINSI;
+     |LIBERA #3;
+     aAlfa = aDatos % 4430;
+     #2#7  = aAlfa;                                  ||Concepto.
+     aAlfa = aDatos % 8601;
+     #2#8 = aAlfa;                                   ||Signo
+     aAlfa = aDatos % 4202;
+     #2#6 = aAlfa;                                   ||Cod.Concepto.
+     |SI #0#8 ! 0;
+         #2#6 = #0#8;
+     |FINSI;
+
+     aAlfa = aDatos % 8712;
+     #2#9 = aAlfa;                                   ||Importe.
+     #2#25 = "N";
+
+     #2#10 = "S";
+     aAlfa = aDatos % 0202;
+     #2#11 = aAlfa;
+     #2#12 = "";
+     aAlfa = aDatos % 1606; nNume = aAlfa;
+     #2#13 = nNume;
+     #2#14 = 999;
+     aAlfa = aDatos % 2210;
+     #2#29 = aAlfa;                                  || Fecha factura
+
+     aAlfa = aDatos % 7403;
+     |SI aAlfa = "400";
+        #2#26 = "F"; #2#27 = 0;
+        nTotal   = #2#9;
+        eaCuenta = #2#4;
+        #2#45 = #2#7;
+        |HAZ LosVtos;
+     |FINSI;
+     aAlfa = aDatos % 7402;
+     |SI aAlfa = "60";
+        #2#26 = "B"; #2#27 = 1;
+        #2#3 = #2#3 + 5000;
+     |FINSI;
+
+     |GRABA 020#2n;
+|FPRC;
+
+|PROCESO CargaCompra;
+     atipo    = "S";
+     eaCuenta = "";
+     aAlfa    = #0#3;
+     |QBF aAlfa;
+     |SI aAlfa = ""; |ACABA; |FINSI;
+     nAsi = 0;
+     |ABRE #2;
+     |ABRE #3;
+     |SELECT #4#3;
+
+     aFich = #0#3; |QBF aFich;
+     |HAZ nombre;
+
+     |XABRE "UB", aFich, handle;
+     |SI FSalida < 0;
+         |XABRE "CUB", aFich, handle;
+     |FINSI;
+     |SI FSalida ] 0;
+          sw_Eof = 0;
+          nFlag  = FSalida;
+          |PARA; |SI; |HACIENDO;
+                 |XLEE handle, 101, aDatos;
+                 |SI FSalida > 0;
+                     |HAZ GrabaCompra;
+                 |SINO;
+                     |SAL;
+                 |FINSI;
+          |SIGUE;
+          FSalida = nFlag;
+          |XCIERRA handle;
+          Pos = nMenos;
+     |SINO;
+          |MENAV "    Fichero de Compras no encontrado";
+     |FINSI;
+     |CIERRA #2;
+     |CIERRA #3;
+|FPRC;
+
+|PROCESO GrabaVentas;
+     |DDEFECTO #2;
+     #2#0 = #0#6;                                  ||Diario
+     aAlfa = aDatos % 3210;
+     #2#1 = aAlfa;                                 ||Fecha
+     aAlfa = aDatos % 1606;
+     #2#2 = aAlfa;                                 ||Asiento;
+
+     |SI nAsi ! #2#2;
+          #2#3 = 0;
+          #2#25 = "S";
+          |GRABA 000#2n;
+          nCon = 0;
+          nAsi = #2#2;
+          nTotal   = 0;
+          eaCuenta = "";
+     |FINSI;
+
+     nCon = nCon + 1;
+     #2#3 = nCon;                            ||Apunte.
+
+     aAlfa = aDatos % 7409;
+     |QBF aAlfa;
+     bAlfa = aAlfa % 102;
+     |SI bAlfa = "00";
+          cAlfa = aAlfa % 303;
+          dAlfa = aAlfa % -104;
+          aAlfa = cAlfa + bAlfa + dAlfa;
+     |FINSI;
+     nDigcu = 0;
+     bAlfa = aAlfa % 0;
+     nNume = bAlfa;
+     |SI nNume = dig4;  nDigcu = 1;  |FINSI;
+     |SI nNume = dig5;  nDigcu = 2;  |FINSI;
+     |SI nNume = dig6;  nDigcu = 3;  |FINSI;
+     |SI nNume = dig7;  nDigcu = 4;  |FINSI;
+     |SI nNume = dig8;  nDigcu = 5;  |FINSI;
+     |SI nNume = dig9;  nDigcu = 6;  |FINSI;
+     |SI nNume = 0;     nDigcu = 0;  |FINSI;
+     |SI nDigcu = 0;
+          aMensa =  "    Cuenta Fuera de NIVEL: " + aAlfa;
+          |MENAV aMensa;
+          |ACABA;
+     |FINSI;
+
+     aAlfa = (aAlfa + "            ") % 112;
+     #2#4  = aAlfa;                                  ||Cuenta
+     #2#5  = nDigcu;                                 ||Digito
+     aAlfa = aDatos % 4430;
+     #2#7  = aAlfa;                                  ||Concepto.
+     aAlfa = aDatos % 8601;
+     #2#8 = aAlfa;
+
+     aAlfa = aDatos % 4202;
+     #2#6 = aAlfa;                                   ||Cod.Concepto.
+     |SI #0#7 ! 0;
+         #2#6 = #0#7;
+     |FINSI;
+     aAlfa = aDatos % 8712;
+     #2#9 = aAlfa;                                   ||Importe.
+     #2#25 = "N";
+
+     #2#10 = "R";
+     aAlfa = aDatos % 0202;
+     #2#11 = aAlfa;
+
+     aAlfa = aDatos % 5302; nNume = aAlfa;  ||Serie tique 2537_684
+     |QBT aAlfa;
+     #2#12 = aAlfa;
+     aAlfa = aDatos % 1006; nNume = aAlfa;
+     #2#13 = nNume;
+     aAlfa = aDatos % 2210;
+     #2#29 = aAlfa;                                  || Fecha factura
+
+     aAlfa = aDatos % 7403;
+     |SI aAlfa = "430";
+        #2#26 = "F"; #2#27 = 0;
+        nTotal   = #2#9;
+        eaCuenta = #2#4;
+        |HAZ LosVtos;
+     |FINSI;
+     aAlfa = aDatos % 7402;
+     |SI aAlfa = "70";
+        #2#26 = "B"; #2#27 = 1;
+     |FINSI;
+     aAlfa = aDatos % 2210;
+     #2#29 = aAlfa;                                  || Fecha factura
+
+     |GRABA 020#2n;
+|FPRC;
+
+|PROCESO CargaVentas;
+     atipo    = "R";
+     eaCuenta = "";
+
+     aAlfa = #0#2;
+     |QBF aAlfa;
+     |SI aAlfa = ""; |ACABA; |FINSI;
+
+     |ABRE #2;
+     aFich =  #0#2; |QBF aFich;
+     |HAZ nombre;
+
+     |XABRE "UB", aFich, handle;
+     |SI FSalida < 0;
+         |XABRE "CUB", aFich, handle;
+     |FINSI;
+     |SI FSalida ] 0;
+          sw_Eof = 0;
+          nFlag  = FSalida;
+          |PARA; |SI; |HACIENDO;
+                 |XLEE handle, 101, aDatos;
+                 |SI FSalida > 0;
+                     |HAZ GrabaVentas;
+                 |SINO;
+                     |SAL;
+                |FINSI;
+          |SIGUE;
+          FSalida = nFlag;
+          |XCIERRA handle;
+          Pos = nMenos;
+     |SINO;
+          |MENAV "    Fichero de Ventas no encontrado";
+     |FINSI;
+     |CIERRA #2;
+|FPRC;
+
+|PROCESO LosVtos;
+   aAlfa1 = #200#56; |QBF aAlfa1;
+   |SI aAlfa1 = ""; |ACABA; |FINSI;
+
+   |ABRE #999;
+   #999#0 = atipo;
+   #999#1 = #2#11;
+   #999#2 = #2#12;
+   #999#3 = #2#13;
+   |LEE 001#999=;
+   |SI FSalida ! 0;
+       |DDEFECTO #999;
+       #999#0 = atipo;
+       #999#1 = #2#11;
+       #999#2 = #2#12;
+       #999#3 = #2#13;
+       |GRABA 020#999c;
+   |FINSI;
+
+   #999#4 = #2#29;
+   #999#5 = nTotal;
+   #999#6 = eaCuenta;
+   #999#7 = nDigcu;
+   #999#8 = #2#15;
+   #999#9 = #2#45;
+   |GRABA 020#999a;
+   |CIERRA #999;
+   nHayCP = 1;
+|FPRC;
+
+|PROCESO PasaVtos;
+   atipo   = #999#0;
+   enPCAut = 0;
+|| ...    |SI atipo = "S"; enPCAut = 1; |FINSI;
+
+   libro   = #999#1;
+   serie   = #999#2;
+   orden   = #999#3;
+   emision = #999#4;
+   pesetas = #999#5;
+   cuenta  = #999#6;
+   digito  = #999#7;
+   depart  = #999#8;
+   eaRef   = #999#9;
+   enModoEsc = 1;
+
+   |SI atipo = "R"; aAlfa = "calincob.tab"; |FINSI;
+   |SI atipo = "S"; aAlfa = "calinpag.tab"; |FINSI;
+   aAlfa = aAlfa + ";NUEVO";
+
+   enAux = 2;
+   |SUB_EJECUTA_NP aAlfa;
+|FPRC;
+
+|DEFBUCLE PasaVtos;
+ #999#1;
+ ;
+ " ", 00, "     ", 000001;
+ "z", 99, "zzzzz", 999999;
+ ;
+ NULL, PasaVtos;
+|FIN;
+
+|PROCESO nombre;  || nombre del fichero
+    Pos   = -1;
+    aFichero = aFich;
+    aFich    = aDire + aFich;
+
+    nCopio = 0;
+    |XABRE "UB", aFich, handle;
+    |SI FSalida < 0;
+        |XABRE "CUB", aFich, handle;
+        |SI FSalida = 0; nCopio = 1; |FINSI;
+    |FINSI;
+    |XCIERRA handle;
+
+|SI nCopio = 1;
+    |DFICE aBase;
+    eaOrigen  = aFich;
+    eaDestino = aBase + aFichero;
+    |HAZ eReciboFich;
+    |SI enErrPas = 0; aFich = eaDestino; |FINSI;
+|FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |CABEZA "Importacion Datos";
+     |HAZ inicio;
+
+     aEl13 = &13;
+     aEl10 = &10;
+
+     aFichero = ("1s" + Usuario) % 108;
+     |NOME_DAT #999 aFichero;
+     |DELINDEX #999;
+
+     |ABRE #200;
+     |LEE 000#200p;
+     |SI FSalida ! 0;
+         |DDEFECTO #200;
+         |GRABA 020#200n;
+     |FINSI;
+     |CIERRA #200;
+
+     |ABRE #0;
+     |LEE 101#0=;
+     nSal = FSalida;
+
+     #0#7 = #200#5;
+     #0#8 = #200#31;
+     #0#9 = #200#50;
+
+     nHayCP = 0;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |DELINDEX #2;
+          aDire  = #0#1;
+          |QBF aDire;
+          |HAZ CargaVentas;
+          |HAZ CargaCompra;
+          |HAZ CargaCobros;
+          |SI nHayCP = 1; |BUCLE PasaVtos; |FINSI;
+
+          |DFICE aPath; |QBF aPath;
+          aProg = "dsapunte.tab" + &59 +  aPath;
+          |SUB_EJECUTA_NP aProg;
+          |DELINDEX #2;
+          |DELINDEX #999;
+
+     |FINSI;
+
+     |SI nSal = 0; |GRABA 020#0a; |FINSI;
+     |SI nSal ! 0; |GRABA 020#0n; |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+|FPRO;

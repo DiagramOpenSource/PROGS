@@ -1,0 +1,165 @@
+|FICHEROS;
+   albz0004 #0;
+   agifa134 #10;
+   agifa024 #11;
+   agifa133 #12;
+   agifa091 #13;
+
+   dscam044@ #100;
+   dscam045@ #101;
+   dscam020@ #102;
+   dscam018@ #103;
+|FIN;
+
+|VARIABLES;
+   &efFechaVto = @;
+   &enRiesgo = 0;
+   &eaExped  = "";
+   &eaOrden  = "";
+   &eaCia    = "";
+   &eaCodCia = "";
+
+   nEmpCartera = 0;
+   nEmpGestion = 0;
+
+   aAlfa  = "";
+   aAlfa1 = "";
+   aInforme = "";
+|FIN;
+
+|PROCESO BuscaCartera;
+   nEmpCartera = #dscam045@#6; |ERROR10;
+|FPRC;
+
+|DEFBUCLE BuscaCartera;
+#dscam045@#1002;
+2;
+nEmpGestion, 001, "V";
+nEmpGestion, 999, "V";
+;
+NULL,BuscaCartera;
+|FIN;
+
+|PROCESO FacturasVta;
+   efFechaVto = "01.01.0000";
+   #agifa133#4 = #agifa134#49;
+   #agifa133#0 = #agifa134#0;
+   #agifa133#1 = 1;
+   |LEE 000#agifa133.];
+   |PARA; |SI FSalida = 0; |Y #agifa133#4 = #agifa134#49; |Y #agifa133#0 = #agifa134#0; |HACIENDO;
+      |SI efFechaVto < #agifa133#3; efFechaVto = #agifa133#3; |FINSI;
+      |LEE 000#agifa133.s;
+   |SIGUE;
+
+   #agifa024#0 = #agifa134#2;
+   |LEE 000#agifa024.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa024; |FINSI;
+
+   #agifa091#0 = #agifa134#11;
+   |LEE 000#agifa091.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa024; |FINSI;
+
+   |SELECT #2#dscam020@;
+   #dscam020@#4 = #agifa134#2;
+   #dscam020@#0 = #albz0004#6;
+   |LEE 000#dscam020@.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam020@; |FINSI;
+   |SELECT #1#dscam020@;
+   |LEE 000#dscam020@.=;
+   |SI FSalida = 0;
+      enRiesgo = #dscam020@#17; eaExped = #dscam020@#2; eaOrden = #dscam020@#3;
+   |SINO;
+      enRiesgo = 0; eaExped = ""; eaOrden = "";
+      |SI #albz0004#7 = "E"; |ACABA; |FINSI;
+   |FINSI;
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE FacturasVta;
+#agifa134#3;
+;
+"      ", #albz0004#2, #albz0004#0, #albz0004#1;
+"zzzzzz", #albz0004#5, #albz0004#3, #albz0004#4;
+;
+NULL,FacturasVta;
+|FIN;
+
+|PROCESO MiraCia;
+   |SI FSalida = 10;
+      #dscam018@#0 = #albz0004#6;
+      |LEE 000#dscam018@.];
+      |CONSULTA_CLAVE #1#dscam018@;
+      |SI FSalida = 0;
+         #albz0004#6 = #dscam018@#0;
+         |PINTA 1628, #dscam018@#1;
+      |FINSI;
+      |ERROR; |ACABA;
+   |FINSI;
+
+   #dscam018@#0 = #albz0004#6;
+   |LEE 000#dscam018@.=;
+   |SI FSalida = 0;
+      |PINTA 1628, #dscam018@#1;
+   |SINO;
+      |MENAV "    Compa¤ia inexistente"; |ERROR; |ACABA;
+   |FINSI;
+
+   eaCodCia = ("000" + #dscam018@#0) % -103; eaCia = #dscam018@#1;
+|FPRC;
+
+|PROGRAMA;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa1 = aAlfa + "dscarter/def/dscam044.mas";
+   |CARGA_DEF aAlfa1, dscam044@;
+   |SI FSalida ! 0;
+      |MENAV "    No se puede acceder al control de gestion en cartera";
+      |ERROR; |ACABA;
+   |FINSI;
+   aAlfa1 = aAlfa + "dscarter/def/dscam045.mas"; |CARGA_DEF aAlfa1, dscam045@;
+   aAlfa1 = aAlfa + "dscarter/def/dscam020.mas"; |CARGA_DEF aAlfa1, dscam020@;
+   aAlfa1 = aAlfa + "dscarter/def/dscam018.mas"; |CARGA_DEF aAlfa1, dscam018@;
+   aAlfa1 = aAlfa + "dscarter/fich/";
+   |PATH_DAT #100 aAlfa1; |ABRE #dscam044@;
+   |PATH_DAT #101 aAlfa1; |ABRE #dscam045@;
+   nEmpCartera = -1; nEmpGestion = #48#0;
+   |BUCLE BuscaCartera;
+   |SI nEmpCartera < 0;
+      |MENAV "    No se ha encontrado una empresa de cartera asociada a la empresa actual de gestion";
+      |ERROR;
+      |CIERRA #dscam018@; |DESCARGA_DEF #dscam018@;
+      |CIERRA #dscam020@; |DESCARGA_DEF #dscam020@;
+      |CIERRA #dscam045@; |DESCARGA_DEF #dscam045@;
+      |CIERRA #dscam044@; |DESCARGA_DEF #dscam044@;
+      |ACABA;
+   |FINSI;
+
+   aAlfa1 = aAlfa + "dscarter/fich/" + (("00000" + nEmpCartera) % -105) + "/";
+   |PATH_DAT #102 aAlfa1; |ABRE #dscam020@;
+   |PATH_DAT #103 aAlfa1; |ABRE #dscam018@;
+
+   |CLS;
+   |CABEZA " Informe declaracion CESCE ";
+   |PINPA #0#albz0004; |PINDA #0#albz0004;
+   |PINTA 1628, #dscam018@#1;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      |IMPRE 0;
+      |SI FSalida = 0;
+         |SI #albz0004#8 = "D";   aInforme = "albz0004";   |FINSI;
+         |SI #albz0004#8 = "R";   aInforme = "albz00r4";   |FINSI;
+         |INFOR aInforme;
+         |SI FSalida = 0;
+            |ABRE #agifa024; |ABRE #agifa091; |ABRE #agifa133;
+            |BUCLE FacturasVta;
+            |CIERRA #agifa024; |CIERRA #agifa091; |CIERRA #agifa133;
+            |PIEINF; |FININF;
+         |FINSI;
+         |FINIMP;
+      |FINSI;
+   |FINSI;
+
+   |CIERRA #dscam018@; |DESCARGA_DEF #dscam018@;
+   |CIERRA #dscam020@; |DESCARGA_DEF #dscam020@;
+   |CIERRA #dscam045@; |DESCARGA_DEF #dscam045@;
+   |CIERRA #dscam044@; |DESCARGA_DEF #dscam044@;
+|FPRO;

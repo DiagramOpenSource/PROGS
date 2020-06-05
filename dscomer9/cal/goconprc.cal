@@ -1,0 +1,200 @@
+|FICHEROS;
+     goconprc #0;
+     goconpla #1;
+     goinform #2;
+     gopre001 #3;
+     goparame #100;
+|FIN;
+----------------------------------------------------------------------
+|VARIABLES;
+     i              = 0;
+     &cCodMonBase   = "";
+     &cCodMonTrab   = "";
+     &cCodMonDe     = "";
+     &cCodMonA      = "";
+     &cCodMonConv   = "";
+     &cCodMonActu   = "";
+     &cDesMonBase   = "";
+     &cDesMonTrab   = "";
+
+     &nDeci_Medi    = 0;
+     &nDeci_Meda    = 0;
+     &nDeci_Incr    = 0;
+     &nDeci_PBase   = 0;
+     &nDeci_TBase   = 0;
+     &nDeci_PTrab   = 0;
+     &nDeci_TTrab   = 0;
+     &nDeci_TotVis  = 0;
+     &nEurComTrab   = 0;
+     &nEurComBase   = 0;
+     &nEurVenTrab   = 0;
+     &nEurVenBase   = 0;
+     &nPreComTrab   = 0;
+     &nPreComBase   = 0;
+     &nPreVenTrab   = 0;
+     &nPreVenBase   = 0;
+     &nPrecioComp   = 0;
+     &nPrecioVent   = 0;
+
+     cOrigen        = "";
+     cDestino       = "";
+     cEmpresa       = "";
+     cPresupu       = "";
+     cPathApli      = "";
+     cPathDsin      = "";
+     cUsuario       = "";
+     cAplicaci      = "";
+     cPermiso       = "";
+
+     nModo          = 0;
+     aIP = "";
+     aAlfa = "";
+     aPlantilla = "";
+|FIN;
+----------------------------------------------------------------------
+|PROCESO MonTraPre; |TIPO 14;
+     |ABRE #100; |LEE 000#100p; |CIERRA #100;
+
+     cCodMonTrab = #0#7;
+     |HAZ MonBas;
+     nDeci_Medi = #0#24;
+     nDeci_Incr = #0#25;
+     nDeci_Meda = #100#115;
+|FPRC;
+------------------------------------------------------------------------------
+|PROCESO MiraCont; |TIPO 7;
+     aAlfa = #0#45;
+     |QBF aAlfa;
+     |SI aAlfa = "";
+          |ABRE #1;
+          |CONSULTA_CLAVE #1#1;
+          |SI FSalida = 0;
+               aPlantilla = #1#0;
+               |QBF aPlantilla;
+
+               |DBASE cOrigen;
+               |QBF cOrigen;
+               cEmpresa = #48#0; |QBF cEmpresa;
+               cEmpresa = "00000"  + cEmpresa; cEmpresa = cEmpresa % -105;
+               cPresupu = #0#1; |QBF cPresupu;
+               cPresupu = "000000" + cPresupu; cPresupu = cPresupu % -106;
+
+               aAlfa = #0#0;
+               |QBF aAlfa;
+               aAlfa = aAlfa + "_____";
+               aAlfa = aAlfa % 105;
+               cPresupu = aAlfa + "-" + cPresupu + "-" + cEmpresa;
+
+               #0#45 = cPresupu;
+               |PINTA #0#45;
+
+               cOrigen = cOrigen + "docs/plantillas/" + aPlantilla;
+               cOrigen = cOrigen + ".doc";
+
+               |DBASE cDestino;
+               |QBF cDestino;
+               cDestino = cDestino + "docs/contratos/" + cPresupu + ".doc";
+          |FINSI;
+     |SINO;
+          |DBASE cOrigen;
+          |QBF cOrigen;
+          aAlfa = #0#45;
+          |QBF aAlfa;
+          cOrigen = cOrigen + "docs/contratos/" + aAlfa;
+          cOrigen = cOrigen + ".doc";
+
+          cDestino = cOrigen;
+     |FINSI;
+
+     cUsuario = Usuario % 810;
+     |QBF cUsuario;
+     #2#0 = cUsuario;
+     |ABRE #2;
+     |LEE 000#2=;
+     |SI FSalida ! 0;
+          |MENAV "0000NO ESTAN DEFINIDOS LOS  PARAMETROS DE IMPRESION DE ESTE USUARIO";
+          |ERROR;
+          |ACABA;
+     |FINSI;
+     cPathApli = #2#2;
+     |QBF cPathApli;
+     cPathApli = cPathApli + "\winword.exe";
+     cPathDsin = #2#6;
+     |QBF cPathDsin;
+     cPathDsin = cPathDsin + "\" + #0#45;
+     |QBF cPathApli;
+     |QBF cPathDsin;
+     cAplicaci = cPathApli + " " + cPathDsin;
+     cPathDsin = cPathDsin + ".doc";
+
+     || esto es lo nuevo (Migue, 22-12-03): para poder editar el fichero
+     || con el Word digo yo que tendre que traermelo a mi maquina y hacerlo
+     || en local, cuando acabe, me lo llevo otra vez al servidor
+
+
+     |IP_REMOTO aIP;
+     |SI aIP = "";
+          |COPIA_FICHERO cOrigen, cPathDsin;
+     |SINO;
+          |ENVIA_FICHERO cOrigen, cPathDsin;
+     |FINSI;
+
+     cAplicaci = cAplicaci + ".doc";
+     |RSYSTEM cAplicaci;
+
+     |SI aIP = "";
+          |COPIA_FICHERO cPathDsin, cDestino;
+     |SINO;
+          |RECIBE_FICHERO cPathDsin, cDestino;
+     |FINSI;
+
+     |RFBORRA cPathDsin;
+
+     ||PTEC 802;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO BajaCont; |TIPO 2;
+     nModo = (FEntrada/100)!0;
+     |SI nModo = 3;
+          cUsuario = Usuario % 810;
+          |QBF cUsuario;
+          #2#0 = cUsuario;
+          |ABRE #2;
+          |LEE 000#2=;
+          |SI FSalida ! 0;
+               |MENAV "0000NO ESTAN DEFINIDOS LOS  PARAMETROS DE IMPRESION DE ESTE USUARIO";
+               |ERROR;
+               |ACABA;
+          |FINSI;
+          |DBASE cPathDsin;
+          |QBF cPathDsin;
+          cPathDsin = cPathDsin + "docs/contratos/" + #0#45;
+          |QBF cPathDsin;
+          cPathDsin = cPathDsin + ".doc";
+          |FBORRA cPathDsin;
+     |SINO;
+          |HAZ Rellena;
+     |FINSI;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Rellena; |TIPO 0;
+     |ABRE #3;
+     #3#0 = #0#0;
+     #3#1 = #0#1;
+     |LEE 020#3=;
+     |SI FSalida = 0;
+          |PARA i = 2; |SI i [ 44; |HACIENDO i = i + 1;
+               #0i = #3i;
+               |PINTA #0i;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #3;
+|FPRC;
+
+|PROCESO Tipo13; |TIPO 13;
+     |ABRE #100; |LEE 000#100p; |CIERRA #100;
+     |SI #100#141 = "O";
+          |ATRI I; |PINTA 502, "O.E...........:"; |ATRI 0;
+     |FINSI;
+|FPRC;

@@ -1,0 +1,519 @@
+|FICHEROS;
+     agifa501 #0;             ||Entrada tiquets (C)
+     agifa502 #1;             ||Entrada tiquets (L)
+     agifa019 #2;             ||Articulos
+     agifa505 #4;             ||Parametros Caja
+     agifa024 #14;            ||Clientes
+     agifa017 #17;            ||Almacenes
+     agifa007  #69;           ||Series
+     foto0015@ #90;
+     foto0016@ #91;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     nForma = 0;
+     &nHayFOTO = 999;
+     &aDef11   = "";
+     &aDef22   = "";
+     aPath = "";
+     aMensa = "";
+     aAlfa = "";
+     ncampo = 0;
+     puente_n = 0;
+     puente_s = 0;
+     puente_a = "";
+     iva = 0;
+     Valfa1 = "";
+     mensaje = "";
+     modo = 0;
+
+
+     &EURODB = 0;
+     &VSobre = 0;
+     &Vchivato = 0;
+     &HeRecogidoSob = 0;
+     &ddestino = "";
+|FIN;
+___________________________________________ COMUNES
+|PROCESO CargaDefFOTO;
+     |DBASE aPath;
+     aMensa = ""; aDef11 = ""; aDef22 = "";
+
+     aDef11 = aPath + "def/" + "foto0016";
+     |CARGA_DEF aDef11, foto0016@;
+     |SI FSalida ! 0;
+          aMensa = "0000Error al cargar:" + aDef11;
+          aDef11 = "";
+          |MENAV aMensa; |ACABA;
+     |FINSI;
+
+     aDef22 = aPath + "def/" + "foto0015";
+     |CARGA_DEF aDef22, foto0015@;
+     |SI FSalida ! 0;
+          aMensa = "0000Error al cargar:" + aDef22;
+          aDef22 = "";
+          |MENAV aMensa; |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO DesCargaDefFOTO;
+     |SI aDef22 ! ""; |DESCARGA_DEF #foto0015@; |FINSI;
+     |SI aDef11 ! ""; |DESCARGA_DEF #foto0016@; |FINSI;
+|FPRC;
+
+|PROCESO ModuloFoto;
+     aAlfa = ""; |DBIN aAlfa;
+     aAlfa = aAlfa + "foto0015.tab";
+     |XABRE "E", aAlfa, 0;
+     nHayFOTO = FSalida;
+     |SI nHayFOTO = 0; |HAZ CargaDefFOTO; |FINSI;
+|FPRC;
+
+________________________________ DESDE AGIFA502
+
+____________________________________/ TRATAMIENTO SOBRES MULTI-TIENDA
+*(4) ... En parametros caja se permite que una linea determinada de producto
+         haga que todos los campos de las lineas de tiquets sean modificables
+         indistintamente de lo que hubiera informado.
+         Lorca 09/05/96.
+
+
+|VARIABLES;
+     i2=0;
+     cons_sobres="";
+     unidades="";
+     codbarras="";
+     empieza=0;
+     longuni=0;
+     v=0;
+     aCodigo="";
+     SerieTicket="";
+     NumeroTicket="";
+     lin=0;
+     CodigoSobre="";
+     it=0;
+     cabeza=0;
+     dosPrimeros="";
+     Tot=0;
+     texto="";
+     acaba_so=0;
+     sobre="";
+     aPrograma="";
+     importe=0;
+     car="";
+     Packreg="";
+     totalfotos=0;
+     aalmacen ="";
+     primera="";
+     nSumaBases= 0;
+|FIN;
+
+|PROCESO acum_iva2;
+     |SI #1#13 = 0;
+          #0#30 = #0#30 +. puente_n;      ||Exenta
+     |FINSI;
+     |SI #1#13 = 1;
+           #0#20 = #0#20 +. puente_n;
+           #0#21 = #0#21 +. ((puente_n % enIva)!EURODB);
+           |SI #0#29 = "S";            ||Tiene recargo
+                #0#22 = #0#22 +. ((puente_n % enRec)!EURODB);
+           |FINSI;
+     |FINSI;
+     |SI #1#13 = 2;
+          #0#23 = #0#23 +. puente_n;    || Base imponible s/decimales
+          #0#24 = #0#24 +. ((puente_n % enIva)!EURODB);
+          |SI #0#29 = "S";            ||Tiene recargo
+               #0#25 = #0#25 +. ((puente_n % enRec)!EURODB);
+          |FINSI;
+     |FINSI;
+     |SI #1#13 = 3;
+          #0#26 = #0#26 +. puente_n;
+          #0#27 = #0#27 +. ((puente_n % enIva)!EURODB);
+          |SI #0#29 = "S";            ||Tiene recargo
+               #0#47 = #0#47 +. ((puente_n % enRec)!EURODB);
+          |FINSI;
+     |FINSI;
+     |SI #1#13 = 4;
+          #0#48 = #0#48 +. puente_n;
+          #0#49 = #0#49 +. ((puente_n % enIva)!EURODB);
+          |SI #0#29 = "S";            ||Tiene recargo
+               #0#50 = #0#50 +. ((puente_n % enRec)!EURODB);
+          |FINSI;
+     |FINSI;
+     |SI #1#13 = 5;
+          #0#51 = #0#51 +. puente_n;
+          #0#52 = #0#52 +. ((puente_n % enIva)!EURODB);
+          |SI #0#29 = "S";            ||Tiene recargo
+               #0#53 = #0#53 +. ((puente_n % enRec)!EURODB);
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO graba502;
+    #agifa502#20=SerieTicket;
+    #agifa502#0=NumeroTicket;
+    #agifa502#1= lin;||linea
+    |LEE 010#agifa502.=;
+    |SI FSalida ! 0;
+        #agifa502#2=#91#2; ||codigo;
+        |SI #1#2 ! "              ";
+            |ABRE #agifa019;
+            #agifa019#0 = #agifa502#2;||Articulo
+            |LEE 010#agifa019.=;
+            |CIERRA #agifa019;
+            #agifa502#8  =#91#3;  || descripcion
+            #agifa502#5  =#91#4;  || unidades
+            #agifa502#13 =#agifa019#30; || Tipo de Iva
+            eaCli = #0#1; enTiva = #1#13; efFiva = #0#14; |HAZ IVACli;
+         |SI #agifa019#130 = "N";
+               #agifa502#6  =#91#5 > enIva;  || pvp(con iva)
+               #agifa502#10 =#91#5;  || pvp(sin iva)
+         |SINO;
+               #agifa502#6  =#91#5;  || pvp(con iva)
+               #agifa502#10 =#91#5 < enIva;  || pvp(sin iva)
+         |FINSI;
+            #agifa502#7  =#agifa502#6 * #agifa502#5;  || importe total (c_iva)
+            #agifa502#21 =#agifa502#10* #agifa502#5;  || importe total (s_iva)
+            #agifa502#25 ="Sobre: "+CodigoSobre;
+            #agifa502#19 =#91#11; ||Cuota
+            || Base imponible con decimales para calcular el IVA con ella y que no se
+            || pierda la famosa pela en el Tiquet. Si lo pasamos a Fra. o Albaran se
+            || perdera para que cuadre.
+            ncampo = 129 + #agifa024#39;
+            |SI #agifa502#25 = "";
+                |SI #agifa019#ncampo# = "S";
+                    #agifa502#10 = (#agifa502#6 / (1 + (enIva / 100))) ! 2;
+                |SINO;
+                    #agifa502#10 = #agifa502#6;
+                |FINSI;
+            |SINO;
+                #agifa502#10 = (#agifa502#6 / (1 + (enIva / 100))) ! 2;
+            |FINSI;
+            || El coste solo se calcula si estamos desde la pantalla, y no
+            || si esta leyendose el fichero agifa992
+            |SI aPrograma = "agifa502";
+                #agifa502#23 = #agifa019#9 * #agifa502#5;         ||Coste linea
+            |FINSI;
+            ncampo = 129 + #agifa024#39;
+            |SI #agifa502#25 = "";      || no es un sobre
+                |SI #agifa019#ncampo# = "S";
+                    #agifa502#21 = ((#agifa502#7 < #1#14 ) / (1 + (enIva / 100))) ! 2;|| <#0#17<#0#19<#0#18;||Base imponible
+                |SINO;
+                    #agifa502#21 = #agifa502#7 < #1#14 ;|| <#0#17<#0#19<#0#18;||Base imponible
+                |FINSI;
+            |SINO;
+                #agifa502#21 = ((#agifa502#7 < #1#14 ) / (1 + (enIva / 100))) ! 2;|| <#0#17<#0#19<#0#18;||Base imponible
+            |FINSI;
+            #agifa501#3 = #agifa501#3 +. #agifa502#21;        ||Total bruto
+            #agifa501#61 = #agifa501#3 / #agifa501#59;    || aplicamos cambio.
+            puente_n = ((#agifa502#21 < #agifa501#17) < #agifa501#19) < #agifa501#18;
+            |SI #2#194 = 2;
+               |SI #agifa019#130 = "N";
+                  puente_s = ((((#1#10*#1#29<#1#14)) < #agifa501#17) < #agifa501#19) < #agifa501#18;
+               |SINO;
+                  puente_s = ((((#1#6*#1#29<#1#14)) < #agifa501#17) < #agifa501#19) < #agifa501#18;
+               |FINSI;
+            |SINO;
+               |SI #agifa019#130 = "N";
+                  puente_s = ((((#1#10*#1#5<#1#14)) < #agifa501#17) < #agifa501#19) < #agifa501#18;
+               |SINO;
+                 puente_s = ((((#1#6*#1#5<#1#14)) < #agifa501#17) < #agifa501#19) < #agifa501#18;
+               |FINSI;
+            |FINSI;
+            puente_s = puente_s ! 2;
+            puente_n = puente_n ! 0;
+            #agifa501#28 = #agifa501#28 +. (#agifa502#21 - puente_n);    ||Total descuentos
+            eaCli = #0#1; enTiva = #1#13; efFiva = #0#14; |HAZ IVACli;
+            |HAZ acum_iva2;
+            #agifa501#9 = #agifa501#9 +. (puente_s + iva); ||#agifa502#7 Oscar
+            #agifa501#60 = #agifa501#9 / #agifa501#59;    || aplicamos cambio.
+        |FINSI;||Solo lo hara si el codigo es de articulos
+    |FINSI;
+    |GRABA 020#agifa502.n;
+    lin=lin+1;
+|FPRC;
+
+|DEFBUCLE foto0016;
+     #91#1002;
+     ;
+     CodigoSobre,001;
+     CodigoSobre,999;
+     be;
+     NULL,graba502;
+|FIN;
+
+|PROCESO VSobres;
+     |HAZ ModuloFoto;
+
+     VSobre = 0;
+     Valfa1 = #1#22 % 102;
+     |SI Valfa1 = "..";
+          |SI nHayFOTO ! 0; |ERROR; |ACABA; |FINSI;
+          VSobre = 1;              || con ..sobre
+     |SINO;
+          Valfa1 = #1#22 - "*";
+          |SI Valfa1 ! #1#22;
+               VSobre = 2;         || con unidades*sobre
+          |FINSI;
+     |FINSI;
+     |SI VSobre =2; ||Es uni*barras
+         |MENSA mensaje;
+         aCodigo=#1#22;   || Utilizamos el codigo de unidades * cod. barras
+         |PARA v=101 ;|SI v<901;|HACIENDO v=v+100;    ||SEPARAMOS UNIDADES Y COD BARRAS
+               car=aCodigo % v;  || Extraigo un caracter
+               |SI car="*";     || BUSCO EL ASTERISCO PARA SEPARAR LAS UNIDADES DE LAS BARRAS
+                   |SAL;
+               |FINSI;
+         |SIGUE;
+         |SI v=901;
+             |QBF aCodigo;
+             #agifa502#22=aCodigo;
+         |SINO;
+             longuni=((v-101)/100)+100;  ||GUARDO LA LONGITUD DE LAS UNIDADES
+             empieza=v+113;              ||GUARDO DONDE EMPIEZA Y LA LONGITUD DEL CODIGO DE BARRAS
+             unidades= aCodigo % longuni;
+             codbarras=aCodigo % empieza;
+             |QBF codbarras;
+             |QBF unidades;
+             #agifa502#5=unidades;
+             #agifa502#22=codbarras;
+             |PINTA #agifa502#5;
+             |PINTA #agifa502#22;
+             #1#22 = codbarras;
+             |ABRE #2;
+             |SELECT #4#2;                 ||Selecciono clave Codigo  Barras
+             #2#128 = #1#22;
+             |LEE 001#2=;
+             |SI FSalida = 0;
+                 |C_M #1#2,1,"N";
+                 |HAZ carga_art;
+             |SINO;
+                 |SI modo ! 2;
+                     #1#22 = "";
+                     |PINTA 1220,"                      ";
+                     |C_M #1#2,1,"S";
+                 |SINO;
+                     |MENAV "0000El Codigo no EXISTE...";
+                      #1#22 = codbarras;
+                 |FINSI;
+             |FINSI;
+             |SELECT #1#2;
+             |CIERRA #2;
+         |SINO;
+             |C_M #1#2,1,"S";
+         |FINSI;
+     |FINSI;
+     |SI VSobre =1; ||Es un sobre
+||******************************Esto es el proceso descarga_sobres (VICTOR)
+
+         sobre = 1;
+         CodigoSobre=#1#22%313;
+         |ABRE #90;
+         #90#0=CodigoSobre;
+         |LEE 010#90=;
+         |SI FSalida=0;
+             totalfotos=#90#14;
+             |SI #90#5="E"; |O #90#5="e";  ||Sobre Enviado
+                 |ATRI R;
+                 |MENAV "0400Sobre enviado, pero no facturado";
+                 |ATRI N;
+                 |ERROR;
+                 |ACABA;
+             |FINSI;
+             |SI #90#5="R"; |O #90#5="r";  ||Sobre Recogido
+                 |ATRI R;
+                 |MENAV "0400Sobre ya recogido";
+                 |ATRI N;
+                 VSobre=1;
+                 Vchivato=1;
+                 |ERROR;
+                 |ACABA;
+             |FINSI;
+             |SI #90#5="F"; |O #90#5="f";  ||Sobre Facturado
+                 Packreg=#90#22;
+                 #90#10=#agifa501#14;||fecha
+                 #90#11=#agifa501#34;||hora
+                 #90#12=#agifa501#36;||serie ticket
+                 #90#13=#agifa501#0; ||numero ticket
+                 #90#5="R";          ||estado sobre
+                 Tot=#90#14;
+                 NumeroTicket=#agifa501#0;
+                 SerieTicket=#agifa501#36;
+                 |GRABA 010#90a;
+                 |CIERRA #90;
+                 |ABRE #91;
+                 lin=#agifa502#1;
+                 ||******************************************************
+                 ||GRABO EL NUMERO DE SOBRE EN LA PRIMERA LINEA
+                 ||******************************************************
+                 #agifa502#0=NumeroTicket;
+                 #agifa502#1=lin;
+                 #agifa502#20=SerieTicket;
+                 |LEE 010#agifa502.=;
+                 |SI FSalida ! 0;
+                     texto= "Sobre:" + CodigoSobre;
+                     #agifa502#8=texto;||Grabo el n£mero de sobre
+                     #agifa502#5 = 0;
+                     |GRABA 020#agifa502.b;
+                 |FINSI;
+                 ||******************************************************
+                 |ABRE #agifa024;
+                 #agifa024#0= #agifa501#1;
+                 |LEE 000#agifa024.=;
+                 |SI FSalida = 0;
+                     #agifa502#4 = #agifa501#1;||Cliente;
+                     #agifa501#17 = #agifa024#37;||Dto.
+                     #agifa501#18 = #agifa024#38;||Dto P.P
+                     #agifa501#19 = #agifa024#156;||Dto Acumulado
+                 |FINSI;
+                 |CIERRA #agifa024;
+                 lin=lin+1;
+                 |BUCLE foto0016;
+                 |HAZ PintaVisor;
+                 |HAZ control2;
+                 |HAZ ActCliSobre;
+             |FINSI;
+         |SINO;
+             |AVISO;
+             |MENSA "0000SOBRE NO EXISTE";
+             |PAUSA;
+             |MENSA "0000                ";
+             acaba_so = 1;
+         |FINSI;
+         |SI acaba_so = 1;
+             acaba_so = 0;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+         |SI #4#31 = "S";
+             importe = #agifa501#60 ;
+         |SINO;
+             |PINTA #agifa501#60;
+         |FINSI;
+         ||******************GRABO EL PACK DE REGALO SI LO HAY****
+         |QBF Packreg;
+         |SI Packreg ! ""; |Y Packreg ! "SIN PACK";
+             #agifa502#0=NumeroTicket;
+             #agifa502#1=lin;
+             #agifa502#20=SerieTicket;
+             |LEE 000#agifa502.=;
+             |SI FSalida ! 0;
+                 #agifa502#8=Packreg;
+                 #agifa502#5 = 0;
+                 #agifa502#14=0;
+                 #agifa502#7 =0;
+                 #agifa502#6= 0;
+                 |GRABA 020#agifa502.n;
+                 |HAZ BajaPack;
+             |FINSI;
+         |FINSI;
+         lin=lin+1;
+/*
+         |PTEC 802; ||Intro para entrar en unidades
+         |PTEC 809; ||Flecha abajo para linea nueva
+         |PTEC 815; ||Avance pagina para ultima linea
+         |PTEC 814; ||Retroceso pagina para primera linea
+         |PTEC 807; ||Ctrl+c para cancelar línea
+*/
+         |PTEC 815; ||Avance pagina para ultima linea
+         |PTEC 815; ||Avance pagina para ultima linea
+
+         HeRecogidoSob = 1;
+         Vchivato=0;
+     |FINSI;
+
+     |HAZ DesCargaDefFOTO;
+|FPRC;
+
+||________________________________________________________________________
+|| DAR DE BAJA EL PACK EN EL ALMACEN
+||*****************************************************************************
+
+|PROCESO lee_almacen;
+     |ABRET #agifa007;
+     #agifa007#26=#4#89;
+     |LEE 000#agifa007.=;               || COVERIN
+     aalmacen = #agifa007#29;
+     |CIERRAT #agifa007;
+|FPRC;
+
+|PROCESO BajaPack;
+     |HAZ lee_almacen;
+     |ABRET #17;
+     #17#0=Packreg;
+     #17#1=aalmacen;
+     |LEE 101#17=;
+     #17#5 = #17#5  - 1;
+     #17#39= #17#39 - 1;
+     #17#50 = #17#42 + #17#6 - #17#43 - #17#39; || necesidades
+     #17#50 = #17#50 - #17#4 - #17#9 - #17#8;
+     |GRABA 020#17a;
+     |LIBERA #17;
+     |CIERRAT #17;
+|FPRC;
+
+
+||____________________________________________________________________________/
+     ||victor.coverin 23.3.99
+     ||Este proceso actualiza con el total del sobre el acumulado de clientes
+
+|PROCESO ActCliSobre;
+     nForma = 0 +. 1;
+     |ABRE #14;
+     |DDEFECTO #14;
+     #14#0 = #0#1;
+     |LEE 101#14=;
+     |SI FSalida ! 0; |GRABA 021#14b; |FINSI;
+     #14#102 = #14#102 +. #0#3;                  ||Total compras
+     #14#110 = #14#110 +. #0#3;                  ||Total Facturado
+     puente_a = #0#14 % 402;
+     puente_n = ((puente_a - 1) * 4) + 54;
+     #14#puente_n# = #14#puente_n# +. #0#3;      ||Compras Parcial
+     #14#46 = #0#3 ;                            ||Importe Ultcompra
+     |GRABA 021#14a;
+     |LIBERA #14;
+     |CIERRA #14;
+
+     enImpCliCom = #0#3 * nForma;
+     enImpCliFac = #0#3 * nForma;
+     eaCliente = #0#1;
+     efFecha = #0#14;
+     |HAZ AcumulaCli;
+|FPRC;
+
+/*
+________________________________ DESDE DSCC0001
+
+|PROCESO gra15;
+    |SI #90#5 = "R"; |O #90#5 = "r";
+         |BORRA 020#90a;
+    |FINSI;
+|FPRC;
+
+|PROCESO gra16;
+    |SI #90#5 = "R"; |O #90#5 = "r";
+         |BORRA 020#91a;
+    |FINSI;
+|FPRC;
+
+|DEFBUCLE foto0015;
+     #90#1001;
+     ;
+     "               ";
+     "zzzzzzzzzzzzzzz";
+     be;
+     NULL,gra15,gra16;
+|FIN;
+
+|PROCESO BorraFotos;
+     |HAZ ModuloFoto;
+
+     |PATH_DAT #90 ddestino;
+
+     |BUCLE foto0015;
+
+     |HAZ DesCargaDefFOTO;
+|FPRC;
+*/

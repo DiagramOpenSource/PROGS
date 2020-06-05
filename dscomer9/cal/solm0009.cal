@@ -1,0 +1,194 @@
+|FICHEROS;
+     solm0009 #0;
+     solm0010 #1;
+     solm0012 #12;
+     solm0010@;
+|FIN;
+
+|VARIABLES;
+     nImpo = 0;
+     aAlfa = "";
+     nPorce = 0;
+     aPorce = "";
+     nSuma = 0;
+     nModo = 0;
+     nHuerto = 0;
+     nConta = 0;
+     nSwFac = 0;
+     aRuta = "";
+|FIN;
+
+|PROCESO Contador; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          nHuerto = #0#0;
+          #0#1 = 9999;
+          |LEE 000#0];
+          |SI FSalida = 0;
+               |LEE 000#0a;
+          |SINO;
+               |LEE 000#0u;
+          |FINSI;
+          |SI FSalida = 0; |Y nHuerto = #0#0;
+               nConta = #0#1 + 1;
+          |SINO;
+               nConta = 1;
+          |FINSI;
+          |DDEFECTO #0;
+          #0#0 = nHuerto;
+          #0#1 = nConta;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo2Lin; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+          |SI #1#8 ! 0;
+               |MENAV "0000Linea facturada...";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+
+     #0#28 = #0#28 +. #1#6;
+     |PINTA #0#28;
+|FPRC;
+
+|PROCESO Lineas;
+     |SI #1#8 ! 0;
+          nSwFac = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO SumaLineas;
+     #0#28 = #0#28 + #1#6;
+|FPRC;
+
+|PROCESO Tipo2Cab; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 3;
+          nSwFac = 0;
+          |BUCLELIN 2Lineas#0;
+          |SI nSwFac ! 0;
+               |MENAV "0000Hay lineas facturadas...";
+               |ERROR; |ACABA;
+          |FINSI;
+     |SINO;
+          #0#28 = 0;
+          |BUCLELIN 2SumaLineas#0;
+          |PINTA #0#28;
+     |FINSI;
+|FPRC;
+
+|PROCESO Browse; |TIPO 0;
+     |SI FSalida = 13;
+          aRuta = "F*.doc";
+          |BROWSE aRuta;
+          aRuta = aRuta % 2;
+          |SI aRuta ! "F";
+               #0#4 = aRuta; |PINTA #0#4;
+          |FINSI;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo8; |TIPO 8;
+     |ABRE #12;
+     #12#0 = "IN"; #12#1 = "Primera entrega.";
+     |GRABA 040#12n;
+     #12#0 = "D1"; #12#1 = "Inicio instalación electrica.";
+     |GRABA 040#12n;
+     #12#0 = "D2"; #12#1 = "Inicio instalación de la estructura soporte.";
+     |GRABA 040#12n;
+     #12#0 = "D3"; #12#1 = "Fin instalación de la estructura soporte.";
+     |GRABA 040#12n;
+     #12#0 = "D4"; #12#1 = "Acopio e instalación de paneles fotovoltaicos.";
+     |GRABA 040#12n;
+     #12#0 = "FO"; #12#1 = "Final de obra."
+     |GRABA 040#12n;
+     |CIERRA #12;
+|FPRC;
+
+|PROCESO SumLineas;
+     |SI #solm0010@#2 ! #1#2;
+          nPorce = nPorce + #solm0010@#5;
+          nImpo = nImpo + #solm0010@#6;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE SumLineas;
+     #solm0010@#1003;
+     ;
+     #0#0, #0#1, 001;
+     #0#0, #0#1, 999;
+     ;
+     NULL, SumLineas;
+|FIN;
+
+|PROCESO Factu; |TIPO 0;
+     |SI #0#27 = 1;
+          #1#6 = #0#11 * #1#5 / 100;
+          |PINTA #1#6;
+     |SINO;
+          #1#5 = #1#6 / #0#11 * 100;
+          |PINTA #1#5;
+     |FINSI;
+
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "solm0010";
+     |CARGA_DEF aAlfa, solm0010@;
+     |SI FSalida = 0;
+          nPorce = #1#5;
+          nImpo = #1#6;
+          |BUCLE SumLineas;
+          aPorce = nPorce;    nPorce = aPorce;
+          |SI nPorce > 100;
+               |MENAV "0000Se supera el 100%...";
+               |SI #0#27 = 1; || solo cuando la introduccion es por %
+                    |ERROR;
+               |SINO;
+                    |SI nImpo > #0#11;
+                         nImpo = nImpo - #0#11;
+                         aAlfa = "0000Importe superado en: " + nImpo;
+                         |MENAV aAlfa;
+                         |ERROR;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |DESCARGA_DEF #solm0010@;
+     |FINSI;
+|FPRC;
+
+|PROCESO Word; |TIPO 20;
+     |SI FSalida = "OPCION";
+          FSalida = "Doc. WORD";
+     |SINO;
+          |LEE 000#0=;
+          |SI FSalida ! 0; |ACABA; |FINSI;
+          |CONFI "0000SAsignar campos al documento?";
+          |SI FSalida = 0;
+               |HAZ ImprimeWord;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CalImp; |TIPO 0;
+     #0#12 = #0#11 * #0#13 / 100; |PINTA #0#12;
+     #0#14 = #0#11 * #0#15 / 100; |PINTA #0#14;
+     #0#16 = #0#11 * #0#17 / 100; |PINTA #0#16;
+
+     nSuma = #0#12 + #0#14 + #0#16;
+     |SI nSuma > #0#11;
+          |MENAV "0000Se supera el 100% del importe...";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo; |TIPO 7;
+     |SI #0#27 = 0;
+          |C_M #1#5, 1, "N";
+          |C_M #1#6, 1, "S";
+     |SINO;
+          |C_M #1#5, 1, "S";
+          |C_M #1#6, 1, "N";
+     |FINSI;
+|FPRC;

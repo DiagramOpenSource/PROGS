@@ -1,0 +1,192 @@
+|FICHEROS;
+     maempr23;
+     maempr22;
+
+    :/basica/def/agidanif;
+    &regisnif@ #709;
+    &sgpaises@ #718;
+|FIN;
+
+|VARIABLES;
+     &empresa   = 0;
+     &anyo      = 0;
+     &modo      = 0;
+
+     SwError    = 0;
+     nSalir     = 0;
+     aAlfa      = "";
+     aAlfa1     = "";
+     nModo      = 0;
+     nCampo     = 0;
+     nNume1     = 0;
+     fHoy       = @;
+     nDia1      = 0;
+     nDia2      = 0;
+     nMes1      = 0;
+     nMes2      = 0;
+     nAny1      = 0;
+     nAny2      = 0;
+     nEdad      = 0;
+
+     &enCalcCif = 0;
+     &eaVarDni  = "";
+     &eaCodPais = "";
+     &eaCodNif  = "";
+     &eswNif    = 0;
+|FIN;
+
+|PROCESO LetraNif;  |TIPO 6;
+     |SI FSalida = 10;
+         enCalcCif = 1;
+         eaVarDni  =  #maempr23#Campo#;
+         |HAZ CalculoDNI;
+         #maempr23#Campo# = eaVarDni;
+         |PINTA #maempr23#Campo#;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #maempr23#Campo#;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "            ") % 112;
+     |SI #maempr23#Campo# ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #maempr23#Campo# = eaVarDni;  |PINTA #maempr23#Campo#;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeePaism23; |TIPO 6;
+     eaCodPais = #maempr23#Campo#;
+     |HAZ eLeePais;
+     nCampo = Campo + 1;
+     #maempr23#nCampo# = #718#1; |PINTA #maempr23#nCampo#;
+|FPRC;
+
+|PROCESO PonDatos;
+     aAlfa1 = Contenido;
+     nModo  = (FEntrada / 100) ! 0;
+     aAlfa  = #maempr23#5; |QBF aAlfa;
+
+     |SI nModo = 1; |O aAlfa = ""; |O aAlfa1 ! #maempr23#3;
+         eaCodNif  = #maempr23#3;
+         |HAZ LeeNifs;
+
+         #maempr23#10 = "01.01.0000";
+         #maempr23#5  = #709#1;  |PINTA #maempr23#5;
+     |FINSI;
+     |HAZ Tipo0FecNac;
+|FPRC;
+
+|PROCESO Tipo0FecNac;
+     |SI #maempr23#10 [ "01.01.0001";
+         |ABRE #agidanif;
+         #agidanif#0  = #maempr23#3;
+         #agidanif#1  = 1;
+         |LEE 040#agidanif.=;
+         |SI FSalida = 0; |Y #agidanif#13 > "01.01.0000";
+             #maempr23#10 = #agidanif#13; |PINTA #maempr23#10;
+         |FINSI;
+         |CIERRA #agidanif;
+     |FINSI;
+
+     fHoy = ~;
+     |SI #maempr23#10 > fHoy;    || nacimientos futuros como que no
+          |HAZ PonSiglo20;       ||/se cambia sin preguntar
+     |FINSI;
+
+     |SI #maempr23#10 ] "01.01.2001"; |Y #maempr23#10 [ fHoy;  || presuntos ni¤os,
+                                                                       ||/se pregunta
+         |HAZ CumpleAnyos;
+         |SI nEdad < 18;
+             aAlfa = "0000SLa fecha puede ser incorrecta. Ha introducido un contribuyente menor de edad. Corregir fecha?";
+             |CONFI aAlfa;
+             |SI FSalida = 0;
+                 |ERROR;
+                 || |HAZ PonSiglo20;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO CumpleAnyos;
+     aAlfa1 = fHoy;         aAlfa1 = aAlfa1 % -104; nAny1 = aAlfa1;
+     aAlfa1 = #maempr23#10; aAlfa1 = aAlfa1 % -104; nAny2 = aAlfa1;
+     nEdad  = nAny1 - nAny2;
+
+     |SI nEdad ! 18; |ACABA; |FINSI;
+
+     aAlfa1 = fHoy;         aAlfa1 = aAlfa1 % 402; nMes1 = aAlfa1;
+     aAlfa1 = #maempr23#10; aAlfa1 = aAlfa1 % 402; nMes2 = aAlfa1;
+
+     |SI nMes2 > nMes1;  nEdad = nEdad - 1; |FINSI;
+     |SI nMes1 ! nMes2;  |ACABA;            |FINSI;
+
+     aAlfa1 = fHoy;         aAlfa1 = aAlfa1 % 102; nDia1 = aAlfa1;
+     aAlfa1 = #maempr23#10; aAlfa1 = aAlfa1 % 102; nDia2 = aAlfa1;
+
+     |SI nDia2 > nDia1;  nEdad = nEdad - 1; |FINSI;
+|FPRC;
+
+|PROCESO PonSiglo20;
+     aAlfa1    = (#maempr23#10 % 106) + "19" + (#maempr23#10 % -102);
+     #maempr23#10 = aAlfa1;
+     |PINTA #maempr23#10;
+|FPRC;
+
+|PROCESO inferior;
+     #maempr23#0 = empresa;
+     #maempr23#1 = anyo;
+     #maempr23#2 = 01;
+|FPRC;
+
+|PROCESO superior;
+     #maempr23#0 = empresa;
+     #maempr23#1 = anyo;
+     #maempr23#2 = 99;
+|FPRC;
+
+|PROCESO  ComprobarOtro;
+    SwError = 0;
+    |ABRE #maempr22;
+    #maempr22#0 = empresa;
+    #maempr22#1 = anyo;
+    #maempr22#2 = 001;
+    |LEE 041#maempr22.];
+    |SI FSalida = 0; |Y #maempr22#0 = empresa; |Y #maempr22#1 = anyo;
+        SwError = 1;
+    |FINSI;
+    |CIERRA #maempr22;
+    |SI SwError = 1;
+        |MENAV "0000Existen datos en Personas Fisicas con participacion ] 25%";
+        |MENAV "0000No puede informar datos en este cuadro";
+    |FINSI;
+
+    |ABRE #maempr23;
+    #maempr23#0 = empresa;
+    #maempr23#1 = anyo;
+    #maempr23#2 = 01;
+    |LEE 041#maempr23.];
+    |SI FSalida = 0; |Y #maempr23#0 = empresa; |Y #maempr23#1 = anyo;
+        SwError = 0;
+    |FINSI;
+    |CIERRA #maempr23;
+|FPRC;
+
+|PROGRAMA;
+
+     |HAZ ComprobarOtro;
+     |SI SwError = 1; |ACABA; |FINSI;
+
+     |PINPA #0#maempr23;
+     |SI modo = 4;
+         |ENTLINEAL #1#maempr23, -3, 4, 21, 0, inferior, superior;
+     |SINO;
+         |ENTLINEAL #1#maempr23, -3, 2, 21, 0, inferior, superior;
+     |FINSI;
+|FPRO;

@@ -1,0 +1,179 @@
+|FICHEROS;
+     dsz00067 #0;
+     agifa104 #104;
+     agifa142 #142;
+     dsm00020 #20;
+     agifa010 #10;
+     agifa071 #71;
+     agifa073 #73;
+|FIN;
+
+|VARIABLES;
+     &eaSerFactu = "";
+     &eaRepreAdj = "";
+     &enNumAlbAnt = 0;
+     aAlfa = "";
+     nSwCongecar = 0;
+     aSerAlbAnt = "";
+     nNumAlbAnt = 0;
+     nSwTagloma = 0;
+     &enTagAgen = 0;
+     &fec_alb = @;
+     &ser_ped = "";
+     &num_ped = 0;
+     &eaSerAlb = "";
+     &enNumAlb = 0;
+     &eaSerPedido = "";
+     &enNumPedido = 0;
+     &eaSerDefe = "";
+     &eaFecAlb = "";
+     &ser_alb = "";
+     &num_alb = 0;
+     &abo_alb = "N";
+     nSwPdte = 0;
+     nSwCoimasa = "";
+|FIN;
+
+|PROCESO CheqAge; |TIPO 0;
+     |SI nSwTagloma = 0;
+          |ABRE #20;
+          #20#0 = #0#4;
+          |LEE 000#20=;
+          |SI FSalida ! 0;
+               |MENAV "0000No existe agencia de transportes";
+               |ERROR;
+          |FINSI;
+          |CIERRA #20;
+     |FINSI;
+|FPRC;
+
+|PROCESO MiraAdjAntes;
+     #71#31 = #73#28;
+     #71#12 = #73#0;
+     #71#21 = #73#1;
+     |LEE 000#71=;
+     |SI FSalida = 0;
+          #10#52 = #71#29;
+          #10#0 = #71#0;
+          |LEE 000#10=;
+          |SI #10#38 = "S";
+               aAlfa = ("000000" + #10#0) % -106;
+               aAlfa = "0000El albaran adjudicado anteriormente:" + #10#53 + "/" + aAlfa + ", esta facturado...";
+               |MENAV aAlfa;
+          |SINO;
+               aSerAlbAnt = #10#52;
+               nNumAlbAnt = #10#0;
+          |FINSI;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |C_V #0#4, 1, "N";  ||Solo visible para tagloma
+
+     |HAZ EsTagloma; nSwTagloma = FSalida;
+     |HAZ EsCongecar; nSwCongecar = FSalida;
+     |HAZ EsCoimasa; nSwCoimasa = FSalida;
+
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |ABRE #104;
+     #104#25 = ser_ped;
+     #104#0 = num_ped;
+     |LEE 000#104=;
+     |SI FSalida = 0;
+          nNumAlbAnt = 0;
+          |SI nSwCongecar = 0;
+               |ABRE #71;
+               |ABRE #10;
+               |SELECT #4#71;
+               |BUCLELIN 0 MiraAdjAntes #104;
+               |CIERRA #10;
+               |CIERRA #71;
+               |SI nNumAlbAnt ! 0;
+                    aAlfa = ("000000" + nNumAlbAnt) % -106;
+                    aAlfa = "0000SAdjudicar al albaran:" + aSerAlbAnt + "/" + aAlfa + " adjudicado anteriormente?";
+                    |AVISO;
+                    |CONFI aAlfa;
+                    |SI FSalida ! 0; nNumAlbAnt = 0; |FINSI;
+               |FINSI;
+          |FINSI;
+
+          |SI nNumAlbAnt ! 0;
+               #0#0 = aSerAlbAnt;
+               #0#1 = #104#1;
+               #0#2 = #104#25;
+               #0#3 = #104#0;
+               #0#4 = #104#60;
+
+               enNumAlbAnt = nNumAlbAnt;
+               FSalida = 0;
+          |SINO;
+               #0#0 = #104#25;
+               #0#1 = #104#1;
+               #0#2 = #104#25;
+               #0#3 = #104#0;
+               #0#4 = #104#60;
+               |SI #142#185 = "S";
+                    #0#0 = #142#188;
+               |FINSI;
+               #0#5 = #104#7;
+               |BLANCO 1025 1957;
+
+               |PINPA #0#0;
+               |SI nSwTagloma = 0;
+                    #0#1 = ~;
+                    |C_V #0#4, 1, "S"; |PINTA #0#4;
+                    |PINTA 1529, "Agencia Tran:";
+               |FINSI;
+
+               |SI nSwCoimasa = 0;
+                    ||si se deja modificar cambiar el coimz004
+                    |C_M #0#5, 1, "N"; |PINTA #0#5;
+               |FINSI;
+
+               |PINDA #0#0;
+               |ENDATOS #1#0;
+          |FINSI;
+          |SI FSalida = 0;
+               eaSerAlb = #0#0;
+               enNumAlb = 0;
+               eaFecAlb = #0#1;
+               eaSerPedido = #0#2;
+               enNumPedido = #0#3;
+               enTagAgen = #0#4; || Para Tagloma
+               eaRepreAdj = #0#5;
+               |SUB_EJECUTA_NP "agifa098";
+
+               |SI enNumAlb ! 0;
+                    |CONFI "0000NImprimir Albaran?";
+                    |SI FSalida = 0;
+                         ser_alb = eaSerAlb;
+                         num_alb = enNumAlb;
+                         |SUB_EJECUTA_NP "agifa014";
+                    |FINSI;
+
+                    |ABRE #10;
+                    #10#52 = eaSerAlb;
+                    #10#0 = enNumAlb;
+                    |LEE 000#10=;
+                    |SI FSalida = 0; |Y #10#51 = "S";
+                         ser_alb = eaSerAlb;
+                         num_alb = enNumAlb;
+                         fec_alb = #0#1;
+                         abo_alb = "N";
+                 ||        eaSerDefe = "N";  quitado  segun tiquet 3218/1692
+                         eaSerFactu = ser_alb; ||a¤adido segun 3068/462
+                         |CONFI "0000NFacturar Albaran?";
+                         |SI FSalida = 0;
+                              |SUB_EJECUTA_NP "agifa057";
+                         |FINSI;
+                    |FINSI;
+                    |CIERRA #10;
+               |FINSI;
+          |SINO;
+               |MENAV "0000Adjudicacion cancelada...";
+          |FINSI;
+     |FINSI;
+     |CIERRA #104;
+|FPRO;

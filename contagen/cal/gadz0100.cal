@@ -1,0 +1,1349 @@
+|FICHEROS;
+     cacuenta;
+     caivaasi;
+     gadz0100;
+     gadm0003;
+     gadm0006;
+
+     dscsvw08;
+
+     gadw0006;
+     gadw0007;
+
+     :dsarchi/dpntm100;
+     :dsarchi/dpntm101;
+     :dsarchi/dsarw114;
+
+     &agifa041@;   || Acceso
+     &agifa024@;   || Clientes
+     &agifa112@;   || Proveedores
+
+     &agifa060@;   || Cuentas por familias
+     &agifa724@;   || Cuentas por articulos
+
+     &agifa084@;   || Facturas contado cabecera
+     &agifa069@;   || Facturas contado linea
+
+     &agifa134@;   || Facturas ventas cabecera
+     &agifa059@;   || Facturas ventas lineas
+     &agifa071@;   || Albaranes ventas lineas
+
+     &agifa079@;   || Facturas compras cabecera
+     &agifa072@;   || Facturas compras lineas
+     &agifa080@;   || Albaranes compras lineas
+
+     &regisnif@;
+     &sgpaises@;
+|FIN;
+
+|INCLUYE z0100var;
+
+|PROCESO BorraTempos;
+     aAlfa = aPathLocal + "ficcsv.txt";  |RFBORRA aAlfa;
+
+     aAlfa = aPathLocal + "*.csv";
+     |R_PDIR aAlfa;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          |RFBORRA aAlfa;
+
+          |R_SDIR aAlfa;
+     |SIGUE;
+
+     aAlfa = aPathLocal + "*.xlsx";
+     |R_PDIR aAlfa;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          |RFBORRA aAlfa;
+
+          |R_SDIR aAlfa;
+     |SIGUE;
+
+     aAlfa = aPathTmp + "*.csv";
+     |_PDIR aAlfa;
+     |PARA;  |SI FSalida = 0;  |HACIENDO;
+          |FBORRA aAlfa;
+
+          |_SDIR aAlfa;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Conversion;
+     nError  = 0;
+
+     aVer1      = "";
+     aVer2      = "";
+     aContiene  = aBaseConta + "plugin/dsofficetxt.exe";
+     |ESPECIFICA "MD5", aContiene;
+     aVer1 = FSalida;
+
+     aContiene  = aPathLocal + "dsofficetxt.exe";
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aVer2 = FSalida;
+
+     |SI aVer1 ! aVer2;
+         eaOri  = aBaseConta + "plugin/dsofficetxt.exe";
+         eaDes  = aPathLocal + "dsofficetxt.exe";
+
+         |SI aIPRemoto = "";
+             |COPIA_FICHERO eaOri, eaDes;
+         |SINO;
+             |ENVIA_FICHERO eaOri, eaDes;
+         |FINSI;
+
+         aAlfa = aPathLocal + "dsofficetxt.exe";
+         |XABRE "EC", aAlfa, 0;
+         |SI FSalida < 0;
+             |MENAV "0000No encuentro el conversor a CSV, por favor consulte con su administrador informatico.";
+             aFicExterno = "";
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     |SI enCmp = 7;   aNom = "clientes.csv";     |FINSI;
+     |SI enCmp = 8;   aNom = "proveedores.csv";  |FINSI;
+     |SI enCmp = 9;   aNom = "facventas.csv";    |FINSI;
+     |SI enCmp = 10;  aNom = "faccompras.csv";   |FINSI;
+
+     aProg   = aPathLocal + "dsofficetxt.exe";
+     aParam1 = aFicExterno;
+     aParam2 = aPathLocal + aNom;
+     aParam3 = "";
+
+     aAlfa  = "cmd " + &34 + "/c START /WAIT " + aProg + " " + aParam1 + " " + aParam2 + aParam3 + &34;
+     |RSYSTEM aAlfa;
+
+     |XABRE "EC", aParam2, 0;
+     |SI FSalida < 0;
+         aFicExterno = "";
+         |MENAV "0000No se ha podido convertir a CSV el fichero seleccionado.";
+         |ACABA;
+     |FINSI;
+
+     eaOri = aParam2;
+     eaDes = aPathTmp + aNom;
+
+     |SI aIPRemoto = "";
+         |COPIA_FICHERO eaOri, eaDes;
+     |SINO;
+         |RECIBE_FICHERO eaOri, eaDes;
+     |FINSI;
+
+     aFicExterno = eaDes;
+|FPRC;
+
+|PROCESO PonDsselect;
+     |DBASS aBase;  |QBF aBase;
+
+     eaOri = aBase + "basica/plantillas/dsselect.exe";
+     |XABRE "E", eaOri, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     eaDes      = aPathLocal + "dsselect.exe";
+
+     aContiene1 = eaDes;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = eaOri;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     |SI aDocRemoto ! aDocServidor;  |O aDocRemoto = "";
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO eaOri, eaDes;
+         |SINO;
+             |COPIA_FICHERO eaOri, eaDes;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ConsulCli;
+     aFicTmp = "w8cli" + Usuario;
+     |NOME_DAT #dscsvw08#aFicTmp#;
+
+     |ABRE #dscsvw08;
+     |LEE 000#dscsvw08.p;
+     |CONSULTA_CLAVE #1#dscsvw08;
+     |CIERRA #dscsvw08;
+|FPRC;
+
+|PROCESO ConsulPro;
+     aFicTmp = "w8pro" + Usuario;
+     |NOME_DAT #dscsvw08#aFicTmp#;
+
+     |ABRE #dscsvw08;
+     |LEE 000#dscsvw08.p;
+     |CONSULTA_CLAVE #1#dscsvw08;
+     |CIERRA #dscsvw08;
+|FPRC;
+
+|PROCESO Consul100;
+     |ABRE #dpntm100;
+     |LEE 000#dpntm100.p;
+     |CONSULTA_CLAVE #1#dpntm100;
+     |CIERRA #dpntm100;
+|FPRC;
+
+|PROCESO Consul101;
+     |ABRE #dpntm101;
+     |LEE 000#dpntm101.p;
+     |CONSULTA_CLAVE #1#dpntm101;
+     |CIERRA #dpntm101;
+|FPRC;
+
+|PROCESO dpntmCheq;
+     nError = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE dpntm100Cheq;
+     #dpntm100#1;
+     2;
+     00001, "            ";
+     99999, "            ";
+     ;
+     NULL, dpntmCheq;
+|FIN;
+
+|DEFBUCLE dpntm101Cheq;
+     #dpntm101#1;
+     2;
+     00001, "            ";
+     99999, "            ";
+     ;
+     NULL, dpntmCheq;
+|FIN;
+
+|PROCESO Contab100;
+     |SI enCOME = 0;
+         nError = 0;
+         |BUCLE dpntm100Cheq;
+         |SI nError = 1;
+             |MENAV "0000Hay facturas emitidas sin el NIF informado, por favor revise los datos.";
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     nOk = 0;
+     |ABRE #gadm0006;
+     |SELECT #2#gadm0006;
+     #gadm0006#2 = 0;
+     |LEE 000#gadm0006.=;
+     |SI FSalida = 0;
+         nOk = 1;
+     |FINSI;
+     |CIERRA #gadm0006;
+
+     |SI nOk = 1;
+         |MENAV "0000Hay formas de pago de la Gesti¢n y Contabilidad que no est n unificadas";
+         |MENAV "0000Podr  unificarlas en el bot¢n Equivalencias F.Pagos";
+         |ACABA;
+     |FINSI;
+
+     enActual  = -1;
+     eaTipoCtb = #gadz0100#4;
+     |SUB_EJECUTA "gadz0002;R";
+
+     |SI enE001 = 1;
+         |SI enActual ! -1;
+             enLeeIVA100 = 1;
+         |FINSI;
+     |FINSI;
+
+     |SI enE002 = 1;
+         enLeeIVA100 = 1;
+     |FINSI;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO Contab101;
+     |SI enCOME = 0;
+         nError = 0;
+         |BUCLE dpntm101Cheq;
+         |SI nError = 1;
+             |MENAV "0000Hay facturas recibidas sin el NIF informado, por favor revise los datos.";
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     nOk = 0;
+     |ABRE #gadm0006;
+     |SELECT #2#gadm0006;
+     #gadm0006#2 = 0;
+     |LEE 000#gadm0006.=;
+     |SI FSalida = 0;
+         nOk = 1;
+     |FINSI;
+     |CIERRA #gadm0006;
+
+     |SI nOk = 1;
+         |MENAV "0000Hay formas de pago de la Gesti¢n y Contabilidad que no est n unificadas";
+         |MENAV "0000Podr  unificarlas en el bot¢n Equivalencias F.Pagos";
+         |ACABA;
+     |FINSI;
+
+     enActual  = -1;
+     eaTipoCtb = #gadz0100#4;
+     |SUB_EJECUTA "gadz0002;S";
+
+     |SI enE001 = 1;  |O enE002 = 1;
+         |SI enActual ! -1;
+             enLeeIVA101 = 1;
+         |FINSI;
+     |FINSI;
+
+     |SI enE002 = 1;
+         enLeeIVA101 = 1;
+     |FINSI;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO ContabPla;
+     |CONFI "0000SUna vez contabilizadas las cuentas se borrar  el fichero del directorio origen. Continuar";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     eaFicDis = eaPathServiDK + "PLACO000.ASC";
+     |HAZ Placo000GADZ0100;
+
+     aAlfa = eaPathLocalDK + "\PLACO000.ASC";  |RFBORRA aAlfa;
+     aAlfa = eaPathServiDK + "PLACO000.ASC";   |FBORRA aAlfa;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO ContabApu;
+     |CONFI "0000SUna vez contabilizados los apuntes se borrar  el fichero del directorio origen. Continuar";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     eaFicDis = eaPathServiDK + "APUNT000.ASC";
+     |HAZ Apunt000GADZ0100;
+
+     aAlfa = eaPathLocalDK + "\APUNT000.ASC";  |RFBORRA aAlfa;
+     aAlfa = eaPathServiDK + "APUNT000.ASC";   |FBORRA aAlfa;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO ContabCob;
+     |CONFI "0000SUna vez contabilizados los cobros y pagos se borrar  el fichero del directorio origen. Continuar";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     eaFicDis = eaPathServiDK + "PREVI000.ASC";
+     |HAZ Previ000GADZ0100;
+
+     aAlfa = eaPathLocalDK + "\PREVI000.ASC";  |RFBORRA aAlfa;
+     aAlfa = eaPathServiDK + "PREVI000.ASC";   |FBORRA aAlfa;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO ContabCli;
+     |CONFI "0000SQuiere crear los clientes en la base de datos";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     enCmp    = 7;  |HAZ GrabaClientes;
+     enNumCli = 0;
+
+     aAlfa = aPathLocal + "clientes.csv"; |RFBORRA aAlfa;
+     aAlfa = aPathTmp + "clientes.csv";   |FBORRA aAlfa;
+
+     #gadz0100#7 = "";  |PINTA #gadz0100#7;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO ContabPro;
+     |CONFI "0000SQuiere crear los proveedores en la base de datos";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     enCmp    = 8;  |HAZ GrabaProveedores;
+     enNumPro = 0;
+
+     aAlfa = aPathLocal + "proveedores.csv"; |RFBORRA aAlfa;
+     aAlfa = aPathTmp + "proveedores.csv";   |FBORRA aAlfa;
+
+     #gadz0100#8 = "";  |PINTA #gadz0100#8;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO BtnDK;
+     |HAZ PonDsselect;
+     aPrograma = aPathLocal + "dsselect.exe " + aPathLocal + "dsselect.ini";
+
+     aBorra = aPathLocal + "dsselect.txt";  |RFBORRA aBorra;
+     aBorra = aPathLocal + "dsselect.ini";  |RFBORRA aBorra;
+
+     aAbre = aPathLocal + "dsselect.ini";
+     |XABRE "CW", aAbre, nHandle;
+     |SI FSalida ] 0;
+          aAlfa  = #gadz0100#6;  |QBF aAlfa;
+          |SI aAlfa = "";
+              aAlfa  = eaUnidadBasico;  |QBF aAlfa;
+          |FINSI;
+          aLinea = &34 + aAlfa + &34 + " " + &34 + aPathLocal + "dsselect.txt C" + &34;
+          |XGRABA nHandle, aLinea;
+          |XCIERRA nHandle;
+     |FINSI;
+
+     |RSYSTEM aPrograma;
+     |PULSATECLA;
+
+     eaPathLocalDK = "";
+     aAbre = aPathLocal + "dsselect.txt";
+     |XABRE "CU", aAbre, nHandle;
+     |SI FSalida ] 0;
+         |XLEE nHandle, 250, eaPathLocalDK;
+     |FINSI;
+     |XCIERRA nHandle;
+
+     aBorra = aPathLocal + "dsselect.txt";
+     |RFBORRA aBorra;
+
+     |PULSATECLA;
+
+     aAlfa = eaPathLocalDK;
+     eaPathLocalDK = "";
+     aLong = aAlfa % 0;
+     nLong = aLong;
+     |PARA nCarac = 1;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+           nPos       = (nCarac * 100) + 1;
+           aCaracter  = aAlfa % nPos;
+           eaPathLocalDK   = eaPathLocalDK      + aCaracter;
+           eaNomOri   = eaNomOri + aCaracter;
+
+           |SI aCaracter = "/";  |O aCaracter = "\";
+               eaNomOri = "";
+           |FINSI;
+     |SIGUE;
+
+     #gadz0100#6 = eaPathLocalDK;
+     |PINTA #gadz0100#6;
+
+     enLeeIVA100 = 0;
+     enLeeIVA101 = 0;
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO PantaDistrito;
+     |C_V #gadz0100#6,  1, "S";   |PINTA #gadz0100#6;
+     |C_V #gadz0100#7,  1, "N";   |PINTA #gadz0100#7;
+     |C_V #gadz0100#8,  1, "N";   |PINTA #gadz0100#8;
+     |C_V #gadz0100#9,  1, "N";   |PINTA #gadz0100#9;
+     |C_V #gadz0100#10, 1, "N";   |PINTA #gadz0100#10;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{11}}Path ubicaci¢n ficheros Distrito K", 1005, 1035, NULL;
+     nLblDK = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 1002, 1003, BtnDK;
+     nBtnDK = FSalida;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{16}}PLAN CONTABLE", 1420, 1440, NULL;
+     nLblConPla = FSalida;
+
+     aAlfa = "BOTON,{{197}} " + enNumPla;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1442, 1452, NULL;
+     nBtnConPla = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1460, 1472, ContabPla;
+     nBtnCtbPla = FSalida;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{16}}APUNTES", 1720, 1740, NULL;
+     nLblConApu = FSalida;
+
+     aAlfa = "BOTON,{{197}} " + enNumApu;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1742, 1752, NULL;
+     nBtnConApu = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1760, 1772, ContabApu;
+     nBtnCtbApu = FSalida;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{16}}FACTURAS EMITIDAS", 2020, 2040, NULL;
+     nLblConEmi = FSalida;
+
+     aAlfa = "BOTON,{{197}} " + enNumEmi;
+     |CONTROL_SIMPLE nPanta, aAlfa, 2042, 2052, Consul100;
+     nBtnConEmi = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 2060, 2072, Contab100;
+     nBtnCtbEmi = FSalida;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{16}}FACTURAS RECIBIDAS", 2320, 2340, NULL;
+     nLblConRec = FSalida;
+
+     aAlfa = "BOTON,{{197}} " + enNumRec;
+     |CONTROL_SIMPLE nPanta, aAlfa, 2342, 2352, Consul101;
+     nBtnConRec = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 2360, 2372, Contab101;
+     nBtnCtbRec = FSalida;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{16}}COBROS Y PAGOS", 2620, 2640, NULL;
+     nLblConCob = FSalida;
+
+     aAlfa = "BOTON,{{197}} " + enNumCob;
+     |CONTROL_SIMPLE nPanta, aAlfa, 2642, 2652, NULL;
+     nBtnConCob = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 2660, 2672, ContabCob;
+     nBtnCtbCob = FSalida;
+
+|| -----------
+
+     |ESTADO_CONTROL nBtnConPla, "DISABLE";
+     |ESTADO_CONTROL nBtnConApu, "DISABLE";
+     |ESTADO_CONTROL nBtnConCob, "DISABLE";
+
+     |SI enNumEmi [ 0;
+         |ESTADO_CONTROL nBtnConEmi, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbEmi, "DISABLE";
+     |FINSI;
+
+     |SI enNumRec [ 0;
+         |ESTADO_CONTROL nBtnConRec, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbRec, "DISABLE";
+     |FINSI;
+
+     |SI enNumPla [ 0;
+         |ESTADO_CONTROL nBtnCtbPla, "DISABLE";
+     |FINSI;
+
+     |SI enNumPla > 0;
+         |ESTADO_CONTROL nBtnCtbEmi, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbRec, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbApu, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbCob, "DISABLE";
+     |FINSI;
+
+     |SI enNumApu [ 0;
+         |ESTADO_CONTROL nBtnCtbApu, "DISABLE";
+     |FINSI;
+
+     |SI enNumCob [ 0;
+         |ESTADO_CONTROL nBtnCtbCob, "DISABLE";
+     |FINSI;
+
+     |SI enNumEmi > 0;  |O enNumRec > 0;
+         |ESTADO_CONTROL nBtnCtbCob, "DISABLE";
+     |FINSI;
+|FPRC;
+
+|PROCESO BtnTP;
+     nFSalida = FSalida;
+
+     |SI nFSalida = nBtnTP1;  enCmp = 7;   |FINSI;
+     |SI nFSalida = nBtnTP2;  enCmp = 8;   |FINSI;
+     |SI nFSalida = nBtnTP3;  enCmp = 9;   |FINSI;
+     |SI nFSalida = nBtnTP4;  enCmp = 10;  |FINSI;
+
+     |HAZ PonDsselect;
+     aPrograma = aPathLocal + "dsselect.exe " + aPathLocal + "dsselect.ini";
+
+     aBorra = aPathLocal + "dsselect.txt";  |RFBORRA aBorra;
+     aBorra = aPathLocal + "dsselect.ini";  |RFBORRA aBorra;
+
+     aAbre = aPathLocal + "dsselect.ini";
+     |XABRE "CW", aAbre, nHandle;
+     |SI FSalida ] 0;
+          aAlfa  = #gadz0100#6;  |QBF aAlfa;
+          |SI aAlfa = "";
+              aAlfa  = eaUnidadBasico;  |QBF aAlfa;
+          |FINSI;
+          aLinea = &34 + aAlfa + &34 + " " + &34 + aPathLocal + "dsselect.txt " + &34;
+          |XGRABA nHandle, aLinea;
+          |XCIERRA nHandle;
+     |FINSI;
+
+     |RSYSTEM aPrograma;
+     |PULSATECLA;
+
+     aFicExterno = "";
+     aAbre = aPathLocal + "dsselect.txt";
+     |XABRE "CU", aAbre, nHandle;
+     |SI FSalida ] 0;
+         |XLEE nHandle, 250, aFicExterno;
+     |FINSI;
+     |XCIERRA nHandle;
+
+     aBorra = aPathLocal + "dsselect.txt";
+     |RFBORRA aBorra;
+
+     |PULSATECLA;
+
+     aAlfa = aFicExterno;
+     aFicExterno = "";
+     aLong = aAlfa % 0;
+     nLong = aLong;
+     |PARA nCarac = 1;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+           nPos         = (nCarac * 100) + 1;
+           aCaracter    = aAlfa % nPos;
+           aFicExterno  = aFicExterno      + aCaracter;
+           eaNomOri     = eaNomOri + aCaracter;
+
+           |SI aCaracter = "/";  |O aCaracter = "\";
+               eaNomOri = "";
+           |FINSI;
+     |SIGUE;
+
+     |SI aFicExterno = "";
+         |ACABA;
+     |FINSI;
+
+     #gadz0100#6 = aFicExterno - eaNomOri;
+
+     eaOri  = aFicExterno;
+     |SI enCmp = 7;   eaDes  = aPathLocal + "clientes.xlsx";     |FINSI;
+     |SI enCmp = 8;   eaDes  = aPathLocal + "proveedores.xlsx";  |FINSI;
+     |SI enCmp = 9;   eaDes  = aPathLocal + "facventas.xlsx";    |FINSI;
+     |SI enCmp = 10;  eaDes  = aPathLocal + "faccompras.xlsx";   |FINSI;
+
+     |RCOPIA_FICHERO eaOri, eaDes;
+
+     aFicExterno = eaDes;
+     |HAZ Conversion;
+
+     #gadz0100#enCmp# = aFicExterno;
+     |PINTA #gadz0100#enCmp#;
+
+     |HAZ PathGECONET;
+
+     |PULSATECLA;
+     |PULSATECLA;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO PantaTransporte;
+     |C_V #gadz0100#6,  1, "N";  |PINTA #gadz0100#6;
+     |C_V #gadz0100#7,  1, "S";  |PINTA #gadz0100#7;
+     |C_V #gadz0100#8,  1, "S";  |PINTA #gadz0100#8;
+     |C_V #gadz0100#9,  1, "S";  |PINTA #gadz0100#9;
+     |C_V #gadz0100#10, 1, "S";  |PINTA #gadz0100#10;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{11}}Fichero de clientes", 1205, 1235, NULL;
+     nLblTP1 = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 1202, 1203, BtnTP;
+     nBtnTP1 = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{11}}Fichero de proveedores", 1505, 1535, NULL;
+     nLblTP2 = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 1502, 1503, BtnTP;
+     nBtnTP2 = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{11}}Fichero IVA Venta", 1805, 1835, NULL;
+     nLblTP3 = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 1802, 1803, BtnTP;
+     nBtnTP3 = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{11}}Fichero IVA Compra", 2105, 2135, NULL;
+     nLblTP4 = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 2102, 2103, BtnTP;
+     nBtnTP4 = FSalida;
+
+|| -----------
+
+     aAlfa = "BOTON,{{197}} " + enNumCli;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1372, 1384, ConsulCli;
+     nBtnConCli = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1386, 1398, ContabCli;
+     nBtnCtbCli = FSalida;
+
+|| -----------
+
+     aAlfa = "BOTON,{{197}} " + enNumPro;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1672, 1684, ConsulPro;
+     nBtnConPro = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1686, 1698, ContabPro;
+     nBtnCtbPro = FSalida;
+
+|| -----------
+
+     aAlfa = "BOTON,{{197}} " + enNumEmi;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1972, 1984, Consul100;
+     nBtnConEmi = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1986, 1998, Contab100;
+     nBtnCtbEmi = FSalida;
+
+|| -----------
+
+     aAlfa = "BOTON,{{197}} " + enNumRec;
+     |CONTROL_SIMPLE nPanta, aAlfa, 2272, 2284, Consul101;
+     nBtnConRec = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 2286, 2298, Contab101;
+     nBtnCtbRec = FSalida;
+
+|| -----------
+
+     |SI enNumCli [ 0;
+         |ESTADO_CONTROL nBtnConCli, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbCli, "DISABLE";
+     |FINSI;
+
+     |SI enNumPro [ 0;
+         |ESTADO_CONTROL nBtnConPro, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbPro, "DISABLE";
+     |FINSI;
+
+     |SI enNumEmi [ 0;
+         |ESTADO_CONTROL nBtnConEmi, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbEmi, "DISABLE";
+     |FINSI;
+
+     |SI enNumRec [ 0;
+         |ESTADO_CONTROL nBtnConRec, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbRec, "DISABLE";
+     |FINSI;
+
+     |SI enNumCli > 0;
+         |ESTADO_CONTROL nBtnCtbEmi, "DISABLE";
+     |FINSI;
+
+     |SI enNumPro > 0;
+         |ESTADO_CONTROL nBtnCtbRec, "DISABLE";
+     |FINSI;
+|FPRC;
+
+|PROCESO PantaEstandar;
+     |C_V #gadz0100#6,  1, "N";  |PINTA #gadz0100#6;
+     |C_V #gadz0100#7,  1, "N";  |PINTA #gadz0100#7;
+     |C_V #gadz0100#8,  1, "N";  |PINTA #gadz0100#8;
+     |C_V #gadz0100#9,  1, "N";  |PINTA #gadz0100#9;
+     |C_V #gadz0100#10, 1, "N";  |PINTA #gadz0100#10;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{16}}FACTURAS EMITIDAS", 1420, 1440, NULL;
+     nLblConEmi = FSalida;
+
+     aAlfa = "BOTON,{{197}} " + enNumEmi;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1442, 1452, Consul100;
+     nBtnConEmi = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1460, 1472, Contab100;
+     nBtnCtbEmi = FSalida;
+
+|| -----------
+
+     |CONTROL_SIMPLE nPanta, "LABEL,{{16}}FACTURAS RECIBIDAS", 1720, 1740, NULL;
+     nLblConRec = FSalida;
+
+     aAlfa = "BOTON,{{197}} " + enNumRec;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1742, 1752, Consul101;
+     nBtnConRec = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1760, 1772, Contab101;
+     nBtnCtbRec = FSalida;
+
+|| -----------
+
+     |SI enNumEmi [ 0;
+         |ESTADO_CONTROL nBtnConEmi, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbEmi, "DISABLE";
+     |FINSI;
+
+     |SI enNumRec [ 0;
+         |ESTADO_CONTROL nBtnConRec, "DISABLE";
+         |ESTADO_CONTROL nBtnCtbRec, "DISABLE";
+     |FINSI;
+|FPRC;
+
+|PROCESO PantaEstandarUno;
+     |C_V #gadz0100#6,  1, "N";  |PINTA #gadz0100#6;
+     |C_V #gadz0100#7,  1, "N";  |PINTA #gadz0100#7;
+     |C_V #gadz0100#8,  1, "N";  |PINTA #gadz0100#8;
+     |C_V #gadz0100#9,  1, "N";  |PINTA #gadz0100#9;
+     |C_V #gadz0100#10, 1, "N";  |PINTA #gadz0100#10;
+
+|| -----------
+
+     |SI PARAMETRO = "EMITIDAS";
+         |CONTROL_SIMPLE nPanta, "LABEL,{{16}}FACTURAS EMITIDAS", 1420, 1440, NULL;
+         nLblConEmi = FSalida;
+
+         aAlfa = "BOTON,{{197}} " + enNumEmi;
+         |CONTROL_SIMPLE nPanta, aAlfa, 1442, 1452, Consul100;
+         nBtnConEmi = FSalida;
+
+         |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1460, 1472, Contab100;
+         nBtnCtbEmi = FSalida;
+
+         |SI enNumEmi [ 0;
+             |ESTADO_CONTROL nBtnConEmi, "DISABLE";
+             |ESTADO_CONTROL nBtnCtbEmi, "DISABLE";
+         |FINSI;
+     |FINSI;
+
+|| -----------
+
+     |SI PARAMETRO = "RECIBIDAS";
+         |CONTROL_SIMPLE nPanta, "LABEL,{{16}}FACTURAS RECIBIDAS", 1420, 1440, NULL;
+         nLblConRec = FSalida;
+
+         aAlfa = "BOTON,{{197}} " + enNumRec;
+         |CONTROL_SIMPLE nPanta, aAlfa, 1442, 1452, Consul101;
+         nBtnConRec = FSalida;
+
+         |CONTROL_SIMPLE nPanta, "BOTON,{{230}}Contabilizar", 1460, 1472, Contab101;
+         nBtnCtbRec = FSalida;
+
+         |SI enNumRec [ 0;
+             |ESTADO_CONTROL nBtnConRec, "DISABLE";
+             |ESTADO_CONTROL nBtnCtbRec, "DISABLE";
+         |FINSI;
+     |FINSI;
+|| -----------
+|FPRC;
+
+|PROCESO PathGECONET;
+     enE001   = 0;
+     enE002   = 0;
+     enCOME   = 0;
+
+     |SI #gadz0100#1 = "dscomer7";  enCOME = 1;  |FINSI;
+     |SI #gadz0100#1 = "dscomer8";  enCOME = 1;  |FINSI;
+     |SI #gadz0100#1 = "dscomer9";  enCOME = 1;  |FINSI;
+     |SI #gadz0100#1 = "exter001";  enE001 = 1;  |FINSI;
+     |SI #gadz0100#1 = "exter002";  enE002 = 1;  |FINSI;
+
+     |SI enCOME = 1;
+         enNumEmi = 0;
+         enNumRec = 0;
+         |HAZ RecogeCOMER;
+     |FINSI;
+
+     |SI enE001 = 1;
+         enNumEmi = 0;
+         enNumRec = 0;
+         enNumPla = 0;
+         enNumApu = 0;
+         enNumCob = 0;
+         |HAZ RecogeDistrito;
+
+         |SI enNumEmi = 0;  |Y enNumRec = 0;
+             aAlfa = eaPathLocalDK + "\LBIVA000.ASC";  |RFBORRA aAlfa;
+             aAlfa = eaPathServiDK + "LBIVA000.ASC";   |FBORRA aAlfa;
+         |FINSI;
+     |FINSI;
+
+     |SI enE002 = 1;
+         |HAZ RecogeTransporte;
+     |FINSI;
+
+     |SI nLblConEmi ! -1;  |FIN_CONTROL_WINDOWS nLblConEmi;  |FINSI;
+     |SI nLblConRec ! -1;  |FIN_CONTROL_WINDOWS nLblConRec;  |FINSI;
+     |SI nLblConPla ! -1;  |FIN_CONTROL_WINDOWS nLblConPla;  |FINSI;
+     |SI nLblConApu ! -1;  |FIN_CONTROL_WINDOWS nLblConApu;  |FINSI;
+     |SI nLblConCob ! -1;  |FIN_CONTROL_WINDOWS nLblConCob;  |FINSI;
+     |SI nBtnConEmi ! -1;  |FIN_CONTROL_WINDOWS nBtnConEmi;  |FINSI;
+     |SI nBtnConRec ! -1;  |FIN_CONTROL_WINDOWS nBtnConRec;  |FINSI;
+     |SI nBtnConPla ! -1;  |FIN_CONTROL_WINDOWS nBtnConPla;  |FINSI;
+     |SI nBtnConApu ! -1;  |FIN_CONTROL_WINDOWS nBtnConApu;  |FINSI;
+     |SI nBtnConCob ! -1;  |FIN_CONTROL_WINDOWS nBtnConCob;  |FINSI;
+     |SI nBtnConCli ! -1;  |FIN_CONTROL_WINDOWS nBtnConCli;  |FINSI;
+     |SI nBtnConPro ! -1;  |FIN_CONTROL_WINDOWS nBtnConPro;  |FINSI;
+     |SI nBtnCtbEmi ! -1;  |FIN_CONTROL_WINDOWS nBtnCtbEmi;  |FINSI;
+     |SI nBtnCtbRec ! -1;  |FIN_CONTROL_WINDOWS nBtnCtbRec;  |FINSI;
+     |SI nBtnCtbPla ! -1;  |FIN_CONTROL_WINDOWS nBtnCtbPla;  |FINSI;
+     |SI nBtnCtbApu ! -1;  |FIN_CONTROL_WINDOWS nBtnCtbApu;  |FINSI;
+     |SI nBtnCtbCob ! -1;  |FIN_CONTROL_WINDOWS nBtnCtbCob;  |FINSI;
+     |SI nBtnCtbCli ! -1;  |FIN_CONTROL_WINDOWS nBtnCtbCli;  |FINSI;
+     |SI nBtnCtbPro ! -1;  |FIN_CONTROL_WINDOWS nBtnCtbPro;  |FINSI;
+     |SI nLblDK     ! -1;  |FIN_CONTROL_WINDOWS nLblDK;      |FINSI;
+     |SI nBtnDK     ! -1;  |FIN_CONTROL_WINDOWS nBtnDK;      |FINSI;
+     |SI nLblTP1    ! -1;  |FIN_CONTROL_WINDOWS nLblTP1;     |FINSI;
+     |SI nLblTP2    ! -1;  |FIN_CONTROL_WINDOWS nLblTP2;     |FINSI;
+     |SI nLblTP3    ! -1;  |FIN_CONTROL_WINDOWS nLblTP3;     |FINSI;
+     |SI nLblTP4    ! -1;  |FIN_CONTROL_WINDOWS nLblTP4;     |FINSI;
+     |SI nBtnTP1    ! -1;  |FIN_CONTROL_WINDOWS nBtnTP1;     |FINSI;
+     |SI nBtnTP2    ! -1;  |FIN_CONTROL_WINDOWS nBtnTP2;     |FINSI;
+     |SI nBtnTP3    ! -1;  |FIN_CONTROL_WINDOWS nBtnTP3;     |FINSI;
+     |SI nBtnTP4    ! -1;  |FIN_CONTROL_WINDOWS nBtnTP4;     |FINSI;
+
+     nLblConEmi = -1;
+     nLblConRec = -1;
+     nLblConPla = -1;
+     nLblConApu = -1;
+     nLblConCob = -1;
+     nBtnConEmi = -1;
+     nBtnConRec = -1;
+     nBtnConPla = -1;
+     nBtnConApu = -1;
+     nBtnConCob = -1;
+     nBtnConCli = -1;
+     nBtnConPro = -1;
+     nBtnCtbEmi = -1;
+     nBtnCtbRec = -1;
+     nBtnCtbPla = -1;
+     nBtnCtbApu = -1;
+     nBtnCtbCob = -1;
+     nBtnCtbCli = -1;
+     nBtnCtbPro = -1;
+     nLblDK     = -1;
+     nBtnDK     = -1;
+     nLblTP1    = -1;
+     nLblTP2    = -1;
+     nLblTP3    = -1;
+     nLblTP4    = -1;
+     nBtnTP1    = -1;
+     nBtnTP2    = -1;
+     nBtnTP3    = -1;
+     nBtnTP4    = -1;
+
+     |SI enE001 = 1;
+         |HAZ PantaDistrito;
+     |FINSI;
+
+     |SI enE002 = 1;
+         |HAZ PantaTransporte;
+     |FINSI;
+
+     |SI enCOME = 1;
+         |SI PARAMETRO = "";
+             |HAZ PantaEstandar;
+         |SINO;
+             |HAZ PantaEstandarUno;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO SelecGECONET;
+     aFic = "gadw0006" + Usuario;
+     |NOME_DAT #gadw0006#aFic#;
+     |ABRE #gadw0006;  |CIERRA #gadw0006;  |DELINDEX #gadw0006;
+
+     |ABRE #gadw0006;
+
+     aMas = eaBase + "dscomer9/def/agifa041.mas";
+     |XABRE "E", aMas, 0;
+     |SI FSalida ] 0;
+         aMas =  eaBase + "dscomer9/def/agifa041.mas";
+         |CARGA_DEF aMas, agifa041@;
+
+         aFic =  eaBase + "dscomer9/fich/";
+         |PATH_DAT #agifa041@#aFic#;
+
+         |ABRE #agifa041@;
+         |LEE 000#agifa041@.p;
+         |PARA;  |SI FSalida = 0;  |HACIENDO;
+              #gadw0006#0 = "dscomer9";
+              #gadw0006#1 = #agifa041@#0;
+              #gadw0006#2 = #agifa041@#1;
+              |GRABA 020#gadw0006.n;
+              |LIBERA #gadw0006;
+
+              |LEE 000#agifa041@.s;
+         |SIGUE;
+
+         |CIERRA #agifa041@;
+         |DESCARGA_DEF #agifa041@;
+     |FINSI;
+
+     |SI #caivaasi#191 = "N";
+         aMas = eaBase + "dscomer8/def/agifa041.mas";
+         |XABRE "E", aMas, 0;
+         |SI FSalida ] 0;
+             aMas =  eaBase + "dscomer8/def/agifa041.mas";
+             |CARGA_DEF aMas, agifa041@;
+
+             aFic =  eaBase + "dscomer8/fich/";
+             |PATH_DAT #agifa041@#aFic#;
+
+             |ABRE #agifa041@;
+             |LEE 000#agifa041@.p;
+             |PARA;  |SI FSalida = 0;  |HACIENDO;
+                  #gadw0006#0 = "dscomer8";
+                  #gadw0006#1 = #agifa041@#0;
+                  #gadw0006#2 = #agifa041@#1;
+                  |GRABA 020#gadw0006.n;
+                  |LIBERA #gadw0006;
+
+                  |LEE 000#agifa041@.s;
+             |SIGUE;
+
+             |CIERRA #agifa041@;
+             |DESCARGA_DEF #agifa041@;
+         |FINSI;
+
+         aMas = eaBase + "dscomer7/def/agifa041.mas";
+         |XABRE "E", aMas, 0;
+         |SI FSalida ] 0;
+             aMas =  eaBase + "dscomer7/def/agifa041.mas";
+             |CARGA_DEF aMas, agifa041@;
+
+             aFic =  eaBase + "dscomer7/fich/";
+             |PATH_DAT #agifa041@#aFic#;
+
+             |ABRE #agifa041@;
+             |LEE 000#agifa041@.p;
+             |PARA;  |SI FSalida = 0;  |HACIENDO;
+                  #gadw0006#0 = "dscomer7";
+                  #gadw0006#1 = #agifa041@#0;
+                  #gadw0006#2 = #agifa041@#1;
+                  |GRABA 020#gadw0006.n;
+                  |LIBERA #gadw0006;
+
+                  |LEE 000#agifa041@.s;
+             |SIGUE;
+
+             |CIERRA #agifa041@;
+             |DESCARGA_DEF #agifa041@;
+         |FINSI;
+
+         #gadw0006#0 = "exter002";
+         #gadw0006#1 = 0;
+         #gadw0006#2 = "Traspaso especial transportes";
+         |GRABA 020#gadw0006.n;
+         |LIBERA #gadw0006;
+
+         |SI #gadz0100#2 = 0;
+             |SI #gadz0100#1 ! "exter001";  |Y #gadz0100#1 ! "exter002";
+                 #gadw0006#0 = "dscomer9";
+                 #gadw0006#1 = #48#2;
+                 |LEE 000#gadw0006.=;
+                 |SI FSalida = 0;
+                     #gadz0100#1 = #gadw0006#0;   |PINTA #gadz0100#1;
+                     #gadz0100#2 = #gadw0006#1;   |PINTA #gadz0100#2;
+                     #gadz0100#3 = #gadw0006#2;   |PINTA #gadz0100#3;
+
+                     |CIERRA #gadw0006;
+                     |DELINDEX #gadw0006;
+                     |ACABA;
+                 |FINSI;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+     #gadw0006#0 = "NULL";
+     #gadw0006#1 = 0;
+     #gadw0006#2 = "";
+     |GRABA 020#gadw0006.n;
+     |LIBERA #gadw0006;
+
+     enLeeIVA100  = 0;
+     enLeeIVA101  = 0;
+     enNumEmi     = 0;
+     enNumRec     = 0;
+     enNumCli     = 0;
+     enNumPro     = 0;
+     #gadz0100#7  = "";  |PINTA #gadz0100#7;
+     #gadz0100#8  = "";  |PINTA #gadz0100#8;
+     #gadz0100#9  = "";  |PINTA #gadz0100#9;
+     #gadz0100#10 = "";  |PINTA #gadz0100#10;
+
+     |MENAV "0000A continuaci¢n seleccione la empresa perteneciente a esta contabilidad";
+
+     #gadw0006#0 = #gadz0100#1;
+     #gadw0006#1 = #gadz0100#2;
+     |LEE 000#gadw0006.];
+
+     |CONSULTA_CLAVE #1#gadw0006;
+     |SI FSalida = 0;
+         #gadz0100#1 = #gadw0006#0;   |PINTA #gadz0100#1;
+         #gadz0100#2 = #gadw0006#1;   |PINTA #gadz0100#2;
+         #gadz0100#3 = #gadw0006#2;   |PINTA #gadz0100#3;
+
+         |SI #gadz0100#1 ! "dscomer9";
+             |SI #gadz0100#4 = "3";
+                 #gadz0100#4 = "2";
+             |FINSI;
+         |FINSI;
+
+         |HAZ PathGECONET;
+     |FINSI;
+
+     |ESTADO_CONTROL nBtnSel, "ENABLE";
+     |ESTADO_CONTROL nBtnTFa, "ENABLE";
+
+     |SI enE001 = 1; |O enE002 = 1;
+          #gadz0100#4 = "1";
+          #gadz0100#5 = "Total factura";
+          |ESTADO_CONTROL nBtnTFa, "DISABLE";
+          |ESTADO_CONTROL nBtnSel, "DISABLE";
+
+          |PINTA #gadz0100#5;
+     |FINSI;
+
+     |CIERRA #gadw0006;
+     |DELINDEX #gadw0006;
+|FPRC;
+
+|PROCESO CargaCinco;
+     |SI #gadz0100#4 = "1";  #gadz0100#5 = "Total factura";   |FINSI;
+     |SI #gadz0100#4 = "2";  #gadz0100#5 = "Por familia";     |FINSI;
+     |SI #gadz0100#4 = "3";  #gadz0100#5 = "Por art¡culo";    |FINSI;
+
+     |PINTA #gadz0100#5;
+|FPRC;
+
+|PROCESO Seleccion;
+     |VENTANA 0501, 0970, -1, 16, "Selecci¢n de facturas";
+     n0Vent = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = n0Vent;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PTEC 802;  |PAUSA;
+
+     |PINPA #0#gadw0007;
+     |PINDA #0#gadw0007;
+     |ENDATOS #1#gadw0007;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = n0Vent;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA n0Vent;
+
+     |HAZ CargaCinco;
+     |HAZ PathGECONET;
+|FPRC;
+
+|PROCESO TFac;
+     nID = FSalida;
+
+     aPopup1  = nID;
+
+     |SI #gadz0100#1 ! "dscomer9";
+         aPopup2  = "2";
+         aPopup3  = "Total factura";
+         aPopup4  = "Por familia";
+     |FINSI;
+
+     |SI #gadz0100#1 = "dscomer9";
+         aPopup2  = "3";
+         aPopup3  = "Total factura";
+         aPopup4  = "Por familia";
+         aPopup5  = "Por artículo";
+     |FINSI;
+
+     IaPopup  = aPopup1  <-;
+     |ESPECIFICA "TRACKPOPUP", aPopup;
+
+     |SI FSalida = 1;  #gadz0100#4 = "1";  |FINSI;
+     |SI FSalida = 2;  #gadz0100#4 = "2";  |FINSI;
+     |SI FSalida = 3;  #gadz0100#4 = "3";  |FINSI;
+
+     |HAZ CargaCinco;
+     |HAZ PathGECONET;
+|FPRC;
+
+|PROCESO Integridad;
+     |SUB_EJECUTA "gadz0101";
+|FPRC;
+
+|PROCESO FPagos;
+     |SUB_EJECUTA "gadm0006";
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |PINPA #0#gadz0100;
+     nPanta = FSalida;
+
+     |ABRE #caivaasi;
+     |LEE 000#caivaasi.p;
+     |SI FSalida ! 0;  |DDEFECTO #caivaasi;  |FINSI;
+     |CIERRA #caivaasi;
+
+     |SI #caivaasi#191 = "S";
+         #gadz0100#1 = "dscomer9";
+     |FINSI;
+
+     |SI #gadz0100#1 = "        ";
+         |HAZ SelecGECONET;
+     |FINSI;
+
+     |HAZ CargaCinco;
+
+     |PINDA #0#gadz0100;
+
+     aAlfa = "LABEL,{{15}}";
+     aAlfa = aAlfa + "Empresa: ";
+     aAlfa = aAlfa + ("00000" + #48#2) % -105;
+     aAlfa = aAlfa +  "/" + #48#3;
+     aAlfa = aAlfa +  " " + #48#1;             |QBF aAlfa;
+     aAlfa = aAlfa +  "     Ejercicio: " + enEjer;
+     |CONTROL_SIMPLE nPanta, aAlfa, 0502, 0580, NULL;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 0743, 0744, SelecGECONET;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,SEL", 0796, 0799, Seleccion;
+     nBtnSel = FSalida;
+
+     |CONTROL_SIMPLE nPanta, "BOTON,{{197}}", 0793, 0794, TFac;
+     nBtnTFa = FSalida;
+
+     |SI #caivaasi#191 = "S";
+         |CONTROL_SIMPLE 0, "BOTON,{{197}}Chequeo de integridad", 2802, 2825, Integridad;
+     |FINSI;
+
+     |SI #gadz0100#1 = "dscomer9";
+         |CONTROL_SIMPLE 0, "BOTON,{{197}}Equivalencias F.Pagos", 2828, 2848, FPagos;
+     |FINSI;
+
+     |HAZ PathGECONET;
+
+     |SI enE001 = 1;  |O enE002 = 1;
+         |ESTADO_CONTROL nBtnTFa, "DISABLE";
+         |ESTADO_CONTROL nBtnSel, "DISABLE";
+     |FINSI;
+
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+          FSalida = "::{{001}}Salir";
+          |LEETECLA aTecla;
+          |SI aTecla = aEsc1; |SAL;  |FINSI;
+          |SI aTecla = aEsc2; |SAL;  |FINSI;
+          |SI aTecla = aRetu; |SAL;  |FINSI;
+     |SIGUE;
+
+     #gadz0100#7  = "";
+     #gadz0100#8  = "";
+     #gadz0100#9  = "";
+     #gadz0100#10 = "";
+
+     |GRABA 020#gadz0100.a;
+     |LIBERA #gadz0100;
+|FPRO;
+
+|PROCESO BuscaDSCOMER;
+     nError = 0;
+     |DBASS eaBase;
+
+     aMas = eaBase + "dscomer9/def/agifa041.mas";
+     |XABRE "E", aMas, 0;
+     |SI FSalida ] 0;  |ACABA;  |FINSI;
+
+     aMas = eaBase + "dscomer8/def/agifa041.mas";
+     |XABRE "E", aMas, 0;
+     |SI FSalida ] 0;  |ACABA;  |FINSI;
+
+     aMas = eaBase + "dscomer7/def/agifa041.mas";
+     |XABRE "E", aMas, 0;
+     |SI FSalida ] 0;  |ACABA;  |FINSI;
+|FPRC;
+
+|PROCESO T80;  |TIPO 80;
+     |ABRET #gadz0100;
+     |LEE 101#gadz0100.p;
+     |SI FSalida ! 0;
+         |DDEFECTO #gadz0100;
+         |GRABA 020#gadz0100.b;
+     |FINSI;
+
+     |ABRE #cacuenta;
+     |HAZ inicio;
+     |CIERRA #cacuenta;
+
+     |HAZ LeeUnidadBasico;
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+     aPathLocal = eaUnidadBasico + "\documentos";   |RMKDIR aPathLocal;
+     aPathLocal = aPathLocal + "\tmp";              |RMKDIR aPathLocal;
+     aPathLocal = aPathLocal + "\";
+
+     |DBASE aBaseConta;
+     aPathTmp   = aBaseConta     + "tmp";           |MKDIR aPathTmp;
+     aPathTmp   = aPathTmp  + "/" + Usuario;        |MKDIR aPathTmp;
+     aPathTmp   = aPathTmp  + "/";
+
+     enEjer = 2000 + #48#26;
+
+     |DDEFECTO #gadw0007;
+                                   #gadw0007#0 = "";
+                                   #gadw0007#1 = "zz";
+     aAlfa   = "01.01." + enEjer;  #gadw0007#2 = aAlfa;
+     aAlfa   = "31.12." + enEjer;  #gadw0007#3 = aAlfa;
+
+     |HAZ BorraTempos;
+     |HAZ BuscaDSCOMER;
+
+     FSalida = 2899;
+|FPRC;
+
+|PROCESO T90;  |TIPO 90;
+     |CIERRAT #gadz0100;
+
+     |DFICE eaPathDPNTM;
+     |PATH_DAT #dpntm100#eaPathDPNTM#;
+     |PATH_DAT #dpntm101#eaPathDPNTM#;
+
+     aFicTmp = "w8cli" + Usuario;
+     |NOME_DAT #dscsvw08#aFicTmp#;
+     |ABRE #dscsvw08;  |CIERRA #dscsvw08;  |DELINDEX #dscsvw08;
+
+     aFicTmp = "w8pro" + Usuario;
+     |NOME_DAT #dscsvw08#aFicTmp#;
+     |ABRE #dscsvw08;  |CIERRA #dscsvw08;  |DELINDEX #dscsvw08;
+
+     |ABRE #dpntm100;  |CIERRA #dpntm100;  |DELINDEX #dpntm100;
+     |ABRE #dpntm101;  |CIERRA #dpntm101;  |DELINDEX #dpntm101;
+     |ABRE #gadm0003;  |CIERRA #gadm0003;  |DELINDEX #gadm0003;
+
+     |HAZ BorraTempos;
+|FPRC;

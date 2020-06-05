@@ -1,0 +1,239 @@
+|FICHEROS;
+   caentasl #00;   || apuntes lins.
+   caentasc #01;   || apuntes cabs.
+   camaasic #02;   || Asientos Cabecera;
+   casieaca #11;   || Predefinidos Cabeceras
+   casieali #12;   || Predefinidos Lineas
+   casieaax #13;   || Consulta Predefinidos
+   caconasi #20;
+|FIN;
+
+|VARIABLES;
+   &fecuno = @;
+   &diauno = 0;
+   &documuno = 0;
+   &inkey = 0;
+   &esnuevo = 0;
+   mensa1 = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+   mensa2 = "    ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+   &modcon = 0;
+   &entrada = 1;
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+   alfa4 = "";
+   nume1 = 0;
+   nume2 = 0;
+   nume3 = 0;
+   nume4 = 0;
+   xx = 0;
+   &ext1 = "";
+   &ext2 = "";
+   &ext3 = "";
+   &ext4 = "";
+   &ext5 = "";
+   &ext10 = "";
+   &predefine = 0;
+   &predefine2 = 0;
+   &i_serie = "";
+   &i_factu = 0;
+   &i_fecha = @;
+   &sw_ptec = 0;
+   &sw_ivamerr = 0;
+   ult_pre = 0;
+   posic = 0;
+   lin_con = 0;
+   m_c = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *************************************************************************
+|| ********************** CALCULOS DE LOS CAMPOS DE CABECERA
+|| *************************************************************************
+
+|PROCESO leedocum;
+   |HAZ contador;
+/*
+   |ABRE #20;
+   |DDEFECTO #20;
+   |LEE 101#20p;
+   |LIBERA #20;
+   |CIERRA #20;
+*/
+|FPRC;
+
+|PROCESO entrada; |TIPO 0;          || desde el campo 'diario'
+   |SI esnuevo = 0;
+      diauno = #caentasc#1;
+      fecuno = #caentasc#2;
+      documuno = #caentasc#3;
+      |ACABA;
+   |FINSI;
+
+   diauno = #caentasc#1;
+   |HAZ leedocum;
+
+   |ABRE #2;
+   |SELECT #3#2;
+   |LEE 001#2u;
+   |SI FSalida ! 0; |DDEFECTO #2; |FINSI;
+   #caentasc#1 = diauno;      || diario
+   #caentasc#2 = #camaasic#1;        || Fecha
+   #caentasc#3 = nDOCUMENTO;         || Documento
+   |SELECT #1#2;
+   |CIERRA #2;
+   |PINTA #caentasc#1;
+   |PINTA #caentasc#2;
+   |PINTA #caentasc#3;
+|FPRC;
+
+|PROCESO fecha; |TIPO 0;               || desde campo 'fecha'
+   |SI esnuevo = 0; |ACABA; |FINSI;
+   inkey = FSalida;
+   |SI #caentasc#2 < fec1; |O #caentasc#2 > fec2;
+       |MENAV mensa1;
+       |ERROR;
+       |ACABA;
+   |SINO;
+       |SI #caentasc#2 [ fec3;
+           |MENAV mensa2;
+           |ERROR;
+       |FINSI;
+   |FINSI;
+   fecuno = #caentasc#2;
+|FPRC;
+
+|PROCESO docum; |TIPO 0;
+   |SI esnuevo = 0; |ACABA; |FINSI;
+   documuno = #caentasc#3;
+|FPRC;
+
+|| ----------------------------------------------------------------------
+|PROCESO ver_pre; |TIPO 7
+   #caentasc#7 = ult_pre;
+   |PINTA #caentasc#7;
+|FPRC;
+
+|PROCESO guard_pr; |TIPO 0
+   ult_pre = #caentasc#7;
+|FPRC;
+
+|PROCESO siesta; |TIPO 6;          || desde campo 'asiento predefinido'
+   inkey = FSalida;
+   |SI inkey = 1; |ACABA;  |FINSI;
+
+   |SI inkey ] 10; |Y sw_ptec ! 1;
+      |ERROR;
+      |PTEC 807;
+      |ACABA;
+   |FINSI;
+
+   xx = (FEntrada / 100) ! 0;
+   predefine = 0;
+   |ABRE #11;
+   #casieaca#0 = #caentasc#7;
+   |LEE 001#11=;
+   |SI FSalida ! 0;
+      |SI #caentasc#7 = 0;
+         |DDEFECTO #11;
+         |GRABA 020#11n;       || graba la clave 'cero'
+      |FINSI;
+      |ATRI I;
+      ||      |PINTA 0928, #11#1;
+      |ATRI 0;
+      |CIERRA #11;
+      |ACABA;
+   |FINSI;
+   |ATRI I;
+   ||  |PINTA 0928, #11#1;
+   |ATRI 0;
+   |SI #caentasc#7 = 0;  |CIERRA #11;  |ACABA;  |FINSI;  ||NO ES OPERATIVO EL CERO
+   |SI xx ! 1;  |CIERRA #11;  |ACABA;  |FINSI;    ||SOLO SI ESTAMOS EN ALTA
+   |SI inkey ! 9;|Y inkey ! 10; || en <F1> presenta el asiento
+      predefine = 1;           || en <F2> sube al diario
+      predefine2 = 1;          ||/(cuando se esta a¤adiendo)
+      |SI #casieaca#2 = "S";
+         |HAZ pide_iva;
+      |FINSI;
+   |SINO;
+      |SI inkey = 9;               || presenta el asiento
+         |HAZ consulta;
+         |ERROR;
+      |FINSI;
+   |FINSI;
+   |CIERRA #11;
+|FPRC;
+|| -----------------------------------------------------------------------
+
+|PROCESO pide_iva;       || desde calculo 'siesta' / pide datos ivas
+   ext1 = #caentasl#3;        || fecha del asiento
+   ext2 = #casieaca#4;       || libro iva
+   ext2 = #casieaca#4;        || libro iva
+   ext4 = #casieaca#16;       || serie Factura
+   ext10 = "";
+   |SUB_EJECUTA "camaasiv.tab";
+   nume1 = ext3;
+   |SI nume1 ! 0;                || esto es el FSalida
+      predefine = 0;
+      predefine2 = 0;
+      |ERROR;
+   |SINO;
+      i_serie = ext4;       || (inhibida)
+      i_factu = ext5;
+      i_fecha = ext1;
+      sw_ptec = 0;                      ||/este 'PTEC' sobra
+   |FINSI;
+|FPRC;
+
+|PROCESO situate;        || desde rutina 'consulta'
+   |CAMPO_POSICION #casieaax#0,1,0847;
+   |CAMPO_POSICION #casieaax#1,1,0860;
+|FPRC;
+
+|PROCESO correte;        || desde subrutina 'consulta2'
+   |CAMPO_POSICION #casieaax#0,0,posic; posic=posic+m_c; |CAMPO_POSICION #casieaax#0,1,posic;
+   |CAMPO_POSICION #casieaax#1,0,posic; posic=posic+m_c; |CAMPO_POSICION #casieaax#1,1,posic;
+|FPRC;
+
+|PROCESO consulta2;      || desde rutina 'consulta' /BUCLELIN
+   lin_con = lin_con + 1;
+   |SI #casieali#2 = "D";  #casieaax#0 = #casieali#3;  #casieaax#1 = "     --     ";  |FINSI;
+   |SI #casieali#2 = "H";  #casieaax#0 = "     --     ";  #casieaax#1 = #casieali#3;  |FINSI;
+   |PINDA #0#13;
+   |SI lin_con < 12;
+      m_c = 100;
+   |SINO;
+      m_c = -1100;
+      lin_con = 0;
+      |PAUSA;
+      |PINPA #0#13;
+   |FINSI;
+   |HAZ correte;
+|FPRC;
+
+|PROCESO consulta;       || desde calculo 'siesta' /presenta predefinido
+   |HAZ situate;
+   |PUSHV 05451974;
+   |PUSHV 19292374;
+   lin_con = 0;
+   |DDEFECTO #13;
+   |PINPA #0#13;
+   |PINPA #1#13;
+   |SI #casieaca#2 = "S";
+      |SI #casieaca#3 = "R";  #casieaax#2 = "IVA REPERCUTIDO ";  |FINSI;
+      |SI #casieaca#3 = "S";  #casieaax#2 = "IVA SOPORTADO   ";  |FINSI;
+      |SI #casieaca#3 = "N";  #casieaax#2 = "REGISTRO SIN IVA";  |FINSI;
+      |SI #casieaca#3 = "R";|Y #casieaca#6 = "S";  #casieaax#3 = "/COBROS";  |FINSI;
+      |SI #casieaca#3 = "S";|Y #casieaca#6 = "S";  #casieaax#3 = "/PAGOS ";  |FINSI;
+   |FINSI;
+   |PINDA #1#13;
+   |BUCLELIN 2consulta2#11;
+   |SI lin_con = 0;
+      |MENAV "    ATENCION!!! Cabecera sin lineas ...";
+   |SINO;
+      |PAUSA;
+   |FINSI;
+   |POPV;
+   |POPV;
+|FPRC;

@@ -1,0 +1,187 @@
+|FICHEROS;
+     visam100 #100;      ||Parametros
+     visam009 #9;        ||Cuentas de Correo
+     visam008 #8;
+|FIN;
+
+|VARIABLES;
+     aBase = "";
+     aCorreos = "";
+     aIPRemoto = "";
+     aOrigen = "";
+     aDestino = "";
+
+     nSwManual = 0;
+     aIPAlt = "";
+     aServAlt = "";
+     aOrigenAlt = "";
+
+     aAux = "";
+
+     aMensaje = "";
+     aParametro = "";
+     nSwAuto = 0;
+     aIPServ       = "";
+     aServCorreo   = "";
+     aServidor     = "";
+     aAsunto       = "";
+     aTexto        = "";
+     aDirOrigen    = "";
+     aDirDestino   = "";
+     aFichero      = "";
+     aHora         = "";
+     aAlfa         = "";
+     aAlfa5        = "";
+     aAlfa6        = "";
+
+     nCorreo       = 0;
+|FIN;
+
+|RUTINA ClaveBaja4;
+     #8#0 = "31.12.2999";
+     #8#1 = "zzzzzzzz";
+|FRUT;
+
+|RUTINA ClaveAlta4;
+     #8#0 = "01.01.0000";
+     #8#1 = "";
+|FRUT;
+
+|PROCESO EnviaCorreo;
+     |ABRE #100;  |LEE 000#100p;  |CIERRA #100;
+
+     |ABRE #9;
+     |DDEFECTO #9;
+     #9#0 = #100#1;
+     |LEE 000#9=;
+     |SI FSalida ! 0;
+          aMensaje = "0000No existe Cuenta de Correo definida [" + #100#1 + "]";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |CIERRA #9;
+
+     |DBASE aBase;
+     |QBF aBase;
+     aCorreos = aBase + "correos/";
+     |MKDIR aCorreos;
+
+     |HORA aHora
+
+     aIPServ     = #9#2;   |QBF aIPServ;
+     aServidor   = #9#4;   |QBF aServidor;
+
+     |SI #9#8 = "N";
+          aDirOrigen = #9#5;   |QBF aDirOrigen;
+     |SINO;
+          aDirOrigen = #9#7;
+          |QBF aDirOrigen;
+          aDirOrigen = aDirOrigen + ":" + #9#5;
+          |QBF aDirOrigen;
+          aDirOrigen = aDirOrigen + ":" + #9#5;
+          |QBF aDirOrigen;
+     |FINSI;
+
+     aDirDestino = #8#2;  |QBF aDirDestino;
+     aAsunto     = #8#3;  |QBF aAsunto;
+     aTexto      = #8#4;  |QBF aTexto;
+     aFichero    = #8#5;  |QBF aFichero;
+     |SI aFichero = "";
+          aFichero   = "fichero.txt";
+          #8#9 = "fichero.txt";
+     |FINSI;
+
+     aOrigen = aFichero;
+     aDestino = aCorreos + #visam008#9;
+     |QBF aDestino;
+     |HAZ RecibeFichero;
+     aFichero = aDestino;
+
+     |SI aServidor ! "";
+          |DSCORREO_ENVIA aIPServ, aServidor, aDirOrigen, aDirDestino, aAsunto, aTexto, aFichero;
+          aAlfa = FSalida;
+          |SI nSwManual = 1;
+               aMensaje = "0000" + aAlfa;
+               |MENAV aMensaje;
+               aMensaje = "0000IP:" + aIPServ + ". Serv:" + aServidor + ". Ori:" + aDirOrigen + ". Dst:" + aDirDestino + ". Asunto:" + aAsunto;
+               |MENAV aMensaje;
+          |FINSI;
+          aAlfa = aAlfa % 101;
+          |SI aAlfa = "0";
+              #8#6 = "S";
+              |GRABA 020#8a;
+
+              nCorreo = nCorreo + 1;
+          |FINSI;
+          |LIBERA #8;
+     |SINO;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecibeFichero;
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+     |SI aIPRemoto ! "";
+          |RECIBE_FICHERO aOrigen, aDestino;
+     |SINO;
+          |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE visam008;
+     #8#2;
+     6;
+     "31.12.2999", "zzzzzzzz", "N";
+     "01.01.1900", "        ", "N";
+     be;
+     NULL, EnviaCorreo;
+|FIN;
+
+|PROCESO Tipo11;  |TIPO 11;
+     |SI FSalida = 10;
+         |LEE 101#8=;
+         |SI FSalida = 0;  |Y #8#6 = "N";
+             nSwManual = 1;
+             nCorreo = 0;
+             |HAZ EnviaCorreo;
+
+             aAlfa = "0000 Notificado " + nCorreo + " Correos.";
+             |MENAV aAlfa;
+             nSwManual = 0;
+         |SINO;
+             |SI #8#6 = "S";
+                 |MENAV "0000 Ya esta notificada.";
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |SI FSalida = 11;
+         |CONFI "0000SSeguro de notificar todos los pendientes ";
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+         nCorreo = 0;
+         |BUCLE visam008;
+         aAlfa = "0000 Notificado " + nCorreo + " Correos.";
+         |MENAV aAlfa;
+
+         |PONCONTROL 23, "SI";
+         |PTEC 812;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aParametro = PARAMETRO;
+     |QBF aParametro;
+     |SI aParametro = "AUTO";
+          nSwAuto = 1;
+          nCorreo = 0;
+          |BUCLE visam008;
+     |SINO;
+          nSwAuto = 0;
+          |CLS;
+          |ENTLINEAL #2#8, -1, 4, 20, 1, ClaveBaja4, ClaveAlta4;
+          ||ENTLINEAL #2#8, -1, 2, 20, 1, ClaveBaja4, ClaveAlta4;
+     |FINSI;
+|FPRO;

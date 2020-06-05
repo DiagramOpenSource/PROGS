@@ -1,0 +1,587 @@
+|FICHEROS;
+   carecfac #0;
+
+   camaasil #1;    || apuntes lins
+   calibros #5;    || Libros de IVA
+
+   cacuenta #6;    || Cuentas
+   caclipro #7;    || Clientes/Proveedores
+
+   cacuiv2l #9;
+
+   camaniva #10;
+   caivalin #11;
+
+   caivaasi;
+
+   caivatm1 #900;    || Temporal Cabecera Registros IVA/IRPF
+   caivalit #901;    || Temporal Lineas Registros IVA/IRPF
+
+   :/modelos/def/dsmom030 #330;
+|FIN;
+
+|VARIABLES;
+
+   aFichero = "";
+   swdefe   = 0;
+   alfa1    = "";
+   alfa2    = "";
+   sw       = 0;
+   swc      = 0;
+   nElDoc   = 0;
+   nLibro   = 0;
+
+   salid2 = 0;
+   salida = 0;
+   mensa1 = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+
+   aAlfa  = "";
+
+   enQSerie = 0;
+   tipoRS   = "";
+   i_perio  = 0;
+   i_acum   = "";
+   i_impo   = 0;
+
+   para1 = 0;
+   nume1 = 0;
+   nume2 = 0;
+   nume3 = 0;
+   aTitCuenta = "";
+   nEstado = 0;
+   aQueQuiero = "";
+   aNumCampos = "";
+   nNumCampoC = 0;
+   nNumCampoL = 0;
+   &snFiltr   = "";
+   nSumo      = 0;
+   aAlfa3     = "";
+   &enAParam  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE cla340_i;
+
+____________________________________/ CALCULOS DESDE PANTALLA
+
+|CALCULO eInic8; |TIPO 8;
+ |HAZ DirAplicSt;
+ |HAZ inicio;
+ |ABRE #caivaasi;
+ |DDEFECTO #caivaasi;
+ |LEE 010#caivaasi.p;
+ enQSerie = 0;
+ |SI #caivaasi#44 = "S"; enQSerie = 1;|FINSI;
+ |CIERRA #caivaasi;
+|FCAL;
+
+|PROCESO def_fec; |TIPO 7;
+   |SI sw = 0;
+      #0#2 = fec1;    |PINTA #0#2;
+      #0#3 = fec2;    |PINTA #0#3;
+      sw = 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO fecha; | TIPO 0;   || Desde/hasta fecha
+   |SI #0Campo < fec1; |O #0Campo > fec2;
+      |MENAV mensa1;
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO diarioh; | TIPO 0;   ||  hasta diario
+   |SI #0#1 < #0#0;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO fechah; | TIPO 0;   ||  hasta fecha
+   |SI #0#3 < #0#2;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO documh; | TIPO 0;   ||  hasta documento
+   |SI #0#5 < #0#4;  |ERROR;  |FINSI;
+|FPRC;
+
+
+|CALCULO Ehque; |TIPO 7;
+ |SI enQSerie = 0;
+     |C_M #0#13,1,"N"; #0#13 = "";      |PINTA #0#13;
+     |C_M #0#14,1,"N"; #0#14 = "zzzzz"; |PINTA #0#14;
+ |SINO;
+     |C_M #0#13,1,"S";
+     |C_M #0#14,1,"S";
+ |FINSI;
+
+|FCAL;
+|| *************************************************************************
+
+|PROCESO lee_libro;
+   #calibros#0 = #900#0;
+   |LEE 001#5=;
+   |SI FSalida ! 0;
+       #5#0 = #900#0;
+       #5#1 = "<LIBRO INEXISTENTE>";
+       |GRABA 020#5n;
+   |FINSI;
+|FPRC;
+
+|PROCESO periodo;
+  alfa1 = #900#4;
+  alfa1 = alfa1 % 402;
+  nume1 = alfa1; i_perio = nume1;
+  |SI enEjercicio [ 2009;
+      |SI #caivaasi#46 = "A"; i_perio = 0; |FINSI;
+      |SI #caivaasi#46 = "T";
+          i_perio = 1;
+          |SI nume1 ] 4;  i_perio = 2; |FINSI;
+          |SI nume1 ] 7;  i_perio = 3; |FINSI;
+          |SI nume1 ] 10; i_perio = 4; |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO LeeCliPro;
+  |ABRE #7;
+  aTitCuenta = "";
+  eaCodNif   = "";
+  #7#23 = "P";
+  alfa1 = #900#12 % 0102; |QBF alfa1;
+  |SI alfa1 = "43"; |O alfa1 = "44"; #7#23 = "C"; |FINSI;
+  eaCuenta = #900#12; |HAZ SacaNivel;
+  #7#10 = #900#12;
+  #7#11 = enNivel;
+  |LEE 010#7=;
+  |SI FSalida = 0;
+      aTitCuenta  = #7#1;
+      eaCodNif    = #7#9;
+  |SINO;
+      |ABRE #6;
+      #6#0 = #900#12;
+      |LEE 001#6=;
+      |SI FSalida = 0;
+          aTitCuenta = #6#2;
+      |FINSI;
+      |CIERRA #6;
+  |FINSI;
+  |CIERRA #7;
+|FPRC;
+
+|PROCESO Departamento;
+   eOpDep = 0;
+   enActividad = #900#10;
+   eaCodDep    = #900#10;
+   |HAZ Actividad;
+   eOpSub = 0;
+   enConcepto  = #900#27;
+   eaCodSubdep = #900#11;
+   |HAZ OtroSubActividad;
+|FPRC;
+
+|| ***********************************************************************
+|PROCESO ivatitular;
+
+   |SI #1#19 = " ";
+       |SI swdefe = 1;
+           #1#19 = "X";
+           |GRABA 020#1a;
+           |ACABA;
+       |SINO;
+           #1#19 = "F";
+           |GRABA 020#1a;
+       |FINSI;
+   |FINSI;
+
+   #900#04 = #1#1;    || fecha
+   |HAZ periodo;
+   #900#5  = i_perio;
+
+   #900#6  = "N";
+   #900#7  = #1#0;
+   #900#8  = #1#1;
+   #900#9  = #1#2;
+   #900#22 = #1#26;   || Referencia
+   #900#27 = #1#6;    || concepto
+   #900#28 = #1#7;    || descripcion
+   #900#29 = #1#6;    || concepto
+   #900#30 = #1#7;    || descripcion
+   #900#10 = #1#21;   || Departamento
+   #900#11 = #1#28;   || Subdepartamento
+   |HAZ Departamento;
+   #900#24 = eaNombreAct;
+   #900#25 = eaNomSubdep;
+
+   #900#12 = #1#4;       || cuenta
+   |HAZ LeeCliPro;
+   #900#13 = aTitCuenta; || nombre
+   #900#14 = eaCodNif;      || cif
+
+   |SI #1#19 = "F"; swdefe = 1; |FINSI;
+
+   #900#36 = tipoRS;
+
+   aClau340 = #900#42;
+   nNumFras = #900#38;
+   |HAZ ClauDefecto;
+   #900#42 = aClau340;
+|FPRC;
+
+|| ///////////////////////////////////////////////////////////
+
+|PROCESO ivaimp;
+   i_acum = #1#19;
+   |SI tipoRS = "S"; |Y #caivaasi#94 = "S";
+       |SI i_acum = "B"; |Y #1#8 = "H"; i_acum = "b"; |FINSI;
+       |SI i_acum = "I"; |Y #1#8 = "H"; i_acum = "i"; |FINSI;
+       |SI i_acum = "R"; |Y #1#8 = "H"; i_acum = "r"; |FINSI;
+       |SI i_acum = "P"; |Y #1#8 = "D"; i_acum = "p"; |FINSI;
+       |SI i_acum = "D"; |Y #1#8 = "D"; i_acum = "d"; |FINSI;
+   |FINSI;
+   |SI tipoRS = "R"; |Y #caivaasi#93 = "S";
+       |SI i_acum = "B"; |Y #1#8 = "D"; i_acum = "b"; |FINSI;
+       |SI i_acum = "I"; |Y #1#8 = "D"; i_acum = "i"; |FINSI;
+       |SI i_acum = "R"; |Y #1#8 = "D"; i_acum = "r"; |FINSI;
+       |SI i_acum = "P"; |Y #1#8 = "H"; i_acum = "p"; |FINSI;
+       |SI i_acum = "D"; |Y #1#8 = "H"; i_acum = "d"; |FINSI;
+   |FINSI;
+   i_impo = #1#9;
+   |SI i_acum = "b"; i_acum = "B"; i_impo = - i_impo; |FINSI;
+   |SI i_acum = "i"; i_acum = "I"; i_impo = - i_impo; |FINSI;
+   |SI i_acum = "r"; i_acum = "R"; i_impo = - i_impo; |FINSI;
+   |SI i_acum = "p"; i_acum = "P"; i_impo = - i_impo; |FINSI;
+   |SI i_acum = "d"; i_acum = "D"; i_impo = - i_impo; |FINSI;
+   |SI #1#20 = 0; #1#20 = 1; |FINSI;
+
+   #901#0 = #900#0;
+   #901#1 = #900#1;
+   #901#2 = #1#20;
+   |LEE 101#901=;
+   |SI FSalida ! 0;
+       |DDEFECTO #901;
+       #901#0 = #900#0;
+       #901#1 = #900#1;
+       #901#2 = #1#20;
+       |GRABA 020#901b;
+   |FINSI;
+
+   |SI i_acum = "P";
+       #901#18 = #1#6;
+       #901#19 = #1#7;
+       #901#22 = #901#22 + i_impo;
+       #901#23 = #1#4;
+
+   |SINO;
+
+       #901#3 = #1#6;
+       #901#4 = #1#7;
+
+       #901#25 = #dsmom030#72;
+       |SI aTipoIVA = "S";
+           |SI #dsmom030#28 = 2; |O #dsmom030#28 = 4; |O #dsmom030#28 = 6;
+               #901#17 = "S";
+           |SINO;
+               |SI #dsmom030#32 = 3; #901#17 = "S"; |FINSI;
+           |FINSI;
+       |SINO;
+           |SI #dsmom030#34 = 14; #901#17 = "S"; |FINSI;
+       |FINSI;
+
+       |SI i_acum = "B";
+           #901#6  = #901#6  + i_impo;
+           #901#12 = #1#4;
+           #901#28 = #1#29;
+       |FINSI;
+       |SI i_acum = "I";
+           nSumo = 0;
+           |SI #901#25 = "S";
+               aAlfa3 = #1#4 % 103;
+               |SI aAlfa3 = "477"; |Y aTipoIVA = "S"; nSumo = 1; |FINSI;
+               |SI aAlfa3 = "472"; |Y aTipoIVA = "R"; nSumo = 1; |FINSI;
+           |FINSI;
+           |SI nSumo = 0;
+               #901#8  = #901#8  + i_impo;
+               #901#13 = #1#4;
+           |FINSI;
+       |FINSI;
+       |SI i_acum = "R";
+           nSumo = 0;
+           |SI #901#25 = "S";
+               aAlfa3 = #1#4 % 103;
+               |SI aAlfa3 = "477"; |Y aTipoIVA = "S"; nSumo = 1; |FINSI;
+               |SI aAlfa3 = "472"; |Y aTipoIVA = "R"; nSumo = 1; |FINSI;
+           |FINSI;
+           |SI nSumo = 0;
+               #901#10 = #901#10 + i_impo;
+               #901#14 = #1#4;
+           |FINSI;
+       |FINSI;
+       |SI i_acum = "D";
+           #901#6  = #901#6  - i_impo;
+           #901#11 = #901#11 + i_impo;
+           #901#15 = #1#4;
+       |FINSI;
+
+       #901#7  = (#901#8 * 100) / #901#6;
+       #901#9  = (#901#10 * 100) / #901#6;
+   |FINSI;
+
+   aTipoIVA = #900#36;
+   efFechaIVA = #900#4; enLineaIVA = 0;
+   enPorcIVA = #901#7;  enPorcREC = #901#9;
+   eaCtaIVA  = #901#13; eaCtaREC  = #901#14;
+   |HAZ BuscaTipoIVA;
+   |SI enLineaIVA < 0;
+      aAlfa = "    Control de cuentas no definido [" + #900#4 + "]";
+      |MENAV aAlfa;
+   |SINO;
+      #901#7 = enPorcIVA; #901#9 = enPorcREC;
+      #901#16 = enLineaIVA;
+      #901#5  = eaIVADeduc; #901#17 = eaIVAInver;
+   |FINSI;
+
+   #901#30 = #1#21; #901#31 = #1#28;
+
+   |GRABA 020#901a;
+   |LIBERA #901;
+|FPRC;
+
+|PROCESO grabaiva;
+   enAParam = #1#21;
+   |HAZ eActivParam;
+
+   |SI #0#11 = "N";
+       #10#0 = #1#13;
+       #10#2 = #1#15;
+       #10#3 = #1#14;
+       |LEE 001#10=;
+       |SI FSalida = 0;  |ACABA; |FINSI;  ||Exista Ya La factura
+   |FINSI;
+
+   #900#0 = #1#13;
+   #900#2 = #1#15;
+   #900#3 = #1#14;
+   |LEE 101#900=;
+   salida = FSalida;
+   |SI salida ! 0;
+       swdefe = 0;
+       |DDEFECTO #900;
+       #900#0 = #1#13;
+       nElDoc = nElDoc + 1;
+       #900#1 = nElDoc;
+       #900#2 = #1#15;
+       #900#3 = #1#14;
+       |HAZ lee_libro;
+       |GRABA 020#900b;
+       swc = 1;
+   |FINSI;
+
+   |DDEFECTO #dsmom030;
+   #dsmom030#0 = #1#6;
+   |LEE 041#dsmom030.=;
+
+   aTipoIVA = #1#12;
+
+   |SI #1#19 = "F"; |O #1#19 = " ";
+       |HAZ ivatitular; || R. Cuenta
+   |SINO;
+       |HAZ ivaimp;     || R. Bases/IVA/Rec  ...
+   |FINSI;
+
+   |GRABA 020#900a;
+   |LIBERA #900;
+
+   |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE lee_diario;
+   #1#1;
+   12,13,14,15;
+   #0#0, #0#2, #0#4,    1, tipoRS, #0#7, #0#9,  #0#13;
+   #0#1, #0#3, #0#5, 9999, tipoRS, #0#8, #0#10, #0#14;
+   be;
+   NULL, grabaiva;
+|FIN;
+
+|| ***********************************************************************
+|| ***********************************************************************
+
+|PROCESO LasLineas;
+  |PARA para1 = 0; |SI para1 [ nNumCampoL; |HACIENDO para1 = para1 + 1;
+         #11para1 = #901para1;
+  |SIGUE;
+  #11#1 = nElDoc;
+
+  |GRABA 040#11n;
+
+   #camaniva#19 = #camaniva#19 + #caivalin#6;
+   #camaniva#15 = #camaniva#15 + #caivalin#6;
+   #camaniva#17 = #camaniva#15 %  #camaniva#16;
+   #camaniva#20 = #camaniva#20 + #caivalin#22;
+   #camaniva#23 = #camaniva#23 + (#caivalin#8 + #caivalin#10);
+   #camaniva#26 = #camaniva#26 + #caivalin#11;
+   |SI #camaniva#36 = "N";
+       #camaniva#21 = #camaniva#19 + #camaniva#23 - #camaniva#26 - #camaniva#20;
+   |SINO;
+       #camaniva#21 = #camaniva#19 + #camaniva#23 - #camaniva#20;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE LasLineas;
+ #901#1;
+ ;
+ #900#0, #900#1, 01;
+ #900#0, #900#1, 99;
+ ;
+ NULL, LasLineas;
+|FIN;
+
+|PROCESO BorroLineas;
+ |BORRA 020#11a;
+ |LIBERA #11;
+|FPRC;
+
+|DEFBUCLE BorroLineas;
+ #11#1;
+ ;
+ #10#0, #10#1, 01;
+ #10#0, #10#1, 99;
+ be;
+ NULL, BorroLineas;
+|FIN;
+
+|PROCESO BuscoNumero;
+   #10#0 = #900#0;
+   #10#1 = 9999999999;
+   |LEE 010#10];
+   |SI FSalida = 0;
+       |LEE 040#10a;
+   |SINO;
+       |LEE 040#10u;
+   |FINSI;
+   nElDoc = 1;
+   |SI FSalida = 0; |Y #10#0 = #900#0;
+        nElDoc = #10#1 + 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO actuaiva;
+
+   |SELECT #3#10;
+   |DDEFECTO #10;
+
+   #camaniva#0 = #900#0;
+   #camaniva#2 = #900#2;
+   #camaniva#3 = #900#3;
+   |LEE 001#10=;
+   salida = FSalida;
+   |SELECT #1#10;
+
+   |SI salida = 0;
+       nLibro = #camaniva#0;
+       nElDoc = #camaniva#1;
+       |BUCLE BorroLineas;
+
+       #camaniva#0 = nLibro;
+       #camaniva#1 = nElDoc;
+       |LEE 101#10=;
+       nElDoc = #camaniva#1;     ||Numero de Documento
+   |SINO;
+       |HAZ BuscoNumero;
+   |FINSI;
+
+   |PARA para1 = 0; |SI para1 [ nNumCampoC; |HACIENDO para1 = para1 + 1;
+         #10para1 = #900para1;
+   |SIGUE;
+   #camaniva#1 = nElDoc;
+
+   #camaniva#19 = 0; #camaniva#15 = 0;
+   #camaniva#17 = 0; #camaniva#20 = 0;
+   #camaniva#23 = 0; #camaniva#26 = 0;
+   #camaniva#21 = 0;
+
+   |BUCLE LasLineas;
+
+   |SI salida = 0;  |GRABA 020#10a; |FINSI;
+   |SI salida ! 0;  |GRABA 020#10n; |FINSI;
+   |LIBERA #10;
+
+   |ATRI I;
+   |PINTA 1964, #900#0;
+   |PINTA 1967, #900#3;
+   |PINTA 1974, #900#2;
+   |ATRI 0;
+|FPRC;
+
+
+|DEFBUCLE caivatm1;
+   #900#1;
+   ;
+   00, "     ", 000001;
+   99, "zzzzz", 999999;
+   e;
+   NULL, actuaiva;
+|FIN;
+
+
+|PROCESO actua_iva;
+   |ABRE #10;
+   |ABRE #11;
+   |BUCLE caivatm1;
+   |CIERRA #11;
+   |CIERRA #10;
+|FPRC;
+
+|| ***********************************************************************
+|| *********************** RECUPERACION CON TIPO 3 ***********************
+|| ***********************************************************************
+
+|CALCULO recupera; |TIPO 3;
+   |SI #0#12 ! "SI"; |ACABA; |FINSI;
+
+   aQueQuiero = "|NC";
+   aNumCampos = #900#aQueQuiero#;
+   nNumCampoC = aNumCampos;
+   nNumCampoC = nNumCampoC - 1;
+   aNumCampos = #901#aQueQuiero#;
+   nNumCampoL = aNumCampos;
+   nNumCampoL = nNumCampoL - 1;
+
+   tipoRS= #0#6;
+
+   aFichero = ("zC" + Usuario) % 108;
+   |NOME_DAT #900 aFichero;
+   |ABRE #900; |CIERRA #900; |DELINDEX #900;
+
+   aFichero = ("zL" + Usuario) % 108;
+   |NOME_DAT #901 aFichero;
+   |ABRE #901; |CIERRA #901; |DELINDEX #901;
+
+
+   nElDoc = 0;
+   |ABRE #900;
+   |ABRE #901;
+
+   |ABRE #5;
+
+   |ATRI I; |PINTA 1964, " <TEMPORAL> "; |ATRI 0;
+
+   |ABRE #dsmom030;
+   |ABRE #10;
+   |SELECT #3#10;
+   |BUCLE lee_diario;
+   |SELECT #1#10;
+   |CIERRA #10;
+   |CIERRA #dsmom030;
+
+   |PINTA 1964, "            ";
+
+   |CIERRA #5;
+
+   |CIERRA #901;
+   |CIERRA #900;
+
+   |SI swc ! 0;
+       |HAZ actua_iva;
+   |FINSI;
+   |DELINDEX #901;
+   |DELINDEX #900;
+|FCAL;

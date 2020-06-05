@@ -1,0 +1,166 @@
+|FICHEROS;
+     hotm0047 #0;
+     nomhicca #1;
+
+     hotm0051 #51;
+     labemphi #10;   || aux. empresas historico
+|FIN;
+
+|VARIABLES;
+    runnom = "nomwreno";
+    campo_irpf = 114;
+    cabeza_tit = "RESUMEN NOMINAS MENSUAL HISTORICO - ";
+
+    hay_algo = 0;
+    &aAunno = "";
+    &resumen = "";
+    &tinf_tc1re = 0;
+    &nTipo = 0;
+|FIN;
+
+|INCLUYE i_ireno;
+____________________________________/ IMPORTE TC1
+|PROCESO leyendo_tc1;
+|SI #0#5 = 0;|O #0#5 = 2;
+    |SI #10#2 =  0;|O #10#2 =  2;|O #10#2 =  8;|O #10#2 =  9;
+     |O #10#2 = 10;|O #10#2 = 18;|O #10#2 = 19;
+            hay_algo = 1;
+            tinf_tc1re = tinf_tc1re + #10#20;
+    |FINSI;
+|FINSI;
+|SI #0#5 = 5;
+    |SI #10#2 =  5;|O #10#2 =  6;|O #10#2 =  7;
+     |O #10#2 = 15;|O #10#2 = 16;|O #10#2 = 17;
+            hay_algo = 1;
+            tinf_tc1re = tinf_tc1re + #10#20;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE lee_tc1;
+ #10#1;
+ ;
+ empresa,  1, #0#4, #0#2, #0#5;
+ empresa, 99, #0#4, #0#2, #0#5;
+ ;
+ NULL, leyendo_tc1;
+|FIN;
+
+|PROCESO tc1;
+    hay_algo = 0;
+    resumen = #0#6;
+||SI #0#6 = "N"; |O #0#6 = "A";
+        tinf_tc1 = (tinf_sss + tinf_dse) - tinf_enf;    || aproximado
+        aAunno = "";
+||SINO;
+    |BUCLE lee_tc1;
+    |SI hay_algo = 0;
+        tinf_tc1=(tinf_sss+tinf_dse)-tinf_enf;
+        tinf_tc1re = tinf_tc1;
+        aAunno = "- TC1 no calculado";
+    |SINO;
+        aAunno = "";
+    |FINSI;
+||FINSI;
+|FPRC;
+
+|PROCESO temporal_HOT;
+
+     || Recupero datos del labtraba, ya que el bucle lo he hecho sobre
+     || el hotm0051
+
+     #2#0 = #hotm0051#0;      || Empresa
+     #2#1 = #hotm0051#3;      || Trabajador
+     |LEE 000#2=;
+
+     || Ahora asigno el centro, area y seccion del hotm0051
+
+     #2#62 = #hotm0051#6;     || Area
+     #2#63 = #hotm0051#8;     || Seccion
+     #2#77 = #hotm0051#4;     || Centro
+
+     || Ahora sigo como en el i_ireno
+
+     |ABRE #3;
+     |DDEFECTO #3;
+     #3#0 = #2#0;
+     |LEE 020#3=;
+     |CIERRA #3;
+
+     |SI #3#36 ! "N";   || si el switch de emision no es "N"
+          #1#0 = #2#0;   || Empresa
+          #1#1 = #2#1;   || Trabajador
+          #1#2 = #0#2;   || Mes
+          #1#3 = #0#5;   || Tipo
+          #1#66 = #0#4;  || a¤o historico
+          |LEE 000#1=;
+          |SI FSalida = 0;
+               |HAZ leetraba;
+               |SI #0#10 ! "T";
+                    |SI #0#10 = "A";|Y swbaja = 1;   |ACABA;   |FINSI;
+                    |SI #0#10 = "B";|Y swbaja = 0;   |ACABA;   |FINSI;
+               |FINSI;
+
+               |HAZ limpieza;
+               |HAZ detalle;
+               |ABRE #6;
+               #6#0 = #1#0;
+               #6#1 = #1#1;
+               |LEE 001#6=;
+               |SI FSalida = 0;
+                    |BUCLELIN 2ultimo#6;
+                    |BUCLELIN 2prorrata#6;
+               |SINO;
+                    area = #2#62;
+                    secc = #2#63;
+                    coef = 1;
+                   |HAZ graba;
+               |FINSI;
+               |CIERRA #6;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE gra_temporal_HOT;
+     #hotm0051#2;        || la segunda clave del hotm0051
+     4;
+     #0#0,     1, #0#8;
+     #0#1, 99999, #0#9;
+     ;
+     NULL, temporal_HOT;
+|FIN;
+
+|PROCESO imprime_HOT;|TIPO 3;
+     |IMPRE 0;
+     |SI FSalida = 0;
+          nTipo = #0#5;
+          fecha = #0#3;
+          cabeza = cabeza_tit + p_mes;
+          |HAZ centra;
+          alfa1 = Usuario; |QBF alfa1;
+          |NOME_DAT #8 alfa1;
+          |DELINDEX #8;
+          |ABRE #1;
+          |INFOR informe;
+          seleccio = 0;
+          |ABRE #2;
+          |ABRE #8;
+          |BUCLE gra_temporal_HOT;
+          |BUCLE lee_temporal;
+          |CIERRA #8;
+          |CIERRA #2;
+          |SI seleccio = 1;
+               swlin = 2;
+               |HAZ puesubgrs;  |PRINT;
+               |HAZ puegrupos;  |PRINT;
+               |HAZ tc1;
+               |PIEINF;
+          |FINSI;
+          |FININF;
+          |DELINDEX #8;
+          |CIERRA #1;
+     |SINO;
+          |MENAV error0;
+     |FINSI;
+     |FINIMP;
+|FPRC;

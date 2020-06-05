@@ -1,0 +1,228 @@
+|FICHEROS;
+   catbam01;
+   cacuenta;
+   :/modelos/def/dsmom030;
+|FIN;
+
+|VARIABLES;
+   &entrada    = 1;
+
+   aAlfa       = "";
+   aAlfa1      = "";
+
+   nOk         = 0;
+   nCampo      = 0;
+   nNume1      = 0;
+   nModoEstado = 0;
+   nConAnt10   = 0;
+   nConAnt15   = 0;
+   &snFiltrA   = "";
+   &snFilBa    = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| **********************************************************************
+|PROCESO Tipo8; |TIPO 8;
+  |HAZ inicio;
+  |HAZ eLeeParametro;
+|FPRC;
+
+|| **********************************************************************
+|PROCESO Uno;
+   #catbam01#0 = "            ";
+|FPRC;
+
+|PROCESO Dos;
+   #catbam01#0 = "zzzzzzzzzzzz";
+|FPRC;
+
+|CALCULO Tipo6CCta;  |TIPO 6;
+
+  |SI FSalida = 10; |Y Campo = 0;
+      |PUSHV 0501 2380;
+      |CONSULTA_F_CLAVE #1#catbam01, Uno, Dos;
+      |POPV;
+      |PINTA #catbam01#0;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+
+  eaCuenta = #catbam01#Campo#;
+  salidas  = FSalida;
+  |HAZ FiltraPuntos;
+  #catbam01#Campo# = eaCuenta;
+  |PINTA #catbam01#Campo#;
+
+  nModoEstado = (FEntrada / 100) ! 0;
+  |SI Campo = 0;
+      |SI nModoEstado = 1;
+          eaCuenta = #catbam01#0; |QBF eaCuenta;
+          |SI eaCuenta = "";
+              |MENAV "    Cuenta Erronea ";
+              |ERROR;
+          |FINSI;
+      |SINO;
+          nConAnt10 = #catbam01#10;
+          nConAnt15 = #catbam01#15;
+      |FINSI;
+  |FINSI;
+|FCAL;
+
+|CALCULO Tipo0CCta; |TIPO 0;
+   nModoEstado = (FEntrada / 100) ! 0;
+
+   emCta    = 1;
+   eaCuenta = #catbam01#Campo#;
+   |QBF eaCuenta;
+   |SI eaCuenta = ""; |Y nModoEstado = 4; |Y Campo = 0;
+       |ACABA;
+   |FINSI;
+
+   |HAZ SacaNivel;
+   |SI eswCta = 0;
+       |HAZ LeeCuenta;
+   |FINSI;
+
+   |SI eswCta ! 0;
+       |SI Campo = 0; |ERROR; |FINSI;
+       |ACABA;
+   |FINSI;
+   |SI Campo = 0;
+       #catbam01#1 = #cacuenta#2;
+       |PINTA #catbam01#1;
+   |FINSI;
+|FCAL;
+
+|CALCULO TrasConcepto; |TIPO 6;
+   enFilConc  = 1;
+   eaCuenta   = #catbam01#0;
+   enConcepto = #catbam01#Campo#;
+   |HAZ FiltroConcepto;
+   |SI eswLect ! 0; |ACABA;|ERROR; |FINSI;
+
+   |ABRE #dsmom030;
+   |DDEFECTO #dsmom030;
+   #dsmom030#0 = #catbam01#Campo#;
+   |LEE 021#dsmom030.=;
+   |CIERRA #dsmom030;
+
+   nCampo = Campo + 2;
+   nOk = 0;
+   |SI Campo = 10; |Y #catbam01#10 ! nConAnt10; nOk = 1; |FINSI;
+   |SI Campo = 15; |Y #catbam01#15 ! nConAnt15; nOk = 1; |FINSI;
+   |SI nOk = 1;
+       #catbam01#nCampo# = #dsmom030#1;
+       |PINTA #catbam01#nCampo#;
+   |FINSI;
+|FCAL;
+
+|CALCULO AntDesApunte;
+       |PTEC 816;
+|FCAL;
+
+|CALCULO Tipo0C21; |TIPO 0;
+   |C_M #catbam01#24, 1, "S";
+   |SI #catbam01#21 = "S";
+       #catbam01#24 = "";
+       |PINTA #catbam01#24;
+       |C_M #catbam01#24, 1, "N";
+   |FINSI;
+|FCAL;
+
+|CALCULO Tipo7C6; |TIPO 7;
+   |C_M #catbam01#Campo#,1,eaDepar;
+   |SI eaDepar = "N"; |ACABA; |FINSI;
+   |SI Haybasica = 1;
+       |MENSA "    <F2> Consultar Actividades";
+   |SINO;
+       |MENSA "    <F2> Consultar Departamentos";
+   |FINSI;
+|FCAL;
+
+|CALCULO Tipo0C6; |TIPO 0;
+   |SI eaDepar = "N"; |ACABA; |FINSI;
+
+   |BLIN 4;
+   eOpDep = 0; || 1 = Consulta pantalla
+   |SI FSalida = 10; eOpDep = 1;  |FINSI;
+   enActividad = #catbam01#6;
+   eaCodDep    = #catbam01#6;
+   |HAZ Actividad;
+   |SI eswLect = 1;
+       |MENAV "    Error.! No Existe Actividad / Departamento";
+       |ERROR;
+   |SINO;
+       #catbam01#6 = eaCodDep;    |PINTA #catbam01#6;
+       |SI efActFin > "01.01.1900"; |Y snFilBa = "S";
+           aAlfa = "    NAtencion!!!. Actividad con Fecha de BAJA " + efActFin + ", Desea introducir Facturas ? ";
+           |CONFI aAlfa;
+           |SI FSalida ! 0;
+               |ERROR;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+       |SI eaEsCom = "S";
+           |CONFI "    NAtencion!!!. Actividad Comunera, ¨ Desea introducir Movimientos ? ";
+           |SI FSalida ! 0;
+               |ERROR;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO Tipo7C7; |TIPO 7;
+   |C_M #catbam01#Campo#,1,eaSubde;
+
+   |SI eaSubde = "N"; |ACABA; |FINSI;
+   |SI Haybasica = 1;
+       |SI enArrend = 1;
+           |MENSA "    Subdepartamento. <F2> Consultar Referencias Catastrales";
+       |SINO;
+           |MENSA "    Subdepartamento. <F2> Consultar Cultivos";
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO Tipo0C7; |TIPO 0;
+   |SI eaSubde = "N"; |ACABA; |FINSI;
+
+   |BLIN 4;
+   eOpSub = 0; || 1 = Consulta pantalla
+   |SI FSalida = 10; eOpSub = 1;  |FINSI;
+
+   eaCodSubdep = #catbam01#7;
+   enQue = 1;
+   |HAZ SubActividad;
+   enQue = 0;
+   |SI eswLect = 1;
+       |MENAV "    Error.! No Existe SubDepartamento";
+       |ERROR;
+   |SINO;
+       #catbam01#7 = eaCodSubdep; |PINTA #catbam01#7;
+   |FINSI;
+|FCAL;
+
+|CALCULO Columnas; |TIPO 0;
+   |C_M #catbam01#Campo#, 0, aAlfa;
+   |SI aAlfa = "N"; |ACABA; |FINSI;
+
+   aAlfa = #catbam01#Campo#; |QBT aAlfa;
+   |SI aAlfa = "";
+       |SI Campo = 22; |O Campo = 23; |O Campo = 24; |O Campo = 25;
+           |MENAV "0000Campo obligatorio";
+           |ERROR;
+       |FINSI;
+       |ACABA;
+   |FINSI;
+
+   |SI aAlfa < "A"; |O aAlfa > "Z";
+       |MENAV "0000Columna mal informada";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO Tipo3; |TIPO 3;
+   nConAnt10 = #catbam01#10;
+   nConAnt15 = #catbam01#15;
+|FCAL;

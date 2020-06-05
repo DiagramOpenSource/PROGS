@@ -1,0 +1,413 @@
+|FICHEROS;
+     agifa112 #0;
+     agifa142 #1;
+     agifa200 #200;
+     agifa205 #205;
+     agifa208 #208;
+     dsm00241 #241;
+     agif0041 #41;
+     agifa112@ #1100;
+     dscam045@ #1000;
+     rodm0005@;
+     dsm00087@;
+|FIN;
+
+|VARIABLES;
+     aEmp48 = "";
+     nEmp48 = 0;
+
+     &enSwAltaPrv = 0;
+     &enCambiCodi = 0;   || para la copia de empresas
+     &eaRodExporta = "";
+     &enSwNoCopia = 0; || Para desactivar la actualizacion
+     aPath = "";
+     nModo = 0;
+     nCampo = 0;
+     aAlfa  = "";
+     aAlfa1 = "";
+     aOrig = "";
+     aDest = "";
+     nTipo = 0;
+     aDef = "";
+     nReg = 0;
+     nCalc  = 0;
+     nCalc1 = 0;
+     nCont = 0;
+     aSer = "";
+     aNum = "";
+     nContaLog = 0;
+     aUsu = "";
+     aTipo = "";
+|FIN;
+
+|PROCESO Campos112;
+   |SI nModo = 1; |Y #agifa208#3 = "S";
+      nCampo = #agifa208#1;
+      #agifa112@#nCampo# = #agifa112#nCampo#;
+   |FINSI;
+   |SI nModo = 2; |Y #agifa208#4 = "S";
+      nCampo = #agifa208#1;
+      #agifa112@#nCampo# = #agifa112#nCampo#;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Campos1112;
+#agifa208#2;
+;
+"agifa112", 000, "S";
+"agifa112", 999, "S";
+e;
+NULL,Campos112;
+|FIN;
+
+|DEFBUCLE Campos2112;
+#agifa208#3;
+;
+"agifa112", 000, "S";
+"agifa112", 999, "S";
+e;
+NULL,Campos112;
+|FIN;
+
+|PROCESO Grabacion112;
+   |SI nModo = 1; |Y #agifa200#7 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 2; |Y #agifa200#8 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 3;
+          |SI enCambiCodi = 0;
+               |SI #agifa200#9 ! "S"; |ACABA; |FINSI;
+          |SINO;
+               |SI #agifa200#7 ! "S"; |ACABA; |FINSI;
+          |FINSI;
+   |FINSI;
+
+   |DFICB aAlfa; |QBF aAlfa; |PATH_DAT #41 aAlfa;
+   |ABRE #agif0041; |SALVA_FICHA #agif0041;
+   #agif0041#0 = #agifa200#0;
+   |LEE 000#agif0041.=;
+   |SI FSalida = 0;
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/agifa112.mas";
+      |CARGA_DEF aAlfa, agifa112@;
+      |SI FSalida = 0;
+         |DFICB aAlfa; |QBF aAlfa;
+         aAlfa = aAlfa + (("00000" + #agifa200#0) % -105) + "/";
+         |PATH_DAT #1100 aAlfa;
+         |ABRE #agifa112@;
+         #agifa112@#0 = #agifa112#0;
+         |LEE 140#agifa112@.=;
+         |SI FSalida = 107;
+               || hace el lee sin error y no espera bloqueo
+               || porque si esta la autmatizacion de empresas activa falla
+         |SINO;
+              |SI nModo = 3;
+                 |SI FSalida = 0;
+                    |BORRA 020#agifa112@.a; |LIBERA #agifa112@;
+                 |FINSI;
+              |SINO;
+                 |SI FSalida ! 0;
+                    |DDEFECTO #agifa112@;
+                    #agifa112@#0 = #agifa112#0;
+                    |GRABA 020#agifa112@.b;
+                 |FINSI;
+
+                 |SI nModo = 1; |BUCLE Campos1112; |FINSI;
+                 |SI nModo = 2; |BUCLE Campos2112; |FINSI;
+                 |GRABA 020#agifa112@.a; |LIBERA #agifa112@;
+              |FINSI;
+         |FINSI;
+         |CIERRA #agifa112@; |DESCARGA_DEF #agifa112@;
+      |FINSI;
+   |FINSI;
+   |REPON_FICHA #agif0041; |CIERRA #agif0041;
+|FPRC;
+
+|DEFBUCLE ControlEmp112;
+#agifa200#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Grabacion112;
+|FIN;
+
+|PROCESO CtrlExtPro;
+   |SI nModo = 1; |Y #agifa205#6 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 2; |Y #agifa205#7 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 3; |Y #agifa205#5 ! "S"; |ACABA; |FINSI;
+
+   |SI #agifa205#11 = "S";
+      |DBASE aOrig; |QBF aOrig; aOrig = aOrig + "def/agifa112.mas";
+      aDest = #agifa205#2; |QBF aDest;
+      aDest = aDest + "def/agifa112.mas";
+      |COPIA_FICHERO aOrig, aDest;
+   |FINSI;
+
+   aAlfa = #agifa205#2; |QBF aAlfa;
+   aAlfa = aAlfa + "def/agifa112.mas";
+   |CARGA_DEF aAlfa, agifa112@;
+   |SI FSalida = 0;
+      aAlfa = #agifa205#2; |QBF aAlfa;
+      aAlfa = aAlfa + "fich/" + #agifa205#9; |QBF aAlfa;
+      aAlfa = aAlfa + "/"; |PATH_DAT #1100 aAlfa;
+      |ABRET #agifa112@;
+      |SI nModo = 1; |O nModo = 2;
+         #agifa112@#0 = #agifa112#0;
+         |LEE 101#agifa112@.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #agifa112@;
+            #agifa112@#0 = #agifa112#0;
+            |GRABA 020#agifa112@.b;
+         |FINSI;
+         aAlfa = "|NC"; aAlfa = #agifa112@#aAlfa#;
+         nCalc = aAlfa; nCalc = nCalc - 1;
+         aAlfa1 = "|NC"; aAlfa1 = #agifa112#aAlfa1#;
+         nCalc1 = aAlfa1; nCalc1 = nCalc1 - 1;
+         |SI nCalc ! nCalc1;
+            |MENAV "    Diferencia de campos en r‚plica con cartera";
+         |FINSI;
+         |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+            #agifa112@#nCont# = #agifa112#nCont#;
+         |SIGUE;
+         |GRABA 020#agifa112@.a; |LIBERA #agifa112@;
+      |FINSI;
+      |SI nModo = 3;
+         #agifa112@#0 = #agifa112#0;
+         |LEE 101#agifa112@.=;
+         |SI FSalida = 0;
+            |BORRA 020#agifa112@.a; |LIBERA #agifa112@;
+         |FINSI;
+      |FINSI;
+      |CIERRAT #agifa112@; |DESCARGA_DEF #agifa112@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CtrlExtPro;
+#agifa205#2;
+;
+"P",01;
+"P",99;
+;
+NULL,CtrlExtPro;
+|FIN;
+
+|PROCESO Empresas112;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscarter/def/dscam053.mas";
+   |CARGA_DEF aAlfa, agifa112@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dscarter/fich/" + (("00000" + #dscam045@#6) % -105) + "/";
+      |PATH_DAT #1100 aAlfa;
+      |ABRE #agifa112@;
+      #agifa112@#0 = #agifa112#0;
+      |LEE 101#agifa112@.=;
+      |SI nModo = 1; |O nModo = 2;
+         |SI FSalida ! 0;
+            |DDEFECTO #agifa112@;
+            #agifa112@#0 = #agifa112#0;
+            |GRABA 020#agifa112@.b;
+         |FINSI;
+         aAlfa = "|NC"; aAlfa = #agifa112@#aAlfa#;
+         nCalc = aAlfa; nCalc = nCalc - 1;
+         aAlfa1 = "|NC"; aAlfa1 = #agifa112#aAlfa1#;
+         nCalc1 = aAlfa1; nCalc1 = nCalc1 - 1;
+         |SI nCalc ! nCalc1;
+            |MENAV "    Diferencia de campos en r‚plica con cartera";
+         |FINSI;
+         |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+            #agifa112@#nCont# = #agifa112#nCont#;
+         |SIGUE;
+         |GRABA 020#agifa112@.a; |LIBERA #agifa112@;
+      |FINSI;
+      |SI nModo = 3; |BORRA 020#agifa112@.a; |LIBERA #agifa112@; |FINSI;
+      |CIERRA #agifa112@; |DESCARGA_DEF #agifa112@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Empresas112;
+#dscam045@#1002;
+2;
+nEmp48, 001, "C";
+nEmp48, 999, "C";
+;
+NULL,Empresas112;
+|FIN;
+
+|PROCESO ActCartera112;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscarter/def/dscam045.mas";
+   |CARGA_DEF aAlfa, dscam045@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dscarter/fich/"; |PATH_DAT #1000 aAlfa;
+
+      |DFICE aEmp48;
+      |QBF aEmp48;
+      aEmp48 = aEmp48 % -205;
+      nEmp48 = aEmp48;
+
+      |BUCLE Empresas112;
+      |DESCARGA_DEF #dscam045@;         || Faltaba !!!!
+   |FINSI;
+|FPRC;
+
+|PROCESO &Prov15; |TIPO 15;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   nTipo = 15; |HAZ LogProv;
+
+   |ABRE #agifa142; |LEE 001#agifa142.p; |CIERRA #agifa142;
+
+   |SI #agifa142#28 = "N"; |ACABA; |FINSI;
+
+   nTipo = 15; |HAZ RodacalCopPrv;
+   |SI FSalida = 0; |ACABA; |FINSI;
+|FPRC;
+
+
+|PROCESO &Prov16; |TIPO 16;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   nTipo = 16; |HAZ LogProv;
+
+   |ABRE #agifa142; |LEE 001#agifa142.p; |CIERRA #agifa142;
+
+   nTipo = 16; |HAZ RodacalCopPrv;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   |SI enSwAltaPrv = 1; || Solo es alta desde el mantenimiento (agifa112)
+      nModo = 1;
+   |SINO;
+      nModo = 2;
+   |FINSI;
+
+   |MENSA "    Actualizando proveedores ... ";
+
+   |SI #agifa142#28  = "S"; |BUCLE ControlEmp112; |FINSI;
+   |SI #agifa142#221 = "S"; |BUCLE CtrlExtPro;    |FINSI;
+   |SI #agifa142#222 = "S"; |HAZ ActCartera112;   |FINSI;
+
+   |BLIN 4;
+|FPRC;
+
+|PROCESO &Prov17; |TIPO 17;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   nTipo = 17; |HAZ LogProv;
+
+   |ABRE #agifa142; |LEE 001#agifa142.p; |CIERRA #agifa142;
+
+   |SI #agifa142#28 = "N"; |ACABA; |FINSI;
+
+   nTipo = 17; |HAZ RodacalCopPrv;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   |MENSA "    Actualizando proveedores ... ";
+   nModo = 3;
+   |SI #agifa142#28  = "S"; |BUCLE ControlEmp112; |FINSI;
+   |SI #agifa142#221 = "S"; |BUCLE CtrlExtPro;    |FINSI;
+   |SI #agifa142#222 = "S"; |HAZ ActCartera112;   |FINSI;
+
+   |BLIN 4;
+|FPRC;
+
+|PROCESO RodacalCopPrv;
+     |SI eaRodExporta = "S"; |ACABA; |FINSI; || lo activa rodw0004
+
+     |DBASE aPath;
+     aPath = aPath + "/def/rodm0001.mas";
+     |XABRE "E", aPath, 0;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |DDEF aDef;
+     aDef = aDef + "rodm0005";
+     |CARGA_DEF aDef, rodm0005@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'rodm0005'";
+     |SINO;
+          |ABRE #rodm0005@;
+          |LEE 000#rodm0005@.u;
+          |SI FSalida = 0; nReg = #rodm0005@#0 + 1; |SINO; nReg = 1; |FINSI;
+          |DDEFECTO #rodm0005@;
+          #rodm0005@#0 = nReg;
+          #rodm0005@#1 = #0#0;
+          #rodm0005@#2 = "agifa112";
+          |SI nTipo = 15; #rodm0005@#3 = "A"; |FINSI;
+          |SI nTipo = 16; #rodm0005@#3 = "M"; |FINSI;
+          |SI nTipo = 17; #rodm0005@#3 = "B"; |FINSI;
+          |SELECT #3#rodm0005@;
+          |LEE 101#rodm0005@.=;
+          |SI FSalida ! 0; |GRABA 020#rodm0005@.b; |FINSI;
+          aAlfa = Usuario % 810;
+          #rodm0005@#4 = aAlfa;
+          #rodm0005@#5 = ~;
+          |HORA aAlfa;
+          #rodm0005@#6 = aAlfa;
+          |GRABA 020#rodm0005@.a;
+          |CIERRA #rodm0005@;
+          |DESCARGA_DEF #rodm0005@;
+     |FINSI;
+     FSalida = 0;
+|FPRC;
+
+|PROCESO LogProv;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "dsm00087";
+     |CARGA_DEF aAlfa, dsm00087@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aSer = "";
+     aNum = #0#0;
+     aTipo = "PR";
+
+     |ABRE #dsm00087@;
+     |DDEFECTO #dsm00087@;
+     |SELECT #2#dsm00087@;
+     #dsm00087@#1 = aSer;
+     #dsm00087@#2 = aNum;
+     #dsm00087@#3 = aTipo;
+     |LEE 101#dsm00087@.=;
+     |SI FSalida ! 0;
+          |SELECT #1#dsm00087@;
+          |LEE 000#dsm00087@.u;
+          |SI FSalida = 0;
+               nContaLog = #dsm00087@#0 + 1;
+          |SINO;
+               nContaLog = 1;
+          |FINSI;
+          |DDEFECTO #dsm00087@;
+          #dsm00087@#0 = nContaLog;
+          #dsm00087@#1 = aSer;
+          #dsm00087@#2 = aNum;
+          #dsm00087@#3 = aTipo;
+          |GRABA 020#dsm00087@.b;
+     |FINSI;
+     |SI FSalida = 0;
+          |HORA aAlfa;
+          aUsu = Usuario % 810;
+          |SI nTipo = 15;
+               #dsm00087@#4 = aUsu;
+               #dsm00087@#5 = ~;
+               #dsm00087@#6 = aAlfa;
+               #dsm00087@#7 = "";
+               #dsm00087@#8 = "01.01.0000";
+               #dsm00087@#9 = ""
+               #dsm00087@#10 = "";
+               #dsm00087@#11 = "01.01.0000";
+               #dsm00087@#12 = ""
+          |FINSI;
+          |SI nTipo = 16;
+               #dsm00087@#7 = aUsu;
+               #dsm00087@#8 = ~;
+               #dsm00087@#9 = aAlfa;
+          |FINSI;
+          |SI nTipo = 17;
+               #dsm00087@#10 = aUsu;
+               #dsm00087@#11 = ~;
+               #dsm00087@#12 = aAlfa;
+          |FINSI;
+          |GRABA 020#dsm00087@.a;
+     |FINSI;
+     |CIERRA #dsm00087@;
+     |DESCARGA_DEF #dsm00087@;
+|FPRC;

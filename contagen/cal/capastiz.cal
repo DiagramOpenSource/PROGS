@@ -1,0 +1,646 @@
+|FICHEROS;
+   capastiz #0;
+
+   camocab@ #1;
+   camolin@ #2;
+   camogru@ #3;
+   canempr@ #130;
+   camoned@ #4;
+
+   :/modelos/def/dsmom040 #40;
+   :/modelos/def/dsmom041 #41;
+   :/modelos/def/dsmom042 #42;
+   :/basica/def/agicen14 #114;
+   :/basica/def/zmonedas #100;
+
+   :/basica/def/agifigen #1000;
+
+    caw00040 #999;
+    camoneda;
+    canempre;
+
+    ca8m0003 #403;
+|FIN;
+
+|VARIABLES;
+   &enEmpresaV     = 0;
+   &enPeriodoV     = 0;
+
+   &eaPathDsmodelo = "";
+   &eaPathContagen = "";
+
+   nImporte  = 0;
+   Comodin   = ""; || Directorio de la Aplicacion Antigua
+   Comodin1  = ""; || Dir. Ficheros Antiguos
+   Comodin2  = ""; || Dir. Ficheros Nuevos
+   Comodin3  = ""; || Dir. Defs Antiguos
+
+   aFichero  = "";
+   nEstado   = 0;
+   nNumGrupo = 0;
+   aElemento = "";
+   nNumero   = 0;
+   nLinea    = 0;
+   swPrimero = 0;
+   nume1     = 0;
+   nume2     = 0;
+   nume3     = 0;
+   cfecha    = @;
+   vfecha    = @;
+   afiscal   = 0;
+   acontab   = 0;
+   importe   = 0;
+   sw        = 0;
+   any       = "";
+   nAny      = 0;
+   aMonedaV  = "";
+   aAlfa     = "";
+   aAlfa1    = "";
+   aAlfa2    = "";
+   nUltimo   = 0;
+   aPath08   = "";
+   dirfichO = "";
+   aCta08   = "";
+   aCta90   = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|| /////////////////// Pase Lineas
+|PROCESO LasLineas1;
+
+  |SI enConverModelo ! 0;
+      nImporte = #camolin@#5; |HAZ LoCambio;  #camolin@#5 = nImporte;
+      nImporte = #camolin@#9; |HAZ LoCambio;  #camolin@#9 = nImporte;
+  |FINSI;
+
+  nLinea = #camolin@#2;
+
+  #dsmom042#0 = enEmpresa;
+  #dsmom042#2 = aElemento;
+  #dsmom042#3 = nNumero;
+  #dsmom042#4 = nLinea;
+  |LEE 101#dsmom042.=;
+  |SI FSalida ! 0;
+      nEstado = 1;
+      |HAZ GrabaLinea;
+  |SINO;
+      nEstado = 0;
+      |HAZ GrabaLinea;
+  |FINSI;
+
+  |LIBERA #camolin@;
+|FPRC;
+
+|DEFBUCLE LasLineas;
+ #camolin@#1003;
+ ;
+ aElemento,nNumero,000;
+ aElemento,nNumero,999;
+ e;
+ NULL, LasLineas1;
+|FIN;
+
+|| /////////////////// Pase Cabeceras
+|PROCESO Cabeceras1;
+
+  |SI enConverModelo ! 0;
+       #camocab@#07 = (#camocab@#07 / enConverModelo ) ! enRedonPaYaModelo;
+       #camocab@#12 = (#camocab@#12 / enConverModelo ) ! enRedonPaYaModelo;
+       #camocab@#13 = (#camocab@#13 / enConverModelo ) ! enRedonPaYaModelo;
+       #camocab@#18 = (#camocab@#18 / enConverModelo ) ! enRedonPaYaModelo;
+       #camocab@#19 = (#camocab@#19 / enConverModelo ) ! enRedonPaYaModelo;
+  |FINSI;
+
+  aElemento = #camocab@#0;
+  nNumero   = #camocab@#1;
+
+  #dsmom041#0 = enEmpresa;
+  #dsmom041#2 = aElemento;
+  #dsmom041#3 = nNumero;
+  |LEE 101#dsmom041.=;
+  |SI FSalida ! 0;
+      nEstado = 1;
+      |HAZ GrabaCabecera;
+  |FINSI;
+  |LIBERA #1;
+        || .... Vamos a suponer que es el Mismo Elemento en todos los
+        || .... Periodos, sino estaba mal Montada su Contabilidad.
+  |BUCLE LasLineas;
+
+  |LIBERA #camocab@;
+|FPRC;
+
+|DEFBUCLE Cabeceras;
+ #camocab@#1002;
+ ;
+ "        ",00;
+ "zzzzzzzz",99;
+ e;
+ NULL, Cabeceras1;
+|FIN;
+
+|| /////////////////// Pase Grupos
+|PROCESO LosGrupos1;
+  nNumGrupo = #camogru@#0;
+
+  #dsmom040#0 = enEmpresa;
+  #dsmom040#2 = nNumGrupo;
+  |LEE 101#dsmom040.=;
+  |SI FSalida ! 0;
+      |HAZ GrabaGrupo;
+  |SINO;
+      |SI #dsmom040#7 = #camogru@#9;
+          |HAZ ActGrupo;
+      |SINO;
+          |LIBERA #dsmom040;
+          |SI nAny < 2008;
+              |SI #dsmom040#3 ! #camogru@#1; |O #dsmom040#5 ! #camogru@#3;
+                  |HAZ BuscaNuevo;
+              |FINSI;
+          |SINO;
+              |SI #dsmom040#10 ! #camogru@#1; |O #dsmom040#12 ! #camogru@#3;
+                  |HAZ BuscaNuevo;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  |LIBERA #camogru@;
+|FPRC;
+
+|PROCESO BuscaNuevo;
+    swPrimero = 0;
+    nume1 = nUltimo + 1;
+    |PARA nNumGrupo = nume1; |SI nNumGrupo [ 9999; |HACIENDO nNumGrupo = nNumGrupo + 1;
+          #dsmom040#0 = enEmpresa;
+          #dsmom040#2 = nNumGrupo;
+          |LEE 001#dsmom040.=;
+          |SI FSalida ! 0;
+              |HAZ GrabaGrupo;
+              |HAZ GrabaAuxi1;
+              swPrimero = 1;
+              |SAL;
+          |FINSI;
+    |SIGUE;
+    |SI swPrimero = 0;
+        |MENAV "    Atencion Error en Grupos de Amortizacion. ";
+        nNumGrupo = 0; |HAZ GrabaAuxi1;
+    |SINO;
+        nUltimo = nNumGrupo;
+    |FINSI;
+|FPRC;
+
+|DEFBUCLE LosGrupos;
+ #camogru@#1001;
+ ;
+ 0001;
+ 9999;
+ e;
+ NULL, LosGrupos1;
+|FIN;
+
+
+|| ////////////////////////////////////////// Programa
+
+|PROGRAMA;
+  aFichero = ("40w" + Usuario) % 108;
+  |NOME_DAT #999 aFichero;
+  |ABRE #999;  |CIERRA #999;  |DELINDEX #999;
+
+   Comodin = PARAMETRO; |QBF Comodin;
+   |SI Comodin ! "";
+       Comodin1 = Comodin % -101;
+       |SI Comodin1 ! "/";
+           Comodin = Comodin + "/agicont/";
+       |SINO;
+           Comodin = Comodin + "agicont/";
+       |FINSI;
+       #capastiz#1 = enEmpresa;
+       #capastiz#2 = enPeriodo;
+   |SINO;
+
+       |CLS;
+       |DBASS Comodin; |QBF Comodin;
+       Comodin = Comodin + "agicont/";
+       #capastiz#0 = Comodin;
+       #capastiz#1 = #48#2;
+       #capastiz#2 = #48#3;
+       |PINPA #0#0;
+       |PINDA #0#0;
+       |ENDATOS #1#0;
+       |SI FSalida ! 0; |ACABA; |FINSI;
+       Comodin = #capastiz#0; |QBF Comodin;
+       Comodin1 = Comodin % -101;
+       |SI Comodin1 ! "/";  Comodin = Comodin + "/"; |FINSI;
+       enEmpresa = #capastiz#1;
+       enPeriodo = #capastiz#2;
+   |FINSI;
+
+   |SI enEmpresaV = 0;
+       enEmpresaV = #capastiz#1;
+       enPeriodoV = #capastiz#2;
+   |FINSI;
+
+|| Donde Estan los Ficheros Antiguos
+   Comodin1 = (("00000" + enEmpresaV) % -105) + enPeriodoV;
+   Comodin1 = Comodin + "fich/" + Comodin1 + "/";
+
+|| Donde Van los Ficheros Nuevos
+   Comodin2 = eaPathDsmodelo;
+   |QBF Comodin2;
+   |SI Comodin2 = "";
+       |DBASS Comodin2; |QBF Comodin2;
+       Comodin2 = Comodin2 + "modelos/";
+   |FINSI;
+   Comodin2 = Comodin2 + "fich/";
+
+   Comodin3 = Comodin + "def/camocabe.mas";
+   |CARGA_DEF Comodin3, camocab@;
+   |SI FSalida = 0;
+       Comodin3 = Comodin + "def/camoline.mas";
+       |CARGA_DEF Comodin3, camolin@;
+
+       Comodin3 = Comodin + "def/camogrup.mas";
+       |CARGA_DEF Comodin3, camogru@;
+
+       |HAZ LeeEmpresa;
+
+       |PATH_DAT #1 Comodin1;
+       |PATH_DAT #2 Comodin1;
+       |PATH_DAT #3 Comodin1;
+
+       |MENSA "    Reconstruyendo AMORTIZACIONES";
+
+       |PATH_DAT #41 Comodin2;
+       |PATH_DAT #42 Comodin2;
+       |PATH_DAT #40 Comodin2;
+
+
+       |ABRE #camogru@;
+       |DDEFECTO #camogru@;
+       |LEE 041#camogru@.u;
+       nUltimo = #camogru@#0;
+       |CIERRA #camogru@;
+
+       |ABRE #dsmom041;
+       |ABRE #dsmom042;
+       |ABRE #dsmom040;
+
+       |ABRE #999;
+       swPrimero = 0;
+       |BUCLE LosGrupos;
+       |BUCLE Cabeceras;
+       |CIERRA #999;
+       |CIERRA #dsmom041;
+       |CIERRA #dsmom042;
+       |CIERRA #dsmom040;
+       |CIERRA #camogru@; |DESCARGA_DEF #camogru@;
+       |CIERRA #camolin@; |DESCARGA_DEF #camolin@;
+       |CIERRA #camocab@; |DESCARGA_DEF #camocab@;
+
+       |HAZ ElRecalculo;
+   |FINSI;
+   |DELINDEX #999;
+|FPRO;
+
+
+|| ///////////// Proceso para grabar los nuevos Registros
+
+|PROCESO GrabaGrupo;
+  |DDEFECTO #dsmom040;
+  #dsmom040#0 = enEmpresa;
+  #dsmom040#1 = enActividad;
+  #dsmom040#2 = nNumGrupo;
+  |SI nAny < 2008;
+      #dsmom040#3 = #camogru@#1;
+      #dsmom040#4 = #camogru@#2;
+      #dsmom040#5 = #camogru@#3;
+      #dsmom040#6 = #camogru@#4;
+  |SINO;
+      #dsmom040#10 = #camogru@#1;
+      #dsmom040#11 = #camogru@#2;
+      #dsmom040#12 = #camogru@#3;
+      #dsmom040#13 = #camogru@#4;
+  |FINSI;
+  #dsmom040#7 = #camogru@#9;
+  #dsmom040#8 = eaNombreEmp;
+  |GRABA 020#dsmom040.n;
+  |LIBERA #dsmom040;
+|FPRC;
+
+|PROCESO ActGrupo;
+  |SI nAny < 2008;
+      #dsmom040#3 = #camogru@#1;
+      #dsmom040#4 = #camogru@#2;
+      #dsmom040#5 = #camogru@#3;
+      #dsmom040#6 = #camogru@#4;
+  |SINO;
+      #dsmom040#10 = #camogru@#1;
+      #dsmom040#11 = #camogru@#2;
+      #dsmom040#12 = #camogru@#3;
+      #dsmom040#13 = #camogru@#4;
+  |FINSI;
+  |GRABA 020#dsmom040.a;
+  |LIBERA #dsmom040;
+|FPRC;
+
+|PROCESO GrabaAuxi1;
+  |DDEFECTO #999;
+  #999#0 = #camogru@#0;
+  #999#1 = nNumGrupo;
+  |GRABA 020#999n;
+|FPRC;
+
+|PROCESO GrabaCabecera;
+
+  |DDEFECTO #dsmom041;
+  #dsmom041#0 = enEmpresa;
+  #dsmom041#1 = enActividad;
+  #dsmom041#2 = aElemento;
+  #dsmom041#3 = nNumero;
+  #dsmom041#4 = #camocab@#2;
+  #dsmom041#5 = #camocab@#3;
+  #dsmom041#6 = #camocab@#4;
+
+  |PARA nume1 = 8; |SI nume1 [ 26; |HACIENDO nume1 = nume1 + 1;
+        nume2 = nume1 - 3;
+        #dsmom041#nume1# = #camocab@#nume2#;
+  |SIGUE;
+  #dsmom041#27 = #camocab@#6;
+  #dsmom041#32 = eaNombreEmp;
+  #dsmom041#33 = eaNombreAct;
+
+  |SI nAny ] 2008;
+      |SI #dsmom041#27 > "01.01.1900"; |Y #dsmom041#27 < "01.01.2008";
+          eaCuenta    = #dsmom041#5;
+          |HAZ IntentoCambio;
+          #dsmom041#5 = aCta90;
+      |FINSI;
+  |FINSI;
+
+  #999#0 = #camocab@#15;  || Grupo
+  |LEE 001#999=;
+  |SI FSalida = 0;
+      #dsmom041#18 = #999#1;   || Cambia el Numero del Grupo
+  |FINSI;
+
+  |SI nEstado ! 0; |GRABA 000#dsmom041.n; |FINSI;
+  |SI nEstado = 0; |GRABA 000#dsmom041.a; |FINSI;
+  |LIBERA #dsmom041;
+|FPRC;
+
+|PROCESO GrabaLinea;
+  |DDEFECTO #dsmom042;
+  #dsmom042#0 = enEmpresa;
+  #dsmom042#1 = enActividad;
+  #dsmom042#2 = aElemento;
+  #dsmom042#3 = nNumero;
+  #dsmom042#4 = nLinea;
+
+  |PARA nume1 = 5; |SI nume1 [ 11; |HACIENDO nume1 = nume1 + 1;
+        nume2 = nume1 - 2;
+        #dsmom042#nume1# = #camolin@#nume2#;
+  |SIGUE;
+
+  #dsmom042#13 = #dsmom042#11 -  #dsmom042#7;
+  |SI nEstado ! 0; |GRABA 020#dsmom042.n; |FINSI;
+  |SI nEstado = 0; |GRABA 020#dsmom042.a; |FINSI;
+  |LIBERA #dsmom042;
+|FPRC;
+
+|| /////////////////////// Proceso El Recalculo
+
+|PROCESO L_Amortiza;
+   |SI #dsmom042#6 = "C";
+      importe = importe + #dsmom042#7;
+      |SI sw = 0;
+         cfecha = #dsmom042#9;
+         sw = 1;
+      |FINSI;
+   |FINSI;
+   |SI #dsmom042#6 = "A";
+      afiscal = afiscal + #dsmom042#7;
+      acontab = acontab + #dsmom042#11;
+   |FINSI;
+   |SI #dsmom042#6 = "V";
+      vfecha = #dsmom042#9;
+   |FINSI;
+   nLinea = #dsmom042#4;
+|FPRC;
+
+|DEFBUCLE lineas;
+   #dsmom042#1;
+   ;
+   #dsmom041#0,#dsmom041#2,#dsmom041#3, 000;
+   #dsmom041#0,#dsmom041#2,#dsmom041#3, 999;
+   e;
+   NULL, L_Amortiza;
+|FIN;
+
+|PROCESO C_Amortiza;
+   nLinea = 0;
+   cfecha = "00.00.0000";
+   importe = 0;
+   afiscal = 0;
+   acontab = 0;
+   vfecha = "00.00.0000";
+   sw = 0;
+   |BUCLE lineas;
+   |SI sw = 1;
+      #dsmom041#9  = cfecha;
+      #dsmom041#26 = vfecha;
+      #dsmom041#10 = importe;
+      #dsmom041#15 = afiscal;
+      #dsmom041#16 = importe - afiscal;
+      #dsmom041#21 = acontab;
+      #dsmom041#22 = importe - acontab;
+      |SI vfecha > "01.01.0001";
+          #dsmom041#40 = "I";
+      |FINSI;
+      |GRABA 020#dsmom041.a;
+   |SINO;
+                             || Graba Linea de Compra
+      |ABRE #dsmom042;
+      #dsmom042#0 = #dsmom041#0;
+      #dsmom042#1 = #dsmom041#1;
+      #dsmom042#2 = #dsmom041#2;
+      #dsmom042#3 = #dsmom041#3;
+      #dsmom042#4 = nLinea + 1;
+      any = #dsmom041#27 % 704;
+      #dsmom042#5 = any;
+      #dsmom042#6 = "C";
+      #dsmom042#7 = #dsmom041#10;
+      #dsmom042#8 = "S";
+      #dsmom042#9 = #dsmom041#27;
+      #dsmom042#10 = "COMPRA ";
+      #dsmom042#11 = 0;
+      #dsmom042#12 = 1;
+      |GRABA 021#dsmom042.n;
+      |CIERRA #dsmom042;
+   |FINSI;
+   |LIBERA #dsmom041;
+|FPRC;
+
+|DEFBUCLE ElRecalculo;
+   #dsmom041#1;
+   ;
+   enEmpresa,"        ",00;
+   enEmpresa,"zzzzzzzz",99;
+   e;
+   NULL, C_Amortiza;
+|FIN;
+
+|PROCESO ElRecalculo;
+ |BUCLE ElRecalculo;
+|FPRC;
+
+|PROCESO IntentoCambio;
+  aCta08 = eaCuenta;
+  aCta90 = eaCuenta;
+  |SI aPath08 ! "";
+      |PATH_DAT #403 aPath08;
+      |ABRE #403;
+      |DDEFECTO #403;
+      |SELECT #2#403;
+      #403#2 = eaCuenta;
+      |LEE 041#403];
+      |SI FSalida = 0; |Y #403#2 = eaCuenta;
+          aCta08 = #403#2;
+          aCta90 = #403#0;
+      |FINSI;
+      |SELECT #1#403;
+      |CIERRA #403;
+  |FINSI;
+|FPRC;
+
+|PROCESO LeeEmpresa;
+   eaNombreEmp = "";
+   enActividad = 01;
+   eaNombreAct = "";
+
+   || Lee Empresa
+   Comodin3 = Comodin + "def/canempre.mas";
+   |CARGA_DEF Comodin3, canempr@;
+   Comodin3 = Comodin + "fich/";
+   |PATH_DAT #130 Comodin3;
+
+   |ABRE #canempr@;
+   #canempr@#2 = enEmpresaV;
+   #canempr@#3 = enPeriodoV;
+   |LEE 001#canempr@.=;
+   |SI FSalida = 0; eaNombreEmp = #canempr@#1; nAny = #canempr@#26; |FINSI;
+   |CIERRA #canempr@;
+   |DESCARGA_DEF #canempr@;
+
+   |SI nAny < 80;
+       nAny = 2000 + nAny;
+   |SINO;
+       nAny = 1900 + nAny;
+   |FINSI;
+
+   || .. Lee la ficha de Cliente
+    |ABRE #1000;
+    #1000#0 = enEmpresa;
+    |LEE 041#1000=;
+    |SI FSalida = 0;
+        eaNombreEmp = #1000#1;
+    |FINSI;
+    |CIERRA #1000;
+
+   || Lee Actividad
+   |ABRE #114;
+   #114#0 = enEmpresa;
+   #114#1 = enActividad;
+   |LEE 041#114];
+   |SI FSalida = 0; |Y #114#0 = enEmpresa;
+       enActividad = #114#1;
+       eaNombreAct = #114#4;
+   |FINSI;
+   |CIERRA #114;
+
+   || .... Lee la Moneda Vieja
+
+   aMonedaV = "P";
+   Comodin3 = Comodin + "def/camoneda.mas";
+   |CARGA_DEF Comodin3, camoned@;
+   |SI FSalida = 0;
+       Comodin3 = Comodin + "fich/000000/";
+       |PATH_DAT #4 Comodin3;
+
+       |ABRE #camoned@;
+       #camoned@#0 = enEmpresaV;
+       #camoned@#1 = enPeriodoV;
+       |LEE 001#camoned@.=;
+       |SI FSalida = 0;
+           aMonedaV = #camoned@#2;
+       |SINO;
+           |SI nAny [ 2001;
+               aMonedaV = "P";
+           |SINO;
+               aMonedaV = "E";
+           |FINSI;
+       |FINSI;
+       |CIERRA #camoned@;
+       |DESCARGA_DEF #camoned@;
+   |FINSI;
+
+   |DFICB aAlfa; |QBF aAlfa;
+   |PATH_DAT #canempre #aAlfa#;
+
+   |DFICB aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "000000/";
+   |PATH_DAT #camoneda #aAlfa#;
+
+   |ABRE #zmonedas;
+   |LEE 040#zmonedas.p;
+   |SI FSalida ! 0;  |DDEFECTO #zmonedas;  |FINSI;
+   |CIERRA #zmonedas;
+
+   enConverModelo     = 0;
+   enRedonModelo      = 2;
+   enRedonPaYaModelo  = 2;
+   |SI #zmonedas#9 = "P";
+       enRedonModelo      = 0;
+       enRedonPaYaModelo  = 0;
+   |FINSI;
+
+   |SI #zmonedas#9 = "E";
+       |SI aMonedaV = "P";
+           enConverModelo    = 166.386;
+           enRedonModelo     = 0;
+           enRedonPaYaModelo = 2;
+      |FINSI;
+   |SINO;
+      |SI aMonedaV = "E";
+          enConverModelo    = 0.00601012;
+          enRedonModelo     = 2;
+          enRedonPaYaModelo = 0;
+      |FINSI;
+   |FINSI;
+
+   aPath08 = "";
+   |DFICB dirfichO; |QBF dirfichO;
+   |SI nAny = 2008;
+       aAlfa1 = enEmpresa; |QBF aAlfa1; aAlfa1 = ("00000" + aAlfa1) % -105;
+       aAlfa2 = enPeriodo; |QBF aAlfa2; aAlfa2 = ("0"     + aAlfa2) % -101;
+       aPath08 = dirfichO + aAlfa1 + aAlfa2 + "/";
+   |SINO;
+       |SALVA_DATOS #canempre;
+       |ABRE #canempre;
+       |SELECT #4#canempre;
+       #canempre#2  = enEmpresa;
+       #canempre#26 = 8;
+       |LEE 001#canempre.=;
+       |SI FSalida = 0;
+           aAlfa1 = #canempre#2; |QBF aAlfa1; aAlfa1 = ("00000" + aAlfa1) % -105;
+           aAlfa2 = #canempre#3; |QBF aAlfa2; aAlfa2 = ("0"     + aAlfa2) % -101;
+           aPath08 = dirfichO + aAlfa1 + aAlfa2 + "/";
+       |FINSI;
+       |SELECT #1#canempre;
+       |CIERRA #canempre;
+       |REPON_DATOS #canempre;
+    |FINSI;
+|FPRC;
+
+|PROCESO LoCambio;
+  nImporte = (nImporte  / enConverModelo ) ! enRedonPaYaModelo;
+|FPRC;

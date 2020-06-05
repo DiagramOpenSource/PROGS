@@ -1,0 +1,734 @@
+Al pasar a otra aplicacion:
+ 1.- Comprobar en el tmp dsy00010 los campos (longitud, tipo y tama¤os)
+     Articulo, Documento, Serie, Partida, que se correspondan con el
+     agifa065 de la aplicacion.
+ 2.- Modificar la seccion CAMPOS con el valor correcto de la partida
+ 3.- Modificar las variables nDoc, nHdoc, nDdoc (pueden ser alfa o nume)
+ 4.- Corregir la inicializacion de las variables en el TIPO 3
+
+
+|FICHEROS;
+     dsy00009 #0;
+     dsy00010 #2; ||Tmp
+     agifa024 #20;
+     agifa065 #65;
+     dsm00024 #24;
+     agifa019 #19;
+     agifa112 #112;
+     agifa010 #10;
+     agifa084 #84;
+     agifa077 #77;
+     agifa142 #142;
+
+     histo@  #1000;
+     histo1@ #1100;
+     entra1@ #2100;
+     entra2@ #2200;
+     sale1@  #3100;
+     sale2@  #3200;
+     temp1@;
+     temp2@;
+|FIN;
+
+|CAMPOS;
+     #1000#18 PAR_HIS0;
+     #1100#18 PAR_HIS1;
+     #2100#18 PAR_ENT1;
+     #2200#18 PAR_ENT2;
+     #3100#18 PAR_SAL1;
+     #3200#18 PAR_SAL2;
+|FIN;
+
+|VARIABLES;
+     ||----------------- a cambiar segun aplicacion
+     nDoc = 0;
+     nDdoc = 0;
+     nHdoc = 0;
+     ||------------------Llamada externa
+     &eaArticulo = "";
+     &eaPartida = "";
+     ||-----------------Informe
+     &eaNombre = "";
+     &eaTitulo = "";
+     &eaDescri = "";
+     ||-----------------
+     nHayEntra1 = 0;
+     nDLin = 0;
+     nHLin = 0;
+     nConta = 0;
+     nContaOrd = 0;
+     nNivel = 0;
+     nSubNivel = 0;
+     nNivelBuc = 0;
+     aOpe = "";
+     aTipo = "";
+     nLin = 0;
+     aSer = "";
+     nHay = 0;
+     aDart = "";
+     aHart = "";
+     nDlin = 0;
+     nHlin = 0;
+     aDser = "";
+     aHser = "";
+     aEntSal = "";
+     aArtDes = "";
+     aParDes = "";
+     aAlfa = "";
+     aDef = "";
+     aFic = "";
+     aArt = "";
+     aPar = "";
+     nSwCrystal = 0;
+     nAlma = 0;
+     nCam9 = 0;
+     nCam11 = 0;
+     nCam20 = 0;
+     nCam22 = 0;
+     nCam23 = 0;
+     nCam16 = 0;
+     nCam29 = 0;
+     nCam31 = 0;
+     nHaySal = 0;
+     fFecha = @;
+     aA¤o = "";
+|FIN;
+
+|PROCESO Defecha; |TIPO 7;
+     |SI #0#6 = "01.01.0000";
+          fFecha = ~;
+          aA¤o = fFecha % 704;
+          aAlfa = "01.01." + aA¤o;
+          #0#6 = aAlfa; |PINTA #0#6;
+          aAlfa = "31.12." + aA¤o;
+          #0#7 = aAlfa; |PINTA #0#7;
+     |FINSI;
+|FPRC;
+------------------------------------------------------
+|PROCESO LeeDocu;
+     eaNombre = "";
+     eaTitulo = "";
+     |SI #65#2 = "AC"; |O #65#2 = "BC";
+          #77#50 = #65#11;
+          #77#0 = #65#3;
+          |LEE 000#77=;
+          |SI FSalida ! 0; |DDEFECTO #77; |FINSI;
+          eaNombre = #77#4;
+          eaTitulo = "Albaran de compra";
+     |FINSI;
+     |SI #65#2 = "AV"; |O #65#2 = "BV";
+          #10#52 = #65#11;
+          #10#0 = #65#3;
+          |LEE 000#10=;
+          |SI FSalida ! 0; |DDEFECTO #10; |FINSI;
+          eaNombre = #10#4;
+          eaTitulo = "Albaran de venta";
+     |FINSI;
+     |SI #65#2 = "FC";
+          #84#48 = #65#11;
+          #84#0 = #65#3;
+          |LEE 000#84=;
+          |SI FSalida ! 0; |DDEFECTO #84; |FINSI;
+          eaNombre = #84#4;
+          eaTitulo = "Factura contado";
+     |FINSI;
+     |SI #65#2 = "EV";
+          #112#0 = #65#10;
+          |LEE 000#112=;
+          |SI FSalida ! 0; |DDEFECTO #112; |FINSI;
+          eaNombre = #112#1;
+          eaTitulo = "Entrada valorada";
+     |FINSI;
+     |SI #65#2 = "ES";
+          eaTitulo = "Entrada de stock";
+     |FINSI;
+     |SI #65#2 = "SS";
+          eaTitulo = "Salida de stock";
+     |FINSI;
+     |SI #65#2 = "MS";
+          eaTitulo = "Salida trapaso almacen";
+     |FINSI;
+     |SI #65#2 = "ME";
+          eaTitulo = "Entrada traspaso almacen";
+     |FINSI;
+     |SI #65#2 = "FB";
+          eaTitulo = "Entrada de Fabricacion";
+     |FINSI;
+     |SI #65#2 = "SF";
+          #112#0 = #65#10;
+          |LEE 000#112=;
+          |SI FSalida ! 0; |DDEFECTO #112; |FINSI;
+          eaNombre = #112#1;
+          eaTitulo = "Salida de Fabricacion";
+     |FINSI;
+|FPRC;
+
+|PROCESO SumaStock;
+     nAlma = #24#1;
+     nCam9 = nCam9 + #24#9;
+     nCam11 = nCam11 + #24#11;
+     nCam20 = nCam20 + #24#20;
+     nCam22 = nCam22 + #24#22;
+     nCam23 = nCam23 + #24#23;
+     nCam16 = nCam16 + #24#16;
+     nCam29 = nCam29 + #24#29;
+     nCam31 = nCam31 + #24#31;
+|FPRC;
+
+|DEFBUCLE SumaStock;
+     #24#1;
+     ;
+     aArt, 00001, aPar;
+     aArt, 99999, aPar;
+     ;
+     NULL, SumaStock;
+|FIN;
+
+|PROCESO Imprime;
+     #19#0 = #2#1;
+     |LEE 000#19=;
+     |SI FSalida ! 0; |DDEFECTO #19; |FINSI;
+     eaDescri = #19#1;
+
+     #19#0 = #2#11;
+     |LEE 000#19=;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |SI aArt ! #2#11; |O aPar ! #2#12;
+          |SI aArt ! "";
+               |PIEINF;
+          |FINSI;
+          aArt = #2#11;
+          aPar = #2#12;
+          || Suma Stock de todos los almacenes
+          || ­ el informe imprime el dsm00024 !
+          nCam9 = 0;
+          nCam11 = 0;
+          nCam20 = 0;
+          nCam22 = 0;
+          nCam23 = 0;
+          nCam16 = 0;
+          nCam29 = 0;
+          nCam31 = 0;
+          |BUCLE SumaStock;
+          |ABRE #24;
+          #24#0 = aArt;
+          #24#1 = nAlma;
+          #24#2 = aPar;
+          |LEE 020#24=;
+          |CIERRA #24;
+          #24#9 = nCam9;
+          #24#11 = nCam11;
+          #24#20 = nCam20;
+          |SI #19#179 = "S"; |Y #0#10 = "S";
+               #24#22 = nCam23;
+          |SINO;
+               #24#22 = nCam22;
+          |FINSI;
+          #24#16 = nCam16;
+          #24#29 = nCam29;
+          #24#31 = nCam31;
+
+          |DDEFECTO #112;
+          #112#0 = #24#3; ||Proveedor
+          |LEE 000#112=;
+     |FINSI;
+
+     #65#0 = #2#1;
+     #65#1 = #2#2;
+     #65#2 = #2#3;
+     #65#3 = #2#4;
+     #65#4 = #2#5;
+     #65#11 = #2#6;
+     |LEE 000#65=;
+     |SI FSalida ! 0;    || Para la chapuza de los SF
+          #65#4 = #2#17;
+          |LEE 020#65=
+     |FINSI;
+
+     #24#0 = #65#0;
+     #24#1 = #65#5;
+     #24#2 = #65#18;
+     |LEE 000#24=;
+     |SI FSalida ! 0; |DDEFECTO #24; |FINSI;
+
+     |HAZ LeeDocu;
+
+     #2#16 = #65#0 + #65#18;
+
+     |SI #19#179 = "S"; |Y #0#10 = "S";
+          #65#6 = #65#17;
+     |FINSI;
+
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE Imprime;
+     #2#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Imprime;
+|FIN;
+------------------------------------------------------
+|PROCESO Desglose;
+     |SI #temp1@#9 = 1;
+          |SALVA_DATOS #temp1@;
+          |REPON_DATOS #temp2@;
+          nContaOrd = nContaOrd + 1;
+          #temp2@#0 = nContaOrd;
+          |GRABA 020#temp2@.n;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Desglose;
+     #temp1@#4005;
+     ;
+     aOpe, #2#6, #2#4, #2#5, #2#8;
+     aOpe, #2#6, #2#4, #2#5, #2#8;
+     ;
+     NULL, Desglose;
+|FIN;
+
+|PROCESO Ordena;
+     |SI #2#9 = 0;
+          |SALVA_DATOS #2;
+          |REPON_DATOS #temp2@;
+          nContaOrd = nContaOrd + 1;
+          #temp2@#0 = nContaOrd;
+          |GRABA 020#temp2@.n;
+
+          |SI #2#3 = "FB";
+               aOpe = "SF";
+               |BUCLE Desglose;
+          |FINSI;
+          |SI #2#3 = "SF";
+               aOpe = "FB";
+               |BUCLE Desglose;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Ordena;
+     #2#3;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Ordena;
+|FIN;
+------------------------------------------------------
+|PROCESO TipoDoc;
+     aTipo = "S";
+     |SI aOpe = "AV"; |O aOpe = "BV"; |O aOpe = "FC"; |O aOpe = "SS";
+               |O aOpe = "TI"; |O aOpe = "MS"; |O aOpe = "SF";
+          aTipo = "S";
+     |FINSI;
+     |SI aOpe = "AC"; |O aOpe = "BC"; |O aOpe = "SA"; |O aOpe = "ES";
+               |O aOpe = "EV"; |O aOpe = "ME"; |O aOpe = "FB";
+          aTipo = "E";
+     |FINSI;
+|FPRC;
+
+|PROCESO Graba;
+     aOpe = #histo@#2;
+     |HAZ TipoDoc;
+
+     nConta = nConta + 1;
+     #2#0 = nConta;
+     #2#1 = #histo@#0;
+     #2#2 = #histo@#1;
+     #2#3 = #histo@#2;
+     #2#4 = #histo@#3;
+     #2#5 = #histo@#4;
+     #2#6 = #histo@#11;
+     #2#7 = PAR_HIS0;
+     #2#8 = nNivel;
+     #2#9 = nSubNivel;
+     #2#10 = aTipo;
+     #2#11 = aArt;
+     #2#12 = aPar;
+     #2#13 = aEntSal;
+     #2#14 = aArtDes;
+     #2#15 = aParDes;
+
+     #2#17 = #histo@#4;
+     |SI #histo@#4 > 1000;|Y #histo@#2 = "SF";|| Para la chapuza de los componentes
+          aAlfa = ("00000" + #histo@#4) %-105;|| que se graban con lo 2 digitos de la
+          aAlfa = aAlfa % 102;                || linea + 3 digitos del componente
+          #2#5 = aAlfa;
+     |FINSI;
+
+     |GRABA 020#2n;
+|FPRC;
+
+|PROCESO Salida2;
+     |SI PAR_SAL1 ! PAR_SAL2;
+          |ACABA;
+     |FINSI;
+
+     aOpe = #sale2@#2;
+     |HAZ TipoDoc;
+     |SI aTipo ! "S"; |ACABA; |FINSI;
+
+     nHay = 1;
+
+     nSubNivel = 0;
+     histo@ = sale2@;
+     |HAZ Graba;
+|FPRC;
+
+|DEFBUCLE Salida2;
+     #sale2@#1006;
+     ;
+     #sale1@#0, #0#6, "  ", nDdoc, nDlin, aDser;
+     #sale1@#0, #0#7, "zz", nHdoc, nHlin, aHser;
+     ;
+     NULL, Salida2;
+|FIN;
+
+|PROCESO Salida1;
+     |SI #0#11 = "N";
+          #19#0 = #sale1@#0;
+          |LEE 000#19=;
+          |SI #19#180 ! "S"; |ACABA; |FINSI;
+     |FINSI;
+
+     nHaySal = 1;
+
+     nSubNivel = 1;
+     histo@ = sale1@;
+     |HAZ Graba;
+
+     nNivel = nNivel + 1;
+     |BUCLE Salida2;
+     nNivel = nNivel - 1;
+|FPRC;
+
+|DEFBUCLE Salida1;
+     #sale1@#1006;
+     ;
+     aDart, #0#6, "FB", nDoc, nLin, aSer;
+     aHart, #0#7, "FB", nDoc, nLin, aSer;
+     ;
+     NULL, Salida1;
+|FIN;
+
+|PROCESO Entrada2;
+     |SI PAR_ENT1 ! PAR_ENT2;
+          |ACABA;
+     |FINSI;
+
+     aOpe = #entra2@#2;
+     |HAZ TipoDoc;
+     |SI aTipo ! "E"; |ACABA; |FINSI;
+
+     nHay = 1;
+
+     nSubNivel = 0;
+     histo@ = entra2@;
+     |HAZ Graba;
+|FPRC;
+
+|DEFBUCLE Entrada2;
+     #entra2@#1006;
+     ;
+     #entra1@#0, #0#6, "  ", nDdoc, nDlin, aDser;
+     #entra1@#0, #0#7, "zz", nHdoc, nHlin, aHser;
+     ;
+     NULL, Entrada2;
+|FIN;
+
+|PROCESO Entrada1;
+     |SI #0#11 = "N";
+          #19#0 = #entra1@#0;
+          |LEE 000#19=;
+          |SI #19#180 ! "S"; |ACABA; |FINSI;
+     |FINSI;
+
+     nHayEntra1 = 1;
+     nSubNivel = 1;
+     histo@ = entra1@;
+     |HAZ Graba;
+
+     nNivel = nNivel + 1;
+     |BUCLE Entrada2;
+     nNivel = nNivel - 1;
+|FPRC;
+
+|DEFBUCLE Entrada1;
+     #entra1@#1006;
+     ;
+     aDart, #0#6, "SF", nDoc, nDLin, aSer;
+     aHart, #0#7, "SF", nDoc, nHLin, aSer;
+     ;
+     NULL, Entrada1;
+|FIN;
+
+|PROCESO Historico;
+     |SI aPar ! PAR_HIS1;
+          |ACABA;
+     |FINSI;
+
+     aOpe = #histo1@#2;
+     |HAZ TipoDoc;
+
+     aArtDes = "";
+     aParDes = "";
+     nSubNivel = 0;
+     aEntSal = aTipo;
+
+     histo@ = histo1@;
+     |HAZ Graba;
+
+     |SI #0#4 = "N"; |ACABA; |FINSI;
+
+     nDoc = #histo1@#3;
+     nLin = #histo1@#4;
+     aSer = #histo1@#11;
+     aArtDes = #histo1@#0;
+     aParDes = PAR_HIS1;
+     |SI #histo1@#2 = "FB";
+          nDLin = nLin * 1000;     || Para la chapuza de los SF
+          nHLin = nDLin + 999;     || 2 digitos linea + 3 digitos componente
+          nHayEntra1 = 0;
+          |BUCLE Entrada1;         || Si no encuentra ninguno
+          |SI nHayEntra1 = 0;      || pues como antes
+               nDLin = nLin;
+               nHLin = nLin;
+               |BUCLE Entrada1;
+          |FINSI;
+     |FINSI;
+     |SI #histo1@#2 = "SF";
+         |SI nLin > 1000;                     || Para la chapuza de los componentes
+               aAlfa = ("00000" + nLin) %-105;|| que se graban con lo 2 digitos de la
+               aAlfa = aAlfa % 102;          || linea + 3 digitos del componente
+               nLin = aAlfa;
+          |FINSI;
+          |BUCLE Salida1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Historico;
+     #histo1@#1006;
+     ;
+     aArt, #0#6, "  ", nDdoc, nDlin, aDser;
+     aArt, #0#7, "zz", nHdoc, nHlin, aHser;
+     ;
+     NULL, Historico;
+|FIN;
+
+|PROCESO TmpBuc;
+     nDoc = #temp1@#4;
+     nLin = #temp1@#5;
+     aSer = #temp1@#6;
+     aEntSal = #temp1@#13;
+     aArtDes = #temp1@#1;
+     aParDes = #temp1@#7;
+     |SI #temp1@#3 = "FB"; |Y #temp1@#13 = "E";
+/*Modificado Tiquet 4760/643*/
+          nDLin = nLin * 1000;     || Para la chapuza de los SF
+          nHLin = nDLin + 999;     || 2 digitos linea + 3 digitos componente
+          nHayEntra1 = 0;
+          |BUCLE Entrada1;         || Si no encuentra ninguno
+          |SI nHayEntra1 = 0;      || pues como antes
+               nDLin = nLin;
+               nHLin = nLin;
+               |BUCLE Entrada1;
+          |FINSI;
+/* y quitado*
+          |BUCLE Entrada1;
+*/
+     |FINSI;
+     |SI #temp1@#3 = "SF"; |Y #temp1@#13 = "S";
+          nHaySal = 0;
+          |BUCLE Salida1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE TmpBuc;
+     #temp1@#2001;
+     ;
+     nNivelBuc;
+     nNivelBuc;
+     ;
+     NULL, TmpBuc;
+|FIN;
+
+|PROCESO dsm00024;
+     |SI aArt = #24#0; |Y aPar = #24#2;
+          |ACABA;
+     |FINSI;
+     aArt = #24#0;
+     aPar = #24#2;
+     |PINTA 2402, aArt;
+
+     nNivel = 0;
+     nHay = 0;
+     |BUCLE Historico;
+
+     |PARA; |SI nHay ! 0; |HACIENDO;
+          nHay = 0;
+          nNivel = nNivel + 1;
+          nNivelBuc = nNivel;
+          |BUCLE TmpBuc;
+     |SIGUE;
+
+     |CIERRA #2;
+     |ABRE #temp2@;
+     |BUCLE Ordena;
+     |CIERRA #temp2@;
+     |DELINDEX #2;
+     |ABRE #2;
+|FPRC;
+
+|DEFBUCLE dsm00024;
+     #24#1;
+     ;
+     #0#0, 00001, #0#2;
+     #0#1, 99999, #0#3;
+     ;
+     NULL, NULL, NULL, NULL, NULL, dsm00024;
+     #24#0, #24#2;
+|FIN;
+------------------------------------------------------
+|PROCESO Desglosa; |TIPO 0;
+     aAlfa = #0#4;
+     |C_M #0#11, 1, aAlfa;
+|FPRC;
+
+|PROCESO Inicio; |TIPO 3;
+
+     aDart = " " * 20;
+     aHart = "z" * 20;
+     nDdoc = 0;
+     nHdoc = 999999;
+     nDlin = 0;
+     nHlin = 99999;
+     aDser = #0#8;
+     aHser = #0#9;
+
+     |DDEF aDef;
+     aAlfa = aDef + "agifa065";
+     |CARGA_DEF aAlfa, histo1@;
+     |CARGA_DEF aAlfa, entra1@;
+     |CARGA_DEF aAlfa, entra2@;
+     |CARGA_DEF aAlfa, sale1@;
+     |CARGA_DEF aAlfa, sale2@;
+
+     aAlfa = aDef + "dsy00010";
+     |CARGA_DEF aAlfa, temp1@;
+     |CARGA_DEF aAlfa, temp2@;
+
+     aFic = Usuario;
+     |NOME_DAT #2#aFic#;
+     |NOME_DAT #temp1@#aFic#;
+     |DELINDEX #2;
+
+     aFic = "0" + aFic;
+     |NOME_DAT #temp2@#aFic#;
+     |DELINDEX #temp2@;
+
+     |ABRE #2;
+     |ABRE #19;
+     |BUCLE dsm00024;
+     |CIERRA #19;
+     |CIERRA #2;
+
+     |DESCARGA_DEF #temp2@;
+     |DESCARGA_DEF #temp1@;
+     |DESCARGA_DEF #sale2@;
+     |DESCARGA_DEF #sale1@;
+     |DESCARGA_DEF #entra2@;
+     |DESCARGA_DEF #entra1@;
+     |DESCARGA_DEF #histo1@;
+
+     |NOME_DAT #2 aFic;
+
+     Impresora = "Crystal Reports";
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |SI Impresora = "CrystalReport";
+               |INFOR "dsy10009";
+               |SI FSalida ! 0;
+                    |MENAV "0000No existe informe dsy10009";
+               |FINSI;
+               nSwCrystal = 1;
+          |SINO;
+               ||INFOR "dsy20009";  || Para hacer pruebas
+               |INFOR "dsy00009";
+               |SI FSalida ! 0;
+                    |MENAV "0000No existe informe dsy00009";
+               |FINSI;
+               nSwCrystal = 0;
+          |FINSI;
+          |SI FSalida = 0;
+               aArt = "";
+               aPar = "";
+               |ABRE #65;
+               |ABRE #19;
+               |ABRE #112;
+               |ABRE #20;
+               |ABRE #10;
+               |ABRE #77;
+               |ABRE #84;
+               |ABRE #24;
+               |BUCLE Imprime;
+               |CIERRA #24;
+               |CIERRA #84;
+               |CIERRA #77;
+               |CIERRA #10;
+               |CIERRA #20;
+               |CIERRA #112;
+               |CIERRA #19;
+               |CIERRA #65;
+               |SI aArt ! "";
+                    |PIEINF;
+               |FINSI;
+               |FININF;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+
+     |DELINDEX #2;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |SI eaArticulo = "";
+          |CLS;
+          |PINPA #0#0;
+          |SI #142#117 = "S";
+               |C_V #0#10, 1, "S";
+               |PINTA 1912, "Imprimir unidades2 para articulos de doble stock S/N:";
+               |ATRI I;
+               |PINTA 1961, "S";
+               |PINTA 1963, "N";
+               |ATRI 0;
+               |PINTA 2012, "ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ";
+          |FINSI;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+     |SINO;
+          #0#0 = eaArticulo;
+          #0#1 = eaArticulo;
+          #0#2 = eaPartida;
+          #0#3 = eaPartida;
+          #0#6 = "01.01.0000";
+          #0#7 = "31.12.9999";
+          |HAZ Inicio;
+     |FINSI;
+|FPRO;
+
+|PROCESO LlenaArt; |TIPO 6; || relleno articulo, solo para dscomer9
+     eaArticulo = #0Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #0Campo = eaArticulo;
+          |PINTA #0Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;

@@ -1,0 +1,353 @@
+|FICHEROS;
+  cmvemp02 #1;
+  canempre #30;
+  camoneda #35;
+|FIN;
+
+|VARIABLES;
+  alfa1  = "";
+  alfa2  = "";
+  alfa3  = "";
+  alfa4  = "";
+
+  numero = 0;
+  nume1  = 0;
+  nume2  = 0;
+  para1  = 0;
+
+  x       = 0;
+  xx      = 0;
+  &r_emp  = 0;
+  &r_per  = 0;
+
+  &guia = 0;
+
+  sys     = "";
+  tipoDOS = "";
+  fich    = "";
+  otro2   = "";
+  desde   = "";
+  hasta   = "";
+  handle  = "";
+  fiche   = "";
+  elefe   = "";
+  contenido = "";
+  fich1   = "";
+  canal   = "";
+  field   = 0;
+  temporal1 = "";
+  temporal2 = "";
+  periodo = 0;
+  modo = 0;
+  sw   = 0;
+|FIN;
+
+|| *************************************************************************
+||                        CALCULOS DE PANTALLA
+|| *************************************************************************
+|PROCESO tipo11; |TIPO 11; || Cambiar sin entrar
+ modo = (FEntrada / 100) ! 0;
+ |SI modo = 1; |ACABA; |FINSI;
+ |SI FSalida ! 9; |ACABA; |FINSI;
+
+ |SI #1#4 = "S";
+     #1#4 = "N";
+ |SINO;
+     #1#4 = "S";
+ |FINSI;
+ |PINTA #1#4;
+ |GRABA 020#1a;
+ |LIBERA #1;
+ |PTEC 809;
+|FPRC;
+
+|PROCESO mayor; |TIPO 0;
+  alfa1 = #1Campo > " ";
+  #1Campo = alfa1;
+  |PINTA #1Campo;
+|FPRC;
+
+|PROCESO consulta; |TIPO 0;
+  |SI FSalida ! 9; |ACABA; |FINSI;
+  |SUB_EJECUTA "caconemp.run";
+  |ERROR;
+  #1Campo = r_emp;
+  |PTEC 802;
+|FPRC;
+
+|PROCESO esbuena;
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |ABRE #30;
+  #30#2 = #1Campo;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #1Campo;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |SINO;
+       #1#2 = #30#1; |PINTA #1#2;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+|PROCESO noesbuena;
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |C_M #1#4,1,"S";
+  |SI #1Campo = 0;
+      #1#4 = "N";
+      |PINTA #1#4;
+      |C_M #1#4,1,"N";
+  |FINSI;
+  |ABRE #30;
+  #30#2 = #1Campo;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida = 0;  |Y #30#2 = #1Campo;
+      |MENAV "     YA Existe esa Empresa Contable";
+      |ERROR;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+|PROCESO min;
+    #1#0 = 1;
+|FPRC;
+
+|PROCESO max;
+    #1#0 = 9999;
+|FPRC;
+
+|| *********************************************************************
+||                              PROGRAMA
+|| *********************************************************************
+|PROGRAMA;
+ |CLS;
+ |CABEZA "Cambio Empresas";
+
+ |PINPA #0#1;
+ |SI guia = 0;
+     |ENTLINEAL #1#1, -1, 1, 18, 0, min, max;
+ |SINO;
+     |ENTLINEAL #1#1, -1, 2, 18, 0, min, max;
+ |FINSI;
+
+ |CONFI "2400N Desea realizar el cambio ahora S/N: ";
+ |SI FSalida = 0;
+     |HAZ elcambio;
+     |SI sw = 1;
+         |SUB_EJECUTA "cmvemp03";
+         |PTEC 807;
+     |FINSI;
+ |FINSI;
+|FPRO;
+
+|PROCESO elcambio;
+ alfa1 = &178 * 80;
+ alfa2 = (&178 * 6) + (&176 * 69) + (&178 * 5);
+ |PINTA 2001, alfa2;
+ |PINTA 2101, alfa1;
+ |PINTA 2201, alfa1;
+ |PINTA 2301, alfa1;
+
+ sys = ""; tipoDOS = "";
+ || ......... Mirar el Sistema
+ |QUE_SISTEMA sys;
+ |SI sys = "ESDOS";
+     |MENSA "2407Su Sistema Operativo DOS es Version 6.22 o Superior ? ";
+     E_inf   = "SNsn";
+     E_sup   = 1;
+     tipoDOS = 2461 ? 0;
+     tipoDOS = tipoDOS > " ";
+ |FINSI;
+ || ***************************************************************
+
+ |NOPARA;
+ |HAZ conver;
+ |SIPARA;
+|FPRC;
+
+****************************************************************************
+      PROCESO PRINCIPAL
+****************************************************************************
+|PROCESO LaMonedaTambien;
+ |ABRE #35;
+ #35#0 = #1#1;
+ #35#1 = periodo;
+ |LEE 101#35=;
+ |SI FSalida = 0;
+     |BORRA 020#35a;
+     |LIBERA #35;
+ |SINO;
+     |DDEFECTO #35;
+ |FINSI;
+ #35#0 = #1#3;
+ #35#1 = periodo;
+ |GRABA 020#35n;
+ |CIERRA #35;
+|FPRC;
+
+|PROCESO proceso1;
+  |SI #1#4 = "N"; |ACABA; |FINSI;
+  || ................. Comprobar que no existe la nueva Empresa
+  #30#2 = #1#3;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida = 0;  |Y #30#2 = #1#3;
+      |LIBERA #1;
+      |ACABA;
+  |FINSI;
+  || ................. Comprobar que Existe la vieja Empresa
+  #30#2 = #1#1;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #1#1;
+      |LIBERA #1;
+      |ACABA;
+  |FINSI;
+
+  |PARA periodo = 0; |SI periodo [ 9; |HACIENDO periodo = periodo + 1;
+
+        #30#2 = #1#1;
+        #30#3 = periodo;
+        |LEE 001#30=;
+        |SI FSalida = 0;
+            alfa2 = #1#3; |QBF alfa2; alfa4 = periodo; |QBF alfa4;
+            alfa2 = alfa2 + alfa4
+            alfa3 = "000000" + alfa2;
+            hasta = alfa3 % -106;
+            alfa2 = #30#0;
+            alfa3 = "000000" + alfa2;
+            desde = alfa3 % -106;
+            |SI sys ! "ESDOS";
+                otro2 = "mv " + fich +  desde + " " +  fich + hasta;
+            |SINO;
+                |SI tipoDOS = "S";
+                    otro2 = "move " + fich +  desde + " " +  fich + hasta;
+                |SINO;
+                    otro2 = "mkdir " + fich + hasta;
+                    contenido = handle + " " + otro2 + elefe;
+                    |FGRABA contenido;
+                    otro2 = "xcopy " + fich + desde + " " + fich + hasta + " /S/E";
+                    contenido = handle + " " + otro2 + elefe;
+                    |FGRABA contenido;
+                    otro2 = "del " + fich + desde + " < sisi.si";
+                    contenido = handle + " " + otro2 + elefe;
+                    |FGRABA contenido;
+                    otro2 = "rmdir " + fich + desde;
+                |FINSI;
+            |FINSI;
+            contenido = handle + " " + otro2 + elefe;
+            |FGRABA contenido;
+                           || Alta Nueva
+            #30#0 = hasta;
+            #30#2 = #1#3;
+            #30#3 = periodo;
+            |GRABA 020#30n;
+                           || Baja Vieja
+            #30#0 = desde;
+            #30#2 = #1#1;
+            #30#3 = periodo;
+            |BORRA 020#30c;
+            |HAZ LaMonedaTambien;
+            |HAZ pinta;
+        |FINSI;
+  |SIGUE;
+  sw = 1;
+  #1#4 = "*";
+  |GRABA 001#1a;
+  |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE leelineal;
+ #1#2;
+ ;
+ 00001;
+ 99999;
+ be;
+ NULL, proceso1;
+|FIN;
+
+|PROCESO conver;
+  |DFICB fich;
+  fich1 = fich;
+  fiche = "wb  " + fich + "camnumer";
+  alfa1 = &013;
+  alfa2 = &010;
+  |SI sys = "ESDOS";
+      elefe = alfa1 + alfa2;
+      fiche = fiche + ".bat"
+      |HAZ cambiados;
+  |SINO;
+      elefe = alfa2;
+  |FINSI;
+  |QBF fiche;
+  |FABRE fiche;
+  handle = FSalida;
+  |SI FSalida ] 0;
+      |SI sys = "ESDOS";
+          alfa1 = "echo S > " + fich + "\sisi.si";
+          contenido = handle + " " + alfa1 + elefe;
+          |FGRABA contenido;
+      |FINSI;
+
+      |D_CUADRO 2111, 2370;
+      |ATRI I;
+      |PINTA 2212, " CAMBIANDO EMPRESA ->        A NUEVA ->        Num:       ";
+      |ATRI 0;
+      |ABRE #30;
+      |BUCLE leelineal;   || mantenimiento de empresas
+      |CIERRA #30;
+  |FINSI;
+
+  |SI sys = "ESDOS";
+      fich = fich1;
+      |HAZ cambiados;
+      fich1 = fich;
+  |FINSI;
+  |SI sys ! "ESDOS";
+      alfa1 = "rm " + fich1 + "camnumer";
+  |SINO;
+      alfa1 = "erase " + fich1 + "camnumer.bat";
+  |FINSI;
+  contenido = handle + " " + alfa1 + elefe;
+  |FGRABA contenido;
+  |SI sys = "ESDOS";
+      alfa1 = "erase " + fich1 + "\sisi.si";
+      contenido = handle + " " + alfa1 + elefe;
+      |FGRABA contenido;
+  |FINSI;
+  FSalida = handle;
+  |FCIERRA FSalida;
+  otro2 = fich1 + "camnumer";
+  |SI sys ! "ESDOS";
+      otro2 = "sh " + otro2;
+  |FINSI;
+  |SYSTEM otro2;
+|FPRC;
+|| ************************************************************************
+
+|PROCESO pinta;
+  numero = numero + 1;
+  alfa1 = numero;  alfa1 = "      " + numero;  alfa1 = alfa1 % -105;
+  |PINTA 2234, #1#1;
+  |PINTA 2252, #1#3;
+  |PINTA 2264, alfa1;
+|FPRC;
+
+|| ************************************************************************
+|PROCESO cambiados;
+  alfa1 = fich % 0;
+  nume1 = alfa1;
+  alfa1 = fich;
+  fich = "";
+  |PARA x = 1;  |SI x [ nume1;  |HACIENDO x = x + 1;
+        nume2 = (100 * x) + 1;
+        alfa2 = nume2;
+        alfa3 = alfa1 % alfa2;
+        |SI alfa3 = "/";
+            fich = fich + "\";
+        |SINO;
+            fich = fich + alfa3;
+        |FINSI;
+  |SIGUE;
+|FPRC;

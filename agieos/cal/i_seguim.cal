@@ -1,0 +1,203 @@
+|FICHEROS;
+   eossegui #300;
+
+   :/agicli/def/agiseg08 #510;
+   :/agicli/def/agicontr #511;
+   :/agicli/def/agifigen #512;
+|FIN;
+
+|VARIABLES;
+   alfavar  = "";
+
+   &se_empre = 0;
+   &se_ejerc = 0;
+   &se_perio = 0;
+   &se_tipos = 0;
+   &se_activ = 0;
+   &se_impor = 0;
+   &se_fecha = "";
+   &se_factu = "";
+
+   Tipo        = 0;
+   Path        = "";
+   PathAgicli  = "";
+   PathReo     = "";
+   MesEmision  = "";
+   EjeEmision  = "";
+   CuadroError = 0;
+   FEstado500  = 0;
+|FIN;
+
+|PROCESO borralo;
+   |BORRA 140#300a;
+   |LIBERA #300;
+|FPRC;
+
+|DEFBUCLE eossegui;
+  #300#1;
+  ;
+  se_empre, se_ejerc, se_perio, se_tipos, 10;
+  se_empre, se_ejerc, se_perio, se_tipos, 99;
+  be;
+  NULL, borralo;
+|FIN;
+
+|PROCESO seguimie;
+  |ABRE #300;
+  #300#0 = se_empre;
+  #300#1 = se_ejerc;
+  #300#2 = se_perio;
+  #300#3 = se_tipos;
+  #300#4 = se_activ;
+  |LIBERA #300;
+  |LEE 140#300=;
+  |SI FSalida ! 0;
+      |DDEFECTO #300;
+      #300#0 = se_empre;
+      #300#1 = se_ejerc;
+      #300#2 = se_perio;
+      #300#3 = se_tipos;
+      #300#4 = se_activ;
+      #300#5 = se_impor;
+      #300#6 = se_fecha;
+      #300#7 = se_factu;
+      |GRABA 140#300n;
+  |SINO;
+      |SI #300#7 = "S";
+          se_factu = "S";
+          |SI #300#5 ! se_impor;
+              |PUSHV 0501 2380;
+              |CUADRO 0610 1865;
+              |ATRI R;
+              alfavar = #300#0;
+              alfavar = ("00000" + alfavar) % -105;
+              alfavar = (" Empresa ..: " + alfavar + (" " * 54)) % 0154;
+              |PINTA 0711, alfavar;
+
+              alfavar = #300#1;
+              alfavar = ("00" + alfavar) % -102;
+              alfavar = (" Ejercicio : " + alfavar + (" " * 54)) % 0154;
+              |PINTA 0811, alfavar;
+
+              alfavar = #300#2;
+              alfavar = ("00" + alfavar) % -102;
+              alfavar = (" Periodo ..: " + alfavar + (" " * 54)) % 0154;
+              |PINTA 0911, alfavar;
+
+              alfavar = #300#3;
+              alfavar = ("000" + alfavar) % -103;
+              alfavar = (" Modelo ...: " + alfavar + (" " * 54)) % 0154;
+              |PINTA 1011, alfavar;
+
+              |PINTA 1111, "                                                      ";
+              |PINTA 1211, "  EL REGISTRO YA HA SIDO FACTURADO Y CON OTRO IMPORTE ";
+              |PINTA 1311, "                                                      ";
+              |PINTA 1411, "  Si desea incorporar este nuevo importe a la Factu - ";
+              |PINTA 1511, " racion de Asesorias debera borrar el registro en el  ";
+              |PINTA 1611, " programa de minutas y a la pregunta que le haremos a ";
+              |PINTA 1711, " continuacion introducir una <S>.                     ";
+
+              |ATRI 0;
+              |CONFI "2400NDesea grabar el nuevo importe : ";
+              |SI FSalida ! 0;
+                  |POPV;
+                  |LIBERA #300;
+                  |CIERRA #300;
+                  |ACABA;
+              |FINSI;
+              se_factu = "N";
+          |FINSI;
+      |FINSI;
+
+      #300#0 = se_empre;
+      #300#1 = se_ejerc;
+      #300#2 = se_perio;
+      #300#3 = se_tipos;
+      #300#4 = se_activ;
+      #300#5 = se_impor;
+      #300#6 = se_fecha;
+      #300#7 = se_factu;
+      |GRABA 140#300a;
+  |FINSI;
+  |LIBERA #300;
+  |CIERRA #300;
+|FPRC;
+
+|PROCESO AlAgicli;
+    |DBASS Path;
+    |PATH_DAT #511 Path;
+
+    |ABRE #511;
+    |LEE 040#511p;
+    |SI FSalida ! 0; |CIERRA #511; |ACABA; |FINSI;
+    |CIERRA #511;
+
+    PathAgicli     = #511#8; |QBF PathAgicli;
+    |SI PathAgicli = "";  |ACABA; |FINSI;    || Mira si existe el directorio AGICLI
+    |SI #511#15    = "N"; |ACABA; |FINSI;    || Mira si hay control de Bancos
+    PathReo        = #511#3;  |QBF PathReo;
+    |SI PathReo    = "*"; |ACABA; |FINSI;    || Mira si esta activada la R.E.O.
+
+    |PATH_DAT #510 PathAgicli;
+    |PATH_DAT #512 PathAgicli;
+
+    |ABRE #512;
+    #512#0 = se_empre;
+    |LEE 040#512=;
+    |SI FSalida ! 0; |CIERRA #512; |ACABA; |FINSI;
+    |CIERRA #512;
+
+    |ABRE #510;
+    MesEmision = se_fecha % 402;
+    EjeEmision = se_fecha % -102;
+    Tipo       = se_activ - 9;
+
+    |DDEFECTO #510;
+    #510#0 = se_empre;
+    #510#1 = MesEmision;
+    #510#2 = EjeEmision;
+    #510#3 = Tipo;
+    #510#4 = se_tipos;
+    |LIBERA #510;
+    |LEE 140#510=;
+    FEstado500 = FSalida;
+    |SI FSalida = 0; |Y #510#8 ! 0;
+        |HAZ CuadroError;
+        |SI CuadroError ! 0; |CIERRA #510; |ACABA; |FINSI;
+    |FINSI;
+
+    #510#0  = se_empre;
+    #510#1  = MesEmision;
+    #510#2  = EjeEmision;
+    #510#3  = Tipo;
+    #510#4  = se_tipos;
+    #510#5  = #512#79;
+    #510#6  = se_impor;
+    #510#7  = se_fecha;
+    #510#8  = 0;
+    #510#9  = 0;
+    #510#10 = "01.01.0000";
+    #510#11 = #512#81;
+    |SI FEstado500 = 0; |GRABA 140#510a; |SINO; |GRABA 140#510n; |FINSI;
+
+    |CIERRA #510;
+|FPRC;
+
+|PROCESO CuadroError;
+    |PUSHV 0501 2380;
+    |D_CUADRO 1212, 1669
+    |ATRI R;
+
+    alfavar = #512#0;
+    alfavar = ((("00000" + alfavar) % -105) + #512#1) % 146;
+
+    |PINTA 1323, "  El Modelo en el Modulo Integrador                      ";
+    |PINTA 1423, " ya ha sido remesado.                                    ";
+    |PINTA 1523, " Cliente : " + alfavar;
+    |ATRI 0;
+
+    |CONFI "2400NRegrabar el Importe en el Modulo Integrador y dejarlo como Remesable : ";
+    CuadroError = FSalida;
+
+    |POPV;
+|FPRC;

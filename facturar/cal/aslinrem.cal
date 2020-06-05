@@ -1,0 +1,698 @@
+|FICHEROS;
+    ascabrem #1;
+    aslinrem #2;
+    ashisrec #4;
+    ashismic #5;
+    asparcia #6;
+
+    asclient;
+    asw00033,MANTE;
+
+    &bancosp@ #706;
+
+    asempcon;
+    :/contagen/def/canempre;
+    :/contagen/def/cacuenta;
+|FIN;
+
+|VARIABLES;
+     mensaje1 = "    ERROR NO ENCONTRADO EL RECIBO";
+     mensaje2 = "    BANCO INEXISTENTE EN RECIBO";
+     modo     = 0;
+     mes      = "";
+     mes_num  = 0;
+     campo    = 0;
+
+     cuenta_cob = "";
+     nSinConta  = 0;
+     nNume1     = 0;
+     nNume2     = 0;
+     nPara1     = 0;
+     nError     = 0;
+
+     nEntrada  = 0;
+     nEntLinea = 0;
+     nSwError  = 0;
+     nBajaCab  = 0;
+     nLin      = 0;
+     nTotal    = 0;
+     nSw       = 0;
+     nOp       = 0;
+     nDRemesa  = 0;
+     nHRemesa  = 0;
+     nDLinRem  = 0;
+     nHLinRem  = 0;
+     aAlfa     = "";
+     aAlfa1    = "";
+     aCtaAnt   = "";
+     NumDoc    = 0;
+     nErrorAcaba = 0;
+     nModoIban   = 0;
+     nInkey      = 0;
+
+     &enCodBanco     = 0;
+     &enSwDeDonde    = 0;
+     &eaPathContagen = "";
+|FIN;
+
+|INCLUYE i_varcof;
+
+|CALCULO Tipo8Cuen; |TIPO 88;
+   |HAZ Tipo88;
+
+   |ABRE #asempcon;
+   |DDEFECTO #asempcon;
+   |LEE 001#asempcon.p;
+   |CIERRA #asempcon;
+   nSinConta = 0;
+
+   |HAZ BusquedaApli;
+   |SI eaPathContagen ! "";
+       enEmpresa  = #asempcon#1;
+       enPerConta = #asempcon#2;
+       enSwSinMen = 1;
+       |HAZ LeeEmpConta;
+       |SI swerror = 1;
+           |MENAV "     Empresa Contable Mal Informada ";
+           nSinConta = 1;
+       |SINO;
+           |PATH_DAT #cacuenta#aPathConta#;
+       |FINSI;
+   |SINO;
+       nSinConta = 1;
+   |FINSI;
+|FCAL;
+
+|PROCESO factu; |TIPO 0;
+     |SI FSalida = 2; |ACABA; |FINSI;
+
+     nInkey = FSalida;
+     nEntLinea = (FEntrada / 100) ! 0;
+
+     |SI nInkey = 10; |Y nEntLinea ! 1;
+         nModoIban = 4;
+         |HAZ ModiIBAN;
+         |ERROR;
+     |FINSI;
+
+     nError = 0;
+     |ABRE #4;
+     |DDEFECTO #4;
+     #4#0 = #2#2;
+     #4#1 = #2#3;
+     |LEE 001#4=;
+     |SI FSalida ! 0;
+         |MENAV "0000No existe Recibo";
+         |ERROR;
+         nError = 1;
+     |SINO;
+         #2#7 = #4#6 - #4#9;
+         |SI #2#7 = 0;
+             |MENAV "0000Este Recibo ya esta cobrado";
+             |ERROR;
+              nError = 1;
+         |SINO;
+              |PINTA #2#7;
+         |FINSI;
+     |FINSI;
+     |CIERRA #4;
+
+     aAlfa = #aslinrem#10; |QBF aAlfa;
+     |ABRE #asclient;
+     |DDEFECTO #asclient;
+     #asclient#0 = #ashisrec#3;
+     |LEE 040#asclient.=;              ||** Ordena por Banco/Sucursal;
+     |CIERRA #asclient;
+
+     #aslinrem#5  = #asclient#1;
+
+     |SI #asclient#0 = 0;
+         |ABRE #ashismic;
+         #ashismic#0 = #aslinrem#2;
+         #ashismic#1 = #aslinrem#3;
+         |LEE 000#ashismic.=;
+         |SI FSalida = 0;
+             #aslinrem#5  = #ashismic#5;
+         |FINSI;
+         |CIERRA #ashismic;
+     |FINSI;
+
+     |PINTA #aslinrem#5;
+
+     |SI nError = 0;
+         |SI nEntLinea = 1; |O aAlfa = "";
+             |SI #asclient#0 ! 0;
+                 #aslinrem#10 = #asclient#77;
+                 #aslinrem#11 = #asclient#84;
+                 #aslinrem#12 = #asclient#76;
+                 #aslinrem#13 = #asclient#85;
+                 #aslinrem#14 = #asclient#83;
+             |FINSI;
+        |FINSI;
+     |FINSI;
+
+     |SI #asclient#0 = 0;
+         |ABRE #ashismic;
+         #ashismic#0 = #aslinrem#2;
+         #ashismic#1 = #aslinrem#3;
+         |LEE 000#ashismic.=;
+         |SI FSalida = 0;
+             #aslinrem#5  = #ashismic#5;
+         |FINSI;
+         |CIERRA #ashismic;
+     |FINSI;
+
+     |PINTA #aslinrem#4;
+     |PINTA #aslinrem#5;
+|FPRC;
+
+|PROCESO ModiIBAN;
+
+    |PUSHV 0501 2380;
+
+    #asw00033#0 = #aslinrem#10;
+    #asw00033#1 = #aslinrem#11;
+    #asw00033#2 = #aslinrem#12;
+    #asw00033#3 = #aslinrem#13;
+    #asw00033#4 = #aslinrem#14;
+    |PINPA #0#asw00033;
+    |PINDA #0#asw00033;
+    |SI nModoIban = 2;
+        |ENDATOS #2#asw00033;
+        |SI FSalida = 0;
+            #aslinrem#10 = #asw00033#0;
+            #aslinrem#11 = #asw00033#1;
+            #aslinrem#12 = #asw00033#2;
+            #aslinrem#13 = #asw00033#3;
+            #aslinrem#14 = #asw00033#4;
+        |FINSI;
+    |SINO;
+        |PAUSA;
+    |FINSI;
+
+    |POPV;
+|FPRC;
+
+|PROCESO ConIban11; |TIPO 11;
+   nInkey = FSalida;
+   |SI nInkey = 10;
+       nModoIban = 4;
+       |HAZ ModiIBAN;
+       |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO ConIban;
+   nInkey = FSalida;
+   |SI nInkey = 11; |O nInkey = 10;
+       nModoIban = 2;
+       |SI nInkey = 10; nModoIban = 4; |FINSI;
+       |HAZ ModiIBAN;
+       |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO Tipo0Importe;
+   nInkey = FSalida;
+
+   nEntLinea = (FEntrada / 100) ! 0;
+
+   |SI nInkey = 10; |O nInkey = 11; |O nEntLinea = 1;
+       nModoIban = 2;
+       |SI nInkey = 10; nModoIban = 4; |FINSI;
+       |HAZ ModiIBAN;
+       |ERROR;
+   |FINSI;
+
+|FPRC;
+
+|RUTINA nInf2;
+ |SI FSalida = "POSICION";
+     #cacuenta#0 = cuenta_cob;
+ |SINO;
+     #cacuenta#0 = "";
+ |FINSI;
+ #cacuenta#3 = "S";
+|FRUT;
+
+|RUTINA nSup2;
+ #cacuenta#0 = "zzzzzzzzzzz";
+ #cacuenta#3 = "S";
+|FRUT;
+
+|PROCESO LaConsCue;
+  |SI nSinConta = 1; |ACABA; |FINSI;
+  |ABRE #cacuenta;
+  #cacuenta#0 = cuenta_cob;
+  |CONSULTA_F_CLAVE #6#cacuenta, nInf2, nSup2;
+  cuenta_cob = #cacuenta#0;
+  |ATRI R; |PINTA 0846, cuenta_cob; |ATRI 0;
+  |CIERRA #cacuenta;
+|FPRC;
+
+|CALCULO Cuenta;
+     nError = 0;
+     |SI nSinConta ! 1;
+         emCta = 1;
+         eaCuenta = cuenta_cob;
+         salidas  = FSalida;
+         |HAZ FiltraPuntos;
+         cuenta_cob = eaCuenta;
+         |ATRI R; |PINTA 0846, cuenta_cob; |ATRI 0;
+     |FINSI;
+
+     |QBF cuenta_cob;
+     |SI cuenta_cob = "";
+         nError = 1;
+         |ACABA;
+     |FINSI;
+
+     aAlfa  = cuenta_cob % 0;
+     nNume1 = aAlfa;
+     |PARA nPara1 = 1; |SI nPara1 [ nNume1; |HACIENDO nPara1 = nPara1 + 1;
+           nNume2 = (nPara1 * 100) + 1;
+           aAlfa  = cuenta_cob % nNume2;
+           |SI aAlfa < "0"; |O aAlfa > "9";
+               nError = 1;
+               |SAL;
+           |FINSI;
+     |SIGUE;
+|FCAL;
+
+|PROCESO PreguntaCta;
+
+    |SI cuenta_cob = "";
+        cuenta_cob = #706#11;
+        |SI enSwDeDonde = 0;  cuenta_cob = #706#23;  |FINSI;
+    |FINSI;
+
+    |PUSHV 0501 2380;
+    |BLANCO 0727 1060;
+    |CUADRO 0727 1060;
+    |ATRI R;
+    |PINTA 0829, " Cuenta Cobro :               ";
+    |ATRI S; |PINTA 0929, " Pulse <F2> Consulta Cuentas  "; |ATRI 0;
+
+|ET Pregunta;
+    E_inf = "";
+    E_sup = 12;
+    cuenta_cob = 0846 ? 1;
+    |SI FSalida = 10;
+        |HAZ LaConsCue;
+        |VETE Pregunta;
+    |FINSI;
+    |HAZ Cuenta;
+    |SI nError = 1; |VETE Pregunta; |FINSI;
+
+    |POPV;
+|FPRC;
+
+|PROCESO ActAsparcia;
+   nTotal = nTotal + #6#8;
+   #6#6 = nTotal;
+   #6#7 = #6#5 - #6#6;
+   |GRABA 020#6a;
+   |LIBERA #6;
+|FPRC;
+
+|DEFBUCLE ActAsparcia;
+   #6#1;
+   ;
+   #2#2, #2#3, 000;
+   #2#2, #2#3, 999;
+   be;
+   NULL, ActAsparcia;
+|FIN;
+
+|PROCESO borrar;
+   |SI #6#14 = #2#0; |Y #6#15 = #2#1;
+       nLin       = #6#2;
+       cuenta_cob = #6#13;
+   |FINSI;
+
+   |SI nOp = 0;
+       |BORRA 140#6a;
+   |SINO;
+        |SI #6#10 = "S"; |Y  #6#2 ] nLin;
+            nSw = 1;
+            |SI #6#2 > nLin; nSw = 2; |FINSI;
+            |ERROR10;
+        |FINSI;
+   |FINSI;
+   |LIBERA #6;
+|FPRC;
+
+|DEFBUCLE asparcia;
+   #6#1;
+   14, 15;
+   #2#2, #2#3, 001, nDRemesa, nDLinRem;
+   #2#2, #2#3, 999, nHRemesa, nHLinRem;
+   be;
+   NULL, borrar;
+|FIN;
+
+|PROCESO refresca; |TIPO 2;
+    modo      = 0 +. 1;
+    nEntLinea = (FEntrada / 100) ! 0;
+
+    |SI nErrorAcaba = 1; |ACABA; |FINSI;
+
+    || ABDON Tiquet 003660/00454
+    ||     Compruebo que la linea que voy a modificar o dar de baja no ha sido
+    ||         anulada anteriormente y asignada a otra remesa
+
+    |SI nBajaCab = 0;
+       |SI nEntLinea = 2; |O nEntLinea = 3;
+          |SI modo < 0;
+              nSwError = 0;
+              |ABRE #6;
+              |DDEFECTO #6;
+              #6#0  = #2#2;
+              #6#1  = #2#3;
+              |LEE 000#6];
+              |PARA; |SI FSalida = 0; |Y #6#0  = #2#2; |Y #6#1  = #2#3; |HACIENDO;
+                 |SI #6#14 = #2#0; |Y #6#15 = #2#1; |SAL; |FINSI;
+                 |LEE 000#6s;
+              |SIGUE;
+
+              |SI #6#0 = #2#2; |Y #6#1 = #2#3;
+                 |SI #6#14 ! #2#0; |O #6#15 ! #2#1;
+                    |MENAV "    La factura seleccionada ya no forma parte de esta remesa. Proceso cancelado.";
+                    nSwError = 1;
+                    |ERROR; |ACABA;
+                 |FINSI;
+              |SINO;
+                 |MENAV "    La factura seleccionada ya no forma parte de esta remesa. Proceso cancelado.";
+                 nSwError = 1;
+                 |ERROR;
+                 |ACABA;
+              |FINSI;
+
+          |SINO;
+
+              |SI nSwError = 1;
+                  nSwError = 0;
+                  |ERROR;
+                  |ACABA;
+              |FINSI;
+          |FINSI;
+
+       |FINSI;
+
+    |SINO;
+
+       |SI nEntLinea = 3;
+           |ABRE #6;
+           |DDEFECTO #6;
+           #6#0  = #2#2;
+           #6#1  = #2#3;
+           |LEE 041#6];
+           |PARA; |SI FSalida = 0; |Y #6#0  = #2#2; |Y #6#1  = #2#3; |HACIENDO;
+              |SI #6#14 = #2#0; |Y #6#15 = #2#1; |SAL; |FINSI;
+              |LEE 041#6s;
+           |SIGUE;
+
+           |SI #6#0 = #2#2; |Y #6#1 = #2#3;
+              |SI #6#14 ! #2#0; |O #6#15 ! #2#1; |ACABA; |FINSI;
+          |SINO;
+             |ACABA;
+          |FINSI;
+       |FINSI;
+
+   |FINSI;
+
+   #1#4 = #1#4 +. #2#7;  |PINTA #1#4;
+
+|| ...Actualiza ashisrec Historico de Recibos
+
+    |ABRE #4;
+    #4#0 = #2#2;
+    #4#1 = #2#3;
+    |LEE 141#4=;
+    |SI FSalida = 0;
+
+        #4#9  = #4#9  +. #2#7;  ||Importe Cobrado
+        #4#15 = #4#15 +. #2#7;  ||importe remesado
+
+        |SI nEntLinea ! 3;
+            #4#10 = "N";
+            |SI #4#9 = #4#6;
+                #4#10 = "S";   ||Cobrado Total
+            |FINSI;
+            #4#8  = #1#3;  ||Fecha Remesa
+            #4#12 = "R";   ||Contabilizado
+        |SINO;
+            #4#12 = "N";
+            |SI #4#9 ! 0;
+                #4#12 = "M";
+            |FINSI;
+            #4#10 = "N";
+        |FINSI;
+        |GRABA 021#4a;
+    |FINSI;
+    |LIBERA #4;
+    |CIERRA #4;
+
+    enCodBanco = #1#1;
+    |HAZ LeeBancoPropio;
+
+|| ...Actualiza ashismic Historico de Remesas
+    |ABRE #5;
+    #5#0 = #2#2;
+    #5#1 = #2#3;
+    |LIBERA #5;
+    |LEE 140#5=;
+    |SI FSalida = 0;
+        #5#13 = #1#1;
+        #5#32 = #4#10;   ||Cobrado Total
+        #5#33 = #4#12;   ||Contabilizado
+        |GRABA 021#5a;
+    |FINSI;
+    |CIERRA #5;
+
+    mes     = #5#29 % 402;
+    mes_num = mes;
+
+    enCodBanco = #5#13;
+    |HAZ LeeBancoPropio;
+    |SI enSwDeDonde = 0;
+        |ABRE #706;
+        #706#0 = #5#13;
+        |LEE 101#706=;
+        |SI FSalida = 0;
+            #706#20 = #706#20 -. #2#7;
+            #706#22 = #706#22 -. #2#7;
+            campo = 7 + mes_num; #706campo = #706campo -. #2#7;
+            |GRABA 020#706a;
+            |LIBERA #706;
+        |FINSI;
+
+        #706#0 = #1#1;
+        |LEE 140#706=;
+        |SI FSalida = 0;
+            #706#20 = #706#20 +. #2#7;
+            #706#22 = #706#22 +. #2#7;
+            campo = 7 + mes_num; #706campo = #706campo +. #2#7;
+            |GRABA 020#706a;
+        |FINSI;
+        |CIERRA #706;
+    |FINSI;
+
+||     |SI nEntLinea = 3; |ACABA; |FINSI;
+
+|| ...Actualiza asparcia  Cobros parciales
+
+    |SI modo ! 1;
+
+        nDRemesa = #2#0; nHRemesa = #2#0;
+        nDLinRem = #2#1; nHLinRem = #2#1;
+        nLin   = 0;
+        nTotal = 0;
+        nOp    = 0;
+        cuenta_cob = "";
+        |BUCLE asparcia;
+        |QBF cuenta_cob;
+
+        |SI nEntLinea = 3;
+            nTotal = 0;
+            |BUCLE ActAsparcia;
+            nLin   = 0;
+            nTotal = 0;
+            cuenta_cob = "";
+        |FINSI;
+
+    |SINO;
+
+        |HAZ PreguntaCta;
+
+        |ABRE #6;
+        |DDEFECTO #6;
+        |SI nLin = 0;
+            #6#0  = #2#2;
+            #6#1  = #2#3;
+            #6#2  = 99;
+            |LEE 041#6];
+            |SI FSalida = 0;
+                |LEE 041#6a;
+            |SINO;
+                |LEE 041#6u;
+            |FINSI;
+            |SI FSalida = 0; |Y #6#0 = #2#2; |Y #6#1 = #2#3;
+                nLin = #6#2;
+            |FINSI;
+            nLin = nLin + 1;
+        |FINSI;
+
+        #6#0 = #2#2;
+        #6#1 = #2#3;
+        #6#2 = nLin;
+        |LEE 141#6=;
+        |SI FSalida ! 0;
+           |DDEFECTO #6;
+           #6#0  = #2#2;
+           #6#1  = #2#3;
+           #6#2  = nLin;
+           #6#3  = #1#3;
+           #6#4  = #2#8;
+           #6#5  = #4#6;
+           |GRABA 140#6b;
+        |FINSI;
+
+        #6#8  = #2#7;
+        #6#9  = #4#3;
+        #6#13 = cuenta_cob;
+        #6#14 = #2#0;
+        #6#15 = #2#1;
+        |GRABA 140#6a;
+        |LIBERA #6;
+        |CIERRA #6;
+
+        nTotal = 0;
+        |BUCLE ActAsparcia;
+        nLin   = 0;
+        nTotal = 0;
+        cuenta_cob = "";
+    |FINSI;
+|FPRC;
+
+|PROCESO Tipo1Lin; |TIPO 1;
+    nErrorAcaba = 0;
+    nEntLinea = (FEntrada / 100) ! 0;
+
+    nLin = 0;
+    nOp  = 1;
+    nDRemesa = 000000;
+    nHRemesa = 999999;
+    nDLinRem = 000;
+    nHLinRem = 999;
+    |BUCLE asparcia;
+
+    |SI nSw ! 0;
+        aAlfa = "modificar";
+        |SI nEntLinea = 3; aAlfa = "dar de baja"; |FINSI;
+        aAlfa1 = ", esta linea ya esta contabilizada";
+        |SI nSw = 2; aAlfa1 = ", existen otros cobros contabilizados de esta Factura"; |FINSI;
+        aAlfa = "0000NO se puede " + aAlfa + aAlfa1;
+        |MENAV aAlfa;
+        nErrorAcaba = 1;
+        |ERROR;
+    |FINSI;
+|FPRC;
+
+|PROCESO ElTip5; |TIPO 5;
+     FSalida = "SINBARRA";
+|FPRC;
+
+|| .....................................................................
+|PROCESO BancoPropio;
+     enCodBanco = #1#1;
+     |HAZ LeeBancoPropio;
+
+     #1#2 = #706#1;   |PINTA #1#2;
+|FPRC;
+
+|PROCESO  LeeCobros;
+     nSw = 1;
+|FPRC;
+
+|DEFBUCLE LeeCobros;
+    #6#3;
+    10;
+    #1#0, 001, "  ", 00001, 001, "S";
+    #1#0, 999, "zz", 99999, 999, "S";
+    e;
+    NULL, LeeCobros;
+|FIN;
+
+
+|PROCESO LasLineas;
+    nErrorAcaba = 0;
+    nLin = 0;
+    nOp  = 1;
+    nDRemesa = 000000;
+    nHRemesa = 999999;
+    nDLinRem = 000;
+    nHLinRem = 999;
+    |BUCLE asparcia;
+
+    |SI nSw ! 0;
+        aAlfa1 = ", existen otros cobros contabilizados de Facturas incluidas";
+        aAlfa = "0000NO se puede dar de baja la Remesa" + aAlfa1;
+        |MENAV aAlfa;
+        nErrorAcaba = 1;
+        |ERROR10;
+    |FINSI;
+    |LIBERA #2;
+|FPRC;
+
+|PROCESO AltR; |TIPO 7;
+
+     nEntrada = (FEntrada / 100) ! 0;
+     |SI nEntrada = 1;
+         |SALVA_DATOS #1;
+         #1#0 = 999999;
+         |LEE 010#1];
+         |SI FSalida = 0;
+             |LEE 040#1a;
+         |SINO;
+             |LEE 040#1u;
+         |FINSI;
+         NumDoc = 1;
+         |SI FSalida = 0;
+             NumDoc = #1#0 + 1;
+         |FINSI;
+         |REPON_DATOS #1;
+         #1#0 = NumDoc; |PINTA #1#0;
+   |FINSI;
+|FPRC;
+
+|PROCESO BajR; |TIPO 1;
+     nEntrada = (FEntrada / 100) ! 0;
+
+     nBajaCab = 0;
+ |SI nEntrada = 3;
+     nBajaCab = 1;
+
+     nSw = 0;
+     |BUCLE LeeCobros;
+     |SI nSw = 1;
+         aAlfa = "Modificar";
+         |SI nEntrada = 3; aAlfa = "dar de baja"; |FINSI;
+         aAlfa = "0000Esta Remesa no se puede " + aAlfa + ". Tiene Cobros Contabilizados";
+         |MENAV aAlfa;
+         |ERROR;
+     |SINO;
+         |BUCLELIN 2LasLineas#1;
+         |SI nSw ! 0;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+  |SINO;
+     |SI #1#5 ! " ";
+         |CONFI "0000NEsta Remesa ya ha sido pasada al Banco. Continuar con la modificacion";
+         |SI FSalida ! 0;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+  |FINSI;
+|FPRC;

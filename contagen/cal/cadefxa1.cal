@@ -1,0 +1,840 @@
+|FICHEROS;
+   cadefxa1 #0,MANTE;
+   cadefxal #1,MANTE;
+   cadeflac #2,MANTE;
+   cadefxax #3,MANTE;
+   cadeflay #4,MANTE;
+   cadefxaz #13,MANTE;
+
+   cadeflab #50;
+   cadeflal #51;
+   cadeflax #53;
+   cadeflaz #54;
+
+   caw00021 #21,MANTE;
+   :/modelos/def/dsmom030 #300;
+   cacuenta #5;
+   camandia #10;
+   caivaasi #210;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   nInkey   = 0;
+   alfa1    = "";
+
+   aAlfa1         = "";
+   aAlfa2         = "";
+   aAlfa3         = "";
+   aAlfa4         = "";
+   nModificableSD = 0;
+   nExiste        = 0;
+   nTieneSubDep   = 0;
+
+   Comodin        = "";
+   Comodin1       = "";
+   ConcepAnt      = "";
+   Campo1         = 0;
+
+   nTipoTribut    = 0;
+   nTipoSector    = 0;
+   nClave         = 0;
+   nActividad     = 0;
+   aDef901        = "";
+   nSwError       = 0;
+   aCta1          = "";
+   ModoEntrLin    = 0;
+   aDepAnt        = "";
+   aSubAnt        = "";
+
+   nPara1         = 0;
+   nNume1         = 0;
+   nNume2         = 0;
+   nNume3         = 0;
+   nNume4         = 0;
+   &enCambio      = 0;
+   &ModoEntrada   = 0;
+   nEstado        = 0;
+   aAna1          = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+|INCLUYE dscoan_i;
+
+|| ************************** Pantalla
+|CALCULO AntesCta; |TIPO 7;
+    |SI #0Campo = doce; |Y #0#16 ! doce;
+        #0Campo = #0#16; |PINTA #0Campo;
+        #0#114  = #0#39; |PINTA #0#114;
+        #0#115  = #0#40; |PINTA #0#115;
+        #0#116  = #0#41; |PINTA #0#116;
+    |FINSI;
+|FCAL;
+
+|CALCULO Cuenta; |TIPO 6;
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta;
+     |PINTA #0Campo;
+|FCAL;
+
+|CALCULO TrasCuenta; |TIPO 0;
+   emCta    = 1;
+   eaCuenta = #0Campo;
+   |HAZ SacaNivel;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   |HAZ LeeCuenta;
+|FCAL;
+
+|PROCESO AntesConcepto; |TIPO 7;
+   ConcepAnt = #Fichero@#Campo#;
+|FPRC;
+
+|PROCESO TrasConcepto;
+   Campo1 = Campo + 1;
+
+   |ABRE #dsmom030;
+   #dsmom030#0 =  #Fichero@#Campo#;
+   |LEE 040#dsmom030.=;
+
+   |SI #Fichero@#Campo# ! ConcepAnt;
+      |SI Campo = 17;
+          |SI #dsmom030#5 = "S";
+               #0Campo1 = #dsmom030#1;
+          |SINO;
+               |SI snFiltr ! "X";
+                   |MENAV "      El Concepto no es de I.R.P.F.";
+               |FINSI;
+               |SI snFiltr = "S";
+                   |ERROR;
+                   |ACABA;
+               |SINO;
+                    #0Campo1 = #dsmom030#1;
+               |FINSI;
+          |FINSI;
+      |SINO;
+          #Fichero@#Campo1# = #dsmom030#1;
+      |FINSI;
+      |PINTA #Fichero@#Campo1#;
+   |FINSI;
+   |CIERRA #dsmom030;
+|FPRC;
+
+|CALCULO TrasDiario; |TIPO 0;
+   |ABRE #10;
+   #10#0 = #0#54;
+   |LEE 000#10=;
+   |SI FSalida = 0;
+       #0#55 = #10#1; |PINTA #0#55;
+   |FINSI;
+   |CIERRA #10;
+|FCAL;
+
+|CALCULO AntesDep; |TIPO 7;
+   |C_M #0Campo, 0, aAlfa1;
+   |SI aAlfa1 = "S"
+      |SI Haybasica = 1;
+          |MENSA "    <F2> Consultar Actividades";
+      |SINO;
+          |MENSA "    <F2> Consultar Departamentos";
+      |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO AntesSub; |TIPO 7;
+   |C_M #0Campo, 0, aAlfa1;
+   |SI aAlfa1  = "S";
+      |SI Haybasica = 1;
+          |SI enArrend = 1;
+              |MENSA "    Subdepartamento. <F2> Consultar Referencias Catastrales";
+          |SINO;
+              |MENSA "    Subdepartamento. <F2> Consultar Cultivos";
+          |FINSI;
+      |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO MiraActiv; |TIPO 0;
+   |SI eaDepar = "N"; |ACABA; |FINSI;
+
+   eOpDep = 0; || 1 = Consulta pantalla
+   |SI FSalida = 10; eOpDep = 1;  |FINSI;
+   enActividad = #0#22;
+   eaCodDep    = #0#22;
+   |HAZ Actividad;
+   |SI eswLect = 1;
+       |MENAV "    Error.! No Existe Actividad / Departamento";
+       |ERROR;
+   |SINO;
+       aAlfa1 = enActividad;
+       |SI Haybasica = 1;
+           aAlfa1 = ("00" + aAlfa1) % A02;
+       |FINSI;
+       #0#22 = eaCodDep;    |PINTA #0#22;
+       #0#23 = eaNombreAct; |PINTA #0#23;
+       |SI efActFin > "01.01.1900"; |Y snFilBa = "S";
+           alfa1 = "    NAtencion!!!. Actividad con Fecha de BAJA " + efActFin + ", Desea introducir Facturas ? ";
+           |CONFI alfa1;
+           |SI FSalida ! 0;
+               |ERROR;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+       |SI eaEsCom = "S";
+           |CONFI "    NAtencion!!!. Actividad Comunera, ¨ Desea introducir Facturas ? ";
+           |SI FSalida ! 0;
+               |ERROR;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO TrasSub; |TIPO 0;
+   |SI eaSubde = "N"; |ACABA; |FINSI;
+
+   eOpSub = 0; || 1 = Consulta pantalla
+   |SI FSalida = 10; eOpSub = 1;  |FINSI;
+
+   enConcepto  = #0#2;
+   eaCodSubdep = #0#57;
+   enQue = 1;
+   |HAZ SubActividad;
+   enQue = 0;
+   |SI eswLect = 1;
+       |MENAV "    Error.! No Existe SubDepartamento";
+       |ERROR;
+   |SINO;
+       #0#57 = eaCodSubdep; |PINTA #0#57;
+       #0#58 = eaNomSubdep; |PINTA #0#58;
+   |FINSI;
+|FCAL;
+
+|CALCULO PAreaNom; |TIPO 0;
+      nInkey = FSalida;
+      eOpCen = 0;
+      |SI nInkey  = 10; eOpCen = 1; |FINSI;
+      eaArea = #0#102;
+      |HAZ AreaTrabajo;
+      |SI eswLect = 1;
+          |ERROR;
+      |SINO;
+          #0#102 = eaArea; |PINTA #0#102;
+      |FINSI;
+|FCAL;
+
+|CALCULO PSecNom; |TIPO 0;
+      nInkey = FSalida;
+      eOpCen = 0;
+      |SI nInkey  = 10; eOpCen = 1; |FINSI;
+      eaSeccion = #0#104;
+      |HAZ SecTrabajo;
+      |SI eswLect = 1;
+          |ERROR;
+      |SINO;
+          #0#104 = eaSeccion; |PINTA #0#104;
+      |FINSI;
+|FCAL;
+
+|PROCESO AnyaDesc;
+ |SI #0#80 ! " ";
+     |C_M #0#81, 1, "S";
+ |SINO;
+     |C_M #0#81, 1, "N"; #0#81 = "N"; |PINTA #0#81;
+     #0#84 = "N"; #0#85 = "N"; #0#86 = "N";
+     #0#87 = "N"; #0#88 = "N"; #0#89 = "N";
+     #0#90 = "N"; #0#91 = "N"; #0#92 = "N";
+ |FINSI;
+|FPRC;
+
+|PROCESO AnyaCta; |TIPO 0;
+ |SI #0#82 ! "N";
+     |C_M #0#83, 1, "S";
+ |SINO;
+     |C_M #0#83, 1, "N";
+     #0#83 = "N"; |PINTA #0#83;
+     #0#93  = "N"; #0#94  = "N"; #0#95  = "N";
+     #0#96  = "N"; #0#97  = "N"; #0#98  = "N";
+     #0#99  = "N"; #0#100 = "N"; #0#101 = "N";
+ |FINSI;
+|FPRC;
+
+|PROCESO soloDS;
+     |SI #21Campo ! "N";
+         |SI #21Campo ! #0nNume4;
+             #21Campo = #0nNume4;
+             |PINTA #21Campo;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO De0a21;
+  |PARA nPara1 = 0; |SI nPara1 [ 21; |HACIENDO nPara1 = nPara1 + 1;
+        nNume1 = nPara1 + 80;
+        #21nPara1 = #0nNume1;
+        |C_M #21nPara1, 1, "N";
+  |SIGUE;
+|FPRC;
+
+|PROCESO De21a0;
+  |PARA nPara1 = 0; |SI nPara1 [ 21; |HACIENDO nPara1 = nPara1 + 1;
+        nNume1 = nPara1 + 80;
+        #0nNume1 =#21nPara1;
+  |SIGUE;
+|FPRC;
+
+|PROCESO SelCC; |TIPO 0;
+
+  |HAZ De0a21;
+
+  |C_M #0Campo, 0, aAlfa1;
+  |SI aAlfa1 = "N"; |ACABA; |FINSI;
+  nNume4 = Campo - 1;
+  |SI Campo = 81; nNume1 = 4;  nNume3 = 84; |FINSI;
+  |SI Campo = 83; nNume1 = 13; nNume3 = 93; |FINSI;
+  nNume2 = nNume1 + 8;
+  |PARA nPara1 = nNume1; |SI nPara1 [ nNume2; |HACIENDO nPara1 = nPara1 + 1;
+        |SI #0Campo = "S";
+             #21nPara1 = #0nNume4; |C_M #21nPara1,1,"N";
+        |SINO;
+             |C_M #21nPara1,1,"S";
+        |FINSI;
+  |SIGUE;
+  |SI #0Campo = "N";
+      |PUSHV 0730 2380;
+      |PINPA #0#21;
+      |PINDA #0#21;
+      |ENDATOS #2#21;
+      |POPV;
+  |FINSI;
+  |HAZ De21a0;
+|FPRC;
+
+|PROCESO El12_w21; |TIPO 12;
+|FPRC;
+
+|PROCESO LeeUnoL;
+ |ABRE #1;
+ |DDEFECTO #1;
+ #1#9 = #0#0;
+ #1#0 = 0;
+ |LEE 001#1];
+ |SI FSalida = 0; |Y #1#9 = #0#0;
+     aCta1 = #1#2;
+ |FINSI;
+ |CIERRA #1;
+|FPRC;
+
+|PROCESO LeeUnoX;
+ |ABRE #3;
+ |DDEFECTO #3;
+ #3#6 = #0#0;
+ |LEE 001#3];
+ |SI FSalida = 0; |Y #3#6 = #0#0;
+      aCta1 = #3#3;
+      aAna1 = #3#5;
+ |FINSI;
+ |CIERRA #3;
+|FPRC;
+
+|PROCESO LeeUnoZ;
+ |ABRE #13;
+ |DDEFECTO #13;
+ #13#10 = #0#0;
+ |LEE 001#13];
+ |SI FSalida = 0; |Y #13#10 = #0#0;
+      aCta1 = #13#3;
+      aAna1 = #13#5;
+ |FINSI;
+ |CIERRA #13;
+|FPRC;
+
+|PROCESO LeoLaz;
+ #13#10 = #0#0;
+ #13#0 = #54#0;
+ #13#1 = #54#1;
+ #13#2 = #54#2;
+ #13#3 = #54#3;
+ #13#4 = #54#4;
+ #13#5 = #54#5;
+ #13#6 = #54#6;
+ #13#7 = #54#7;
+ #13#8 = #54#8;
+ #13#9 = #54#9;
+ |GRABA 000#13n;
+|FPRC;
+
+|DEFBUCLE LeoLaz;
+ #54#1;
+ ;
+ "    ", "    ";
+ "zzzz", "zzzz";
+ e;
+ NULL, LeoLaz;
+|FIN;
+
+|PROCESO Carga13;
+  |SI ModoEntrada = 1;
+      |ABRE #13;
+      |BUCLE LeoLaz;
+      |CIERRA #13;
+  |FINSI;
+|FPRC;
+
+|PROCESO LeoLax;
+ #3#6 = #0#0;
+ #3#0 = #53#0;
+ #3#1 = #53#1;
+ #3#2 = #53#2;
+ #3#3 = #53#3;
+ #3#4 = #53#4;
+ #3#5 = #53#5;
+ |GRABA 000#3n;
+|FPRC;
+
+|DEFBUCLE LeoLax;
+ #53#1;
+ ;
+ "    ", "    ";
+ "zzzz", "zzzz";
+ e;
+ NULL, LeoLax;
+|FIN;
+
+|PROCESO Carga3;
+  |SI ModoEntrada = 1;
+      |ABRE #3;
+      |BUCLE LeoLax;
+      |CIERRA #3;
+  |FINSI;
+|FPRC;
+
+|PROCESO LeoLal;
+ #1#9 = #0#0;
+ #1#0 = #51#0;
+ #1#1 = #51#1;
+ #1#2 = #51#2;
+ #1#3 = #51#3;
+ #1#4 = #51#4;
+ #1#5 = #51#5;
+ #1#6 = #51#6;
+ #1#7 = #51#7;
+ #1#8 = #51#8;
+ |GRABA 000#1n;
+|FPRC;
+
+|DEFBUCLE LeoLal;
+ #51#1;
+ ;
+ 001;
+ 999;
+ e;
+ NULL, LeoLal;
+|FIN;
+
+|PROCESO Carga1;
+  |SI ModoEntrada = 1;
+      |ABRE #1;
+      |BUCLE LeoLal;
+      |CIERRA #1;
+  |FINSI;
+|FPRC;
+
+|RUTINA infdefz;
+   #13#10 = #0#0;
+   #13#0  = "    ";
+   #13#1  = "    ";
+|FRUT;
+
+|RUTINA supdefz;
+   #13#10 = #0#0;
+   #13#0 = "zzzz";
+   #13#1 = "zzzz";
+|FRUT;
+
+|RUTINA infdefx;
+   #3#6 = #0#0;
+   #3#0 = "    ";
+   #3#1 = "    ";
+|FRUT;
+
+|RUTINA supdefx;
+   #3#6 = #0#0;
+   #3#0 = "zzzz";
+   #3#1 = "zzzz";
+|FRUT;
+
+|RUTINA infdefl;
+   #1#9 = #0#0;
+   #1#0 = 1;
+|FRUT;
+
+|RUTINA supdefl;
+   #1#9 = #0#0;
+   #1#0 = 999;
+|FRUT;
+
+
+|CALCULO EditaLineal; |TIPO 0;
+   |SI FSalida = 3; |ACABA; |FINSI;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |SI FSalida = 1; |ACABA; |FINSI;
+
+   aCta1 = #0#1;
+   |SI #0#103= "X"; |Y #0#42 = "A";
+       |MENAV "    Error en tipo desglose. No utiliza Area/Secciones de Trabajo.";
+       #0#42 = "N"; |PINTA #0#42;
+       |ERROR;
+       |ACABA;
+   |FINSI;
+
+   |SI #0#42 = "S";
+       |HAZ Carga1;
+       |PUSHV 05012380;
+       |ENTLINEAL #1#1, -2, 2, 19, 1, infdefl, supdefl;
+       |POPV;
+       |HAZ LeeUnoL;
+   |FINSI;
+
+   |SI #0#42 = "A";
+       |HAZ Carga3;
+       |PUSHV 05012380;
+       |PINPA #0#3;
+       |ENTLINEAL #1#3, -2, 2, 22, 0,infdefx,supdefx;
+       |POPV;
+       |HAZ LeeUnoX;
+   |FINSI;
+
+   |HAZ ActLac;
+
+   |QBF aCta1;
+   |SI #0#42 ! "N"; |Y aCta1 ! "";
+       |C_M #0#1, 1,"N"; #0#1 = aCta1; |PINTA #0#1;
+       |C_M #0#24,1,"N"; #0#24 = "N";  |PINTA #0#24;
+   |SINO;
+       |C_M #0#1 ,1,"S";
+       |C_M #0#24,1,"S";
+   |FINSI;
+|FCAL;
+
+|CALCULO EditaLineal2; |TIPO 0;
+   |SI FSalida = 3; |ACABA; |FINSI;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |SI FSalida = 1; |ACABA; |FINSI;
+
+   aCta1 = #0#4;
+   aAlfa4 = "SEGURIDAD SOCIAL ACREEDORA";
+   |SI Campo = 107; aAlfa4 = "S. SOCIAL A CARGO DE LA EMPRESA"; |FINSI;
+
+   |SI #0#103= "X"; |Y #0Campo = "A";
+       |MENAV "    Error en tipo desglose. No utiliza Area/Secciones de Trabajo.";
+       #0Campo = "N"; |PINTA #0Campo;
+       |ERROR;
+       |ACABA;
+   |FINSI;
+
+   |SI #0Campo = "A";
+       |HAZ Carga13;
+       |PUSHV 05012380;
+       |HAZ PintaPanZ;
+       |ENTLINEAL #1#13, -2, 2, 22, 0,infdefz,supdefz;
+       |POPV;
+       |SI Campo = 106; |HAZ LeeUnoZ; |FINSI;
+   |FINSI;
+
+   |HAZ ActLay;
+   |QBF aCta1;
+   |SI Campo = 106;
+       |SI #0#106 ! "N"; |Y aCta1 ! "";
+           |C_M #0#4, 1,"N"; #0#4 = aCta1; |PINTA #0#4;
+           |C_M #0#27,1,"N"; #0#27 = "N";  |PINTA #0#27;
+       |SINO;
+           |C_M #0#4 ,1,"S";
+           |C_M #0#27,1,"S";
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|PROCESO ActLac;
+ |ABRE #2;
+ |DDEFECTO #2;
+ #2#0 = #0#0;
+ |LEE 101#2=;
+ nEstado = FSalida;
+ |SI #0#42 = "N"; |Y enSwAna = 1;
+     aAna1 = #2#4;
+     || .. pide Analitica
+ |FINSI;
+ #2#0 = #0#0;
+ #2#1 = #0#62;
+ #2#2 = aCta1;
+ #2#4 = aAna1;
+ |SI nEstado = 0; |GRABA 020#2a; |FINSI;
+ |SI nEstado ! 0; |GRABA 020#2b; |FINSI;
+ |LIBERA #2;
+ |CIERRA #2;
+|FPRC;
+
+|PROCESO ActLay;
+ |SI Campo = 106; |ACABA; |FINSI;
+
+ |ABRE #4;
+ |DDEFECTO #4;
+ #4#0 = #0#0;
+ |LEE 101#4=;
+ nEstado = FSalida;
+ |SI #0#107 = "N"; |Y enSwAna = 1;
+     aAna1 = #4#4;
+     || .. pide Analitica
+ |FINSI;
+ #4#0 = #0#0;
+ #4#1 = #0#62;
+ #4#2 = aCta1;
+ #4#4 = aAna1;
+ |SI nEstado = 0; |GRABA 020#4a; |FINSI;
+ |SI nEstado ! 0; |GRABA 020#4b; |FINSI;
+ |LIBERA #4;
+ |CIERRA #4;
+|FPRC;
+
+|PROCESO Busca42;
+ |ABRE #2;
+ |DDEFECTO #2;
+ #2#0 = #0#0;
+ |LEE 001#2=;
+ |SI FSalida = 0;
+     #0#1 = #2#2;
+ |FINSI;
+ |CIERRA #2;
+|FPRC;
+
+|PROCESO Busca100;
+ |ABRE #4;
+ |DDEFECTO #4;
+ #4#0 = #0#0;
+ |LEE 001#4=;
+ |SI FSalida = 0;
+     |SI #0#106 = "N"; |O #0#106 = "C";
+         #0#4   = #4#2;
+     |FINSI;
+ |FINSI;
+ |CIERRA #4;
+|FPRC;
+
+|PROCESO PintaPanZ;
+
+ aAlfa1 = "S"; aAlfa2 = "N"; aAlfa3 = "N";
+ |SI Campo = 107;
+     aAlfa1 = "N"; aAlfa2 = "S";
+     |SI enSwAna = 1; aAlfa3 = "S"; |FINSI;
+ |FINSI;
+ |C_M #13#3,1,aAlfa1; |C_V #13#3,1,aAlfa1;
+ |C_V #13#4,1,aAlfa1;
+ |C_M #13#8,1,aAlfa1; |C_V #13#8,1,aAlfa1;
+ |C_V #13#9,1,aAlfa1;
+
+ |C_M #13#6,1,aAlfa2; |C_V #13#6,1,aAlfa2;
+ |C_V #13#7,1,aAlfa2;
+ |C_M #13#5,1,aAlfa3; |C_V #13#5,1,aAlfa3; || Cuenta analitica
+
+ |PINPA #0#13;
+ |SI Campo = 107;
+         aAlfa1 = "S. Social a Cargo de Empresa ";
+     aAlfa2 = "     ";
+     aAlfa3 = "ÄÄÄÄÄ";
+     |SI enSwAna = 1;
+         aAlfa1 = "SS.a cargo Empresa³Cta Anali.";
+         aAlfa2 = "    ³";
+         aAlfa3 = "ÄÄÄÄÁ";
+     |FINSI;
+     |ATRI R; |PINTA 1112, aAlfa1; |ATRI 0;
+     |PINTA 1226, aAlfa2; |PINTA 1326, aAlfa2;
+     |PINTA 1426, aAlfa2; |PINTA 1526, aAlfa2;
+     |PINTA 1626, aAlfa2; |PINTA 1726, aAlfa2;
+     |PINTA 1826, aAlfa2; |PINTA 1926, aAlfa2;
+     |PINTA 2026, aAlfa2; |PINTA 2126, aAlfa2;
+     |PINTA 2226, aAlfa2; |PINTA 2326, aAlfa3;
+     |PINTA 1742, "                                      ";
+     |ATRI I; |PINTA 1842, "Seguridad Social a Cargo de Empresa"; |ATRI 0;
+     |PINTA 2042, "                                      ";
+ |FINSI;
+ |ATRI P; |PINTA 1043, aAlfa4; |ATRI 0;
+|FPRC;
+
+||-----------------------------------------------------
+|| ... Procesos para cadefxal
+|CALCULO CuentaL; |TIPO 6;
+     eaCuenta = #1Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #1Campo = eaCuenta;
+     |PINTA #1Campo;
+|FCAL;
+
+|PROCESO NombreCuenta; |TIPO 0;
+   emCta    = 1;
+   eaCuenta = #1Campo;
+   |HAZ SacaNivel;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   |HAZ LeeCuenta;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   |PINTA 2117, #cacuenta#2;
+|FPRC;
+
+|PROCESO PintaCuenta; |TIPO 13;
+   |ABRE #5;
+   #5#0 = #1#2;
+   |LEE 000#5=;
+   |SI FSalida = 0;
+      |PINTA 2117, #5#2;
+   |FINSI;
+   |CIERRA #5;
+   Campo1 = 0;
+|FPRC;
+
+|| ... Procesos para cadeflac / cadeflax / cadeflay / cadeflaz
+|CALCULO CuentaC; |TIPO 6;
+     eaCuenta = #Fichero@#Campo#;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #Fichero@#Campo# = eaCuenta; |PINTA #Fichero@#Campo#;
+|FCAL;
+
+|CALCULO TrasCuentaC; |TIPO 0;
+   emCta    = 1;
+   eaCuenta = #Fichero@#Campo#;
+   |HAZ SacaNivel;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   |HAZ LeeCuenta;
+   |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+
+   nNume1 = Campo + 1;
+   #Fichero@#nNume1# = #cacuenta#2; |PINTA #Fichero@#nNume1#;
+|FCAL;
+
+|CALCULO Centro11; |TIPO 11;  || para deflabc y deflaby
+  nInkey = FSalida;
+  eOpCen = 0;
+  |SI nInkey  = 10;
+      eOpCen = 1;
+      enCentro = #Fichero@#0;
+      |HAZ CentroTrabajo;
+  |FINSI;
+|FCAL;
+
+|CALCULO PintaCentro; |TIPO 0;
+  nInkey = FSalida;
+  eOpCen = 0;
+  enCentro = #Fichero@#0;
+  |HAZ CentroTrabajo;
+  |SI eswLect = 1;
+      |ERROR;
+  |SINO;
+      #Fichero@#1 = eaNomCentro; |PINTA #Fichero@#1;
+  |FINSI;
+|FCAL;
+
+|CALCULO c_analiticaC; |TIPO 7;
+  |SI enSwAna = 0; |ACABA; |FINSI;
+  eaCuenta = #2#2;
+  |HAZ c_analitica;
+|FCAL;
+
+|CALCULO c_analiticaZ; |TIPO 7;
+  |SI enSwAna = 0; |ACABA; |FINSI;
+  eaCuenta = #13#6;
+  |HAZ c_analitica;
+|FCAL;
+
+|CALCULO c_analiticaX; |TIPO 7;
+  |SI enSwAna = 0; |ACABA; |FINSI;
+  eaCuenta = #3#3;
+  |HAZ c_analitica;
+|FCAL;
+
+|CALCULO c_analiticaY; |TIPO 7;
+  |SI enSwAna = 0; |ACABA; |FINSI;
+  eaCuenta = #4#5;
+  |HAZ c_analitica;
+|FCAL;
+
+|CALCULO c_analitica;
+  ModoEntrLin = (FEntrada / 100) ! 0;
+  |HAZ LeeTablaAna;
+  |SI swRelac = 0;
+      #Fichero@#Campo# = eaCtaAna;
+      |C_M #Fichero@#Campo#,1,eaAnaMod;
+  |SINO;
+      |SI ModoEntrLin = 1; #Fichero@#Campo# = ""; |FINSI;
+      |SI eaPAna = "S";
+          |C_M #Fichero@#Campo#,1,"N";
+      |SINO;
+          |C_M #Fichero@#Campo#,1,"S";
+      |FINSI;
+  |FINSI;
+  |PINTA #Fichero@#Campo#;
+|FCAL;
+
+
+|CALCULO anacta; |TIPO 6;
+
+  nInkey = FSalida;
+  |SI enSwAna = 0; |ACABA; |FINSI;
+
+  |C_M #Fichero@#Campo#,0,aAlfa1;
+  |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+  salidas = FSalida;
+  |HAZ FPuntosAna;
+  eOpAna = 0; || 1 = Consulta pantalla
+  |SI nInkey = 10; eOpAna = 1;  |FINSI;
+  eaCtaAna = #Fichero@#Campo#;
+  |HAZ LeeCtaAna;
+  |SI eswLect = 1;
+      |MENAV "    Error.! No Existe Cuenta Analitica";
+      |ERROR;
+  |SINO;
+      #Fichero@#Campo# = eaCtaAna;
+      |PINTA #Fichero@#Campo#;
+  |FINSI;
+|FCAL;
+
+
+|CALCULO Seccion11; |TIPO 11;  || para cadeflax
+  nInkey = FSalida;
+  eOpCen = 0;
+  |SI nInkey  = 10;
+          eOpCen = 1;
+      |SI Campo = 0;
+          eOpCen = 2;
+      |FINSI;
+      eaArea    = #Fichero@#0;
+      eaSeccion = #Fichero@#1;
+      |HAZ SecTrabajo;
+      #Fichero@#0 = eaArea;    |PINTA #Fichero@#0;
+      #Fichero@#1 = eaSeccion; |PINTA #Fichero@#1;
+      FSalida = 0;
+  |FINSI;
+|FCAL;
+
+|CALCULO PintaSeccion; |TIPO 0;
+  nInkey = FSalida;
+  eOpCen = 0;
+  eaArea    = #Fichero@#0;
+  eaSeccion = #Fichero@#1;
+  |HAZ SecTrabajo;
+  |SI eswLect = 1;
+      |ERROR;
+  |SINO;
+      #Fichero@#0 = eaArea;    |PINTA #Fichero@#0;
+      #Fichero@#1 = eaSeccion; |PINTA #Fichero@#1;
+      #Fichero@#2 = eaNomSecc; |PINTA #Fichero@#2;
+  |FINSI;
+|FCAL;

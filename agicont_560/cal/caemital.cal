@@ -1,0 +1,171 @@
+|FICHEROS;
+    caemital #0;
+    camantal #1;
+    cacuenta #3;
+    camanban #4;
+    caclipro #5;
+    capagaux #6;
+    cacuadre #9;
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    &sw = 0;
+    &importe = 0;
+    &prov = "";
+    &prov1 = "";
+    &cc1 = "";
+    &cc2 = "";
+    &cc3 = "";
+    &des = " ";
+    &dni = " ";
+    &dir = " ";
+    &pob = " ";
+    &pro = " ";
+
+    &pobla = "";
+    seleccio = 0;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    pepe = 0;
+    sw_act = 0;
+    informe = "caemital";
+    swnom = "";
+    sw_pr = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+
+|PROCESO cuadre; |TIPO 8;
+  |HAZ inicio;
+
+|| ...  |CAMPO_MODIFICA #0#12, 1, "S";
+  sw_act = 0; ||  0 = N control (Carta/talon) junto / 1 = S por separado
+  |ABRE #9;
+  #9#0 = 1;
+  |LEE 001#9=;
+  |SI FSalida = 0;
+      |SI #9#18 = "S";
+          sw_act = 1;
+      |FINSI;
+  |FINSI;
+  |CIERRA #9;
+|FPRC;
+
+|PROCESO mayor;
+   alfa1 = #0Campo > " ";
+   #0Campo = alfa1;
+   |PINTA #0Campo;
+|FPRC;
+
+|PROCESO cuentas;
+  des = "<CUENTA SIN DEFINIR>";
+  dni = " ";
+  dir = " ";
+  pob = " ";
+  pro = " ";
+  #5#23 = "P";
+  #5#10 = #1#1;
+  #5#11 = #1#2;
+  des = #1#14;
+  |LEE 001#5=;        || lee el proveedor
+  |SI FSalida = 0;
+      dni = #5#9;
+      dir = #5#2;
+      pob = #5#6;
+      |QBF pob;
+      alfa1 = #5#3;  alfa1 = "00"  + alfa1;  alfa1 = alfa1 % -102;
+      alfa2 = #5#4;  alfa2 = "000" + alfa2;  alfa2 = alfa2 % -103;
+      pob = "(" + alfa1 + alfa2 + ") " + pob;
+      pro = #5#5;
+  |FINSI;
+
+  #4#10 = #1#3;   || lee el banco
+  #4#11 = #1#4;
+  |LEE 001#4=;
+  |SI FSalida ! 0;  |DDEFECTO #4;  |FINSI;
+  cc1 = #4#9 % 104;
+  cc2 = #4#9 % 604;
+
+  cc3 = #4#9;
+  |QBF cc3;
+  cc3 = cc3 % -102;
+|FPRC;
+
+
+|PROCESO imprelin;
+ |SI #0#13 ! #1#10;|ACABA;|FINSI; || impresa
+ |SI #0#10 ! "A";
+     |SI #0#10 ! #1#07;|ACABA;|FINSI;  || emision
+ |FINSI;
+ |SI #0#11 ! "A";
+     |SI #0#11 ! #1#08;|ACABA;|FINSI;  || vencimiento
+ |FINSI;
+
+ |SI sw_pr = 0;
+     importe = 0;
+     swnom = #1#14;
+     sw_pr = 1;
+     |HAZ cuentas;
+ |FINSI;
+
+ |SI swnom ! #1#14;
+     |PIEINF;
+     importe = 0;
+     swnom = #1#14;
+     sw = 0;
+     sw_pr = 1;
+     |HAZ cuentas;
+ |FINSI;
+
+    importe = importe + #1#9;
+    sw = 1;
+    |PRINT;
+
+     #1#10 = "S";
+     |SI sw_act = 0;
+         #1#12 = "S";
+         #1#11 = #0#12;        || nro. talon banco
+         #0#12 = #0#12 + 1;    || va sumando uno
+     |FINSI;
+     |GRABA 020#1a;
+     pepe = 1;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE caemital0;
+ #1#1;
+ 5, 6, 1, 3, 16;
+ #0#0, #0#2, #0#4, #0#6, #0#8, #0#14; || talon,F.emi,F.vto,Prove,Banco,Rec
+ #0#1, #0#3, #0#5, #0#7, #0#9, #0#15;
+ be;
+ NULL, NULL, NULL, NULL, NULL, imprelin;
+ #1#3, #1#4, #1#14;
+|FIN;
+
+|PROCESO impre;|TIPO 3;
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |ABRE #6;  |DDEFECTO #6;  |LEE 000#6p;   |CIERRA #6;  || datos auxiliares
+  |INFOR informe;
+  pobla = #48#7;   |QBF pobla;
+  pobla = (" " * 30) + pobla;     pobla = pobla % -130;
+  |ABRE #3;
+  |ABRE #4;
+  |SELECT #2#4;
+  |ABRE #5;
+
+  |BUCLE caemital0;
+  |SI pepe = 0;
+      |MENAV "    Seleccion vacia ...";
+  |SINO;
+      |PIEINF;
+  |FINSI;
+  |CIERRA #3;
+  |CIERRA #4;
+  |CIERRA #5;
+  |FININF;
+  |FINIMP;
+|FPRC;

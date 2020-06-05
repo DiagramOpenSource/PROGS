@@ -1,0 +1,859 @@
+|FICHEROS;
+   tecaz021 #0;
+
+   agifa019 #10;
+   agifa024 #11;
+   agifa017 #12;
+   dsm00211 #13;
+   dsm00212 #14;
+   agifa091 #15;
+   agifa025 #16;
+
+   tecam020 #20;
+   tecam021 #21;
+   tecam022 #22;
+   tecam031 #31;
+
+   tecaw022; ||  Clientes con NIF
+   tecaw030; ||  Clientes sin NIF
+
+   web10005 #41;
+
+   ArticCom@ #1000;
+   ArticGer@ #1001;
+   tecam002@ #1002;
+   Clientes@ #1003;
+
+   Cliente1@ #4000;
+   Referen@  #4001;
+|FIN;
+
+|VARIABLES;
+   &eaDRepre = "  ";
+   &eaHRepre = "zz";
+   &eaNomeDat = "";
+   nHayCtrl = 0;
+   &enHayTablaResu = 0;
+   &enHayLibreta = 0;
+   &enHayGruCliPrv = 0;
+   &enHayComiCli = 0;
+   &enHayPais = 0;
+   &enHayFPago = 0;
+   &enHayAgencia = 0;
+   &eaCodCliente = "";
+   &eaNomCliente = "";
+   &nRieTotal    = 0;
+   &nRieUtili    = 0;
+
+   fFecha = @;
+
+   aDSCorreo = "";
+   aProxy    = "";
+   aDirDes   = "";
+   aDirOri   = "";
+   aTitulo   = "";
+   aPar      = "";
+   aTexto    = "";
+   aFic      = "";
+   aOrigen   = "";
+   aDestino  = "";
+
+   nDato      = 0;
+   nMin       = 0;
+   nMax       = 0;
+
+   nCalc1     = 0;
+   nCalc2     = 0;
+   nCalc3     = 0;
+   nHandle    = 0;
+   nHayCli    = 0;
+   nHayArtC   = 0;
+   nHayArtG   = 0;
+{2}&aPuntero  = "";
+{-1}nMPausa = 0;
+
+   aAlfa  = "";
+   aAlfa1 = "";
+   &aPath  = "";
+   aDRep  = ""; aHRep = "";
+
+   nPVP1 = 0;
+   nCont = 0;
+   nCalc = 0;
+|FIN;
+
+|PROCESO ModificaBit;
+/*
+   || El byte que se modifica es el numero 20 desde la posicion de comienzo
+   || de la etiqueta 'APPFORGE2'
+
+   || Este byte supone la longitud del registro en bytes, ocupando cada tipo
+   || el siguiente espacio :
+   ||    * NUMERICOS
+   ||        - Si esta entre -9999 y 9999 es de tipo Long y ocupa 4 bytes
+   ||        - Si es menor a -9999 o mayor a 9999 es de tipo doble y ocupa 8 bytes
+   ||    * FECHA
+   ||        Ocupa 4 bytes
+   ||    * ALFANUMERICO
+   ||        Ocupa 1 byte (probablemente sea un puntero de un byte dentro del propio registro)
+
+   aAlfa = aPuntero2; |QBF aAlfa; aAlfa = aAlfa + ".pdb";
+   |XABRE "BU", aAlfa, nHandle;
+   |SI FSalida ] 0;
+      |XPOSICION nHandle, 0, 0;
+
+      |PARA nCont = 1; |SI nCont [ 53; |HACIENDO nCont = nCont + 1;
+         |XLEE_NUMERO nHandle, 0, nCalc;
+      |SIGUE;
+      |XLEE_NUMERO nHandle, 0, nCalc1;
+      |XLEE_NUMERO nHandle, 0, nCalc2;
+      |XLEE_NUMERO nHandle, 0, nCalc3;
+      nCalc = nCalc3 + (nCalc2 * 256) + (nCalc1 * 65535) + (nCalc * 4294967296);
+
+      nCalc1 = nCalc + 295;
+      |XPOSICION nHandle, nCalc1, 0;
+
+      nDato = 0;
+      aAlfa = "|NC"; aAlfa = #Referen@#aAlfa#; nCalc = aAlfa; nCalc = nCalc - 1;
+      |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+         aAlfa = "|C" + (("000" + nCont) % -103) + "TIPO";  aAlfa = #Referen@#aAlfa#;
+         |SI aAlfa = "N";
+            aAlfa = "|C" + (("000" + nCont) % -103) + "MINIMO";  aAlfa = #Referen@#aAlfa#;
+            nMin = aAlfa;
+            aAlfa = aAlfa - ".";
+            |SI FSalida ! 0; nMin = -99999999; |FINSI;
+            aAlfa = "|C" + (("000" + nCont) % -103) + "MAXIMO";  aAlfa = #Referen@#aAlfa#;
+            nMax = aAlfa;
+            aAlfa = aAlfa - ".";
+            |SI FSalida ! 0; nMax = 999999999; |FINSI;
+            |SI nMin ] -9999; |Y nMax [ 9999;
+               nDato = nDato + 4;
+            |SINO;
+               nDato = nDato + 8;
+            |FINSI;
+         |FINSI;
+         |SI aAlfa = "F"; nDato = nDato + 4; |FINSI;
+         |SI aAlfa = "A"; nDato = nDato + 1; |FINSI;
+      |SIGUE;
+      |XGRABA_NUMERO nHandle, 0, nDato;
+
+      |XCIERRA nHandle;
+   |FINSI;
+*/
+|FPRC;
+
+|PROCESO Promo;
+   |PARA nCont = 1; |SI nCont [ 24; |HACIENDO nCont = nCont + 1;
+      |SI #dsm00211#nCont# = #tecam020#6; |SAL; |FINSI;
+   |SIGUE;
+   |SI #dsm00211#nCont# = #tecam020#6;
+      #dsm00212#0 = #dsm00211#0;
+      #dsm00212#1 = #agifa019#0;
+      |LEE 000#dsm00212.=;
+      |SI FSalida = 0;
+         |SI #dsm00212#5 [ fFecha; |Y fFecha [ #dsm00212#6;
+            nPVP1 = #dsm00212#3;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Promo;
+#dsm00211#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Promo;
+|FIN;
+
+|PROCESO Articulos;
+
+   #ArticCom@#0 = #agifa019#0;
+   |LEE 101#ArticCom@.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #ArticCom@;
+      #ArticCom@#0 = #agifa019#0;
+      |GRABA 020#ArticCom@.b;
+   |FINSI;
+
+   #ArticCom@#1 = #agifa019#1;
+
+   nPVP1 = #agifa019#18; fFecha = ~; |BUCLE Promo;
+   #ArticCom@#2 = nPVP1;
+
+   #agifa017#0 = #agifa019#0;
+   #agifa017#1 = 1;
+   |LEE 000#agifa017.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa017; |FINSI;
+   #ArticCom@#3 = #agifa017#39;
+   #ArticCom@#5 = #agifa019#19;
+
+   |SI nPVP1 = #agifa019#18;
+      #ArticCom@#4 = "N";
+   |SINO;
+      #ArticCom@#4 = "S";
+   |FINSI;
+   |GRABA 020#ArticCom@.a; |LIBERA #ArticCom@;
+
+   #ArticGer@#0 = #agifa019#0;
+   |LEE 101#ArticGer@.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #ArticGer@;
+      #ArticGer@#0 = #agifa019#0;
+      |GRABA 020#ArticGer@.b;
+   |FINSI;
+   #ArticGer@#1 = #agifa019#1;
+   nPVP1 = #agifa019#18; |BUCLE Promo;
+   #ArticGer@#2 = nPVP1;
+   #ArticGer@#3 = #agifa019#19;
+
+   #tecam002@#0 = #agifa019#0;
+   |LEE 000#tecam002@.=;
+   |SI FSalida ! 0; |DDEFECTO #tecam002@; |FINSI;
+
+   #ArticGer@#4 = #tecam002@#1;
+   #ArticGer@#5 = #tecam002@#2;
+
+   #agifa017#0 = #agifa019#0;
+   #agifa017#1 = 1;
+   |LEE 000#agifa017.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa017; |FINSI;
+   #ArticGer@#6 = #agifa017#39;
+
+   |SI nPVP1 = #agifa019#18;
+      #ArticGer@#7 = "N";
+   |SINO;
+      #ArticGer@#7 = "S";
+   |FINSI;
+   |GRABA 020#ArticGer@.a; |LIBERA #ArticGer@;
+|FPRC;
+
+|DEFBUCLE Articulos;
+#agifa019#1;
+200;
+"                    ", #31#0;
+"zzzzzzzzzzzzzzzzzzzz", #31#0;
+;
+NULL,Articulos;
+|FIN;
+
+|PROCESO GruArticulo;
+     |BUCLE Articulos;
+|FPRC;
+
+|DEFBUCLE GruArticulo;
+     #31#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, GruArticulo;
+|FIN;
+
+|PROCESO Clientes;
+   #Clientes@#0 = #agifa024#2;
+   #Clientes@#1 = #agifa024#0;
+   |LEE 101#Clientes@.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #Clientes@;
+      #Clientes@#0 = #agifa024#2;
+      #Clientes@#1 = #agifa024#0;
+      |GRABA 020#Clientes@.b;
+   |FINSI;
+
+   #agifa091#0 = #agifa024#20;
+   |LEE 000#agifa091.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa091; |FINSI;
+
+   eaCodCliente = #agifa024#0;
+   eaNomCliente = #agifa024#2;
+   |HAZ SacaRiesgo;
+   #Clientes@#2  = #agifa024#5;
+   aAlfa = (("00" + #agifa024#178) % -102) + (("000" + #agifa024#179) % -103);
+   #Clientes@#3  = aAlfa;
+   #Clientes@#4  = #agifa024#6;
+   #Clientes@#5  = #agifa024#17;
+   #Clientes@#6  = #agifa024#18;
+   #Clientes@#7  = #agifa024#197;
+   #Clientes@#8  = #agifa091#1;
+   #Clientes@#9  = #agifa024#204;
+   nCalc = nRieTotal - nRieUtili;
+   #Clientes@#10 = nCalc;
+   #Clientes@#11 = #agifa024#39;
+   |SI #tecam020#9 = "M";
+     #Clientes@#12 = #agifa024#15;
+   |FINSI;
+   |GRABA 020#Clientes@.a; |LIBERA #Clientes@;
+|FPRC;
+
+|DEFBUCLE Clientes;
+#agifa024#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Clientes;
+|FIN;
+
+|PROCESO Repres;
+|FPRC;
+
+|DEFBUCLE Repres;
+#tecam021#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Repres;
+|FIN;
+
+|PROCESO Replica;
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "def/tecaw020.mas";
+   |CARGA_DEF aAlfa, ArticCom@;
+   |SI FSalida ! 0;
+      |ACABA;
+   |FINSI;
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "def/tecaw021.mas";
+   |CARGA_DEF aAlfa, ArticGer@;
+   |SI FSalida ! 0;
+      |DESCARGA_DEF #ArticCom@; |ACABA;
+   |FINSI;
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "def/tecam002.mas";
+   |CARGA_DEF aAlfa, tecam002@;
+   |SI FSalida ! 0;
+      |DESCARGA_DEF #ArticGer@; |DESCARGA_DEF #ArticCom@;
+      |ACABA;
+   |FINSI;
+   |DBASE aAlfa; |QBF aAlfa;
+
+   |SI #tecam020#9 = "M";
+      aAlfa = aAlfa + "def/tecaw022.mas";
+   |SINO;
+      aAlfa = aAlfa + "def/tecaw030.mas";
+   |FINSI;
+
+   |CARGA_DEF aAlfa, Clientes@;
+   |SI FSalida ! 0;
+      |DESCARGA_DEF #tecam002@;
+      |DESCARGA_DEF #ArticGer@; |DESCARGA_DEF #ArticCom@;
+      |ACABA;
+   |FINSI;
+
+   aPath = #tecam020#0; |QBF aPath;
+   |SI aPath = ""; |O #tecam020#8 = "N";
+      |DESCARGA_DEF #Clientes@; |DESCARGA_DEF #tecam002@;
+      |DESCARGA_DEF #ArticGer@; |DESCARGA_DEF #ArticCom@;
+      |ACABA;
+   |FINSI;
+
+   aPath = aPath + (("00000" + #48#0) % -105) + "/";
+   |MKDIR aPath;
+   |PATH_DAT #1000 aPath; |PATH_DAT #1001 aPath; |PATH_DAT #1003 aPath;
+   |DFICE aAlfa; |QBF aAlfa; |PATH_DAT #1002 aAlfa;
+
+   |DELINDEX #ArticGer@; |DELINDEX #ArticCom@; |DELINDEX #Clientes@;
+   |ABRE #dsm00211;  |ABRE #dsm00212;  |ABRE #agifa017; |ABRE #agifa091;
+   |ABRE #ArticGer@; |ABRE #ArticCom@;
+   |ABRE #tecam002@; |ABRE #Clientes@;
+
+   |BUCLE GruArticulo;
+   |BUCLE Clientes;
+
+   |CIERRA #agifa091; |CIERRA #agifa017;  |CIERRA #dsm00212; |CIERRA #dsm00211;
+   |CIERRA #Clientes@; |DESCARGA_DEF #Clientes@;
+   |CIERRA #tecam002@; |DESCARGA_DEF #tecam002@;
+   |CIERRA #ArticGer@; |DESCARGA_DEF #ArticGer@;
+   |CIERRA #ArticCom@; |DESCARGA_DEF #ArticCom@;
+|FPRC;
+
+|PROCESO PasaClientes;
+   |SI #tecam020#9 = "M";
+     #tecaw022#0 = #Clientes@#2;
+     #tecaw022#1 = #Clientes@#0;
+     |LEE 000#tecaw022.=;
+     |SI FSalida = 0;
+        |DDEFECTO #Cliente1@;
+        aAlfa = "|NC"; aAlfa = #tecaw022#aAlfa#;
+        nCalc = aAlfa; nCalc = nCalc - 1;
+        |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+           #Cliente1@#nCont# = #tecaw022#nCont#;
+        |SIGUE;
+        |GRABA 020#Cliente1@.n;
+     |FINSI;
+   |SINO;
+     #tecaw030#0 = #Clientes@#2;
+     #tecaw030#1 = #Clientes@#0;
+     |LEE 000#tecaw030.=;
+     |SI FSalida = 0;
+        |DDEFECTO #Cliente1@;
+        aAlfa = "|NC"; aAlfa = #tecaw030#aAlfa#;
+        nCalc = aAlfa; nCalc = nCalc - 1;
+        |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+           #Cliente1@#nCont# = #tecaw030#nCont#;
+        |SIGUE;
+        |GRABA 020#Cliente1@.n;
+     |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE PasaClientes;
+#Clientes@#1001;
+;
+"      ";
+"zzzzzz";
+;
+NULL,PasaClientes;
+|FIN;
+
+|PROCESO EnviaCli;
+   #agifa025#0 = #tecam021#0;
+   |LEE 000#agifa025.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   aAlfa = "SELECT * FROM agifa024 INTO sq" + Usuario + ".def WHERE 25 BETWEEN ";
+
+   |SI #tecam021#1 = "N";
+      aAlfa = aAlfa + "'"  + (("00" + #agifa025#0) % -102) + "'";
+      aAlfa = aAlfa + ",'" + (("00" + #agifa025#0) % -102) + "'";
+   |SINO;
+      aAlfa = aAlfa + "'  ','zz'";
+   |FINSI;
+
+   |SQL aAlfa;
+   |SI FSalida = 0;
+      aAlfa = FSalida; |QBF aAlfa;
+      aAlfa = aAlfa - "Seleccionados:";
+      |SI FSalida ! 0;
+         nCalc = FSalida + 85; aAlfa = aAlfa % nCalc;
+         nCalc = aAlfa;
+         |SI nCalc = 0; |ACABA; |FINSI;
+      |FINSI;
+
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/sq" + Usuario + ".mas";
+      |CARGA_DEF aAlfa, Clientes@;
+      |SI FSalida = 0;
+         |DBASE aAlfa; |QBF aAlfa;
+         |SI #tecam020#9 = "M";
+            aAlfa = aAlfa + "def/tecaw022.mas";
+         |SINO;
+            aAlfa = aAlfa + "def/tecaw030.mas";
+         |FINSI;
+         |CARGA_DEF aAlfa, Cliente1@;
+         |SI FSalida ! 0; |DESCARGA_DEF #Clientes@; |ACABA; |FINSI;
+
+         aAlfa = #tecam020#0; |QBF aAlfa;
+         aAlfa = aAlfa + (("00000" + #48#0) % -105) + "/";
+         |SI #tecam020#9 = "M";
+            |PATH_DAT #tecaw022#aAlfa#;
+            |ABRE #tecaw022;
+            |SELECT #2#tecaw022;
+         |SINO;
+            |PATH_DAT #tecaw030#aAlfa#;
+            |ABRE #tecaw030;
+            |SELECT #2#tecaw030;
+         |FINSI;
+         |DFICE aAlfa;        |QBF aAlfa; |PATH_DAT #1003 aAlfa;
+         aAlfa = #tecam020#1; |QBF aAlfa; |PATH_DAT #4000 aAlfa;
+         aAlfa = "tecw22" + #agifa025#0;  |NOME_DAT #4000 aAlfa;
+
+         |DELINDEX #Cliente1@;
+         |ABRE #Cliente1@;
+         |BUCLE PasaClientes;
+         |CIERRA #Cliente1@;
+         |SI #tecam020#9 = "M"
+            |CIERRA #tecaw022;
+         |SINO;
+            |CIERRA #tecaw030;
+         |FINSI;
+
+         |DESCARGA_DEF #Cliente1@;
+         |DELINDEX #Clientes@; |DESCARGA_DEF #Clientes@;
+      |FINSI;
+      |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "def/sq" + Usuario + ".mas";
+      |FBORRA aAlfa;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE EnviaCli;
+#tecam021#1;
+;
+#0#9;
+#0#10;
+;
+NULL,EnviaCli;
+|FIN;
+
+|PROCESO EnvioCorreo;
+   aDirOri = #web10005#22; |QBF aDirOri;
+   aDirDes = #tecam022#1;  |QBF aDirDes;
+   |SI aDSCorreo = ""; |O aDirOri = "";
+      ||MENAV "    Faltan parametros para el envio. Revise los parametros de correo.";
+      |ACABA;
+   |FINSI;
+   |SI aDirDes = "";
+      aAlfa =  "    Representante [" + #agifa025#0 + "] sin direccion de correo";
+      ||MENAV aAlfa;
+      |ACABA;
+   |FINSI;
+
+   aAlfa = "2405Enviando [" + aDSCorreo + "] ..."; |MENSA aAlfa;
+   |DSCORREO_ENVIA aDSCorreo, aProxy, aDirOri, aDirDes, aTitulo, aTexto, aFic;
+   aAlfa = "2405                                    "; |MENSA aAlfa;
+   |SI FSalida < 0;
+      |MENAV "    Problemas al enviar correo. Revisar conexion.";
+   |SINO;
+      aAlfa = "    Envio correo representante [" + #agifa025#0 + "] completado.";
+      |ATRI I; |PINTA 2301, aAlfa; |ATRI N;
+      |PARA nCont = 1; |SI nCont [ 50; |HACIENDO nCont = nCont + 1;
+         InMPausa = 100; |ESPECIFICA "MSLEEP",nMPausa;
+      |SIGUE;
+      |BLIN 23;
+   |FINSI;
+|FPRC;
+
+|PROCESO Envia;
+   #agifa025#0 = #tecam021#0;
+   |LEE 000#agifa025.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   #tecam022#0 = #agifa025#0;
+   |LEE 000#tecam022.=;
+   |SI FSalida ! 0; |DDEFECTO #tecam022; |FINSI;
+
+   |DBASE aAlfa; |QBF aAlfa;
+   |SI #tecam020#9 = "M";
+      aAlfa = aAlfa + "def/tecaw022.mas";
+   |SINO;
+      aAlfa = aAlfa + "def/tecaw030.mas";
+   |FINSI;
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      aAlfa = #tecam020#1; |QBF aAlfa; |PATH_DAT #4001 aAlfa;
+      aPath = aAlfa;
+      aAlfa = "tecw22" + #agifa025#0;  |QBF aAlfa; |NOME_DAT #4001 aAlfa;
+      aAlfa = #tecam020#1; |QBF aAlfa;
+      |ABRE #Referen@;
+      |LEE 000#Referen@.p;
+      |SI FSalida ! 0; nHayCli = 0; |SINO; nHayCli = 1; |FINSI;
+      aPuntero1 = "tecw22" + #agifa025#0; |QBF aPuntero1;
+      aPuntero2 = aAlfa + "Clientes";
+      IaPuntero = aPuntero1<-;
+      |ESPECIFICA "EXPORTAPLB", aPuntero; |HAZ ModificaBit;
+      eaNomeDat = aPuntero1;
+      |SI #tecam020#9 = "M";
+         aPuntero1 = "tecaw022.mas";
+      |SINO;
+         aPuntero1 = "tecaw030.mas";
+      |FINSI;
+      |HAZ ExportaTxt;
+      |CIERRA #Referen@;
+      |DESCARGA_DEF #Referen@;
+   |FINSI;
+
+   |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "def/tecaw028.mas";
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      aAlfa = #tecam020#1; |QBF aAlfa; |PATH_DAT #4001 aAlfa;
+      aPath = aAlfa;
+      aAlfa = "tecw28" + #agifa025#0;  |QBF aAlfa; |NOME_DAT #4001 aAlfa;
+      aAlfa = #tecam020#1; |QBF aAlfa;
+      |ABRE #Referen@;
+      |LEE 000#Referen@.p;
+      |SI FSalida ! 0; nHayCtrl = 0; |SINO; nHayCtrl = 1; |FINSI;
+      aPuntero1 = "tecw28" + #agifa025#0; |QBF aPuntero1;
+      aPuntero2 = aAlfa + "ctrlenvios";
+      IaPuntero = aPuntero1<-;
+      |ESPECIFICA "EXPORTAPLB", aPuntero;
+      eaNomeDat = aPuntero1;
+      aPuntero1 = "tecaw028";
+      |HAZ ExportaTxt;
+      |CIERRA #Referen@;
+      |DELINDEX #Referen@;
+      |DESCARGA_DEF #Referen@;
+   |FINSI;
+
+   |SI #web10005#20 = "F"; aDSCorreo = #web10005#19;             |FINSI;
+   |SI #web10005#20 = "L"; aDSCorreo = ""; |IP_REMOTO aDSCorreo; |FINSI;
+   |SI #web10005#20 = "S"; aDSCorreo = ""; |IP_LOCAL  aDSCorreo; |FINSI;
+   |QBF aDSCorreo;
+
+   aProxy    = #web10005#21; |QBF aProxy;
+
+   |SI nHayArtC ! 0; |Y #tecam021#2 = "C";
+      aTitulo = "Actualizacion PDB's articulos comercial";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "articulos.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "articulos.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+   |SI nHayArtG ! 0; |Y #tecam021#2 = "G";
+      aTitulo = "Actualizacion PDB's articulos gerencia";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "articulos_gerencia.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "articulos_gerencia.txt"; |HAZ EnvioCorreo;
+     |FINSI;
+   |FINSI;
+   |SI nHayCli  ! 0;
+      aTitulo = "Actualizacion PDB's Clientes";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "Clientes.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "Clientes.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+   |SI nHayCtrl ! 0;
+      aTitulo = "Actualizacion PDB's Control envio pedidos";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "ctrlenvios.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "ctrlenvios.txt"; |HAZ EnvioCorreo;
+     |FINSI;
+   |FINSI;
+   |SI enHayTablaResu ! 0;
+      aTitulo = "Actualizacion PDB's Tabla resultados";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "tabla_resultados.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "tabla_resultados.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+
+   |SI #0#5 = "S"; |HAZ LibretaDir; |FINSI;
+   |SI enHayLibreta ! 0;
+      aTitulo = "Actualizacion PDB's comercial";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+           aAlfa = #tecam020#1; |QBF aAlfa;
+           aFic = aAlfa + "comercial.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "comercial.txt"; |HAZ EnvioCorreo;
+     |FINSI;
+   |FINSI;
+   |SI enHayGruCliPrv ! 0;
+      aTitulo = "Actualizacion PDB's Grupos Clientes y Proveedores";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "grupo_cli_prv.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "grupo_cli_prv.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+   |SI enHayComiCli ! 0;
+      aTitulo = "Actualizacion PDB's Comision Tipo Cliente";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "comi_tipo_cli.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "comi_tipo_cli.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+   |SI enHayPais ! 0;
+      aTitulo = "Actualizacion PDB's Paises";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+           aAlfa = #tecam020#1; |QBF aAlfa;
+           aFic = aAlfa + "paises.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+           aAlfa = #tecam020#1; |QBF aAlfa;
+           aFic = aAlfa + "paises.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+   |SI enHayFPago ! 0;
+      aTitulo = "Actualizacion PDB's Forma Pago";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "forma_pago.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "forma_pago.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+   |SI enHayAgencia ! 0;
+      aTitulo = "Actualizacion PDB's Agencias";
+      aTexto = &13 + &10 + aTitulo;
+      |SI #tecam020#9 = "P";
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "agencias.pdb"; |HAZ EnvioCorreo;
+      |SINO;
+          aAlfa = #tecam020#1; |QBF aAlfa;
+          aFic = aAlfa + "agencias.txt"; |HAZ EnvioCorreo;
+      |FINSI;
+   |FINSI;
+
+|FPRC;
+
+|DEFBUCLE Envia;
+#tecam021#1;
+;
+#0#9;
+#0#10;
+;
+NULL,Envia;
+|FIN;
+
+|PROCESO GestionaEnvio;
+   |ABRE #agifa025; |ABRET #tecam022;
+
+   |BUCLE EnviaCli;
+   aAlfa = #tecam020#0; |QBF aAlfa;
+   aAlfa = aAlfa + (("00000" + #48#0) % -105) + "/";
+
+   |ABRE #web10005;
+   |LEE 000#web10005.p;
+   |SI FSalida ! 0; |DDEFECTO #web10005; |FINSI;
+   |CIERRA #web10005;
+
+   aAlfa1 = #tecam020#1; |QBF aAlfa1; |MKDIR aAlfa1;
+   |SI #tecam020#9 = "M";
+      aOrigen = aAlfa + "tecaw022.dat"; |FBORRA aOrigen;
+      aOrigen = aAlfa + "tecaw022.ddx"; |FBORRA aOrigen;
+      aOrigen = aAlfa + "tecaw022.ixx"; |FBORRA aOrigen;
+   |SINO;
+      aOrigen = aAlfa + "tecaw030.dat"; |FBORRA aOrigen;
+      aOrigen = aAlfa + "tecaw030.ddx"; |FBORRA aOrigen;
+      aOrigen = aAlfa + "tecaw030.ixx"; |FBORRA aOrigen;
+   |FINSI;
+
+   aOrigen = aAlfa + "tecaw020.dat"; aDestino = aAlfa1 + "tecaw020.dat";
+   |COPIA_FICHERO aOrigen, aDestino; |FBORRA aOrigen;
+   aOrigen = aAlfa + "tecaw020.ddx"; aDestino = aAlfa1 + "tecaw020.ddx";
+   |COPIA_FICHERO aOrigen, aDestino; |FBORRA aOrigen;
+   aOrigen = aAlfa + "tecaw020.ixx"; aDestino = aAlfa1 + "tecaw020.ixx";
+   |COPIA_FICHERO aOrigen, aDestino; |FBORRA aOrigen;
+   aOrigen = aAlfa + "tecaw021.dat"; aDestino = aAlfa1 + "tecaw021.dat";
+   |COPIA_FICHERO aOrigen, aDestino; |FBORRA aOrigen;
+   aOrigen = aAlfa + "tecaw021.ddx"; aDestino = aAlfa1 + "tecaw021.ddx";
+   |COPIA_FICHERO aOrigen, aDestino; |FBORRA aOrigen;
+   aOrigen = aAlfa + "tecaw021.ixx"; aDestino = aAlfa1 + "tecaw021.ixx";
+   |COPIA_FICHERO aOrigen, aDestino; |FBORRA aOrigen;
+
+   |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "def/tecaw020.mas";
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      aAlfa = #tecam020#1; |QBF aAlfa; |PATH_DAT #4001 aAlfa;
+      aPath = aAlfa;
+      |ABRE #Referen@;
+      |LEE 000#Referen@.p;
+      |SI FSalida ! 0; nHayArtC = 0; |SINO; nHayArtC = 1; |FINSI;
+      aPuntero1 = "tecaw020";
+      aPuntero2 = aAlfa + "articulos";
+      IaPuntero = aPuntero1<-;
+      |ESPECIFICA "EXPORTAPLB", aPuntero; |HAZ ModificaBit;
+      |HAZ ExportaTxt;
+      |CIERRA #Referen@;
+      |DESCARGA_DEF #Referen@;
+   |SINO;
+       nHayArtC = 0;
+   |FINSI;
+
+   |DBASE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "def/tecaw021.mas";
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      aAlfa = #tecam020#1; |QBF aAlfa; |PATH_DAT #4001 aAlfa;
+      aPath = aAlfa;
+      |ABRE #Referen@;
+      |LEE 000#Referen@.p;
+      |SI FSalida ! 0; nHayArtG = 0; |SINO; nHayArtG = 1; |FINSI;
+      aPuntero1 = "tecaw021";
+      aPuntero2 = aAlfa + "articulos_gerencia";
+      IaPuntero = aPuntero1<-;
+      |ESPECIFICA "EXPORTAPLB", aPuntero; |HAZ ModificaBit;
+      |HAZ ExportaTxt;
+      |CIERRA #Referen@;
+      |DESCARGA_DEF #Referen@;
+   |SINO;
+       nHayArtG = 0;
+   |FINSI;
+
+   eaDRepre = "  ";
+   eaHRepre = "zz";
+   |SI #0#2 = "S"; |HAZ CtrlPedido; |FINSI;
+   |SI #0#3 = "S"; |HAZ TablaResu; |FINSI;
+   |SI #0#4 = "S"; |HAZ GrupoCliPrv; |FINSI;
+   |||SI #0#5 = "S"; |HAZ LibretaDir; |FINSI; -> se hace en el bucle envia
+   |SI #0#6 = "S"; |HAZ ComiCli; |FINSI;
+   |SI #0#7 = "S"; |HAZ Paises; |FINSI;
+   |SI #0#8 = "S"; |HAZ FPago; |FINSI;
+   |SI #0#11 = "S"; |HAZ Agencias; |FINSI;
+
+   |BUCLE Envia;
+
+   aDestino = aAlfa1 + "tecaw020.dat"; |FBORRA aDestino;
+   aDestino = aAlfa1 + "tecaw020.ddx"; |FBORRA aDestino;
+   aDestino = aAlfa1 + "tecaw020.ixx"; |FBORRA aDestino;
+   aDestino = aAlfa1 + "tecaw021.dat"; |FBORRA aDestino;
+   aDestino = aAlfa1 + "tecaw021.ddx"; |FBORRA aDestino;
+   aDestino = aAlfa1 + "tecaw021.ixx"; |FBORRA aDestino;
+
+   aDestino = aAlfa1;
+   |_PDIR aDestino;
+   |PARA; |SI FSalida = 0; |HACIENDO;
+      |FBORRA aDestino; |_SDIR aDestino;
+   |SIGUE;
+
+   |CIERRAT #tecam022; |CIERRA #agifa025;
+|FPRC;
+
+|PROGRAMA;
+   |HAZ DecimalesBase;
+   |CLS;
+   |CABEZA " Generacion global de ficheros a enviar";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0; |Y #0#0 = "S";
+      |ABRE #agifa019; |ABRE #agifa024; |ABRE #tecam020;
+
+      |LEE 101#tecam020.p;
+      |SI FSalida ! 0;
+         |MENAV "    No hay control de envio de datos. Proceso abortado.";
+         |CIERRA #agifa019; |CIERRA #agifa024; |CIERRA #tecam020;
+         |ERROR; |ACABA;
+      |SINO;
+         aAlfa = #tecam020#0;  |QBF aAlfa;
+         aAlfa1 = #tecam020#1; |QBF aAlfa1;
+         |SI aAlfa = ""; |O aAlfa1 = "";
+            |MENAV "    No hay control de envio de datos. Proceso abortado.";
+            |CIERRA #agifa019; |CIERRA #agifa024; |CIERRA #tecam020;
+            |ERROR; |ACABA;
+         |FINSI;
+      |FINSI;
+
+      #tecam020#7 = #tecam020#7 + 1; |GRABA 020#tecam020.a; |LIBERA #tecam020;
+
+      |HAZ Replica;
+      |HAZ GestionaEnvio;
+
+      |LEE 101#tecam020.p;
+      #tecam020#7 = #tecam020#7 - 1; |GRABA 020#tecam020.a; |LIBERA #tecam020;
+
+      |CIERRA #agifa019; |CIERRA #agifa024; |CIERRA #tecam020;
+   |FINSI;
+|FPRO;

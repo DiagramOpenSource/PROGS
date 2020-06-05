@@ -1,0 +1,820 @@
+|FICHEROS;
+   ascontca #0;
+   asmancaj #1;
+   asmanmov #2;
+   asmovtos #3;
+
+   :/contagen/def/canempre #500;
+   :/contagen/def/camandia #501;
+   :/contagen/def/camaasic #502;
+   :/contagen/def/camaasil #503;
+   :/contagen/def/cacuenta #504;
+   :/contagen/def/caconasi #505;
+   :/contagen/def/cadeflab #506;
+
+   :/contagen/def/caclipro #507;
+   :/contagen/def/camaniva #511;
+   :/contagen/def/caivalin #512;
+   :/contagen/def/caivases #513;
+   :/contagen/def/calibros #514;
+   :/contagen/def/caivaasi #520;
+|FIN;
+
+|VARIABLES;
+   nNume1   = 0;
+   aAlfa1   = "";
+   Comodin  = "";
+   Comodin1 = "";
+   Comodin2 = "";
+
+   nSwCab     = 0;
+   nSwHay     = 0;
+   nSaldoMovs = 0;
+   nImporte   = 0;
+   nDoc       = 0;
+   nReg       = 0;
+   nNumLinea  = 0;
+
+   nNumLineaFac = 0;
+   nImpFactu    = 0;
+   nImpIVA      = 0;
+   nImpBase     = 0;
+   nImpIRPF     = 0;
+   nImpBaseI    = 0;
+   aCuentaU     = "";
+   nConceptoU   = 0;
+   aDescripcU   = "";
+
+   diario     = 0;
+   fecha      = @;
+   docume     = 0;
+
+   aElDepar   = "";
+   aElSubde   = "";
+   aElD       = "";
+   nSwD       = 0;
+
+   aTipoIVA    = "";
+   nLibro      = 0;
+   nNumDoc     = 0;
+   aSerie      = "";
+   nNumFactura = 0;
+   nPerio      = 0;
+   aNombre     = "";
+   aCif        = "";
+   aNombreSub  = "";
+   aSigno      = "";
+   aAcum       = "";
+   nAcum       = 0;
+   nSwFras     = 0;
+   aDescrip    = "";
+   &EURODB     = 0;
+|FIN;
+
+|INCLUYE i_varcof;
+
+|| **********************************************************************
+|CALCULO TomaPath; |TIPO 6;
+   |ABRE #1;
+   #1#0 = #0#0;
+   |LEE 000#1=;
+   |SI FSalida ! 0;
+       |MENAV "    Error No existe Caja";
+       |ERROR;
+       |CIERRA #1;
+       |ACABA;
+   |FINSI;
+   |CIERRA #1;
+   enSwSinMen = 1;
+   enEmpresa  = #1#4;
+   enPerConta = #1#5;
+   |HAZ LeeEmpConta;
+   |SI swerror = 1;
+       |MENAV "    Error. La Caja tiene informada una Empresa Contable Inexistente";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|PROCESO ElPath;
+   enEmpresa  = #1#4;
+   enPerConta = #1#5;
+
+   |DBASS Comodin; |QBF Comodin; Comodin = Comodin + "contagen/";
+   Comodin1 = Comodin + "fich/" + (("00000" + #1#4) % -105) + #1#5 + "/";
+
+   |PATH_DAT #501 Comodin1;
+   |PATH_DAT #502 Comodin1;
+   |PATH_DAT #503 Comodin1;
+   |PATH_DAT #504 Comodin1;
+   |PATH_DAT #505 Comodin1;
+   |PATH_DAT #506 Comodin1;
+   |PATH_DAT #507 Comodin1;
+   |PATH_DAT #511 Comodin1;
+   |PATH_DAT #512 Comodin1;
+   |PATH_DAT #513 Comodin1;
+   |PATH_DAT #514 Comodin1;
+   |PATH_DAT #520 Comodin1;
+|FPRC;
+
+|CALCULO MiraDiario;
+   |HAZ ElPath;
+
+   |ABRE #501;
+   #501#0 = #0Campo;
+   |LEE 000#501=;
+   |SI FSalida = 0;
+       |PINTA 0925, #501#1;
+   |SINO;
+       |MENAV "    Diario inexistente";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO LaFecha; |TIPO 0;
+ |SI #0Campo < fec1; |O #0Campo > fec2;
+     |MENAV "    Error. Esta fecha no corresponde al ejercicio ";
+     |ERROR;
+ |FINSI;
+|FCAL;
+|| *************************************************************
+|| *************************************************************
+|| ............ Subrutina de Asientos
+|PROCESO adapta;
+   |SI #503#8 = "D";
+       #503#16 = #503#4;
+       #503#17 = #503#5;
+       #503#10 = "";
+       #503#11 = 0;
+   |SINO;
+      #503#16 = "";
+      #503#17 = 0;
+      #503#10 = #503#4;
+      #503#11 = #503#5;
+   |FINSI;
+   #503#21 = aElDepar;
+   #503#28 = aElSubde;
+   #503#24 = nReg;
+|FPRC;
+
+|PROCESO act_cabecera;
+   #502#0 = diario;
+   #502#1 = fecha;
+   #502#2 = docume;
+   |LEE 101#502=;
+   |SI #503#8 = "D";
+       #502#4 = #502#4 + #503#9;
+       |SI #502#09 = 0;
+           #502#08 = #503#4;
+           #502#09 = #503#5;
+       |FINSI;  || contrp.HABER
+   |SINO;
+      #502#5 = #502#5 + #503#9;
+      |SI #502#11 = 0;
+          #502#10 = #503#4;
+          #502#11 = #503#5;
+      |FINSI;  || contrp.DEBE
+   |FINSI;
+   #502#6 = #502#4 - #502#5;        || saldo
+
+   #502#13 = 0;
+   |SI #503#12 = "R"; #502#13 = 1; |FINSI;
+   |SI #503#12 = "S"; #502#13 = 2; |FINSI;
+
+   |GRABA 020#502a;
+   |LIBERA #502;
+|FPRC;
+
+|PROCESO Actualizar;
+   MasMenos     = #503#9;
+   DebeHaber    = #503#8;
+   aCUENTA      = #503#4;
+   nREGISTRO    = #503#24;
+   nDIARIO      = #503#0;
+   aFECHA       = #503#1;
+   nDOCUMENTO   = #503#2;
+   nNIVELCUENTA = #503#5;
+
+   |HAZ ActDiario;          || diario
+   eswCuenta = 1;
+   |HAZ ActCuenta;          || cuenta
+   |HAZ act_cabecera;
+|FPRC;
+
+|| /////////////////////////////////////////
+|PROCESO Movimientos;
+   |SI #3#8 = 0; |ACABA; |FINSI;
+
+   |SI nSwFras = 1;
+       |HAZ MvtosFra;
+       |ACABA;
+   |FINSI;
+
+   nSwHay = 1;
+   |SI nNumLinea = 11;
+       aElD = #3#16;
+       nSwD = 0;
+   |FINSI;
+
+   |DDEFECTO #503;
+   #503#0 = diario;
+   #503#1 = fecha;
+   #503#2 = docume;
+   #503#3 = nNumLinea;
+   |GRABA 020#503b;
+   |SI #3#6 = "            ";
+       #503#4 = #3#7;
+       #503#8 = "H";
+       nSaldoMovs = nSaldoMovs - #3#8;
+   |SINO;
+       #503#4 = #3#6;
+       #503#8 = "D";
+       nSaldoMovs = nSaldoMovs + #3#8;
+   |FINSI;
+   eaCuenta = #503#4; |HAZ SacaNivel;
+   #503#5 = enNivel;
+
+   #503#6 = #2#25;    || 1
+   |SI #2#26 = "S";   || #0#3
+       Comodin = #3#15;
+   |SINO;
+       Comodin = "MOV.CAJA " + (("00" + #0#0) % -102) + " FECHA " + #0#1;
+   |FINSI;
+   #503#7 = Comodin;
+   #503#9 = #3#8;
+   aElDepar = #3#16;
+   |HAZ adapta;
+
+   |GRABA 020#503a;
+   |LIBERA #503;
+
+   |HAZ Actualizar;
+   nNumLinea = nNumLinea + 10;
+   #3#13 = "S";
+   |GRABA 020#3a;
+   |LIBERA #3;
+
+   |SI aElD ! #3#16;
+       nSwD = 1;
+       aElD = #3#16;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Movimientos;
+ #3#1;
+ 13;
+ #0#0, #0#1, 0001,"N";
+ #0#0, #0#1, 9999,"N";
+ be;
+ NULL, Movimientos;
+|FIN;
+
+|| *************************************************************************
+|| ******************************* Proceso para Actualizar Facturas
+|PROCESO GrabaCabeceras;
+|| ... Crea Cabecera  Asiento
+
+    |HAZ LeeDocumento;
+    |DDEFECTO #502;
+    #502#0 = #0#2;
+    #502#1 = #0#1;
+    #502#2 = nDoc;
+    #502#3 = nDoc;
+    #502#12 = nReg;
+    |GRABA 020#502b;
+    |HAZ  GrabaDocumento;
+
+    diario = #502#0;
+    fecha  = #502#1;
+    docume = #502#2;
+
+|| .... Factura
+    aTipoIVA = #2#6;
+    nLibro   = #2#7;
+    aSerie   = #2#8;
+
+    #511#0 = nLibro;
+    #511#1 = 9999999999;
+    |LEE 010#511];
+    |SI FSalida = 0;
+        |LEE 040#511a;
+    |SINO;
+        |LEE 040#511u;
+    |FINSI;
+    nNumDoc = 1;
+    |SI FSalida = 0; |Y #511#0 = nLibro;
+        nNumDoc = #511#1 + 1;
+    |FINSI;
+
+    |DDEFECTO #511;
+    #511#0 = nLibro;
+    #511#1 = nNumDoc;
+    #511#2 = aSerie;
+    |HAZ BuscaNumero;
+    #511#3  = nNumFactura;
+    #511#4  = fecha;
+    |HAZ CalPeriodo;
+    #511#5  = nPerio;
+    #511#7  = diario;
+    #511#8  = fecha;
+    #511#9  = docume;
+
+    aElDepar    = #3#16;
+    eOpDep      = 0;
+    enActividad = aElDepar;
+    eaCodDep    = aElDepar;
+    eSwNoalta   = 1;
+    |HAZ ActFactu;
+    #511#10     = #3#16;
+    #511#24     = eaNombreAct;
+    #511#11     = aElSubde;
+    #511#25     = aNombreSub;
+    |GRABA 020#511b;
+
+    nNumLineaFac = 1;
+|FPRC;
+
+|| *************************************************************************
+|| ******************************* Proceso para Actualizar Facturas
+|PROCESO  GrabaCab;
+  || ... No hay cabecera. todas exentas
+    eaCuenta = aCuentaU;
+    #511#12 = eaCuenta; |HAZ SacaNivel;
+    |HAZ LeeCliPro;
+    #511#13 = aNombre;
+    #511#14 = aCif;
+
+    #511#27 = #2#11;  || Concepto
+    #511#28 = #2#12;  || Descripcion
+    #511#29 = #511#29;  || Concepto  IVA
+    #511#30 = #511#30;  || Descripcion IVA
+    |GRABA 020#511a;
+    |LIBERA #511;
+
+    |HAZ GraboElAsto;
+    nSwCab = 0;
+|FPRC;
+
+|PROCESO MvtosFra;
+
+   |DDEFECTO #2;
+   #2#0 = #3#3;  || Codigo tipo
+   |LEE 041#2=;
+
+   |SI #2#5 = "N"; |ACABA; |FINSI;   || ... No crea IVA
+
+   nConceptoU = #2#11;
+   aDescripcU = #2#12;
+   |SI #2#26 = "S";
+        aAlfa1 = #2#12; |QBF aAlfa1;
+        #2#12 = aAlfa1 + " " + #3#15;
+   |FINSI;
+
+   |SI nSwCab = 0;
+       |HAZ GrabaCabeceras;
+       nSwCab = 1;
+   |FINSI;
+
+   |SI #2#23 = "2";
+       |HAZ BaseExenta;
+   |SINO;
+       |HAZ LaBase;
+       |HAZ GraboElAsto;
+       nSwCab = 0;
+   |FINSI;
+
+   #3#13 = "S";
+   |GRABA 020#3a;
+   |LIBERA #3;
+
+   |SI #3#6 = "            ";
+        aCuentaU = #3#7;
+   |SINO;
+        aCuentaU = #3#6;
+   |FINSI;
+|FPRC;
+
+|PROCESO BaseExenta;
+   nImpFactu = 0;
+   nImpBase  = 0;
+   nImpIVA   = 0;
+   nImpBaseI = 0;
+   nImpIRPF  = 0;
+
+   nImpBase  = #3#8;
+
+   aAlfa1 = #2#13; |QBF aAlfa1;
+   |SI aAlfa1 = "=";
+       |SI #3#6 = "            ";
+           eaCuenta = #3#7;
+       |SINO;
+           eaCuenta = #3#6;
+       |FINSI;
+   |SINO;
+       eaCuenta = #2#13;
+   |FINSI;
+
+   #511#19 = #511#19 + nImpBase;
+   #511#21 = #511#21 + nImpBase;
+
+   |DDEFECTO #512;
+   #512#0  = nLibro;
+   #512#1  = nNumDoc;
+   #512#2  = nNumLineaFac;
+   #512#3  = #2#11;
+   #512#4  = #2#12;
+   #512#5  = #2#10;                 || Deducible S/N ????????
+   #512#6  = nImpBase;              || Base imponible
+   #512#12 = eaCuenta;              || Contrapartida
+   |GRABA 020#512n;
+   nNumLineaFac = nNumLineaFac + 1;
+|FPRC;
+
+|PROCESO LaBase;
+   nImpFactu = 0;
+   nImpBase  = 0;
+   nImpIVA   = 0;
+   nImpBaseI = 0;
+   nImpIRPF  = 0;
+
+||   |SI #2#17 = "S";   ||Iva Incluido;
+||       nImpFactu = #3#8;
+||       nImpBase  = ((nImpFactu * 100) / (100 + #2#15)) ! EURODB;
+||       nImpIVA   = nImpFactu - nImpBase;
+||   |SINO;
+       nImpBase  = #3#8;
+       nImpIVA   = (nImpBase % #2#15) ! EURODB;
+       nImpFactu = nImpBase + nImpIVA;
+||   |FINSI;
+
+   |SI #2#18 ! 0;
+       |SI #2#21 = "B"; nImpBaseI = nImpBase;  |FINSI;
+       |SI #2#21 = "F"; nImpBaseI = nImpFactu; |FINSI;
+       nImpIRPF  = (nImpBaseI % #2#22) ! EURODB;
+       nImpFactu = nImpFactu - nImpIRPF;
+   |FINSI;
+
+   |SI #3#6 = "            ";
+        eaCuenta = #3#7;
+   |SINO;
+        eaCuenta = #3#6;
+   |FINSI;
+    #511#12 = eaCuenta; |HAZ SacaNivel;
+    |HAZ LeeCliPro;
+    #511#13 = aNombre;
+    #511#14 = aCif;
+
+    #511#19 = #511#19 + nImpBase;
+    #511#20 = #511#20 + nImpIRPF;
+    #511#21 = #511#21 + nImpFactu;
+    #511#23 = #511#23 + nImpIVA;
+
+    #511#27 = #2#11;  || Concepto
+    #511#28 = #2#12;  || Descripcion
+    #511#29 = #2#11;  || Concepto  IVA
+    #511#30 = #2#12;  || Descripcion IVA
+    #511#36 = aTipoIVA;
+    |GRABA 020#511a;
+
+    |DDEFECTO #512;
+    #512#0  = nLibro;
+    #512#1  = nNumDoc;
+    #512#2  = nNumLineaFac;
+    #512#3  = #2#11;
+    #512#4  = #2#12;
+    #512#5  = #2#10;                 || Deducible S/N ????????
+    #512#6  = nImpBase;              || Base imponible
+    #512#7  = #2#15;                 || Tipo de % IVA
+    #512#8  = nImpIVA;               || Cuota de IVA
+    #512#12 = #2#13;                 || Contrapartida
+    #512#13 = #2#16;                 || Cuenta de IVA
+    #512#16 = #2#14;                 || Linea de tipo de iva
+    #512#17 = #2#9;                  || Inversion
+    #512#18 = #2#18;                 || Concepto IRPF
+    #512#19 = #2#19;                 || Descripcion
+    #512#20 = nImpBaseI;             || Base IRPF
+    #512#21 = #2#22;                 || % IRPF
+    #512#22 = nImpIRPF;              || Cuota
+    #512#23 = #2#20;                 || Cuenta IRPF
+    |GRABA 020#512n;
+
+    |LIBERA #511;
+|FPRC;
+
+|PROCESO LeeLinFactu;
+
+    nAcum     = nAcum + 1;
+
+    nNumLinea = nNumLinea + 10;  || Linea Base
+    eaCuenta  = #512#12;
+    aSigno    = "D";
+    |SI #2#6  = "R"; aSigno = "H";  |FINSI;
+    nImporte  = #512#6;
+    aAcum     = "B";
+    |HAZ GraboApFra;
+
+|SI #512#8 ! 0;
+    nNumLinea = nNumLinea + 10;  || Linea IVA
+    eaCuenta  = #512#13;
+    aSigno = "D";
+    |SI #2#6 = "R"; aSigno = "H";  |FINSI;
+    nImporte = #512#8;
+    aAcum    = "I";
+    |HAZ GraboApFra;
+|FINSI;
+|SI #512#22 ! 0;
+    nNumLinea = nNumLinea + 10;  || Linea IVA
+    eaCuenta  = #512#23;
+    aSigno = "H";
+    |SI #2#6 = "R"; aSigno = "D";  |FINSI;
+    nImporte = #512#22;
+    aAcum    = "P";
+    |HAZ GraboApFra;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE LeeLinFactu;
+ #512#1;
+ ;
+ #511#0, #511#1, 01;
+ #511#0, #511#1, 99;
+ e;
+ NULL, LeeLinFactu;
+|FIN;
+
+|PROCESO GraboElAsto;
+    || Grabo Apuntes Factura
+
+    nNumLinea = 1;  || Linea Proveedor/Cliente
+
+    eaCuenta  = #511#12;
+    aSigno    = "H";
+    |SI #2#6  = "R"; aSigno = "D";  |FINSI;
+    nImporte  = #511#21;
+    aAcum     = "F";
+    nAcum     = 0;
+    |HAZ GraboApFra;
+
+    |CIERRA #512;
+    |BUCLE LeeLinFactu;
+    |ABRE #512;
+|FPRC;
+
+|PROCESO GraboApFra;
+    |DDEFECTO #503;
+    #503#0 = diario;
+    #503#1 = fecha;
+    #503#2 = docume;
+    #503#3 = nNumLinea;
+    |GRABA 020#503b;
+
+    #503#4 = eaCuenta;
+    |HAZ SacaNivel;
+    #503#5 = enNivel;
+    #503#6 = #2#11;
+    #503#7 = #2#12;
+    #503#8 = aSigno;
+    #503#9 = nImporte;
+    #503#12 = aTipoIVA;
+    #503#13 = nLibro;
+    #503#14 = nNumFactura;
+    #503#15 = aSerie;
+    #503#19 = aAcum;
+    #503#20 = nAcum;
+    |HAZ adapta;
+
+    |GRABA 020#503a;
+    |LIBERA #503;
+
+    |HAZ Actualizar;
+|FPRC;
+
+|PROCESO LasFacturas;
+   |ABRE #520;
+   |DDEFECTO #520;
+   |LEE 001#520p;
+   |CIERRA #520;
+
+   nSwCab  = 0;
+   nSwFras = 1;
+   |ABRE #502;
+   |ABRE #503;
+   |ABRE #511;
+   |ABRE #512;
+   |ABRE #2;
+   |BUCLE Movimientos;
+   |SI nSwCab = 1;
+       |HAZ GrabaCab;
+   |FINSI;
+   |CIERRA #2;
+   |CIERRA #512;
+   |CIERRA #511;
+   |CIERRA #503;
+   |CIERRA #502;
+|FPRC;
+
+|| *************************************************************************
+|CALCULO LaActual; |TIPO 3;
+
+   |HAZ DirAplSt;
+
+   |ABRE #1;
+   #1#0 = #0#0;
+   |LEE 000#1=;
+   |SI FSalida ! 0;
+       |CIERRA #1;
+       |ACABA;
+   |FINSI;
+
+   enSwSinMen = 1;
+   enEmpresa  = #1#4;
+   enPerConta = #1#5;
+   |HAZ LeeEmpConta;
+   |SI swerror = 1;
+       |MENAV "    Error. La Caja tiene informada una Empresa Contable Inexistente";
+       |ACABA;
+   |FINSI;
+
+   |HAZ ElPath;
+
+   |HAZ LasFacturas;
+
+|| ... Proceso para Contabilizar los Movimientos de Caja
+    nSwFras = 0;
+    |HAZ LeeDocumento;
+    nSaldoMovs = 0;
+    nNumLinea = 11;
+    nSwHay = 0;
+
+    |ABRE #502;
+    |DDEFECTO #502;
+    #502#0 = #0#2;
+    #502#1 = #0#1;
+    #502#2 = nDoc;
+    #502#3 = nDoc;
+    #502#12 = nReg;
+    |GRABA 020#502n;
+
+    diario = #502#0;
+    fecha  = #502#1;
+    docume = #502#2;
+
+    |ABRE #503;
+    |BUCLE Movimientos;
+    |SI nSwHay = 0;
+        #502#0 = #0#2;
+        #502#1 = #0#1;
+        #502#2 = nDoc;
+        |BORRA 020#502c;
+        |VETE Final;
+    |FINSI;
+
+    #503#0 = #502#0;
+    #503#1 = #502#1;
+    #503#2 = #502#2;
+    #503#3 = 1;
+    |GRABA 020#503b;
+
+    #503#4 = #1#6; eaCuenta = #503#4; |HAZ SacaNivel;
+    #503#5 = enNivel;
+    |SI nSaldoMovs ] 0;
+         #503#8 = "H";
+         nImporte = nSaldoMovs;
+    |SINO;
+         #503#8 = "D";
+         nImporte = 0 - nSaldoMovs;
+    |FINSI;
+
+    #503#6  = #2#25;  || 1
+    Comodin = "MOV.CAJA " + (("00" + #0#0) % -102) + " FECHA " + #0#1;
+    #503#7 = Comodin;
+    #503#9 = nImporte;
+    |SI nSwD = 0;
+        aElDepar = aElD;
+    |SINO;
+        aElDepar = #1#16;
+    |FINSI;
+    |HAZ adapta;
+
+    |GRABA 020#503a;
+    |LIBERA #503;
+    |HAZ Actualizar;
+    |HAZ GrabaDocumento;
+
+    #1#7 = #1#7 + nSaldoMovs;
+    |GRABA 020#1a;
+
+|ET Final;
+    |LIBERA #1;
+    |LIBERA #502;
+    |CIERRA #503;
+    |CIERRA #502;
+
+    |CIERRA #1;
+|FCAL;
+|| **************************************************************************
+|| **************************************************************************
+|| ***Subrutinas ************************************************************
+
+|PROCESO LeeDocumento;
+      |ABRE #505;
+      |LEE 001#505p;
+      |SI FSalida ! 0;
+          |DDEFECTO #505;
+          |GRABA 020#505n;
+      |FINSI;
+      nDoc = #505#1 + 1;
+      nReg = #505#2 + 1;
+      |CIERRA #505;
+
+      |ABRE #506;
+      |DDEFECTO #506;
+      |LEE 001#506p;
+      |CIERRA #506;
+      aAlfa1 = #1#16; |QBF aAlfa1;
+      |SI aAlfa1 = ""; #1#16 = #506#22; |FINSI;
+      aElSubde   = #506#57;
+      aNombreSub = #506#58;
+|FPRC;
+
+|PROCESO GrabaDocumento;
+      |ABRE #505;
+      |LEE 101#505p;
+      |SI FSalida ! 0;
+          |DDEFECTO #505;
+          |GRABA 020#505b;
+      |FINSI;
+      #505#1 = nDoc;
+      #505#2 = nReg;
+      |GRABA 020#505a;
+      |LIBERA #505;
+      |CIERRA #505;
+|FPRC;
+
+|PROCESO BuscaNumero;
+   |SI #520#44 = "N";
+       |ABRE #514;
+       #514#0 = nLibro;
+       |LEE 110#514=;
+       |SI FSalida = 0;
+           nNumFactura  = #514#4;
+           #514#4 = #514#4 + #514#3;
+           |GRABA 020#514a;
+           |LIBERA #514;
+       |FINSI;
+       |CIERRA #514;
+   |SINO;
+       |ABRE #513;
+       #513#0 = aSerie;
+       #513#1 = aTipoIVA;
+       |LEE 110#513=;
+       |SI FSalida = 0;
+           nNumFactura = #513#3;
+           #513#3 = #513#3 + #513#4;
+           |GRABA 020#513a;
+           |LIBERA #513;
+      |FINSI;
+      |CIERRA #513;
+   |FINSI;
+|FPRC;
+
+|PROCESO LeeCliPro;
+ aNombre = "";
+ aCif    = "";
+ |ABRE #507;
+ |DDEFECTO #507;
+ #507#23 = "P";
+ |SI aTipoIVA = "R";
+     #507#23 = "C";
+ |FINSI;
+ #507#10 = #511#12;
+ #507#11 = enNivel;
+ |LEE 000#507=;
+ |SI FSalida = 0;
+     aNombre = #507#1;
+     aCif    = #507#9;
+ |SINO;
+     |ABRE #504;
+     #504#0 = #511#12;
+     |LEE 001#504=;
+     |SI FSalida = 0;
+         aNombre = #504#2;
+     |FINSI;
+     |CIERRA #504;
+ |FINSI;
+ |CIERRA #507;
+|FPRC;
+
+|PROCESO CalPeriodo;
+   aAlfa1 = fecha; |QBF aAlfa1;
+   aAlfa1 = aAlfa1 % 0402;
+   nNume1 = aAlfa1;
+   nPerio = nNume1;
+   |SI #520#46 = "T";
+      |SI nNume1 ] 1;  |Y nNume1 [ 3;  nPerio = 1; |FINSI;
+      |SI nNume1 ] 4;  |Y nNume1 [ 6;  nPerio = 2; |FINSI;
+      |SI nNume1 ] 7;  |Y nNume1 [ 9;  nPerio = 3; |FINSI;
+      |SI nNume1 ] 10; |Y nNume1 [ 12; nPerio = 4; |FINSI;
+   |SINO;
+      |SI #520#46 = "A"; nPerio = 0; |FINSI;
+   |FINSI;
+|FPRC;

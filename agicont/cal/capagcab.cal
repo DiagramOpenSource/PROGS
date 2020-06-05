@@ -1,0 +1,812 @@
+|FICHEROS;
+    capagcab #0;
+    cacuenta #1;
+    camanban #2;
+    capaglin #3;
+    caivasop #4;
+    camanpag #5;
+    caclipro #6;
+    capagaux #7;
+    cacuadre #9;
+    capagven #15;
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    men0 = "";
+    men1  = "2400NDesea anular el PAGARE y ponerlo como NO emitido: ";
+    men11 = "2400NDesea poner como NO emitida CARTA: ";
+    men12 = "2400NDesea anular el PAGARE y ponerlo como NO emitido PAGARE: ";
+    men2  = "     No puede modificar el codigo del proveedor";
+    men3  = "2400NDesea imprimirlo: ";
+    men31 = "2400NDesea imprimir la CARTA: ";
+    men32 = "2400NDesea imprimir el PAGARE: ";
+
+ mensa1 = "    Numero de pago inexistente ...";
+ mensa2 = "    Numero de pago de otro proveedor ...";
+ mensa3 = "    Pago ya registrado en pagares ...";
+ mensa4 = "    Pago ya liquidado ...";
+ mensa5 = "    Pago con tipo de Recibo incorrecto para pagare";
+
+    {-1}menu  = "";           || Variables menu Carta o Pagare
+        menu1 = "2400";
+        menu2 = "1";
+        menu3 = "Elija : ";
+        menu4 = "CP";
+        menu5 = " Carta ";
+        menu6 = " Pagare ";
+
+    d_pagar = "S";
+    con = 0;
+    anterior = "";
+    swptec = 0;
+    swdos = 0;
+    informe = "caemipag";
+    pagare = 0;
+    &sw = 0;
+    &importe = 0;
+    &prov = "";
+    &prov1 = "";
+    &cc1 = "";
+    &cc2 = "";
+    &cc3 = "";
+
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    aAlfa = "";
+    long = 0;
+    swdig = 0;
+    alguno = 0;
+    fecha1 = @;
+    fecha2 = "@";
+    &des = " ";
+    &dni = " ";
+    &dir = " ";
+    &pob = " ";
+    &pro = " ";
+    sw_act = 0;
+    pagban = "";
+    x = 0;
+    &dia = "";
+    &mes = "";
+    &any = "";
+    &dianum = 0;
+    &dia_e = "";
+    &mes_e = "";
+    &any_e = "";
+
+  linea = 0;
+    &ctaprov = "";
+    &digprov = 0;
+    &libro = 0;
+    &orden = 0;
+    &serie = "";
+    &npago = 0;
+    &marcado = 0;
+    contador = 0;
+    sw_n     = 0;
+    sw_error  = 0;
+    &eslalin = 0;
+    f_iva = 0;
+|FIN;
+
+|INCLUYE acces5_i;
+|INCLUYE punto3_i;
+|INCLUYE i_ficher;
+
+**************************************************************************
+    CALCULOS DESDE CAMPOS
+**************************************************************************
+|PROCESO emitidos;
+     #5#0 = #3#2;  || libro
+     #5#1 = #3#3;  || orden
+     #5#2 = #3#9;  || serie.pago
+     #5#3 = #3#4;  || nro.pago
+     |LEE 141#5=;
+     |SI FSalida = 0;
+         #5#13 = aAlfa;
+         |GRABA 020#5a;
+     |FINSI;
+     |LIBERA #5;
+|FPRC;
+
+|PROCESO cuadre; |TIPO 8;
+  |HAZ inicio5;
+  sw_act  = 0; || 0 = N control (Carta/Pagare) junto / 1 = S por separado
+  d_pagar = "S";
+
+  |ABRE #9;
+  |DDEFECTO #9;
+  #9#0 = 1;
+  |LEE 001#9=;
+  |SI FSalida = 0;
+      d_pagar = #9#19;
+      |SI #9#17 = "S";
+          sw_act = 1;
+      |FINSI;
+  |FINSI;
+  |CIERRA #9;
+|FPRC;
+
+|PROCESO automati; |TIPO 7;  || ultimo numero de pagare
+    con = (FEntrada / 100) ! 0;
+    |SI con = 1;
+        |DDEFECTO #1;
+        |LEE 001#0u;
+        |SI FSalida = 0;
+                #0#0 = #0#0 + 1;
+                #0#10 = "N";
+                #0#11 = 0;
+                #0#12 = "N";
+                #0#07 = "N";
+                #0#08 = "N";
+        |SINO;
+                #0#0 = 1;
+        |FINSI;
+        #0#9 = 0;
+        #0#13 = d_pagar;
+        |PINDA #0#0;
+    |FINSI;
+|FPRC;
+
+|PROCESO modifi; |TIPO 7;   || pone pagare como no impreso y guarda proveedor
+ swdos = 0;
+ swptec = 0;
+ con = (FEntrada / 100) ! 0;
+ |SI con = 2;
+     anterior = #0#1;
+     pagban   = #0#11;
+     |SI #0#10 = "S"; |O #0#12 = "S";
+         swdos = 1;
+         men0 = men1;
+         |SI #0#10 = "S"; |Y #0#12 = "N"; men0 = men11; swdos = 2; |FINSI;
+         |SI #0#10 = "N"; |Y #0#12 = "S"; men0 = men12; swdos = 3; |FINSI;
+         |CONFI men0;
+         |SI FSalida ! 0;
+             |PTEC 3;
+         |SINO;
+             swptec = 1;
+             #0#10 = "N";
+             #0#12 = "N";
+             |SI swdos ! 2;
+                 #0#11 = 0;
+                 aAlfa = "N";
+                 |ABRE #5;
+                 |BUCLELIN 2emitidos#0;
+                 |CIERRA #5;
+             |FINSI;
+             |PINTA #0#10;
+             |PINTA #0#11;
+             |PINTA #0#12;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO comprueb; |TIPO 0;  || chequea proveedor no modificado
+    con = (FEntrada / 100) ! 0;
+    |SI con = 2;
+        |SI #0#1 ! anterior;
+            |MENAV men2;
+            #0#1 = anterior;
+            |PINTA #0#1;
+            |ERROR;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO cuenta1; |TIPO 6;   || digito cuenta proveedor y cuenta banco
+    p_alfa1 = #0Campo;
+    salidas = FSalida;
+    |HAZ punto3;
+    |SI p_error ! 0;  |ERROR;  |ACABA;  |FINSI;
+    nume1 = Campo + 1;
+    alfa1 = #0Campo;
+    |QBF alfa1;
+    alfa1 = alfa1 % 0;
+    long  = alfa1;
+    swdig = 0;
+    #0nume1 = 0;  || inicializa el digito
+    |SI long = dig4; |Y dig4 ! 0; swdig = 1; #0nume1 = 1; |FINSI;
+    |SI long = dig5; |Y dig5 ! 0; swdig = 1; #0nume1 = 2; |FINSI;
+    |SI long = dig6; |Y dig6 ! 0; swdig = 1; #0nume1 = 3; |FINSI;
+    |SI long = dig7; |Y dig7 ! 0; swdig = 1; #0nume1 = 4; |FINSI;
+    |SI long = dig8; |Y dig8 ! 0; swdig = 1; #0nume1 = 5; |FINSI;
+    |SI long = dig9; |Y dig9 ! 0; swdig = 1; #0nume1 = 6; |FINSI;
+    |SI swdig = 0;|Y long ! 0;
+        |MENAV "    Longitud de Cuenta Fuera de Nivel !";
+        |ERROR;
+    |FINSI;
+|FPRC;
+
+|PROCESO pintacuen; |TIPO 0;
+    |ABRE #1;
+    nume1 = Campo + 1;
+    #1#0 = #0Campo;
+    #1#1 = #0nume1;
+    |LEE 001#1=;
+    |SI FSalida ! 0;  |DDEFECTO #1;  |FINSI;
+    |ATRI I;
+    |SI Campo = 1;  |PINTA 0834, #1#2;  |FINSI;
+    |SI Campo = 3;  |PINTA 0934, #1#2;  |FINSI;
+    |ATRI 0;
+    |CIERRA #1;
+    |SI Campo = 1;
+        |HAZ alguno;
+    |FINSI;
+|FPRC;
+
+|PROCESO pintadas1; |TIPO 13;
+ |ABRE #1;
+ #1#0 = #0#1;         || proveedor/acreedor
+ #1#1 = #0#2;
+ |LEE 001#1=;
+ |SI FSalida ! 0;  |DDEFECTO #1;  |FINSI;
+ |ATRI I;  |PINTA 0834, #1#2;  |ATRI 0;
+ #1#0 = #0#3;         || banco
+ #1#1 = #0#4;
+ |LEE 001#1=;
+ |SI FSalida ! 0;  |DDEFECTO #1;  |FINSI;
+ |ATRI I;  |PINTA 0934, #1#2;  |ATRI 0;
+ |CIERRA #1;
+|FPRC;
+
+|PROCESO alguno1;
+    |ERROR10;
+    alguno = 1;
+|FPRC;
+
+|DEFBUCLE capagcab1;
+   #5#2;
+   22;
+   #0#1, #0#2, fecha1, "N";
+   #0#1, #0#2, fecha2, "N";
+   e;
+   NULL, alguno1;
+|FIN;
+
+|PROCESO alguno;
+    nume1 = (FEntrada / 100) ! 0;
+    |SI nume1 = 1;
+        alguno = 0;
+        fecha1 = "01.01.1900";
+        fecha2 = "31.12.8999",
+        |BUCLE capagcab1;
+        |SI alguno = 0;
+            |MENAV "    No existen pagos de este proveedor ...";
+            |ERROR;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO ptec; |TIPO 7;
+    |PTEC 816; || posicionarse al final del campo
+|FPRC;
+
+**************************************************************************
+    IMPRESION DEL PAGARE
+**************************************************************************
+
+|PROCESO imprimir;  |TIPO 30;
+ |SI swptec ! 0;
+     swptec = 0;
+     men0 = men3;
+     |SI swdos = 2; men0 = men31; |FINSI;
+     |SI swdos = 3; men0 = men32; |FINSI;
+     |CONFI men0;
+     |SI FSalida = 0;
+         pagare = #0#0;
+         #0#11 = pagban;
+         |HAZ impre;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO imprime;   || lee cuenta y banco
+    des = "<CUENTA SIN DEFINIR>";
+    dni = " ";
+    dir = " ";
+    pob = " ";
+    pro = " ";
+    #6#23 = "P";
+    #6#10 = #0#1;
+    #6#11 = #0#2;
+    |LEE 001#6=;        || lee el proveedor
+    |SI FSalida = 0;
+        des = #6#1;
+        dni = #6#9;
+        dir = #6#2;
+        pob = #6#6;
+        |QBF pob;
+        alfa1 = #6#3;  alfa1 = "00"  + alfa1;  alfa1 = alfa1 % -102;
+        alfa2 = #6#4;  alfa2 = "000" + alfa2;  alfa2 = alfa2 % -103;
+        pob = "(" + alfa1 + alfa2 + ") " + pob;
+        pro = #6#5;
+    |SINO;
+        #1#0 = #0#1;
+        #1#1 = #0#2;
+        |LEE 001#1=;
+        |SI FSalida = 0;  des = #1#2;  |FINSI;
+    |FINSI;
+
+    #2#10 = #0#3;
+    #2#11 = #0#4;
+    |LEE 001#2=;
+    |SI FSalida ! 0;  |DDEFECTO #2;  |FINSI;
+    alfa1 = #2#9; |QBT alfa1;
+    cc1 = alfa1 % 104;
+    cc2 = alfa1 % 504;
+    cc3 = #2#9;
+   |QBF cc3;
+    cc3 = cc3 % -102;
+    importe = importe + #3#7;
+    sw = 0;
+    |PRINT;
+|FPRC;
+
+|PROCESO lineas;
+    |BUCLELIN 2imprime#0;
+    sw = 1;
+    |PIEINF;
+|FPRC;
+
+|PROCESO impre;
+ |SI swdos = 2; informe = "caemipag"; |FINSI;
+ |SI swdos = 3;
+     |SI #9#35 [ 10; x = #9#35 + 6;  |FINSI;
+     |SI #9#35 > 10; x = #9#35 + 14; |FINSI;
+     informe = #9x;
+ |FINSI;
+ |SI swdos = 1;
+     |MENU menu;
+     |SI FSalida ! 1; |Y FSalida ! 2; |ACABA; |FINSI;
+     |SI FSalida = 1;
+         informe = "caemipag"; swdos = 2;
+     |SINO;
+         |SI #9#35 [ 10; x = #9#35 + 6; |FINSI;
+         |SI #9#35 > 10; x = #9#35 + 14; |FINSI;
+         informe = #9x; swdos = 3;
+     |FINSI;
+ |FINSI;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0;  |FINIMP;  |ACABA;   |FINSI;
+  |DDEFECTO #7;
+  |ABRE #7;
+  |LEE 000#7p;
+  |CIERRA #7;
+  |ABRE #1;
+  |ABRE #2;
+  |SELECT #2#2;
+  |ABRE #6;
+  |HAZ fecha_hoy;
+  |HAZ lineas;
+  |CIERRA #1;
+  |CIERRA #2;
+  |CIERRA #6;
+  |SI sw_act = 0;
+      #0#10 = "S"; #0#12 = "S";
+  |SINO;
+      |SI swdos = 2; #0#10 = "S"; |FINSI;
+      |SI swdos = 3; #0#12 = "S"; |FINSI;
+  |FINSI;
+  |PINTA #0#11;
+  |PINTA #0#10;
+  |PINTA #0#12;
+  |GRABA 020#0a;
+  |FININF;
+  importe = 0;
+  |FINIMP;
+  |SI #0#12 = "S";
+      aAlfa = "S";
+      |ABRE #5;
+      |BUCLELIN 2emitidos#0;
+      |CIERRA #5;
+  |FINSI;
+|FPRC;
+
+|PROCESO fecha_hoy;
+  alfa1 = #0#5;
+  dia_e = alfa1 % 102;
+  mes_e = alfa1 % 402;
+  any_e = alfa1 % -102;
+  |SI mes_e = "01";  mes_e = "Enero     ";  |FINSI;
+  |SI mes_e = "02";  mes_e = "Febrero   ";  |FINSI;
+  |SI mes_e = "03";  mes_e = "Marzo     ";  |FINSI;
+  |SI mes_e = "04";  mes_e = "Abril     ";  |FINSI;
+  |SI mes_e = "05";  mes_e = "Mayo      ";  |FINSI;
+  |SI mes_e = "06";  mes_e = "Junio     ";  |FINSI;
+  |SI mes_e = "07";  mes_e = "Julio     ";  |FINSI;
+  |SI mes_e = "08";  mes_e = "Agosto    ";  |FINSI;
+  |SI mes_e = "09";  mes_e = "Septiembre";  |FINSI;
+  |SI mes_e = "10";  mes_e = "Octubre   ";  |FINSI;
+  |SI mes_e = "11";  mes_e = "Noviembre ";  |FINSI;
+  |SI mes_e = "12";  mes_e = "Diciembre ";  |FINSI;
+  dianum =dia_e;
+
+  alfa1 = #0#6;
+  dia = alfa1 % 102;
+  mes = alfa1 % 402;
+  any = alfa1 % -102;
+  |SI mes = "01";  mes = "Enero     ";  |FINSI;
+  |SI mes = "02";  mes = "Febrero   ";  |FINSI;
+  |SI mes = "03";  mes = "Marzo     ";  |FINSI;
+  |SI mes = "04";  mes = "Abril     ";  |FINSI;
+  |SI mes = "05";  mes = "Mayo      ";  |FINSI;
+  |SI mes = "06";  mes = "Junio     ";  |FINSI;
+  |SI mes = "07";  mes = "Julio     ";  |FINSI;
+  |SI mes = "08";  mes = "Agosto    ";  |FINSI;
+  |SI mes = "09";  mes = "Septiembre";  |FINSI;
+  |SI mes = "10";  mes = "Octubre   ";  |FINSI;
+  |SI mes = "11";  mes = "Noviembre ";  |FINSI;
+  |SI mes = "12";  mes = "Diciembre ";  |FINSI;
+|FPRC;
+
+|| **********************************************************************
+|PROCESO carga;
+  |SI #9#87 = "S";
+      |SI #9#88 ! #5#11;  |ACABA;  |FINSI;
+  |FINSI;
+
+  |DDEFECTO #15;
+  contador = contador + 1;
+  #15#0  = contador;
+  #15#1  = #5#0;  #15#2  = #5#1;  #15#3  = #5#2;  #15#4  = #5#3;
+  #15#5  = #5#4;  #15#6  = #5#5;  #15#7  = #5#6;  #15#8  = #5#7;
+  #15#9  = #5#8;  #15#10 = #5#9;  #15#11 = #5#10; #15#12 = #5#11;
+  #15#13 = #5#12; #15#14 = #5#13; #15#9 = #5#8 - #5#23;
+  |GRABA 020#15n;
+|FPRC;
+
+|DEFBUCLE camanpag;
+ #5#2;
+ 22;
+ ctaprov, digprov, fecha1, "N";
+ ctaprov, digprov, fecha2, "N";
+ e;
+ NULL, NULL, NULL, NULL, NULL, carga;
+ #5#7,#5#0, #5#1, #5#3;
+|FIN;
+
+|PROCESO crea_fichero;
+ comienza = "q";
+ |HAZ fichero;
+ |NOME_DAT #15 fichero;
+
+ ctaprov = #0#1;
+ digprov = #0#2;
+ libro = #3#2;
+ orden = #3#3;  || puede que no se seleccione ninguna en 'capagven'
+ serie = #3#9;
+ npago = #3#4;
+
+ |ABRE #15;
+ |CIERRA #15;
+ |DELINDEX #15;
+
+ sw_n     = 0;
+ contador = 0;
+ |ABRE #15;
+ fecha1 = "01.01.0001";
+ fecha2 = "01.01.8999";
+ |BUCLE camanpag;
+ |CIERRA #15;
+|FPRC;
+
+|PROCESO busca_v; |TIPO 0;
+
+ |CONFI "2400SPagares Automaticos : ";
+ |SI FSalida ! 0;
+     |ACABA;
+ |FINSI;
+
+|ET laPregunta;
+ eslalin = 0;
+ |HAZ crea_fichero;
+ |SI contador  ! 0;
+     |SUB_EJECUTA_NP "capagven.run";
+     |HAZ introduc;
+     |SI sw_n = 1;
+         |PTEC 815;
+         |PTEC 808;
+         |PTEC 815;
+         |PTEC 808;
+     |SINO;
+          #3#2 = libro; #3#3 = orden; #3#4 = npago; #3#9 = serie; |PINDA #0#3;
+          |CONFI "0000SNo ha seleccionado ningun pago. Es correcto";
+          |SI FSalida ! 0;
+              |DELINDEX #15;
+              |VETE laPregunta;
+          |FINSI;
+     |FINSI;
+ |SINO;
+     |MENAV "0000No existe Pagos de este proveedor";
+ |FINSI;
+ |DELINDEX #15;
+|FPRC;
+
+|| *****************************************
+|PROCESO grabali;
+ linea = linea + 1;
+ #3#0 = #0#0;
+ #3#1 = linea;
+ #3#2 = #15#1;  || libro
+ #3#3 = #15#2;  || orden
+ #3#9 = #15#3;  || serie.pago
+ #3#4 = #15#4;  || nro.pago
+ #3#10= #15#12; || tipo recibo
+ |HAZ calculo;
+ |SI sw_error = 0;
+     |GRABA 020#3n;
+     sw_n = 1;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE capagven;
+ #15#1;
+ 15;
+ 000000, "*";
+ 999999, "*";
+ e;
+ NULL, grabali;
+|FIN;
+
+|PROCESO linealin;
+ linea = #3#1;
+|FPRC;
+
+|PROCESO introduc;
+ linea = 0;
+ |BUCLELIN 0linealin#0;
+ |ABRE #5;
+ |ABRE #3;
+ |BUCLE capagven;
+ |CIERRA #5;
+ |CIERRA #3;
+|FPRC;
+
+|| ************************
+|PROCESO calculo;
+ sw_error = 0;
+ || ....... CALCULO recarga;
+ |HAZ leeiva;
+ #5#0 = #3#2;  || libro
+ #5#1 = #3#3;  || orden
+ #5#2 = #3#9;  || serie.pago
+ #5#3 = #3#4;  || nro.pago
+ |LEE 101#5=;
+ |SI FSalida ! 0;
+     sw_error = 1;
+     |LIBERA #5;
+     |ACABA;
+ |SINO;
+     |SI #9#87 = "S";
+         |SI #9#88 ! #5#11;
+             sw_error = 2;
+             |LIBERA #5;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+ |SI f_iva = 0;
+     #3#5 = #4#7;   || documento (desde IVA)
+ |SINO;
+     #3#5 = #5#28;  || documento (desde pagos)
+ |FINSI;
+ #3#6 = #5#6;  || fecha emision
+ #3#7 = #5#8 - #5#23;  || importe
+
+ || ....... CALCULO modialta;
+ #5#23 = #5#23 + #3#7; || importe
+ |SI #5#23 ] #5#8;
+     #5#22 = "S";
+ |SINO;
+     #5#22 = "N";
+ |FINSI;  || liquidada = S
+ #5#12 = #3#0;         || n§ pagare --> PAGOS
+ |GRABA 020#5a;
+ |LIBERA #5;
+
+ || ....... CALCULO modialta;
+ || ....... CALCULO refresca;
+ #0#9 = #0#9 + #3#7;
+ |PINTA #0#9;
+|FPRC;
+
+|| **********************************************************************
+|| ************** PROCESO DE LINEAS *************************************
+|| **********************************************************************
+
+|PROCESO refresca;  |TIPO 2;
+  #0#9 = #0#9 +. #3#7;
+  |PINTA #0#9;
+|FPRC;
+
+|PROCESO modibaja; |TIPO 1;   || nro.pagare 0 en lineas pagos (mod./baja)
+ |ABRE #5;
+ #5#0 = #3#2;  || libro
+ #5#1 = #3#3;  || orden
+ #5#2 = #3#9;  || serie
+ #5#3 = #3#4;  || nro.pago
+ |LEE 101#5=;
+ |SI FSalida ! 0;
+     |MENAV mensa1;
+ |SINO;
+     #5#13 = "N";          || No impreso
+     #5#22 = "N";          || liquidado = N
+     #5#23 = #5#23 - #3#7; || importe
+     #5#12 = 0;            || n§ pagare  ---> PAGOS
+     |GRABA 020#5a;
+ |FINSI;
+ |LIBERA #5;
+ |CIERRA #5;
+|FPRC;
+
+|PROCESO modialta; |TIPO 3;  || nro. pagare en pagos (alta)
+ |ABRE #5;
+ #5#0 = #3#2;  || libro
+ #5#1 = #3#3;  || orden
+ #5#2 = #3#9;  || serie
+ #5#3 = #3#4;  || nro.pago
+ |LEE 101#5=;
+ |SI FSalida ! 0;
+     |MENAV mensa1;
+     |ERROR;
+ |SINO;
+     #5#23 = #5#23 + #3#7; || importe
+
+     |SI #5#23 ] #5#8;
+         #5#22 = "S";
+     |SINO;
+         #5#22 = "N";
+     |FINSI;  || liquidada = S
+     |SI #0#12 = "S"; #5#13 = "S"; |FINSI;
+
+     #5#12 = #3#0;         || n§ pagare --> PAGOS
+     |GRABA 020#5a;
+ |FINSI;
+ |LIBERA #5;
+ |CIERRA #5;
+|FPRC;
+
+|PROCESO primer;
+   |SI #9#87 = "S";
+       |SI #9#88 ! #5#11; |ACABA; |FINSI;
+   |FINSI;
+
+  alguno = 1;
+  |ERROR10;
+|FPRC;
+
+|DEFBUCLE capaglin0;
+  #5#2;
+  22;
+  #0#1, #0#2, fecha1, "N";
+  #0#1, #0#2, fecha2, "N";
+  e;
+  NULL, NULL, NULL, NULL, NULL, primer;
+  #5#7,#5#0,#5#1,#5#3;
+|FIN;
+
+|PROCESO primero; |TIPO 7;
+ nume1 = (FEntrada / 100) ! 0;
+ |SI nume1 = 1;|Y FSalida = 0;
+     alguno = 0;
+     fecha1 = "01.01.1900";
+     fecha2 = "31.12.8999";
+     |BUCLE capaglin0;
+     |SI alguno = 0;
+         #3#2 = 99;
+         #3#3 = 999999;
+         #3#9 = "zz";
+         #3#4 = 999;
+         |MENAV "    No existen pagos de este proveedor ...";
+         |ERROR;
+     |SINO;
+         #3#2 = #5#0;
+         #3#3 = #5#1;
+         #3#9 = #5#2;
+         #3#4 = #5#3;
+         #3#10= #5#11;||Tipo recibo del pago;
+     |FINSI;
+     |PINDA #0#3;
+ |FINSI;
+|FPRC;
+
+|PROCESO recarga; |TIPO 0;
+  |SI FSalida = 2; |ACABA; |FINSI;
+
+  nume1 = (FEntrada / 100) ! 0;
+  |HAZ leeiva;
+  |ABRE #5;
+  #5#0 = #3#2;  || libro
+  #5#1 = #3#3;  || orden
+  #5#2 = #3#9;  || serie.pago
+  #5#3 = #3#4;  || nro.pago
+  |LEE 000#5=;
+  |SI FSalida ! 0;
+      |MENAV mensa1;
+      |ERROR;
+  |SINO;
+       nume1 = #5#4;  || cta. pagos
+       nume2 = #0#1;  || cta. cabeceras pagares
+       |SI nume1 = nume2; |Y #5#5 = #0#2;
+           |SI #5#12 ! 0;
+               |MENAV mensa3;
+               |ERROR;
+           |SINO;
+               |SI #5#22 ! "N"
+                   |MENAV mensa4;
+                   |ERROR;
+               |SINO;
+                   |SI #9#87 = "S"; |Y #9#88 ! #5#11;
+                       |MENAV mensa5;
+                       |ERROR;
+                   |SINO;
+                       |SI f_iva = 0;
+                           #3#5 = #4#7;     || documento (desde IVA)
+                       |SINO;
+                           #3#5 = #5#28;    || documento (desde el pago)
+                       |FINSI;
+                       #3#6 = #5#6;  || fecha emision
+                       #3#7 = #5#8 - #5#23;  || importe
+                       #3#10 = #5#11;
+                       |PINDA #0#3;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+       |SINO;
+           |MENAV mensa2;
+           |ERROR;
+       |FINSI;
+  |FINSI;
+  |CIERRA #5;
+|FPRC;
+
+|PROCESO leeiva;
+ |DDEFECTO #4;
+ |ABRE #4;
+ #4#0 = #3#2;
+ #4#2 = #3#3;
+ #4#27 = #3#9;
+ |LEE 000#4=;
+ f_iva = FSalida;
+ |CIERRA #4;
+|FPRC;
+
+|PROCESO busqueda; |TIPO 0;
+
+ |SI FSalida ! 9; |ACABA; |FINSI;
+
+ eslalin = 1;
+ |HAZ crea_fichero;
+ |SI contador  ! 0;
+     |SUB_EJECUTA_NP "capagven.run";
+     #3#2 = libro;
+     #3#3 = orden;
+     #3#4 = npago;
+     #3#9 = serie;
+
+     |PINDA #0#3;
+     |SI marcado ! 0;
+         |PTEC 802;
+         |PTEC 802;
+         |PTEC 802;
+         |PTEC 802;
+     |FINSI;
+ |SINO;
+     |ERROR;
+ |FINSI;
+ |DELINDEX #15;
+|FPRC;
+
+|CALCULO elTipo5; |TIPO 5;
+  FSalida = "SINBARRA";
+|FCAL;

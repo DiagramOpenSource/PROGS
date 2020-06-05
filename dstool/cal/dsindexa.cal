@@ -1,0 +1,166 @@
+|FICHEROS;
+     dsindexa #0;
+     referen@;
+|FIN;
+
+|VARIABLES;
+     aBaseDef = "";
+     aDef = "";
+     aDat = ""
+     aPath = "";
+     aFic = "";
+     aEmp = "";
+     aAlfa = "";
+     aAlf1 = "";
+     aAlf2 = "";
+     aLon = "";
+     aCar = "";
+     nPos = 0;
+     nSw = 0;
+     i = 0;
+|FIN;
+
+|PROCESO Indexa;
+     |QBT aPath;
+     |QBT aFic;
+     |QBT aEmp;
+     |SI aFic ! ""; |Y aPath ! "";
+          |SI aEmp = "";
+               aDat = aPath + "/fich/" + aFic;
+               aDef = aPath + "/def/" + aFic;
+          |SINO;
+               aDat = aPath + "/fich/" + aEmp + "/" + aFic;
+               aDef = aPath + "/def/" + aFic;
+          |FINSI;
+          |GRABAENDEF aDef, aDat;
+     |FINSI;
+|FPRC;
+
+|PROCESO SacaFic;
+     aLon = aBaseDef % A0;
+     aFic = "";
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = -(i * 100 + 1)
+          aCar = aBaseDef % nPos;
+          |SI aCar = "\"; |O aCar = "/"; |SAL; |FINSI;
+          aFic = aCar + aFic;
+     |SIGUE;
+     aFic = aFic - ".mas";
+|FPRC;
+
+|PROCESO IndexaTodo;
+     aBaseDef = aPath + "/def/*.mas";
+     |_PDIR aBaseDef;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          |HAZ SacaFic;
+          |HAZ Indexa;
+/*
+          || comprueba que sea indexado
+          |CARGA_DEF aBaseDef, referen@;
+          |SI FSalida = 0;
+               |ABRE #referen@;
+               |SI FSalida = 0;
+                    |LEE 000#referen@.p;
+                    |SI FSalida = 0;
+                         |HAZ SacaFic;
+                         |HAZ Indexa;
+                    |FINSI;
+                    |CIERRA #referen@;
+               |SINO;
+                    aAlfa = aAlfa;
+               |FINSI;
+               |DESCARGA_DEF #referen@;
+          |FINSI;
+*/
+          |_SDIR aBaseDef;
+     |SIGUE;
+|FPRC;
+
+|PROCESO SacaParam;
+     aAlf1 = "";
+     aAlf2 = "";
+     nSw = 0;
+     aLon = aAlfa % A0;
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = i * 100 + 1;
+          aCar = aAlfa % nPos;
+          |SI aCar = ","; |Y nSw = 0;
+               nSw = 1;
+          |SINO;
+               |SI nSw = 0;
+                    aAlf1 = aAlf1 + aCar;
+               |SINO;
+                    aAlf2 = aAlf2 + aCar;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Procesa;
+     |HAZ SacaParam;
+     aPath = aAlf1;
+     aAlfa = aAlf2;
+     |HAZ SacaParam;
+     aEmp = aAlf1;
+     aAlfa = aAlf2;
+     |SI aAlfa = "TODO";
+          |HAZ IndexaTodo;
+     |SINO;
+          |PARA; |SI aAlfa ! ""; |HACIENDO;
+               |HAZ SacaParam;
+               aFic = aAlf1;
+               |HAZ Indexa;
+               aAlfa = aAlf2;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|FPRC;
+
+|PROCESO Todo; |TIPO 0;
+     |SI #0#3 = "S";
+          |C_M #0#1, 1, "N";
+     |SINO;
+          |C_M #0#1, 1, "S";
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     aAlfa = #0#0; |QBF aAlfa;
+     aAlf1 = #0#1; |QBF aAlf1;
+     |SI #0#3 = "S";
+          aAlf1 = "TODO";
+     |FINSI;
+     aAlf2 = #0#2; |QBF aAlf2;
+     aAlfa = aAlfa + "," + aAlf2 + "," + aAlf1;
+     |HAZ Procesa;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #0;
+     |SI PARAMETRO = "";
+          |LEE 101#0p;
+          |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0; |GRABA 020#0a; |FINSI;
+     |SINO;
+          |SI PARAMETRO = "PANTALLA";   || Lo que esta grabado
+               |LEE 000#0p;
+               |HAZ Tipo3;
+          |SINO;
+               || Reindexar todos los ficheros
+               || PARAMETRO CONSTA DE: path, empresa, TODO
+               || Reindexar 2 ficheros
+               || PARAMETRO CONSTA DE: path, empresa, fichero1, fichero2
+               || NOTA si no existe empresa dejarla en blanco
+               ||
+               || Ejemplo: /u/dsempres/gesenvia,00002,gestr137
+               ||
+               aAlfa = PARAMETRO;
+               |HAZ Procesa;
+          |FINSI;
+     |FINSI;
+     |CIERRA #0;
+|FPRO;

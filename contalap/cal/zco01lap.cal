@@ -1,0 +1,169 @@
+|| ... Cartera relacionada con CONTAGEN
+
+|FICHEROS;
+     dscam042@ #642;     || Control C
+     dscam043@ #643;     || Control L
+
+     dscam014@ #614;     || Bancos
+|FIN;
+
+|VARIABLES;
+
+     aAlfa1         = "";
+     aPath          = "";
+     aPathFic       = "";
+     aPathFicE      = "";
+     aPathDef       = "";
+     nErr           = 0;
+
+     aMensa         = "";
+     aDef42         = "";
+     aDef43         = "";
+     aDef14         = "";
+
+     aEmpre         = "";
+     aTipo          = "";
+
+     Comodin        = "";
+     aNumEmp        = "";
+     nNumEmp        = 0;
+|FIN;
+
+|INCLUYE dsclap_i;
+
+|| *************************************************************************
+
+|PROCESO DesDefBan;
+     |SI aDef14 ! ""; |DESCARGA_DEF #dscam014@; aDef14 = ""; |FINSI;
+     |SI aDef43 ! ""; |DESCARGA_DEF #dscam043@; aDef43 = ""; |FINSI;
+     |SI aDef42 ! ""; |DESCARGA_DEF #dscam042@; aDef42 = ""; |FINSI;
+|FPRC;
+
+|PROCESO CargaDefBanco;
+     nErr = 1;
+
+     aPathDef = aPath + "def/";
+     aPathFic = aPath + "fich/";
+
+     aDef42 = aPathDef + "dscam042";
+     |CARGA_DEF aDef42, dscam042@;
+     |SI FSalida ! 0;
+||
+||        ***SIN ERRORES*** (la cartera puede que no este instalada=
+||
+||          aMensa = "0000Error al cargar:" + aDef42;
+||          |MENAV aMensa;
+
+          aDef42 = ""; |HAZ DesDefBan;
+          |ACABA;
+     |FINSI;
+
+     aDef43 = aPathDef + "dscam043";
+     |CARGA_DEF aDef43, dscam043@;
+     |SI FSalida ! 0;
+          aMensa = "0000Error al cargar:" + aDef43;
+          ||  ... |MENAV aMensa;
+          aDef43 = ""; |HAZ DesDefBan;
+          |ACABA;
+     |FINSI;
+
+     aDef14 = aPathDef + "dscam014";
+     |CARGA_DEF aDef14, dscam014@;
+     |SI FSalida ! 0;
+          aMensa = "0000Error al cargar:" + aDef14;
+          ||  ... |MENAV aMensa;
+          aDef14 = ""; |HAZ DesDefBan;
+          |ACABA;
+     |FINSI;
+
+     |PATH_DAT #642 aPathFic;
+     |PATH_DAT #643 aPathFic;
+
+     nErr = 0;
+|FPRC;
+
+|| *************************************************************************
+
+|PROCESO dscam043_B;
+
+   enElBanco = 0;
+   aEmpre    = ("00000" + #dscam043@#9) % -105;
+   aPathFicE = aPathFic + aEmpre + "/";
+
+  |MKDIR aPathFicE;
+  |SI FSalida = 0;
+       enElBanco = 1;
+       |RMDIR aPathFicE;
+  |SINO;
+       |PATH_DAT #614 aPathFicE;
+       |ERROR10;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE dscam043_B;
+     #dscam043@#1003;
+     3;
+     enEmpresa, enPeriodo, 001, aTipo;
+     enEmpresa, enPeriodo, 999, aTipo;
+     ;
+     NULL, dscam043_B;
+|FIN;
+
+|| ************************************************************************
+|PROCESO eLeeBanco;
+
+   enElBanco  = 1;
+   eaCtaBanco = "";
+   eaNomBanco = "";
+
+   aPath = eaPathCartera;
+
+   |HAZ CargaDefBanco;
+   |SI nErr ! 0; |ACABA; |FINSI;     || Error al Cargar cartera.
+
+   |SI eaVC = "R"; eaVC = "V"; |FINSI;
+   |SI eaVC = "S"; eaVC = "C"; |FINSI;
+   aTipo = eaVC;
+
+   |BUCLE dscam043_B;
+   |SI enElBanco = 0;
+       |SI enSwLoLeo = 1;
+           |HAZ TrabajoBanco;
+       |FINSI;
+   |FINSI;
+   |HAZ DesDefBan;
+|FPRC;
+
+
+|| ***********************************************************************
+|RUTINA inf614;
+ #dscam014@#0 = 001;
+|FRUT;
+
+|RUTINA sup614;
+ #dscam014@#0 = 999;
+|FRUT;
+
+|PROCESO TrabajoBanco;
+   eaNomBanco  = "";
+   eaCtaBanco  = "";
+   eswLect     = 0;
+   |SI enBanco = 0; |ACABA; |FINSI;
+
+   |ABRE #dscam014@;
+
+   |SI eOpBan = 1;
+       |CONSULTA_F_CLAVE #1#dscam014@,inf614,sup614;
+       enBanco = #dscam014@#0;
+   |FINSI;
+
+   #dscam014@#0 = enBanco;
+   |LEE 001#dscam014@.=;
+   |SI FSalida ! 0;
+       eswLect = 1;
+   |FINSI;
+   enBanco    = #dscam014@#0;
+   eaNomBanco = #dscam014@#1;
+   eaCtaBanco = #dscam014@#10;
+   |CIERRA #dscam014@;
+|FPRC;

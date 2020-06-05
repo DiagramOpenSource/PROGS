@@ -1,0 +1,173 @@
+     i_escand y i_escank ' SON IGUALES, SI SE MODIFICA MODIFICAR AMBOS '
+
+
+    (!OJO! este proceso ABRE y CIERRA el 'agifa049')
+
+Proceso 'DesglosaEscan'   (proceso de llamada)
+     aEscan = Escandallo a desglosar
+     nCantiEscan = Unidades
+     nMaxNivel = Nivel maximo de desglose (no asignar para desglose completo)
+
+Proceso 'LinEscan'        (proceso llamado por cada articulo del escandallo)
+     aEscan = Articulo o escandallo
+     nCantiEscan = Unidades
+     nNivelEscan = Nivel del escandallo
+     (debe estar definido en el calculo que llama a 'DesglosaEscan'
+-----------------------------------------------------------------
+|FICHEROS;
+     agifa053@ #400;  || Usado como temporal de comprobacion
+     agifa049 #401;  || Escandallo lineas
+     agifa142;
+     refere48@;
+|FIN;
+
+|VARIABLES;
+     &enSwResta = 0;
+     nNivelAnt = 0;
+     nSali = 0;
+     aResta = "";
+     nSwVenta = 0;  ||Desglose de ventas
+     nOk = 0;
+     aTempo400 = "";
+     ||------------------------Variables de Comunicacion
+     nMaxNivel      = 100;  || Nivel maximo que desglosa
+     aEscan         = "";   || Escandallo
+     nCantiEscan    = 0;    || Cantidad
+     nAlmaEscan     = 0;    || Almacen
+     ||--------------------------------------------
+
+ {100}E             = "";
+ {100}L             = 0;
+ {100}C             = 0;
+ {100}U             = 0;
+     nNivelEscan    = 0;
+     nLinEscan      = 0;
+     aFicheroTMP    = "";
+     aAlfaEscan     = "";
+|FIN;
+
+|PROCESO DesglosaEscan;
+     |DDEF aAlfaEscan;
+     aAlfaEscan = aAlfaEscan + "agifa053";
+     |CARGA_DEF aAlfaEscan, agifa053@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'agifa053' en desglose escandallo";
+          |ACABA;
+     |FINSI;
+     |DDEF aAlfaEscan;
+     aAlfaEscan = aAlfaEscan + "agifa048";
+     |CARGA_DEF aAlfaEscan, refere48@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'agifa048' en desglose escandallo";
+          |DESCARGA_DEF #agifa053@;
+          |ACABA;
+     |FINSI;
+     |ABRE #refere48@;
+
+     |ABRE #agifa142; |LEE 000#agifa142.p; |CIERRA #agifa142;
+
+     |HAZ CreaTempo; aTempo400 = Tempo;
+     |NOME_DAT #400 aTempo400; |DELINDEX #400;
+     |ABRE #400;
+     |ABRE #401;
+
+     #400#0 = aEscan;
+     |GRABA 020#400n;
+     IE = E1<-;
+     IL = L1<-;
+     IC = C1<-;
+     IU = U1<-;
+     nNivelEscan = 0;
+     nLinEscan = 1;
+ |ET OtroEscan;
+     #401#0 = aEscan;
+     #401#1 = nLinEscan;
+     |LEE 000#401];
+
+     nSali = FSalida;
+     |DDEFECTO #refere48@;
+     #refere48@#0 = #401#0;
+     |LEE 000#refere48@.=;
+     aResta = #refere48@#35;
+     FSalida = nSali;
+
+     |SI FSalida = 0; |Y #agifa142#12 = "X"; |Y nSwVenta = 1;
+          |SI #refere48@#33 = "N";
+               nOk = 1;
+          |SINO;
+               nOk = 0;
+          |FINSI;
+     |SINO;
+          nOk = 0;
+     |FINSI;
+
+     nNivelAnt = nMaxNivel;
+     |SI enSwResta = 0;     || la carga el agifa090
+          |SI aResta = "S"; nMaxNivel = 999; |FINSI;
+     |FINSI;
+
+     |SI FSalida = 0; |Y #401#0 = aEscan; |Y nOk = 0; |Y nNivelEscan < nMaxNivel;
+          nMaxNivel = nNivelAnt;
+          E = #401#0;
+          L = #401#1;
+          C = #401#4;
+          U = nCantiEscan;
+          |SI #agifa142#165 = "S";
+               |SI #401#16 = "D";
+                    C = #401#4 > #401#13;
+               |SINO;
+                    C = #401#4 / ((100 - #401#13) / 100) ;
+               |FINSI;
+          |FINSI;
+          nCantiEscan = nCantiEscan * C;
+          nLinEscan = 1;
+          aEscan = #401#2;
+          nAlmaEscan = #401#9;
+          nNivelEscan = nNivelEscan + 1;
+          IE = IE + 1;
+          IL = IL + 1;
+          IC = IC + 1;
+          IU = IU + 1;
+          ||---------------------------------
+          |HAZ LinEscan;
+          ||---------------------------------
+          #400#0 = #401#2;
+          |GRABA 000#400n;
+          |SI FSalida = 100;
+               aAlfaEscan = "0000ESCANDALLO INCORRECTO...";
+               aAlfaEscan = aAlfaEscan + &13 + "Escandallo:" + #401#0;
+               aAlfaEscan = aAlfaEscan + &13 + "Componente:" + #401#2;
+               |MENAV aAlfaEscan;
+          |SINO;
+               |VETE OtroEscan;
+          |FINSI;
+     |SINO;
+          nMaxNivel = nNivelAnt;
+          #400#0 = aEscan;
+          |BORRA 020#400c;
+          |SI nNivelEscan > 0;
+               IE = IE - 1;
+               IL = IL - 1;
+               IC = IC - 1;
+               IU = IU - 1;
+               |SI C = 0;
+                    nCantiEscan = U;
+               |SINO;
+                    nCantiEscan = nCantiEscan / C;
+               |FINSI;
+
+               nNivelEscan = nNivelEscan - 1;
+               nLinEscan = L + 1;                || Siguiente Linea
+               aEscan = E;
+               |VETE OtroEscan;
+          |FINSI;
+     |FINSI;
+     |CIERRA #401;
+||--------------------------- Borra Tmp;
+     |CIERRA #400;
+     |DELINDEX #400; Tempo = aTempo400; |HAZ BoraTempo;
+
+     |CIERRA #refere48@;
+     |DESCARGA_DEF #refere48@;
+     |DESCARGA_DEF #agifa053@;
+|FPRC;

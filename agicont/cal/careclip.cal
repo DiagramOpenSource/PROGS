@@ -1,0 +1,163 @@
+|FICHEROS;
+    careclip #0;
+    caivarep #1;    || iva repercutido
+    caivasop #2;    || iva soportado
+    cacuenta #4;    || Cuentas
+    caclipro #18;   || Clientes y Proveedores
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    alfa1  = "";
+    sw     = 0;
+    cuenta = "";
+    digito = 0;
+    nombre = "";
+    nif    = "";
+    x      = 0;
+    long = "  ";
+    cta  = 0;
+    cont = 0;
+    men2  = "     Longitud de Cuenta Fuera de Nivel !";
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE puntos_i;
+
+____________________________________/ CALCULOS DESDE PANTALLA
+|PROCESO mayus; |TIPO 0;
+  #0Campo = #0Campo > #0Campo;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO def_fec; |TIPO 7;
+    #0#5 = fec1;    |PINTA #0#5;
+    #0#6 = fec2;    |PINTA #0#6;
+|FPRC;
+
+|PROCESO cuenta;|TIPO 6;
+ p_alfa1 = #0Campo;
+ salidas = FSalida;
+ |HAZ punto;
+ |SI p_error ! 0;  |ERROR;  |ACABA;  |FINSI;
+    x    = Campo + 2;
+    cta  = #0Campo;
+    long = cta % A0;
+    cont = 0;
+    sw = 0;
+|SI long = #30#14; sw = 1; #0x = 1; |FINSI;
+|SI long = #30#15; sw = 1; #0x = 2; |FINSI;
+|SI long = #30#16; sw = 1; #0x = 3; |FINSI;
+|SI long = #30#17; sw = 1; #0x = 4; |FINSI;
+|SI long = #30#18; sw = 1; #0x = 5; |FINSI;
+|SI long = #30#19; sw = 1; #0x = 6; |FINSI;
+|SI sw = 0;
+    |MENAV men2;
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|| **************************************************************************
+|PROCESO leyendo;
+ sw = 0;
+ nombre = "";
+ nif = "";
+ || ................................................
+  #18#23 = "C";
+  #18#10 = cuenta;
+  #18#11 = digito;
+  |LEE 001#18=;
+  |SI FSalida = 0;
+      nombre = #18#1;        || nombre del cliente
+      nif    = #18#9;
+  |SINO;
+      #18#23 = "P";
+      #18#10 = cuenta;
+      #18#11 = digito;
+      |LEE 001#18=;
+      |SI FSalida ! 0;
+          |DDEFECTO #18;
+          |HAZ lee_cuent;
+          nombre = #4#2;         || nombre de la cuenta
+          sw     = 1;
+      |SINO;
+          nombre = #18#1;        || nombre del proveedor
+          nif    = #18#9;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO lee_cuent;
+ |ABRET #4;
+    #4#0 = cuenta;
+    #4#1 = digito;
+    |LEE 001#4=;
+    |SI FSalida ! 0;
+        |DDEFECTO #4;
+    |FINSI;
+ |CIERRAT #4;
+|FPRC;
+
+|| **************************************************************************
+|PROCESO lee_sopor1;
+ |ATRI I;
+ alfa1 = #2#0;   alfa1 = ("00" + alfa1) % -102;     |PINTA 2238, alfa1;
+ alfa1 = #2#2;   alfa1 = ("000000" + alfa1) % -106; |PINTA 2241, alfa1;
+ |ATRI 0;
+ cuenta = #2#4;
+ digito = #2#5;
+ |HAZ leyendo;
+|| ... |SI sw = 0;
+     #2#50 = nombre;
+     #2#51 = nif;
+     |GRABA 020#2a;
+     |LIBERA #2;
+|| ... |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_sopor;
+ #2#1;
+ 3,4;
+ #0#1, #0#12, #0#3, #0#5, #0#8;
+ #0#2, #0#13, #0#4, #0#6, #0#9;
+ be;
+ NULL, lee_sopor1;
+|FIN;
+
+|PROCESO lee_reper1;
+ |ATRI I;
+ alfa1 = #1#0;   alfa1 = ("00" + alfa1) % -102;     |PINTA 2238, alfa1;
+ alfa1 = #1#2;   alfa1 = ("000000" + alfa1) % -106; |PINTA 2241, alfa1;
+ alfa1 = #1#27;                                     |PINTA 2248, alfa1;
+ |ATRI 0;
+ cuenta = #1#4;
+ digito = #1#5;
+ |HAZ leyendo;
+|| ... |SI sw = 0;
+     #1#50 = nombre;
+     #1#51 = nif;
+     |GRABA 020#1a;
+     |LIBERA #1;
+|| ... |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_reper;
+ #1#1;
+ 3,4;
+ #0#1, #0#12, #0#3, #0#5, #0#8;
+ #0#2, #0#13, #0#4, #0#6, #0#9;
+ be;
+ NULL, lee_reper1;
+|FIN;
+|| **************************************************************************
+
+|PROCESO tipo3; |TIPO 3;
+ |SI #0#7 = "SI";
+    |ABRE #18;
+
+    |SI #0#0 ! "S"; |BUCLE lee_reper; |FINSI;
+    |SI #0#0 ! "R"; |BUCLE lee_sopor; |FINSI;
+
+    |CIERRA #18;
+ |FINSI;
+|FPRC;

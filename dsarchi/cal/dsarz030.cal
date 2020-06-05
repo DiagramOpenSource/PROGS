@@ -1,0 +1,1309 @@
+|| nMaxReintentos .. por ahora 6 reintentos de re-envio correo.
+
+|FICHEROS;
+     dsarz030 #0;
+
+     dsarm001 #1;
+     dsarm005 #5;
+
+     dsarm018 #18;       ||Reglas Automatizacio
+     dsarm019 #19;       ||Reglas. Cond. Campos
+
+     dsarw010 #910;      ||Envio Correos. Conf. DSCORREO
+
+     dsarm020 #20;       ||Registro Eje. Reglas
+
+     dsarm028 #28;       ||Log REGLAS
+
+     flowm006 #506;
+
+     dsarm045 #45;       ||Ctl.Err.Env.Corr.Reg
+|FIN;
+
+|VARIABLES;
+     &enAprobacion = 0;
+     nGuarda = 0;
+     &eaPrograma = "";
+     nSwDsEnviaCorreo = 0;
+     ||dsenviacorreo
+     &eaAdjuntoPLB = "";
+     &eaServidorSMTP = "";
+     &eaUsuarioPLB = "";
+     &eaPassPLB = "";
+     &eaOrigenPLB = "";
+     &eaDestinoPLB = "";
+     &eaDirRespoPLB = "";
+     &eaAsuntoPLB = "";
+     &eaCuerpoPLB = "";
+     &eaConfLecPLB = "";
+     &enSwErrorCorreoPLB = 0;
+     &eaBorraCache1 = "";
+     &eaBorraCache2 = "";
+     aCuerpo = "";
+     nHandleC = 0;
+     aTextoMe = "";
+     aAuxBarra = "";
+     aLong = "";
+     nLong = 0;
+     nVoy = 0;
+     nSaca = 0;
+     aLetra = "";
+
+     aIPLocal = "";
+     nCtrlPend = 0;
+     nMaxReintentos = 0;
+     nHistorico = 0;
+     &enNumRegFlow = 0;
+     &enSituFlow = 0;
+     &eaDesSituFlow = "";
+     aUsuario = "";
+     nLinea = 0;
+     nSitu = 0;
+     aTextoLog = "";
+
+
+     aAuxOri = "";
+
+     aOperacion = "";
+
+     nRegistroAra = 0;
+     aFicUno = "";
+     aFicDos = "";
+
+     aLinea = "";
+     aHora = "";
+     aLog = "";
+     aErr = "";
+
+     aIdImpresion = "";
+     aErrorImp = "";
+     aNomResImp = "";
+
+     &eaFicLogVisor = "";
+     &eaPathLogVisor = "";
+     &eaNomLogVisor = "";
+     &eaDesLogVisor = "";
+
+     aPathPara = "";
+     aAlfa1 = "";
+     aPathPrint = "";
+     &enSwImpUnix = 0;
+     aExtension = "";
+     nUltimo = 0;
+     nSwCorreoOK = 0;
+     aFicLog = "";
+     nHandLog = 0;
+     fLogDia = @;
+     aLogHor = "";
+     aNumRegistro = "";
+     aFichero = "";
+     aRegla = "";
+     aMenLog = "";
+     aTipoLog = "";
+
+     aFicFin = "";
+     aAux = "";
+     aEjecuta = "";
+     nError = 0;
+     aDocDestino = "";
+     aDocOrigen = "";
+
+
+     &eaUnidad = "";
+     aAlfa = "";
+     aIPRemoto = "";
+     {1}aLocal = "";
+     {1}aContiene    = "";
+     aBaseLocal = "";
+     aDestino = "";
+     aVersion1 = "";
+     aVersion2 = "";
+     aBase = "";
+     aOrigen = "";
+     aAbre = "";
+     nHandle = 0;
+     aQueSistema = "";
+     aIP = "";
+     aFrom = "";
+     aSalida = "";
+     aTo = "";
+     &eaAlfa = "";
+     aAsunto = "";
+     aAdjunto = "";
+     aAutenti = "";
+     &enErrorCorreo = 0;
+     aParametro = "";
+
+     aMensaje = "";
+     aValor = "";
+     aValorDos = "";
+     &enSwDesde9 = 0;
+     aImpre = "";
+     aCorreo = "";
+     aCorreo2 = "";
+     aTipoCond = "";
+     nSwHay = 0;
+     nSwContinua = 0;
+     nCampo = 0;
+
+     &eaUnidadBasico = "";
+|FIN;
+
+|PROCESO DameIdImpresion;
+     ||aIdImpresion = "";
+     ||aErrorImp = "";
+
+     |XABRE "U", aErr, nHandle;
+     |SI FSalida ] 0;
+          |XLEE nHandle, 250, aLinea;
+          |SI FSalida > 0;
+               aErrorImp = aLinea;
+          |FINSI;
+          |XCIERRA nHandle;
+     |FINSI;
+
+     |QBF aErrorImp;
+     |SI aErrorImp = "";
+          |XABRE "U", aLog, nHandle;
+          |SI FSalida ] 0;
+               |XLEE nHandle, 250, aLinea;
+               |SI FSalida > 0;
+                    aIdImpresion = aLinea % 25;
+                    aIdImpresion = aIdImpresion - "(1 archivo(s))";
+                    |QBT aIdImpresion;
+               |FINSI;
+               |XCIERRA nHandle;
+          |FINSI;
+     |SINO;
+          aIdImpresion = "ERROR";
+     |FINSI;
+
+     |FBORRA aLog;
+     |FBORRA aErr;
+|FPRC;
+
+|PROCESO CorreoEnUnix;
+     aAlfa = #910#18;  |QBF aAlfa;
+     |SI aAlfa ! aIPRemoto;  |ACABA;  |FINSI;
+
+     |ESPECIFICA "RBASS", aLocal;
+     aBaseLocal = aLocal;
+
+     aDestino   = aBaseLocal + "bin/dscorreo.exe";
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aVersion1  = FSalida;  |QBF aVersion1;
+
+     |DBASE aBase;  |QBF aBase;
+     aOrigen    = aBase + "dlls/dscorreo.exe";
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aVersion2  = FSalida;  |QBF aVersion2;
+
+     |SI aVersion1 ! aVersion2;
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     aAlfa  = "cmd " + &34 + "/c START /MIN " + aDestino + &34;
+     |RSYSTEM aAlfa;
+
+     |MENSA "         ";
+     |PULSATECLA;
+     |SLEEP 1;
+|FPRC;
+
+|PROCESO CorreoEnDos;
+     |SI aIPRemoto ! "";  |ACABA;  |FINSI;
+
+     |IP_LOCAL aIPLocal;
+     |QBF aIPLocal;
+
+     aAlfa = #910#18;  |QBF aAlfa;
+     |SI aAlfa ! aIPLocal;  |ACABA;  |FINSI;
+
+     |DBASE aBase;  |QBF aBase;
+     aOrigen    = aBase + "dlls/dscorreo.exe";
+
+     aAlfa  = "cmd " + &34 + "/c START /MIN " + aOrigen + &34;
+     |SYSTEM aAlfa;
+
+     |MENSA "         ";
+     |PULSATECLA;
+     |SLEEP 1;
+|FPRC;
+
+|PROCESO CargaTexto;
+     aAbre    = aBase + "documentos/correos";  |MKDIR aAbre;
+     aAbre    = aAbre + "/adjunto.txt";
+     |XABRE "WB", aAbre, nHandle;
+
+     aAlfa  = " " + &13 + &10;
+     |XGRABA nHandle, aAlfa;
+
+     eaAlfa  = #18#12;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#13;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#14;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#15;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#16;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#17;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#18;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#19;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#20;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     eaAlfa  = #18#21;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          aAlfa  = eaAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+     aAlfa  = " " + &13 + &10;
+     |XGRABA nHandle, aAlfa;
+
+     eaAlfa  = #18#24;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          nCampo = #18#22;
+          aAlfa = #dsarm005#nCampo#;
+          |QBF aAlfa;
+          aAlfa  = eaAlfa + " " + aAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+
+     eaAlfa  = #18#27;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          nCampo = #18#25;
+          aAlfa = #dsarm005#nCampo#;
+          |QBF aAlfa;
+          aAlfa  = eaAlfa + " " + aAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+
+     eaAlfa  = #18#30;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          nCampo = #18#28;
+          aAlfa = #dsarm005#nCampo#;
+          |QBF aAlfa;
+          aAlfa  = eaAlfa + " " + aAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+
+     eaAlfa  = #18#33;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          nCampo = #18#31;
+          aAlfa = #dsarm005#nCampo#;
+          |QBF aAlfa;
+          aAlfa  = eaAlfa + " " + aAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+
+     eaAlfa  = #18#36;
+     |QBF eaAlfa;
+     |SI eaAlfa ! "";
+          nCampo = #18#34;
+          aAlfa = #dsarm005#nCampo#;
+          |QBF aAlfa;
+          aAlfa  = eaAlfa + " " + aAlfa + &13 + &10;
+          |XGRABA nHandle, aAlfa;
+     |FINSI;
+
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO MandaCorreo;
+     |SI aQueSistema = "ESDOS";
+         |HAZ CorreoEnDos;
+         |SI aIPRemoto ! "";
+             |HAZ CorreoEnUnix;
+         |FINSI;
+     |SINO;
+          |HAZ CorreoEnUnix;
+     |FINSI;
+
+     aIP = #910#18;  |QBF aIP;
+
+     aFrom    = #910#1;   |QBF aFrom;
+     aSalida  = #910#19;  |QBF aSalida;
+
+     aTo      = aCorreo;  |QBF aTo;
+     eaAlfa   = #18#37;  |HAZ QuitaRarosCorreo;
+     aAsunto  = eaAlfa;   |QBF aAsunto;
+     aMensaje = "";
+
+     |HAZ CargaTexto;
+     aMensaje = "$$$$" + aAbre;
+
+     |HAZ LeeUnidadBasico;
+     eaUnidad = eaUnidadBasico;
+
+     |HAZ DimeUnidad;
+
+     aOrigen = #dsarm005#7;
+     |QBF aOrigen;
+     aOrigen = aOrigen + #dsarm005#9;
+     |QBF aOrigen;
+
+     |DBASE aBase;  |QBF aBase;
+     aDestino = aBase + "correos";
+     |MKDIR aDestino;
+     aDestino = aDestino + "/" + #5#9;
+     |QBF aDestino;
+
+     |SI #1#7 = "N";
+         |COPIA_FICHERO aOrigen, aDestino;
+     |SINO;
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBF aIPRemoto;
+         |SI aIPRemoto ! "";
+             |RECIBE_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     aAdjunto = aDestino;
+
+     |SI #910#20 = "N";
+          aAutenti = aFrom;
+     |SINO;
+          aAutenti = #910#22;
+          |QBF aAutenti;
+          aAutenti = aAutenti + ":" + #910#21;
+          |QBF aAutenti;
+          aAutenti = aAutenti + ":" + aFrom;
+     |FINSI;
+
+     |DSCORREO_ENVIA aIP, aSalida, aAutenti, aTo, aAsunto, aMensaje, aAdjunto;
+     |SI FSalida < 0;
+         nSwCorreoOK = 0;
+         |HAZ MeteLog;
+         enErrorCorreo = 1;
+
+         |SI nCtrlPend = 0;
+              aMensaje = "0000Ha habido un error durante el envio. Reglas Documento: " + #dsarm005#0;
+              |QBF aMensaje;
+              |MENAV aMensaje;
+         |FINSI;
+     |SINO;
+         nSwCorreoOK = 1;
+         |HAZ MeteLog;
+
+         enErrorCorreo = 0;
+/*
+         |SI aParametro = "";
+              |MENAV "0000 El correo se ha enviado correctamente.";
+         |FINSI;
+*/
+     |FINSI;
+|FPRC;
+
+
+|PROCESO EnvioCorreo;
+     aMensaje = "0000Enviar CORREO. Regla: " + #dsarm018#0;
+     ||MENAV aMensaje;
+     |ABRE #910;
+     |LEE 000#910p;
+
+     aAuxOri = #910#33;
+     |QBF aAuxOri;
+     |SI aAuxOri ! "";
+          #910#1 = #910#33;
+          #910#18 = #910#34;
+          #910#19 = #910#35;
+          #910#20 = #910#36;
+          #910#21 = #910#37;
+          #910#22 = #910#38;
+     |FINSI;
+
+     |SI nSwDsEnviaCorreo = 1;
+          |HAZ DsEnviaCorreo;
+     |SINO;
+          |HAZ MandaCorreo;
+     |FINSI;
+     |CIERRA #910;
+|FPRC;
+
+|PROCESO QuitaBarras;
+     aAuxBarra = "";
+     |QBF aBase;
+     aLong = aBase % A0;
+     nLong = aLong;
+     |PARA nVoy = 1; |SI nVoy [ nLong; |HACIENDO nVoy = nVoy + 1;
+          nSaca = (nVoy * 100) + 1;
+          aLetra = aBase % nSaca;
+          |SI aLetra = "/";  |O aLetra = "\";
+               aLetra = "_";
+          |FINSI;
+          aAuxBarra = aAuxBarra + aLetra;
+
+          |SI aLetra = ":";
+              aAuxBarra = "";
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO DsEnviaCorreo;
+     ||ARA11
+     ||CARGA VARIABLES
+     ||EJECUTA DSEnviaCorreoPLB
+
+     aIP = #910#19;  |QBF aIP;
+     eaServidorSMTP = aIP;
+     eaPassPLB = #910#22;
+     eaUsuarioPLB = #910#21;
+
+     eaAlfa   = #18#37;  |HAZ QuitaRarosCorreo;
+     aAsunto  = eaAlfa;   |QBF aAsunto;
+
+     aMensaje = "";
+     |HAZ CargaTexto;
+     aMensaje = aAbre;
+     aCuerpo = aAbre;
+
+     |HAZ LeeUnidadBasico;
+     eaUnidad = eaUnidadBasico;
+
+     |HAZ DimeUnidad;
+
+     aOrigen = #dsarm005#7;
+     |QBF aOrigen;
+     aOrigen = aOrigen + #dsarm005#9;
+     |QBF aOrigen;
+
+     |DBASE aBase;  |QBF aBase;
+     aDestino = aBase + "correos";
+     |MKDIR aDestino;
+     aDestino = aDestino + "/" + #5#9;
+     |QBF aDestino;
+
+     |SI #1#7 = "N";
+         |COPIA_FICHERO aOrigen, aDestino;
+     |SINO;
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBF aIPRemoto;
+         |SI aIPRemoto ! "";
+             |RECIBE_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     aAdjunto = aDestino;
+     eaAdjuntoPLB = aAdjunto;
+
+     aFrom    = #910#1;   |QBF aFrom;
+     eaOrigenPLB = aFrom;
+     eaDirRespoPLB = eaOrigenPLB;
+
+     aTo      = aCorreo;
+     |QBF aTo;
+     eaDestinoPLB = aTo;
+
+     |DBASE aBase;  |QBF aBase;
+     |HAZ QuitaBarras;
+
+/*
+     aMensaje = "";
+     |DBASE aBase;
+     |QBF aBase;
+     aCuerpo = aBase + "documentos";  |MKDIR aCuerpo;
+     aCuerpo = aBase + "documentos/correos";  |MKDIR aCuerpo;
+     aCuerpo = aCuerpo + "/cuerpo" + (("000000000" + #5#0) % -109) + ".txt";
+     |XABRE "WB", aCuerpo, nHandleC;
+     |SI FSalida ] 0;
+          aAlfa = eaAlfa + &13 + &10;
+          |XGRABA nHandleC, aAlfa;
+
+          aAlfa = "" + &13 + &10;
+          |XGRABA nHandleC, aAlfa;
+
+          |XCIERRA nHandleC;
+     |SINO;
+          aMensaje = eaAlfa;
+          aTextoMe = "0000Error al generar " + aCuerpo;
+          |MENAV aTextoMe;
+     |FINSI;
+*/
+
+
+     |SI #910#23 = "S";
+          eaConfLecPLB = "S";
+     |SINO;
+          eaConfLecPLB = "N";
+     |FINSI;
+     eaAsuntoPLB = aAsunto;
+     eaCuerpoPLB = aCuerpo;
+
+     enSwErrorCorreoPLB = 0;
+     |HAZ DSEnviaCorreoPLB;
+
+     |SI enSwErrorCorreoPLB = 1;
+          aMensaje = "0000Error al enviar el correo. [dsenviacorreo]";
+          |MENAV aMensaje;
+     |FINSI;
+
+     |SI #dsarm001#181 = "S";
+          |QBF eaBorraCache1;
+          |SI eaBorraCache1 ! "";
+               |RFBORRA eaBorraCache1;
+          |FINSI;
+          |QBF eaBorraCache2;
+          |SI eaBorraCache2 ! "";
+               |RFBORRA eaBorraCache2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO TraeteDSPrint;
+     |DBASE aBase;
+     |QBF aBase;
+
+     nError = 0;
+
+     aOrigen = aBase + "dlls/dsprint.exe";
+     |XABRE "E", aOrigen, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     |HAZ LeeUnidadBasico;
+     eaUnidad = eaUnidadBasico;
+
+     |HAZ DimeUnidad;
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSARCHI\dsprint.exe";
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocDestino = FSalida;  |QBF aDocDestino;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocOrigen = FSalida;  |QBF aDocOrigen;
+
+     |SI aDocDestino ! aDocOrigen;  |O aDocDestino = "";
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+
+     aAlfa = eaUnidad + ":\DOCUMENTOS\DSARCHI\dsprint.exe";
+     |XABRE "EC", aAlfa, nHandle;
+     |SI FSalida < 0;
+         |MENAV "0000 No puedo instalar el dsprint.exe";
+         nError = 1;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO ImpresionUnix;
+     |DBASE aBase;
+     |QBF aBase;
+     aPathPrint = aBase + "dlls/dsprint.sh";
+     ||Usaremos el dsprint.sh
+
+     ||Es el tercer parametro
+     aPathPara = aBase + "dlls";
+
+     ||Primero le damos permisos
+     aEjecuta = "chmod 755 " + aPathPrint;
+     |SYSTEM aEjecuta;
+
+     aOrigen = #dsarm005#7;
+     |QBF aOrigen;
+     aOrigen = aOrigen + #dsarm005#9;
+     |QBF aOrigen;
+
+
+     |HORA aHora;
+     |QBF aHora;
+     aHora = aHora - ":" - ":";
+
+     aNomResImp = aPathPara + "/" + Usuario;
+     |QBF aNomResImp;
+     aNomResImp = aNomResImp + aHora;
+     aLog = aNomResImp + ".log";
+     aErr = aNomResImp + ".err";
+
+     |FBORRA aLog;
+     |FBORRA aErr;
+
+     aEjecuta = aPathPrint + " " + aImpre + " " + aOrigen + " " + aPathPara + " > " + aLog + " 2> " + aErr;
+     |SYSTEM aEjecuta;
+
+     |SLEEP 1;
+|FPRC;
+
+
+|PROCESO Impresion;
+     |HAZ TraeteDSPrint;
+
+     ||Traerme el dsprint.exe
+     ||Creo por si no existe el directorio \ds\dspdf\documentos\
+
+     |HAZ LeeUnidadBasico;
+
+     aAux = eaUnidadBasico + "\ds\";
+     |RMKDIR aAux;
+     aAux = eaUnidadBasico + "\ds\dspdf\";
+     |RMKDIR aAux;
+     aAux = eaUnidadBasico + "\ds\dspdf\documentos\";
+     |RMKDIR aAux;
+
+     ||Me traigo el documento
+
+     |HAZ LeeUnidadBasico;
+     eaUnidad = eaUnidadBasico;
+
+     |HAZ DimeUnidad;
+
+     aOrigen = #dsarm005#7;
+     |QBF aOrigen;
+     aOrigen = aOrigen + #dsarm005#9;
+     |QBF aOrigen;
+     aDestino = eaUnidad + ":\DOCUMENTOS\DSARCHI\" + #dsarm005#9;
+     |QBF aDestino;
+
+     |SI #1#7 = "N";
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |SINO;
+         |RCOPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+
+     aAbre = eaUnidad + ":\DOCUMENTOS\DSARCHI\dsprint.ini";
+     |RFBORRA aAbre;
+
+     aAux = aImpre;
+     |QBT aAux;
+     |SI aAux = aImpre;       ||El nombre de la impresora NO tiene espacios en blanco.
+          ||Ejecuto el dsprint.exe, pasandole la impresora
+          aEjecuta = eaUnidad + ":\DOCUMENTOS\DSARCHI\dsprint.exe";
+          aEjecuta = aEjecuta + " " + aDestino + " ";
+          aEjecuta = aEjecuta + &34 + aImpre + &34;
+     |SINO;
+          ||Creo el dsprint.ini
+          aAbre = eaUnidad + ":\DOCUMENTOS\DSARCHI\dsprint.ini";
+          |XABRE "WC", aAbre, nHandle;
+          |SI FSalida < 0;
+               ||Ejecuto el dsprint.exe, pasandole la impresora
+               aEjecuta = eaUnidad + ":\DOCUMENTOS\DSARCHI\dsprint.exe";
+               aEjecuta = aEjecuta + " " + aDestino + " ";
+               aEjecuta = aEjecuta + &34 + aImpre + &34;
+          |SINO;
+               |XGRABA nHandle, aImpre;
+               |XCIERRA nHandle;
+               aEjecuta = eaUnidad + ":\DOCUMENTOS\DSARCHI\dsprint.exe";
+               aEjecuta = aEjecuta + " " + aDestino;
+          |FINSI;
+     |FINSI;
+     |RSYSTEM aEjecuta;
+
+
+     aExtension = (aDestino % -104) > "";
+     aAlfa1 = aExtension % 101;
+     |SI aAlfa1 ! ".";
+         aExtension = (aDestino % -105) > "";
+     |FINSI;
+     |SI aExtension ! ".DOC";      ||Cuando dsprinto documentos Word, no me crea el "fin.txt"
+          ||TODO CCC.
+          ||Aqui falta el control del "Fin.txt"
+
+          aFicFin = eaUnidadBasico + "\ds\dspdf\documentos\fin.txt";
+          |PARA;  |SI;  |HACIENDO;
+               |XABRE "EC", aFicFin, nHandle;
+               |SI FSalida ] 0;
+                    |SAL;
+               |FINSI;
+               |SLEEP 1;
+               |PULSATECLA;
+          |SIGUE;
+     |SINO;
+          |SLEEP 1;
+          |SLEEP 1;
+          |SLEEP 1;
+          |SLEEP 1;
+          |SLEEP 1;
+     |FINSI;
+     |RFBORRA aFicFin;
+
+     |SLEEP 1;
+|FPRC;
+
+|PROCESO dsarm019;
+     nSwHay = nSwHay + 1;
+
+     nCampo = #dsarm019#1;
+
+     aValor = #dsarm005#nCampo#;
+     |QBF aValor;
+
+     aValorDos = #dsarm019#3;
+     |QBF aValorDos;
+
+     aOperacion = #dsarm019#5;
+     |QBF aOperacion;
+     |SI aOperacion = "=";
+          |SI aValor = aValorDos;
+               nSwContinua = 1;
+               |SI aTipoCond = "O";
+                    |ERROR10;
+               |FINSI;
+          |SINO;
+               |SI aTipoCond = "Y";
+                    nSwContinua = 0;
+                    |ERROR10;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI aOperacion = "!";
+          |SI aValor ! aValorDos;
+               nSwContinua = 1;
+               |SI aTipoCond = "O";
+                    |ERROR10;
+               |FINSI;
+          |SINO;
+               |SI aTipoCond = "Y";
+                    nSwContinua = 0;
+                    |ERROR10;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI aOperacion = ">";
+          |SI aValor > aValorDos;
+               nSwContinua = 1;
+               |SI aTipoCond = "O";
+                    |ERROR10;
+               |FINSI;
+          |SINO;
+               |SI aTipoCond = "Y";
+                    nSwContinua = 0;
+                    |ERROR10;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI aOperacion = "<";
+          |SI aValor < aValorDos;
+               nSwContinua = 1;
+               |SI aTipoCond = "O";
+                    |ERROR10;
+               |FINSI;
+          |SINO;
+               |SI aTipoCond = "Y";
+                    nSwContinua = 0;
+                    |ERROR10;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI aOperacion = ">=";
+          |SI aValor ] aValorDos;
+               nSwContinua = 1;
+               |SI aTipoCond = "O";
+                    |ERROR10;
+               |FINSI;
+          |SINO;
+               |SI aTipoCond = "Y";
+                    nSwContinua = 0;
+                    |ERROR10;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI aOperacion = "<=";
+          |SI aValor [ aValorDos;
+               nSwContinua = 1;
+               |SI aTipoCond = "O";
+                    |ERROR10;
+               |FINSI;
+          |SINO;
+               |SI aTipoCond = "Y";
+                    nSwContinua = 0;
+                    |ERROR10;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsarm019;
+ #dsarm019#1;
+ ;
+ #dsarm018#0, 0001;
+ #dsarm018#0, 9999;
+ ;
+ NULL, dsarm019;
+|FIN;
+
+|PROCESO MeteLog;
+
+     fLogDia = ~;
+     |HORA aLogHor;
+
+     |XABRE "A", aFicLog, nHandLog;
+     |SI FSalida ] 0;
+          aNumRegistro = ("000000000" + #dsarm005#0 ) % -109;
+          aFichero = #dsarm005#9;
+          |QBF aFichero;
+          aRegla = ("00" + #dsarm018#0) % -102;
+          aMenLog = fLogDia + "#" + aLogHor + " Num.Registro: " + aNumRegistro + " " + aFichero + " Regla: " + aRegla;
+
+          nHistorico = 0;
+          |SI aTipoLog = "CORREO";
+               aMenLog = aMenLog + " " + "CORREO: " + aCorreo;
+               |QBF aMenLog;
+
+               |SI nSwCorreoOK = 1;
+                    nHistorico = 1;
+                    aMenLog = aMenLog + " " + "Envio CORRECTO";
+               |SINO;
+                    aMenLog = aMenLog + " " + "ERROR Envio";
+               |FINSI;
+
+               ||ARA33
+               ||nCtrlPend
+               |SI nCtrlPend = 1;
+                    |SI nSwCorreoOK = 1;
+                         #dsarm045#3 = "N";
+                         |GRABA 020#dsarm045.a;
+                    |SINO;
+                         #dsarm045#2 = #dsarm045#2 + 1;
+                         |SI #dsarm045#2 > nMaxReintentos;
+                              #dsarm045#3 = "N";
+                         |FINSI;
+                         |GRABA 020#dsarm045.a;
+                    |FINSI;
+               |SINO;
+                    |ABRE #dsarm045;
+                    |DDEFECTO #dsarm045;
+                    #dsarm045#0 = #dsarm005#0;
+                    #dsarm045#1 = #dsarm018#0;
+                    |LEE 000#dsarm045.=;
+                    |SI FSalida = 0;
+                         |SI nSwCorreoOK = 1;
+                              #dsarm045#0 = #dsarm005#0;
+                              #dsarm045#1 = #dsarm018#0;
+                              |LEE 101#dsarm045.=;
+                              |SI FSalida = 0;
+                                   #dsarm045#3 = "N";
+                                   |GRABA 020#dsarm045.a;
+                              |FINSI;
+                              |LIBERA #dsarm045;
+                         |SINO;
+                              #dsarm045#0 = #dsarm005#0;
+                              #dsarm045#1 = #dsarm018#0;
+                              |LEE 101#dsarm045.=;
+                              |SI FSalida = 0;
+                                   #dsarm045#2 = #dsarm045#2 + 1;
+                                   |SI #dsarm045#2 > nMaxReintentos;
+                                        #dsarm045#3 = "N";
+                                   |FINSI;
+                                   |GRABA 020#dsarm045.a;
+                              |FINSI;
+                              |LIBERA #dsarm045;
+                         |FINSI;
+                    |SINO;
+                         |SI nSwCorreoOK = 1;
+                              ||OKIE .. TODO CORRECTO.
+                         |SINO;
+                              #dsarm045#0 = #dsarm005#0;
+                              #dsarm045#1 = #dsarm018#0;
+                              |LEE 101#dsarm045.=;
+                              |SI FSalida ! 0;
+                                   |GRABA 020#dsarm045.n;
+                              |FINSI;
+                              |LIBERA #dsarm045;
+                         |FINSI;
+                    |FINSI;
+                    |CIERRA #dsarm045;
+               |FINSI;
+               ||ARA33
+          |SINO;
+               nHistorico = 1;
+               aMenLog = aMenLog + " " + "IMPRESORA: " + #dsarm018#10;
+               |QBF aMenLog;
+          |FINSI;
+
+          |XGRABA nHandLog, aMenLog;
+          |XCIERRA nHandLog;
+
+          |SI nHistorico = 1;
+               ||Historico
+               |HORA aHora;
+               aUsuario = Usuario % 810;
+               |ABRE #flowm006;
+               #flowm006#0  = #dsarm005#0;
+               #flowm006#1  = 99999;
+               |LEE 000#flowm006.];
+               |SI FSalida = 0;
+                    |LEE 000#flowm006.a;
+               |SINO;
+                    |LEE 000#flowm006.u;
+               |FINSI;
+               |SI FSalida = 0; |Y #flowm006#0  = #dsarm005#0;
+                    nLinea = #flowm006#1 + 1;
+                    nSitu = #flowm006#2;
+               |SINO;
+                    nSitu = 0;
+                    nLinea = 1;
+               |FINSI;
+               |DDEFECTO #flowm006;
+               #flowm006#0  = #dsarm005#0;
+               #flowm006#1  = nLinea;
+               |LEE 101#flowm006.=;
+               |SI FSalida ! 0; |GRABA 020#flowm006.b; |FINSI;
+               #flowm006#2  = nSitu;
+               #flowm006#3  = ~;
+               #flowm006#4  = aHora;
+               #flowm006#5  = aUsuario;
+
+               |SI aTipoLog = "CORREO";
+                    |SI nSwCorreoOK = 1;
+                         aTextoLog = "REGLAS:ENV.CORREO: " + aCorreo;
+                         |QBF aTextoLog;
+                         #flowm006#6 = aTextoLog;
+                    |FINSI;
+               |SINO;
+                    aTextoLog = "REGLAS: ENVIADO A IMPRESORA " + #dsarm018#10;
+                    |QBF aTextoLog;
+                    #flowm006#6 = aTextoLog;
+               |FINSI;
+
+               enNumRegFlow = #flowm006#0;
+               enSituFlow = #flowm006#2;
+               |HAZ DimeDesFlow;
+               #flowm006#7 = eaDesSituFlow;
+               |GRABA 020#flowm006.a;
+               |LIBERA #flowm006;
+               |CIERRA #flowm006;
+          |FINSI;
+
+          |ABRE #dsarm028;
+          |LEE 000#dsarm028.u;
+          |SI FSalida = 0;
+               nUltimo = #dsarm028#0 + 1;
+
+               nRegistroAra = aNumRegistro;
+               |SI #dsarm028#3 = nRegistroAra;
+                    aFicUno = #dsarm028#4;
+                    aFicDos = aFichero;
+                    |QBF aFicUno;
+                    |QBF aFicDos;
+                    |SI aFicUno = aFicDos;
+                         nUltimo = #dsarm028#0;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               nUltimo = 1;
+          |FINSI;
+
+          |DDEFECTO #dsarm028;
+          #dsarm028#0 = nUltimo;
+          |LEE 101#dsarm028.=;
+          |SI FSalida ! 0; |GRABA 020#dsarm028.b; |FINSI;
+          #dsarm028#1 = fLogDia;
+          #dsarm028#2 = aLogHor;
+          #dsarm028#3 = aNumRegistro;
+          #dsarm028#4 = aFichero;
+          #dsarm028#5 = aRegla;
+          #dsarm028#6 = #dsarm018#1;
+          |SI aTipoLog = "CORREO";
+               #dsarm028#7 = aCorreo;
+               |SI nSwCorreoOK = 1;
+                    #dsarm028#8 = "CORRECTO";
+               |SINO;
+                    #dsarm028#8 = "ERROR";
+               |FINSI;
+          |SINO;
+               #dsarm028#9 = #dsarm018#10;
+
+               |SI enSwImpUnix = 1;
+                    aIdImpresion = "";
+                    aErrorImp = "";
+                    |HAZ DameIdImpresion;
+                    |SI aIdImpresion = "ERROR";
+                         #dsarm028#10 = "ERROR";
+                         #dsarm028#12 = aErrorImp;
+                    |SINO;
+                         #dsarm028#10 = "PENDIENTE";
+                         #dsarm028#11 = aIdImpresion;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |GRABA 020#dsarm028.a;
+          |LIBERA #dsarm028;
+          |CIERRA #dsarm028;
+     |FINSI;
+
+     |ABRE #dsarm020;
+     |LEE 000#dsarm020.u;
+     |SI FSalida = 0;
+          nUltimo = #dsarm020#0 + 1;
+     |SINO;
+          nUltimo = 1;
+     |FINSI;
+
+     |DDEFECTO #dsarm020;
+     #dsarm020#0 = nUltimo;
+     |LEE 101#dsarm020.=;
+     |SI FSalida ! 0; |GRABA 020#dsarm020.b; |FINSI;
+     #dsarm020#1 = fLogDia;
+     #dsarm020#2 = aLogHor;
+     #dsarm020#3 = #dsarm005#0;
+     #dsarm020#4 = #dsarm005#9;
+     #dsarm020#5 = #dsarm018#0;
+     #dsarm020#6 = #dsarm018#1;
+     |SI aTipoLog = "CORREO";
+          #dsarm020#7 = "C";
+          #dsarm020#9 = aCorreo;
+          |SI nSwCorreoOK = 1;
+               #dsarm020#10 = "Envio CORRECTO";
+          |SINO;
+               #dsarm020#10 = "ERROR Envio";
+          |FINSI;
+     |SINO;
+          #dsarm020#7 = "I";
+          #dsarm020#8 = #dsarm018#10;
+     |FINSI;
+     |GRABA 020#dsarm020.a;
+     |LIBERA #dsarm020;
+     |CIERRA #dsarm020;
+|FPRC;
+
+|PROCESO dsarm018;
+     aImpre = #dsarm018#10;
+     |QBF aImpre;
+     aCorreo = #dsarm018#11;
+     |QBF aCorreo;
+     aCorreo2 = #dsarm018#38;
+     |QBF aCorreo2;
+     |SI aImpre = ""; |Y aCorreo = ""; |Y aCorreo2 = "";
+          |ACABA;
+     |FINSI;
+
+     |SI #dsarm018#9 = "Y";
+          aTipoCond = "Y";
+     |SINO;
+          aTipoCond = "O";
+     |FINSI;
+
+     |SI #dsarm005#1 ! #dsarm018#3; |O #dsarm005#2 ! #dsarm018#5; |O #dsarm005#3 ! #dsarm018#7;
+          |ACABA;
+     |FINSI;
+
+     nSwHay = 0;
+     nSwContinua = 0;
+     |BUCLE dsarm019;
+
+     |SI nSwHay ! 0;
+          |SI nSwContinua = 0;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |SI aCorreo ! "";
+          aTipoLog = "CORREO";
+          |HAZ EnvioCorreo;
+     |FINSI;
+
+     |SI aCorreo2 ! "";
+          aCorreo = aCorreo2;
+          aTipoLog = "CORREO";
+          |HAZ EnvioCorreo;
+     |FINSI;
+
+     |SI nCtrlPend = 1;
+          ||Solo hay control de pendientes para los correos.
+          |ACABA;
+     |FINSI;
+
+     |SI aImpre ! "";
+          |SI enSwImpUnix = 0;
+               |HAZ Impresion;
+          |SINO;
+               |HAZ ImpresionUnix;
+          |FINSI;
+          aTipoLog = "IMPRESORA";
+          |HAZ MeteLog;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsarm018;
+ #dsarm018#1;
+ 2;
+ 01, "S";
+ 99, "S";
+ ;
+ NULL, dsarm018;
+|FIN;
+
+|PROCESO dsarm005_regla;
+     |BUCLE dsarm018;
+|FPRC;
+
+|DEFBUCLE dsarm005_regla;
+     #5#1;
+     ;
+     000000001;
+     999999999;
+     ;
+     NULL, dsarm005_regla;
+|FIN;
+
+|PROCESO Tipo80;  |TIPO 80;
+     FSalida = 2499;
+|FPRC;
+
+|PROCESO dsarm045;
+     ||ARA33
+     #5#0 = #dsarm045#0;
+     |LEE 000#5=;
+     |SI FSalida = 0;
+          |ABRE #dsarm018;
+          |DDEFECTO #dsarm018;
+          #dsarm018#0 = #dsarm045#1;
+          |LEE 000#dsarm018.=;
+          |SI FSalida = 0;
+               |HAZ dsarm018;
+          |FINSI;
+          |CIERRA #dsarm018;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsarm045;
+ #dsarm045#2;
+ ;
+ 000000001, 00, "S";
+ 999999999, 99, "S";
+ be;
+ NULL, dsarm045;
+|FIN;
+
+|PROGRAMA;
+     nMaxReintentos = 6;
+
+     aIPRemoto   = "";
+     |IP_REMOTO aIPRemoto;
+
+     aQueSistema = "";
+     |QUE_SISTEMA aQueSistema;  |QBF aQueSistema;
+
+     |ABRE #1;
+     |LEE 000#1p;
+     |SI FSalida ! 0;  |DDEFECTO #1;  |FINSI;
+     |CIERRA #1;
+
+     nGuarda = enAprobacion;
+     enAprobacion = 0;
+     eaPrograma = "DSENVIACORREO";
+     |HAZ DSARCHI_INI;
+     nSwDsEnviaCorreo = enAprobacion;
+     enAprobacion = nGuarda;
+
+     |SI enSwDesde9 = 0;
+          |PINPA #0#0;
+     |FINSI;
+
+     |DBASE aBase;
+     |QBF aBase;
+     aFicLog = aBase + "logs/";
+     |MKDIR aFicLog;
+     aFicLog = aFicLog + "dsreglas.log";
+
+     eaPathLogVisor = aBase + "logs/";
+     eaNomLogVisor = "dsreglas.log";
+     eaFicLogVisor = aFicLog;
+     eaDesLogVisor = "Logs Reglas Automaticas. (dsarz030)";
+     |HAZ MeteVisorLog;
+
+     |SI PARAMETRO ! "";
+         ||Envio de los correos pendientes
+
+         nCtrlPend = 1;
+         |ABRE #5;
+         |BUCLE dsarm045;
+
+         nCtrlPend = 0;
+         #5#0 = PARAMETRO;
+         |LEE 000#5=;
+         |SI FSalida = 0;
+             |HAZ dsarm005_regla;
+         |FINSI;
+         |CIERRA #5;
+         |ACABA;
+     |FINSI;
+
+     nCtrlPend = 0;
+     |BUCLE dsarm005_regla;
+
+/*
+     ||Quitar. TODO CCC. Solo para pruebas.
+     ||ARA66
+     aImpre = "HP_Color_LaserJet_2600n";
+     enSwImpUnix = 1;
+     |SI aImpre ! "";
+          |SI enSwImpUnix = 0;
+               |HAZ Impresion;
+          |SINO;
+               |HAZ ImpresionUnix;
+          |FINSI;
+          aTipoLog = "IMPRESORA";
+          |HAZ MeteLog;
+     |FINSI;
+     ||Para Quitar. TODO CCC. Solo para pruebas.
+
+*/
+|FPRO;

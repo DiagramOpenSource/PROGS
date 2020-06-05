@@ -1,0 +1,537 @@
+||Sirve para controlar las facturas de Venta. Si estan o no contabilizadas.
+||Se utiliza por ejemplo en Luxe Perfil. (a traves de un sub_ejecuta)
+||Se basa en el Tipo2, del agifa134. Tb. Se usara en Artenvas
+
+|FICHEROS;
+     agifa134 #0;
+     agifa142 #41;
+
+     agifa722 #200;
+     agifa704 #100;
+     Referen@ #1000;
+     dsm00114 #114;
+     dsm00124 #124;
+     dsm00279 #279
+     agifa716 #101;
+     agis0002 #20;
+|FIN;
+
+|VARIABLES;
+
+     ||IN
+    &PRMNT_eaSerieFV = "";
+    &PRMNT_enNumFacFV = 0;
+    &PRMNT_enModoCtrlFV = 0;
+    &PRMNT_enFormaCtrlFV = 0;
+    &PRMNT_Impresa = 0;            ||Si 1, quiere decir que viene de ARTENVAS
+
+     ||Out
+     &enSwDejaModBaja = 1;
+
+     ||In&Out
+     &PRMNT_eaContab = "";
+     &PRMNT_efFechaAnt = @;
+
+     aPath = "";
+     aPathDatos = "";
+     &eaCli = "";
+     con = 0;
+     nForma = 0;
+     nSwFlag = 0;
+     fFechaBloq = @;
+     aAlfa2 = "";
+     aAlfa3 = "";
+     aAlfa = "";
+     nSw = 0;
+     &eaProg = "";
+     &enErrCarte = 0;
+     nSal = 0;
+     &enErr = 0;
+     nSwErr = 0;
+     nSwNolog = 0;
+
+     nEmpCerrada = 0;
+
+     nModo = 0;
+     aAlfa1 = "";
+     nSwHay = 0;
+     FEstado = 0;
+     nCalc = 0;
+     aFichAnt = "";
+     nCmpAnt = 0;
+     aSerie = "";
+     nContador = 0;
+     Comodin = "";
+     Comodin1 = "";
+     &PRMNT_enError = 0;
+
+     nDiario = 0;
+     fFecha  = @;
+     nDocum  = 0;
+     nSwLiquid = 0;
+|FIN;
+
+|PROCESO BorraAdelan;
+  |ABRE #20;
+  |SELECT #2#20;
+  FSalida = 0;
+  |PARA; |SI FSalida = 0;  |HACIENDO;
+       #20#2   = #0#2; ||Cliente;
+       #20#19  = #0#49;||Serie;
+       #20#0   = #0#0; ||Factura;
+       #20#21  = "S";  ||En FActura S/N;
+       |LEE 101#20=;
+       |SI FSalida = 0; |Y #20#2 = #0#2;  |Y #20#19 = #0#49;  |Y #20#0 = #0#0;
+           #20#19 = "";
+           #20#0  = "";
+           #20#1  = 0;
+           |GRABA 000#20a;
+       |SINO;
+           |SAL;
+       |FINSI;
+       |LIBERA #20;
+  |SIGUE;
+  |CIERRA #20;
+|FPRC;
+
+|PROCESO BorraHisEnlace;
+     aAlfa1 = #agifa134#1; |QBF aAlfa1; aAlfa1 = aAlfa1 % -104; nSw = 0;
+     |ABRE #agifa722;
+     #agifa722#0 = "FV";
+     #agifa722#1 = #agifa134#49;
+     #agifa722#2 = #agifa134#0;
+     #agifa722#11 = 1;
+     |LEE 000#agifa722.];
+     FEstado = FSalida; aAlfa  = #agifa722#1; aAlfa = aAlfa % 0105; nCalc = #agifa722#2; FSalida = FEstado;
+     |PARA; |SI FSalida = 0; |Y #agifa722#0 = "FV"; |Y aAlfa = #agifa134#49;
+      |Y nCalc = #agifa134#0; |HACIENDO;
+        aAlfa = #agifa722#3; |QBF aAlfa;
+        |SI aAlfa = aAlfa1; nSwHay = 1; |SAL; |FINSI;
+        |LEE 000#agifa722.s;
+        FEstado = FSalida; aAlfa  = #agifa722#1; aAlfa = aAlfa % 0105; nCalc = #agifa722#2; FSalida = FEstado;
+      |SIGUE;
+     |SI nSwHay = 1; |BORRA 020#agifa722.a; |FINSI;
+     |CIERRA #agifa722;
+|FPRC;
+
+|PROCESO MiraSiLiquidada;
+   nSwLiquid = 0;
+
+   |ABRE #agifa722; |DDEFECTO #agifa722;
+   #agifa722#0 = "FV";
+   #agifa722#1 = #agifa134#49;
+   #agifa722#2 = #agifa134#0;
+   #agifa722#11 = 1;
+   |LEE 000#agifa722.];
+   aAlfa2 = #agifa722#1;  |QBF aAlfa2;
+   aAlfa3 = #agifa134#49; |QBF aAlfa3;
+   |PARA; |SI FSalida = 0; |Y #agifa722#0 = "FV"; |Y aAlfa2 = aAlfa3; |Y #agifa722#2 = #agifa134#0; |HACIENDO;
+      |ABRE #agifa704;
+      #agifa704#0 = #agifa722#10;
+      |LEE 000#agifa704.=;
+      |SI FSalida ! 0; |DDEFECTO #agifa704; |FINSI;
+      |CIERRA #agifa704;
+      aAlfa = #agifa704#6; |QBF aAlfa;
+      aAlfa = aAlfa - "contagen";
+      |SI FSalida ! 0;
+         aAlfa = #agifa704#6; |QBF aAlfa;
+         aAlfa = aAlfa + "def/camaniva.mas";
+         |CARGA_DEF aAlfa, Referen@;
+         |SI FSalida = 0;
+            aAlfa = #agifa704#6; |QBF aAlfa;
+            aAlfa = aAlfa + "fich/" + (("00000" + #agifa722#8) % -105) + #agifa722#9 + "/";
+            |PATH_DAT #Referen@#aAlfa#;
+            |ABRE #Referen@;
+            |SELECT #2#Referen@;
+            #Referen@#7 = #agifa722#4; nDiario = #Referen@#7;
+            #Referen@#8 = #agifa722#5; fFecha  = #Referen@#8;
+            #Referen@#9 = #agifa722#6; nDocum  = #Referen@#9;
+            |LEE 000#Referen@.];
+            |PARA; |SI FSalida = 0; |Y #Referen@#7 = nDiario; |Y #Referen@#8 = fFecha;
+                    |Y #Referen@#9 = nDocum; |HACIENDO;
+               |SI #agifa134#49 = #Referen@#2; |Y #agifa134#0 = #Referen@#3;
+                  |SAL;
+               |FINSI;
+               |LEE 000#Referen@.s;
+            |SIGUE;
+            |SI FSalida = 0; |Y #Referen@#7 = nDiario; |Y #Referen@#8 = fFecha;
+               |Y #Referen@#9 = nDocum; |Y #agifa134#49 = #Referen@#2;
+               |Y #agifa134#0 = #Referen@#3;
+               |SI #Referen@#40 ! 0; nSwLiquid = 1; |SAL; |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |LEE 000#agifa722.s;
+      aAlfa2 = #agifa722#1;  |QBF aAlfa2;
+      aAlfa3 = #agifa134#49; |QBF aAlfa3;
+   |SIGUE;
+|FPRC;
+
+|PROCESO PermiteConta;
+     || Compruebo si la factura esta contabilizada y si el campo periodo
+     ||   liquidacion esta relleno
+     |HAZ MiraSiLiquidada;
+
+     |AVISO;
+     |SI #41#216 = "N";
+          |MENAV "0000Esta Factura Esta Contabilizada...";
+          FSalida = 1;
+     |SINO;
+          |SI #41#216 = "R";
+               aAlfa = Usuario % 810;
+               |ABRE #124;
+               #124#0 = aAlfa;
+               |LEE 000#124=;
+               |SI FSalida = 0;
+                    |SI nSwLiquid = 1; |Y #dsm00279#13 = "S";
+                       |MENAV "0000Esta Factura ha sido liquidada en contabilidad. Proceso cancelado.";
+                       FSalida = 1;
+                    |SINO;
+                       |CONFI "0000NEsta Factura Esta Contabilizada: Desea Continuar? ";
+                    |FINSI;
+               |SINO;
+                    |MENAV "0000Esta Factura Esta Contabilizada...";
+               |FINSI;
+               aAlfa = FSalida;
+               |CIERRA #124;
+               FSalida = aAlfa;
+          |SINO; || = "T"
+               |SI nSwLiquid = 1; |Y #dsm00279#13 = "S";
+                  |MENAV "0000Esta Factura ha sido liquidada en contabilidad. Proceso cancelado.";
+                  FSalida = 1;
+               |SINO;
+                  |CONFI "0000NEsta Factura Esta Contabilizada: Desea Continuar? ";
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     enSwDejaModBaja = 1;
+
+     |ABRE #41; |LEE 000#41p; |CIERRA #41;
+     |ABRE #279; |LEE 000#279p; |CIERRA #279;
+
+     |ABRE #0;
+     #0#49 = PRMNT_eaSerieFV;
+     #0#0 = PRMNT_enNumFacFV;
+     |LEE 000#0=;
+     |SI FSalida ! 0;
+          |ACABA;
+     |FINSI;
+
+     eaCli = #0#2;
+
+     con = PRMNT_enModoCtrlFV;
+     nForma = PRMNT_enFormaCtrlFV;
+
+/*
+     |SI con = 2; |Y nForma = 1;
+          ||DEBUG;
+     |FINSI;
+*/
+
+     |SI con = 1; nSwFlag = 0; |FINSI;
+
+     |SI nForma < 0;
+        PRMNT_efFechaAnt = ~;
+        |SI #agifa134#48 = "S";
+           fFechaBloq = "01.01.0000";
+           |ABRE #agifa722;
+           #agifa722#0 = "FV";
+           #agifa722#1 = #agifa134#49;
+           #agifa722#2 = #agifa134#0;
+           #agifa722#11 = 1;
+           |LEE 000#agifa722.];
+           aAlfa2 = #agifa722#1;  |QBF aAlfa2;
+           aAlfa3 = #agifa134#49; |QBF aAlfa3;
+           |PARA; |SI FSalida = 0; |Y #agifa722#0 = "FV"; |Y aAlfa2 = aAlfa3; |Y #agifa722#2 = #agifa134#0; |HACIENDO;
+              |ABRE #agifa704;
+              #agifa704#0 = #agifa722#10;
+              |LEE 000#agifa704.=;
+              |SI FSalida ! 0; |DDEFECTO #agifa704; |FINSI;
+              |CIERRA #agifa704;
+              aAlfa = #agifa704#6; |QBF aAlfa;
+              aAlfa = aAlfa - "contagen";
+              |SI FSalida ! 0;
+                 aAlfa = #agifa704#6; |QBF aAlfa;
+                 aAlfa = aAlfa + "def/canempre.mas";
+                 |CARGA_DEF aAlfa, Referen@;
+                 |SI FSalida = 0;
+                    aAlfa = #agifa704#6; |QBF aAlfa;
+                    aAlfa = aAlfa + "fich/";
+                    |PATH_DAT #Referen@#aAlfa#;
+                    |ABRE #Referen@;
+                    #Referen@#2 = #agifa722#8;
+                    #Referen@#3 = #agifa722#9;
+                    |LEE 000#Referen@.=;
+                    |SI FSalida ! 0; |DDEFECTO #Referen@; |FINSI;
+                    |SI #Referen@#34 ! "01.01.0000";
+                       fFechaBloq = #Referen@#34; |SAL;
+                    |FINSI;
+                    |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+                 |FINSI;
+
+                 nEmpCerrada = 0;
+                 aAlfa = #agifa704#6; |QBF aAlfa;
+                 aAlfa = aAlfa + "def/camaasic.mas";
+                 |CARGA_DEF aAlfa, Referen@;
+                 |SI FSalida = 0;
+                    aAlfa = #agifa704#6; |QBF aAlfa;
+                    aAlfa = aAlfa + "fich/" + (("00000" + #agifa722#8) % -105) + #agifa722#9 + "/";
+                    |PATH_DAT #Referen@#aAlfa#; |ABRE #Referen@;
+                    |DDEFECTO #Referen@;
+                    #Referen@#0 = 99;
+                    #Referen@#1 = "01.01.0000";
+                    |LEE 000#Referen@.];
+                    |SI FSalida = 0; |Y #Referen@#0 = 99;
+                       nEmpCerrada = 1;
+                       |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+                       |SAL;
+                    |FINSI;
+                    |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+                 |FINSI;
+              |FINSI;
+              |LEE 000#agifa722.s;
+              aAlfa2 = #agifa722#1;  |QBF aAlfa2;
+              aAlfa3 = #agifa134#49; |QBF aAlfa3;
+           |SIGUE;
+           |CIERRA #agifa722;
+
+           |SI fFechaBloq ! "01.01.0000";
+              |SI #agifa134#1 [ fFechaBloq;
+                 aAlfa = "    Factura contabilizada y con fecha anterior a bloqueo contabilidad [" + fFechaBloq + "]";
+                 |MENAV aAlfa;
+                 enSwDejaModBaja = 0;
+                 nSwFlag = 1;
+                 |ACABA;
+              |FINSI;
+           |FINSI;
+           |SI nEmpCerrada = 1;
+              |MENAV "    La empresa donde se contabilizo la factura esta cerrada. Proceso cancelado.";
+              enSwDejaModBaja = 0; nSwFlag = 1;
+              |ACABA;
+           |FINSI;
+        |FINSI;
+     |FINSI;
+
+     |HAZ EsArtenvas;
+     |SI FSalida = 0;
+          |SI #0#45 = "S";
+               |SI con ] 2; |Y nForma ! 1;
+                    eaProg = "agifa134"; |HAZ MiraRecVenta;
+                    |SI enErrCarte ! 0;
+                       aAlfa = "0000Recibos con movimientos, NO SE DARA DE BAJA... [" + enErrCarte + "]";
+                       |MENAV aAlfa; nSwFlag = 1;
+                       enSwDejaModBaja = 0;
+                       |ERROR; |ACABA;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |SI #0#48 = "S";
+          |SI con ] 2; |Y nForma ! 1;
+               |HAZ PermiteConta;
+               PRMNT_eaContab = "N"; PRMNT_efFechaAnt = #agifa134#1;
+               |SI FSalida ! 0;
+                  nSwFlag = 1; enSwDejaModBaja = 0; |ERROR; |ACABA;
+               |SINO;
+                  nSw = 1; PRMNT_eaContab = "S"; |HAZ Asiento;
+                  |SI nSw < 0;
+                     nSwFlag = 1; enSwDejaModBaja = 0; |ERROR; |ACABA;
+                  |FINSI;
+                  #0#48 = "N"; |PINTA #0#48;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |SI #0#45 = "S"; |O PRMNT_Impresa = 1;
+          |SI con ] 2; |Y nForma ! 1;
+               |HAZ EsArtenvas;
+               |SI FSalida ! 0;
+                  eaProg = "agifa134"; |HAZ MiraRecVenta;
+                  |SI enErrCarte ! 0;
+                       aAlfa = "0000Recibos con movimientos, NO SE DARA DE BAJA... [" + enErrCarte + "]";
+                       |MENAV aAlfa; nSwFlag = 1; |ERROR; |ACABA;
+                  |FINSI;
+               |FINSI;
+
+               |AVISO;
+               |SI #0#45 = "S";
+                    |CONFI "0000NDesea dejar la factura como NO impresa y anular los recibos?  ";
+               |SINO;
+                    |CONFI "0000NDesea anular los recibos?  ";
+               |FINSI;
+               |SI FSalida ! 0;
+                    |SI PRMNT_eaContab = "S";
+                       |HAZ EsArtenvas;
+                       |SI FSalida ! 0;
+                          |CONFI "N    Volver a dejar contabilizada la factura ? ";
+                       |FINSI;
+                       |SI FSalida = 0;
+                          nSw = 2; |HAZ Asiento;
+                       |SINO;
+                          |HAZ BorraHisEnlace;
+                          PRMNT_eaContab = "N";
+                       |FINSI;
+                    |FINSI;
+                    nSwFlag = 1; enSwDejaModBaja = 0; |ERROR; |ACABA;
+               |SINO;
+                    |HAZ borrarec;
+                    |SI nSwErr ! 0;
+                       nSwFlag = 1; enSwDejaModBaja = 0; |ERROR; |ACABA;
+                    |FINSI;
+                    |HAZ BorraVenciVta;
+               |FINSI;
+          |FINSI;
+          |HAZ EsArtenvas;
+          |SI FSalida ! 0;
+             #0#45 = "N"; |PINTA #0#45;
+          |FINSI;
+     |FINSI;
+     |SI con = 3;
+          |HAZ BorraHisEnlace;
+          |HAZ BorraAdelan;
+     |FINSI;
+
+     |SI nForma > 0;
+         |SI PRMNT_eaContab = "S";
+            |SI #agifa134#1 = PRMNT_efFechaAnt;
+               |HAZ EsArtenvas;
+               |SI FSalida ! 0;
+                  |CONFI "    SEsta factura estaba contabilizada. ¨Volver a enlazar?";
+               |FINSI;
+            |SINO;
+               FSalida = 1;
+            |FINSI;
+            |SI FSalida = 0;
+               nSw = 2; |HAZ Asiento;
+               |SI nSw = 0;
+                    PRMNT_eaContab = "S";
+               |SINO;
+                    PRMNT_eaContab = "N";
+               |FINSI;
+            |SINO;
+               |HAZ BorraHisEnlace;
+               PRMNT_eaContab = "N";
+            |FINSI;
+         |FINSI;
+     |FINSI;
+     |CIERRA #0;
+|FPRO;
+
+|PROCESO Asiento;
+   nModo = PRMNT_enModoCtrlFV;
+
+   aAlfa1 = #agifa134#1; |QBF aAlfa1; aAlfa1 = aAlfa1 % -104; nSwHay = 0;
+   |ABRE #agifa722;
+   #agifa722#0 = "FV";
+   #agifa722#1 = #agifa134#49;
+   #agifa722#2 = #agifa134#0;
+   #agifa722#11 = 1;
+   |LEE 000#agifa722.];
+   FEstado = FSalida; aAlfa  = #agifa722#1; aAlfa = aAlfa % 0105; nCalc = #agifa722#2; FSalida = FEstado;
+   |PARA; |SI FSalida = 0; |Y #agifa722#0 = "FV"; |Y aAlfa = #agifa134#49;
+    |Y nCalc = #agifa134#0; |HACIENDO;
+      aAlfa = #agifa722#3; |QBF aAlfa;
+      |SI aAlfa = aAlfa1; nSwHay = 1; |SAL; |FINSI;
+      |LEE 000#agifa722.s;
+      FEstado = FSalida; aAlfa  = #agifa722#1; aAlfa = aAlfa % 0105; nCalc = #agifa722#2; FSalida = FEstado;
+   |SIGUE;
+   |CIERRA #agifa722;
+
+   aAlfa1 = "N";
+   |SI nSwHay = 1;
+      aAlfa = "ac" + Usuario; |NOME_DAT #agifa716#aAlfa#;
+      |DELINDEX #agifa716; |ABRE #agifa716;
+
+      |ABRE #agifa704;
+      #agifa704#0 = #agifa722#10;
+      |LEE 101#agifa704.=;
+      |SI FSalida = 0;
+         aFichAnt = #agifa704#16; nCmpAnt = #agifa704#17;
+         |SI #agifa704#8 = "S";
+            |DDEFECTO #agifa716;
+            #agifa716#15 = #agifa722#10;  #agifa716#0  = 1;
+            #agifa716#13 = "agifa071";    #agifa716#14 = 30;
+            #agifa716#11 = "A";           #agifa716#12 = 5;
+            #agifa716#3  = #agifa134#49;  #agifa716#4  = #agifa134#49;
+            |GRABA 020#agifa716.n;
+
+            |DDEFECTO #agifa716;
+            #agifa716#15 = #agifa722#10;  #agifa716#0  = 2;
+            #agifa716#13 = "agifa071";    #agifa716#14 = 26;
+            #agifa716#11 = "N";           #agifa716#12 = 6;
+            #agifa716#5  = #agifa134#0;   #agifa716#6  = #agifa134#0;
+            |GRABA 020#agifa716.n;
+            |LIBERA #agifa716; |CIERRA #agifa716;
+
+            #agifa704#16 = "agifa071"; #agifa704#17 = 26;
+            |GRABA 020#agifa704.a;
+         |SINO;
+            |DDEFECTO #agifa716;
+            #agifa716#15 = #agifa722#10;  #agifa716#0  = 1;
+            #agifa716#13 = "agifa134";    #agifa716#14 = 49;
+            #agifa716#11 = "A";           #agifa716#12 = 5;
+            #agifa716#3  = #agifa134#49;  #agifa716#4  = #agifa134#49;
+            |GRABA 020#agifa716.n;
+
+            |DDEFECTO #agifa716;
+            #agifa716#15 = #agifa722#10;  #agifa716#0  = 2;
+            #agifa716#13 = "agifa134";    #agifa716#14 = 0;
+            #agifa716#11 = "N";           #agifa716#12 = 6;
+            #agifa716#5  = #agifa134#0;   #agifa716#6  = #agifa134#0;
+            |GRABA 020#agifa716.n;
+            |LIBERA #agifa716; |CIERRA #agifa716;
+            #agifa704#16 = "agifa134"; #agifa704#17 = 0;
+            |GRABA 020#agifa704.a;
+         |FINSI;
+      |FINSI;
+      |LIBERA #agifa704; |CIERRA #agifa704;
+
+      aSerie = #agifa134#49; nContador = #agifa134#0;
+      |GRABA 020#agifa134.a;
+      |LIBERA #agifa134; |CIERRAT #agifa134;
+
+      Comodin1 = #agifa134#1; |QBF Comodin1; Comodin1 = Comodin1 % -104;
+      Comodin = #agifa722#10; |QBF Comodin;
+      |SI nSw = 1; || BORRA
+         Comodin = "agifa711.tab;" + Comodin + ",B*" + Comodin1;
+         aAlfa1 = "N";
+      |FINSI;
+      |SI nSw = 2; || ENLAZA
+         Comodin = "agifa711.tab;" + Comodin;
+         aAlfa1 = "S";
+      |FINSI;
+      |SUB_EJECUTA_NP Comodin;
+
+      |ABRE #agifa704;
+      #agifa704#0 = #agifa722#10;
+      |LEE 101#agifa704.=;
+      |SI FSalida = 0;
+         #agifa704#16 = aFichAnt; #agifa704#17 = nCmpAnt;
+         |GRABA 020#agifa704.a;
+      |FINSI;
+      |LIBERA #agifa704; |CIERRA #agifa704;
+
+      |ABRET #agifa134;
+      #agifa134#49 = aSerie; #agifa134#0 = nContador;
+      |LEE 121#agifa134.=;
+   |FINSI;
+   |SI PRMNT_enError = 0;
+      #agifa134#48 = aAlfa1; |GRABA 020#agifa134.a;
+   |FINSI;
+   nSw = PRMNT_enError;
+|FPRC;
+
+|PROCESO borrarec;
+     eaProg = "agifa134";
+     |HAZ MiraRecVenta;
+     |SI enErrCarte ! 0;
+          aAlfa = "0000Recibos con movimientos, NO SE DARA DE BAJA... [" + enErrCarte + "]";
+          |MENAV aAlfa; nSwErr = 1; |ACABA;
+     |FINSI;
+     eaProg = "agifa134";
+     |HAZ BorraRecVenta;
+|FPRC;

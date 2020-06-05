@@ -1,0 +1,190 @@
+|FICHEROS;
+     silcon02 #0;    || lotes cabs.
+     silcon03 #1;    || lotes lins.
+     silcon06;    || lotes lins.
+     labempre;
+     labtraba;
+     labcentr;
+|FIN;
+
+|VARIABLES;
+     modo = 0;
+     alfa1 = "";
+     aAlfa = "";
+     aAlfa1 = "";
+     {-1}aMenu = "";
+     aMenu1 = "2400";
+     aMenu2 = "1";
+     aMenu3 = "Opciones:";
+     aMenu4 = "BR";
+     aMenu5 = "Informe Borrador Lineas Lote";
+     aMenu6 = "Informe Resultados Lote";
+     nOpcion = 0;
+     &aEmp = "";
+     &aNomEmp = "";
+     &aCen = "";
+     &aCCC = "";
+     &aCCCPrin = "";
+     &aTipo = "";
+     &aImporte = "";
+     &nImporte = 0;
+     &aSegmento = "";
+     &aCIF = "";
+     &aPago = "";
+     aTipoAnt = "";
+|FIN;
+
+|PROCESO consulta; |TIPO 7;
+    modo = (FEntrada / 100) ! 0;
+|SI modo = 4;
+        alfa1 = "S";
+|SINO;
+        alfa1 = "N";
+|FINSI;
+|C_M #0Campo, 1, alfa1;
+|FPRC;
+
+|PROCESO Centro;
+     aCen = #labcentr#1;
+     aCen = ("00" + aCen) % -102;
+     aCen = aCen + " - " + #labcentr#2;
+|FPRC;
+
+|DEFBUCLE BuscaCentro;
+     #labcentr#1;
+     10;
+     00001, 001, aAlfa;
+     99999, 999, aAlfa;
+     ;
+     NULL, Centro;
+|FIN;
+
+|PROCESO Empresa;
+     aEmp = #labempre#0;
+     aEmp = ("00000" + aEmp) % -105;
+     aEmp = aEmp + " - " + #labempre#2;
+     aCIF = #labempre#10;
+
+     aNomEmp = #labempre#2;
+
+     #silcon06#0 = #labempre#0;
+     |LEE 000#silcon06.=;
+     |SI FSalida = 0;
+          aPago = #silcon06#7;
+          |SI aPago = "C";
+               aPago = "Adeudo en Cuenta";
+          |FINSI;
+          |SI aPago = "V";
+               aPago = "Pago por Ventanilla";
+          |FINSI;
+          |SI aPago = "N";
+               aPago = "";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaEmpresa;
+     #labempre#1;
+     13;
+     00001, aAlfa;
+     99999, aAlfa;
+     ;
+     NULL, Empresa;
+|FIN;
+
+|PROCESO silcon03;
+     aSegmento = #silcon03#4;
+     |SI #silcon03#3 = "ETF";
+          |SI aTipoAnt = "EDT";                   || ojo, he tenido un final
+               |PRINT;                            || de lote anterior sin MPG
+          |FINSI;                                 || hago aqui el PRINT
+     |FINSI;                                      || para el ultimo centro
+     |SI #silcon03#3 = "EMP";
+          |SI aTipoAnt = "EDT";                   || ojo, he tenido un final
+               |PRINT;                            || de lote anterior sin MPG
+          |FINSI;                                 || hago aqui el PRINT
+          aEmp = "";
+          aPago = "";
+          aCCCPrin = aSegmento % 4011;
+          aAlfa = aCCCPrin + "    ";
+          |BUCLE BuscaEmpresa;
+
+          aCen = "";
+          aCCC = aSegmento % 0511;
+          aAlfa = aCCC + "    ";
+          |BUCLE BuscaCentro;
+     |FINSI;
+     |SI #silcon03#3 = "EDT";
+          aTipo = aSegmento % 104;
+          |SI aTipo = "TT91"; |O aTipo = "TT92";
+               aImporte = aSegmento % 2811;
+               nImporte = aImporte;
+               nImporte = nImporte / 100;
+               |SI aTipo = "TT92";
+                    nImporte = nImporte * (-1);
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |SI #silcon03#3 = "MPG";
+          aTipo = "MPG";
+          aAlfa = aSegmento % 101;
+          |SI aAlfa = "C";
+               aPago = aAlfa;
+               aPago = "Adeudo en Cuenta";
+          |FINSI;
+          |SI aAlfa = "V";
+               aPago = aAlfa;
+               aPago = "Pago por Ventanilla";
+          |FINSI;
+          |PRINT;
+     |FINSI;
+     aTipoAnt = #silcon03#3;
+|FPRC;
+
+|PROCESO imprime;
+     |PRINT;
+|FPRC;
+
+|PROCESO Seleccion2;
+     aTipoAnt = "";
+     |ABRE #silcon03;
+     |ABRE #silcon06;
+     Impresora = "CrystalReport";
+     |IMPRE -1;
+     |INFOR "nomlotes";
+     |BUCLELIN 2silcon03#0;
+     |PIEINF;
+     |FININF;
+     |FINIMP;
+     |CIERRA #silcon06;
+     |CIERRA #silcon03;
+|FPRC;
+
+|PROCESO Seleccion1;
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR "silcon02";
+          |BUCLELIN 2imprime#0;
+          |PIEINF;
+          |FININF;
+     |SINO;
+          |MENAV "    Proceso abortado ...";
+     |FINSI;
+     |FINIMP;
+|FPRC;
+
+|PROCESO Tipo20; |TIPO 20;
+     aAlfa = FSalida;
+     |SI FSalida = "OPCION";
+          FSalida = "Informes";
+     |SINO;
+          |MENU aMenu;
+          nOpcion = FSalida;
+          |SI nOpcion = 1;
+               |HAZ Seleccion1;
+          |FINSI;
+          |SI nOpcion = 2;
+               |HAZ Seleccion2;
+          |FINSI;
+     |FINSI;
+|FPRC;

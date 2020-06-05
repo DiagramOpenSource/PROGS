@@ -1,0 +1,555 @@
+|FICHEROS;
+     nomwwflc;
+     labempre;            || empresas
+     labtraba;            || trabajadores
+     labcentr;            || centros
+     nomhicca;            || historico calculos cabs.
+     nomcenes;            || centros especiales
+     nomflctm;
+     nomtrflc;            || temporal FLC
+|FIN;
+
+|VARIABLES;
+     alfa1 = "";
+     alfa2 = "";
+     alfa3 = "";
+     alfa4 = "";
+     nume1 = 0;
+     nume2 = 0;
+     nume3 = 0;
+     nume4 = 0;
+     para1 = 0;
+     para2 = 0;
+     para3 = 0;
+     para4 = 0;
+     fech1 = @;
+     fech2 = @;
+     fech3 = @;
+     fech4 = @;
+     FEstado = 0;
+     seleccio = 0;
+     p_mes = "";
+     d_any = 0;
+     h_any = 0;
+     d_mes = 0;
+     h_mes = 0;
+     meses = 0;
+     otra = 0;
+     cta_co = "";
+     baseP = 0;
+     baseM = 0;
+     baseIT = 0;
+     diff = 0;
+     aCNAE = "";
+
+     aEmp                = "";
+     aAlfa               = "";
+     aNomEmp             = "";
+
+     nOk                 = 0;
+     nOpcion             = 0;
+     nPas                = 0;
+
+     &aEjemplar = "";
+     &ss1 = "";
+     &ss2 = "";
+     &ss3 = "";
+     &trab = 0;
+     &base = 0;
+     &tipo = 0;
+     &cuot = 0;
+     &dmes = 0;
+     &dany = 0;
+     &hmes = 0;
+     &hany = 0;
+     &pago = "";
+     &recp = 0;
+     &recc = 0;
+     &impo = 0;
+
+     &eaVengoDe          = "";
+     &nArchi             = 0;
+     &swErrorDSArchi     = 0;
+     &enDesdeMes         = 0;
+     &enAny              = 0;
+     &eaTitulo           = "";
+
+     {-1}aMenu           = "";
+         aMenu1          = "2400";
+         aMenu2          = "1";
+         aMenu3          = "Archivo documental activado. Elija opci¢n: ";
+         aMenu4          = "IAB";
+         aMenu5          = "Imprimir";
+         aMenu6          = "Archivar";
+         aMenu7          = "Ambos";
+
+     nBaseERE = 0;
+|FIN;
+
+|INCLUYE i_tempo;
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO AvisoCrystal; |TIPO 7;
+     |PINTA 0547, "ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿";
+     |PINTA 0647, "³ Este modelo se imprime        ³";
+     |PINTA 0747, "³  en formato                   ³";
+     |PINTA 0847, "³                               ³";
+     |PINTA 0947, "ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ";
+     |ATRI I;
+     |PINTA 0761, "CRYSTAL REPORTS.";
+     |ATRI 0;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7; ||calcula el a¤o por defecto segun fecha sistema
+    fech1 = ~;
+    alfa1 = fech1;
+    alfa1 = alfa1 % -104;
+    #nomwwflc#Campo# = alfa1;
+|PINTA #nomwwflc#Campo#;
+|FPRC;
+
+|PROCESO meses; |TIPO 0;
+|FPRC;
+
+|PROCESO refundir; |TIPO 7;
+     |SI #nomwwflc#6 = "S";
+          #nomwwflc#9 = "N";
+          |PINTA #nomwwflc#9;
+          |C_M #nomwwflc#9, 1, "N";
+     |SINO;
+          |C_M #nomwwflc#9, 1, "S";
+     |FINSI;
+|FPRC;
+____________________________________/ PREPARA TEMPORAL
+
+|PROCESO cta_cotizacion;
+     #labempre#0 = #nomtrflc#0;
+     |LEE 000#labempre.=;
+     |SI FSalida ! 0;  |DDEFECTO #labempre;  |FINSI;
+
+     aCNAE = #labempre#128;
+
+     |SI #labtraba#45 = "087"; |O #labtraba#45 = "097";
+                               |O #labtraba#45 = "085";
+                               |O #labtraba#45 = "064";
+                               |O #labtraba#45 = "065";
+                               |O #labtraba#45 = "421";
+         |DDEFECTO #nomcenes;
+         #nomcenes#0 = #labtraba#0;
+         #nomcenes#13= #labtraba#77;
+         |SI #labtraba#45 = "097";  |O #labtraba#45 = "085";
+                                    |O #labtraba#45 = "421";
+             #nomcenes#1 = "87";
+         |SINO;
+             |SI #labtraba#45 = "065";
+                 #nomcenes#1 = "64";
+             |SINO;
+                 #nomcenes#1 = #labtraba#45 % 2;
+             |FINSI;
+         |FINSI;
+
+         |LEE 000#nomcenes.=;
+         |SI FSalida ! 0;  |DDEFECTO #nomcenes;  |FINSI;
+
+         cta_co = #nomcenes#10;      || cta.cto. del centro de trabajo especial
+    |SINO;
+         cta_co = #labempre#13;       || cta.cot. de la empresa
+         #labcentr#0 = #labtraba#0;
+         #labcentr#1 = #labtraba#77;
+         |LEE 000#labcentr.=;
+         |SI FSalida ! 0;  |DDEFECTO #labcentr;  |FINSI;
+
+         cta_co = #labcentr#10;        || cta.cot. centro de trabajo
+         aCNAE  = #labcentr#22; |QBF aCNAE;
+         |SI aCNAE = "";
+             aCNAE = #labempre#128; |QBF aCNAE;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO nomhicca;
+     |SI #nomwwflc#11 = "1";
+          |SI #nomhicca#3 ] 5;           || atrasos no
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |SI #nomwwflc#11 = "3";
+          |SI #nomhicca#3 < 5;           || solo atrasos
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     nOk = 0;
+     #labtraba#0 = #nomhicca#0;
+     #labtraba#1 = #nomhicca#1;
+     |LEE 020#labtraba.=;
+     |SI FSalida = 0;  |Y #labtraba#87 ] #nomwwflc#2;
+                       |Y #labtraba#87 [ #nomwwflc#3;
+                       |Y #labtraba#42 ! "H";
+                       |Y #labtraba#247 ! 163;
+                       |Y #labtraba#247 ! 613;
+         nOk = 1;
+     |FINSI;
+
+     |SI nOk = 0;  |ACABA;  |FINSI;
+
+     seleccio = 1;
+     |DDEFECTO #nomtrflc;
+     #nomtrflc#0 = #nomhicca#0;             || empresa
+     |HAZ cta_cotizacion;
+     #nomtrflc#13 = cta_co;
+     |LEE 101#nomtrflc.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #nomtrflc;
+         #nomtrflc#0 = #nomhicca#0;             || empresa
+         #nomtrflc#13 = cta_co;
+         |GRABA 020#nomtrflc.b;
+     |FINSI;
+
+     #nomflctm#0 = #labtraba#0;
+     #nomflctm#1 = #labtraba#7;
+     #nomflctm#2 = #nomhicca#2;
+     |LEE 101#nomflctm.=;
+     |SI FSalida ! 0;
+         #nomtrflc#1 = #nomtrflc#1 + 1;          || nro. trabajadores
+
+         |DDEFECTO #nomflctm;
+         #nomflctm#0 = #labtraba#0;
+         #nomflctm#1 = #labtraba#7;
+         #nomflctm#2 = #nomhicca#2;
+         |GRABA 020#nomflctm.n;
+     |FINSI;
+     |LIBERA #nomflctm;
+
+     |SI #nomhicca#65 = 0;     || tenemos maternidad
+          baseP = #nomhicca#40;
+     |SINO;
+          baseP = #nomhicca#40;
+          baseM = (#nomhicca#35 * #nomhicca#65) ! 2;
+
+          baseIT = (#nomhicca#35 * (#nomhicca#65 + #nomhicca#31 + #nomhicca#32)) ! 2;
+          |SI baseIT ! #nomhicca#62;        || comparo base en baja de mto. con base en baja real
+              diff = baseIT - #nomhicca#62;  || si son distintas ajusto restando diferencia
+              baseM = baseM - diff;  || a base de comunes de y profesionales, esto es
+          |FINSI;                    || por lo del swAjuste3 en nomcal_3
+
+          baseP = baseP + baseM;
+     |FINSI;
+
+     |SI #nomhicca#119 ! 0;
+          nBaseERE = #nomhicca#170;
+          |SI #labtraba#188 = "S";
+               nBaseERE = nBaseERE - ((nBaseERE % #labtraba#219) ! 2);
+          |FINSI;
+          baseP = baseP + nBaseERE;
+     |FINSI;
+
+     baseP = baseP + #nomhicca#174; || base Control IT
+
+     #nomtrflc#2 = #nomtrflc#2 + baseP;     || base A.T. y E.P.
+     #nomtrflc#3 = #nomwwflc#10;             || (%) a aplicar
+     #nomtrflc#4 = #nomtrflc#2 % #nomtrflc#3;       || cuota
+     #nomtrflc#5 = d_mes;             || desde mes
+     #nomtrflc#6 = h_mes;             || hasta mes
+     #nomtrflc#7 = #nomwwflc#5;              || desde a¤o
+     #nomtrflc#8 = #nomtrflc#7;              || hasta a¤o
+     #nomtrflc#9 = #nomwwflc#6;              || forma de pago
+     #nomtrflc#10 = #nomwwflc#7;             || (%) recargo
+     #nomtrflc#11 = #nomtrflc#4 % #nomtrflc#10;     || cuota recargo
+     #nomtrflc#12 = #nomtrflc#4 + #nomtrflc#11;     || importe a ingresar
+     #nomtrflc#14 = aCNAE;
+     |GRABA 020#nomtrflc.a;
+     |LIBERA #nomtrflc;
+|FPRC;
+
+|DEFBUCLE nomhicca;
+     #nomhicca#1;
+     ;
+     #nomwwflc#0,     1, d_any, d_mes, 0;
+     #nomwwflc#1, 99999, d_any, h_mes, 99;
+     ;
+     NULL, nomhicca;
+|FIN;
+
+|PROCESO CreaTempos;
+     seleccio = 0;
+     |PINTA 2305, "Preparando Temporal ...";
+     |HAZ nom_usu;
+     alfa1 = nom_tmp;
+     |NOME_DAT #nomtrflc#alfa1#;
+     |DELINDEX #nomtrflc;
+
+     alfa2 = Usuario; |QBF alfa2;    alfa1 = "l" + alfa2;
+     |NOME_DAT #nomflctm#alfa2#;
+     |DELINDEX #nomflctm;
+
+     d_any = #nomwwflc#5 $ 100;
+     meses = (#nomwwflc#8 - #nomwwflc#4) + 1;
+
+     |ABRE #labempre;
+     |ABRE #labtraba;
+     |ABRE #labcentr;
+     |ABRE #nomtrflc;
+     |ABRE #nomcenes;
+     |ABRE #nomflctm;
+
+     |BUCLE nomhicca;
+
+     |CIERRA #labempre;
+     |CIERRA #labtraba;
+     |CIERRA #labcentr;
+     |CIERRA #nomtrflc;
+     |CIERRA #nomcenes;
+     |CIERRA #nomflctm;
+|FPRC;
+
+____________________________________/ LECTURA DEL TEMPORAL E IMPRIME
+
+|PROCESO CargaVar;               || al renombrar el fichero
+     |SI #nomwwflc#6 = "S";|O #nomwwflc#9 = "S";
+         trab = (#nomtrflc#1 / meses) ! 2;  || trabajadores (semestral)
+     |SINO;
+         trab = #nomtrflc#1;            || trabajadores (mensual)
+     |FINSI;
+
+     base = #nomtrflc#2;         || base AT y ET
+     tipo = #nomtrflc#3;         || (%)tipo
+     cuot = #nomtrflc#4;         || cuota
+     dmes = #nomtrflc#5;         || desde mes
+     dany = #nomtrflc#7;         || desde a¤o
+     hmes = #nomtrflc#6;         || hasta mes
+     hany = #nomtrflc#8;         || hasta a¤o
+     pago = #nomtrflc#9;         || forma pago
+     recp = #nomtrflc#10;        || (%) recargo
+     recc = #nomtrflc#11;        || cuota recargo
+     impo = #nomtrflc#12;        || importe a ingresar
+|FPRC;
+
+|PROCESO lee_empresa;
+     #labempre#0 = #nomtrflc#0;
+     |LEE 000#labempre.=;
+     |SI FSalida ! 0;  |DDEFECTO #labempre;  |FINSI;
+
+     alfa1 = #nomtrflc#13;|QBF alfa1;
+     alfa2 = alfa1 % 0;
+     nume1 = alfa2;
+     nume1 = (nume1 - 4) + 300;
+     ss1   = alfa1 % 102;
+     ss2   = alfa1 % nume1;
+     ss3   = alfa1 % -102;
+
+     #labempre#128 = #nomtrflc#14;
+|FPRC;
+
+|PROCESO nomtrflcP;
+     |HAZ lee_empresa;
+     |SI #labempre#42 ! "S";  |ACABA;  |FINSI;
+     |SI #nomtrflc#2 [ 0;     |ACABA;  |FINSI;
+
+     |HAZ CargaVar;
+
+     aEjemplar = "Ejemplar para la oficina recaudadora";
+     |PRINT;
+
+     aEjemplar = "Ejemplar para el interesado";
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE nomtrflcP;
+     #nomtrflc#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, nomtrflcP;
+|FIN;
+
+|PROCESO Periodo;
+     |HAZ CreaTempos;
+
+     |PINTA 2305, "Imprimiendo ...";
+     |ABRE #labempre;
+     |BUCLE nomtrflcP;
+     |CIERRA #labempre;
+|FPRC;
+
+|PROCESO Papel;
+     Impresora = "CrystalReport";
+     |IMPRE -1;
+     |SI FSalida ! 0;
+         |MENAV "    Proceso abortado ...";
+         |ACABA;
+     |FINSI;
+
+     |INFOR "nomyyflc";
+     |SI FSalida ! 0;
+         |FINIMP;
+         |ACABA;
+     |FINSI;
+
+     |SI #nomwwflc#6 = "S";  |O #nomwwflc#9 = "S";
+         d_mes = #nomwwflc#4;          || pago semestral
+         h_mes = #nomwwflc#8;
+         |HAZ Periodo;
+
+         |DELINDEX #nomtrflc;
+         |DELINDEX #nomflctm;
+     |SINO;
+         |PARA para1 = #nomwwflc#4; |SI para1 [ #nomwwflc#8; |HACIENDO para1 = para1 + 1;
+               d_mes = para1;
+               h_mes = para1;          || pago mensual
+               |HAZ Periodo;
+
+               |DELINDEX #nomtrflc;
+               |DELINDEX #nomflctm;
+         |SIGUE;
+     |FINSI;
+
+     |PIEINF;
+     |FININF;
+     |FINIMP;
+|FPRC;
+
+|PROCESO Mensaje;
+     aEmp = "                                             ";
+
+     aAlfa   = ("00000" + #labempre#0) % -105;
+     aNomEmp = #labempre#2;
+     aNomEmp = aNomEmp % 126;
+     aEmp = "Empresa: " + aAlfa + " - " + aNomEmp;
+     aEmp = " " + aEmp + " ";
+
+     |CUADRO 1217 1619;
+     |ATRI R;
+     |PINTA 1318, "      - Procesando archivo de FLC -                 ";
+     |PINTA 1418, "                                                    ";
+     |PINTA 1518, "                                                    ";
+     |PINTA 1518, aEmp;
+     |ATRI 0;
+|FPRC;
+
+|PROCESO nomtrflcA;
+     |SI nPas = 0;
+         |SI #nomtrflc#2 [ 0;  |ACABA;  |FINSI;
+
+         nOk = 1;
+         |ACABA;
+     |FINSI;
+
+     |SI #nomtrflc#2 [ 0;  |ACABA;  |FINSI;
+
+     alfa1 = #nomtrflc#13;|QBF alfa1;
+     alfa2 = alfa1 % 0;
+     nume1 = alfa2;
+     nume1 = (nume1 - 4) + 300;
+     ss1   = alfa1 % 102;
+     ss2   = alfa1 % nume1;
+     ss3   = alfa1 % -102;
+
+     #labempre#128 = #nomtrflc#14;
+
+     |HAZ CargaVar;
+
+     aEjemplar = "Ejemplar para la oficina recaudadora";
+     |PRINT;
+
+     aEjemplar = "Ejemplar para el interesado";
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE nomtrflcA;
+     #nomtrflc#1;
+     ;
+     #labempre#0, "               ";
+     #labempre#0, "zzzzzzzzzzzzzzz";
+     ;
+     NULL, nomtrflcA;
+|FIN;
+
+|PROCESO labempre;
+     nPas = 0;
+     nOk  = 0;
+     |BUCLE nomtrflcA;
+     |SI nOk = 0;  |ACABA;  |FINSI;
+
+     |HAZ Mensaje;
+     |HAZ IMPREArchi;
+
+     nPas = 1;
+     |BUCLE nomtrflcA;
+
+     |PIEINF;
+     |FININF;
+     |FINIMP;
+
+     |SI swErrorDSArchi = 0;
+         |HAZ Archivando;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE labempre;
+     #labempre#1;
+     42;
+     #nomwwflc#0, "S";
+     #nomwwflc#1, "S";
+     ;
+     NULL, labempre;
+|FIN;
+
+
+|PROCESO Archivo;
+     enDesdeMes   = d_mes;
+     enAny        = #nomwwflc#5;
+     eaTitulo     = "FLC";
+
+     |ABRET #nomtrflc;
+     |BUCLE labempre;
+     |CIERRAT #nomtrflc;
+|FPRC;
+
+|PROCESO Archivado;
+     |SI #nomwwflc#6 = "S";  |O #nomwwflc#9 = "S";
+         d_mes = #nomwwflc#4;          || pago semestral
+         h_mes = #nomwwflc#8;
+         |HAZ Periodo;
+         |HAZ Archivo;
+
+         |DELINDEX #nomtrflc;
+         |DELINDEX #nomflctm;
+     |SINO;
+         |PARA para1 = #nomwwflc#4; |SI para1 [ #nomwwflc#8; |HACIENDO para1 = para1 + 1;
+               d_mes = para1;
+               h_mes = para1;          || pago mensual
+               |HAZ Periodo;
+               |HAZ Archivo;
+
+               |DELINDEX #nomtrflc;
+               |DELINDEX #nomflctm;
+         |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO imprime; |TIPO 3;
+     |HAZ nom_usu;
+
+     alfa1 = nom_tmp;
+     |NOME_DAT #nomtrflc#alfa1#;
+     |ABRE #nomtrflc; |CIERRA #nomtrflc;  |DELINDEX #nomtrflc;
+
+     alfa2 = Usuario; |QBF alfa2;    alfa1 = "l" + alfa2;
+     |NOME_DAT #nomflctm#alfa2#;
+     |ABRE #nomflctm;  |CIERRA #nomflctm;  |DELINDEX #nomflctm;
+
+     nOpcion   = 1;
+     eaVengoDe = "nomyyflc";
+     |HAZ MiraSiArchiva;
+     |SI nArchi ! 0;
+         |MENU aMenu;
+         nOpcion = FSalida;
+     |FINSI;
+
+     |SI nOpcion = 1;  |HAZ Papel;      |FINSI;
+     |SI nOpcion = 3;  |HAZ Papel;      |FINSI;
+     |SI nOpcion = 2;  |HAZ Archivado;  |FINSI;
+     |SI nOpcion = 3;  |HAZ Archivado;  |FINSI;
+|FPRC;

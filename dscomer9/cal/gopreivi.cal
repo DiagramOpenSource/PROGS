@@ -1,0 +1,1053 @@
+||**********************************************************************************
+|| gopreivi
+||
+|| Importacion de presupuestos de obra en formato FIEDBC
+|| 24/06/2002 version 1.0 programador: Cesc
+||
+|| 25/06/2002 version 1.1 programador: Cesc
+|| Incluida mediciones, desglose, control decimales precios, conversion ANSI y
+|| cuadre a palabra de las descripciones ampliadas
+||
+||
+|| Requiere def auxiliar: goimpau1
+||
+||**********************************************************************************
+
+|FICHEROS;
+   gopreivi;
+
+   goimpau1 #0; || Auxiliar: convertiremos el fichero bc3 a este auxiliar para facilitar el manejo
+
+   gopre001; || Cabecera presupuestos
+   gopre002; || Linea Presupuestos/Capitulos
+   gopre003; || Partidas presupuesto
+   gopre004; || Desglose Partidas presupuesto
+
+   godeprec; || Cabecera descripcion ampliada
+   godeprel; || Lineas descripcion ampliada
+
+   goartive; || Partidas
+
+   gomedici; || Mediciones
+
+   gopre021; || Agrupaciones
+   gopre023; || Agrupacion Principal
+
+   goartbc3 #1;
+   agifa019 #19;
+   goparame;
+|FIN;
+
+|VARIABLES;
+     nErrMedi = 0;
+     aSubCapiAnt = "";
+     aAlfa = "";
+     aAlfa1 = "";
+     nAgrupaPrin = 0;
+     nAgrupaPrin1 = 0;
+     &enSer = "";
+     &enPre = 0;
+     nNume = 0;
+     &enCosteInd = 0;
+     &nDeci_Medi = 0;
+     &nDeci_Meda = 0;
+     ii = 0;
+     aFic = "";
+     nBotFic = 0;
+
+     &eaFicCype = "";    || Importacion cype, lo llama guerz063
+     &eaTemp1 = "";
+     &eaTemp2 = "";
+     &eaTemp3 = "";
+     &eaTemp4 = "";
+     &eaTemp5 = "";
+     &eaTemp6 = "";
+     &eaTemp8 = "";
+|FIN;
+
+|PROGRAMA;
+     |ABRE #goparame; |LEE 000#goparame.p; |CIERRA #goparame;
+     |SI eaFicCype ! "";
+          #gopreivi#0 = eaFicCype;
+          |HAZ IveImporta; |ACABA;
+     |FINSI;
+
+     |CABEZA "Importacion Presupuesto IVE";
+     |BLIN 4;
+     |BLANCO 0501 880;
+     |PINPA #0#gopreivi;
+     |PINDA #0#gopreivi;
+     nBotFic = -1;
+
+     aAlfa = #goparame#90;
+     |C_M #gopreivi#2, 1, aAlfa;
+     |SI aAlfa = "N"; |PINTA 735, "                                ";|FINSI;
+     |ENDATOS #1#gopreivi;
+     |SI FSalida ] 0;
+         |HAZ IveImporta;
+     |FINSI;
+     |SI nBotFic ! -1;
+         |FIN_CONTROL_WINDOWS nBotFic;
+         nBotFic = -1;
+     |FINSI;
+|FPRO;
+
+||***************** DESDE LOS CAMPOS
+|PROCESO antesb;|TIPO 7;
+   |SI nBotFic = -1;
+        FSalida = 823;
+        |CONTROL_SIMPLE 0, "BOTON,F12...", 0621,0626 ,NULL;
+        nBotFic = FSalida;
+   |FINSI;
+|FPRC;
+|PROCESO browse;|TIPO 6;
+   |SI FSalida = 9;
+      |HAZ browsec;
+      |ERROR;
+   |SINO;
+      |SI nBotFic ! -1;
+          |FIN_CONTROL_WINDOWS nBotFic;
+          nBotFic = -1;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO browsec;|TIPO 66;
+   aFic = #gopreivi#0;
+   |QBF aFic;
+   aFic = " " + aFic;
+   |BROWSE aFic;
+   #gopreivi#0 = aFic % 2;
+   |PINTA #gopreivi#0;
+|FPRC;
+
+||********************************
+
+||***************** PROCESOS INTERNOS
+
+|| **** 1-IMPORTACION DEL FORMATO
+|VARIABLES;
+  &aIveCodigoSerie     = "XXXX";
+  &aIveCodigoPresupuesto = "XXXX";
+  &aIveMoneda = "EUR";
+  i = 0;
+  j = 0;
+  &nHandleIve = 0;
+  aBeta = "";
+  aAntValor = "";
+  aSubCapi = "";
+  &eaAgrupacion = "";
+  &eaAgrupaPrin = "";
+  nAgrupacion = 0;
+  nNumeAgrupa = 0;
+  aDesAgrupa = "";
+|FIN;
+
+|PROCESO Recalcula;
+     |HAZ TotalCapi;
+|FPRC;
+
+|DEFBUCLE Recalcula;
+     #gopre002#1;
+     ;
+     aIveCodigoSerie, nNume, 001;
+     aIveCodigoSerie, nNume, 999;
+     ;
+     NULL, Recalcula;
+|FIN;
+
+|RUTINA IveImporta;
+   ||******************* Falta controlar posibles multiples precios determinados por fechas y/o registro "~V"
+   ||******************* Falta control especifico de los registros de ampliacion "~Y"
+   ||*******************
+
+   |QBF aIveMoneda; || Por si esta en el defecto 'blanco'
+   |SI aIveMoneda = "";
+       aIveMoneda = "EUR";
+   |FINSI;
+
+   || Primer paso: rellenar nuestro 'manejable' auxiliar
+   aFic = #gopreivi#0;
+   |QBF aFic;
+
+|| PARA CUANDO PRUEBO EN PRODUCCION (Juan) Y SE ME OLVIDA QUITARLO
+||XABRE "B", "/tmp/p.bc3", nHandleIve;
+||SI FSalida < 0;
+   |XABRE "CB", aFic, nHandleIve; || Lo trataremos binario ya que tenemos longitudes de string muy largas
+||FINSI;
+
+   |SI FSalida ] 0;
+       |SUB_EJECUTA_NP "gocreivi.tab";
+       |XCIERRA nHandleIve;
+   |SINO;
+       |MENAV "0000No se puede abrir el origen ...";
+       |ACABA;
+   |FINSI;
+
+   |SI eaFicCype ! "";   || en la importacion cype se usan temporales!
+          |NOME_DAT #gopre001#eaTemp1#;
+          |NOME_DAT #gopre002#eaTemp2#;
+          |NOME_DAT #gopre003#eaTemp3#;
+          |NOME_DAT #gopre004#eaTemp4#;
+          |NOME_DAT #godeprec#eaTemp5#;
+          |NOME_DAT #godeprel#eaTemp6#;
+          |NOME_DAT #gomedici#eaTemp8#;
+   |FINSI;
+
+   |ABRE #goimpau1;
+   |ABRE #gopre001;
+   |ABRE #gopre002;
+   |ABRE #gopre003;
+   |ABRE #gopre004;
+
+   |ABRE #godeprec;
+   |ABRE #godeprel;
+
+   |ABRE #goartive;
+   |ABRE #gomedici;
+
+
+   || Hacer la importacion ...
+
+   |HAZ ProcesaAux;
+
+   || Presupuesto con Agrupacion?
+   |SI nAgrupacion > 0; eaAgrupacion = "S"; |SINO; eaAgrupacion = "N"; |FINSI;
+   |SI nAgrupaPrin > 0; eaAgrupaPrin = "S"; |SINO; eaAgrupaPrin = "N"; |FINSI;
+
+   |CIERRA #goimpau1;
+
+   |CIERRA #gopre001;
+   |CIERRA #gopre002;
+   |CIERRA #gopre003;
+   |CIERRA #gopre004;
+
+   |CIERRA #godeprec;
+   |CIERRA #godeprel;
+
+   |CIERRA #goartive;
+   |CIERRA #gomedici;
+
+   |SI eaFicCype ! ""; |ACABA; |FINSI; || importacion cype, nada mas que hacer
+
+
+     |HAZ PonDesglose; || A¤ade desglose de componentes de las partidas
+                       || que no tienen descomposicion
+
+     |HAZ CalcuPorcentaje; || Los componentes que tienen % hay que calcularlos
+
+
+     |HAZ EsAbymatic;
+     |SI FSalida = 0;
+          |HAZ AbyCalcuPrecio;
+     |FINSI;
+
+     |SI enCosteInd ! 0;   || Crea Articulo con Coste Indirecto
+          |HAZ CreParInd;
+     |FINSI;
+
+||   nNume = aIveCodigoPresupuesto;
+||   |BUCLE Recalcula;
+
+     enSer = aIveCodigoSerie;
+     enPre = aIveCodigoPresupuesto;
+     |SUB_EJECUTA_NP "gopre010";
+
+     |HAZ Chequea;
+
+     |SI #gopreivi#2 = "S";
+          |HAZ ActArticulo;
+     |FINSI;
+|FRUT;
+
+
+
+
+|| *** 2- Carga de los ficheros destino
+
+|VARIABLES;
+    nLineaC = 0;
+    nLineaP = 0;
+    nLineaD = 0;
+    nUnidades = 0;
+    nMedicionTotal = 0;
+    aPresupuesto = "";
+    aCapituloD = "";
+    aCapitulo = "";
+    aLaPartida = "";
+    aAmpliada = "";
+    aDesAmpliada = "";
+    aElArticulo = "";
+    nFlag1 = 0;
+    nDeciEuro = 2;
+    nDeciPelas = 0;
+|FIN;
+
+|RUTINA ProcesaAux;
+   nDeciEuro = 2;
+   nDeciPelas = 0;
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = "K";
+   |LEE 000#goimpau1.];
+   aAlfa = #goimpau1#0; |QBF aAlfa;
+   |SI FSalida = 0; |Y aAlfa = "K";
+        enCosteInd = #goimpau1#5;
+   |FINSI;
+
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = "K";
+   |LEE 000#goimpau1.];
+   |PARA; |SI FSalida = 0; |Y #goimpau1#0 = "K  "; |HACIENDO;
+      |SI #goimpau1#3 = 4; || COEFICIENTE DI ... lo usamos para redondear el precio
+                           || en caso de conversion monetaria ...
+         nDeciEuro = nDeciEuro + #goimpau1#5;
+         nDeciPelas = nDeciPelas + #goimpau1#5;
+      |FINSI;
+      |LEE 040#goimpau1.s;
+   |SIGUE;
+
+   |DDEFECTO #gopre001;
+   #gopre001#0 = aIveCodigoSerie;
+   #gopre001#1 = aIveCodigoPresupuesto;
+   |LEE 040#gopre001.=;
+   || No esta? ... es igual (!!!)
+
+   nLineaC = 1;
+   || Buscaremos el registro pricipal (##)
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = "C##";
+   |LEE 040#goimpau1.];
+   |SI FSalida = 0;|Y #goimpau1#0 = "C##";
+       aPresupuesto = #goimpau1#1;
+       || Buscamos el desglose principal
+       |DDEFECTO #goimpau1;
+       #goimpau1#0 = "D"
+       #goimpau1#1 = aPresupuesto;
+       |LEE 040#goimpau1.];
+       |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y #goimpau1#1 = aPresupuesto;|HACIENDO;
+            || Rellenar capitulos/partidas
+            |SALVA_DATOS #goimpau1;
+               aAlfa = #goimpau1#5 - "#"; || No lo trae pero asi nos aseguramos ...
+               |QBF aAlfa;
+               aAlfa = aAlfa + "#";
+               || Averiguar si es sub capitulo
+               |SALVA_DATOS #goimpau1;
+               #goimpau1#0 = "D";
+               #goimpau1#1 = aAlfa;
+               #goimpau1#2 = 0;
+               #goimpau1#3 = 0;
+               #goimpau1#4 = 0;
+               nFlag1 = 0;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                   aBeta = #goimpau1#5 - "#";
+                   |QBF aBeta;
+                   aBeta = aBeta + "#";
+                   #goimpau1#0 = "D";
+                   #goimpau1#1 = aBeta;
+                   #goimpau1#2 = 0;
+                   #goimpau1#3 = 0;
+                   #goimpau1#4 = 0;
+                   |LEE 040#goimpau1.=;
+                   |SI FSalida = 0;
+                       nFlag1 = 1;
+                   |FINSI;
+               |FINSI;
+               |REPON_DATOS #goimpau1;
+               |LEE 040#goimpau1.=; || Reponemos corriente ...
+               |SI nFlag1 = 1;
+                   || SUBCAPITULOS .... SALTARLOS!!
+                   #goimpau1#1 = aAlfa;
+                   aCapituloD = #goimpau1#1; || Por el formateo del campo para la comparacion ...
+                   |HAZ RellenaCapitulos;
+               |SINO;
+                   #goimpau1#1 = aAlfa;
+                   aCapitulo = #goimpau1#1; || Por el formateo del campo para la comparacion ...
+                   |LEE 040#goimpau1.s; || siguiente no mayor ya que nos hemos cargado la clave
+                   aAlfa = #goimpau1#5;
+                   |QBF aAlfa;
+                   |SI aAlfa = ""; || Factor por defecto es 1
+                       aAlfa = "1";
+                   |FINSI;
+                   |LEE 040#goimpau1.s; || Unidades
+                   nUnidades = #goimpau1#5 * aAlfa;
+                   |HAZ RellenaPartidas;
+               |FINSI;
+            |REPON_DATOS #goimpau1;
+            #goimpau1#3 = #goimpau1#3 + 2; || saltar factor y rendimiento
+            |LEE 040#goimpau1.>;
+       |SIGUE;
+       |HAZ Mediciones; || Rellenamos todas las mediciones
+   |SINO;
+       |MENAV "0000El fichero origen carece de codigo principal (##)";
+   |FINSI;
+|FRUT;
+
+|PROCESO GrabaAgrupacion;
+     |ABRE #gopre021;
+     #gopre021#0 = #gopre001#0;
+     #gopre021#1 = #gopre001#1;
+     #gopre021#2 = nAgrupacion;
+     #gopre021#3 = aDesAgrupa;
+     |GRABA 040#gopre021.n;
+     |CIERRA #gopre021;
+|FPRC;
+
+|RUTINA RellenaCapitulos;
+     |HAZ AgrPrincipal;
+     nAgrupaPrin1 = nAgrupaPrin;
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "D"
+     #goimpau1#1 = aCapituloD;
+     |LEE 040#goimpau1.];
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y #goimpau1#1 = aCapituloD;|HACIENDO;
+          || Bueno si hubiera mas niveles se podria hacer facilmente recursion ... si tuvieramos
+          || variables por parametro en pila :-) ... en su defecto un arrai valdria
+          || Pero no hace falta: solo un nivel de subcapitulos
+          |HAZ SubCapi;       || ...Como si hay mas niveles y el nuestro tiene
+          |SI aSubCapi ! "";  || agrupaciones, pues pongo un nivel mas ;)
+               |SALVA_DATOS #goimpau1;
+               nAgrupacion = nAgrupacion + 1;
+               |HAZ GrabaAgrupacion;
+               |DDEFECTO #goimpau1;
+               #goimpau1#0 = "D"
+               #goimpau1#1 = aSubCapi;
+               |LEE 040#goimpau1.];
+               |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y #goimpau1#1 = aSubCapi;|HACIENDO;
+                    |SALVA_DATOS #goimpau1;
+                    aAlfa = #goimpau1#5 - "#"; || No lo trae pero asi nos aseguramos ...
+                    |QBF aAlfa;
+                    aAlfa = aAlfa + "#";
+                    #goimpau1#1 = aAlfa;
+                    aCapitulo = #goimpau1#1; || Por el formateo del campo para la comparacion ...
+                    |LEE 040#goimpau1.s; || siguiente no mayor ya que nos hemos cargado la clave
+                    aAlfa = #goimpau1#5;
+                    |QBF aAlfa;
+                    |SI aAlfa = ""; || Factor por defecto es 1
+                         aAlfa = "1";
+                    |FINSI;
+                    |LEE 040#goimpau1.s; || Unidades
+                    nUnidades = #goimpau1#5 * aAlfa;
+                    nNumeAgrupa = nAgrupacion;
+                    |HAZ RellenaPartidas;
+                    |REPON_DATOS #goimpau1;
+
+                    #goimpau1#3 = #goimpau1#3 + 2; || saltar factor y rendimiento
+                    |LEE 040#goimpau1.>;
+               |SIGUE;
+               |REPON_DATOS #goimpau1;
+          |SINO;
+               |HAZ SubCapi1;
+               |SI aSubCapi ! ""; |Y aSubCapiAnt ! aSubCapi;
+                    nAgrupacion = nAgrupacion + 1;
+                    |HAZ GrabaAgrupacion;
+                    aSubCapiAnt = aSubCapi;
+               |FINSI;
+
+               |SALVA_DATOS #goimpau1;
+               aAlfa = #goimpau1#5 - "#"; || No lo trae pero asi nos aseguramos ...
+               |QBF aAlfa;
+               aAlfa = aAlfa + "#";
+               #goimpau1#1 = aAlfa;
+               aCapitulo = #goimpau1#1; || Por el formateo del campo para la comparacion ...
+               |LEE 040#goimpau1.s; || siguiente no mayor ya que nos hemos cargado la clave
+               aAlfa = #goimpau1#5;
+               |QBF aAlfa;
+               |SI aAlfa = ""; || Factor por defecto es 1
+                    aAlfa = "1";
+               |FINSI;
+               |LEE 040#goimpau1.s; || Unidades
+               nUnidades = #goimpau1#5 * aAlfa;
+               nNumeAgrupa = nAgrupacion;
+               nAgrupaPrin = 0;
+               |HAZ RellenaPartidas;
+               |REPON_DATOS #goimpau1;
+          |FINSI;
+          #goimpau1#3 = #goimpau1#3 + 2; || saltar factor y rendimiento
+          |LEE 040#goimpau1.>;
+     |SIGUE;
+     |SI aSubCapiAnt ! "";
+          |ABRE #gopre023;
+          #gopre023#0 = #gopre001#0;
+          #gopre023#1 = #gopre001#1;
+          #gopre023#2 = nAgrupaPrin1;
+          #gopre023#3 = #goimpau1#5;
+          |BORRA 040#gopre023.c;
+          |CIERRA #gopre023;
+     |FINSI;
+|FRUT;
+
+|PROCESO SubCapi1;
+     aAlfa1 = #goimpau1#1;
+     aSubCapi = "";
+     |SALVA_DATOS #goimpau1;
+     aAlfa = #goimpau1#5 - "#"; |QBF aAlfa;
+     aAlfa = aAlfa + "#";
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "D";
+     #goimpau1#1 = aAlfa;
+     |LEE 040#goimpau1.=;
+     |SI FSalida = 0;
+          aBeta = #goimpau1#5 - "#"; |QBF aBeta;
+          aBeta = aBeta;
+          |DDEFECTO #goimpau1;
+          #goimpau1#0 = "D";
+          #goimpau1#1 = aBeta;
+          |LEE 040#goimpau1.=;
+          |SI FSalida = 0;
+               aSubCapi = aAlfa1;
+
+               |DDEFECTO #goimpau1;
+               #goimpau1#0 = "C#";
+               #goimpau1#1 = aSubCapi;
+               #goimpau1#2 = 1;
+               |LEE 000#goimpau1.=;
+               |SI FSalida = 0;
+                    aDesAgrupa = #goimpau1#5;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |REPON_DATOS #goimpau1;
+     |LEE 040#goimpau1.=;
+|FPRC;
+
+|PROCESO SubCapi;
+     aSubCapi = "";
+     |SALVA_DATOS #goimpau1;
+     aAlfa = #goimpau1#5 - "#"; |QBF aAlfa;
+     aAlfa = aAlfa + "#";
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "D";
+     #goimpau1#1 = aAlfa;
+     |LEE 040#goimpau1.=;
+     |SI FSalida = 0;
+          aBeta = #goimpau1#5 - "#"; |QBF aBeta;
+          aBeta = aBeta + "#"
+          |DDEFECTO #goimpau1;
+          #goimpau1#0 = "D";
+          #goimpau1#1 = aBeta;
+          |LEE 040#goimpau1.=;
+          |SI FSalida = 0;
+               #goimpau1#1 = aAlfa;   || Formateo
+               aSubCapi = #goimpau1#1;
+
+               |DDEFECTO #goimpau1;
+               #goimpau1#0 = "C#";
+               #goimpau1#1 = aSubCapi;
+               #goimpau1#2 = 1;
+               |LEE 000#goimpau1.=;
+               |SI FSalida = 0;
+                    aDesAgrupa = #goimpau1#5;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |REPON_DATOS #goimpau1;
+     |LEE 040#goimpau1.=;
+|FPRC;
+
+|RUTINA RellenaPartidas;
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = "C#"
+   #goimpau1#1 = aCapitulo;
+   |LEE 040#goimpau1.=;
+   |SI FSalida = 0;
+        || Grabar el capitulo ....
+        |DDEFECTO #gopre002;
+        #gopre002#0 = #gopre001#0;
+        #gopre002#1 = #gopre001#1;
+        #gopre002#2 = nLineaC;nLineaC = nLineaC + 1;
+
+        #gopre002#3 = aCapitulo - "#";
+        #gopre002#12= aCapitulo - "#";
+        #gopre002#5 = #goimpau1#5; || Unidad de medida
+        #gopre002#6 = nUnidades;
+        |LEE 040#goimpau1.s;
+        |OEM_ANSI #gopre002#4,#goimpau1#5; || Resumen(Descripcion
+        |OEM_ANSI #gopre002#13,#goimpau1#5;
+        |LEE 040#goimpau1.s;
+        |SI #gopreivi#1 = "N";
+            |SI aIveMoneda = "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 / 166.386) ! nDeciEuro);
+            |FINSI;
+        |SINO;
+            |SI aIveMoneda ! "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 * 166.386) ! nDeciPelas);
+            |FINSI;
+        |FINSI;
+        #gopre002#7 = #goimpau1#5; || Precio OJO: De momento uno .... FALTA INTERPRETAR REGISTRO V
+        #gopre002#8 = #goimpau1#5;
+
+        || Calcular Importes
+        #gopre002#9 = #gopre002#6 * #gopre002#7;
+        #gopre002#10= #gopre002#6 * #gopre002#8;
+
+        #gopre002#11 = 0;
+        #gopre002#14 = nNumeAgrupa;
+        |SI nNumeAgrupa > 0;  || Solo si hay Agrupaciones
+               #gopre002#16 = nAgrupaPrin;
+        |FINSI;
+        |GRABA 040#gopre002.n;
+
+        aAmpliada = aCapitulo;
+        aDesAmpliada = #gopre002#13;
+        |HAZ Ampliada;
+
+        nLineaP = 1;
+        || Buscar las partidas del capitulo y rellenarlo
+        |DDEFECTO #goimpau1;
+        #goimpau1#0 = "D"
+        #goimpau1#1 = aCapitulo;
+        |LEE 040#goimpau1.];
+        |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y #goimpau1#1 = aCapitulo;|HACIENDO;
+            |SALVA_DATOS #goimpau1;
+               #goimpau1#1 = #goimpau1#5;
+               aLaPartida = #goimpau1#1; || Por el formateo del campo para la comparacion ...
+               |LEE 040#goimpau1.s; || siguiente no mayor ya que nos hemos cargado la clave
+                   aAlfa = #goimpau1#5;
+                   |QBF aAlfa;
+                   |SI aAlfa = ""; || Factor por defecto es 1
+                       aAlfa = "1";
+                   |FINSI;
+                   |LEE 040#goimpau1.s; || Unidades
+                   nUnidades = #goimpau1#5 * aAlfa;
+               |HAZ RellenaUnaPartida;
+            |REPON_DATOS #goimpau1;
+            #goimpau1#3 = #goimpau1#3 + 2; || saltar factor y rendimiento
+            |LEE 040#goimpau1.>;
+        |SIGUE;
+
+   |FINSI;
+|FRUT;
+
+|RUTINA RellenaUnaPartida;
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = "C"
+   #goimpau1#1 = aLaPartida;
+   |LEE 040#goimpau1.=;
+   |SI FSalida = 0;
+        || Grabar linea de capitulo
+        |DDEFECTO #gopre003;
+        #gopre003#0 = #gopre001#0;
+        #gopre003#1 = #gopre001#1;
+        #gopre003#2 = aCapitulo - "#";
+        #gopre003#3 = nLineaP;nLineaP = nLineaP + 1;
+        #gopre003#4 = aLaPartida;
+        #gopre003#6 = #goimpau1#5; || Unidad de medida
+        #gopre003#7 = nUnidades;
+        #gopre003#15 = nUnidades;
+        |LEE 040#goimpau1.s;
+        |OEM_ANSI #gopre003#5,#goimpau1#5; || Resumen/Descripcion
+        |LEE 040#goimpau1.s;
+        |SI #gopreivi#1 = "N";
+            |SI aIveMoneda = "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 / 166.386) ! nDeciEuro);
+            |FINSI;
+        |SINO;
+            |SI aIveMoneda ! "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 * 166.386) ! nDeciPelas);
+            |FINSI;
+        |FINSI;
+        #gopre003#8 = #goimpau1#5; || Precio OJO: De momento uno .... FALTA INTERPRETAR REGISTRO V
+        #gopre003#9 = #goimpau1#5;
+
+        || Calcular Importes
+        #gopre003#10 = #gopre003#7 * #gopre003#8;
+        #gopre003#11 = #gopre003#7 * #gopre003#9;
+
+        || Resto defectos ...
+
+        |GRABA 040#gopre003.n;
+
+        || Grabar fichero de partidas ... en principio no machacamos
+
+        #goimpau1#0 = "C"
+        #goimpau1#1 = aLaPartida;
+        #goimpau1#2 = 4; || campo 4 = Tipo
+        #goimpau1#3 = 0;
+        #goimpau1#4 = 0;
+        #goimpau1#5 = "";
+        |LEE 040#goimpau1.=;
+
+        |DDEFECTO #goartive;
+        #goartive#0 = #gopre003#4;
+        #goartive#1 = #gopre003#5;
+        #goartive#2 = #gopre003#6;
+
+
+        || Ver si tiene descomposicion o no
+        #goimpau1#0 = "D"
+        #goimpau1#1 = aLaPartida;
+        #goimpau1#2 = 0;
+        #goimpau1#3 = 0;
+        #goimpau1#4 = 0;
+        #goimpau1#5 = "";
+        |LEE 040#goimpau1.=;
+        |SI FSalida = 0;
+             #goartive#4 = "S";
+        |SINO;
+             #goartive#4 = "N";
+        |FINSI;
+
+
+        #goartive#5 = aIveMoneda;
+        #goartive#6 = #goimpau1#5; || Tipo
+        #goartive#13= #gopre002#12;
+        #goartive#14= #gopre002#13;
+
+        #goimpau1#0 = "C"
+        #goimpau1#1 = aLaPartida;
+        #goimpau1#2 = 2; || campo 2 = Precio
+        #goimpau1#3 = 0;
+        #goimpau1#4 = 0;
+        #goimpau1#5 = "";
+        |LEE 040#goimpau1.=;
+
+        |SI #gopreivi#1 = "N";
+            |SI aIveMoneda = "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 / 166.386) ! nDeciEuro);
+            |FINSI;
+        |SINO;
+            |SI aIveMoneda ! "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 * 166.386) ! nDeciPelas);
+            |FINSI;
+        |FINSI;
+
+        #goartive#14= #goimpau1#5;
+
+        |SI 0 = #goartive#6;
+          #goartive#16 = "Sin clasificar";
+             |VETE switch_RellenaUnaPartida;
+        |FINSI;
+        |SI 1 = #goartive#6;
+          #goartive#16 = "Mano de obra";
+             |VETE switch_RellenaUnaPartida;
+        |FINSI;
+        |SI 2 = #goartive#6;
+          #goartive#16 = "Maquinaria y medios aux.";
+             |VETE switch_RellenaUnaPartida;
+        |FINSI;
+        |SI 3 = #goartive#6;
+          #goartive#16 = "Materiales";
+             |VETE switch_RellenaUnaPartida;
+        |FINSI;
+        |ET switch_RellenaUnaPartida;
+
+/*   NO SE CREAN Mon Oct  4 10:01:57 CEST 2004
+        |GRABA 040#goartive.n;
+*/
+
+        aAmpliada = aLaPartida;
+        aDesAmpliada = #gopre003#5;
+        |HAZ Ampliada;
+
+        |SI #goartive#4 = "S";
+            || Rellenar la descomposicion
+             nLineaD = 1;
+             || Buscar las partidas del capitulo y rellenarlo
+             |DDEFECTO #goimpau1;
+             #goimpau1#0 = "D"
+             #goimpau1#1 = aLaPartida;
+             |LEE 040#goimpau1.];
+             |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y #goimpau1#1 = aLaPartida;|HACIENDO;
+                 |SALVA_DATOS #goimpau1;
+                    #goimpau1#1 = #goimpau1#5;
+                    aElArticulo = #goimpau1#1; || Por el formateo del campo para la comparacion ...
+                    |LEE 040#goimpau1.s; || siguiente no mayor ya que nos hemos cargado la clave
+                   aAlfa = #goimpau1#5;
+                   |QBF aAlfa;
+                   |SI aAlfa = ""; || Factor por defecto es 1
+                       aAlfa = "1";
+                   |FINSI;
+                   |LEE 040#goimpau1.s; || Unidades
+                   nUnidades = #goimpau1#5 * aAlfa;
+                    |HAZ RellenaUnArticulo;
+                 |REPON_DATOS #goimpau1;
+                 #goimpau1#3 = #goimpau1#3 + 2; || saltar factor y rendimiento
+                 |LEE 040#goimpau1.>;
+             |SIGUE;
+        |FINSI;
+   |FINSI;
+|FRUT;
+
+|RUTINA RellenaUnArticulo;
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = "C"
+   #goimpau1#1 = aElArticulo;
+   |LEE 040#goimpau1.=;
+   |SI FSalida = 0;
+        || Grabar (sub)linea de partida
+        |DDEFECTO #gopre004;
+        #gopre004#0 = #gopre001#0;
+        #gopre004#1 = #gopre001#1;
+        #gopre004#2 = aCapitulo - "#";
+        #gopre004#3 = aLaPartida;
+        #gopre004#4 = nLineaD;nLineaD = nLineaD + 1;
+        #gopre004#5 = aElArticulo;
+        #gopre004#7 = #goimpau1#5; || Unidad de medida
+        #gopre004#8 = nUnidades;
+        |LEE 040#goimpau1.s;
+        |OEM_ANSI #gopre004#6,#goimpau1#5; || Resumen/Descripcion
+        |LEE 040#goimpau1.s;
+        |SI #gopreivi#1 = "N";
+            |SI aIveMoneda = "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 / 166.386) ! nDeciEuro);
+            |FINSI;
+        |SINO;
+            |SI aIveMoneda ! "EUR";
+                #goimpau1#5 = (N\ (#goimpau1#5 * 166.386) ! nDeciPelas);
+            |FINSI;
+        |FINSI;
+        #gopre004#9 = #goimpau1#5; || Precio OJO: De momento uno .... FALTA INTERPRETAR REGISTRO V
+        #gopre004#10 = #goimpau1#5;
+
+        || Calcular Importes
+        #gopre004#11 = #gopre004#8 * #gopre004#9;
+        #gopre004#12 = #gopre004#8 * #gopre004#10;
+
+        || Resto defectos ...
+        |GRABA 040#gopre004.n;
+        |HAZ GrabaCopia;
+    |FINSI;
+|FRUT;
+
+|RUTINA Ampliada; || graba la descripcion ampliada
+   |VARIABLES;
+     primera = 0;
+   |FIN;
+
+   primera = 0;
+   |DDEFECTO #goimpau1;
+   #goimpau1#0 = "T"
+   #goimpau1#1 = aAmpliada;
+   |LEE 040#goimpau1.];
+   |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "T  ";|Y #goimpau1#1 = aAmpliada;|HACIENDO;
+       |SI primera = 0;
+           primera = 1;
+           |DDEFECTO #godeprec;
+           #godeprec#0 = aAmpliada - "#";
+           #godeprec#1 = #gopre001#0;
+           #godeprec#2 = #gopre001#1;
+           #godeprec#3 = aDesAmpliada;
+           ||#godeprec#4 = aAmpliada - "#";
+           #godeprec#4 = #gopre002#12;
+
+           |GRABA 040#godeprec.n;
+           |DDEFECTO #godeprel;
+           #godeprel#0 = aAmpliada - "#";
+           #godeprel#1 = #gopre001#0;
+           #godeprel#2 = #gopre001#1;
+           #godeprel#5 = #godeprec#4;
+           #godeprel#3 = 1;
+       |FINSI;
+
+       |OEM_ANSI #godeprel#4,#goimpau1#5; || Se controla no partir palabras en la importacion
+       || Despues de montar un cristo aqui se anulo por esta solucion mas limpia y eficaz
+
+       |GRABA 040#godeprel.n;
+       #godeprel#3 = #godeprel#3 + 1;
+       |LEE 040#goimpau1.s;
+   |SIGUE;
+|FRUT;
+
+
+|RUTINA Mediciones; || graba todas las mediciones
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "M"
+     #goimpau1#1 = "";
+     |LEE 040#goimpau1.];
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "M  ";|Y #goimpau1#2 = 0;|Y #goimpau1#3 = 0;|Y #goimpau1#4 = 0;|HACIENDO;
+
+aAlfa = #goimpau1#1; |QBF aAlfa;
+|SI aAlfa = "2#\U04029|2\1"; |O aAlfa = "1#\ECMV.1bbb|1\2";
+|FINSI;
+          |DDEFECTO #gomedici;
+          #gomedici#0 = #gopre001#0;
+          #gomedici#1 = #gopre001#1;
+          aBeta = #goimpau1#1 - "|";
+          i = FSalida;
+          i = (((i / 100) - 1.5) ! 0) + 100;
+          aBeta = aBeta % i;
+          aAlfa = aBeta - "\";
+          i = FSalida;
+          |SI aAlfa = aBeta;
+               #gomedici#2 = "";
+               #gomedici#3 = aAlfa  - "#";
+          |SINO;
+               i = (((i / 100) - 1.5) ! 0) + 100;
+               #gomedici#2 = (aBeta % i) - "#";
+               i = (((i$100)+2) * 100) + 99;
+               #gomedici#3 = (aBeta % i) - "#";
+          |FINSI;
+          nMedicionTotal = #goimpau1#5;
+          #gomedici#4 = 1;
+          i = -1;
+          |PARA;|SI;|HACIENDO;
+|ET A_Otra_Medida;
+               #gomedici#5 = 0;
+               #gomedici#6 = 0;
+               #gomedici#7 = 0;
+               #gomedici#8 = 0;
+               #gomedici#9 = 1;
+               #gomedici#10 = "";
+               nErrMedi = 0;
+               j = 0;
+               i = i + 1;
+               #goimpau1#2 = 1;  || Campo 1  Medidas
+               #goimpau1#3 = i;  || subcampo 0 TIPO
+               #goimpau1#4 = 0;
+               #goimpau1#5 = "";
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                    aAlfa = #goimpau1#5;
+                    |QBF aAlfa;
+                    |SI 0 < aAlfa;
+                         || Este registro es de acumulacion o otra cosa LO IGNORAMOS!!!!
+                         i = i + 5;
+                         |VETE A_Otra_Medida;
+                    |FINSI;
+               |SINO;
+                    nErrMedi = 1;
+               |FINSI;
+               i = i + 1;
+               #goimpau1#2 = 1;  || Campo 1  Medidas
+               #goimpau1#3 = i;  || subcampo 1 Descripcion
+               #goimpau1#4 = 0;
+               #goimpau1#5 = "";
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                    |OEM_ANSI #gomedici#10,#goimpau1#5;
+               |SINO;
+                    nErrMedi = 1;
+               |FINSI;
+               i = i + 1;
+               #goimpau1#2 = 1;  || Campo 1  Medidas
+               #goimpau1#3 = i;  || subcampo 2 unidades
+               #goimpau1#4 = 0;
+               #goimpau1#5 = "";
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                    #gomedici#5 = #goimpau1#5;
+                    |SI #gomedici#5 ! 0;
+                         #gomedici#9 = #gomedici#9 * #gomedici#5;
+                         j = j + 1;
+                    |FINSI;
+               |SINO;
+                    nErrMedi = 1;
+               |FINSI;
+               i = i + 1;
+               #goimpau1#2 = 1;  || Campo 1  Medidas
+               #goimpau1#3 = i;  || subcampo 3 longitud
+               #goimpau1#4 = 0;
+               #goimpau1#5 = "";
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                    #gomedici#6 = #goimpau1#5;
+                    |SI #gomedici#6 ! 0;
+                         #gomedici#9 = #gomedici#9 * #gomedici#6;
+                         j = j + 1;
+                    |FINSI;
+               |SINO;
+                    nErrMedi = 1;
+               |FINSI;
+               i = i + 1;
+               #goimpau1#2 = 1;  || Campo 1  Medidas
+               #goimpau1#3 = i;  || subcampo 4 latitud
+               #goimpau1#4 = 0;
+               #goimpau1#5 = "";
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                    #gomedici#7 = #goimpau1#5;
+                    |SI #gomedici#7 ! 0;
+                         #gomedici#9 = #gomedici#9 * #gomedici#7;
+                         j = j + 1;
+                    |FINSI;
+               |SINO;
+                    nErrMedi = 1;
+               |FINSI;
+               i = i + 1;
+               #goimpau1#2 = 1;  || Campo 1  Medidas
+               #goimpau1#3 = i;  || subcampo 5 Altura
+               #goimpau1#4 = 0;
+               #goimpau1#5 = "";
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                    #gomedici#8 = #goimpau1#5;
+                    |SI #gomedici#8 ! 0;
+                         #gomedici#9 = #gomedici#9 * #gomedici#8;
+                         j = j + 1;
+                    |FINSI;
+               |SINO;
+                    nErrMedi = 1;
+               |FINSI;
+
+               |SI j = 0;
+                    aBeta = #gomedici#10;    || Descripcion
+                    |QBF aBeta;
+                    |SI aBeta = "";
+                         |SI #gomedici#4 = 1;
+                              #gomedici#9 = nMedicionTotal;
+                              |GRABA 040#gomedici.n;
+                         |FINSI;
+                    |SINO;
+                         #gomedici#9 = 0;
+                         j = 1;
+                    |FINSI;
+               |FINSI;
+               |SI nErrMedi ! 0; |SAL; |FINSI;
+               |SI j > 0;
+                    |GRABA 040#gomedici.n;
+                    #gomedici#4 = #gomedici#4 + 1;
+               |FINSI;
+          |SIGUE;
+
+          #goimpau1#2 = 9999;
+          #goimpau1#3 = 9999;
+          #goimpau1#4 = 9999;
+          |LEE 040#goimpau1.>;
+     |SIGUE;
+|FRUT;
+
+||********************************
+
+|PROCESO GrabaCopia;
+     |ABRE #19;
+     |ABRE #1;
+     #19#0 = #gopre004#5;
+     |LEE 000#19=;
+     |SI FSalida ! 0; |DDEFECTO #19; |FINSI;
+     #1#0 = #gopre004#5;
+     #1#208 = #gopre004#0;
+     #1#209 = #gopre004#1;
+     |LEE 000#1=;
+     |SI FSalida ! 0;
+          |PARA ii = 1; |SI ii [ 17; |HACIENDO ii = ii + 1;
+               #1ii = #agifa019#ii#;
+          |SIGUE;
+          #1#1 = #gopre004#6;
+          |GRABA 020#1n;
+     |FINSI;
+     |CIERRA #1;
+     |CIERRA #19;
+|FPRC;
+
+|PROCESO AgrPrincipal;
+     |SALVA_DATOS #goimpau1;
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "C#"
+     #goimpau1#1 = aCapituloD;
+     |LEE 040#goimpau1.];
+     |SI FSalida = 0;|Y #goimpau1#0 = "C# ";|Y #goimpau1#1 = aCapituloD;
+          |LEE 000#goimpau1.s;
+          |SI FSalida = 0;|Y #goimpau1#0 = "C# ";|Y #goimpau1#1 = aCapituloD;
+               nAgrupaPrin = nAgrupaPrin + 1;
+               |ABRE #gopre023;
+               #gopre023#0 = #gopre001#0;
+               #gopre023#1 = #gopre001#1;
+               #gopre023#2 = nAgrupaPrin;
+               #gopre023#3 = #goimpau1#5;
+               |GRABA 040#gopre023.n;
+               |CIERRA #gopre023;
+          |FINSI;
+     |FINSI;
+     |REPON_DATOS #goimpau1;
+|FPRC;

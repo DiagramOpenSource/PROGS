@@ -1,0 +1,369 @@
+|FICHEROS;
+     agiz0014 #0;
+     agifigen #1;
+     agim0001 #99,MANTE;
+     agicontr #8;
+
+     asclient #11;        || facturacion/minutacion
+     abclient #111;       || facturacion/minutacion
+     labempre #2;         || contratos/nominas
+     canempre #7;         || contabilidad 'agicont'
+     caportad #100;
+|FIN;
+
+|VARIABLES;
+     Tope = 0;
+
+     eaDato  = "";
+     aAlfa   = "";
+     aAlfa1  = "";
+     aAlfa2  = "";
+     nCalc   = 0;
+     nSw     = 0;
+
+     &eaCta    = "";
+     &eaPais   = "";
+     &eaIBAN   = "";
+     pfactur   = "";
+     pnomina   = "";
+     pagieos   = "";
+     psociedad = "";
+     pficha    = "";
+     prenta    = "";
+     pconta    = "";
+
+     nada      = "";
+     ficha     = "";
+     particion = "";
+     Comodin   = "";
+     nSwAbogados = 0;
+     periodo   = 0;
+     emprefac  = "";
+|FIN;
+
+|PROGRAMA;
+  |CLS;
+  |CABEZA "Representantes Empresas";
+  |PARA; |SI FSalida = 0; |HACIENDO;
+         |DDEFECTO #0;
+         |PINPA #0#0;
+         |PINDA #0#0;
+         |ENDATOS #2#0;
+  |SIGUE;
+|FPRO;
+
+|PROCESO PintaBanco; |TIPO 0;
+  |ABRE #1;
+  #1#0 = #0#0;
+  |LEE 040#1=;
+  |SI FSalida ! 0;  |DDEFECTO #1;  |FINSI;
+
+  #0#4 = #1#79;  |PINTA #0#4;
+  #0#5 = #1#80;  |PINTA #0#5;
+  #0#6 = #1#81;  |PINTA #0#6;
+  #0#7 = #1#82;  |PINTA #0#7;
+  #0#8 = #1#83;  |PINTA #0#8;
+  #0#9 = #1#84;  |PINTA #0#9;
+
+  #0#11 = #1#93;   |PINTA #0#11;
+  #0#12 = #1#94;   |PINTA #0#12;
+  #0#13 = #1#100;  |PINTA #0#13;
+
+  |CIERRA #1;
+|FPRC;
+
+
+|| *************************************************************************
+||                        PROCESO CARGA AGIM0001
+|| *************************************************************************
+
+|RUTINA ClaveBaja;
+  #99#0 = #0#0;
+  #99#1 = 01;
+|FRUT;
+
+|RUTINA ClaveAlta;
+  #99#0 = #0#0;
+  #99#1 = 99;
+|FRUT;
+
+|PROCESO Salida;
+|FPRC;
+
+|PROCESO Pinta;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO Mayor;
+  #99Campo = #99Campo > #99Campo;
+  |PINTA #99Campo;
+|FPRC;
+
+|PROCESO Filtros;
+  Tope = 31;
+
+  |SI #99#6 = 2;  Tope = 29; |FINSI;
+  |SI #99#6 = 4;  Tope = 30; |FINSI;
+  |SI #99#6 = 6;  Tope = 30; |FINSI;
+  |SI #99#6 = 9;  Tope = 30; |FINSI;
+  |SI #99#6 = 11; Tope = 30; |FINSI;
+
+  |SI Tope < #99#7;
+      |MENAV "      El dia no coincide con los dias del mes introducido.";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO Pantalla;
+  |SI FSalida ! 9; |ACABA; |FINSI;
+
+  |PUSHV 0501 2380;
+  |CUADRO 0856 1577;
+
+  |ATRI R;
+  |PINTA 0957, " 01 al 12 Meses     ";
+  |PINTA 1057, " 13.- Mensual       ";
+  |PINTA 1157, " 14.- Bimensual     ";
+  |PINTA 1257, " 15.- Trimestral    ";
+  |PINTA 1357, " 16.- Cuatrimestral ";
+  |PINTA 1457, " 17.- Semestral     ";
+  |ATRI r;
+
+  |PAUSA;
+  |POPV;
+
+  |ERROR;
+|FPRC;
+
+|PROCESO SNIva; |TIPO 0;
+  |SI #99#8 = "S";
+      |C_M #99#9, 1, "S";
+  |SINO;
+      |C_M #99#9, 1, "N";
+      #99#9 = 0; |PINTA #99#9;
+  |FINSI;
+|FPRC;
+
+|PROCESO CalcuTotal; |TIPO 0;
+  |SI #99Campo = Contenido; |ACABA; |FINSI;
+
+  #99#10 = #99#5 + (#99#5 % #99#9);
+  |PINTA #99#10;
+|PINTA #99#10;
+|FPRC;
+
+|PROCESO Tipo7IBAN_Fz14;  |TIPO 7;
+     aAlfa = #agiz0014#12;   |QBF aAlfa;
+
+     |SI aAlfa ! "";  |ACABA;  |FINSI;
+
+     eaCta  = #agiz0014#6 + #agiz0014#7 + #agiz0014#8 + #agiz0014#9;
+     eaPais = #agiz0014#13;
+     |HAZ CalcuIBAN;
+
+     #agiz0014#12 = eaIBAN;
+|FPRC;
+
+|PROCESO Tipo0IBAN_Fz14;  |TIPO 0;
+     eaCta  = #agiz0014#6 + #agiz0014#7 + #agiz0014#8 + #agiz0014#9;
+     eaPais = #agiz0014#13;
+     |HAZ CheqIBAN;
+
+     aAlfa = #agiz0014#12;    |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |CONFI "0000SEl codigo IBAN puede ser erroneo, quiere calcularlo.";
+         |SI FSalida = 0;
+             #agiz0014#12 = eaIBAN;
+             |PINTA #agiz0014#12;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo12;  |TIPO 12;
+     |SI FSalida = 7;  |ACABA;  |FINSI;
+     |ENTLINEAL #1#99, 2, 2, 20, 0, ClaveBaja, ClaveAlta;
+
+     |ABRE #1;
+     #1#0 = #0#0;
+     |LIBERA #1;
+     |LEE 010#1=;
+     |SI FSalida ! 0;
+         |CIERRA #1;
+         |ACABA;
+    |FINSI;
+
+     nSw = 0;
+     |SI #1#79 ! #0#4; |O #1#80 ! #0#5; |O #1#81 ! #0#6;
+         |O #1#82 ! #0#7; |O #1#83 ! #0#8; |O #1#84 ! #0#9;
+            |O #1#93 ! #0#11; |O #1#94 ! #0#12; |O #1#100 ! #0#13;
+         nSw = 1;
+     |FINSI;
+
+     #1#79 = #0#4;
+     #1#80 = #0#5;
+     #1#81 = #0#6;
+     #1#82 = #0#7;
+     #1#83 = #0#8;
+     #1#84 = #0#9;
+
+     #1#93  = #0#11;
+     #1#94  = #0#12;
+     #1#100 = #0#13;
+
+     |GRABA 140#1a;
+     |CIERRA #1;
+
+     eaCta  = #agiz0014#6 + #agiz0014#7 + #agiz0014#8 + #agiz0014#9;
+     eaPais = #agiz0014#13;
+     |HAZ CheqIBAN;
+
+     aAlfa = #agiz0014#12;    |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |MENAV "0000El codigo IBAN puede ser erroneo.";
+     |FINSI;
+
+     |SI nSw = 1;
+         |CONFI "0000SModificar Datos Bancario en las demas Aplicaciones S/N";
+         |SI FSalida ! 0; |ACABA; |FINSI;
+
+         |DBASS ficha;
+         |PATH_DAT #8 ficha;
+         |ABRE #8;
+         |LEE 140#8p;
+         |SI FSalida ! 0; |DDEFECTO #8; |FINSI;
+         |CIERRA #8;
+
+         nada = #8#1; |QBF nada;  pfactur   = nada;
+         nada = #8#2; |QBF nada;  pnomina   = nada;
+         nada = #8#3; |QBF nada;  pagieos   = nada;
+         nada = #8#4; |QBF nada;  psociedad = nada;
+         nada = #8#5; |QBF nada;  pficha    = nada;
+         nada = #8#6; |QBF nada;  prenta    = nada;
+         nada = #8#7; |QBF nada;  pconta    = nada;
+
+         |SI #1#17 = "S"; |Y pfactur ! "";   |HAZ cafactur;   |FINSI;
+         |SI #1#18 = "S"; |Y pnomina ! "";   |HAZ canomina;   |FINSI;
+         |SI #1#23 = "S"; |Y pconta ! "";    |HAZ cacontab;   |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO cafactur;
+     nSwAbogados = 0;
+     emprefac    = #1#40;
+     aAlfa       = pfactur - "dsabogad";
+     |SI aAlfa ! pfactur;  nSwAbogados = 1;  |FINSI;
+
+     emprefac  = ("00" + emprefac) % -102;
+     particion =  pfactur + emprefac + "/";
+
+     |SI nSwAbogados = 0;
+         |PATH_DAT #11particion;
+         |ABRE #11;
+
+         #11#0 = #1#0;
+         |LEE 140#11=;
+         |SI FSalida = 0;
+             |SI #1#79 ! 0;
+                 #11#53 = #1#79;
+                 #11#11 = #1#80;
+             |FINSI;
+
+             aAlfa = #1#81 + #1#82 + #1#83 + #1#84;  |QBT aAlfa;
+             |SI aAlfa ! "";
+                 #11#13 = #1#81 + #1#82 + #1#83;
+                 #11#14 = #1#84;
+             |FINSI;
+
+             #11#58 = #1#93;
+             #11#59 = #1#94;
+             #11#68 = #1#100;
+             |GRABA 040#11a;
+         |FINSI;
+         |CIERRA #11;
+     |SINO;
+         |PATH_DAT #111particion;
+
+         |ABRE #111;
+         #111#0 = #1#0;
+         |LEE 140#111=;
+         |SI FSalida = 0;
+             |SI #1#79 ! 0;
+                 #111#53 = #1#79;
+                 #111#11 = #1#80;
+             |FINSI;
+
+             aAlfa = #1#81 + #1#82 + #1#83 + #1#84;  |QBT aAlfa;
+             |SI aAlfa ! "";
+                 #111#13 = #1#81 + #1#82 + #1#83;
+                 #111#14 = #1#84;
+             |FINSI;
+             |GRABA 040#111a;
+         |FINSI;
+        |CIERRA #111;
+     |FINSI;
+|FPRC;
+
+|PROCESO canomina;
+     |PATH_DAT #2pnomina;
+
+     |ABRE #2;
+     #2#0 = #1#0;
+     #2#1 = 1;
+     |LEE 140#2];
+ |ET masnomi;
+     |SI FSalida ! 0; |CIERRA #2; |ACABA; |FINSI;
+
+     |SI #2#0 = #1#0;
+         #2#134 = #1#100;
+         #2#135 = #1#94;
+         #2#136 = #1#93;
+         |GRABA 040#2a;
+         |LEE 140#2s;
+         |VETE masnomi;
+     |FINSI;
+
+     |CIERRA #2;
+|FPRC;
+
+|PROCESO cacontab;
+     |PATH_DAT #7 pconta;
+
+     |ABRE #7;
+     |PARA periodo = 0; |SI periodo [ 9; |HACIENDO periodo = periodo + 1;
+           #7#2 = #0#0;
+           #7#3 = periodo;
+           |LEE 101#7=;
+           |SI FSalida = 0;
+               Comodin = ("00000" + #canempre#2) % -105;
+               Comodin = Comodin + #canempre#3;
+               |QBF Comodin;
+               Comodin = pconta + Comodin + "/";
+               |PATH_DAT #100Comodin;
+               |HAZ caportadas;
+           |FINSI;
+           |LIBERA #7;
+     |SIGUE;
+     |CIERRA #7;
+|FPRC;
+
+|PROCESO caportadas;
+   |ABRE #100;
+   #100#0 = #agifigen#0;
+   #100#1 = #canempre#26;
+   |LEE 110#100=;
+   |SI FSalida = 0;
+      #caportad#66 = #agifigen#81;     || Nombre Banco
+      #caportad#67 = #agifigen#82;     || Entidad
+      #caportad#68 = #agifigen#83;     || Sucursal
+      #caportad#69 = #agifigen#84;     || DC
+      #caportad#70 = #agifigen#80;     || Cuenta
+
+      #caportad#116 = #agifigen#93;    || BIC
+      #caportad#117 = #agifigen#94;    || IBAN
+      #caportad#123 = #agifigen#100;   || Pais Banco
+      |GRABA 020#caportad.a;
+   |FINSI;
+   |LIBERA #100;
+   |CIERRA #100;
+|FPRC;

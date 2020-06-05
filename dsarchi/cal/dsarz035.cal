@@ -1,0 +1,107 @@
+|FICHEROS;
+     dsarz035 #0;
+
+     dsarm028 #28;       ||Log REGLAS
+|FIN;
+
+|VARIABLES;
+     aMensaje = "";
+     aImpresora = "";
+     aResultado = "";
+     fSistema = @;
+     fImpresion = @;
+     nDias = 0;
+     aIdImpresion = "";
+     nSwPermisos = 0;
+     aFicheroRespuesta = "";
+
+     aBase = "";
+     aPathShell = "";
+     aEjecuta = "";
+     aRespuesta = "";
+     nHandle = 0;
+     aLinea = "";
+|FIN;
+
+|PROCESO dsarm028;
+     aImpresora = #dsarm028#9;
+     |QBF aImpresora;
+     |SI aImpresora ! "";
+          aResultado = #dsarm028#10;
+          |QBF aResultado;
+          |SI aResultado ! "PENDIENTE";
+               |ACABA;
+          |FINSI;
+
+          fImpresion = #dsarm028#1;
+          nDias = fSistema - fImpresion;
+          |SI nDias > 1;
+               #dsarm028#10 = "ERROR";
+               #dsarm028#12 = "TimeOut 2 Dias";
+               |GRABA 020#dsarm028.a;
+          |SINO;
+               aIdImpresion = #dsarm028#11;
+               |QBF aIdImpresion;
+               |SI aIdImpresion ! "";
+                    aMensaje = "0000Ejecutar Verif_id para " + aIdImpresion;
+                    ||MENAV aMensaje;
+                    ||Ejecuto shell .. Verif_id
+
+                    |SI nSwPermisos = 0;
+                         |DBASE aBase;
+                         |QBF aBase;
+                         aPathShell = aBase + "dlls/verif_id.sh";
+
+                         ||Primero le damos permisos
+                         aEjecuta = "chmod 755 " + aPathShell;
+                         |SYSTEM aEjecuta;
+                         nSwPermisos = 1;
+                    |FINSI;
+
+                    aFicheroRespuesta = "/tmp/" + aIdImpresion + ".verif";
+                    |FBORRA aFicheroRespuesta;
+
+                    aEjecuta = aPathShell + " " + aIdImpresion;
+                    |SYSTEM aEjecuta;
+
+                    |XABRE "E", aFicheroRespuesta, nHandle;
+                    |SI FSalida < 0;
+                         |SLEEP 1;
+                    |FINSI;
+
+                    aRespuesta = "";
+                    |XABRE "U", aFicheroRespuesta, nHandle;
+                    |SI FSalida ] 0;
+                         |XLEE nHandle, 250, aLinea;
+                         |SI FSalida > 0;
+                              aRespuesta = aLinea;
+                         |FINSI;
+                         |XCIERRA nHandle;
+                    |FINSI;
+                    |SI aRespuesta ! "";
+                         #dsarm028#10 = aRespuesta;
+                         |GRABA 020#dsarm028.a;
+                    |FINSI;
+                    |FBORRA aFicheroRespuesta;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsarm028;
+ #dsarm028#1;
+ ;
+ INICIO;
+ FINAL;
+ be;
+ NULL, dsarm028;
+|FIN;
+
+|PROGRAMA;
+     fSistema = ~;
+
+     nSwPermisos = 0;
+
+     |CLS;
+     |BUCLE dsarm028;
+|FPRO;

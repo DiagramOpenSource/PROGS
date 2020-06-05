@@ -1,0 +1,588 @@
+|| -----------------------------------------------------------------------||
+|| dslog001.cal                                                [dstool]   ||
+||                                                                        ||
+|| Logger fase.1 :: se trata de comparar el contenido de dos directorios  ||
+|| de (.dat se entiende) a nivel de ficheros, registros y contenidos      ||
+|| de registros.                                                          ||
+||                                                                        ||
+|| Ini: 12may2006                                                         ||
+|| Ult: 25may2006                                           dsPRODUCCION  ||
+|| -----------------------------------------------------------------------||
+
+|FICHEROS;
+     dslog001                      #000;
+
+     dsdatapl                      #010;     || apls (instaladas)
+     dsdatdef                      #011;     || defs (instalados)
+
+     dsw00010                      #101;     || temporal para fich
+     dsw00012                      #102;     || temporal para reg
+     dsw00013                      #103;     || temporal para campos
+
+     dsw00011                      #200;     || temporal para guardar dat+claves
+
+     dsw00014                      #300;     || temporal.temporal
+
+     refer@;
+     refer2@;
+|FIN;
+
+
+|VARIABLES;
+     MAX_CLAVE  = 50;
+     MAX_CAMPO  = 100;
+
+     &_aDIR1    = "";
+     &_aDIR2    = "";
+     &_aApl     = "";
+
+     aAlfa     = "";
+     aAlfa2    = "";
+     nNum      = 0;
+     nNum2     = 0;
+     naux      = 0;
+     j         = 0;
+     swRef     = 0;
+
+     aDat      = "";
+     aDef      = "";
+     aLosDats  = "";
+     sw        = 0;
+
+     nError    = 0;
+     aVal      = "";
+     aCamposClave = "";
+     nCamposClave = 0;
+     nPosi     = 0;
+     aCampo    = "";
+
+     aClave   = "";
+
+
+     {-1}menu  = "";
+     menu1     = "2400";
+     menu2     = "1";
+     menu3     = "Mostrar:"
+     menu4     = "FRCS";
+     menu5     = " Ficheros ";
+     menu6     = " Registros ";
+     menu7     = " Campos ";
+     menu8     = "   S A L I R   ";
+
+|FIN;
+
+
+|PROGRAMA;
+
+     |PINPA #0#00;
+     |PINDA #0#00;
+     |ENDATOS #1#00;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+
+     aAlfa = "l1" + Usuario; |NOME_DAT #101#aAlfa#;
+     aAlfa = "l2" + Usuario; |NOME_DAT #102#aAlfa#;
+     aAlfa = "l3" + Usuario; |NOME_DAT #103#aAlfa#;
+     aAlfa = "l4" + Usuario; |NOME_DAT #200#aAlfa#;
+
+     |ABRE #101; |CIERRA #101; |DELINDEX #101;
+     |ABRE #102; |CIERRA #102; |DELINDEX #102;
+     |ABRE #103; |CIERRA #103; |DELINDEX #103;
+     |ABRE #200; |CIERRA #200; |DELINDEX #200;
+
+     _aDIR1    = #00#00;
+     _aDIR2    = #00#01;
+     _aApl     = #00#02;
+
+     |QBT _aDIR1;
+     |QBT _aDIR2;
+     |QBT _aApl;
+
+     |ABRE #dsdatapl;
+     |DDEFECTO #dsdatapl;
+     #dsdatapl#00 = _aApl;
+     |LEE 020#dsdatapl.=;
+
+     |ABRE   #dsdatdef;
+     |SELECT #2#dsdatdef;
+
+     |HAZ Diff_Nivel_Fich;
+     |HAZ Diff_Nivel_Reg;
+     |HAZ Diff_Nivel_Campos;
+
+     |CIERRA #dsdatdef;
+     |CIERRA #dsdatapl;
+
+     |ABRE     #101;
+     |ABRE     #102;
+     |ABRE     #103;
+     |PARA j=1; |SI j>0; |HACIENDO;
+          |MENU menu;
+
+          |SI FSalida [ 0; |O FSalida = 4;
+               j = -1;
+          |FINSI;
+
+          |SI FSalida = 1; |CONSULTA_CLAVE #1#101; |FINSI;
+          |SI FSalida = 2; |CONSULTA_CLAVE #1#102; |FINSI;
+          |SI FSalida = 3; |CONSULTA_CLAVE #1#103; |FINSI;
+     |SIGUE;
+
+
+     |ABRE #101; |CIERRA #101; |DELINDEX #101;
+     |ABRE #102; |CIERRA #102; |DELINDEX #102;
+     |ABRE #103; |CIERRA #103; |DELINDEX #103;
+     |ABRE #200; |CIERRA #200; |DELINDEX #200;
+
+
+|FPRO;
+
+
+
+
+
+|| -------------------------------------------------------------------
+|| NIVEL.1
+|| -----------------------------------------------------------------
+|| Guardamos en un temporal como estan compuestas las claves.
+|| y guardamos cuantos campos forman parte de la clave
+|| -----------------------------------------------------------------
+
+|PROCESO ConsultaDEF;
+
+     aAlfa = #dsdatapl#05; |QBT aAlfa;
+     aDef = aAlfa + "def/" + #dsdatdef#01 + ".mas";
+     |CARGA_DEF aDef, refer@;
+     |SI FSalida ! 0;
+          nError = 1;              || problemas en el def
+          |ACABA;
+     |FINSI;
+
+     || Numero de campos
+     aVal = "|NC";
+     aAlfa = #refer@#aVal#;
+     #101#05 = aAlfa;
+
+     || y fijandonos en la clave primaria ....
+     || en grupos de 3 digitos, la informacion de aVal es la siguiente:
+     || - num de campos que componen la clave
+     || - primer campo de la clave
+     || - segundo campo de la clave
+     || ...
+
+     aVal = "|K000";
+     aCamposClave = #refer@#aVal#;
+     aAlfa = aCamposClave % 103;
+     nCamposClave = aAlfa;
+     nPosi = 4;
+
+     #101#06 = nCamposClave;
+
+    || y para cada uno de los campos que componen la clave
+    |PARA j = 1; |SI j [ nCamposClave; |HACIENDO j = j + 1;
+
+          naux = nPosi * 100 + 3;
+          nPosi = nPosi + 3;
+          aCampo = aCamposClave % naux;
+
+          |DDEFECTO #200;
+          #200#00 = aDat;
+          #200#01 = j;
+          #200#02 = aCampo;
+          |GRABA 040#200.n;
+
+     |SIGUE;
+     |DESCARGA_DEF #refer@;
+
+
+|FPRC;
+
+
+
+|PROCESO Diff_Nivel_Fich;
+
+
+     |ABRE #101;
+     |ABRE #200;
+
+     || path de los dat (directorio.1)
+     aLosDats = _aDIR1 + "*.dat";
+     |_PDIR aLosDats;
+
+     |PARA; |SI FSalida ] 0; |HACIENDO;
+          aDat = aLosDats - _aDIR1;
+          aDat = aDat - ".dat";
+
+          |DDEFECTO #101;
+          #101#00 = aDat;
+          #101#01 = 1;
+
+          #dsdatdef#00 = _aApl;
+          #dsdatdef#03 = aDat;
+          |LEE 040#dsdatdef.=;
+          |SI FSalida = 0;
+               nError = 0;
+               |HAZ ConsultaDEF;
+               #101#02 = 1;
+               #101#03 = #dsdatdef#02;       || nombre def
+               #101#04 = nError;
+          |SINO;
+               #101#02 = 0;                  || no tiene def asociado
+               #101#04 = 1;
+          |FINSI;
+
+          |GRABA 040#101.n;
+          |_SDIR aLosDats;
+
+     |SIGUE;
+
+
+     || path de los dat (directorio.2) ---------------------------
+     aLosDats = _aDIR2 + "*.dat";
+     |_PDIR aLosDats;
+
+     |PARA; |SI FSalida ] 0; |HACIENDO;
+          aDat = aLosDats - _aDIR2;
+          aDat = aDat - ".dat";
+
+          |DDEFECTO #101;
+          #101#00 = aDat;
+          |LEE 040#101.=;
+          |SI FSalida = 0;         || el ficehro ya existe ...
+               #101#01 = #101#01 + 2;
+               |GRABA 040#101.a;
+          |SINO;
+               |DDEFECTO #101;
+               #101#00 = aDat;
+               #101#01 = 2;
+               #dsdatdef#00 = _aApl;
+               #dsdatdef#03 = aDat;
+               |LEE 040#dsdatdef.=;
+               |SI FSalida = 0;
+                    nError = 0;
+                    |HAZ ConsultaDEF;
+                    #101#02 = 1;
+                    #101#03 = #dsdatdef#02;       || nombre def
+                    #101#04 = nError;
+               |SINO;
+                    #101#02 = 0;                  || no tiene def asociado
+                    #101#04 = 1;
+               |FINSI;
+
+               |GRABA 040#101.n;
+          |FINSI;
+
+          |_SDIR aLosDats;
+
+     |SIGUE;
+
+     |CIERRA #101;
+     |CIERRA #200;
+
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|| -------------------------------------------------------------------
+|| NIVEL.2
+
+
+|PROCESO DescargaRegMalos;
+     |DDEFECTO #102;
+     #102#00 = #300#00;
+     #102#01 = #300#01;
+     #102#02 = #300#02;
+     |GRABA 040#102.n;
+|FPRC;
+|DEFBUCLE _DescargaRegMalos;
+  #300#2;
+  ;
+  0;
+  2;
+  ;
+  NULL, DescargaRegMalos;
+|FIN;
+
+
+|PROCESO Nivel2_Reg;
+     |ABRE #300; |CIERRA #300; |DELINDEX #300;
+     aAlfa = "l5" + Usuario; |NOME_DAT #300#aAlfa#;
+     |ABRE #300;
+
+     |DDEFECTO #dsdatdef;
+     #dsdatdef#00 = _aApl;
+     #dsdatdef#03 = #101#00;
+     |LEE 040#dsdatdef.=;
+
+     aAlfa = #dsdatapl#05; |QBT aAlfa;
+     aDef = aAlfa + "def/" + #dsdatdef#01 + ".mas";
+     |CARGA_DEF aDef, refer@;
+     |SI FSalida ! 0;
+          aAlfa = "0000OJITO --> "+#101#00;
+          |MENAV aAlfa;
+          |ACABA;
+     |FINSI;
+
+|| recorremos el primer directorio ....
+
+     |PATH_DAT #refer@#_aDIR1#;
+     |ABRE     #refer@;
+     |LEE 000#refer@.p;
+     |PARA; |SI FSalida=0; |HACIENDO;
+          swRef  = 1;
+          |HAZ MontaClave;
+
+          |DDEFECTO #300;
+          #300#00 = #101#00;
+          #300#01 = aClave;
+          #300#02 = 1;
+          |GRABA 040#300.n;
+
+          |LEE 000#refer@.s;
+     |SIGUE;
+     |CIERRA  #refer@;
+
+|| recorremos el segundo directorio ....
+
+     |PATH_DAT #refer@#_aDIR2#;
+     |ABRE     #refer@;
+     |LEE 000#refer@.p;
+     |PARA; |SI FSalida=0; |HACIENDO;
+          swRef  = 1;
+          |HAZ MontaClave;
+
+          |DDEFECTO #300;
+          #300#00 = #101#00;
+          #300#01 = aClave;
+          |LEE 040#300.=;
+          |SI FSalida = 0;
+               #300#02 = 3;
+               |GRABA 040#300.a;
+          |SINO;
+               |DDEFECTO #300;
+               #300#00 = #101#00;
+               #300#01 = aClave;
+               #300#02 = 2;
+               |GRABA 040#300.n;
+          |FINSI;
+          |LEE 000#refer@.s;
+     |SIGUE;
+     |CIERRA  #refer@;
+
+     |DESCARGA_DEF #refer@;
+     |CIERRA   #300;
+
+     || solo pasamos los registros defectuosos (si no, seria una pasada)
+     |BUCLE _DescargaRegMalos;
+
+     |ABRE #300; |CIERRA #300; |DELINDEX #300;
+|FPRC;
+
+
+|DEFBUCLE _PorCadaFichero2;
+  #101#1;
+  1,2,4;
+  "        ", 3, 1, 0;             || los dos + con def asocciado + sin error
+  "zzzzzzzz", 3, 1, 0;
+  ;
+  NULL, Nivel2_Reg;
+|FIN;
+|PROCESO Diff_Nivel_Reg;
+     |ABRE     #102;
+     |BUCLE _PorCadaFichero2;
+     |CIERRA   #102;
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|| -------------------------------------------------------------------
+|| NIVEL.3
+
+|PROCESO GrabaErrorCampo;
+     swRef = 1;
+     |HAZ MontaClave;
+     naux = #refer@#j# % 0;
+     |SI naux > MAX_CAMPO;
+          naux = 1;
+     |SINO;
+          naux = 0;
+     |FINSI;
+
+     aAlfa = j;
+     aAlfa = ("000" + aAlfa) % -103;
+     aVal  = "|C" + aAlfa + "NOMBRE";
+     aAlfa = #refer@#aVal#;
+
+     |DDEFECTO #103;
+     #103#00 = #101#00;
+     #103#01 = aClave;
+     #103#02 = j;
+     #103#03 = aAlfa;
+     #103#04 = #refer@#j#;
+     #103#05 = #refer2@#j#;
+     #103#06 = naux;
+     |GRABA 040#103.n;
+|FPRC;
+
+
+
+
+
+
+
+
+
+|PROCESO Nivel3_Campos;
+
+     |DDEFECTO #dsdatdef;
+     #dsdatdef#00 = _aApl;
+     #dsdatdef#03 = #101#00;
+     |LEE 040#dsdatdef.=;
+
+     aAlfa = #dsdatapl#05; |QBT aAlfa;
+     aDef = aAlfa + "def/" + #dsdatdef#01 + ".mas";
+     |CARGA_DEF aDef, refer@;
+     |CARGA_DEF aDef, refer2@;
+
+     || dado un def ... del primer directorio, comprobamos los campos
+     || cuyos registros coinciden en los dos directorios.
+
+     |PATH_DAT #refer@#_aDIR1#;
+     |ABRE     #refer@;
+
+     |PATH_DAT #refer2@#_aDIR2#;
+     |ABRE     #refer2@;
+
+     || nos basta recorrer el primer directorio ya que
+     || como los registros tienen que estar en los dos sitios ...
+     |LEE 000#refer@.p;
+     |PARA; |SI FSalida=0; |HACIENDO;
+          swRef  = 1;
+          |HAZ MontaClave;
+
+          || comprobando que este registro esta en los dos sitios
+          || si esta en la 102, es que es un error.
+          || por tanto el FSalida ! 0 para poder seguir
+          |DDEFECTO #102;
+          #102#00 = #101#00;
+          #102#01 = aClave;
+          |LEE 000#102.=;
+          |SI FSalida ! 0;
+               |DDEFECTO #refer2@;
+               swRef = 2;
+               |HAZ MontaClave;
+               |LEE 000#refer2@.=;
+               |SI FSalida = 0;              || tiene que estar ...
+
+                    || PARA cada uno de los campos del registro
+                    || que esta en los dos lados ....
+                    |PARA j=0; |SI j<#101#05; |HACIENDO j=j+1;
+                         |SI #refer@#j# ! #refer2@#j#;
+                              |HAZ GrabaErrorCampo;
+                         |FINSI;
+                    |SIGUE;
+
+               |FINSI;
+          |FINSI;
+
+          |LEE 000#refer@.s;
+     |SIGUE;
+
+     |CIERRA  #refer2@;
+     |DESCARGA_DEF #refer2@;
+
+     |CIERRA  #refer@;
+     |DESCARGA_DEF #refer@;
+|FPRC;
+
+
+|DEFBUCLE _PorCadaFichero3;
+  #101#1;
+  1,2,4;
+  "        ", 3, 1, 0;             || los dos + con def asocciado + sin error
+  "zzzzzzzz", 3, 1, 0;
+  ;
+  NULL, Nivel3_Campos;
+|FIN;
+|PROCESO Diff_Nivel_Campos;
+     |ABRE     #102;               || tmp reg
+     |ABRE     #103;               || tmp campos.
+     |BUCLE _PorCadaFichero3;
+     |CIERRA   #102;
+     |CIERRA   #103;
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+|| ----------------------------------------------------------------------
+|| Utilidades
+|| doble proposito:
+|| swRef = 1. concatenamos una clave para distinguir el nivel 2
+|| swRef = 2. asignamos ref2 <- ref1 para nivel3
+
+
+|PROCESO RecorreClave;
+     naux = #200#02;
+
+     |SI swRef = 1;
+          |SI aClave = "";
+               aClave = #refer@#naux#;
+          |SINO;
+               aClave = aClave + "-" + #refer@#naux#;
+          |FINSI;
+     |SINO;
+           #refer2@#naux# = #refer@#naux#;
+     |FINSI;
+|FPRC;
+|DEFBUCLE _RecorreClave
+  #200#1;
+  ;
+  #101#00, 0;
+  #101#00, 99;
+  ;
+  NULL, RecorreClave;
+|FIN;
+
+|PROCESO MontaClave;
+     aClave = "";
+     |BUCLE _RecorreClave;
+     |QBT aClave;
+     naux = aClave % 0;
+     |SI naux > MAX_CLAVE;
+          aClave = "ERROR";
+     |FINSI;
+|FPRC;
+
+
+|| ------------------------------ fin.

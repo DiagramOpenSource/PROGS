@@ -1,0 +1,203 @@
+
+ **** Si se modifica SacaIVA , modificar SacaIVA2 del dsz99961 ***
+
+
+|FICHEROS;
+     agifa066 #66;  ||*
+     dsm00112 #112; ||*
+     dsm00113 #113; ||*
+     referen@;
+|FIN;
+
+|VARIABLES;
+     &enTiva = 0;   || Variables para la gestion
+     &efFiva = @;
+     &eaDiva = "";
+     &enIva = 0;
+     &enRec = 0;
+     &eaPrv = "";   || Variable iva proveedor
+     &eaCli = "";   || Variable iva cliente
+
+     &tiva = 0;     || Variables para los informes
+     &fiva = @;
+     &iva = 0;
+     &rec = 0;
+     &iva1 = 0;
+     &iva2 = 0;
+     &iva3 = 0;
+     &iva4 = 0;
+     &iva5 = 0;
+     &rec1 = 0;
+     &rec2 = 0;
+     &rec3 = 0;
+     &rec4 = 0;
+     &rec5 = 0;
+
+     nHayIva = 0;
+     aAlfa = "";
+     nTipo = 0;
+     i = 0;
+|FIN;
+
+
+|PROCESO &tiva;  || Para informes, en "fiva" se envia la fecha
+                 || retorna iva1, rec1, ..., iva5, rec5
+
+     |PARA i = 1; |SI i [ 5; |HACIENDO i = i + 1;
+          efFiva = fiva;
+          enTiva = i;
+          |HAZ SacaIVA;
+          |SI i = 1; iva1 = enIva; rec1 = enRec; |FINSI;
+          |SI i = 2; iva2 = enIva; rec2 = enRec; |FINSI;
+          |SI i = 3; iva3 = enIva; rec3 = enRec; |FINSI;
+          |SI i = 4; iva4 = enIva; rec4 = enRec; |FINSI;
+          |SI i = 5; iva5 = enIva; rec5 = enRec; |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO &liva;     || Para informes, en "fiva" se envia la fecha y "tiva" el tipo
+                    || retorna "iva" y "rec"
+     enTiva = tiva;
+     efFiva = fiva;
+     |HAZ SacaIVA;
+     iva = enIva;
+     rec = enRec;
+|FPRC;
+
+|PROCESO SacaIVA; || se llama con enTiva y efFiva
+     eaDiva = ""; || y retorna eaDiva, enIva y enRec
+     enIva = 0;
+     enRec = 0;
+
+     |ABRE #66;
+     #66#0 = enTiva
+     #66#4 = "01.01.0000";
+     |LEE 000#66];
+     |PARA; |SI FSalida = 0; |Y #66#0 = enTiva; |Y efFiva ] #66#4; |HACIENDO;
+          eaDiva = #66#1;
+          enIva = #66#2;
+          enRec = #66#3;
+          |LEE 000#66s;
+     |SIGUE;
+     |CIERRA #66;
+|FPRC;
+
+|PROCESO MinIVA;
+     #referen@#0 = 0;
+     #referen@#4 = "01.01.0000";
+|FPRC;
+
+|PROCESO MaxIVA;
+     #referen@#0 = 9;
+     #referen@#4 = "31.12.9999";
+|FPRC;
+
+|PROCESO FINIVAS;
+     |SI nHayIva = 1;
+          |GRABA 020#referen@.n;
+     |FINSI;
+|FPRC;
+
+|PROCESO INIIVAS;
+     |SI nTipo ! #66#0; |Y nHayIva = 1;
+          nTipo = #66#0;
+          |GRABA 020#referen@.n;
+     |FINSI;
+     |SALVA_DATOS #66;
+     |REPON_DATOS #referen@;
+     nHayIva = 1;
+|FPRC;
+
+|DEFBUCLE IVAS;
+     #66#1;
+     ;
+     0, "01.01.0000";
+     9, efFiva;
+     ;
+     NULL, INIIVAS, NULL, NULL, FINIVAS;
+|FIN;
+
+|PROCESO ConsuIVA;  || se llama con enTiva y efFiva
+     eaDiva = "";   || y retorna eaDiva, enIva y enRec
+     enIva = 0;
+     enRec = 0;
+
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "agifa066";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida ! 0;
+          |MENAV "0000Error al cargar 'agifa066'";
+     |SINO;
+          aAlfa = Usuario;
+          |NOME_DAT #referen@#aAlfa#; |DELINDEX #referen@;
+          nHayIva = 0;
+          |ABRE #referen@;
+          |BUCLE IVAS;
+          |SI nHayIva = 0;
+               aAlfa = "0000No existe tipo iva para esta fecha:" + efFiva;
+               |MENAV aAlfa;
+          |SINO;
+               #referen@#0 = enTiva
+               #referen@#4 = "01.01.0000";
+               |LEE 000#referen@.];
+               |CONSULTA_F_CLAVE #1#referen@, MinIVA, MaxIVA;
+               |SI FSalida = 0;
+                    enTiva = #referen@#0;
+                    eaDiva = #referen@#1;
+                    enIva = #referen@#2;
+                    enRec = #referen@#3;
+               |FINSI;
+          |FINSI;
+          |CIERRA #referen@;
+          |DELINDEX #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+|FPRC;
+
+|PROCESO IVAPrv;    || se llama con eaPrv, enTiva y efFiva
+                    || y retorna eaDiva, enIva y enRec
+     eaDiva = "";
+     enIva = 0;
+     enRec = 0;
+     aAlfa = eaPrv; |QBF aAlfa;
+     |SI aAlfa = "";
+          |HAZ SacaIVA;
+     |SINO;
+          |ABRE #112;
+          #112#0 = eaPrv;
+          #112#1 = enTiva
+          |LEE 000#112=;
+          |SI FSalida = 0;
+               eaDiva = #112#2;
+               enIva = #112#3;
+               enRec = #112#4;
+          |SINO;
+               |HAZ SacaIVA;
+          |FINSI;
+          |CIERRA #112;
+     |FINSI;
+|FPRC;
+
+|PROCESO IVACli;    || se llama con eaCli, enTiva y efFiva
+                    || y retorna eaDiva, enIva y enRec
+     eaDiva = "";
+     enIva = 0;
+     enRec = 0;
+     aAlfa = eaCli; |QBF aAlfa;
+     |SI aAlfa = "";
+          |HAZ SacaIVA;
+     |SINO;
+          |ABRE #113;
+          #113#0 = eaCli;
+          #113#1 = enTiva
+          |LEE 000#113=;
+          |SI FSalida = 0;
+               eaDiva = #113#2;
+               enIva = #113#3;
+               enRec = #113#4;
+          |SINO;
+               |HAZ SacaIVA;
+          |FINSI;
+          |CIERRA #113;
+     |FINSI;
+|FPRC;

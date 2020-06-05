@@ -1,0 +1,869 @@
+|FICHEROS;
+   asclient #0;
+   ascabmin #78; || Cabecera minutas.
+   asquecla #333;
+   facemp   #10;
+
+   abom0514 #514;
+   abom0515 #515,MANTE;
+
+   &bancosc@  #709;
+   &bancosp@  #706;
+   &clientes@ #715;
+
+   visam004 #804,MANTE;        ||Delegaciones Cliente
+   aspoblac #900;              ||Poblaciones
+   visam019@ #1000;
+   asexcont #1001;
+   visam014@ #1002;
+|FIN;
+
+|VARIABLES;
+     &enLibre = 0;
+     &eaDato  = "";
+     aParametro = "";
+
+     aMenu = "";
+
+     {-1}menu = "";
+     menu1 = "2400";
+     menu2 = "1";
+     menu3 = "";
+     menu4 = "NDA";
+     menu5 = " Notas ";
+     menu6 = " Delegaciones";
+     menu7 = " AA.PP.FacturaE";
+
+   aNombre = "";
+   aLong = "";
+   nLong = 0;
+   aAux = "";
+   aAux2 = "";
+
+   &eaEntidad  = "";
+   &eaSucursal = "";
+   &eaCuenta   = "";
+   &eaDC       = "";
+
+   &endigC     = 0;
+
+   aMensaje = "";
+
+   nSwVisados = 0;
+   aAlfa1  = "";
+   swError = 0;
+   i      = 0;
+   nu1    = 0;
+   nu2    = 0;
+   alf1   = "";
+   actual = "";
+   alfa  = "";
+   clave = "";
+   mensa = "";
+   con = 0;
+   nume1 = 0;
+   nume2 = 0;
+   lugar = 0;
+   nifnum = 0;
+   resto = 0;
+   swmod = 0;
+   nAlta = 0;
+   aAlfa = "";
+   fFecha = @;
+   nSwExiste = 0;
+   nFlag     = 0;
+
+   nCodPTec  = 0;
+
+ aste = "";
+ agi = "";
+ agi1 = "";
+ agi2 = "";
+ longi = "";
+ num   = 0;
+ nCalc = 0;
+ trabacod1 = "";
+ trabacod2 = "";
+ direc = "";
+ numero = "";
+ piso = "";
+
+   nModo        = 0;
+   nUltRegistro = 0;
+   nMail        = 0;
+
+   &ordena     = "Codigo."
+   &que_progra = "asclient";
+   &DCliente   = 0;
+   &HCliente   = 0;
+   &enCodBanco  = 0;
+   &enCodCli    = 0;
+   &enSwDeDonde = 0;
+   &enCalcCif   = 0;
+   &eaVarDni    = "";
+   &eaPathIntegral = "";
+   &enEmpresa      = 0;
+
+     &eaCta      = "";
+     &eaPais     = "";
+     &eaIBAN     = "";
+|FIN;
+
+|PROCESO Incremento;  |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 1; |ACABA; |FINSI;
+
+     |SALVA_DATOS #0;
+     |LEE 040#0u;
+     |SI FSalida ! 0;  #0#0 = 0;  |FINSI;
+     nUltRegistro = #0#0 + 1;
+
+     |SI nSwVisados = 0;
+        |DDEF aAlfa; |QBF aAlfa;
+        aAlfa = aAlfa + "visam019.mas";
+        |CARGA_DEF aAlfa, visam019@;
+        |SI FSalida = 0;
+           |ABRE #visam019@;
+           |LEE 101#visam019@.p;
+           nSwExiste = FSalida;
+           |SI FSalida ! 0;
+              |DDEFECTO #visam019@;
+           |SINO;
+              nUltRegistro = #visam019@#2;
+           |FINSI;
+
+           fFecha = ~; aAlfa = fFecha; |QBF aAlfa;
+           aAlfa = aAlfa % -102;
+           |ABRE #asexcont;
+           #asexcont#0 = aAlfa;
+           |LEE 000#asexcont.=;
+           |SI FSalida ! 0;
+              |DDEFECTO #asexcont;
+              #asexcont#0 = aAlfa;
+              |GRABA 020#asexcont.n;
+           |FINSI;
+
+           #visam019@#1 = #asexcont#1;
+           #visam019@#2 = nUltRegistro + 1;
+           |SI nSwExiste ! 0;
+              |GRABA 000#visam019@.b;
+           |SINO;
+              |GRABA 000#visam019@.a;
+           |FINSI;
+           |LIBERA #visam019@;
+           |CIERRA #visam019@; |DESCARGA_DEF #visam019@;
+        |FINSI;
+        ||PTEC 802;
+     |FINSI;
+
+     |REPON_DATOS #0;
+
+     #0#0 = nUltRegistro;  |PINTA #0#0;
+|FPRC;
+
+|PROCESO Persona;
+      |ATRI I; |PINTA 1028, #0#61;  |ATRI 0;
+|FPRC;
+
+|PROCESO Modicli; |TIPO 3;
+     |SI nSwVisados = 0;
+         eaCta  = #asclient#71 + #asclient#72 + #asclient#73 + #asclient#14;
+     |SINO;
+         eaCta = #asclient#13;  |QBF eaCta;
+         eaCta = eaCta + #asclient#14;
+     |FINSI;
+
+     eaPais = #asclient#86;
+     |HAZ CheqIBAN;
+
+     aAlfa = #asclient#77;    |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |MENAV "0000El codigo IBAN puede ser erroneo.";
+     |FINSI;
+
+     |SI nAlta = 0;  |ACABA;  |FINSI;
+
+     |SI con ! 2;    |ACABA; |FINSI;
+
+     enCodCli = #0#0;
+     |HAZ LeePersona;
+     |SI enSwDeDonde = 1;
+         |SI #0#8 ! #715#3;
+             |MENAV  "      D.N.I. del Cliente es distinto al D.N.I. del Cliente General";
+         |FINSI;
+     |SINO;
+         |SI #0#8 ! #715#13;
+             |MENAV  "      D.N.I. del Cliente es distinto al D.N.I. del Cliente General";
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Altacli; |TIPO 0;
+     |SI nSwVisados = 0;
+          ||Poner lo de los puntos ...  "7.1" ---> 7000000001. (dscomer9)
+          eaCta = "43." + #asclient#0;
+          |HAZ MFiltraPtos;
+          #0#52 = eaCta; |PINTA #0#52;
+     |FINSI;
+
+     |SI nAlta = 0;  |ACABA;  |FINSI;
+
+     con   = (FEntrada / 100) ! 0;
+     |SI con ! 1; |ACABA; |FINSI;
+
+     enCodCli = #0#0;
+     |HAZ LeePersona;
+
+     |SI enSwDeDonde = 1;
+         #0#1   = #715#2;   |PINTA #0#1;
+         #0#2   = #715#1;   |PINTA #0#2;
+         direc  = #715#20;  |QBF direc;
+         numero = #715#21;  |QBF numero;
+         piso   = #715#23;  |QBF piso;
+         #0#3   = direc + " " + numero + " " + piso; |PINTA #0#3;
+         #0#4   = #715#25;   |PINTA #0#4;
+         #0#5   = #715#26;  |PINTA #0#5;
+         #0#6   = #715#27;  |PINTA #0#6;
+         #0#7   = #715#28;  |PINTA #0#7;
+         #0#8   = #715#3;   |PINTA #0#8;
+         #0#9   = #715#54;  |PINTA #0#9;
+         #0#10  = #715#55;  |PINTA #0#10;
+         #0#53  = #715#88;  |PINTA #0#53;
+         #0#11  = #715#89;  |PINTA #0#11;
+         #0#13  = #715#90 + #715#91 + #715#92;    |PINTA #0#13;
+         #0#14  = #715#93;  |PINTA #0#14;
+         #0#15  = #715#94;  |PINTA #0#15;
+         #0#16  = #715#73;  |PINTA #0#16;
+         #0#17  = #715#95;  |PINTA #0#17;
+         #0#22  = #715#96;  |PINTA #0#22;
+         #0#23  = #715#97;  |PINTA #0#23;
+         #0#52  = #715#103; |PINTA #0#52;
+
+         enCodBanco = #715#88;
+         |HAZ LeeBancoCliente;
+         #0#12  = #709#6;  |PINTA #0#12;
+     |SINO;
+         #0#1   = #715#1;   |PINTA #0#1;
+         #0#2   = #715#2;   |PINTA #0#2;
+         direc  = #715#4;  |QBF direc;
+         numero = #715#5; |QBF numero;
+         piso   = #715#7;   |QBF piso;
+         #0#3   = direc + " " + numero + " " + piso;|PINTA #0#3;
+         #0#4   = #715#9;   |PINTA #0#4;
+         #0#5   = #715#10;  |PINTA #0#5;
+         #0#6   = #715#11;  |PINTA #0#6;
+         #0#7   = #715#12;  |PINTA #0#7;
+         #0#8   = #715#13;  |PINTA #0#8;
+         #0#9   = #715#14;  |PINTA #0#9;
+         #0#10  = #715#15;  |PINTA #0#10;
+         #0#53  = #715#79;  |PINTA #0#53;
+         #0#11  = #715#80;  |PINTA #0#11;
+         #0#13  = #715#81 + #715#82 + #715#83;    |PINTA #0#13;
+         #0#14  = #715#84;  |PINTA #0#14;
+
+         enCodBanco = #715#79;
+         |HAZ LeeBancoCliente;
+         #0#12  = #709#2;  |PINTA #0#12;
+    |FINSI;
+
+    |CONFI "2400SDesea dar de alta los conceptos del Cliente : ";
+    |SI FSalida = 0;
+        DCliente = #0#0;
+        HCliente = #0#0;
+        |SUB_EJECUTA "aszp0003";
+    |FINSI;
+
+|FPRC;
+
+|PROCESO coge_agicli; |TIPO 7;
+     |SI nAlta = 0;  |ACABA;  |FINSI;
+
+     |SI que_progra ! "asclient";
+         |HAZ Altacli;
+     |FINSI;
+|FPRC;
+
+|PROCESO LetraDni;  |TIPO 6;
+     |SI FSalida = 10;
+         aAlfa = #0Campo; aAlfa = aAlfa % 0101; aAlfa1 = aAlfa;
+         aAlfa = aAlfa > aAlfa;
+         |SI aAlfa ! aAlfa1;
+            aAlfa1 = #0Campo; |QBF aAlfa1;
+            aAlfa1 = aAlfa1 % 0299; aAlfa = aAlfa + aAlfa1;
+            #0Campo = aAlfa; |PINTA #0Campo;
+         |FINSI;
+
+         enCalcCif = 1;
+         eaVarDni  =  #0Campo;
+         |HAZ CalculoDNI;
+         #0Campo = eaVarDni;
+         |PINTA #0Campo;
+         |ERROR;
+         |ACABA;
+      |FINSI;
+
+     eaVarDni  = #0Campo;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "            ") % 112;
+     |SI #0Campo ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #0Campo = eaVarDni;  |PINTA #0Campo;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+||---------------------------------------------------------------------------
+|PROCESO actu_cab;
+     #78#10 = #0#15;     || Forma pago.
+     #78#11 = #0#16;     || Banco.
+     |GRABA 121#78a;
+     |LIBERA #78;
+|FPRC;
+
+|DEFBUCLE lee_cab;
+     #78#1;
+     ;
+     00,#0#0;
+     99,#0#0;
+     be;
+     NULL,actu_cab;
+|FIN;
+
+|PROCESO actualiza; |TIPO 30;
+     |SI con = 2;
+          |BUCLE lee_cab;
+     |FINSI;
+
+     |ABRE #514;
+     |LEE 040#514p;
+     |SI FSalida ! 0;  |DDEFECTO #514;  |FINSI;
+     |CIERRA #514;
+
+     |SI #514#1 ! "S";  |ACABA;  |FINSI;
+
+     |ABRE #515;
+     |SELECT #2#515;
+     #515#1 = #0#1;
+     |LEE 040#515=;
+     |SI FSalida = 0;  |CIERRA #515;  |ACABA;  |FINSI;
+     |CONFI "     Desea crearlo en la Libreta de Direcciones";
+     |SI FSalida ! 0;  |CIERRA #515;  |ACABA;  |FINSI;
+
+     |SELECT #1#515;
+     |LEE 040#515u;
+
+     nMail = #515#0 + 1;
+
+     |DDEFECTO #515;
+     #515#0 = nMail;
+     |GRABA 020#515b;
+
+     #515#1  = #0#1;
+     #515#4  = #0#3;
+     #515#6  = #0#4;
+     #515#7  = #0#5;
+     #515#8  = #0#6;
+     #515#9  = #0#7;
+     #515#10 = "TELEFONO PRINCIPAL";
+     #515#11 = #0#9;
+     #515#12 = "MOVIL";
+     #515#13 = #0#56;
+     #515#14 = "FAX";
+     #515#15 = #0#10;
+     #515#20 = #0#57;
+
+     |PUSHV 0501 2380;
+     |PINPA #0#515;
+     |PINDA #0#515;
+     |ENDATOS #1#515;
+     |SI FSalida = 0;
+         |GRABA 020#515a;
+     |SINO;
+         |BORRA 020#515a;
+     |FINSI;
+     |POPV;
+|FPRC;
+
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO clavecli; |TIPO 0;
+                            || Proceso de entrada de clave.
+     |ABRE #333;
+     #333#0 = 1;
+     |LEE 101#333=;
+     |SI FSalida ! 0;
+          |DDEFECTO #333;
+          #333#0 = 1;
+          #333#1 = "          ";
+          |GRABA 020#333b;
+     |FINSI;
+
+     |SI #333#1 = "          ";
+          mensa = "Entre la CLAVE :";
+          |HAZ Clavecli;
+          clave = alfa;
+          mensa = "Reentre la CLAVE :";
+          |HAZ Clavecli;
+          |SI alfa ! clave;
+               |MENAV "0000Clave incorrecta";
+               swError = 1;
+          |SINO;
+               #333#1 = clave;
+               |GRABA 020#333a;
+          |FINSI;
+     |SINO;
+          actual = #333#1; |QBF actual;
+          mensa = "Entre la CLAVE :";
+          |HAZ Clavecli;
+          |SI alfa ! actual;
+               |MENAV "0000Clave incorrecta...";
+               swError = 1;
+          |SINO;
+               |CONFI "2400NModificar CLAVE (S/N).: ";
+               |SI FSalida = 0;
+                    mensa = "Entre la Nueva CLAVE : ";
+                    |HAZ Clavecli;
+                    clave = alfa;
+                    mensa = "Reentre la CLAVE :";
+                    |HAZ Clavecli;
+                    |SI clave ! alfa;
+                         |MENAV "0000Clave incorrecta, no se modifica...";
+                         swError = 1;
+                    |SINO;
+                         #333#1 = clave;
+                         |GRABA 020#333a;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |BLIN 4;
+     |LIBERA #333;
+     |CIERRA #333;
+|FPRC;
+
+|PROCESO Clavecli;
+     |BLIN 24;
+     |PINTA 2420, mensa;
+     alfa = "";
+     E_sup = 10;
+     E_inf = "";
+     alfa = 2444 ? -1;
+     |BLIN 24;
+     alf1 = alfa; |QBF alf1;
+     |SI alf1 = ""; alfa = ""; |ACABA; |FINSI;
+
+     nu2 = 0;
+     |PARA i = 101; |SI i [ 1100; |HACIENDO i = i + 100;
+          alf1 = alfa % i;
+          nu1 = &alf1 * i;
+          nu2 = nu2 + nu1;
+     |SIGUE;
+     alfa = nu2;
+     |QBF alfa;
+|FPRC;
+
+|PROCESO boton; |TIPO 20;
+     nModo = (FEntrada / 100) ! 0;
+     aAlfa1 = FSalida;
+
+     |SI aAlfa1 = "OPCION";
+         FSalida = "Opciones";
+         |ACABA;
+     |FINSI;
+
+     |LEE 101#0=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |MENU menu;
+     menu2 = FSalida;
+     |SI menu2 = "1";  |HAZ NotasObs;  |FINSI;
+     |SI menu2 = "2";  |HAZ VerDelega;  |FINSI;
+     |SI menu2 = "3";
+         enEmpresa = #asclient#0;
+         |SUB_EJECUTA "asoraapp";
+     |FINSI;
+     |LIBERA #0;
+|FPRC;
+
+|PROCESO VerDelega;
+     |SI nModo = 4;
+          |ABRE #visam004;
+          |PUSHV 0501 2380;
+          |ENTLINEAL #1#804, -2, 4, 22, 1, Inferior, Superior;
+          |POPV;
+          |CIERRA #visam004;
+     |SINO;
+          |ABRE #visam004;
+          |PUSHV 0501 2380;
+          |ENTLINEAL #1#804, -2, 2, 22, 1, Inferior, Superior;
+          |POPV;
+          |CIERRA #visam004;
+     |FINSI;
+|FPRC;
+
+|PROCESO NotasObs;
+     swError = 0;
+     |HAZ clavecli;
+     |SI swError = 1;
+          |ACABA;
+     |FINSI;
+     |HAZ observacion;
+|FPRC;
+
+|PROCESO BancoCliente;
+     enCodBanco = #0#53;
+     |HAZ LeeBancoCliente;
+
+     |SI enSwDeDonde = 1;
+         #0#11 = #709#1;                    |PINTA #0#11;
+         #0#12 = #709#6;                    |PINTA #0#12;
+         |SI #0#13 = "                    ";
+             #0#13 = #709#2 + #709#3 + #709#4;  |PINTA #0#13;
+             |SI nSwVisados = 0;
+               #0#71 = #709#2;
+               #0#72 = #709#3;
+               #0#73 = #709#4;
+             |FINSI;
+         |FINSI;
+     |SINO;
+         #0#11 = #709#1;  |PINTA #0#11;
+         #0#12 = #709#2;  |PINTA #0#12;
+
+         aAux = #709#3;
+         |QBF aAux;
+         |SI aAux ! "";
+               aLong = aAux % A0;
+               nLong = aLong;
+               |SI nLong ] 8;
+                    aAux = #709#3 % 104;
+                    aAux2 = #709#3 % 504;
+                    #0#71 = aAux;
+                    #0#72 = aAux2;
+                    |PINTA #0#71;
+                    |PINTA #0#72;
+               |FINSI;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO BancoPropio;  |TIPO 14;
+     enCodBanco = #0#16;
+     |HAZ LeeBancoPropio;
+
+     |PINTA 2229, #706#1;
+|FPRC;
+
+|PROCESO Tipo8;  |TIPO 8;
+     |HAZ BusquedaApli;
+
+     |DFICE aAlfa;  |QBF aAlfa;
+     aAlfa = aAlfa % -202;
+
+     |ABRE #10;
+     #10#0 = aAlfa;
+     |LEE 040#10=;
+     |SI FSalida ! 0;  |DDEFECTO #10;  |FINSI;
+     |CIERRA #10;
+
+     |SI eaPathIntegral ! ""; |Y #10#3 = "S";
+         |MENAV "    Los clientes en esta empresa se tratan desde la Ficha del Cliente General";
+         |PTEC 807;
+         |ACABA;
+     |FINSI;
+
+     nAlta = 0;
+
+     |SI #10#3 = "S";  nAlta = 1;  |FINSI;
+
+
+     ||DBASS Comodin; |QBF Comodin; Comodin = Comodin + "contagen/";
+
+     ||TODO CCC
+     |HAZ EsVisados;
+     nSwVisados = FSalida;
+
+     |SI #48#3 = "S";
+         nSwVisados = -1;
+     |FINSI;
+
+     aParametro = PARAMETRO;
+     |QBF aParametro;
+     |SI aParametro = "ALTA";
+
+          |ABRE #0;
+          |DDEFECTO #0;
+          #0#0 = enLibre;
+          |LEE 000#0.=;
+          |SI FSalida ! 0;
+               |DDEFECTO #0;
+               #0#0 = enLibre;
+               |GRABA 020#0b;
+
+               |PINPA #0#0; |PINDA #0#0;
+               |ENDATOS #1#0;
+               |SI FSalida = 0;
+                    |GRABA 020#0a; |LIBERA #0;
+               |SINO;
+                    |BORRA 020#0a; |LIBERA #0;
+                    enLibre = 0;
+               |FINSI;
+          |FINSI;
+          |CIERRA #0;
+          |PTEC 806;
+     |FINSI;
+|FPRC;
+
+|PROCESO Inferior;
+     #804#0 = #0#0;
+     #804#1 = 0001;
+|FPRC;
+
+|PROCESO Superior;
+     #804#0 = #0#0;
+     #804#1 = 9999;
+|FPRC;
+
+|PROCESO Delegaciones;
+     |ABRE #visam004;
+     |PUSHV 0501 2380;
+     |ENTLINEAL #1#804, -2, 2, 22, 1, Inferior, Superior;
+     |POPV;
+     |CIERRA #visam004;
+|FPRC;
+
+|PROCESO MCtaCli; |TIPO 0;
+     eaCta = #0Campo;
+     |HAZ MFiltraPtos;
+     #0Campo = eaCta; |PINTA #0Campo;
+
+     |HAZ EsVisados;
+     |SI FSalida = 0;
+          aAux = eaCta; |QBF aAux;
+          |SI aAux ! "";
+               aAux = eaCta % 102;
+               |SI aAux ! "43";
+                    aMensaje = "0000Atencion la Cuenta Contable NO empieza por 43";
+                    |MENAV aMensaje;
+                    |ERROR;
+
+               |FINSI;
+          |FINSI;
+          aAux = eaCta; |QBF aAux;
+          aAlfa = aAux % 0; nCalc = aAlfa;
+          |SI nCalc ! endigC;
+             aMensaje = "0000Longitud incorrecta";
+             |MENAV aMensaje; |ERROR;
+          |FINSI;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO Tipo7C1asclient; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nSwVisados = 0;
+          |SI nModo = 1; |O nModo = 2;
+               |MENSA "0000<F2> Delegaciones";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo0C1asclient; |TIPO 0;
+     |SI nSwVisados = 0;
+          |SI FSalida = 10;
+               |HAZ Delegaciones;
+          |FINSI;
+          |SI nModo = 1; |O nModo = 2;
+               |MENSA "0000                 ";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO PonPoblacionCli; |TIPO 0;
+     |ABRE #aspoblac;
+     |DDEFECTO #aspoblac;
+     #aspoblac#0 = #visam004#4;
+     #aspoblac#1 = #visam004#5;
+     |LEE 000#aspoblac.=;
+     #visam004#6 = #aspoblac#3;
+     |CIERRA #aspoblac;
+|FPRC;
+
+|PROCESO visam004_borra;
+     |BORRA 020#visam004.a;
+|FPRC;
+
+|DEFBUCLE visam004_borra;
+ #visam004#1;
+ ;
+ #asclient#0, 0001;
+ #asclient#0, 9999;
+ be;
+ NULL, visam004_borra;
+|FIN;
+
+|PROCESO Tipo2; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     nFlag = 0 +. 1;
+     |SI nModo = 3; |Y nSwVisados = 0;
+          |BUCLE visam004_borra;
+     |FINSI;
+     |SI nModo = 1; |Y nSwVisados = 0; |Y nFlag > 0;
+        |DDEF aAlfa; |QBF aAlfa;
+        aAlfa = aAlfa + "visam014.mas";
+        |CARGA_DEF aAlfa, visam014@;
+        |SI FSalida = 0;
+           |DFICE aAlfa; |QBF aAlfa;
+           |PATH_DAT #visam014@#aAlfa#;
+           |ABRE #visam014@;
+           aAlfa = "    N" + &191 + " Ha autorizado el cliente el envio por mensajeria ?";
+           |CONFI aAlfa;
+           |SI FSalida = 0;
+              #visam014@#0 = #asclient#0;
+              |LEE 000#visam014@.=;
+              |SI FSalida ! 0;
+                 #visam014@#0 = #asclient#0;
+                 #visam014@#1 = #asclient#1;
+                 #visam014@#2 = "S";
+                 #visam014@#3 = "C";
+                 |GRABA 000#visam014@.n;
+
+                 |MENAV "    Han quedado autorizadas para el envio todas las delegaciones del cliente";
+                 |MENAV "    Si desea desautorizar alguna delegacion, hacerlo por MAESTROS / AUXILIAR CONTROL CLIENTES";
+              |SINO;
+                 |MENAV "    El cliente ya tenia activa la configuracion de autorizacion de envio. Se mantendra intacta";
+              |FINSI;
+           |FINSI;
+           |CIERRA #visam014@; |DESCARGA_DEF #visam014@;
+        |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo14Bancos; |TIPO 14;
+     |SI nSwVisados = 0;
+          |ATRI N;
+          |PINTA 2005, "Entidad :     ";
+          |PINTA 2021, "Oficina : ";
+          |PINTA 2068, "DC : ";
+          |C_M #asclient#13, 1, "N";
+          |C_V #asclient#13, 1, "N";
+          |C_P #asclient#71, 1, 2015;
+          |C_V #asclient#71, 1, "S";
+          |C_M #asclient#71, 1, "S";
+          |C_P #asclient#72, 1, 2031;
+          |C_V #asclient#72, 1, "S";
+          |C_M #asclient#72, 1, "S";
+          |C_P #asclient#73, 1, 2074;
+          |C_V #asclient#73, 1, "S";
+          |C_M #asclient#73, 1, "S";
+
+          |PINTA #asclient#71;
+          |PINTA #asclient#72;
+          |PINTA #asclient#73;
+
+          |PINTA #asclient#13;
+          |PINTA #asclient#11;
+
+          |ATRI 0;
+     |FINSI;
+
+   |HAZ TrasPago;
+|FPRC;
+
+|PROCESO TrasPago;
+   |ATRI I;
+   |SI #asclient#85 = "R";
+      |PINTA 1466, "Recurrente";
+   |SINO;
+      |PINTA 1466, "Unico     ";
+   |FINSI;
+   |ATRI N;
+|FPRC;
+
+|PROCESO DC; |TIPO 0;
+     |SI nSwVisados = 0;
+          eaEntidad  = #asclient#71; |QBF eaEntidad;    eaEntidad  = eaEntidad  % 104;
+          eaSucursal = #asclient#72; |QBF eaSucursal;   eaSucursal = eaSucursal % 104;
+          eaCuenta   = #asclient#14; |QBF eaCuenta;     eaCuenta   = eaCuenta   % 110;
+          eaDC       = "";
+
+          |SI eaEntidad = "";  |Y eaSucursal = "";  |Y eaCuenta = "";
+              |ACABA;
+          |FINSI;
+
+          |HAZ CalculoDC;
+          |SI FSalida ! 10;
+               #asclient#73 = eaDC;
+               |PINTA #asclient#73;
+          |FINSI;
+
+          #asclient#13 = eaEntidad + eaSucursal + eaDC;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo7C2cli; |TIPO 7;
+     aNombre = #asclient#2;
+     |QBF aNombre;
+     |SI aNombre = "";
+          nModo = (FEntrada / 100) ! 0;
+          |SI nModo = 1;
+               #asclient#2 = #asclient#1;
+               |PINTA #asclient#2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo7C2_004; |TIPO 7;
+     aNombre = #visam004#2;
+     |QBF aNombre;
+     |SI aNombre = "";
+          nModo = (FEntrada / 100) ! 0;
+          |SI nModo = 1;
+               #visam004#2 = #asclient#1;
+               |PINTA #visam004#2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo7IBAN_Fclient;  |TIPO 7;
+     aAlfa = #asclient#77;   |QBF aAlfa;
+
+     |SI aAlfa ! "";  |ACABA;  |FINSI;
+
+     |SI nSwVisados = 0;
+         eaCta  = #asclient#71 + #asclient#72 + #asclient#73 + #asclient#14;
+     |SINO;
+         eaCta = #asclient#13;  |QBF eaCta;
+         eaCta = eaCta + #asclient#14;
+     |FINSI;
+
+     eaPais = #asclient#86;
+     |HAZ CalcuIBAN;
+
+     #asclient#77 = eaIBAN;
+|FPRC;
+
+|PROCESO Tipo0IBAN_Fclient;  |TIPO 0;
+     |SI nSwVisados = 0;
+         eaCta  = #asclient#71 + #asclient#72 + #asclient#73 + #asclient#14;
+     |SINO;
+         eaCta = #asclient#13;  |QBF eaCta;
+         eaCta = eaCta + #asclient#14;
+     |FINSI;
+
+     eaPais = #asclient#86;
+     |HAZ CheqIBAN;
+
+     aAlfa = #asclient#77;    |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |CONFI "0000SEl codigo IBAN puede ser erroneo, quiere calcularlo.";
+         |SI FSalida = 0;
+             #asclient#77 = eaIBAN;
+             |PINTA #asclient#77;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;

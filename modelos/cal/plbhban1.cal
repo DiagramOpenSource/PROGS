@@ -1,0 +1,138 @@
+|FICHEROS;
+   :integral/dsam0022;
+   :integral/dsaw0028;
+   :integral/dsaw0003;
+|FIN;
+
+|VARIABLES;
+   aUsuario    = "";
+   aUsuari1    = "";
+   aHora       = "";
+   aAlfa       = "";
+   fFecha      = @;
+   nPara1      = 0;
+   nOk         = 0;
+   nNumero     = 0;
+
+   &eaM22Prog  = "";
+   &enM22Clie  = 0;
+   &enM22MoFa  = 0;
+   &eaM22MoFa  = "";
+   &enM22Modo  = 0;
+   &enM22Inkey = 0;
+|FIN;
+
+|PROCESO GrabaAntesM22;
+     aUsuario = Usuario % 108;
+     aUsuari1 = Usuario % 840;
+     fFecha   = ~;
+     |HORA aHora;
+
+     |ABRE #dsaw0028;
+     #dsaw0028#26 = eaM22Prog;
+     #dsaw0028#27 = enM22Clie;
+     #dsaw0028#28 = aUsuario;
+     |LEE 041#dsaw0028.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #dsaw0028;
+         #dsaw0028#26 = eaM22Prog;
+         #dsaw0028#27 = enM22Clie;
+         #dsaw0028#28 = aUsuario;
+         |GRABA 020#dsaw0028.b;
+     |FINSI;
+
+     |PARA nPara1 = 0; |SI nPara1 [ 25; |HACIENDO nPara1 = nPara1 + 1;
+           #dsaw0028#nPara1# = #dsaw0003#nPara1#;
+     |SIGUE;
+     |GRABA 020#dsaw0028.a;
+
+     |LIBERA #dsaw0028;
+     |CIERRA #dsaw0028;
+|FPRC;
+
+|PROCESO PasaAHistorico;
+
+     |ABRE #dsam0022;
+     #dsam0022#26 = eaM22Prog;
+     #dsam0022#27 = enM22Clie;
+     #dsam0022#28 = 999999;
+     |LEE 041#dsam0022.];
+     |SI FSalida ! 0;
+         |LEE 041#dsam0022.u;
+     |SINO;
+         |LEE 041#dsam0022.a;
+     |FINSI;
+     nNumero = 1;
+     |SI FSalida = 0; |Y #dsam0022#26 = eaM22Prog; |Y #dsam0022#27 = enM22Clie;
+         nNumero = #dsam0022#28 + 1;
+     |FINSI;
+
+     |DDEFECTO #dsam0022;
+     #dsam0022#26 = eaM22Prog;
+     #dsam0022#27 = enM22Clie;
+     #dsam0022#28 = nNumero;
+     #dsam0022#29 = enM22MoFa;
+     #dsam0022#30 = aUsuario;
+     #dsam0022#31 = fFecha;
+     #dsam0022#32 = aHora;
+     #dsam0022#33 = aUsuari1;
+     #dsam0022#34 = eaM22MoFa;
+
+     |PARA nPara1 = 0; |SI nPara1 [ 25; |HACIENDO nPara1 = nPara1 + 1;
+||           |SI #dsaw0028#nPara1# ! #dsaw0003#nPara1#;
+               aAlfa = #dsaw0028#nPara1#;
+               |SI nPara1 = 0;
+                   aAlfa = ("00000" + aAlfa) % -105;
+               |FINSI;
+               |SI nPara1 = 7; |O nPara1 = 8;
+                   aAlfa = ("00" + aAlfa) % -102;
+               |FINSI;
+               #dsam0022#nPara1# = aAlfa;
+||           |FINSI;              || segun Joaquin, grabar todos los datos
+     |SIGUE;
+
+     |GRABA 020#dsam0022.n;
+     |LIBERA #dsam0022;
+|FPRC;
+
+|PROCESO GrabaDespuesM22;
+     aUsuario = Usuario % 108;
+     aUsuari1 = Usuario % 840;
+     fFecha   = ~;
+     |HORA aHora;
+
+     |ABRE #dsaw0028;
+     #dsaw0028#26 = eaM22Prog;
+     #dsaw0028#27 = enM22Clie;
+     #dsaw0028#28 = aUsuario;
+     |LEE 041#dsaw0028.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #dsaw0028;
+         #dsaw0028#26 = eaM22Prog;
+         #dsaw0028#27 = enM22Clie;
+         #dsaw0028#28 = aUsuario;
+         |GRABA 020#dsaw0028.c;
+     |FINSI;
+
+     nOk = 0;
+     |PARA nPara1 = 0; |SI nPara1 [ 25; |HACIENDO nPara1 = nPara1 + 1;
+           |SI #dsaw0028#nPara1# ! #dsaw0003#nPara1#;
+               nOk = 1;
+               |SAL;
+           |FINSI;
+     |SIGUE;
+     |SI enM22Modo = 1;
+         |PDEFECTO #dsaw0028, 0, 26;
+         nOk = 1;  #dsaw0028#1 = "Alta Registro";
+     |FINSI;
+     |SI enM22Modo = 3;
+         nOk = 1;  #dsaw0028#1 = "Baja Registro";
+     |FINSI;
+
+     |SI nOk = 1;
+         |HAZ PasaAHistorico;
+     |FINSI;
+
+     |BORRA 020#dsaw0028.a;
+     |CIERRA #dsaw0028;
+|FPRC;

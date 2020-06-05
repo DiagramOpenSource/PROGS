@@ -1,0 +1,319 @@
+|FICHEROS;
+     goinform #0;
+     goparame #1;
+|FIN;
+-------------------------------------------------------------------------------
+|VARIABLES;
+     aDirFijo = "c:\ds000con\";
+     aPathMde = "";
+     nHandle = 0;
+     aAlfa = "";
+     {1}aContiene = "";
+     {1}aLocal = "";
+     aMd5Org = "";
+     aMd5Des = "";
+     aIPRemoto = "";
+     aBase = "";
+     aOrigen = "";
+     aDestino = "";
+     aDestino2 = "";
+
+     aOtroUsu       = "";
+     &nErrorInf     = 0;
+
+     cParam         = "";
+     cParte         = "";
+     cPathApli      = "";
+     cPathDsin      = "";
+     cOrigen        = "";
+     cDestino       = "";
+     cDirBase       = "";
+     cUsuario       = "";
+     cAplica        = "";
+     cIp            = "";
+     cPath          = "";
+     cSeleccion     = "";
+     cO             = "";
+     cD             = "";
+     cVersion       = "";
+     cDirUsu        = "";
+     cNumUsu        = "";
+     cMensa         = "";
+
+     nConta         = 0;
+     nBotAccess     = 0;
+     nBotDocume     = 0;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO CreaDire;
+     |DBASS cDirUsu;
+     |QBF cDirUsu;
+     cNumUsu = Usuario % 103;
+     |QBF cNumUsu;
+     cDirUsu = cDirUsu + "dev/usr/"+ cNumUsu;
+     |MKDIR cDirUsu;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROGRAMA;
+     |ABRE #1; |LEE 000#1p; |CIERRA #1;
+
+     cParam = PARAMETRO;
+     cParte = cParam %103;
+     |QBF cParam;
+     nErrorInf = 0;
+
+
+     |SI cParam = "";
+          |CONTROL_SIMPLE 0, "BOTON,F2 - Carpeta de Office", 2425, 2455, F2;
+          nBotAccess = FSalida;
+          |CONTROL_SIMPLE 0, "BOTON,F2 - Carpeta dsinf.mde", 2425, 2455, F2;
+          nBotDocume = FSalida;
+          |ESTADO_CONTROL nBotAccess, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+          |ESTADO_CONTROL nBotDocume, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |FINSI;
+
+     |SI cParam ! "";
+          cUsuario = Usuario % 810;
+          |QBF cUsuario;
+          #0#0 = cUsuario;
+          |ABRE #0;
+          |LEE 000#0=;
+          |SI FSalida ! 0;
+               |MENAV "0000NO ESTAN DEFINIDOS LOS  PARAMETROS DE IMPRESION DE ESTE USUARIO";
+               nErrorInf = 1;
+               |ERROR;
+               |ACABA;
+          |FINSI;
+          |HAZ CopiaMde;
+     |FINSI;
+
+     |SI cParam = "";
+          |CLS;
+          |CABEZA "DS-INFORMES";
+          cUsuario = Usuario % 810;
+          |QBF cUsuario;
+          #0#0 = cUsuario;
+       |ET OtroUsu;
+          |ABRE #0;
+          |LEE 000#0=;
+
+          |SI FSalida ! 0;
+               |GRABA 020#0c;
+          |FINSI;
+
+          |HAZ CreaDire;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #2#0;
+          |SI FSalida = 0;
+               |HAZ CopiaMde;
+               |GRABA 020#0a;
+          |SINO;
+               |SI aOtroUsu ! ""; #0#0 = aOtroUsu; |VETE OtroUsu; |FINSI;
+          |FINSI;
+     |FINSI;
+
+     ||EJECUTA LA BASE DE DATOS DE ACCESS CON EL INFORME PASADO COMO PARAMETRO.
+
+     |SI cParte = "RUN";
+          cParam = cParam % 415;
+          cPathApli = #0#2;
+          |QBT cPathApli;
+          cPathApli = cPathApli + "\msaccess.exe";
+          cPathDsin = #0#3;
+          |QBF cPathApli;
+          |QBF cPathDsin;
+
+          aPathMde = #0#6;
+          |QBF aPathMde;
+          aAlfa = aPathMde % -101;
+          |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPathMde = aPathMde + "\"; |FINSI;
+
+          ||cAplica = cPathApli + " " + cPathDsin + "\dsinf.mde" + ";" + cParam;
+
+          cAplica = cPathApli + " " + aPathMde + "dsinf.mde" + ";" + cParam;
+          |SI #0#1 = "N";
+               |MENAV "0000Usuario no activo en parametros...";
+          |SINO;
+               |SI #0#7 = "S";
+                    |MENAV "0000Pulsa INTRO para abrir informes.";
+               |FINSI;
+               |RSYSTEM cAplica;
+          |FINSI;
+     |FINSI;
+
+     ||CREA EL FICHERO PARA LA IMPRESION.
+
+     |SI cParte = "IMP";
+          |FINIMP;
+          cParam = cParam % 410;
+          |DBASS cDirBase;
+          |QBF cDirBase;
+          cUsuario  = Usuario;
+          cUsuario  = cUsuario % 103;
+          Impresora = cDirBase+"dev/usr/"+cUsuario+"/"+cParam+".txt";
+          |HAZ GraPieSN;
+          |IMPRE -77;
+          |SI FSalida ! 0;|ACABA;|FINSI;
+     |FINSI;
+
+     ||ENVIA EL FICHERO GENERADO AL CLIENTE.
+
+     |SI cParte = "ENV";
+          |FINIMP;
+          cParam = cParam % 410;
+          |DBASS cDirBase;
+          |QBF cDirBase;
+          cUsuario  = Usuario;
+          cUsuario  = cUsuario % 103;
+          cOrigen = cDirBase+"dev/usr/"+cUsuario+"/"+cParam+".txt";
+
+          ||cDestino = "C:\"+cParam+".txt";
+          cDestino = aDirFijo + cParam+".txt";
+
+          |IP_REMOTO cIp;
+          |QBF cIp;
+          |SI cIp = "";
+               |MKDIR aDirFijo;
+               |COPIA_FICHERO cOrigen, cDestino;
+          |SINO;
+               |RMKDIR aDirFijo;
+               |ENVIA_FICHERO cOrigen, cDestino;
+          |FINSI;
+     |FINSI;
+
+     |SI cParam = "";
+          |FIN_CONTROL_WINDOWS nBotAccess;
+          |FIN_CONTROL_WINDOWS nBotDocume;
+          |PULSATECLA;
+     |FINSI;
+|FPROG;
+-------------------------------------------------------------------------------
+|PROCESO PathApli; |TIPO 0;
+     cPath = #0Campo;
+     |QBF cPath;
+     |SI cPath = ""; |O FSalida = 10;
+          cPath = "D";
+          |BROWSE cPath;
+          |QBT cPath;
+          |SI cPath = "";
+               |ERROR;
+               |ACABA;
+          |SINO;
+               cPath = cPath % 280;
+               |QBT cPath;
+               #0Campo = cPath;
+               |PINTA #0Campo;
+          |FINSI;
+     |FINSI;
+     |ESTADO_CONTROL nBotAccess, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO PathDocu; |TIPO 0;
+     cPath = #0Campo;
+     |QBF cPath;
+     |SI cPath = ""; |O FSalida = 10;
+          cPath = "D";
+          |BROWSE cPath;
+          |QBT cPath;
+          |SI cPath = "";
+               |ERROR;
+               |ACABA;
+          |SINO;
+               cPath = cPath % 280;
+               |QBT cPath;
+               #0Campo = cPath;
+               |PINTA #0Campo;
+          |FINSI;
+     |FINSI;
+     |ESTADO_CONTROL nBotDocume, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Bgoinform; |TIPO 7;
+     |SI Campo = 2;
+          |ESTADO_CONTROL nBotAccess, "SHOW"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |FINSI;
+     |SI Campo = 6;
+          |ESTADO_CONTROL nBotDocume, "SHOW"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |FINSI;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO F2;
+     |PTEC 824;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO TeclaInf; |TIPO 0;   ||Cambia de usuario (NO ESTA EL MENSAJE)
+     |SI FSalida = 13;
+          |CONSULTA_CLAVE #1#0;
+          |SI FSalida = 0;
+               aOtroUsu = #0#0;
+               |PTEC 807;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CopiaMde;
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;
+
+     aDestino = #0#6; |QBF aDestino;
+     aAlfa = aDestino % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\"; aDestino = aDestino + "\"; |FINSI;
+     aDestino = aDestino + "dsinf.mde";
+
+     |DBASE aBase;
+     aOrigen = aBase + "plugins/dsinf.mde";
+
+     |SI aIPRemoto = "";
+          aContiene = aOrigen;
+          |ESPECIFICA "MD5", aContiene;
+          aMd5Org = FSalida;
+
+          aContiene = aDestino;
+          |ESPECIFICA "MD5", aContiene;
+          aMd5Des = FSalida;
+
+          |SI aMd5Org ! aMd5Des;
+               |COPIA_FICHERO aOrigen, aDestino;
+          |FINSI;
+     |SINO;
+          |ESPECIFICA "RBASS", aLocal;
+          aBase = aLocal;
+          aDestino2 = aBase + "bin/dsinf.mde";
+
+          aContiene = aOrigen;
+          |ESPECIFICA "MD5", aContiene;
+          aMd5Org = FSalida;
+
+          aContiene = aDestino2;
+          |ESPECIFICA "REMOTOMD5", aContiene;
+          aMd5Des = FSalida;
+
+          |SI aMd5Org ! aMd5Des;
+               |ENVIA_FICHERO aOrigen, aDestino2;
+               |RCOPIA_FICHERO aDestino2, aDestino;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO GraPieSN;
+     aAlfa = cDirBase + "dev/usr/" + cUsuario + "/pie.txt";
+     |XABRE "W", aAlfa, nHandle;
+     |SI FSalida = 0;
+          cOrigen = aAlfa;
+
+          aAlfa = #1#102;
+          |XGRABA nHandle, aAlfa;
+          |XCIERRA nHandle;
+
+          ||cDestino = "C:\pie.txt";
+          cDestino = aDirFijo + "pie.txt";
+          |IP_REMOTO cIp;
+          |QBF cIp;
+          |SI cIp = "";
+               |COPIA_FICHERO cOrigen, cDestino;
+          |SINO;
+               |ENVIA_FICHERO cOrigen, cDestino;
+          |FINSI;
+     |FINSI;
+|FPRC;

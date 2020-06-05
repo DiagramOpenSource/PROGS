@@ -1,0 +1,501 @@
+|FICHEROS;
+     tagm0092 #0;
+     tagm0093 #1,MANTE;
+     agifa019 #19;
+     agifa024 #24;
+     dsm00020 #20;
+     agifa017 #17;
+     agifa029 #29;
+     tagm0094 #94;
+     tagm0084 #84
+     agifa142 #142;
+     dsm00238 #238;
+|FIN;
+
+|VARIABLES;
+     nTecla = 0;
+     eaCodigo = "";
+     eaFuerza = "";
+     {-1}aMenu = "";
+     aMenu1 = "3000";
+     aMenu2 = "1";
+     aMenu3 = "";
+     aMenu4 = "PP";
+     aMenu5 = " Crear Pedido ";
+     aMenu6 = " Crear Proforma ";
+
+     nBtnImos = -1;
+     nBtnOpti = -1;
+     nBtnPedido = 0;
+     nBtnProforma = 0;
+     nPanta = 0;
+     nModo = 0;
+     &enModoEntra = 0;
+     aAlfa = "";
+     nGrid1 = -1;
+     nRango = 0;
+     nForma = 0;
+     nId = 0;
+     nLin = 0;
+     aCod = "";
+     aArti = "";
+     nSwImporta = 0;
+     nPrecio = 0;
+     nImpo = 0;
+|FIN;
+
+|PROCESO Evento;
+     |SI FSalida = 1; |O FSalida = 2;
+          |SELECT #1#1;
+          |LEE 000#1=;
+     |FINSI;
+     |SI FSalida = 4;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min;
+     #1#0 = #0#0;
+     #1#1 = 001;
+|FPRC;
+
+|PROCESO Max;
+     #1#0 = #0#0;
+     #1#1 = 999;
+|FPRC;
+
+|PROCESO T14; |TIPO 14;    ||(*)
+     |SI nGrid1 = -1;
+          nRango = 1 + 4 + 8 + 16 + 32;
+          |LINEAL_SIMPLE #1#1, nRango, 1602, 2998, Min, Max, Evento;
+          nGrid1 = FSalida;
+
+     |FINSI;
+|FPRC;
+
+|PROCESO T8; |TIPO 8; ||(*)
+     |ABRE #94; |LEE 000#94p; |CIERRA #94;
+     |ABRET #1;
+|FPRC;
+
+|PROCESO T9; |TIPO 9; ||(*)
+     |CIERRAT #1;
+|FPRC;
+
+|PROCESO BorraLin;
+     |BORRA 020#1a;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE BorraLin;
+     #1#1;
+     ;
+     #0#0, 001;
+     #0#0, 999;
+     be;
+     NULL, BorraLin;
+|FIN;
+
+|PROCESO T2; |TIPO 2; ||(*)
+#0#10 = "";
+|ACABA;
+     nModo = (FEntrada / 100) ! 0;
+     nForma = 0 +. 1;
+     |SI nModo = 2; |O nModo = 3;
+          |SI #0#10 !  "  ";
+               |SI nForma = -1;
+                    |SI #0#10 = "PE";
+                         |MENAV "0000Pedido generado...";
+                    |SINO;
+                         |MENAV "0000Proforma generada...";
+                    |FINSI;
+               |FINSI;
+               |ERROR; |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |SI nModo = 3;
+          |BUCLE BorraLin;
+     |FINSI;
+|FPRC;
+
+|PROCESO T0; |TIPO 0;     ||(*)
+     aAlfa  = "|X000"; aAlfa = #0aAlfa; nId = aAlfa;
+     |ESTADO_CONTROL nId, "ENABLE";
+
+     |REFRESCACONTROL nGrid1;
+|FPRC
+
+|PROCESO T12; |TIPO 12;    ||(*)
+     |SI enModoEntra = 1; |Y FSalida = 7;
+          |BUCLE BorraLin;
+     |FINSI;
+|FPRC;
+
+|PROCESO T30; |TIPO 30;    ||(*)
+     nModo = (FEntrada / 100) ! 0;
+
+     #1#0 = #0#0;
+     #1#1 = 1;
+     |LEE 000#1];
+     |SI FSalida ! 0; |O #1#0 ! #0#0;
+          |SI nModo = 1;
+               |MENAV "0000Se anulan los datos entrados.";
+          |SINO;
+               |MENAV "0000No existen lineas, se borra la cabecera.";
+          |FINSI;
+          |BORRA 020#0a;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO BtnOpti;
+     |ESTADO_CONTROL nBtnOpti, "DISABLE";
+     |SI enModoEntra = 1;
+          |HAZ ImportaOptiAlta;
+          |SI FSalida = 0; nSwImporta = 1; |FINSI;
+     |SINO;
+          |CONFI "0000S¨Realizar importaci¢n optimizador?";
+          |SI FSalida = 0;
+               |HAZ ImportaOptiModi;
+               |REFRESCACONTROL nGrid1;
+          |FINSI;
+     |FINSI;
+     |ESTADO_CONTROL nBtnOpti, "ENABLE";
+|FPRC;
+
+|PROCESO BtnImos;
+     |ESTADO_CONTROL nBtnImos, "DISABLE";
+     |HAZ ImportaImos;
+     |SI FSalida = 0;
+          |PINDA #0#0;
+          |REFRESCACONTROL nGrid1;
+     |FINSI;
+     |ESTADO_CONTROL nBtnImos, "ENABLE";
+|FPRC;
+
+|PROCESO T13; |TIPO 13;
+     |PINPA #0#0; nPanta = FSalida;
+
+     |SI nBtnImos = -1;
+          |CONTROL_SIMPLE nPanta, "BOTON,{{137}}Importar IMOS", 0580, 0598, BtnImos;
+          nBtnImos = FSalida;
+          |CONTROL_SIMPLE nPanta, "BOTON,{{137}}Importar Optimizador", 0680, 0698, BtnOpti;
+          nBtnOpti = FSalida;
+          |CONTROL_SIMPLE nPanta, "BOTON,{{137}}Pase a pedido", 0780, 0798, BtnPedido;
+          nBtnPedido = FSalida;
+          |CONTROL_SIMPLE nPanta, "BOTON,{{137}}Pase a proforma", 0880, 0898, BtnProforma;
+          nBtnProforma = FSalida;
+          |PULSATECLA;
+     |FINSI;
+
+     |HAZ PintaCli;
+     |HAZ PintaAge;
+|FPRC;
+
+|PROCESO T20; |TIPO 20;
+     nModo = (FEntrada / 100) ! 0;
+     |SI FSalida = "OPCION";
+          |ESTADO_CONTROL nBtnPedido, "ENABLE";
+          |ESTADO_CONTROL nBtnProforma, "ENABLE";
+          |ESTADO_CONTROL nBtnImos, "DISABLE";
+          |ESTADO_CONTROL nBtnOpti, "DISABLE";
+          FSalida = "";
+     |FINSI;
+|FPRC;
+
+|PROCESO T7; |TIPO 7;
+     enModoEntra = (FEntrada / 100) ! 0;
+     |SI enModoEntra = 1;
+          aAlfa  = "|X000"; aAlfa = #0aAlfa; nId = aAlfa;
+          |ESTADO_CONTROL nId, "DISABLE";
+
+          |ESTADO_CONTROL nBtnOpti, "ENABLE";
+     |FINSI;
+     |ESTADO_CONTROL nBtnPedido, "DISABLE";
+     |ESTADO_CONTROL nBtnProforma, "DISABLE";
+|FPRC;
+
+|PROCESO T1_7; |TIPO 7;
+     enModoEntra = (FEntrada / 100) ! 0;
+     |SI enModoEntra = 1;
+          aAlfa = Usuario % 810;
+          |ABRE #84;
+          #84#0 = aAlfa;
+          |LEE 000#84=;
+          |SI FSalida = 0;
+               #0#15 = #84#7; |PINTA #0#15;
+          |FINSI;
+          |CIERRA #84;
+
+          |SI nSwImporta = 0;
+               |BUCLE BorraLin;
+               |REFRESCACONTROL nGrid1;
+          |FINSI;
+          |SI nSwImporta = 0;
+               |ESTADO_CONTROL nBtnImos, "ENABLE";
+          |SINO;
+               |ESTADO_CONTROL nBtnImos, "DISABLE";
+          |FINSI;
+
+          |ESTADO_CONTROL nBtnOpti, "DISABLE";
+
+          nSwImporta = 0;
+     |SINO;
+          |ESTADO_CONTROL nBtnOpti, "ENABLE";
+     |FINSI;
+     |ESTADO_CONTROL nBtnPedido, "DISABLE";
+     |ESTADO_CONTROL nBtnProforma, "DISABLE";
+|FPRC;
+
+|PROCESO DefeLin; |TIPO 7;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          #1#0 = #0#0;
+          #1#1 = 999;
+          |LEE 000#1];
+          |SI FSalida = 0;
+               |LEE 000#1a;
+          |SINO;
+               |LEE 000#1u;
+          |FINSI;
+          |SI FSalida = 0; |Y #1#0 = #0#0;
+               nLin = #1#1 + 1;
+          |SINO;
+               nLin = 1;
+          |FINSI;
+          nLin = nLin + #142#236 - 1;
+          |DDEFECTO #1;
+          #1#0 = #0#0;
+          #1#1 = nLin; |PINTA #1#1;
+          aAlfa  = "|X000"; aAlfa = #0aAlfa; nId = aAlfa;
+          |ESTADO_CONTROL nId, "ENABLE";
+     |FINSI;
+|FPRC;
+
+|PROCESO Cliente7; |TIPO 7;
+     aCod = #0#2;
+|FPRC;
+
+|PROCESO Cliente0; |TIPO 0;
+     nTecla = FSalida;
+     |SI aCod ! #0#2;
+          |ABRE #24;
+          #24#0 = #0#2;
+          |LEE 000#24=;
+          |SI FSalida = 0;
+               #0#3 = #24#25; |PINTA #0#3;
+               #0#4 = #24#20; |PINTA #0#4;
+               #0#5 = #24#37; |PINTA #0#5;
+               #0#6 = #24#38; |PINTA #0#6;
+               #0#7 = #24#156; |PINTA #0#7;
+               #0#8 = #24#202; |PINTA #0#8;
+          |SINO;
+               |MENAV "0000No existe c¢digo de cliente...";
+               |ERROR; |ACABA;
+          |FINSI;
+          |CIERRA #24;
+     |FINSI;
+     |HAZ PintaCli;
+
+     eaCodigo = #0#2;
+     eaFuerza = "N";
+     |SI nTecla = 11; eaFuerza = "S"; |FINSI;
+     aAlfa = "*dsz99994;X" + #0#2 + eaFuerza;
+     |SUB_EJECUTA_NP aAlfa;
+|FPRC;
+
+|PROCESO Cliente66; |TIPO 66;
+     |ABRE #24;
+     #24#0 = #0#2;
+     |LEE 000#24];
+     |CONSULTA_CLAVE #1#24;
+     |SI FSalida = 0;
+          #0#2 = #24#0; |PINTA #0#4;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #24;
+|FPRC;
+
+|PROCESO Arti7; |TIPO 7;
+     aArti = #1#2;
+|FPRC;
+
+|PROCESO Arti0; |TIPO 0;
+     |SI FSalida = 13;
+          aAlfa = "*dsz99895;" + #1#2;
+          |SUB_EJECUTA_NP aAlfa;
+          |ERROR; |ACABA;
+     |FINSI;
+     |SI aArti ! #1#2;
+          |ABRE #24;
+          #24#0 = #0#2;
+          |LEE 000#24=;
+          |SI FSalida ! 0; |DDEFECTO #24; |FINSI;
+          |CIERRA #24;
+
+          |ABRE #19;
+          #19#0 = #1#2;
+          |LEE 000#19=;
+          |SI FSalida = 0;
+               #1#3 = #19#1; |PINTA #1#3;
+               |SI #24#39 = 1; nPrecio = #19#18; |FINSI;
+               |SI #24#39 = 2; nPrecio = #19#19; |FINSI;
+               |SI #24#39 = 3; nPrecio = #19#20; |FINSI;
+               |SI #24#39 = 4; nPrecio = #19#147; |FINSI;
+               |SI #24#39 = 5; nPrecio = #19#148; |FINSI;
+               |SI #24#39 = 6; nPrecio = #19#149; |FINSI;
+               #1#5 = nPrecio; |PINTA #1#5;
+               #1#8 = #24#204; |PINTA #1#8;
+
+               |ABRE #238;
+               #238#0 = #19#201;
+               |LEE 000#238=;
+               |SI FSalida ! 0; |DDEFECTO #238; |FINSI;
+               |CIERRA #238;
+               #1#10 = #238#9; |PINTA #1#10;
+               #1#11 = #238#10; |PINTA #1#11;
+               #1#12 = #238#11; |PINTA #1#12;
+          |SINO;
+               |MENAV "0000No existe c¢digo de art¡culo...";
+               |ERROR;
+          |FINSI;
+          |CIERRA #19;
+     |SINO;
+          |ABRE #19;
+          #19#0 = #1#2;
+          |LEE 000#19=;
+          |CIERRA #19;
+
+          |ABRE #238;
+          #238#0 = #19#201;
+          |LEE 000#238=;
+          |SI FSalida ! 0; |DDEFECTO #238; |FINSI;
+          |CIERRA #238;
+     |FINSI;
+     |C_M #1#10, 1, "N";
+     |C_M #1#11, 1, "N";
+     |C_M #1#12, 1, "N";
+     |SI #238#8 = 1; |C_M #1#10, 1, "S"; |FINSI;
+     |SI #238#8 = 2; |C_M #1#10, 1, "S"; |C_M #1#11, 1, "S"; |FINSI;
+     |SI #238#8 = 3; |C_M #1#10, 1, "S"; |C_M #1#11, 1, "S"; |C_M #1#12, 1, "S"; |FINSI;
+|FPRC;
+
+|PROCESO Arti66; |TIPO 66;
+     |ABRE #19;
+     #19#0 = #1#2;
+     |LEE 000#19];
+     |CONSULTA_CLAVE #1#19;
+     |SI FSalida = 0;
+          #1#2 = #19#0; |PINTA #1#2;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #19;
+|FPRC;
+
+|PROCESO Total; |TIPO 0;
+     |SI #238#8 = 1; #1#13 = #1#4 * #1#10; |FINSI;
+     |SI #238#8 = 2; #1#13 = #1#4 * #1#10 * #1#11; |FINSI;
+     |SI #238#8 = 3; #1#13 = #1#4 * #1#10 * #1#11 * #1#12; |FINSI;
+     |SI #238#6 = 1;
+          nImpo = #1#4 * #1#5;
+     |SINO;
+          nImpo = #1#4 * #1#13;
+     |FINSI;
+     nImpo = nImpo - (nImpo * #1#8 / 100);
+     nImpo = nImpo - (nImpo * #1#9 / 100);
+     #1#6 = nImpo;
+
+     |PINTA #1#13;
+     |PINTA #1#6;
+|FPRC;
+
+|PROCESO Agencia; |TIPO 0;
+     |HAZ PintaAge;
+|FPRC;
+
+|PROCESO PintaCli;
+     |ABRE #24;
+     #24#0 = #0#2;
+     |LEE 000#24=;
+     |SI FSalida ! 0; |DDEFECTO #24; |FINSI;
+     |CIERRA #24;
+     |PINTA 1136, #24#1;
+|FPRC;
+
+|PROCESO PintaAge;
+     |ABRE #20;
+     #20#0 = #0#8;
+     |LEE 000#20=;
+     |SI FSalida ! 0; |DDEFECTO #20; |FINSI;
+     |CIERRA #20;
+     |PINTA 1436, #20#1;
+|FPRC;
+
+|PROCESO Alma66; |TIPO 66;
+     |ABRE #29;
+     #29#0 = #1#7;
+     |LEE 000#29];
+     |CONSULTA_CLAVE #1#29;
+     |SI FSalida = 0;
+          #1#7 = #29#0; |PINTA #1#7;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #29;
+|FPRC;
+
+|PROCESO Alma0; |TIPO 0;
+     |SI #1#7 ! Contenido;
+          |ABRE #17;
+          #17#0 = #1#2;
+          #17#1 = #1#7;
+          |LEE 000#17=;
+          |SI FSalida ! 0;
+               |MENAV "0000No existe art¡culo almac‚n...";
+               |ERROR;
+          |FINSI;
+          |CIERRA #17;
+     |FINSI;
+|FPRC;
+
+|PROCESO BtnPedido;
+     |SI #0#12 = 0;
+          |CONFI "0000S¨Pasar documento a Pedido?";
+          |SI FSalida = 0;
+               |HAZ Pedido;
+          |FINSI;
+     |SINO;
+          |SI #0#10 = "PE";
+               |MENAV "0000Documento pasado a pedido...";
+          |SINO;
+               |MENAV "0000Documento pasado a proforma...";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO BtnProforma;
+     |SI #0#12 = 0;
+          |CONFI "0000S¨Pasar documento a Proforma?";
+          |SI FSalida = 0;
+               |HAZ Proforma;
+          |FINSI;
+     |SINO;
+          |SI #0#10 = "PE";
+               |MENAV "0000Documento pasado a pedido...";
+          |SINO;
+               |MENAV "0000Documento pasado a proforma...";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Medida; |TIPO 0;
+     |SI #1Campo ! Contenido;
+          |SI #238#8 = 1; #1#13 = #1#4 * #1#10; |FINSI;
+          |SI #238#8 = 2; #1#13 = #1#4 * #1#10 * #1#11; |FINSI;
+          |SI #238#8 = 3; #1#13 = #1#4 * #1#10 * #1#11 * #1#12; |FINSI;
+          |PINTA #1#13;
+     |FINSI;
+|FPRC;

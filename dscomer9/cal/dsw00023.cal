@@ -1,0 +1,565 @@
+|FICHEROS;
+     dsw00023 #0;
+     agifa019 #2;
+     agifa505 #4;
+     agifa510 #7;
+     agifa509 #8;
+     agifa024 #14;
+     agifa027 #5;
+     agifa515 #19;
+     agifa516 #20;
+     agifa517 #30;
+     agifa571 #35;
+     agifa572 #36;
+     agifa142 #142;
+     agifa501 #501;
+     agifa502 #502;
+     dsm00004 #904;
+     dsm00005 #905;
+     dsm00006 #906;
+     tpv00003 #3;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     aSerie    = "";
+     nUltLin   = 0;
+     aAlfa     = "";
+     aSesion   = "";
+     aMensa    = "";
+     nContador = 0;
+     nUltimo   = 0;
+     i         = 0;
+     j         = 0;
+     actu_dia  = "";
+     diferido  = "";
+     puente_n  = 0;
+     puente_a  = "";
+     empresa   = 0;
+     periodo   = 0;
+     fmes      = "";
+     nImpo     = 0;
+     nDto      = 0;
+     nMargen   = 0;
+     mes       = 0;
+     imneto    = 0;
+     &nnumanu = 0;
+|FIN;
+
+|PROCESO Tipo66; |TIPO 66;
+     |ABRE #agifa501;
+     |SELECT #2#agifa501;
+     |CONSULTA_CLAVE #2#agifa501;
+     |SI FSalida = 0;
+          |SI #agifa501#35 = "T";
+               #0#0 = #agifa501#57;     |PINTA #0#0;
+               #0#1 = #agifa501#58;     |PINTA #0#1;
+          |SINO;
+               |MENAV "0000El documento elegido no es de tipo TIQUET.";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+     |CIERRA #agifa501;
+|FPRC;
+
+|PROCESO lee_horario;
+     |ABRE #7;              ||Cargo los Valores del Codigo Horario
+     #7#0 = #4#18;
+     |LEE 001#7=;
+     |CIERRA #7;
+|FPRC;
+
+|PROCESO actua_deuda;
+     |ABRE #35;
+     |DDEFECTO #35;
+     #35#0 = #501#1;
+     |LEE 101#35=;
+     |SI FSalida ! 0;
+          #35#1 = #501#1;
+          |GRABA 021#35b;
+     |FINSI;
+     #35#2 = #35#2 +. #501#41;
+     #35#4 = #35#4 +. #501#41;
+     |GRABA 021#35a;
+
+     |ABRE #36;
+     #36#0 = #35#0;
+     #36#1 = 9999;
+     |LEE 001#36];
+     |SI FSalida = 0;
+          |LEE 001#36a;
+     |SINO;
+          |LEE 001#36u;
+     |FINSI;
+     |SI FSalida = 0; |Y #35#0 = #36#0;
+          puente_n = #36#1 + 1;
+     |SINO;
+          puente_n = 1;
+     |FINSI;
+     |DDEFECTO #36;
+     #36#0 = #35#0;
+     #36#1 = puente_n;
+     #36#2 = #501#57;        ||Serie
+     #36#3 = #501#0;         ||Registro
+     #36#4 = #501#58;        ||Documento
+     #36#5 = #501#14;        ||Fecha
+     #36#6 = #501#12;        ||Caja
+     #36#7 = #501#33;        ||Cajero
+     #36#8 = #501#41;        ||Importe
+     #36#9 = #501#41;        ||Importe Pdte
+     #36#10 = #501#9;        ||Importe Total
+     |GRABA 021#36n;
+     |CIERRA #36;
+     |CIERRA #35;
+|FPRC;
+
+|PROCESO lee_diario;          ||Grabacion del fichero de diarios
+     |DDEFECTO #8;
+     #8#63 = empresa;
+     #8#0 = #501#12;
+     #8#1 = #501#14;
+     |LEE 101#8=;
+     |SI FSalida ! 0;
+          |GRABA 021#8b;
+     |FINSI;
+|FPRC;
+
+|PROCESO horario;
+     periodo = 0;
+     |PARA i = 1; |SI i [ 19; |HACIENDO i = i + 2;
+          j = i + 1;
+          periodo = periodo + 1;
+          |SI puente_n ] #7#i#; |Y puente_n [ #7#j#;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO actua_dia;
+       puente_a = (#501#34 % 102) + (#501#34 % 402);
+       puente_n = puente_a;
+       |HAZ lee_horario;
+       |HAZ horario;
+       puente_n = periodo + 29;
+       #8#puente_n# = #8#puente_n# + 1;
+       puente_n = puente_n + 10;
+       #8#puente_n# = #8#puente_n# + #501#9;
+       #8#52 = #8#52 + #501#38;            ||Efectivo
+       #8#53 = #8#53 + #501#40;            ||Tarjeta
+       #8#54 = #8#54 + #501#39;            ||Cheque
+       #8#58 = #8#58 + #501#41;            ||Pendiente de credito
+       #8#55 = #8#55 + #501#38 + #501#40 + #501#39;
+       #8#57 = #8#57 + #501#15;            ||Restos no cobrados
+|FPRC;
+
+|PROCESO actua_tarj;
+     |SI #501#40 ! 0;
+          |ABRE #19;
+          |DDEFECTO #19;
+          #19#0 = #501#46;
+          |LEE 101#19=;
+          |SI FSalida ! 0;    |GRABA 021#19b; |FINSI;
+          #19#2 = #19#2 + #501#40;    ||Total Ptas cargadas
+          #19#3 = #501#14;            ||Fecha Ult. Oper.
+          #19#4 = #501#40;            ||Ptas Cargadas
+          |GRABA 021#19a;
+          |CIERRA #19;
+
+          |ABRE #20;
+          |DDEFECTO #20;
+          #20#0 = #501#46;
+          #20#1 = #501#14;
+          |LEE 101#20=;
+          |SI FSalida ! 0;    |GRABA 021#20b; |FINSI;
+          #20#2 = #20#2 + #501#40;    ||Total Ptas cargadas
+          |GRABA 021#20a;
+          |LIBERA #20;
+          |CIERRA #20;
+     |FINSI;
+|FPRC;
+
+|PROCESO Gra905_906;
+     #2#0 = #502#2;
+     |LEE 000#2=;
+     |SI #2#176 ! "S"; |ACABA; |FINSI;
+
+     |ABRE #905;
+     |DDEFECTO #905;
+     #905#0 = "TI";
+     #905#1 = #501#57;
+     #905#2 = #501#58;
+     #905#3 = #502#1;
+     #905#4 = #502#27;
+     #905#5 = #502#28;
+     #905#6 = #502#5;
+     #905#7 = #502#10;
+     #905#8 = #905#6 * #905#7;
+     |GRABA 020#905n;
+     |CIERRA #905;
+
+     |ABRE #906;
+     #906#0 = #502#2;
+     #906#1 = #502#3;
+     #906#2 = #501#14;
+     #906#3 = "TI";
+     #906#4 = #501#57;
+     #906#5 = #501#58;
+     #906#6 = #502#1;
+     #906#7 = #502#27;
+     #906#8 = #502#28;
+     #906#9 = -#502#5;
+     #906#10 = #502#10;
+     |GRABA 020#906n;
+     |CIERRA #906;
+|FPRC;
+
+|PROCESO ActImpoArti;
+     fmes = #501#14 % A402;
+     mes = ((fmes - 1) * 5) + 35;
+     #2#0 = #502#2;
+     |LEE 101#2=;
+     |SI FSalida = 0;
+          |SI #2#194 = 2;
+               nImpo = ((((#502#29 * #502#10) < #502#14) < #501#17) < #501#19);
+          |SINO;
+               nImpo = ((((#502#5 * #502#10) < #502#14) < #501#17) < #501#19);
+          |FINSI;
+          |SI #142#115 = "S";
+               nImpo = nImpo < #501#18;
+          |FINSI;
+          nMargen = nImpo - #502#23;
+          #2mes = #2mes + nImpo;
+          #2#95 = #2#95 + nImpo;
+          mes = mes + 1;
+          #2mes = #2mes + nMargen;
+          #2#96 = #2#96 + nMargen;
+          |GRABA 020#2a;
+          |LIBERA #2;
+
+          efFecha = #501#14;
+          eaArticulo = #502#2;
+          enImpVta = nImpo;
+          enImpMar = nMargen;
+          |HAZ AcumulaArt;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE ActImpoArti;
+     #agifa502#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, ActImpoArti;
+|FIN;
+
+|DEFBUCLE Gra905_906;
+     #agifa502#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, Gra905_906;
+|FIN;
+
+|PROCESO ActCab;
+     ||-------------------- Cliente
+     |SI diferido = "N";
+          |ABRE #14;
+          |DDEFECTO #14;
+          #14#0 = #501#1;
+          |LEE 101#14=;
+          |SI FSalida ! 0; |GRABA 020#14b; |FINSI;
+          fmes = #501#14 % A402;
+          mes = ((fmes - 1) * 4) + 54;
+          imneto = #501#3 - nDto;
+          |SI #142#115 = "N";
+               nImpo = (imneto * 100) / (100 - #501#18);
+               nDto = nDto + (imneto - nImpo);
+          |SINO;
+               nImpo = imneto;
+          |FINSI;
+          #14mes = #14mes +. nImpo;
+          mes = mes + 1;
+          #14mes = #14mes +. nDto;
+          mes = mes + 1;
+          #14mes = #14mes +. #501#8;
+          #14#102 = #14#102 +. nImpo;
+          #14#103 = #14#103 +. nDto;
+          #14#104 = #14#104 +. #501#8;
+          #14#45 = #501#14;
+          #14#46 = imneto;
+          #14#110 = #14#110 +. imneto;
+          |GRABA 020#14a;
+          |CIERRA #14;
+
+          enImpCliCom = -nImpo;
+          enImpCliDto = -nDto;
+          enImpCliFac = -imneto;
+          enImpCliMar = -#501#8;
+          eaCliente = #501#1;
+          efFecha = #501#14;
+          |HAZ AcumulaCli;
+     |FINSI;
+     ||--------------------Resumen
+     |ABRE #8;
+     |HAZ lee_diario;
+     |SI #501#35 = "T"; |O #501#35 = "F";
+          |SI diferido = "N";|O actu_dia = "S";
+               #8#24 = #8#24 +. #501#9;   ||Venta con imp.
+               #8#25 = #8#25 +. #501#4;   ||Total iva
+               #8#26 = #8#26 +. (#501#22+#501#25+#501#47+#501#50+#501#53);
+               #8#27 = #8#24 - #8#25 - #8#26;
+               #8#28 = #8#28 +. #501#28;  ||Total dto
+               #8#29 = #8#29 +. #501#3;   ||Total bruto
+          |FINSI;
+     |FINSI;
+     |SI diferido = "N";|O actu_dia = "S";
+         |HAZ actua_dia;                    ||Actualiza el resumen diario
+     |FINSI;
+     |SI diferido = "N";
+         |HAZ actua_tarj;                   ||Actualiza la tarjeta
+     |FINSI;
+     #8#6 = #8#6 +. 1;
+     #8#15 = #8#15 +. #501#9;
+     |SI diferido = "N";|O actu_dia = "S";
+          |GRABA 021#8a;
+          |LIBERA #8;
+     |FINSI;
+     |CIERRA #8;
+     |SI #501#41 ! 0;
+          |HAZ actua_deuda;
+     |FINSI;
+     |SI diferido = "N";
+          |ABRE #2;
+          |||BUCLELIN 2 ActImpoArti #501;
+          |BUCLE ActImpoArti;
+          |CIERRA #2;
+     |FINSI;
+     |ABRE #2;
+     |||BUCLELIN 2 Gra905_906 #501;
+     |BUCLE Gra905_906;
+     |CIERRA #2;
+|FPRC;
+
+|PROCESO UltTiquet;
+     |SALVA_FICHA #501;
+     aSesion = #501#36;
+     #501#36 = aSesion;
+     #501#0 = 999999;
+     |LEE 000#501];
+     |SI FSalida = 0;
+          |LEE 000#501a;
+     |SINO;
+          |LEE 000#501u;
+     |FINSI;
+     |SI FSalida = 0; |Y #501#36 = aSesion;
+          nUltimo = #501#0 + 1;
+     |SINO;
+          nUltimo = 1;
+     |FINSI;
+     |REPON_FICHA #501;
+|FPRC;
+
+|PROCESO Contador;
+     |SI #142#137 = "F";
+          |ABRE #5;
+          #5#0 = "vtiquet";
+          #5#2 = #501#57;
+          |LEE 101#5=;
+          |SI FSalida ! 0;
+               #5#1 = 1;
+               |GRABA 021#5b;
+          |FINSI;
+          nContador = #5#1;
+          #5#1 = #5#1 + 1;
+          |GRABA 021#5a;
+          |CIERRA #5;
+     |SINO;
+          |SALVA_FICHA #501;
+          |SELECT #2#501;
+          aSerie = #501#57;
+          #501#35 = "T";
+          #501#57 = aSerie;
+          #501#58 = 999999;
+          aSerie = #501#57;
+          |LEE 000#501];
+          |SI FSalida = 0;
+               |LEE 000#501a;
+          |SINO;
+               |LEE 000#501u;
+          |FINSI;
+          |SI FSalida = 0; |Y #501#57 = aSerie; |Y #501#35 = "T";
+               nContador = (#501#58 + 1);
+          |SINO;
+               nContador = 1;
+          |FINSI;
+          |SELECT #1#501;
+          |REPON_FICHA #501;
+     |FINSI;
+     nnumanu = nContador;
+|FPRC;
+
+|PROCESO UltimaLinea;
+     |ABRE #502;
+     |DDEFECTO #502;
+     #502#20 = aSesion;
+     #502#0 = nUltimo;
+     #502#1 = nUltLin;
+     #502#5 = 0;
+     #502#29 = 0;
+     aAlfa = ("000000" + #0#1) % -106;
+     #502#8 = "ANULACION TIQUET:" +  #0#0 + "/" + aAlfa;
+     |GRABA 020#502n;
+     |CIERRA #502;
+|FPRC;
+
+|PROCESO CreaLin;
+     nUltLin = #502#1 + 1;
+     #502#0 = nUltimo;
+     #502#5 = -#502#5;
+     #502#7 = -#502#7;
+     #502#19 = -#502#19;
+     #502#21 = -#502#21;
+     #502#29 = -#502#29;
+     |GRABA 020#502n;
+     enForma = 1;
+     |HAZ AcumulaTPV;
+     |ABRE #2;
+     #2#0 = #502#2;
+     |LEE 000#2=;
+     |CIERRA #2;
+     |SI #2#176 = "S";
+          |ABRE #904;
+          |DDEFECTO #904;
+          #904#0 = #502#2;
+          #904#1 = #502#3;
+          #904#2 = #502#27;
+          |LEE 101#904=;
+          |SI FSalida ! 0; |GRABA 020#904b; |FINSI;
+          #904#3 = #502#28;
+          #904#12 = #904#12 - (#502#5 * enForma);
+          #904#13 = #904#13 - (#502#5 * enForma);
+          |GRABA 020#904a;
+          |CIERRA #904;
+     |FINSI;
+|FPRC;
+
+|PROCESO MiraCaja;
+     |ABRE #4;
+     #4#0 = #501#12;
+     |LEE 000#4=;
+     |SI FSalida ! 0;
+          aMensa = "0000Fichero de Caja inexistente...";
+     |SINO;
+          |SI #4#23 = "N";
+               aMensa = "0000Caja [" + #4#0 + "] cerrada...";
+          |SINO;
+               |SI #4#24 ! #501#14;
+                    aMensa = "0000La fecha de caja:[" + #4#24 + "] no coincide con el Tiquet:[" + #501#14 + "]";
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #4;
+|FPRC;
+
+|DEFBUCLE ModiHistoTPV;
+     #agifa502#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, ModiHistoTPV;
+|FIN;
+
+|DEFBUCLE CreaLin;
+     #agifa502#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, CreaLin;
+|FIN;
+||컴컴컴컴컴컴컴컴컴 Crea un Tiquet identico pero en negativo
+
+|PROCESO Tipo3; |TIPO 3;
+     aMensa = "";
+
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     |ABRE #30; |LEE 000#30p; |CIERRA #30;
+     diferido = #30#6;
+     actu_dia = #30#7;
+
+     |DFICE aAlfa;  |QBF aAlfa;
+     aAlfa = aAlfa % -205;
+     empresa = aAlfa;
+
+     |ABRE #501;
+     |SELECT #2#501;
+     #501#35 = "T";
+     #501#57 = #0#0;
+     #501#58 = #0#1;
+     |LEE 101#501=;
+     |SI FSalida = 0;
+          |SI #501#2 = "S";
+               aMensa = "0000El Tiquet ya esta anulado...";
+               |MENAV aMensa;
+          |SINO;
+               |SELECT #1#501;
+               |LEE 101#501=;
+               |HAZ MiraCaja;
+               |SI aMensa ! "";
+                    |MENAV aMensa;
+               |SINO;
+                    |HAZ UltTiquet;
+                    |HAZ Contador;
+                    |||BUCLELIN 0 CreaLin #501;
+                    |BUCLE CreaLin;
+                    |HAZ UltimaLinea;
+                    #501#2 = "S";
+                    |GRABA 020#501a;
+
+                    #501#0 = nUltimo;
+                    #501#58 = nContador;
+                    #501#3 = -#501#3;
+                    #501#4 = -#501#4;
+                    #501#8 = -#501#8;
+                    #501#9 = -#501#9;
+                    #501#10 = -#501#10;
+                    #501#11 = -#501#11;
+                    |PARA i = 20; |SI i [ 28; |HACIENDO i = i + 1;
+                         #501i = -#501i;
+                    |SIGUE;
+                    #501#30 = -#501#30;
+                    |PARA i = 38; |SI i [ 41; |HACIENDO i = i + 1;
+                         #501i = -#501i;
+                    |SIGUE;
+                    |PARA i = 47; |SI i [ 53; |HACIENDO i = i + 1;
+                         #501i = -#501i;
+                    |SIGUE;
+                    |GRABA 020#501n;
+                    |HAZ ActCab;
+                    |SI #501#35 = "T"; eaOpeTP = "TI"; |FINSI;
+                    |SI #501#35 = "A"; eaOpeTP = "AV"; |FINSI;
+                    |SI #501#35 = "F"; eaOpeTP = "FC"; |FINSI;
+                    enForma = 1;
+                    |||BUCLELIN 0 ModiHistoTPV #501;
+                    |BUCLE ModiHistoTPV;
+                    |ABRE #3;
+                    #3#0 = #0#0;
+                    #3#1 = #0#1;
+                    |BORRA 000#3c;
+                    |CIERRA #3;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          aMensa = "0000Tiquet inexistente o no valido ...";
+          |MENAV aMensa;
+     |FINSI;
+     |CIERRA #501;
+
+     |SI aMensa = "";
+          |HAZ Tipo30;
+     |FINSI;
+|FPRC;

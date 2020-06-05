@@ -1,0 +1,11 @@
+Tipo88,zdatoadi
+LeeLocalidad,zdatoadi
+LeePoblacion,zdatoadi
+LeeHacienda,zdatoadi
+LeePersona,zdatoadi
+PreparaInformes,zdatoadi
+SinBarra,zdatoadi
+SacaPantaEpi,zdatoadi
+ExisteEpi,zdatoadi
+BusquedaApli,zdatoadi
+CreaFicheroMonesa,zdatoadi

@@ -1,0 +1,718 @@
+|FICHEROS;
+   agif0041 #41;
+   agifa024 #24;
+   agifa025 #25;
+   agifa091 #91;
+   agifa066 #66;
+   agifa142 #142;
+   agifa200 #200;
+   agifa205 #205;
+   agifa208 #208;
+   dscam045@ #1000;
+   agifa024@ #1100;
+
+   CtrlGen@  #2000;
+   Clientes@ #3001;
+
+   rodm0005@;
+   dsm00087@;
+   dsoptm02@;
+   referen@;
+|FIN;
+
+|VARIABLES;
+   aEmp48 = "";
+   nEmp48 = 0;
+
+   &enCambiCodi = 0;   || para la copia de empresas
+   &eaRodExporta = "";
+   aUsu = "";
+   nContaLog = 0;
+   aSer = "";
+   aNum = "";
+   aTipo = "";
+   aDef = "";
+   nTipo = 0;
+   nReg = 0;
+   aMensaje = "";
+   &enSwNoCopia = 0;  || Para desactivar la actualizacion
+   &enSwAltaCli = 0;  || Solo esta en el agifa024 (o copias)
+
+   aPath  = "";
+   aGrCli = "";
+   aAlfa  = "";
+   aAlfa1 = "";
+   aOrig  = "";
+   aDest  = "";
+
+   nModo  = 0;
+   nCampo = 0;
+   nCalc  = 0;
+   nCalc1 = 0;
+   nCont  = 0;
+   nIva = 0; nRec = 0; aDiva = ""; fHoy = @;
+   nSwCobro = 0;
+   nSwFactu = 0;
+|FIN;
+
+|PROCESO Campos024;
+   |SI nModo = 1; |Y #agifa208#3 = "S";
+      nCampo = #agifa208#1;
+      #agifa024@#nCampo# = #agifa024#nCampo#;
+   |FINSI;
+   |SI nModo = 2; |Y #agifa208#4 = "S";
+      nCampo = #agifa208#1;
+      #agifa024@#nCampo# = #agifa024#nCampo#;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Campos1024;
+#agifa208#2;
+;
+"agifa024", 000, "S";
+"agifa024", 999, "S";
+e;
+NULL,Campos024;
+|FIN;
+
+|DEFBUCLE Campos2024;
+#agifa208#3;
+;
+"agifa024", 000, "S";
+"agifa024", 999, "S";
+e;
+NULL,Campos024;
+|FIN;
+
+|PROCESO Grabacion024;
+   |SI nModo = 1; |Y #agifa200#1 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 2; |Y #agifa200#2 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 3;
+          |SI enCambiCodi = 0;
+               |SI #agifa200#3 ! "S"; |ACABA; |FINSI;
+          |SINO;
+               |SI #agifa200#1 ! "S"; |ACABA; |FINSI;
+          |FINSI;
+   |FINSI;
+
+   |DFICB aAlfa; |QBF aAlfa; |PATH_DAT #41 aAlfa;
+   |ABRE #agif0041; |SALVA_FICHA #agif0041;
+   #agif0041#0 = #agifa200#0;
+   |LEE 000#agif0041.=;
+   |SI FSalida = 0;
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/agifa024.mas";
+      |CARGA_DEF aAlfa, agifa024@;
+      |SI FSalida = 0;
+         |DFICB aAlfa; |QBF aAlfa;
+         aAlfa = aAlfa + (("00000" + #agifa200#0) % -105) + "/";
+         |PATH_DAT #1100 aAlfa;
+         |ABRE #agifa024@;
+         #agifa024@#0 = #agifa024#0;
+         |LEE 140#agifa024@.=;
+         |SI FSalida = 107;
+               || hace el lee sin error y no espera bloqueo
+               || porque si esta la autmatizacion de empresas activa falla
+         |SINO;
+              |SI nModo = 3;
+                 |SI FSalida = 0;
+                    |BORRA 020#agifa024@.a; |LIBERA #agifa024@;
+                 |FINSI;
+              |SINO;
+                 |SI FSalida ! 0;
+                    |DDEFECTO #agifa024@;
+                    #agifa024@#0 = #agifa024#0;
+                    |GRABA 020#agifa024@.b;
+                 |FINSI;
+
+                 |SI nModo = 1; |BUCLE Campos1024; |FINSI;
+                 |SI nModo = 2; |BUCLE Campos2024; |FINSI;
+                 |GRABA 020#agifa024@.a; |LIBERA #agifa024@;
+              |FINSI;
+         |FINSI;
+         |CIERRA #agifa024@; |DESCARGA_DEF #agifa024@;
+      |FINSI;
+   |FINSI;
+   |REPON_FICHA #agif0041; |CIERRA #agif0041;
+|FPRC;
+
+|DEFBUCLE ControlEmp024;
+#agifa200#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Grabacion024;
+|FIN;
+
+|PROCESO CtrlExtCli;
+   |SI nModo = 1; |Y #agifa205#6 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 2; |Y #agifa205#7 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 3; |Y #agifa205#5 ! "S"; |ACABA; |FINSI;
+
+   |SI #agifa205#11 = "S";
+      |DBASE aOrig; |QBF aOrig; aOrig = aOrig + "def/agifa024.mas";
+      aDest = #agifa205#2; |QBF aDest;
+      aDest = aDest + "def/agifa024.mas";
+      |COPIA_FICHERO aOrig, aDest;
+   |FINSI;
+
+   aAlfa = #agifa205#2; |QBF aAlfa;
+   aAlfa = aAlfa + "def/agifa024.mas";
+   |CARGA_DEF aAlfa, agifa024@;
+   |SI FSalida = 0;
+      aAlfa = #agifa205#2; |QBF aAlfa;
+      aAlfa = aAlfa + "fich/" + #agifa205#9; |QBF aAlfa;
+      aAlfa = aAlfa + "/"; |PATH_DAT #1100 aAlfa;
+      |ABRET #agifa024@;
+      |SI nModo = 1; |O nModo = 2;
+         #agifa024@#0 = #agifa024#0;
+         |LEE 101#agifa024@.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #agifa024@;
+            #agifa024@#0 = #agifa024#0;
+            |GRABA 020#agifa024@.b;
+         |FINSI;
+         aAlfa = "|NC"; aAlfa = #agifa024@#aAlfa#;
+         nCalc = aAlfa; nCalc = nCalc - 1;
+         aAlfa1 = "|NC"; aAlfa1 = #agifa024#aAlfa1#;
+         nCalc1 = aAlfa1; nCalc1 = nCalc1 - 1;
+         |SI nCalc ! nCalc1;
+            |MENAV "    Diferencia de campos en replica con cartera";
+         |FINSI;
+         |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+            #agifa024@#nCont# = #agifa024#nCont#;
+         |SIGUE;
+         |GRABA 020#agifa024@.a; |LIBERA #agifa024@;
+      |FINSI;
+      |SI nModo = 3;
+         #agifa024@#0 = #agifa024#0;
+         |LEE 101#agifa024@.=;
+         |SI FSalida = 0;
+            |BORRA 020#agifa024@.a; |LIBERA #agifa024@;
+         |FINSI;
+      |FINSI;
+      |CIERRAT #agifa024@; |DESCARGA_DEF #agifa024@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CtrlExtCli;
+#agifa205#2;
+;
+"C",01;
+"C",99;
+;
+NULL,CtrlExtCli;
+|FIN;
+
+|PROCESO Empresas024;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscarter/def/dscam052.mas";
+   |CARGA_DEF aAlfa, agifa024@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dscarter/fich/" + (("00000" + #dscam045@#6) % -105) + "/";
+      |PATH_DAT #1100 aAlfa;
+      |ABRE #agifa024@;
+      #agifa024@#0 = #agifa024#0;
+      |LEE 101#agifa024@.=;
+      |SI nModo = 1; |O nModo = 2;
+         |SI FSalida ! 0;
+            |DDEFECTO #agifa024@;
+            #agifa024@#0 = #agifa024#0;
+            |GRABA 020#agifa024@.b;
+         |FINSI;
+         aAlfa = "|NC"; aAlfa = #agifa024@#aAlfa#;
+         nCalc = aAlfa; nCalc = nCalc - 1;
+         aAlfa1 = "|NC"; aAlfa1 = #agifa024#aAlfa1#;
+         nCalc1 = aAlfa1; nCalc1 = nCalc1 - 1;
+         |SI nCalc ! nCalc1;
+            |MENAV "    Diferencia de campos en replica con cartera";
+         |FINSI;
+         |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+            #agifa024@#nCont# = #agifa024#nCont#;
+         |SIGUE;
+         |GRABA 020#agifa024@.a; |LIBERA #agifa024@;
+      |FINSI;
+      |SI nModo = 3; |Y FSalida = 0; |BORRA 020#agifa024@.a; |LIBERA #agifa024@; |FINSI;
+      |CIERRA #agifa024@; |DESCARGA_DEF #agifa024@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Empresas024;
+#dscam045@#1002;
+2;
+nEmp48, 001, "V";
+nEmp48, 999, "V";
+;
+NULL,Empresas024;
+|FIN;
+
+|PROCESO ActCartera024;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscarter/def/dscam045.mas";
+   |CARGA_DEF aAlfa, dscam045@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dscarter/fich/"; |PATH_DAT #1000 aAlfa;
+
+      |DFICE aEmp48;
+      |QBF aEmp48;
+      aEmp48 = aEmp48 % -205;
+      nEmp48 = aEmp48;
+
+      |BUCLE Empresas024;
+      |DESCARGA_DEF #dscam045@;    ||Faltaba!!!
+   |FINSI;
+|FPRC;
+
+|PROCESO &Clie15; |TIPO 15;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   nTipo = 15; |HAZ LogCli;
+
+   nTipo = 15; |HAZ RodacalCopCli;
+   |SI FSalida = 0; |ACABA; |FINSI;
+|FPRC;
+
+|PROCESO &Clie16; |TIPO 16;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   |HAZ OpticaCli;
+
+   nTipo = 16; |HAZ LogCli;
+   nTipo = 16; |HAZ CliOk5050;
+
+   nTipo = 16; |HAZ RodacalCopCli;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   |SI #24#4 ! "NO";
+        |DBASE aAlfa;
+        aAlfa = aAlfa + "/def/tecam001.mas";
+        |XABRE "E", aAlfa, 0;
+        |SI FSalida = 0;
+           nModo = 1; |HAZ ReplicaCli;
+        |FINSI;
+   |FINSI;
+
+   |SI enSwAltaCli = 1; || Solo es alta desde el mantenimiento (agifa024)
+      nModo = 1;
+   |SINO;
+      nModo = 2;
+   |FINSI;
+
+   |ABRE #142; |LEE 000#142p; |CIERRA #142;
+   |SI #agifa142#28  = "S"; |BUCLE ControlEmp024; |FINSI;
+   |SI #agifa142#221 = "S"; |BUCLE CtrlExtCli;    |FINSI;
+   |SI #agifa142#222 = "S"; |HAZ ActCartera024;   |FINSI;
+   |BLIN 4;
+
+   enSwAltaCli = 0;
+|FPRC;
+
+|PROCESO &Clie17; |TIPO 17;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   nTipo = 17; |HAZ LogCli;
+   nTipo = 17; |HAZ CliOk5050;
+
+   nTipo = 17; |HAZ RodacalCopCli;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   |SI #24#4 ! "NO";
+        |DBASE aAlfa;
+        aAlfa = aAlfa + "/def/tecam001.mas";
+        |XABRE "E", aAlfa, 0;
+        |SI FSalida = 0;
+           nModo = 2; |HAZ ReplicaCli;
+        |FINSI;
+   |FINSI;
+
+   nModo = 3;
+   |ABRE #142; |LEE 000#142p; |CIERRA #142;
+   |SI #agifa142#28  = "S"; |BUCLE ControlEmp024; |FINSI;
+   |SI #agifa142#221 = "S"; |BUCLE CtrlExtCli;    |FINSI;
+   |SI #agifa142#222 = "S"; |HAZ ActCartera024;   |FINSI;
+   |BLIN 4;
+
+|FPRC;
+
+|PROCESO ReplicaCli;
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "def/tecam020.mas";
+   |CARGA_DEF aAlfa, CtrlGen@;
+   |SI FSalida = 0;
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/tecaw022.mas";
+      |CARGA_DEF aAlfa, Clientes@;
+      |SI FSalida ! 0;
+         |DESCARGA_DEF #CtrlGen@; |ACABA;
+      |FINSI;
+
+      |ABRE #CtrlGen@;
+      |LEE 101#CtrlGen@.p;
+      |SI FSalida ! 0; |DDEFECTO #CtrlGen@; |FINSI;
+      aPath = #CtrlGen@#0; |QBF aPath;
+      |SI aPath = ""; |O #CtrlGen@#8 = "N";
+         |LIBERA #CtrlGen@;
+         |CIERRA #Clientes@; |DESCARGA_DEF #Clientes@;
+         |CIERRA #CtrlGen@;  |DESCARGA_DEF #CtrlGen@;
+         |ACABA;
+      |FINSI;
+
+      #CtrlGen@#7 = #CtrlGen@#7 + 1;
+      |GRABA 020#CtrlGen@.a; |LIBERA #CtrlGen@;
+
+      |DFICE aEmp48;
+      |QBF aEmp48;
+      aEmp48 = aEmp48 % -205;
+      nEmp48 = aEmp48;
+
+      aPath = aPath + (("00000" + nEmp48) % -105) + "/";
+      |MKDIR aPath;
+
+      |PATH_DAT #3001 aPath;
+
+      |ABRE #Clientes@;
+
+      |SI nModo = 1;
+         #Clientes@#0  = #agifa024#2;
+         #Clientes@#1 = #agifa024#0;
+         |LEE 101#Clientes@.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #Clientes@;
+            #Clientes@#0  = #agifa024#2;
+            #Clientes@#1 = #agifa024#0;
+            |GRABA 020#Clientes@.b;
+         |FINSI;
+
+         #Clientes@#2  = #agifa024#5;
+         aAlfa = (("00" + #agifa024#178) % -102) + (("000" + #agifa024#179) % -103);
+         #Clientes@#3  = aAlfa;
+         #Clientes@#4  = #agifa024#6;
+         #Clientes@#5  = #agifa024#17;
+         #Clientes@#6  = #agifa024#18;
+         #Clientes@#7  = #agifa024#197;
+         #Clientes@#9  = #agifa024#204;
+         #Clientes@#10 = 0;
+         |GRABA 020#Clientes@.a; |LIBERA #Clientes@;
+      |FINSI;
+      |SI nModo = 2;
+         #Clientes@#0 = #agifa024#2;
+         #Clientes@#1 = #agifa024#0;
+         |LEE 101#Clientes@.=;
+         |SI FSalida = 0;
+            |BORRA 020#Clientes@.a; |LIBERA #Clientes@;
+         |FINSI;
+      |FINSI;
+
+      |LEE 101#CtrlGen@.p;
+      #CtrlGen@#7 = #CtrlGen@#7 - 1;
+      |SI #CtrlGen@#7 < 0; #CtrlGen@#7 = 0; |FINSI;
+      |GRABA 020#CtrlGen@.a; |LIBERA #CtrlGen@;
+
+      |CIERRA #Clientes@; |DESCARGA_DEF #Clientes@;
+      |CIERRA #CtrlGen@;  |DESCARGA_DEF #CtrlGen@;
+   |FINSI;
+|FPRC;
+
+|PROCESO RodacalCopCli;
+     |DBASE aPath;
+     aAlfa = aPath + "/def/rodm0001.mas";
+     |XABRE "E", aAlfa, 0;
+     |SI FSalida ] 0;
+           aAlfa = aPath + "bin/iber0001.tab";
+           |XABRE "E", aPath, 0;
+           |SI FSalida ] 0; FSalida = "1"; |ACABA; |FINSI;
+     |SINO;
+          |ACABA;
+     |FINSI;
+
+     |SI eaRodExporta = "S"; |ACABA; |FINSI; || lo activa rodw0004
+
+     |DDEF aDef;
+     aDef = aDef + "rodm0005";
+     |CARGA_DEF aDef, rodm0005@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'rodm0005'";
+     |SINO;
+          |ABRE #rodm0005@;
+          |LEE 000#rodm0005@.u;
+          |SI FSalida = 0; nReg = #rodm0005@#0 + 1; |SINO; nReg = 1; |FINSI;
+          |DDEFECTO #rodm0005@;
+          #rodm0005@#0 = nReg;
+          #rodm0005@#1 = #24#0;
+          #rodm0005@#2 = "agifa024";
+          |SI nTipo = 15; #rodm0005@#3 = "A"; |FINSI;
+          |SI nTipo = 16; #rodm0005@#3 = "M"; |FINSI;
+          |SI nTipo = 17; #rodm0005@#3 = "B"; |FINSI;
+          |SELECT #3#rodm0005@;
+          |LEE 101#rodm0005@.=;
+          |SI FSalida ! 0; |GRABA 020#rodm0005@.b; |FINSI;
+          aAlfa = Usuario % 810;
+          #rodm0005@#4 = aAlfa;
+          #rodm0005@#5 = ~;
+          |HORA aAlfa;
+          #rodm0005@#6 = aAlfa;
+          |GRABA 020#rodm0005@.a;
+          |CIERRA #rodm0005@;
+          |DESCARGA_DEF #rodm0005@;
+     |FINSI;
+     FSalida = 0;
+|FPRC;
+
+|PROCESO LogCli;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "dsm00087";
+     |CARGA_DEF aAlfa, dsm00087@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aSer = "";
+     aNum = #24#0;
+     aTipo = "CL";
+
+     |ABRE #dsm00087@;
+     |DDEFECTO #dsm00087@;
+     |SELECT #2#dsm00087@;
+     #dsm00087@#1 = aSer;
+     #dsm00087@#2 = aNum;
+     #dsm00087@#3 = aTipo;
+     |LEE 101#dsm00087@.=;
+     |SI FSalida ! 0;
+          |SELECT #1#dsm00087@;
+          |LEE 000#dsm00087@.u;
+          |SI FSalida = 0;
+               nContaLog = #dsm00087@#0 + 1;
+          |SINO;
+               nContaLog = 1;
+          |FINSI;
+          |DDEFECTO #dsm00087@;
+          #dsm00087@#0 = nContaLog;
+          #dsm00087@#1 = aSer;
+          #dsm00087@#2 = aNum;
+          #dsm00087@#3 = aTipo;
+          |GRABA 020#dsm00087@.b;
+     |FINSI;
+     |SI FSalida = 0;
+          |HORA aAlfa;
+          aUsu = Usuario % 810;
+          |SI nTipo = 15;
+               #dsm00087@#4 = aUsu;
+               #dsm00087@#5 = ~;
+               #dsm00087@#6 = aAlfa;
+               #dsm00087@#7 = "";
+               #dsm00087@#8 = "01.01.0000";
+               #dsm00087@#9 = "";
+               #dsm00087@#10 = "";
+               #dsm00087@#11 = "01.01.0000";;
+               #dsm00087@#12 = "";
+          |FINSI;
+          |SI nTipo = 16;
+               #dsm00087@#7 = aUsu;
+               #dsm00087@#8 = ~;
+               #dsm00087@#9 = aAlfa;
+          |FINSI;
+          |SI nTipo = 17;
+               #dsm00087@#10 = aUsu;
+               #dsm00087@#11 = ~;
+               #dsm00087@#12 = aAlfa;
+          |FINSI;
+          |GRABA 020#dsm00087@.a;
+     |FINSI;
+     |CIERRA #dsm00087@;
+     |DESCARGA_DEF #dsm00087@;
+|FPRC;
+
+|PROCESO OpticaCli;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "dsoptm02";
+     |CARGA_DEF aAlfa, dsoptm02@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |ABRE #dsoptm02@;
+     #dsoptm02@#0 = #24#0;
+     |LEE 101#dsoptm02@.=;
+     |SI FSalida = 0;
+          #dsoptm02@#1 = #24#2;
+          #dsoptm02@#4 = #24#5;
+          #dsoptm02@#5 = #24#6;
+          #dsoptm02@#6 = #24#178;
+          #dsoptm02@#7 = #24#179;
+          #dsoptm02@#8 = #24#7;
+          #dsoptm02@#9 = #24#17;
+          #dsoptm02@#10 = #24#196;
+          |GRABA 020#dsoptm02@.a;
+     |FINSI;
+     |CIERRA #dsoptm02@;
+     |DESCARGA_DEF #dsoptm02@;
+|FPRC;
+
+|PROCESO CliOk5050;
+     |DDEF aPath;
+     aAlfa = aPath + "okm00003";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          #referen@#0 = #24#0;
+          |LEE 101#referen@.=;
+          |SI nTipo = 17;
+               |SI FSalida = 0; |BORRA 000#referen@.a; |FINSI;
+          |SINO;
+               |SI FSalida ! 0; |GRABA 020#referen@.b; |FINSI;
+
+               |ABRE #91;
+               #91#0 = #24#20;
+               |LEE 000#91=;
+               |SI FSalida ! 0; |DDEFECTO #91; |FINSI;
+               |CIERRA #91;
+
+               |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+               nIva = 0; nRec = 0; aDiva = ""; fHoy = ~;
+               |ABRE #66;
+               #66#0 = #142#239
+               #66#4 = "01.01.0000";
+               |LEE 000#66];
+               |PARA; |SI FSalida = 0; |Y #66#0 = #142#239; |Y fHoy ] #66#4; |HACIENDO;
+                    aDiva = #66#1;
+                    nIva = #66#2;
+                    nRec = #66#3;
+                    |LEE 000#66s;
+               |SIGUE;
+               |CIERRA #66;
+
+               |ABRE #25;
+               #25#0 = #24#25;
+               |LEE 000#25=;
+               |SI FSalida ! 0; |DDEFECTO #25; |FINSI;
+               |CIERRA #25;
+
+               #referen@#1 = #24#1;
+               #referen@#2 = #24#15;
+               #referen@#3 = #91#1;
+               #referen@#4 = aDiva;
+               #referen@#5 = nIva;
+               #referen@#6 = #24#39;
+               #referen@#7 = 1;
+               #referen@#8 = 1;
+               #referen@#9 = 500;
+               #referen@#10 = 300;
+               #referen@#11 = #25#62;
+               #referen@#12 = #24#17;
+               #referen@#13 = #24#18;
+               |GRABA 020#referen@.a;
+          |FINSI;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+
+     aAlfa = aPath + "okm00005";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          nSwFactu = 0;
+          nSwCobro = 0;
+          |ABRE #referen@;
+          #referen@#0 = #24#0;
+          #referen@#1 = "Dirección de envio";
+          |LEE 101#referen@.=;
+          |SI nTipo = 17;
+               |SI FSalida = 0; |BORRA 000#referen@.a; |FINSI;
+          |SINO;
+               |SI FSalida ! 0; |GRABA 020#referen@.b; |FINSI;
+               #referen@#2 = #24#5;
+               #referen@#3 = #24#180;
+               #referen@#4 = #24#6;
+               #referen@#5 = #24#14;
+               #referen@#6 = #24#205;
+               #referen@#7 = #24#7;
+               #referen@#8 = #24#178;
+               #referen@#10 = 1;
+               #referen@#9 = 0;
+               #referen@#11 = 0;
+               |SI #24#5 = #24#8;
+                         |Y #24#180 = #24#183;
+                         |Y #24#6 = #24#9;
+                         |Y #24#14 = #24#14;
+                         |Y #24#205 = #24#205;
+                         |Y #24#7 = #24#10;
+                         |Y #24#178 = #24#181;
+                    #referen@#11 = 1;
+                    nSwFactu = 1;
+               |FINSI;
+               |SI #24#5 = #24#11;
+                         |Y #24#180 = #24#186;
+                         |Y #24#6 = #24#9;
+                         |Y #24#14 = #24#14;
+                         |Y #24#205 = #24#205;
+                         |Y #24#7 = #24#13;
+                         |Y #24#178 = #24#184;
+                    #referen@#9 = 1;
+                    nSwCobro = 1;
+               |FINSI;
+               |GRABA 020#referen@.a;
+          |FINSI;
+
+          #referen@#0 = #24#0;
+          #referen@#1 = "Dirección de factura";
+          |LEE 101#referen@.=;
+          |SI nTipo = 17; |O nSwFactu = 1;
+               |SI FSalida = 0; |BORRA 000#referen@.a; |FINSI;
+          |SINO;
+               |SI FSalida ! 0; |GRABA 020#referen@.b; |FINSI;
+               #referen@#2 = #24#8;
+               #referen@#3 = #24#183;
+               #referen@#4 = #24#9;
+               #referen@#5 = #24#14;
+               #referen@#6 = #24#205;
+               #referen@#7 = #24#10;
+               #referen@#8 = #24#181;
+               #referen@#9 = 0;
+               #referen@#10 = 0;
+               #referen@#11 = 1;
+               |GRABA 020#referen@.a;
+          |FINSI;
+
+          #referen@#0 = #24#0;
+          #referen@#1 = "Dirección de cobro";
+          |LEE 101#referen@.=;
+          |SI nTipo = 17; |O nSwCobro = 1;
+               |SI FSalida = 0; |BORRA 000#referen@.a; |FINSI;
+          |SINO;
+               |SI FSalida ! 0; |GRABA 020#referen@.b; |FINSI;
+               #referen@#2 = #24#11;
+               #referen@#3 = #24#186;
+               #referen@#4 = #24#9;
+               #referen@#5 = #24#14;
+               #referen@#6 = #24#205;
+               #referen@#7 = #24#13;
+               #referen@#8 = #24#184;
+               #referen@#9 = 1;
+               #referen@#10 = 0;
+               #referen@#11 = 0;
+               |GRABA 020#referen@.a;
+          |FINSI;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+
+     |SI #24#0 < 099999;
+          aAlfa = aPath + "okm00004";
+          |CARGA_DEF aAlfa, referen@;
+          |SI FSalida = 0;
+               |ABRE #referen@;
+               #referen@#0 = #24#0;
+               |LEE 101#referen@.=;
+               |SI nTipo = 17;
+                    |SI FSalida = 0; |BORRA 000#referen@.a; |FINSI;
+               |SINO;
+                    |SI FSalida ! 0;
+                         #referen@#1 = #24#197;
+                         #referen@#2 = #24#1;
+                         #referen@#3 = #24#15;
+                         |GRABA 020#referen@.n;
+                    |FINSI;
+               |FINSI;
+               |CIERRA #referen@;
+               |DESCARGA_DEF #referen@;
+          |FINSI;
+     |FINSI;
+|FPRC;

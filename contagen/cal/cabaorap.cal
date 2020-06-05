@@ -1,0 +1,1015 @@
+|FICHEROS;
+   cabaorap #0;
+   cacuenta #1;         || cuentas
+   caparbal #2;         || partidas de balance
+   cabaexp0 #3;         || temporal cuentas totales
+   cabaexp2 #5;         || temporal SITUACION por si pide cuentas
+   caexistc #6;         || descarga cabs.
+   caexistl #7;         || descarga lins.
+
+   canempre #30;        || empresas
+   caconimp #8;
+   cawdatos #900;
+|FIN;
+
+|VARIABLES;
+   nRedon = 0;
+   nRedo1 = 0;
+   nCam1 = 0;
+   nCam2 = 0;
+   nCam3 = 0;
+
+   &pathbal = "";
+   &balance = 1;
+   &aparam = "";
+   &entrada = 1;
+   dif = 0;
+   &cta = "";
+   &nom = "";
+   &sw_inf = 0;   || variables del informe
+   &cantidad = 0;
+   &cantidad2 = 0;
+   &c_origen = 0;
+   &c_aplica = 0;
+   &variable = "";
+   &canti = 0;
+   &canti2 = 0;
+   &doh = "";
+   &anu = 0;
+   &anu1 = 0;
+   puntos = "..........................................................";
+   agrunom = "";
+   agrup1 = 0;
+   agrup2 = 0;
+   act_cuent = "";
+   act_nivel = 0;
+   nivel = 0;
+   nom1 = "";
+   nNume1 = 0;
+   sw_exp = 0;
+   descn = 0;
+   mes = 0;
+   letrames = "";
+   informe  = "";
+   mes_fin = 0;
+   descar = 0;
+   traraf = 0;
+   sumar = 0;
+   dos = 0;
+   acumula = 0;
+   acumul1 = 0;
+
+   activo = 0;
+   activ1 = 0;
+   pasivo = 0;
+   pasiv1 = 0;
+   explo = 0;
+   expl1 = 0;
+   debe1 = 0;
+   haber1 = 0;
+   cue_perdi = "";
+   dig_perdi = 0;
+
+   x = 0;
+   &eldesde = 0;
+   &elhasta = 0;
+   sw = 0;
+   agrupaci = 0;
+   epigrafe = 0;
+   sw_epi = 0;
+   sw_agr = 0;
+   tipo = "";
+   ray1 = "            -------------------------------------------------------------------"
+   ray2 = "                                              ---------------------------------"
+   ray3 = "                                              ================================="
+
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+
+   &r_emp = 0;
+   &r_per = 0;
+   &r_eje = 0;
+   &r_nom = "";
+   &d_mes = 0;
+   &h_mes = 0;
+   &estru = 0;
+
+   aNomCta  = "";
+   aNomCta1 = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE digito_i;
+
+|PROCESO antesque;
+   aNomCta = "cacuenta";
+   aparam = PARAMETRO;
+   |QBF aparam;  |SI aparam = " N"; aparam = ""; |FINSI;
+   |SI aparam = "fech";
+      aNomCta = "cabalano";
+   |FINSI;
+   |NOME_DAT #1 aNomCta;
+   aNomCta1 = aNomCta;
+|FPRC;
+
+|| ______________________________________/ CALCULOS DE PANTALLA
+|CALCULO inicio_b; |TIPO 8;
+
+  |HAZ inicial;
+  |SI swerror = 2; |PTEC 807; |ACABA; |FINSI;
+  |SI swerror = 3; |PTEC 831; |PTEC 807; |ACABA; |FINSI;
+  |HAZ DirAplicSt;
+|FCAL;
+
+
+|PROCESO nivel; |TIPO 7; || desde numero de nivel
+   |SI #0#4 = "N";
+      |CAMPO_MODIFICA #0#5,1,"N";
+   |SINO;
+      |CAMPO_MODIFICA #0#5,1,"S";
+   |FINSI;
+|FPRC;
+
+|PROCESO miraniv; |TIPO 0; || desde numero de nivel
+   nivel = #0#5;
+   |SI nivel = 1;|Y dig4 = 0;  |AVISO;  |ERROR;  |FINSI;
+   |SI nivel = 2;|Y dig5 = 0;  |AVISO;  |ERROR;  |FINSI;
+   |SI nivel = 3;|Y dig6 = 0;  |AVISO;  |ERROR;  |FINSI;
+   |SI nivel = 4;|Y dig7 = 0;  |AVISO;  |ERROR;  |FINSI;
+   |SI nivel = 5;|Y dig8 = 0;  |AVISO;  |ERROR;  |FINSI;
+   |SI nivel = 6;|Y dig9 = 0;  |AVISO;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO deentrada;  |TIPO 7;
+   |SI #0#14 = 0;  |Y #0#15 = 0;
+       #0#14 = empre;
+       #0#15 = ejerc - 1;
+       |SI #0#15 < 0; #0#15 = 9; |FINSI;
+       |PINTA #0#14;
+       |PINTA #0#15;
+   |FINSI;
+
+   #0#6 = 1;
+   |SI Haybasica = 1; |Y eaDepar = "S";
+       #0#6 = 0;
+   |FINSI;
+   |PINTA #0#6;
+|FPRC;
+
+|PROCESO esbuena;
+   |SI FSalida = 9;  |ACABA;  |FINSI;
+   |ABRE #30;
+   #canempre#2 = #0#14;
+   #canempre#3 = 0;
+   |LEE 011#30];
+   |SI FSalida ! 0;  |O #canempre#2 ! #0#14;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+   |FINSI;
+   |CIERRA #30;
+|FPRC;
+
+|PROCESO consulta;
+   |SI FSalida ! 9;  |ACABA;  |FINSI;
+   r_emp = 0;
+   |SUB_EJECUTA "caconemp.run";
+   |ERROR;
+   |SI Campo = 14;
+      #0#14 = r_emp;
+      #0#15 = r_per;
+      |PTEC 802;
+      |PTEC 802;
+   |FINSI;
+|FPRC;
+
+|PROCESO esbuena1;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |ABRE #30;
+   #canempre#2 = #0#14;
+   #canempre#3 = #0#15;
+   |LEE 011#30=;
+   |SI FSalida ! 0;
+      |MENAV "     NO Existe Periodo en la empresa Contable";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   |SI #canempre#13 ! dig3;  |O #canempre#14 ! dig4;  |O #canempre#15 ! dig5;
+      |O #canempre#16 ! dig6;  |O #canempre#17 ! dig7;
+      |O #canempre#18 ! dig8;  |O #canempre#19 ! dig9;
+      |MENAV "     NO CORRESPONDEN LOS NIVELES";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   #0#16 = #canempre#1;
+   anu1 = 1900 + #canempre#26;
+   nom1 = #canempre#1;
+   |SI anu1 [ 1970;
+       anu1 = anu1 + 100;
+   |FINSI;
+   |PINTA #0#16;
+   #canempre#2 = empre;
+   #canempre#3 = ejerc;
+   |LEE 011#30=;
+   anu = 1900 + #canempre#26;
+   |SI anu [ 1970;
+      anu = anu + 100;
+   |FINSI;
+   |CIERRA #30;
+|FPRC;
+
+|PROCESO pintames; |TIPO 0;
+   nNume1 = Campo + 2;                || Coge el campo del nombre del mes
+   |SI #0Campo ! 0; |Y #0Campo ! 13;
+      NumMes = dig1 + (#0Campo - 1);
+      |SI NumMes > 12; NumMes = NumMes - 12; |FINSI;
+   |SINO;
+      NumMes = #0Campo;
+   |FINSI;
+   |HAZ NombreMes;
+   |SI Campo = 7;  |O Campo = 8;
+      |ATRI I;
+      |SI Campo = 7;
+          |PINTA 1626, NombreMes;
+      |SINO;
+          |PINTA 1659, NombreMes;
+      |FINSI;
+      |ATRI 0;
+   |SINO;
+      #0nNume1 = NombreMes;
+      |PINTA #0nNume1;                       || Pinta el nombre del mes
+   |FINSI;
+   |SI Campo = 1;
+       |SI #0#0 > #0#1;
+           |MENAV "    Error de Entrada ...";
+           |ERROR;
+       |FINSI;                         || Si el mes hasta es menor al desde
+   |FINSI;
+   |SI Campo = 8;
+       |SI #0#7 > #0#8;
+           |MENAV "     Error de Entrada ...";
+           |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO estruct; |TIPO 0;
+   |SI #0#6 = 0;  |ACABA;  |FINSI;
+   |ABRE #6;
+   #caexistc#0 = #0#6;
+   |LEE 040#6=;
+   |SI FSalida ! 0;
+      |MENAV "    No existe la estructura de descarga.";
+      |CIERRA #6;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   |HAZ cue_per;
+   |CIERRA #6;
+|FPRC;
+
+|PROCESO cue_per; || calcula la cuenta de perdidas y ganancias
+   cue_perdi = #caexistc#2;
+   dig_perdi = #caexistc#3;
+   |SI #0#4 = "N";  nivel = #caexistc#3;  |FINSI;
+   |SI nivel < #caexistc#3;
+      |SI nivel = 1;  traraf = 100 + dig4;  |FINSI;
+      |SI nivel = 2;  traraf = 100 + dig5;  |FINSI;
+      |SI nivel = 3;  traraf = 100 + dig6;  |FINSI;
+      |SI nivel = 4;  traraf = 100 + dig7;  |FINSI;
+      |SI nivel = 5;  traraf = 100 + dig8;  |FINSI;
+      cue_perdi = #caexistc#2 % traraf;
+      dig_perdi = nivel;
+   |FINSI;
+   cue_perdi = cue_perdi + "            ";
+   cue_perdi = cue_perdi % 112;
+|FPRC;
+
+|| --------------------------------\ fin calculos de PANTALLA
+
+|PROCESO conexi;
+
+   enTExi = 1;
+   nCam1 = empre;
+   nCam2 = ejerc;
+   nCam3 = enEjercicio;
+
+   d_mes = #0#7;
+   h_mes = #0#8;
+   estru = #0#6;
+   r_emp = empre;
+   r_per = ejerc;
+   r_eje = #canempre#26;
+   r_nom = #canempre#1;
+   |SUB_EJECUTA "caexicon.run";
+
+   enTExi = 1;
+   r_emp = #0#14;
+   r_per = #0#15;
+   r_eje = anu1 - 2000; |SI r_eje < 0; r_eje = anu1 - 1900; |FINSI;
+   r_nom = nom1;
+   |SUB_EJECUTA "caexicon.run";
+   empre = nCam1;
+   ejerc = nCam2;
+   enEjercicio = nCam3;
+|FPRC;
+
+|| ____________________________________/
+
+|PROCESO leexplot;
+   |DDEFECTO #2;
+   #caparbal#0 = #cacuenta#5;
+   #caparbal#1 = #cacuenta#6;
+   #caparbal#3 = #cacuenta#7;
+   #caparbal#5 = #cacuenta#8;
+   |LEE 000#2=;
+   |SI FSalida ! 0;
+      #caparbal#2 = "";
+      #caparbal#4 = "";
+      #caparbal#6 = "";
+   |FINSI;
+|FPRC;
+
+|PROCESO cargatr3;
+   #cabaexp0#0 = #cacuenta#5;
+   #cabaexp0#1 = #cacuenta#4;
+   #cabaexp0#2 = #cacuenta#6;
+   #cabaexp0#3 = #cacuenta#7;
+   #cabaexp0#4 = #cacuenta#8;
+   |LEE 101#3=;
+   |SI FSalida ! 0;
+      |DDEFECTO #3;
+      #cabaexp0#0 = #cacuenta#5;
+      #cabaexp0#1 = #cacuenta#4;
+      #cabaexp0#2 = #cacuenta#6;
+      #cabaexp0#3 = #cacuenta#7;
+      #cabaexp0#4 = #cacuenta#8;
+      |HAZ leexplot;
+      #cabaexp0#5 = #caparbal#2;
+      #cabaexp0#6 = #caparbal#4;
+      #cabaexp0#7 = #caparbal#6;
+      |GRABA 020#3b;
+   |FINSI;
+|FPRC;
+
+|PROCESO acortacuen;
+   |SI nivel < #cacuenta#1;
+      |SI nivel = 1;  traraf = 100 + dig4;  |FINSI;
+      |SI nivel = 2;  traraf = 100 + dig5;  |FINSI;
+      |SI nivel = 3;  traraf = 100 + dig6;  |FINSI;
+      |SI nivel = 4;  traraf = 100 + dig7;  |FINSI;
+      |SI nivel = 5;  traraf = 100 + dig8;  |FINSI;
+      #cacuenta#0 = #cacuenta#0 % traraf;
+      #cacuenta#1 = #0#5;
+      #cacuenta#0 = #cacuenta#0 + "              ";
+      #cacuenta#0 = #cacuenta#0 % 112;
+   |FINSI;
+|FPRC;
+
+|PROCESO cargatr5;
+   #cabaexp2#0 = #cacuenta#5;
+   #cabaexp2#1 = #cacuenta#4;
+   #cabaexp2#2 = #cacuenta#6;
+   #cabaexp2#3 = #cacuenta#7;
+   #cabaexp2#4 = #cacuenta#8;
+   |HAZ acortacuen;
+   #cabaexp2#5 = #cacuenta#0;
+   #cabaexp2#6 = #cacuenta#1;
+   #cabaexp2#7 = #cacuenta#2;
+   |LEE 000#5=;
+   |SI FSalida ! 0;
+      |DDEFECTO #5;
+      #cabaexp2#0 = #cacuenta#5;
+      #cabaexp2#1 = #cacuenta#4;
+      #cabaexp2#2 = #cacuenta#6;
+      #cabaexp2#3 = #cacuenta#7;
+      #cabaexp2#4 = #cacuenta#8;
+      |HAZ acortacuen;
+      #cabaexp2#5 = #cacuenta#0;
+      #cabaexp2#6 = #cacuenta#1;
+      #cabaexp2#7 = #cacuenta#2;
+      #cabaexp2#11 = 0;
+      #cabaexp2#12 = 0;
+      |HAZ leexplot;
+      #cabaexp2#8 = #caparbal#2;
+      #cabaexp2#9 = #caparbal#4;
+      #cabaexp2#10 = #caparbal#6;
+      |GRABA 020#5b;
+   |FINSI;
+|FPRC;
+
+|PROCESO grabatr3;                   || temporal exp0 - totales
+   |SI sumar = 0; |ACABA; |FINSI;
+   #cabaexp0#acumul1# = #cabaexp0#acumul1# + sumar;
+   |SI #cacuenta#5 = "A";
+      activo = activo + sumar;
+   |SINO;
+      pasivo = pasivo + sumar;
+   |FINSI;
+   |GRABA 020#3a;
+   |LIBERA #3;
+|FPRC;
+
+|PROCESO grabatr5;                    || temporal exp2 - cuentas
+   |SI sumar = 0; |ACABA; |FINSI;
+   |HAZ cargatr5;
+   #cabaexp2#acumula# = #cabaexp2#acumula# + sumar;
+   |GRABA 020#5a;
+   |LIBERA #5;
+|FPRC;
+
+||----------------------------  grabo CUENTAS DE EXISTENCIAS EN TRABAJO
+
+|PROCESO descarg;
+   |HAZ digitos2;
+   |SI d_error ! 0;  |ACABA;  |FINSI;
+
+   |HAZ cargatr3;
+
+   mes_fin = #0#8 + 11;  || mes finales
+   sumar   = #caexistl#mes_fin#;
+   |SI aMonedaA ! aMonedaC; |Y dos = 2;
+       impMoneda = sumar;
+       |HAZ ElCMoneda;
+       sumar = impMoneda;
+   |FINSI;
+
+   |SI #cacuenta#5 = "P"; sumar = -sumar; |FINSI;
+   #cabaexp0#9 = 1;
+   |HAZ grabatr3;
+   |SI  #0#4 = "S"; |HAZ grabatr5; |FINSI;
+|FPRC;
+
+|PROCESO lineades; || lee las cuentas de existencias.
+   #cacuenta#0 = #caexistl#2;
+   #cacuenta#1 = #caexistl#3;
+   |LEE 000#1=;
+   |SI FSalida = 0;
+      |HAZ descarg;
+   |FINSI;
+|FPRC;
+|| -----------------------------------------------------------------------
+
+||----------------------------  grabo CUENTA DE PERDIDAS Y GANANCIAS
+|PROCESO graperdi;
+   #cacuenta#0 = cue_perdi;
+   #cacuenta#1 = dig_perdi;
+   |LEE 000#1=;
+   |SI FSalida ! 0;
+      |MENAV "     ATENCION NO EXISTE CUENTA DE PERDIDAS Y GANANCIAS";
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   |HAZ cargatr3;
+   sumar = 0;
+   |SI #cacuenta#5 = "A";
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #cacuenta#x#;
+            |SI aMonedaA ! aMonedaC; |Y dos = 2;
+                |HAZ ElCMoneda;
+            |FINSI;
+            sumar = sumar + impMoneda;
+      |SIGUE;
+   |SINO;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #cacuenta#x#;
+            |SI aMonedaA ! aMonedaC; |Y dos = 2;
+                |HAZ ElCMoneda;
+            |FINSI;
+            sumar = sumar + (impMoneda * -1);
+      |SIGUE;
+   |FINSI;
+   sumar = sumar + explo;
+
+   |HAZ grabatr3;
+   |SI  #0#4 = "S"; |HAZ grabatr5; |FINSI;
+|FPRC;
+
+|| -----------------------------------------------------------------
+
+|| ----------------- A la explotacion le quitamos las existencias;
+|PROCESO ver_exp;
+   mes_fin = #0#7 + 11;  || mes iniciales
+   descar = #caexistl#mes_fin#;
+   mes_fin = #0#8 + 11;  || mes finales
+   descar = descar - #caexistl#mes_fin#; || Iniciales - finales
+
+   |SI aMonedaC ! aMonedaA; |Y dos = 2;
+       impMoneda = descar;
+       |HAZ ElCMoneda;
+       descar = impMoneda;
+   |FINSI;
+
+   |SI descar ] 0;
+      act_cuent = #caexistl#5;     || cuenta descarga D
+      act_nivel = #caexistl#6;     || digito descarga D
+   |SINO;
+      act_cuent = #caexistl#8;     || cuenta descarga H
+      act_nivel = #caexistl#9;     || digito descarga H
+   |FINSI;
+   |SI descar = 0; |ACABA; |FINSI;
+
+   eaCuenta = act_cuent;
+   |HAZ SacaNivel;
+   act_nivel = enNivel;
+
+   |SI act_cuent = #cacuenta#0;
+      sw_exp = 1;
+      |SI #cacuenta#5 = "H"; descar = -descar; |FINSI;
+      descn = descn + descar;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE cabasitu9;
+   #7#1;
+   ;
+   #0#6, 01;
+   #0#6, 99;
+   e;
+   NULL, ver_exp;
+|FIN;
+
+|PROCESO calexpl01;
+   sw_exp = 0;
+   descn  = 0;
+   |BUCLE cabasitu9;
+   |SI sw_exp = 1
+      |SI #cacuenta#5 = "D";
+         |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #cacuenta#x#;
+            |SI aMonedaC ! aMonedaA; |Y dos = 2;
+                |HAZ ElCMoneda;
+            |FINSI;
+             debe1 = debe1 - impMoneda;
+         |SIGUE;
+         debe1 = debe1 + descn;
+      |SINO;
+         |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #cacuenta#x#;
+            |SI aMonedaC ! aMonedaA; |Y dos = 2;
+                |HAZ ElCMoneda;
+            |FINSI;
+            haber1 = haber1 - (impMoneda * -1);
+         |SIGUE;
+         haber1 = haber1 + descn;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE calexpl0;
+   #1#4;
+   3;
+   "D", 1, 01, 00, 00,"S";
+   "H", 4, 99, 99, 99,"S";
+   e;
+   NULL,calexpl01;
+|FIN;
+|| ----------------------------------------------------------------
+
+|| ----- Calculamos la explotacion
+|PROCESO explota1;
+   |SI #cacuenta#5 = "D";
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #cacuenta#x#;
+            |SI aMonedaC ! aMonedaA; |Y dos = 2;
+                |HAZ ElCMoneda;
+            |FINSI;
+            debe1 = debe1 + impMoneda;
+      |SIGUE;
+   |SINO;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+            impMoneda = #cacuenta#x#;
+            |SI aMonedaC ! aMonedaA; |Y dos = 2;
+                |HAZ ElCMoneda;
+            |FINSI;
+            haber1 = haber1 + (impMoneda * -1);
+      |SIGUE;
+   |FINSI;
+   canti = haber1 - debe1;
+   explo = canti;
+|FPRC;
+
+|DEFBUCLE explota;
+   #1#4;
+   3;
+   " ", 1,  0,  0,  0, "S";
+   "z", 4, 99, 99, 99, "S";
+   e;
+   NULL, explota1;
+|FIN;
+|| ---------------------------------------------------------------------
+
+|| --------------------------------- Graba el resto de cuentas
+|PROCESO calculit;
+   |HAZ digitos2;
+   |SI d_error ! 0;  |ACABA;  |FINSI;
+
+   |SI #0#4 = "N";  |Y #cacuenta#3 = "N";                     |ACABA;  |FINSI;
+   |SI #0#4 = "S";  |Y #cacuenta#55 > nivel;                  |ACABA;  |FINSI;
+   |SI #0#4 = "S";  |Y #cacuenta#3 = "N";  |Y #cacuenta#55 ! nivel;  |ACABA;  |FINSI;
+   |SI #cacuenta#0 = cue_perdi;                               |ACABA;  |FINSI;
+
+   |HAZ cargatr3;
+   alfa1 = #cacuenta#0 % 101;
+   |SI #cabaexp0#9 = 1; |Y alfa1 = 3;  |LIBERA #3;  |ACABA;  |FINSI;
+
+   sumar = 0;
+   |SI #cacuenta#5 = "A";
+       |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+         impMoneda = #cacuenta#x#;
+         |SI aMonedaC ! aMonedaA; |Y dos = 2;
+             |HAZ ElCMoneda;
+         |FINSI;
+         sumar = sumar + impMoneda;
+      |SIGUE;
+   |SINO;
+      |PARA x = eldesde; |SI x [ elhasta; |HACIENDO x = x + 3;
+         impMoneda = #cacuenta#x#;
+         |SI aMonedaC ! aMonedaA; |Y dos = 2;
+             |HAZ ElCMoneda;
+         |FINSI;
+         sumar = sumar + (impMoneda * -1);
+      |SIGUE;
+   |FINSI;
+   |HAZ grabatr3;
+   |SI  #0#4 = "S"; |HAZ grabatr5; |FINSI;
+|FPRC;
+
+|DEFBUCLE todas_ctas;
+   #1#1;
+   5,4,6,7,8;
+   "            ", "A", 0, 01, 00, 00;
+   "zzzzzzzzzzzz", "P", 0, 99, 99, 99;
+   e;
+   NULL, calculit;
+|FIN;
+
+|| ---------------------------------------------------------------------
+|PROCESO agrupacion; || imprimir agrupacion.
+   sw_inf = 0; |PRINT;   || agrupacion (sin importe)
+   agrunom = #cabaexp0#5;
+   agrup1 = 0;
+   agrup2 = 0;
+   sw_agr = 1;
+|FPRC;
+
+|PROCESO rup_tipo;
+   sw_inf = 5;  |PRINT;                     || linea en blanco
+   |SI tipo = "A";
+      variable = "TOTAL ACTIVO..............................................";
+      cantidad = activ1;
+      cantidad2 = activo;
+   |SINO;
+      variable = "TOTAL PASIVO..............................................";
+      cantidad = pasiv1;
+      cantidad2 = pasivo;
+   |FINSI;
+   |HAZ ori_apli;
+   sw_inf = 6; |PRINT;
+   |PIEINF;
+   doh = "PASIVO";
+   tipo = #cabaexp0#0;
+   agrupaci = #cabaexp0#2;
+   epigrafe = #cabaexp0#3;
+|FPRC;
+
+|PROCESO rup_agru;
+   variable = "Total "+ agrunom;
+   |QBF variable;
+   variable = variable + puntos;
+   variable = variable % 158;
+
+   cantidad  = agrup1;
+   cantidad2 = agrup2;
+   |HAZ ori_apli;
+   sw_inf = 6; |PRINT;
+   sw_inf = 5; |PRINT;
+   agrupaci = #cabaexp0#2;
+   epigrafe = #cabaexp0#3;
+   sw_agr = 0;
+|FPRC;
+
+|PROCESO rup_epig;
+   sw_epi = 0;
+   epigrafe = #cabaexp0#3;
+|FPRC;
+
+|| ----------- Impresion de las cuentas \
+|PROCESO cuenta;
+   cta = #cabaexp2#5;
+   nom = #cabaexp2#7;
+   cantidad = #cabaexp2#11;
+   cantidad2 = #cabaexp2#12;
+   |HAZ ori_apli;
+   |SI cantidad ! 0;|O cantidad2 ! 0;
+      sw_inf = 1; |PRINT;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE cabaorap5;
+   #5#1;
+   ;
+   #3#0, #3#1, #3#2, #3#3, #3#4, "            ", 0;
+   #3#0, #3#1, #3#2, #3#3, #3#4, "zzzzzzzzzzzz", 9;
+   e;
+   NULL, NULL, NULL, NULL, NULL, cuenta;
+   #5#5, #5#6;
+|FIN;
+
+|| ----------- fin impresion de las cuentas /
+
+|PROCESO impresio;
+   |SI #cabaexp0#8 = 0;|Y #cabaexp0#10 = 0;  |ACABA;  |FINSI;
+/*
+   cantidad = #cabaexp0#8;
+   cantidad2 = #cabaexp0#10;
+   |HAZ ori_apli;     ||Calcula origen y aplicacion
+*/
+   |SI sw = 0;
+      tipo = #cabaexp0#0;
+      agrupaci = #cabaexp0#2;
+      epigrafe = #cabaexp0#3;
+      |SI #cabaexp0#0 = "A"; doh = "ACTIVO"; |FINSI;
+      |SI #cabaexp0#0 = "P"; doh = "PASIVO"; |FINSI;
+      sw = 1;
+   |FINSI;
+
+   |SI tipo ! #cabaexp0#0;
+      |HAZ rup_epig;
+      |HAZ rup_agru;
+      |HAZ rup_tipo;
+   |SINO;
+      |SI agrupaci ! #cabaexp0#2;
+         |HAZ rup_epig;
+         |HAZ rup_agru;
+      |SINO;
+         |SI epigrafe ! #cabaexp0#3;
+            |HAZ rup_epig;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI sw_agr = 0;
+      |HAZ agrupacion;
+   |FINSI;
+   |SI sw_epi = 0;
+      |SI epigrafe ! 0;
+          cantidad  = #cabaexp0#8;
+          cantidad2 = #cabaexp0#10;
+          |HAZ ori_apli;
+          sw_inf = 2;  |PRINT;        || epigrafe
+      |FINSI;
+      sw_epi = 1;
+   |FINSI;
+
+   || ..... calculo de cada linea normal
+   cantidad = #cabaexp0#8;
+   cantidad2 = #cabaexp0#10;
+   |HAZ ori_apli;     ||Calcula origen y aplicacion
+   |SI #cabaexp0#4 ! 0;
+      sw_inf=3; |PRINT;
+   |FINSI;
+   agrup1= agrup1 + #cabaexp0#8;
+   agrup2= agrup2 + #cabaexp0#10;
+   |SI #0#4 = "S";        || imprime detalle de cuentas
+      |BUCLE cabaorap5;
+      sw_inf=5; |PRINT;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE cabaorap1;
+   #3#1;
+   ;
+   "A", 0, 01, 00, 00;
+   "P", 0, 99, 99, 99;
+   e;
+   NULL,impresio;
+|FIN;
+
+|PROCESO ori_apli;
+   c_origen = 0;
+   c_aplica = 0;
+   dif = (cantidad - cantidad2) ! EURODB;
+   |SI dif > 0;
+      c_aplica = dif;
+   |SINO;
+      c_origen = -dif;
+   |FINSI;
+|FPRC;
+
+____________________________________/ CALCULO PRINCIPAL
+
+|PROCESO impre; |TIPO 3;
+
+   |HAZ antesque;
+
+   eaIa = #canempre#21;
+   enM1 = #0#0;
+   enM2 = #0#1;
+   |HAZ LeeDatosEmpresa;
+   |SI aparam = "fech";
+       |SI enM1 ! enM1f;
+           NumMes = enM1f; |HAZ NombreMes; #0#2 = NombreMes;
+       |FINSI;
+       |SI enM2 ! enM2f;
+           NumMes = enM2f; |HAZ NombreMes; #0#3 = NombreMes;
+       |FINSI;
+   |FINSI;
+   |SI enMAper ! dig1;
+       |SI #0#1 < enMAper; |Y #0#1 ! 0; |ACABA; |FINSI;
+   |FINSI;
+
+   aMonedaA = eaMoneda;
+
+   |SI #0#18 = "S";
+       |HAZ conexi;
+       eaMoneda = aMonedaA;
+       |HAZ Monedas;
+   |FINSI;
+
+   |ABRE #3;
+   |CIERRA #3;
+   |DELINDEX #3;
+
+   |ABRE #5;
+   |CIERRA #5;
+   |DELINDEX #5;
+
+   |IMPRE 0;
+   |SI FSalida ! 0;  |ACABA;  |FINSI;
+   |HAZ los_informes;
+   informe = que_i1;
+   |INFOR informe;
+   |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+   sw = 0;
+   eldesde = (#0#0 * 3 ) + 11;
+   elhasta = (#0#1 * 3 ) + 11;
+
+   |PARA dos = 1;  |SI dos [ 2;  |HACIENDO dos = dos + 1;
+        acumul1 = 8;
+        acumula = 11;
+        |SI dos = 2;
+           acumul1 = 10;
+           acumula = 12;
+           activ1 = activo;
+           pasiv1 = pasivo;
+           expl1 = explo;
+
+           |DBASE dir_fich;
+           dir_fich = dir_fich + "fich/";
+           alfa1 = #0#14;   alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+           alfa2 = #0#15;   alfa2 = "0"   + alfa2;   alfa2 = alfa2 % -101;
+           alfa3 = dir_fich + alfa1 + alfa2 + "/";
+
+           |PATH_DAT #cacuenta #alfa3#;
+           |PATH_DAT #caparbal #alfa3#;
+           |PATH_DAT #caexistc #alfa3#;
+           |PATH_DAT #caexistl #alfa3#;
+           |PATH_DAT #caconimp #alfa3#;
+
+           |ABRE #30;
+           #canempre#2 = #0#14;
+           #canempre#3 = #0#15;
+           |LEE 011#30=;
+           |CIERRA #30;
+           aMonedaC = #30#28;
+           eaMoneda = #30#28;
+           |HAZ Monedas;
+           |SI aMonedaA = "E"; EURODB = 2; |FINSI;
+
+            pathbal = dirfich0;
+            dirfich0 = alfa3;
+            |HAZ FecApeCie;
+            dirfich0 = pathbal;
+            |SI enMAper ! #30#11;
+                |SI #0#1 < enMAper; |Y #0#1 ! 0; |SAL; |FINSI;
+            |FINSI;
+      |FINSI;
+
+      ||... Modificar Cuentas a balance segun saldo
+      |SI dos = 1;
+         r_emp = empre;
+         r_per = ejerc;
+      |SINO;
+         r_emp = #0#14;
+         r_per = #0#15;
+      |FINSI;
+      enSwOper = 0;
+      |SUB_EJECUTA "carecsig";
+
+      |ABRE #8;
+      |DDEFECTO #8;
+      #8#0 = 1;
+      |LEE 000#8=;
+      |CIERRA #8;
+      |SI #caconimp#2 = "S";  |Y #caconimp#3 = "N";  |Y aparam = "";
+          |SI dos = 2;
+              pathbal = alfa3;
+              r_emp = #0#14;
+              r_per = #0#15;
+          |SINO;
+             r_emp = empre;
+             r_per = ejerc;
+             |DFICE pathbal;
+          |FINSI;
+          balance = 1;
+          |SI #caconimp#10 = "S";
+               enSwOper = 2;
+               |SUB_EJECUTA "carecsig";
+               enSwOper = 0;
+               |SI enECuadre = 1; |ACABA; |FINSI;
+               |NOME_DAT #1 eaNomFCta;
+               |SI dos = 1; aNomCta1 = eaNomFCta; |FINSI;
+           |SINO;
+               |SUB_EJECUTA "careccue";
+           |FINSI;
+      |FINSI;
+
+      || ---------------------------------------------------------------------
+      |SI aMonedaA = "E"; EURODB = 2; |FINSI;
+
+      |ABRET #1;
+      |ABRE #2;
+      |ABRE #3;
+      |ABRE #5;
+      |ABRE #6;
+      activo = 0;
+      pasivo = 0;
+      explo = 0;
+      debe1 = 0;
+      haber1 = 0;
+
+      #caexistc#0 = #0#6;                 ||  Calculo Existencias
+      |LEE 000#6=;                 ||
+      |HAZ cue_per;                ||
+      |BUCLELIN 2lineades#6;       ||
+      |CIERRA #6;                  ||
+
+      |BUCLE calexpl0;             ||  calcula - variacion;
+      |BUCLE explota;              ||  Calcula explotacion;
+      |HAZ graperdi;               ||  Graba perdidas y ganancias
+
+      |BUCLE todas_ctas;           ||  calcula resto de cuentas
+
+      |CIERRAT #1;
+      |CIERRA #2;
+      |CIERRA #3;
+      |CIERRA #5;
+   |SIGUE;
+|| *********************************************************************
+
+   |ABRE #30;
+   #canempre#2 = empre;
+   #canempre#3 = ejerc;
+   |LEE 011#30=;
+   |CIERRA #30;
+   eaMoneda = aMonedaA; |HAZ Monedas;
+
+   || ------------- IMPRIMIR BALANCE
+
+   |DFICE pathbal;
+   |PATH_DAT #1 pathbal;
+   |NOME_DAT #1 aNomCta1;
+
+   |ABRET #1;
+   |BUCLE cabaorap1; || lee fichero #3
+   |HAZ final;
+
+   |PIEINF;
+   |FININF;
+   |FINIMP;
+   |CIERRAT #1;
+   |DELINDEX #3;
+   |DELINDEX #5;
+|FPRC;
+
+|PROCESO final;
+   |HAZ rup_epig;
+   |HAZ rup_agru;
+   sw_inf = 5;  |PRINT;                     || linea en blanco
+   |SI tipo = "A";
+      variable = "TOTAL ACTIVO............................";
+      cantidad = activ1;
+      cantidad2 = activo;
+   |SINO;
+      variable = "TOTAL PASIVO............................";
+      cantidad = pasiv1;
+      cantidad2 = pasivo;
+   |FINSI;
+   |HAZ ori_apli;
+   sw_inf = 6; |PRINT;
+|FPRC;
+
+|PROCESO ElCMoneda;
+     |SI aMonedaC = "P";                  || pesetas
+         mulMoneda = 1 / 166.386;
+         nRedon = 2;
+     |FINSI;
+     |SI aMonedaC = "E";                  || euros
+         mulMoneda = 166.386;
+         nRedon = 0;
+     |FINSI;
+     impMoneda = (impMoneda * mulMoneda) ! nRedon;
+|FPRC;

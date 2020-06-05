@@ -1,0 +1,1014 @@
+|FICHEROS;
+     dsmoc110;
+     dsmod110;
+
+     dsmom002;
+     dsmom004;
+     dsmom008;
+     dsmom073;
+     dsmom107;
+
+     dsmow092,MANTE;
+     dsmow104;
+     &regisnif@;
+|FIN;
+
+|VARIABLES;
+     nGrupo        = 0;
+     i             = 0;
+     nMod          = 110;
+     aDn           = "            ";
+     aHn           = "zzzzzzzzzzzz";
+     nDd           = 0;
+     nHd           = 9999;
+     aTipoCaptura  ="";
+     nSwEsta       = 0;
+     nEjerAnt      = 0;
+     nPer          = 0;
+     nSwGraba      = 0;
+     nTipo         = 0;
+     nGrupoAnt     = 0;
+     nBoton        = 0;
+
+     aPathModelo   = "";
+     aDef          = "";
+     fFecha        = @;
+     fDFecha       = @;
+     fHFecha       = @;
+     aAlfa         = "";
+     aAlfa1        = "";
+     aAlfa2        = "";
+     aPeriodicidad = "";
+     aDNIAnt       = "";
+
+     nNume         = 0;
+     nNume1        = 0;
+     nNume2        = 0;
+     nSwAux        = 0;
+     aFichero      = "";
+     nSwOp         = 0;
+     nImpAnt       = 0;
+     nModo         = 0;
+
+     nCampo92_21   = 0;
+     nCampo92_22   = 0;
+     nCampo92_23   = 0;
+
+|FIN;
+
+|INCLUYE i_variar;
+
+|CALCULO GastoSS; |TIPO 0;
+    |SI #dsmom107#21 ! "S";
+        |SI #dsmoc110#Campo# ! 0;
+            |PUSHV 15102379;
+            |PINTA 1611, " La  configuracion  del  modelo 110  tiene la  recogida de  ";
+            |PINTA 1711, " estos gastos  de forma automatica, con lo  que el importe  ";
+            |PINTA 1811, " informado en este campo no tendra efecto en el modelo 190. ";
+            |CUADRO 15 10 19 70;
+            |ATRI P; |PINTA 1512, "AVISO"; |ATRI 0;
+            |PAUSA;
+            |POPV;
+        |FINSI;
+   |FINSI;
+|FCAL;
+
+|PROCESO dsmom002;              || Comprobamos todas las fechas
+
+     aAlfa   = "31.12." + enEjer;  fHFecha = aAlfa;
+     aAlfa   = "01.01." + enEjer;  fDFecha = aAlfa;
+
+     aAlfa   = #dsmom002#8 % -104;
+     |SI aAlfa ! "0000";
+         nNume = aAlfa;
+         |SI nNume > enEjer; |ACABA; |FINSI;
+
+         |SI #dsmom002#8 > fDFecha; fDFecha = #dsmom002#8; |FINSI;
+     |FINSI;
+
+     aAlfa   = #dsmom002#9 % -104;
+     |SI aAlfa ! "0000";
+         nNume   = aAlfa;
+         |SI nNume < enEjer;  |ACABA;  |FINSI;
+
+         |SI #dsmom002#9 < fHFecha;  fHFecha = #dsmom002#9;  |FINSI;
+     |FINSI;
+
+     aAlfa2 = enPeriodo;
+     aAlfa2 = ("00" + aAlfa2) % -102;
+     aAlfa  = "31.";
+     |SI enPeriodo = 4; |O enPeriodo = 6; |O enPeriodo = 9; |O enPeriodo = 11;
+         aAlfa = "30.";
+     |FINSI;
+     |SI enPeriodo = 2;
+         aAlfa = "28."; |SI enEjer = 2000; |O enEjer = 2004; |O enEjer = 2008;
+                            |O enEjer = 2012; |O enEjer = 2016; |O enEjer = 2020;
+                               aAlfa = "29.";
+                        |FINSI;
+     |FINSI;
+     aAlfa2 = aAlfa + aAlfa2 + "." + enEjer;
+
+     |SI #dsmom002#7 = "TRIMESTRAL";
+         |SI enPeriodo = 3;  aAlfa1 = "01.01." + enEjer;  |FINSI;
+         |SI enPeriodo = 6;  aAlfa1 = "01.04." + enEjer;  |FINSI;
+         |SI enPeriodo = 9;  aAlfa1 = "01.07." + enEjer;  |FINSI;
+         |SI enPeriodo = 12; aAlfa1 = "01.10." + enEjer;  |FINSI;
+     |FINSI;
+
+     |SI #dsmom002#7 = "MENSUAL   ";
+         aAlfa1 = enPeriodo;  aAlfa1 = ("00" + aAlfa1) % -102;
+         aAlfa1 = "01." + aAlfa1 + "." + enEjer;
+     |FINSI;
+
+     |SI #dsmom002#7 = "ANUAL     ";
+         aAlfa1 = "01.01." + enEjer;
+         aAlfa2 = "31.12." + enEjer;
+     |FINSI;
+
+     fFecha = aAlfa1;
+     |SI fHFecha < fFecha;  |ACABA;  |FINSI;
+
+     fFecha = aAlfa2;
+     |SI fDFecha > fFecha;  |ACABA;  |FINSI;
+
+     aPeriodicidad = #dsmom002#7; |QBF aPeriodicidad;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE dsmom002;
+     #dsmom002#1;
+     ;
+     enEmpresa, 01, enModelo;
+     enEmpresa, 98, enModelo;
+     ;
+     NULL, dsmom002;
+|FIN;
+
+
+|PROCESO Modificables; |TIPO 7;
+
+     aPeriodicidad="TRIMESTRAL";
+     |BUCLE dsmom002;
+
+     |SI aPeriodicidad ! "TRIMESTRAL";
+          |PARA i = 15;|SI i [ 24;|HACIENDO i = i + 1;
+               |CAMPO_MODIFICA #dsmoc110#i#,1,"N";
+          |SIGUE;
+     |FINSI;
+
+     |SI #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+         |C_M #dsmoc110#30, 1, "N";  |C_V #dsmoc110#30, 1, "N";
+         |C_M #dsmoc110#31, 1, "N";  |C_V #dsmoc110#31, 1, "N";
+     |SINO;
+         |C_M #dsmoc110#30, 1, "S";  |C_V #dsmoc110#30, 1, "S";
+         |C_M #dsmoc110#31, 1, "S";  |C_V #dsmoc110#31, 1, "S";
+     |FINSI;
+
+     |PINTA #dsmoc110#30;
+     |PINTA #dsmoc110#31;
+|FPRC;
+
+|PROCESO Tipo7;  |TIPO 7;
+     |ESTADO_CONTROL nBoton, "DISABLE";
+
+     |SI #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+         |C_M #dsmoc110#30, 1, "N";  |C_V #dsmoc110#30, 1, "N";
+         |C_M #dsmoc110#31, 1, "N";  |C_V #dsmoc110#31, 1, "N";
+     |SINO;
+         |C_M #dsmoc110#30, 1, "S";  |C_V #dsmoc110#30, 1, "S";
+         |C_M #dsmoc110#31, 1, "S";  |C_V #dsmoc110#31, 1, "S";
+     |FINSI;
+
+     |PINTA #dsmoc110#30;
+     |PINTA #dsmoc110#31;
+
+     nCampo92_21 = 0;
+     nCampo92_22 = 0;
+     nCampo92_23 = 0;
+|FPRC;
+
+|PROCESO Baja73;
+     #dsmom073#0 = enEjerIRPF;
+     #dsmom073#1 = "";
+     #dsmom073#2 = "";
+|FPRC;
+
+|PROCESO Alta73;
+     #dsmom073#0 = enEjerIRPF;
+     #dsmom073#1 = "z";
+     #dsmom073#2 = "zz";
+|FPRC;
+
+|PROCESO T66C8Fmoc110; |TIPO 66;
+     enEjerIRPF = #dsmoc110#1;
+     |HAZ BuscaEjerIRPF;
+
+     |ABRE #dsmom073;
+     #dsmom073#0 = enEjerIRPF;
+     #dsmom073#1 = #dsmoc110#8;
+     #dsmom073#2 = #dsmoc110#9;
+     |LEE 000#dsmom073.];
+
+     |CONSULTA_F_CLAVE #1#dsmom073, Baja73, Alta73;
+     |SI FSalida = 0;
+          #dsmoc110#8 = #dsmom073#1;    |PINTA #dsmoc110#8;
+          #dsmoc110#9 = #dsmom073#2;    |PINTA #dsmoc110#9;
+     |FINSI;
+     |CIERRA #dsmom073;
+
+     |ERROR;
+|FPRC;
+
+|PROCESO T0C9Fmoc110; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+
+     enEjerIRPF = #dsmoc110#1;
+     |HAZ BuscaEjerIRPF;
+
+     |ABRE #dsmom073;
+     #dsmom073#0 = enEjerIRPF;
+     #dsmom073#1 = #dsmoc110#8;
+     #dsmom073#2 = #dsmoc110#9;
+     |LEE 000#dsmom073.=;
+     |SI FSalida ! 0;
+         aAlfa = "0000Clave no correcta en el ejercicio " + enEjerIRPF;
+         |MENAV aAlfa;
+         |SI nModo = 1;  |ERROR;  |FINSI;
+     |FINSI;
+     |CIERRA #dsmom073;
+|FPRC;
+
+|PROCESO PonNombre;  |TIPO 7;
+     |ESTADO_CONTROL nBoton, "ENABLE";
+
+     aAlfa = #dsmoc110#29;  |QBF aAlfa;
+     |SI aAlfa = "";
+         eaCodNif = #dsmoc110#6;
+         |HAZ LeeNifs;
+         #dsmoc110#29 = #regisnif@#1;
+         |PINTA #dsmoc110#29;
+     |FINSI;
+|FPRC;
+
+|PROCESO Dnimoc110;  |TIPO 11;
+     |SI FSalida = 10;
+         eaVarDni  = #dsmoc110#Campo#;
+         enCalcCif = 1;
+         |HAZ CalculameDNI;
+         #dsmoc110#Campo# = eaVarDni;
+         |PINTA #dsmoc110#Campo#;
+         |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO MiraDnimoc110;  |TIPO 6;
+     eaVarDni  = #dsmoc110#Campo#;
+     enCalcCif = 0;
+     |HAZ CalculameDNI;
+     eaVarDni = (eaVarDni + "             ") % 112;
+     |SI #dsmoc110#Campo# ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #dsmoc110#Campo# = eaVarDni;  |PINTA #dsmoc110#Campo#;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaAuxiliar;
+ |ABRE #dsmow104;
+ #dsmow104#0 = #dsmoc110#6;
+ #dsmow104#1 = nGrupo;
+ |LEE 101#dsmow104.=;
+ |SI FSalida ! 0;
+      |DDEFECTO #dsmow104;
+      #dsmow104#0 = #dsmoc110#6;
+      #dsmow104#1 = nGrupo;
+      |GRABA 020#dsmow104.b;
+ |FINSI;
+ #dsmow104#2 = #dsmow104#2  + #dsmoc110#10 + #dsmoc110#15 + #dsmoc110#20;
+ #dsmow104#3 = #dsmow104#3  + #dsmoc110#11 + #dsmoc110#16 + #dsmoc110#21;
+ #dsmow104#4 = #dsmow104#4  + #dsmoc110#12 + #dsmoc110#17 + #dsmoc110#22;
+ #dsmow104#5 = #dsmow104#5  + #dsmoc110#13 + #dsmoc110#14 + #dsmoc110#18 + #dsmoc110#19 + #dsmoc110#23 + #dsmoc110#24;
+ nSwAux = 1;
+ |SI #dsmoc110#6 = "MANUAL      ";
+     #dsmow104#7 = #dsmow104#7 + #dsmoc110#30;
+     #dsmow104#8 = #dsmow104#8 + #dsmoc110#31;
+ |FINSI;
+ |GRABA 020#dsmow104.a;
+ |LIBERA #dsmow104;
+ |CIERRA #dsmow104;
+|FPRC;
+
+|PROCESO RepasoAuxiliar;
+ |SI #dsmow104#2 ! 0; |O #dsmow104#3 ! 0; |O #dsmow104#4 ! 0; |O #dsmow104#5 ! 0;
+     |SI #dsmow104#1 = 1; nNume1 = 6;  nNume2 = 9;  |FINSI;
+     |SI #dsmow104#1 = 2; nNume1 = 12; nNume2 = 15; |FINSI;
+     |SI #dsmow104#1 = 3; nNume1 = 18; nNume2 = 21; |FINSI;
+     |SI #dsmow104#1 = 4; nNume1 = 31; nNume2 = 34; |FINSI;
+     |SI #dsmow104#1 = 5; nNume1 = 25; nNume2 = 0;  |FINSI;
+
+     |SI #dsmow104#2 ! 0; |O #dsmow104#3 ! 0;
+         |SI nSwOp = 0;
+             |SI #dsmow104#0 = "MANUAL      ";
+                 #dsmod110#nNume1# = #dsmod110#nNume1# + #dsmow104#7;
+             |SINO;
+                 #dsmod110#nNume1# = #dsmod110#nNume1# + 1;
+             |FINSI;
+         |SINO;
+             #dsmod110#nNume1# = 0;
+         |FINSI;
+     |FINSI;
+     |SI #dsmow104#4 ! 0; |O #dsmow104#5 ! 0;
+         |SI nSwOp = 0;
+             |SI nNume2 ! 0;
+                 |SI #dsmow104#0 = "MANUAL      ";
+                     #dsmod110#nNume2# = #dsmod110#nNume2# + #dsmow104#8;
+                 |SINO;
+                     #dsmod110#nNume2# = #dsmod110#nNume2# + 1;
+                 |FINSI;
+             |FINSI;
+         |SINO;
+             |SI nNume2 ! 0; #dsmod110#nNume2# = 0; |FINSI;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE RepasoAuxiliar;
+ #dsmow104#1;
+ ;
+ "            ", 1;
+ "zzzzzzzzzzzz", 5;
+ ;
+ NULL, RepasoAuxiliar;
+|FIN;
+
+|PROCESO RepasoAux;
+     nSwOp = 1; |BUCLE RepasoAuxiliar;
+     nSwOp = 0; |BUCLE RepasoAuxiliar;
+|FPRC;
+
+|PROCESO LeeGrupo;
+     enEjerIRPF = #dsmoc110#1;
+     |HAZ BuscaEjerIRPF;
+
+     |ABRE #dsmom073;
+     #dsmom073#0 = enEjerIRPF;
+     #dsmom073#1 = #dsmoc110#8;
+     #dsmom073#2 = #dsmoc110#9;
+     |LEE 000#dsmom073.=;
+     |SI FSalida=0;
+          nGrupo = #dsmom073#4;
+     |FINSI;
+     |CIERRA #dsmom073;
+|FPRC;
+
+|PROCESO GrabaModelo;
+     |SI #dsmoc110#8 = "L";  |ACABA;  |FINSI;
+
+     nGrupoAnt = nGrupo;
+     |HAZ LeeGrupo;
+     |SI nGrupoAnt ! nGrupo;
+         aDNIAnt = "";
+     |FINSI;
+
+     |SI nGrupo = 0;  |ACABA;  |FINSI;
+
+     nSwGraba = 1;
+
+     |SI nGrupo = 1;
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#10 ! 0; |O #dsmoc110#11 ! 0;
+               |O #dsmoc110#15 ! 0; |O #dsmoc110#16 ! 0;
+               |O #dsmoc110#20 ! 0; |O #dsmoc110#21 ! 0;
+                  #dsmod110#6 = #dsmod110#6 + 1;
+              |FINSI;
+          |FINSI;
+
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#12 ! 0; |O #dsmoc110#13 ! 0; |O #dsmoc110#14 ! 0;
+               |O #dsmoc110#17 ! 0; |O #dsmoc110#18 ! 0; |O #dsmoc110#19 ! 0;
+               |O #dsmoc110#22 ! 0; |O #dsmoc110#23 ! 0; |O #dsmoc110#24 ! 0;
+                  #dsmod110#9 = #dsmod110#9 + 1;
+              |FINSI;
+          |FINSI;
+
+          |SI #dsmoc110#6 = "PASEANTERIOR";  |O #dsmoc110#6 = "MANUAL      ";
+              |SI #dsmoc110#30 ! 0;  #dsmod110#6 = #dsmoc110#30;  |FINSI;
+              |SI #dsmoc110#31 ! 0;  #dsmod110#9 = #dsmoc110#31;  |FINSI;
+          |FINSI;
+
+          #dsmod110#7  = #dsmod110#7  + #dsmoc110#10 + #dsmoc110#15 + #dsmoc110#20;
+          #dsmod110#8  = #dsmod110#8  + #dsmoc110#11 + #dsmoc110#16 + #dsmoc110#21;
+          #dsmod110#10 = #dsmod110#10 + #dsmoc110#12 + #dsmoc110#17 + #dsmoc110#22;
+          #dsmod110#11 = #dsmod110#11 + #dsmoc110#13 + #dsmoc110#14 + #dsmoc110#18 + #dsmoc110#19 + #dsmoc110#23 + #dsmoc110#24;
+     |FINSI;
+
+     |SI nGrupo = 2;
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#10 ! 0; |O #dsmoc110#11 ! 0;
+               |O #dsmoc110#15 ! 0; |O #dsmoc110#16 ! 0;
+               |O #dsmoc110#20 ! 0; |O #dsmoc110#21 ! 0;
+                  #dsmod110#12 = #dsmod110#12 + 1;
+               |FINSI;
+          |FINSI;
+
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#12 ! 0; |O #dsmoc110#13 ! 0; |O #dsmoc110#14 ! 0;
+               |O #dsmoc110#17 ! 0; |O #dsmoc110#18 ! 0; |O #dsmoc110#19 ! 0;
+               |O #dsmoc110#22 ! 0; |O #dsmoc110#23 ! 0; |O #dsmoc110#24 ! 0;
+                  #dsmod110#15 = #dsmod110#15 + 1;
+               |FINSI;
+          |FINSI;
+
+          |SI #dsmoc110#6 = "PASEANTERIOR";  |O #dsmoc110#6 = "MANUAL      ";
+              |SI #dsmoc110#30 ! 0;  #dsmod110#12 = #dsmoc110#30;  |FINSI;
+              |SI #dsmoc110#31 ! 0;  #dsmod110#15 = #dsmoc110#31;  |FINSI;
+          |FINSI;
+
+          #dsmod110#13 = #dsmod110#13 + #dsmoc110#10 + #dsmoc110#15 + #dsmoc110#20;
+          #dsmod110#14 = #dsmod110#14 + #dsmoc110#11 + #dsmoc110#16 + #dsmoc110#21;
+          #dsmod110#16 = #dsmod110#16 + #dsmoc110#12 + #dsmoc110#17 + #dsmoc110#22;
+          #dsmod110#17 = #dsmod110#17 + #dsmoc110#13 + #dsmoc110#14 + #dsmoc110#18 + #dsmoc110#19 + #dsmoc110#23 + #dsmoc110#24;
+     |FINSI;
+
+     |SI nGrupo = 3;
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#10 ! 0; |O #dsmoc110#11 ! 0;
+               |O #dsmoc110#15 ! 0; |O #dsmoc110#16 ! 0;
+               |O #dsmoc110#20 ! 0; |O #dsmoc110#21 ! 0;
+                  #dsmod110#18 = #dsmod110#18 + 1;
+              |FINSI;
+          |FINSI;
+
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#12 ! 0; |O #dsmoc110#13 ! 0; |O #dsmoc110#14 ! 0;
+               |O #dsmoc110#17 ! 0; |O #dsmoc110#18 ! 0; |O #dsmoc110#19 ! 0;
+               |O #dsmoc110#22 ! 0; |O #dsmoc110#23 ! 0; |O #dsmoc110#24 ! 0;
+                  #dsmod110#21 = #dsmod110#21 + 1;
+              |FINSI;
+          |FINSI;
+
+          |SI #dsmoc110#6 = "PASEANTERIOR";  |O #dsmoc110#6 = "MANUAL      ";
+              |SI #dsmoc110#30 ! 0;  #dsmod110#18 = #dsmoc110#30;  |FINSI;
+              |SI #dsmoc110#31 ! 0;  #dsmod110#21 = #dsmoc110#31;  |FINSI;
+          |FINSI;
+
+          #dsmod110#19 = #dsmod110#19 + #dsmoc110#10 + #dsmoc110#15 + #dsmoc110#20;
+          #dsmod110#20 = #dsmod110#20 + #dsmoc110#11 + #dsmoc110#16 + #dsmoc110#21;
+          #dsmod110#22 = #dsmod110#22 + #dsmoc110#12 + #dsmoc110#17 + #dsmoc110#22;
+          #dsmod110#23 = #dsmod110#23 + #dsmoc110#13 + #dsmoc110#14 + #dsmoc110#18 + #dsmoc110#19 + #dsmoc110#23 + #dsmoc110#24;
+     |FINSI;
+
+     |SI nGrupo = 4;
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              #dsmod110#24 = #dsmod110#24 + 1;
+          |FINSI;
+
+          |SI #dsmoc110#6 = "PASEANTERIOR";  |O #dsmoc110#6 = "MANUAL      ";
+              |SI #dsmoc110#30 ! 0;  #dsmod110#24 = #dsmoc110#30;  |FINSI;
+          |FINSI;
+
+          #dsmod110#25 = #dsmod110#25 + #dsmoc110#10 + #dsmoc110#15 + #dsmoc110#20 + #dsmoc110#12 + #dsmoc110#17 + #dsmoc110#22;
+          #dsmod110#26 = #dsmod110#26 + #dsmoc110#11 + #dsmoc110#16 + #dsmoc110#21 + #dsmoc110#13 + #dsmoc110#14 + #dsmoc110#18 + #dsmoc110#19 + #dsmoc110#23 + #dsmoc110#24;
+     |FINSI;
+
+     |SI nGrupo = 5;
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#10 ! 0; |O #dsmoc110#11 ! 0;
+               |O #dsmoc110#15 ! 0; |O #dsmoc110#16 ! 0;
+               |O #dsmoc110#20 ! 0; |O #dsmoc110#21 ! 0;
+                  #dsmod110#31 = #dsmod110#31 + 1;
+              |FINSI;
+          |FINSI;
+
+          |SI aDNIAnt ! #dsmoc110#6;  |Y #dsmoc110#6 ! "PASEANTERIOR";  |Y #dsmoc110#6 ! "MANUAL      ";
+              |SI #dsmoc110#12 ! 0; |O #dsmoc110#13 ! 0; |O #dsmoc110#14 ! 0;
+               |O #dsmoc110#17 ! 0; |O #dsmoc110#18 ! 0; |O #dsmoc110#19 ! 0;
+               |O #dsmoc110#22 ! 0; |O #dsmoc110#23 ! 0; |O #dsmoc110#24 ! 0;
+                  #dsmod110#34 = #dsmod110#34 + 1;
+              |FINSI;
+          |FINSI;
+
+          |SI #dsmoc110#6 = "PASEANTERIOR";  |O #dsmoc110#6 = "MANUAL      ";
+              |SI #dsmoc110#30 ! 0;  #dsmod110#31 = #dsmoc110#30;  |FINSI;
+              |SI #dsmoc110#31 ! 0;  #dsmod110#34 = #dsmoc110#31;  |FINSI;
+          |FINSI;
+
+          #dsmod110#32 = #dsmod110#32 + #dsmoc110#10 + #dsmoc110#15 + #dsmoc110#20;
+          #dsmod110#33 = #dsmod110#33 + #dsmoc110#11 + #dsmoc110#16 + #dsmoc110#21;
+          #dsmod110#35 = #dsmod110#35 + #dsmoc110#12 + #dsmoc110#17 + #dsmoc110#22;
+          #dsmod110#36 = #dsmod110#36 + #dsmoc110#13 + #dsmoc110#14 + #dsmoc110#18 + #dsmoc110#19 + #dsmoc110#23 + #dsmoc110#24;
+     |FINSI;
+
+     #dsmod110#27 = #dsmod110#8 + #dsmod110#11 + #dsmod110#14 + #dsmod110#17 + #dsmod110#20 + #dsmod110#23 + #dsmod110#26 + #dsmod110#33 + #dsmod110#36;
+     #dsmod110#28 = nImpAnt;
+     #dsmod110#29 = #dsmod110#27 - #dsmod110#28;
+
+     |SI aDNIAnt ! #dsmoc110#6;  aDNIAnt = #dsmoc110#6;  |FINSI;
+
+     |SI #dsmoc110#6 ! "PASEANTERIOR"; || Tique 1185_405 |Y #dsmoc110#6 ! "MANUAL      "; sumar tambien los manuales
+         |HAZ GrabaAuxiliar;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsmoc110;
+     #dsmoc110#1;
+     ;
+     enEmpresa, enEjer, enPeriodo, nMod, enComplem, 01, aDn, nDd, " ", "  ";
+     enEmpresa, enEjer, enPeriodo, nMod, enComplem, 99, aHn, nHd, "z", "zz";
+     be;
+     NULL, GrabaModelo;
+|FIN;
+
+|PROCESO GrabaRegistro0;
+     |SI enModelo = 110;
+         |ABRE #dsmod110;
+         #dsmod110#0 = enEmpresa;
+         #dsmod110#1 = enEjer;
+         #dsmod110#2 = enPeriodo;
+         #dsmod110#3 = enModelo;
+         #dsmod110#4 = enComplem;
+         #dsmod110#5 = 0;
+         |LEE 101#dsmod110.=;
+         |SI FSalida = 0;
+             |BORRA 020#dsmod110.a;
+         |FINSI;
+         |LIBERA #dsmod110;
+     |FINSI;
+
+     |ABRE #dsmom008;
+     #dsmom008#0 = enEmpresa;
+     #dsmom008#1 = enEjer;
+     #dsmom008#2 = enPeriodo;
+     #dsmom008#3 = enModelo;
+     #dsmom008#4 = enComplem;
+     #dsmom008#5 = 0;
+     |LEE 101#dsmom008.=;
+     |SI FSalida = 0;
+         #dsmom008#11 = "SIN DATOS ";
+         |GRABA 020#dsmom008.a;
+     |FINSI;
+     |LIBERA #dsmom008;
+     |CIERRA #dsmom008;
+|FPRC;
+
+|PROCESO BajaModelo;
+     |BORRA 020#dsmoc110.a;
+     |LIBERA #dsmoc110;
+|FPRC;
+
+|DEFBUCLE dsmoc110B;
+     #dsmoc110#1;
+     ;
+     enEmpresa, enEjer, enPeriodo, nMod, enComplem, enActividad, aDn, nDd, " ", "  ";
+     enEmpresa, enEjer, enPeriodo, nMod, enComplem, enActividad, aHn, nHd, "z", "zz";
+     be;
+     NULL, BajaModelo;
+|FIN;
+
+|PROCESO BorraRegistros;
+     |BUCLE dsmoc110B;
+     |HAZ GrabaRegistro0;
+
+     |ABRE #dsmom008;
+     #dsmom008#0 = enEmpresa;
+     #dsmom008#1 = enEjer;
+     #dsmom008#2 = nPer;
+     #dsmom008#3 = 110;
+     #dsmom008#4 = enComplem;
+     #dsmom008#5 = enActividad;
+     |LEE 101#dsmom008.=;
+     |SI FSalida = 0;
+         #dsmom008#11 = "SIN DATOS";
+         |GRABA 020#dsmom008.a;
+     |FINSI;
+     |LIBERA #dsmom008;
+     |CIERRA #dsmom008;
+|FPRC;
+
+
+|PROCESO GrabaTodo;
+     aFichero = "x" + Usuario;
+     |NOME_DAT #dsmow104#aFichero#;
+     |DELINDEX #dsmow104;
+
+     |ABRE #dsmod110;
+     nImpAnt = 0;
+     |SI enComplem > 0;
+         #dsmod110#0 = enEmpresa;
+         #dsmod110#1 = enEjer;
+         #dsmod110#2 = enPeriodo;
+         #dsmod110#3 = enModelo;
+         #dsmod110#4 = enComplem - 1;
+         #dsmod110#5 = 0;
+         |LEE 101#dsmod110.=;
+         |SI FSalida = 0;
+             nImpAnt = #dsmod110#29 + #dsmod110#28;
+             |SI nImpAnt < 0; nImpAnt = 0; |FINSI;
+         |FINSI;
+     |FINSI;
+     #dsmod110#0 = enEmpresa;
+     #dsmod110#1 = enEjer;
+     #dsmod110#2 = enPeriodo;
+     #dsmod110#3 = enModelo;
+     #dsmod110#4 = enComplem;
+     #dsmod110#5 = 0;
+     |LEE 101#dsmod110.=;
+     |SI FSalida = 0;
+          |BORRA 020#dsmod110.a;
+     |FINSI;
+
+     |DDEFECTO #dsmod110;
+     #dsmod110#0 = enEmpresa;
+     #dsmod110#1 = enEjer;
+     #dsmod110#2 = enPeriodo;
+     #dsmod110#3 = enModelo;
+     #dsmod110#4 = enComplem;
+     #dsmod110#5 = 0;
+
+     nSwGraba = 0;
+     nSwAux   = 0;
+     |BUCLE dsmoc110;
+     |SI nSwGraba = 0;
+         FSalida = 0;
+         |SI enDesdePase = 0;
+             |SI enMasivo = 1;
+                 aAlfa = ("00000" + enEmpresa) % -105;
+                 aAlfa = aAlfa + " " + eaNombreEmp; |QBF aAlfa;
+                 aAlfa = "0000N"+ aAlfa + ". No hay registros NIF desea Impreso SIN Actividad ";
+             |SINO;
+                 aAlfa = "0000NNo hay registros de NIF desea Impreso SIN Actividad ";
+             |FINSI;
+             nNume = 1;
+             |SI enNoPregunta = 0;
+                 |CONFI aAlfa;
+                 nNume = FSalida;
+             |FINSI;
+             |SI enMasivo = 1; |Y enFichW103 ! 0;
+                 eaCa8103 = "S"; |SI nNume ! 0; eaCa8103 = "N"; |FINSI;
+                 |HAZ eGrabaW103;
+             |FINSI;
+             FSalida = nNume;
+         |FINSI;
+
+         |SI FSalida = 0;
+             |DDEFECTO #dsmoc110;
+             #dsmoc110#0 = enEmpresa;
+             #dsmoc110#1 = enEjer;
+             #dsmoc110#2 = enPeriodo;
+             #dsmoc110#3 = enModelo;
+             #dsmoc110#4 = enComplem;
+             #dsmoc110#5 = enActividad;
+             #dsmoc110#6 = "            ";
+             #dsmoc110#7 = 0000;
+             #dsmoc110#8 = " ";
+             #dsmoc110#9 = "  ";
+             |LEE 101#dsmoc110.=;
+             |SI FSalida ! 0;
+                 |GRABA 020#dsmoc110.b;
+             |FINSI;
+             |GRABA 020#dsmoc110.a;
+             |LIBERA #dsmoc110;
+             nSwGraba = 1;
+         |FINSI;
+     |FINSI;
+
+     |SI nSwGraba ! 0;
+         |SI nSwAux = 1; |HAZ RepasoAux; |FINSI;
+
+         |SI #dsmod110#4 ! 0;  |Y #dsmod110#30 = "             ";
+             |ABRE #dsmom004;
+             #dsmom004#0 = #dsmod110#0;
+             #dsmom004#1 = #dsmod110#1;
+             #dsmom004#2 = #dsmod110#2;
+             #dsmom004#3 = #dsmod110#3;
+             #dsmom004#4 = #dsmod110#4 - 1;
+             |LEE 000#dsmom004.=;
+             |SI FSalida ! 0;  |DDEFECTO #dsmom004;  |FINSI;
+             |CIERRA #dsmom004;
+
+             #dsmod110#30 = #dsmom004#25;
+         |FINSI;
+
+         |GRABA 020#dsmod110.n;
+         |LIBERA #dsmod110;
+
+          |ABRE #dsmom008;
+          #dsmom008#0 = enEmpresa;
+          #dsmom008#1 = enEjer;
+          #dsmom008#2 = enPeriodo;
+          #dsmom008#3 = enModelo;
+          #dsmom008#4 = enComplem;
+          #dsmom008#5 = enActividad;
+          |LEE 101#dsmom008.=;
+          |SI FSalida = 0;
+               #dsmom008#11 = "COMPLETADO";
+               |GRABA 020#dsmom008.a;
+          |FINSI;
+          |LIBERA #dsmom008;
+
+          #dsmom008#0 = enEmpresa;
+          #dsmom008#1 = enEjer;
+          #dsmom008#2 = enPeriodo;
+          #dsmom008#3 = enModelo;
+          #dsmom008#4 = enComplem;
+          #dsmom008#5 = 0;
+          |LEE 101#dsmom008.=;
+          |SI FSalida = 0;
+               #dsmom008#11 = "EXISTENTE";
+               |GRABA 020#dsmom008.a;
+          |FINSI;
+          |LIBERA #dsmom008;
+          |CIERRA #dsmom008;
+     |FINSI;
+     |CIERRA #dsmod110;
+
+     |DELINDEX #dsmow104;
+|FPRC;
+
+|PROCESO Boton;
+     |PTEC 827;
+|FPRC;
+
+|PROCESO Tipo0Fc110;  |TIPO 0;
+     |SI FSalida ! 13;  |ACABA;  |FINSI;
+
+     |PUSHV 0526 2379;
+
+     |DDEFECTO #dsmow092;
+
+     #dsmow092#0  = #dsmoc110#10;
+     #dsmow092#1  = (#dsmoc110#11 / #dsmoc110#10) * 100;
+     #dsmow092#2  = #dsmoc110#11;
+
+     #dsmow092#3  = #dsmoc110#12;
+     #dsmow092#4  = (#dsmoc110#13 / #dsmoc110#12) * 100;
+     #dsmow092#5  = #dsmoc110#13;
+     |SI #dsmoc110#14 ! 0;  #dsmow092#6 = "S";  |FINSI;
+
+     #dsmow092#7  = #dsmoc110#15;
+     #dsmow092#8  = (#dsmoc110#16 / #dsmoc110#15) * 100;
+     #dsmow092#9  = #dsmoc110#16;
+
+     #dsmow092#10 = #dsmoc110#17;
+     #dsmow092#11 = (#dsmoc110#18 / #dsmoc110#17) * 100;
+     #dsmow092#12 = #dsmoc110#18;
+     |SI #dsmoc110#19 ! 0;  #dsmow092#13 = "S";  |FINSI;
+
+     #dsmow092#14 = #dsmoc110#20;
+     #dsmow092#15 = (#dsmoc110#21 / #dsmoc110#20) * 100;
+     #dsmow092#16 = #dsmoc110#21;
+
+     #dsmow092#17 = #dsmoc110#22;
+     #dsmow092#18 = (#dsmoc110#23 / #dsmoc110#22) * 100;
+     #dsmow092#19 = #dsmoc110#23;
+     |SI #dsmoc110#24 ! 0;  #dsmow092#20 = "S";  |FINSI;
+
+     nNume1 = nCampo92_21 + nCampo92_22 + nCampo92_23;
+     |SI nNume1 = #dsmoc110#26;
+         #dsmow092#22 = nCampo92_22;
+         #dsmow092#21 = nCampo92_21;
+         #dsmow092#23 = nCampo92_23;
+     |SINO;
+         #dsmow092#21 = #dsmoc110#26;
+     |FINSI;
+
+     |C_M #dsmow092#7,  1, "S";
+     |C_M #dsmow092#8,  1, "S";
+     |C_M #dsmow092#9,  1, "S";
+     |C_M #dsmow092#10, 1, "S";
+     |C_M #dsmow092#11, 1, "S";
+     |C_M #dsmow092#12, 1, "S";
+     |C_M #dsmow092#13, 1, "S";
+     |C_M #dsmow092#14, 1, "S";
+     |C_M #dsmow092#15, 1, "S";
+     |C_M #dsmow092#16, 1, "S";
+     |C_M #dsmow092#17, 1, "S";
+     |C_M #dsmow092#18, 1, "S";
+     |C_M #dsmow092#19, 1, "S";
+     |C_M #dsmow092#20, 1, "S";
+
+     |C_M #dsmoc110#15, 0, aAlfa;
+     |SI aAlfa = "N";
+         |C_M #dsmow092#7,  1, "N";
+         |C_M #dsmow092#8,  1, "N";
+         |C_M #dsmow092#9,  1, "N";
+         |C_M #dsmow092#10, 1, "N";
+         |C_M #dsmow092#11, 1, "N";
+         |C_M #dsmow092#12, 1, "N";
+         |C_M #dsmow092#13, 1, "N";
+     |FINSI;
+
+     |C_M #dsmoc110#20, 0, aAlfa;
+     |SI aAlfa = "N";
+         |C_M #dsmow092#14, 1, "N";
+         |C_M #dsmow092#15, 1, "N";
+         |C_M #dsmow092#16, 1, "N";
+         |C_M #dsmow092#17, 1, "N";
+         |C_M #dsmow092#18, 1, "N";
+         |C_M #dsmow092#19, 1, "N";
+         |C_M #dsmow092#20, 1, "N";
+     |FINSI;
+
+     |PINPA #0#dsmow092;
+     |PINDA #0#dsmow092;
+
+     |ENDATOS #1#dsmow092;
+     |SI FSalida = 0;
+         #dsmoc110#10 = #dsmow092#0;
+         #dsmoc110#11 = #dsmow092#2;
+         #dsmoc110#12 = #dsmow092#3;
+         #dsmoc110#13 = #dsmow092#5;
+         |SI #dsmow092#6 = "S";  #dsmoc110#14 = #dsmoc110#13;  |FINSI;
+
+         #dsmoc110#15 = #dsmow092#7;
+         #dsmoc110#16 = #dsmow092#9;
+         #dsmoc110#17 = #dsmow092#10;
+         #dsmoc110#18 = #dsmow092#12;
+         |SI #dsmow092#13 = "S";  #dsmoc110#19 = #dsmoc110#18;  |FINSI;
+
+         #dsmoc110#20 = #dsmow092#14;
+         #dsmoc110#21 = #dsmow092#16;
+         #dsmoc110#22 = #dsmow092#17;
+         #dsmoc110#23 = #dsmow092#19;
+         |SI #dsmow092#20 = "S";  #dsmoc110#24 = #dsmoc110#23;  |FINSI;
+
+         #dsmoc110#26 = #dsmow092#21 + #dsmow092#22 + #dsmow092#23;
+
+         nCampo92_21 = #dsmow092#21;
+         nCampo92_22 = #dsmow092#22;
+         nCampo92_23 = #dsmow092#23;
+     |FINSI;
+
+     |POPV;
+
+     |PINTA #dsmoc110#10;  |PINTA #dsmoc110#11;
+     |PINTA #dsmoc110#12;  |PINTA #dsmoc110#13;  |PINTA #dsmoc110#14;
+     |PINTA #dsmoc110#15;  |PINTA #dsmoc110#16;
+     |PINTA #dsmoc110#17;  |PINTA #dsmoc110#18;  |PINTA #dsmoc110#19;
+     |PINTA #dsmoc110#20;  |PINTA #dsmoc110#21;
+     |PINTA #dsmoc110#22;  |PINTA #dsmoc110#23;  |PINTA #dsmoc110#24;
+     |PINTA #dsmoc110#26;
+|FPRC;
+
+|PROCESO AltaModelo;
+     |ABRET #dsmoc110;
+     |HAZ PintaDatos;
+
+     |PINPA #0#dsmoc110;
+
+     |CONTROL_SIMPLE 0, "LBOTON,F5 Calculadora", 0668, 0678, Boton;
+     nBoton = FSalida;
+
+     |ESTADO_CONTROL nBoton, "DISABLE";
+
+     |ENTLINEAL #1#dsmoc110, -7, 2, 22, 0, ClaveBaja0, ClaveAlta0;
+
+     |FIN_CONTROL_WINDOWS nBoton;
+
+     |HAZ GrabaTodo;
+     |CIERRAT #dsmoc110;
+|FPRC;
+
+|RUTINA ClaveBaja0;
+     #dsmoc110#0 = enEmpresa;
+     #dsmoc110#1 = enEjer;
+     #dsmoc110#2 = enPeriodo;
+     #dsmoc110#3 = enModelo;
+     #dsmoc110#4 = enComplem;
+     #dsmoc110#5 = enActividad;
+     #dsmoc110#6 = "            ";
+     #dsmoc110#7 = 0000;
+     #dsmoc110#8 = " ";
+     #dsmoc110#9 = "  ";
+|FRUT;
+
+|RUTINA ClaveAlta0;
+     #dsmoc110#0 = enEmpresa;
+     #dsmoc110#1 = enEjer;
+     #dsmoc110#2 = enPeriodo;
+     #dsmoc110#3 = enModelo;
+     #dsmoc110#4 = enComplem;
+     #dsmoc110#5 = enActividad;
+     #dsmoc110#6 = "zzzzzzzzzzzz";
+     #dsmoc110#7 = 9999;
+     #dsmoc110#8 = "z";
+     #dsmoc110#9 = "zz";
+|FRUT;
+
+|PROCESO TipoCaptura;
+     |ABRE #dsmom008;
+     #dsmom008#0 = enEmpresa;
+     #dsmom008#1 = enEjer;
+     #dsmom008#2 = enPeriodo;
+     #dsmom008#3 = enModelo;
+     #dsmom008#4 = enComplem;
+     #dsmom008#5 = enActividad;
+     |LEE 101#dsmom008.=;
+     |SI FSalida = 0;
+          aTipoCaptura = #dsmom008#7;
+          |QBF aTipoCaptura;
+     |FINSI;
+     |CIERRA #dsmom008;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ PatronM073;
+
+     |ABRE #dsmom107;
+     |DDEFECTO #dsmom107;
+     |LEE 001#dsmom107.p;
+     |CIERRA #dsmom107;
+
+     eaNoVisu = "";
+     eaNomDef = "dsmoc110";
+
+|| \\\\\\ Consulta del Modelo ////////
+
+     |SI enTipoEntrada = 4;              || Consulta del Modelo
+          |HAZ PintaDatos;
+          |ENTLINEAL #1#dsmoc110, -10, 4, 22, 1, ClaveBaja0, ClaveAlta0;
+          |ACABA;
+     |FINSI;
+
+|| \\\\\\ Baja del Modelo ////////
+
+     |SI enTipoEntrada = 3;              ||Baja del Modelo
+         |HAZ BorraRegistros;
+         |ABRET #dsmoc110;
+         |HAZ GrabaTodo;
+         |CIERRAT #dsmoc110;
+         |ACABA;
+     |FINSI;
+
+|| \\\\\\ Baja del Modelo desde Modulo////////
+
+     |SI enTipoEntrada = 97;              ||Baja del Modelo
+         |HAZ BorraRegistros;
+         |ACABA;
+     |FINSI;
+
+|| \\\\\\ Alta o Modificacion del Modelo ////////
+
+     |SI enTipoEntrada = 1;              || Alta del Modelo
+         |ABRE #dsmom004;
+         #dsmom004#0 = enEmpresa;
+         #dsmom004#1 = enEjer;
+         #dsmom004#2 = 99;
+         #dsmom004#3 = 190;
+         #dsmom004#4 = 99;
+         |LEE 000#dsmom004.];
+         |SI FSalida = 0;
+             |LEE 000#dsmom004.a;
+         |SINO;
+             |LEE 000#dsmom004.u;
+         |FINSI;
+
+         |SI FSalida = 0;  |Y #dsmom004#0 = enEmpresa;  |Y #dsmom004#1 = enEjer;
+          |Y #dsmom004#3 = 190;  |Y #dsmom004#7 = "X";
+             |MENAV "0000El modelo anual 190 ya esta confeccionado, debera de recoger datos de nuevo.";
+         |FINSI;
+         |CIERRA #dsmom004;
+
+         |CABEZA "Modelo Trabajo 110";
+         |HAZ AltaModelo;
+         |ACABA;
+     |FINSI;
+
+|| \\\\\\ Grabacion del Modelo desde el Exterior
+
+     |SI enTipoEntrada = 98;
+         |ABRET #dsmoc110;
+         |HAZ GrabaTodo;
+         |CIERRAT #dsmoc110;
+         |ACABA;
+     |FINSI;
+
+|| \\\\\\ Comprobacion Existencia del Modelo
+
+     |SI enTipoEntrada = 99;              || Existencia del Modelo ????
+         |ABRE #dsmoc110;
+         #dsmoc110#0 = enEmpresa;
+         #dsmoc110#1 = enEjer;
+         #dsmoc110#2 = enPeriodo;
+         #dsmoc110#3 = enModelo;
+         #dsmoc110#4 = enComplem;
+         #dsmoc110#5 = enActividad;
+         #dsmoc110#6 = "            ";
+         #dsmoc110#7 = 0;
+         #dsmoc110#8 = " ";
+         #dsmoc110#9 = "  ";
+         |LEE 040#dsmoc110.];
+         |SI FSalida ! 0;  |O #dsmoc110#0 ! enEmpresa;  |O #dsmoc110#1 ! enEjer; |O #dsmoc110#2 ! enPeriodo;
+          |O #dsmoc110#3 ! enModelo;  |O #dsmoc110#4 ! enComplem; |O #dsmoc110#5 ! enActividad;
+             enExistencia = 1;
+         |FINSI;
+         |CIERRA #dsmoc110;
+     |FINSI;
+|FPRO;
+
+|PROCESO Tipo88;  |TIPO 88;
+     |HAZ Relaciones;
+|FPRC;

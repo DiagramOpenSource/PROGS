@@ -1,0 +1,1296 @@
+||coiplm01 ... es una apadtacion del dspm0001, Packing List.
+
+||Listados:
+||Packing List
+||Etiquetas.
+
+|FICHEROS;
+     coiplm01 #0;        ||Packing List (Cab.)
+     coiplm02 #2,MANTE;        ||Packing List (Lin.)
+     coiplm03 #3,MANTE;        ||Packing List (Paquetes)
+     coiplm04 #4,MANTE;        ||Packing List (5 Elemento)
+     coiplw01 #90;             ||Packing List (Tmp. para control Unidades)
+     coiplw02 #91,MANTE;
+     coiplm02@;
+     referen@;
+
+     coima044 #44;       ||Tipos de Caja
+
+     agifa104 #104;      ||Pedidos (CAB)
+     agifa073 #73;       ||Pedidos (LIN)
+     agifa010 #10;       ||Albaranes (CAB)
+     agifa071 #71;       ||Albaranes (LIN)
+     agifa024 #24;       ||Clientes
+     agifa019 #19;       ||Articulos
+     dsm00020 #20;       ||Agencia Transportes
+     dsm00005 #5;        ||Quinto Elemento.
+|FIN;
+
+|VARIABLES;
+     nPesoCaja = 0;
+     nPesoArt = 0;
+     nSwPonAgencia = 0;
+     nLinV = 0;
+     nConta = 0;
+     nPaq = 0;
+     nUni = 0;
+     aPar = "";
+     aArt = "";
+     nAlm = 0;
+     aDef = "";
+     i = 0;
+     j = 0;
+     nHayEleme = "";
+     aAlfa    = "";
+     &Tempo   = "";
+     aTempo90 = "";
+     aMensaje = "";
+     nCampo   = 0;
+     CantMax  = 0;
+     Comodin  = "";
+     HayDatos = 0;
+     ModoElem = "";
+     aSerie   = "";
+     nNumero  = 0;
+     aNumero  = "";
+     aCliente = "";
+     nPList   = 0;
+     nPaquete = 0;
+     nModo    = 0;
+     nForma   = 0;
+     nTipoLineal = 0;         ||Alta/Modificacion
+     aNomArt = "";
+     nCodAge = 0;
+     aAgencia = "";
+     aAlfa1 = "";
+     aArt5Ele = "";
+     nSwArt5Ele = 0;
+     aTipoDoc = "";
+     nLinea = 0;
+     nLin = 0;
+     aArticulo = "";
+     nModoLin = 0;
+     nFormaLin = 0;
+     nCantidad = 0;
+     nTipoQuinto = 0;
+     aCompletado = "";
+|FIN;
+
+|PROCESO Tipo0C2; |TIPO 0;
+     |SI #coiplm01#2 = "M";
+          |C_M #coiplm01#3, 1, "N";
+          |C_M #coiplm01#4, 1, "N";
+          |C_M #coiplm01#27, 1, "S";
+          |PINTA #coiplm01#3;
+          |PINTA #coiplm01#4;
+          |PINTA #coiplm01#27;
+     |SINO;
+          |C_M #coiplm01#3, 1, "S";
+          |C_M #coiplm01#4, 1, "S";
+          |C_M #coiplm01#27, 1, "N";
+          |PINTA #coiplm01#3;
+          |PINTA #coiplm01#4;
+          |PINTA #coiplm01#27;
+     |FINSI;
+|FPRC;
+
+|PROCESO AutoManual; |TIPO 0;
+     nCampo = Campo - 8;
+     |SI #coiplm01#Campo# = "A";
+          |C_M #coiplm01#nCampo#, 1, "N";
+     |SINO;
+          |C_M #coiplm01#nCampo#, 1, "S";
+     |FINSI;
+|FPRC;
+
+|PROCESO coiplw01;
+     |SI #coiplw01#3 > 0;
+          aCompletado = "N";
+          |ERROR10;
+     |SINO;
+          aCompletado = "S";
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE coiplw01;
+ #coiplw01#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, coiplw01;
+|FIN;
+
+|PROCESO Final; |TIPO 3;
+     aCompletado = "N";
+     |BUCLE coiplw01;
+     #coiplm01#26 = aCompletado;
+     |PINTA #coiplm01#26;
+
+     aTempo90 = Tempo; |DELINDEX #90; |HAZ BoraTempo;
+|FPRC;
+
+|PROCESO tipo66;|TIPO 66;   || al pulsar F11
+     |SI #coiplm01#2 = "P";   ||Pedido
+          |ABRE #agifa104;
+          |CONSULTA_CLAVE #1#agifa104;
+          |CIERRA #agifa104;
+          #coiplm01#3 = #agifa104#0;      ||Numero Pedido
+          #coiplm01#4 = #agifa104#25;     ||Serie
+          |PINTA #coiplm01#3;
+          |PINTA #coiplm01#4;
+     |SINO;                   ||Albaran
+          |ABRE #agifa010;
+          |CONSULTA_CLAVE #1#agifa010;
+          |CIERRA #agifa010;
+          #coiplm01#3 = #agifa010#0;      ||Numero Albaran
+          #coiplm01#4 = #agifa010#52;     ||Serie
+          |PINTA #coiplm01#3;
+          |PINTA #coiplm01#4;
+          #coiplm01#18 = #agifa010#88;    ||Cod. Agencia
+          #coiplm01#21 = #agifa010#9;     ||Agencia
+          |PINTA #coiplm01#18;
+          |PINTA #coiplm01#21;
+     |FINSI;
+|FPRC;
+
+|PROCESO Cliente; |TIPO 0;
+     ||Primero comprobar que realmente existe el Pedido/Albaran
+     ||Si existe -> Averiguar Cliente
+       ||Poner Datos Cliente
+     ||Sino No dejar avanzar.
+
+     |SI FSalida ! 2;              ||No vamos para atras
+          aSerie = #coiplm01#4;
+          nNumero = #coiplm01#3;
+          aNumero = ("000000" + nNumero) % -106;
+          |SI #coiplm01#2 = "P";   ||Pedido
+               |ABRE #agifa104;
+               #agifa104#0 = #coiplm01#3;      ||Numero Pedido
+               #agifa104#25 = #coiplm01#4;     ||Serie
+               |LEE 000#agifa104.=;
+               |SI FSalida = 0;
+                    aCliente = #agifa104#4;
+                    |HAZ DatosCliente;
+               |SINO;
+                    aMensaje = "0000Error: No existe el Pedido [" + aSerie + "/" + aNumero + "]";
+                    |MENAV aMensaje;
+                    |ERROR;
+               |FINSI;
+               |CIERRA #agifa104;
+          |SINO;                   ||Albaran
+               |SI #coiplm01#2 = "A";   ||Albaran
+                    |ABRE #agifa010;
+                    #agifa010#0 = #coiplm01#3;      ||Numero Albaran
+                    #agifa010#52 = #coiplm01#4;     ||Serie
+                    |LEE 000#agifa010.=;
+                    |SI FSalida = 0;
+                         aCliente = #agifa010#3;
+                         |HAZ DatosCliente;
+                    |SINO;
+                         aMensaje = "0000Error: No existe el Albaran [" + aSerie + "/" + aNumero + "]";
+                         |MENAV aMensaje;
+                         |ERROR;
+                    |FINSI;
+                    |CIERRA #agifa010;
+               |SINO;
+                    ||MANUAL.  Falta el control
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo0C27; |TIPO 0;
+     |SI #coiplm01#2 = "M";
+          nSwPonAgencia = 1;
+          aCliente = #coiplm01#27;
+          |HAZ DatosCliente;
+          nSwPonAgencia = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO DatosCliente;
+     |ABRE #agifa024;
+     #agifa024#0 = aCliente;
+     |LEE 000#agifa024.=;
+     |SI FSalida = 0;
+          #coiplm01#27 = #agifa024#0;
+          #coiplm01#28 = #agifa024#1;
+          #coiplm01#5 = #agifa024#5;
+          #coiplm01#6 = #agifa024#6;
+          #coiplm01#7 = #agifa024#7;
+          #coiplm01#8 = #agifa024#178;
+          #coiplm01#9 = #agifa024#179;
+          #coiplm01#10 = #agifa024#8;
+          #coiplm01#11 = #agifa024#9;
+          #coiplm01#12 = #agifa024#10;
+          #coiplm01#13 = #agifa024#181;
+          #coiplm01#14 = #agifa024#182;
+          |SI nSwPonAgencia = 1;
+               #coiplm01#18 = #agifa024#202;    ||Cod. Agencia
+               #coiplm01#21 = #agifa024#35;
+               |PINTA #coiplm01#18;
+               |PINTA #coiplm01#21;
+          |FINSI;
+     |SINO;
+          #coiplm01#27 = aCliente;
+          #coiplm01#28 = "";
+          #coiplm01#5 = "";
+          #coiplm01#6 = "";
+          #coiplm01#7 = "";
+          #coiplm01#8 = 0;
+          #coiplm01#9 = 0;
+          #coiplm01#10 = "";
+          #coiplm01#11 = "";
+          #coiplm01#12 = "";
+          #coiplm01#13 = 0;
+          #coiplm01#14 = 0;
+          |SI nSwPonAgencia = 1;
+               #coiplm01#18 = 1;
+               #coiplm01#21 = "";
+               |PINTA #coiplm01#18;
+               |PINTA #coiplm01#21;
+          |FINSI;
+     |FINSI;
+     |PINTA #coiplm01#27;
+     |PINTA #coiplm01#28;
+     |PINTA #coiplm01#5;
+     |PINTA #coiplm01#6;
+     |PINTA #coiplm01#7;
+     |PINTA #coiplm01#8;
+     |PINTA #coiplm01#9;
+     |PINTA #coiplm01#10;
+     |PINTA #coiplm01#11;
+     |PINTA #coiplm01#12;
+     |PINTA #coiplm01#13;
+     |PINTA #coiplm01#14;
+     |CIERRA #agifa024;
+|FPRC;
+
+|PROCESO LinAlbPed;
+     nModo = ((FEntrada / 100) ! 0);
+     nPList = #coiplm01#0;
+     nPaquete = #coiplm02#1;
+     |SI nModo = 1;
+          nTipoLineal = 2;         ||Alta/Modificacion
+          |HAZ MuestraLineas;
+     |SINO;
+          |SI nModo = 2;
+               nTipoLineal = 2;         ||Alta/Modificacion
+               |HAZ MuestraLineas;
+          |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO ActualizaCol; |TIPO 2;
+     #coiplm03#6 = #coiplm03#6 +. #coiplm04#4;
+
+     |ABRE #coiplw01;
+     #coiplw01#0 = #coiplm03#3;
+     #coiplw01#1 = #coiplm03#4;
+     #coiplw01#2 = #coiplm04#3;
+     |LEE 101#coiplw01.=;
+     |SI FSalida = 0;
+        #coiplw01#3 = #coiplw01#3 -. #coiplm04#4;
+        |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+     |FINSI;
+     |CIERRA #coiplw01;
+
+     |HAZ RecogeNombre;
+     |GRABA 020#coiplm04.a;
+
+|FPRC;
+
+|PROCESO Tipo2; |TIPO 2;
+     nModo = ((FEntrada / 100) ! 0);
+     nForma = 0 +. 1;
+
+     #coiplm01#20 = #coiplm01#20 +. 1;       ||Unidades
+     |PINTA #coiplm01#20;
+
+     ||Poner los volumenes y pesos si esta en Automatico cada uno de los 3
+     |SI #coiplm01#23 = "A";
+          #coiplm01#15 = #coiplm01#15 +. #coiplm02#4;
+          |PINTA #coiplm01#15;
+     |FINSI;
+     |SI #coiplm01#24 = "A";
+          #coiplm01#16 = #coiplm01#16 +. #coiplm02#5;
+          |PINTA #coiplm01#16;
+     |FINSI;
+     |SI #coiplm01#25 = "A";
+          #coiplm01#17 = #coiplm01#17 +. #coiplm02#6;
+          |PINTA #coiplm01#17;
+     |FINSI;
+
+     |SI nModo = 3;
+          nPList = #coiplm01#0;
+          nPaquete = #coiplm02#1;
+          |HAZ BorraLineas;
+     |FINSI;
+|FPRC;
+
+|PROCESO min;
+     #coiplm03#0 = nPList;
+     #coiplm03#1 = nPaquete;
+     #coiplm03#2 = 001;
+|FPRC;
+
+|PROCESO max;
+     #coiplm03#0 = nPList;
+     #coiplm03#1 = nPaquete;
+     #coiplm03#2 = 999;
+|FPRC;
+
+|PROCESO RestaLin5Elem;
+     #coiplw01#0 = #coiplm03#3;
+     #coiplw01#1 = #coiplm03#4;
+     #coiplw01#2 = #coiplm04#3;
+     |LEE 101#coiplw01.=;
+     |SI FSalida = 0;
+          #coiplw01#3 = #coiplw01#3 - #coiplm04#4;
+          |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE RestaLin5Elem;
+#coiplm04#1;
+;
+#coiplm03#0,#coiplm03#1,#coiplm03#2,"      ";
+#coiplm03#0,#coiplm03#1,#coiplm03#2,"zzzzzz";
+;
+NULL,RestaLin5Elem;
+|FIN;
+
+|PROCESO RestaLineas;
+   |SI #coiplm03#5 = "S";
+      |BUCLE RestaLin5Elem;
+   |SINO;
+      #coiplw01#0 = #coiplm03#3;
+      #coiplw01#1 = #coiplm03#4;
+      #coiplw01#2 = "      ";
+      |LEE 101#coiplw01.=;
+      |SI FSalida = 0;
+           #coiplw01#3 = #coiplw01#3 - #coiplm03#6;
+           |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RestaLineas;
+#coiplm03#1;
+;
+#coiplm01#0,000001,001;
+#coiplm01#0,000001,999;
+;
+NULL,RestaLineas;
+|FIN;
+
+|PROCESO RecuentaPaq;
+     #coiplm02#7 = #coiplm02#7 + #coiplm03#6;
+
+     nPesoArt = 0;
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #coiplm03#4;
+     |LEE 000#agifa019.=;
+     |SI FSalida = 0;
+          nPesoArt = #coiplm03#6 * #agifa019#102;
+     |FINSI;
+     #coiplm02#6 = #coiplm02#6 + nPesoArt;
+|FPRC;
+
+|DEFBUCLE RecuentaPaq;
+#coiplm03#1;
+;
+#coiplm02#0,#coiplm02#1,001;
+#coiplm02#0,#coiplm02#1,999;
+;
+NULL,RecuentaPaq;
+|FIN;
+
+|PROCESO MuestraLineas;
+     |PUSHV 0501 2380;
+     |ENTLINEAL #1#coiplm03, -3, nTipoLineal, 22, 1, min, max;
+     #coiplm02#7 = 0;
+
+     nPesoCaja = 0;
+     |ABRE #coima044;
+     |DDEFECTO #coima044;
+     #coima044#0 = #coiplm02#8;
+     |LEE 000#coima044.=;
+     |SI FSalida = 0;
+          nPesoCaja = #coima044#2;
+     |FINSI;
+     |CIERRA #coima044;
+
+
+     #coiplm02#6 = 0;
+     |ABRE #agifa019;
+     |BUCLE RecuentaPaq;
+     |CIERRA #agifa019;
+     #coiplm02#5 = #coiplm02#6 + nPesoCaja;
+     |POPV;
+|FPRC;
+
+|PROCESO Tipo5; |TIPO 5;
+     FSalida = "SINBARRA";
+|FPRC;
+
+|PROCESO Tipo11; |TIPO 11;
+     nModo = ((FEntrada / 100) ! 0);
+/*
+     ||ESTO NO LO VAN A UTILIZAR EN COIMASA
+     |SI FSalida = 10;
+          |SI nModo = 4;
+               |MENAV "0000Opcion no disponible en consulta...";
+          |SINO;
+               |SI nHayEleme = 0;
+                    |HAZ Desglose;
+               |SINO;
+                    |MENAV "0000Opcion no disponible para el 5 Elemento...";
+               |FINSI;
+          |FINSI;
+          |ERROR;
+     |FINSI;
+*/
+     |SI FSalida = 13;
+          |SI nModo = 4;
+               nPList = #coiplm01#0;
+               nPaquete = #coiplm02#1;
+               nTipoLineal = 4;         ||Consultas
+               |HAZ MuestraLineas;
+          |SINO;
+               |MENAV "0000Opcion solo en consulta...";
+          |FINSI;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO coiplm04_b;
+     #coiplw01#0 = #coiplm03#3;
+     #coiplw01#1 = #coiplm03#4;
+     #coiplw01#2 = #coiplm04#3;
+     |LEE 101#coiplw01.=;
+     |SI FSalida = 0;
+        #coiplw01#3 = #coiplw01#3 + #coiplm04#4;
+        |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+     |FINSI;
+     |BORRA 020#coiplm04.a;
+|FPRC;
+
+|DEFBUCLE coiplm04_b;
+ #coiplm04#1;
+ ;
+ nPList, nPaquete, #coiplm03#2, "      ";
+ nPList, nPaquete, #coiplm03#2, "zzzzzz";
+ be;
+ NULL, coiplm04_b;
+|FIN;
+
+|PROCESO coiplm03_b;
+     |BUCLE coiplm04_b;
+     |BORRA 020#coiplm03.a;
+|FPRC;
+
+|DEFBUCLE coiplm03_b;
+ #coiplm03#1;
+ ;
+ nPList, nPaquete, 001;
+ nPList, nPaquete, 999;
+ be;
+ NULL, coiplm03_b;
+|FIN;
+
+|PROCESO BorraLineas;
+     ||Si borramos un paquete, hemo de borrar sus lineas y lineas del 5 elemento.
+     |BUCLE coiplm03_b;
+|FPRC;
+
+|PROCESO Baja0004; |TIPO 1;
+   #coiplw01#0 = #coiplm03#3;
+   #coiplw01#1 = #coiplm03#4;
+   #coiplw01#2 = #coiplm04#3;
+   |LEE 101#coiplw01.=;
+   |SI FSalida = 0;
+      #coiplw01#3 = #coiplw01#3 - #coiplm04#4;
+      |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+   |FINSI;
+|FPRC;
+
+|PROCESO Baja0003; |TIPO 1;
+   nModo = (FEntrada / 100) ! 0;
+   |SI nModo = 3;
+      |BUCLE coiplm04_b;
+   |FINSI;
+|FPRC;
+
+|PROCESO RellenaElem;
+   |ABRE #coiplw01;
+   #coiplw01#0 = #coiplm03#3;
+   #coiplw01#1 = #coiplm03#4;
+   #coiplw01#2 = #dsm00005#4;
+   |LEE 101#coiplw01.=;
+   |SI FSalida = 0; |Y #coiplw01#3 > 0;
+      |DDEFECTO #coiplm04;
+      #coiplm04#0 = #coiplm03#0;
+      #coiplm04#1 = #coiplm03#1;
+      #coiplm04#2 = #coiplm03#2;
+      #coiplm04#3 = #dsm00005#4;
+      #coiplm04#4 = #coiplw01#3;
+      #coiplm04#5 = #dsm00005#5;
+      |GRABA 020#coiplm04.n;
+      #coiplm03#6 = #coiplm03#6 + #coiplm04#4;
+
+      #coiplw01#3 = #coiplw01#3 - #coiplm04#4;
+      |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+      HayDatos = 1;
+   |FINSI;
+   |CIERRA #coiplw01;
+|FPRC;
+
+|DEFBUCLE RellenaElem;
+#dsm00005#1;
+;
+ModoElem,#coiplm01#4,#coiplm01#3,nLinV,"      ";
+ModoElem,#coiplm01#4,#coiplm01#3,nLinV,"zzzzzz";
+;
+NULL,RellenaElem;
+|FIN;
+
+|PROCESO RecogeNombre;
+   |ABRE #dsm00005;
+   #dsm00005#0 = ModoElem;
+   #dsm00005#1 = #coiplm01#4;
+   #dsm00005#2 = #coiplm01#3;
+   #dsm00005#3 = #coiplm03#3;
+   #dsm00005#4 = #coiplm04#3;
+   |LEE 000#dsm00005.=
+   |SI FSalida = 0;
+      #coiplm04#5 = #dsm00005#5; |PINTA #coiplm04#5;
+   |FINSI;
+   |CIERRA #dsm00005;
+|FPRC;
+
+|PROCESO MiraArt;|TIPO 0;
+     nModo = ((FEntrada / 100) ! 0);
+
+     |SI #coiplm01#2 ! "M";
+          |ABRE #agifa019;
+          #agifa019#0 = #coiplm03#4;
+          |LEE 000#agifa019.=;
+          |SI FSalida = 0;
+               |PINTA #coiplm03#4;
+               aNomArt = " " + #agifa019#1;
+               |PINTA 0650, aNomArt;
+               |PINTA 0760, Comodin;
+               |SI #agifa019#176 = "S";      ||Articulo tiene 5 Elemento
+                    #coiplm03#5 = "S";
+                    |C_M #coiplm03#6,1,"N";
+               |SINO;
+                    #coiplm03#5 = "N";
+                    |C_M #coiplm03#6,1,"S";
+               |FINSI;
+          |SINO;
+               aNomArt = "                                                  ";
+               |PINTA 0510, aNomArt;
+               aMensaje = "0000Error: Articulo Inexistente";
+               |MENAV aMensaje;
+               |ERROR;
+          |FINSI;
+          |CIERRA #agifa019;
+          ModoElem = #coiplm01#2 + "V";
+          |SI nModo = 1;
+             |ABRE #coiplm04;
+             HayDatos = 0;
+             nLinV = #coiplm03#3;
+             |BUCLE RellenaElem;
+             |CIERRA #coiplm04;
+             |SI HayDatos = 0; |ERROR; |FINSI;
+          |FINSI;
+     |SINO;
+          |ABRE #agifa019;
+          #agifa019#0 = #coiplm03#4;
+          |LEE 000#agifa019.=;
+          |SI FSalida = 0;
+               aNomArt = " " + #agifa019#1;
+               |PINTA 0650, aNomArt;
+               Comodin = "--";
+               |PINTA 0760, Comodin;
+          |SINO;
+               aNomArt = "                                                  ";
+               |PINTA 0510, aNomArt;
+               Comodin = "--";
+               |PINTA 0760, Comodin;
+               aMensaje = "0000Error: Articulo Inexistente";
+               |MENAV aMensaje;
+               |ERROR;
+          |FINSI;
+          |CIERRA #agifa019;
+     |FINSI;
+|FPRC;
+
+|PROCESO LlenarTmp; |TIPO 7;
+     |SI FSalida = 0; |O FSalida = 5;        ||El 5 es para el Av. Pagina
+          nModo = ((FEntrada / 100) ! 0);
+          |SI nModo = 1; |O nModo = 2;
+               |HAZ CreaTmp;
+               |ABRE #90;
+               nHayEleme = 0;
+               |SI #coiplm01#2 = "P";
+                    |HAZ TmpPed;
+                    |BUCLE RestaLineas;
+               |SINO;
+                    |HAZ TmpAlb;
+                    |BUCLE RestaLineas;
+               |FINSI;
+               |CIERRA #90;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CreaTmp;
+     |HAZ CreaTempo; aTempo90 = Tempo;
+     |NOME_DAT #90 aTempo90; |DELINDEX #90;
+|FPRC;
+
+|PROCESO agifa073;
+     nLinea = #agifa073#1;
+     aArticulo = #agifa073#2
+     aArt5Ele = aArticulo;
+     |HAZ Es5Elemento;
+     |SI nSwArt5Ele = 0;                 ||No tiene Quinto Elemento
+          |DDEFECTO #coiplw01;
+          #coiplw01#0 = nLinea;
+          #coiplw01#1 = aArticulo;
+          #coiplw01#2 = "";
+          |LEE 101#coiplw01.=;
+          |SI FSalida ! 0; |GRABA 020#coiplw01.b; |FINSI;
+          #coiplw01#3 = #agifa073#5;         ||Unidades
+          |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+     |SINO;                               ||Es quinto Elemento.
+          nHayEleme = 1;
+          |SI nSwArt5Ele = 1;
+               aTipoDoc = "PV";         ||Pedido Ventas
+               |HAZ Recorre5Ele;
+               ||Recorro y relleno por cada 5 Elemento. (dsm00005)
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO dsm00005;
+     |DDEFECTO #coiplw01;
+     #coiplw01#0 = nLinea;
+     #coiplw01#1 = aArticulo;
+     #coiplw01#2 = #dsm00005#4;
+     |LEE 101#coiplw01.=;
+     |SI FSalida ! 0; |GRABA 020#coiplw01.b; |FINSI;
+     #coiplw01#3 = #dsm00005#6;         ||Unidades
+     |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+|FPRC;
+
+|DEFBUCLE dsm00005;
+ #dsm00005#1;
+ ;
+ aTipoDoc, #coiplm01#4, #coiplm01#3, nLinea, "      ";
+ aTipoDoc, #coiplm01#4, #coiplm01#3, nLinea, "zzzzzz";
+ ;
+ NULL, dsm00005;
+|FIN;
+
+|PROCESO Recorre5Ele;
+     |BUCLE dsm00005;
+|FPRC;
+
+|DEFBUCLE agifa073;
+ #agifa073#1;
+ ;
+ #coiplm01#4, #coiplm01#3, 001;
+ #coiplm01#4, #coiplm01#3, 999;
+ ;
+ NULL, agifa073;
+|FIN;
+
+|PROCESO TmpPed;
+     ||Lleno el temporal desde Pedido
+     |BUCLE agifa073;
+     ||Primero recorro Ped/Alb introduciendo valores en Temporal.
+|FPRC;
+
+|PROCESO agifa071;
+     nLinea = #agifa071#1;
+     aArticulo = #agifa071#2
+     aArt5Ele = aArticulo;
+     |HAZ Es5Elemento;
+     |SI nSwArt5Ele = 0;                 ||No tiene Quinto Elemento
+          |DDEFECTO #coiplw01;
+          #coiplw01#0 = nLinea;
+          #coiplw01#1 = aArticulo;
+          #coiplw01#2 = "";
+          |LEE 101#coiplw01.=;
+          |SI FSalida ! 0; |GRABA 020#coiplw01.b; |FINSI;
+          #coiplw01#3 = #agifa071#5;         ||Unidades
+          |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+     |SINO;                               ||Es quinto Elemento.
+          nHayEleme = 1;
+          |SI nSwArt5Ele = 1;
+               aTipoDoc = "AV";         ||Pedido Ventas
+               |HAZ Recorre5Ele;
+               ||Recorro y relleno por cada 5 Elemento. (dsm00005)
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa071;
+ #agifa071#1;
+ ;
+ #coiplm01#4, #coiplm01#3, 001;
+ #coiplm01#4, #coiplm01#3, 999;
+ ;
+ NULL, agifa071;
+|FIN;
+
+|PROCESO TmpAlb;
+     ||Lleno el temporal desde Albaran
+     |BUCLE agifa071;
+|FPRC;
+
+|PROCESO Es5Elemento;
+     ||Ver si el Articulo tiene o no Quinto Elemento.   aArt5Ele
+     ||Devolvera nSwArt5Ele = 1 o 0
+     |QBF aArt5Ele;
+     |ABRE #agifa019;
+     #agifa019#0 = aArt5Ele;
+     |LEE 000#agifa019.=;
+     |SI FSalida = 0;
+          |SI #agifa019#176 = "S";      ||Articulo tiene 5 Elemento
+               nSwArt5Ele = 1;
+          |SINO;
+               nSwArt5Ele = 0;
+          |FINSI;
+     |SINO;
+          nSwArt5Ele = -1;              ||No existe este articulo
+     |FINSI;
+     |CIERRA #agifa019;
+|FPRC;
+
+|PROCESO coiplm04;
+     |ABRE #coiplw01;
+     #coiplw01#0 = #coiplm03#3;
+     #coiplw01#1 = #coiplm03#4;
+     #coiplw01#2 = #coiplm04#3;
+     |LEE 101#coiplw01.=;
+     |SI FSalida = 0;
+          #coiplw01#3 = #coiplw01#3 - #coiplm04#4;
+          |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+     |SINO;
+          aMensaje = "0000Existe un problema con el Paquete [" + #coiplm03#1 + "] , Linea [" + #coiplm03#2 + "] ,Quinto Elemento [" +  #coiplm04#3 + "]";
+          |MENAV aMensaje;
+     |FINSI;
+     |CIERRA #coiplw01;
+|FPRC;
+
+|DEFBUCLE coiplm04;
+ #coiplm04#1;
+ ;
+ #coiplm01#0, #coiplm03#1, #coiplm03#2, "      ";
+ #coiplm01#0, #coiplm03#1, #coiplm03#2, "zzzzzz";
+ ;
+ NULL, coiplm04;
+|FIN;
+
+|PROCESO coiplm03;
+     |SI #coiplm03#5 = "N";
+          |ABRE #coiplw01;
+          #coiplw01#0 = #coiplm03#3;
+          #coiplw01#1 = #coiplm03#4;
+          #coiplw01#2 = "";
+          |LEE 101#coiplw01.=;
+          |SI FSalida = 0;
+               #coiplw01#3 = #coiplw01#3 - #coiplm03#6;
+               |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+               ||aMensaje = "0000 Ahora tengo : " + #coiplw01#3;
+               ||MENAV aMensaje;
+          |SINO;
+               aMensaje = "0000Existe un problema con el Paquete [" + #coiplm03#1 + "] , Linea [" + #coiplm03#2 + "]";
+               |MENAV aMensaje;
+          |FINSI;
+          |CIERRA #coiplw01;
+     |SINO;
+          |BUCLE coiplm04;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE coiplm03;
+ #coiplm03#1;
+ ;
+ #coiplm01#0, 000001, 001;
+ #coiplm01#0, 999999, 999;
+ ;
+ NULL, coiplm03;
+|FIN;
+
+|PROCESO ActTemporal;
+     |BUCLE coiplm03;
+|FPRC;
+
+|PROCESO Tipo0C2m03; |TIPO 0;
+     |SI #coiplm01#2 = "M";
+          |C_M #coiplm03#3, 1, "N";
+          |C_M #coiplm03#4, 1, "S";
+     |SINO;
+          |C_M #coiplm03#3, 1, "S";
+          |C_M #coiplm03#4, 1, "N";
+     |FINSI;
+     |PINTA #coiplm03#3;
+     |PINTA #coiplm03#4;
+|FPRC;
+
+|PROCESO Control; |TIPO 2;
+     ||Controlar el numero de unidades y que el articulo
+     ||pertenezca al pedido/albaran.
+     nModoLin = ((FEntrada / 100) ! 0);
+     nFormaLin = 0 +. 1;
+
+     |SI #coiplm01#2 ! "M";
+          |SI #coiplm03#5 = "N";        ||No es Quinto elemento.
+               |ABRE #coiplw01;
+               #coiplw01#0 = #coiplm03#3;
+               #coiplw01#1 = #coiplm03#4;
+               #coiplw01#2 = "";
+               |LEE 101#coiplw01.=;
+               |SI FSalida = 0;
+                    nCantidad = #coiplw01#3 -. #coiplm03#6;
+                    |SI nCantidad < 0; |Y nFormaLin = 1;
+                         aMensaje = "0000Error: Solo quedan por asignar [" + #coiplw01#3 + "] unidades";
+                         |MENAV aMensaje;
+                         |ERROR;
+                    |SINO;
+                         #coiplw01#3 = nCantidad;
+                    |FINSI;
+                    |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+               |SINO;
+                    |SI #coiplm01#2 = "P";
+                         aMensaje = "0000Error: Este articulo no pertenece a la linea [" + #coiplm03#3 + "] del Pedido";
+                    |SINO;
+                         aMensaje = "0000Error: Este articulo no pertenece a la linea [" + #coiplm03#3 + "] del Albaran";
+                    |FINSI;
+                    |MENAV aMensaje;
+                    |ERROR;
+               |FINSI;
+               |CIERRA #coiplw01;
+          |SINO;
+               |SI nModoLin = 1;
+                    nTipoQuinto = 2;         ||Alta/Modificacion
+                    |HAZ MuestraQuinto;
+               |SINO;
+                    |SI nModoLin = 2; |Y nFormaLin = 1;
+                         nTipoQuinto = 2;         ||Alta/Modificacion
+                         |HAZ MuestraQuinto;
+                    |FINSI;
+                    |SI nModoLin = 3;
+                       |ABRE #coiplm04; |ABRE #coiplw01;
+                       |BUCLE coiplm04_b;
+                       |CIERRA #coiplw01; |CIERRA #coiplm04;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO minQuinto;
+     #coiplm04#0 = nPList;
+     #coiplm04#1 = nPaquete;
+     #coiplm04#2 = #coiplm03#2;
+     #coiplm04#3 = "      ";
+|FPRC;
+
+|PROCESO maxQuinto;
+     #coiplm04#0 = nPList;
+     #coiplm04#1 = nPaquete;
+     #coiplm04#2 = #coiplm03#2;
+     #coiplm04#3 = "zzzzzz";
+|FPRC;
+
+|PROCESO MuestraQuinto;
+     |ENTCOLUMNA #1#coiplm04, -4, nTipoQuinto, 6, 2, minQuinto, maxQuinto;
+|FPRC;
+
+|PROCESO RecuentaArt;
+   CantMax = CantMax + #coiplw01#3;
+|FPRC;
+
+|DEFBUCLE RecuentaArt;
+#coiplw01#1;
+;
+#coiplm03#3,#coiplm03#4,"      ";
+#coiplm03#3,#coiplm03#4,"zzzzzz";
+;
+NULL,RecuentaArt;
+|FIN;
+
+|PROCESO LinPedAlb; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+
+     |SI #coiplm01#2 ! "M";
+          aSerie = #coiplm01#4;
+          nNumero = #coiplm01#3;
+          aNumero = ("000000" + nNumero) % -106;
+          |SI #coiplm01#2 = "P";   ||Pedido
+               |ABRE #agifa073;
+               #agifa073#28 = aSerie;
+               #agifa073#0 = nNumero;
+               #agifa073#1 = #coiplm03#3;
+               |LEE 000#agifa073.=;
+               |SI FSalida ! 0;
+                    aMensaje = "0000Error: Esta linea no existe en el Pedido [" + aSerie + "/" + aNumero + "]";
+                    |MENAV aMensaje;
+                    |ERROR;
+               |SINO;
+                    #coiplm03#4 = #agifa073#2;
+                    |SI #coiplm03#5 = "S";
+                       CantMax = 0; |BUCLE RecuentaArt;
+                       Comodin = CantMax;
+                    |SINO;
+                       Comodin = #agifa073#5
+                    |FINSI;
+               |FINSI;
+               |CIERRA #agifa073;
+          |SINO;
+               |ABRE #agifa071;
+               #agifa071#29 = aSerie;
+               #agifa071#0  = nNumero;
+               #agifa071#1  = #coiplm03#3;
+               |LEE 000#agifa071.=;
+               |SI FSalida ! 0;
+                    aMensaje = "0000Error: Esta linea no existe en el Albaran [" + aSerie + "/" + aNumero + "]";
+                    |MENAV aMensaje;
+                    |ERROR;
+               |SINO;
+                    #coiplm03#4 = #agifa071#2;
+                    |SI #coiplm03#5 = "S";
+                       CantMax = 0; |BUCLE RecuentaArt;
+                       Comodin = CantMax;
+                    |SINO;
+                       Comodin = #agifa071#5
+                    |FINSI;
+               |FINSI;
+               |CIERRA #agifa071;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO NumUnits;
+   |SI #coiplm03#5 = "S";
+      CantMax = 0;
+      |BUCLE RecuentaArt;
+   |SINO;
+      |SI #coiplm01#2 = "A";
+         CantMax = #agifa071#5;
+      |SINO;
+         CantMax = #agifa073#5;
+      |FINSI;
+   |FINSI;
+
+   |SI #coiplm03#6 > CantMax;
+      Comodin = "    Dispone de un maximo de " + CantMax + " unidades";
+   |FINSI;
+|FPRC;
+
+|PROCESO Tipo13; |TIPO 13;
+   |SI #coiplm01#2 ! "M";
+      |SI #coiplm03#5 = "S";
+         CantMax = 0;
+         |BUCLE RecuentaArt;
+         |ENTCOLUMNA #1#coiplm04, -4, 7, 6, 2, minQuinto, maxQuinto;
+      |SINO;
+         |PINPA #0#coiplm04;
+         |ABRE #coiplw01;
+         #coiplw01#0 = #coiplm03#3;
+         #coiplw01#1 = #coiplm03#4;
+         #coiplw01#2 = "      ";
+         |LEE 000#coiplw01.=;
+         |SI FSalida = 0;
+            CantMax = #coiplw01#3;
+         |FINSI;
+         |CIERRA #coiplw01;
+      |FINSI;
+   |FINSI;
+
+   |ABRE #agifa019;
+   #agifa019#0 = #coiplm03#4;
+   |LEE 000#agifa019.=;
+   |SI FSalida = 0;
+        aNomArt = " " + #agifa019#1;
+        Comodin = CantMax + "       ";
+   |SINO;
+        aNomArt = ""; Comodin = "";
+   |FINSI;
+   |PINTA 0650, aNomArt;
+   |SI #coiplm01#2 ! "M";
+        |PINTA 0760, Comodin;
+   |FINSI;
+   |CIERRA #agifa019;
+|FPRC;
+
+|PROCESO CreaLineas0;
+     #coiplm02@#0 = #0#0;
+     #coiplm02@#1 = 999999;
+     |LEE 000#coiplm02@.];
+     |SI FSalida = 0;
+          |LEE 000#coiplm02@.a;
+     |SINO;
+          |LEE 000#coiplm02@.u;
+     |FINSI;
+     |SI FSalida = 0; |Y #coiplm02@#0 = #0#0;
+          nLin = #coiplm02@#1 + 1;
+     |SINO;
+          nLin = 1;
+     |FINSI;
+
+     |DDEFECTO #2;
+     #2#0 = #0#0;
+     #2#1 = nLin;
+     |PARA i = 2; |SI i [ 6; |HACIENDO i = i + 1;
+          #2i = #91i;
+     |SIGUE;
+     #2#7 = #91#13;  ||Unidades
+     |GRABA 020#2n;
+
+     |DDEFECTO #3;
+     #3#0 = #2#0;
+     #3#1 = #2#1;
+     #3#2 = 1;
+     #3#3 = #91#9;
+     #3#4 = #91#10;
+     #3#5 = "";
+     #3#6 = #91#13;
+     |GRABA 020#3n;
+|FPRC;
+
+|PROCESO CreaLineas;
+     |PARA j = 1; |SI j [ #91#12; |HACIENDO j = j + 1;
+          |HAZ CreaLineas0;
+          |SI #0#23 = "A"; ||Volumen
+               #0#15 = #0#15 + #91#4;
+          |FINSI;
+          |SI #0#24 = "A"; ||Bruto
+               #0#16 = #0#16 + #91#5;
+          |FINSI;
+          |SI #0#25 = "A"; ||Neto
+               #0#17 = #0#17 + #91#6;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|DEFBUCLE CreaLineas;
+     #91#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, CreaLineas;
+|FIN;
+
+|PROCESO Min91;
+     #91#8 = 1;
+|FPRC;
+
+|PROCESO Max91;
+     #91#8 = 999;
+|FPRC;
+
+|PROCESO Desglose;
+     aAlfa = Usuario;
+     |QBF aAlfa;
+     |NOME_DAT #91 aAlfa;
+     |DELINDEX #91;
+     |PUSHV 0501 2380;
+     |ENTLINEAL #1#91, 1, 1, 22, 1, Min91, Max91;
+     |POPV;
+     nLin = 0;
+     |DDEF aDef;
+     aDef = aDef + "coiplm02";
+     |CARGA_DEF aDef, coiplm02@;
+     |SI FSalida = 0;
+          |ABRE #coiplm02@;
+          |ABRE #3;
+          |BUCLE CreaLineas;
+          |CIERRA #3;
+          |CIERRA #coiplm02@;
+          |DESCARGA_DEF #coiplm02@;
+          |PINTA #0#15;
+          |PINTA #0#16;
+          |PINTA #0#17;
+     |FINSI;
+     |DELINDEX #91;
+     |SI nLin =  0;
+          |ERROR;
+     |SINO;
+          |PONCONTROL 23, "SI";
+          |PTEC 802;
+     |FINSI;
+|FPRC;
+
+|PROCESO TotalUni; |TIPO 0;
+     #91#7 = #91#12 * #91#13;
+     |PINTA #91#7;
+|FPRC;
+
+|PROCESO LinPedAlb2; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+
+     aSerie = #coiplm01#4;
+     nNumero = #coiplm01#3;
+     aNumero = ("000000" + nNumero) % -106;
+     |SI #coiplm01#2 = "P";   ||Pedido
+          |ABRE #agifa073;
+          #agifa073#28 = aSerie;
+          #agifa073#0 = nNumero;
+          #agifa073#1 = #91#9;
+          |LEE 000#agifa073.=;
+          |SI FSalida ! 0;
+               aMensaje = "0000Error: Esta linea no existe en el Pedido [" + aSerie + "/" + aNumero + "]";
+               |MENAV aMensaje;
+               |ERROR; |ACABA;
+          |SINO;
+               #91#10 = #agifa073#2;
+               #91#11 = #agifa073#3;
+          |FINSI;
+          |CIERRA #agifa073;
+     |SINO;
+          |ABRE #agifa071;
+          #agifa071#29 = aSerie;
+          #agifa071#0  = nNumero;
+          #agifa071#1  = #91#9;
+          |LEE 000#agifa071.=;
+          |SI FSalida ! 0;
+               aMensaje = "0000Error: Esta linea no existe en el Albaran [" + aSerie + "/" + aNumero + "]";
+               |MENAV aMensaje;
+               |ERROR; |ACABA;
+          |SINO;
+               #91#10 = #agifa071#2;
+               #91#11 = #agifa071#4;
+          |FINSI;
+          |CIERRA #agifa071;
+     |FINSI;
+     |SI #91Campo ! Contenido; |O nModo = 1;
+          |ABRE #19;
+          #19#0 = #91#10;
+          |LEE 000#19=;
+          |CIERRA #19;
+          #91#13 = #19#4;
+     |FINSI;
+     |PINTA #91#11;
+     |PINTA #91#10;
+     |PINTA #91#13;
+
+     |HAZ EsMalpesa;
+     |SI FSalida = 0;
+          |HAZ MalpeDefecto;
+     |FINSI;
+|FPRC;
+
+|PROCESO MalpeDefecto;
+     |DDEF aDef;
+     |SI #0#2 = "A";
+          aAlfa = aDef + "malpe091";
+     |SINO;
+          aAlfa = aDef + "malpe088";
+     |FINSI;
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          |DDEFECTO #referen@;
+          |SI #0#2 = "A";
+               #referen@#29 = aSerie;
+               #referen@#0 = nNumero;
+               #referen@#1 = #91#9;
+               |LEE 000#referen@.=;
+               nPaq = #referen@#62;
+               nUni = #referen@#5;
+               aPar = #referen@#49;
+               aArt = #referen@#2;
+               nAlm = #referen@#3;
+          |SINO;
+               #referen@#28 = aSerie;
+               #referen@#0 = nNumero;
+               #referen@#1 = #91#9;
+               |LEE 000#referen@.=;
+               nPaq = #referen@#57;
+               nUni = #referen@#5;
+               aPar = #referen@#45;
+               aArt = #referen@#2;
+               nAlm = #referen@#3;
+          |FINSI;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+
+          aAlfa = aDef + "malpe085";
+          |CARGA_DEF aAlfa, referen@;
+          |SI FSalida = 0;
+               |ABRE #referen@;
+               #referen@#0 = aArt;
+               #referen@#1 = nAlm;
+               #referen@#2 = aPar;
+               |LEE 000#referen@.=;
+               |SI FSalida = 0;
+                    #91#12 = nPaq;
+                    #91#13 = #referen@#4;
+                    #91#5 = #referen@#3 * nUni;
+                    #91#6 = #91#5;
+                    |PINTA #91#12;
+                    |PINTA #91#13;
+                    |PINTA #91#5;
+                    |PINTA #91#6;
+               |FINSI;
+               |CIERRA #referen@;
+               |DESCARGA_DEF #referen@;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Control2; |TIPO 2;
+     nForma = 0 +. 1;
+     |SI #91#7 = 0;
+          |MENAV "0000Las unidades no pueden ser 0";
+          |ERROR; |ACABA;
+     |FINSI;
+     |ABRE #coiplw01;
+     #coiplw01#0 = #91#9;
+     #coiplw01#1 = #91#10
+     #coiplw01#2 = "";
+     |LEE 101#coiplw01.=;
+     |SI FSalida = 0;
+          nCantidad = #coiplw01#3 -. #91#7;
+          |SI nCantidad < 0; |Y nForma = 1;
+               aMensaje = "0000Error: Solo quedan por asignar [" + #coiplw01#3 + "] unidades";
+               |MENAV aMensaje;
+               |ERROR;
+          |SINO;
+               #coiplw01#3 = nCantidad;
+          |FINSI;
+          |GRABA 020#coiplw01.a; |LIBERA #coiplw01;
+     |SINO;
+          |SI #coiplm01#2 = "P";
+               aMensaje = "0000Error: Este articulo no pertenece a la linea [" + #coiplm03#3 + "] del Pedido";
+          |SINO;
+               aMensaje = "0000Error: Este articulo no pertenece a la linea [" + #coiplm03#3 + "] del Albaran";
+          |FINSI;
+          |MENAV aMensaje;
+          |ERROR;
+     |FINSI;
+     |CIERRA #coiplw01;
+|FPRC;
+
+|PROCESO Contador; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          |LEE 000#0u;
+          |SI FSalida = 0;
+               nConta = #0#0 + 1;
+          |SINO;
+               nConta = 1;
+          |FINSI;
+          |DDEFECTO #0;
+          #0#0 = nConta;
+     |FINSI;
+|FPRC;

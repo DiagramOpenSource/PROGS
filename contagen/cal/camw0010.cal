@@ -1,0 +1,191 @@
+|FICHEROS;
+     cacuiv2c #0;
+     cacuiv2l #1;
+     caclipro #2;
+     camw0010 #10;
+
+     canempre #30;
+     caselem1 #998;
+|FIN;
+
+|VARIABLES;
+  &nEsteAny = 0;
+  nInkey    = 0;
+  nIVA      = 0;
+  nRec      = 0;
+  nSwExis   = 0;
+  nTipo     = 0;
+  nCampo    = 0;
+  nNume1    = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ******************************************** Calculos Pantalla
+|CALCULO VerIVA; |TIPO 0;
+   nInkey   = FSalida;
+
+   aTipoIVA    = "R";
+   |SI Campo > 7; aTipoIVA = "S"; |FINSI;
+
+   |SI #10Campo = 0;
+       nCampo = Campo + 14; #10nCampo = 0; |PINTA #10nCampo;
+       nCampo = Campo + 28; #10nCampo = 0; |PINTA #10nCampo;
+       |ACABA;
+   |FINSI;
+
+
+   nTipo       = #10Campo;
+   |SI nInkey = 10;
+       |HAZ LaConsulta;
+       #10Campo = nTipo; |PINTA #10Campo;
+   |FINSI;
+
+   |HAZ LeeTipoIVA;
+   |SI nSwExis = 1;
+       |ERROR;
+   |SINO;
+       nCampo = Campo + 14; #10nCampo = nIVA; |PINTA #10nCampo;
+       nCampo = Campo + 28; #10nCampo = nRec; |PINTA #10nCampo;
+   |FINSI;
+|FCAL;
+
+|RUTINA inf2;
+   #1#12 = #10#0;
+   #1#0  = aTipoIVA;
+   #1#1  = 01;
+|FRUT;
+
+|RUTINA sup2;
+   #1#12 = #10#0;
+   #1#0 = aTipoIVA;
+   #1#1 = 99;
+|FRUT;
+
+|PROCESO LaConsulta;
+   |ABRE #1;
+   |CONSULTA_F_CLAVE #1#1,inf2,sup2;
+    nTipo = #1#1;
+   |CIERRA #1;
+|FPRC;
+
+|PROCESO LeeTipoIVA;
+
+   nSwExis = 0;
+   |ABRE #1;
+   #1#12 = #10#0;
+   #1#0  = aTipoIVA;
+   #1#1  = nTipo;
+   |LEE 010#1=;
+   |SI FSalida ! 0;
+       |MENAV "    Control de cuentas no definido";
+       nSwExis = 1;
+   |SINO;
+       nIVA = #1#2;
+       nRec = #1#4;
+   |FINSI;
+   |CIERRA #1;
+|FPRC;
+
+|PROCESO GrabaCliPro;
+ nNume1 = #2#12; |SI nNume1 > 7; nNume1 = 1; |FINSI;
+ |SI #2#23 = "P";
+     nNume1 = nNume1 + 7;
+ |FINSI;
+ #2#42 = #10nNume1;
+ |GRABA 020#2a;
+ |LIBERA #2;
+
+ |PINTA 2302, "Cliente/Proveedor: ";
+ |PINTA 2321, #2#10;
+ |PINTA 2334, #2#1;
+|FPRC;
+
+|DEFBUCLE LeeCliPro;
+ #2#1;
+ ;
+ " ", "            ";
+ "z", "zzzzzzzzzzzz";
+ be;
+ NULL, GrabaCliPro;
+|FIN;
+
+|PROCESO HazTodo;
+  |BUCLE LeeCliPro;
+|FPRC;
+
+|PROCESO ElCambio;
+   |SI #48#27 = "S";
+       |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+|FPRC;
+
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   |SI enEjercicio ! nEsteAny;
+       |ACABA;
+   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #2 dirfich0;
+   |ATRI R; |PINTA 2202, "Empresa: ";      |ATRI 0;
+   |PINTA 2211, #30#2; |PINTA 2217, #30#1; |ATRI 0;
+   |PINTA 2302, "Cliente/Proveedor: ";
+
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 001;
+ 999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+
+|PROGRAMA;
+   |CLS;
+   |HAZ inicio;
+   nEsteAny = enEjercicio;
+   |CABEZA "Grupos Cliente/Proveedores";
+
+   |ABRE #10;
+   #10#0 = enEjercicio;
+   |LEE 101#10=;
+   |SI FSalida ! 0;
+       |DDEFECTO #10;
+       #10#0 = enEjercicio;
+       |GRABA 020#10b;
+   |FINSI;
+
+   |PINPA #0#10;
+   |PINDA #0#10;
+   |ENDATOS #1#10;
+   |SI FSalida = 0;
+       |GRABA 020#10a;
+       |CONFI "    SRealizar el Cambio en Cliente Proveedores S/N";
+       |SI FSalida = 0;
+           |HAZ ElCambio;
+       |FINSI;
+   |FINSI;
+   |LIBERA #10;
+   |CIERRA #10;
+|FPRO;

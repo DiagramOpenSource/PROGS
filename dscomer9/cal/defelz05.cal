@@ -1,0 +1,103 @@
+|FICHEROS;
+     defelz05 #0;
+     agifa073 #73;
+     agifa104 #104;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     &eaEstado = "";
+     nEstado = 0;
+     aParam = "";
+     aAlfa = "";
+     aSer = "01";
+     nNum = 1;
+     nLin = 1;
+|FIN;
+
+|PROCESO SacaEstado;     || Tambien esta en el defelz06
+     aAlfa = "";
+     |SI nEstado = 2; aAlfa = "CORTE "; |FINSI;
+     |SI nEstado = 3; aAlfa = "COLA "; |FINSI;
+     |SI nEstado = 4; aAlfa = "BORDADO "; |FINSI;
+     |SI nEstado = 5; aAlfa = "EMPAQUETADO "; |FINSI;
+     |SI nEstado = 6; aAlfa = "ENVIADO "; |FINSI;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     aAlfa = #0#0; |QBF aAlfa;
+     |SI aAlfa = ""; |ACABA; |FINSI;
+
+     aAlfa = #0#0 % 105; aSer = aAlfa;
+     aAlfa = #0#0 % 606; nNum = aAlfa;
+     aAlfa = #0#0 % 1203; nLin = aAlfa;
+
+     |ABRE #104;
+     #104#25 = aSer;
+     #104#0 = nNum;
+     |LEE 000#104=;
+     |SI FSalida = 0;
+          |ABRE #73;
+          #73#28 = aSer;
+          #73#0 = nNum;
+          #73#1 = nLin;
+          |LEE 101#73=;
+          |SI FSalida = 0;
+               eaTipo      = "PV";
+               eaSerie     = #73#28;
+               enCodigo    = #73#0;
+               enLinea     = #73#1;
+               eaArticulo  = #73#2;
+               enAlmacen   = #73#3;
+               enUnidades  = #73#5;
+               enTBruto    = #73#7;
+               eaAbono     = #104#34;
+               eaReservado = "N";
+               ||enTarifa    = #24#39;
+               efFecha     = #104#1;
+               eaCliente   = #104#4;
+               enCamBas     = #104#36;
+               eaMoneda     = #104#37;
+               enCamDiv     = #104#41;
+
+               nEstado = #73#53;
+               |HAZ SacaEstado;
+               |SI aAlfa ! ""; eaEstado = "EN ESTADO " + aAlfa; |FINSI;
+
+               |SUB_EJECUTA_NP "dsz00002;CONSU";
+               |CONFI "0000N¿Correcto?";
+               |SI FSalida = 0;
+                    #73#53 = aParam;
+                    |GRABA 020#73a;
+               |FINSI;
+          |SINO;
+               aAlfa = "0000No existe linea pedido:" + aSer + "/" + (("000000" + nNum) % -106) + (("000" + nLin) % -103);
+               |MENAV aAlfa;
+          |FINSI;
+          |CIERRA #73;
+     |SINO;
+          aAlfa = "0000No existe el pedido:" + aSer + "/" + (("000000" + nNum) % -106);
+          |MENAV aAlfa;
+     |FINSI;
+     |CIERRA #104;
+|FPRC;
+
+|PROCESO T12; |TIPO 12;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     nEstado = aParam;
+     |HAZ SacaEstado;
+
+     |PINPA #0#0;
+     |ATRI R; |PINTA 540, aAlfa; |ATRI R;
+     |PINDA #0#0;
+     |PARA FSalida = 0; |SI FSalida = 0; |HACIENDO;
+          |DDEFECTO #0;
+          |ENDATOS #1#0;
+          aAlfa = #0#0; |QBF aAlfa;
+          |SI aAlfa = ""; FSalida = 1; |FINSI;
+     |SIGUE;
+|FPRO;

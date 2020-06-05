@@ -1,0 +1,155 @@
+|FICHEROS;
+     visad129@ #129;    || para el CARGA_DEF al parqm129 (visados)
+|FIN;
+
+|VARIABLES;
+     nSolicitud = 0;
+     aSolicitud = "";
+     nImporte = 0;
+     nCodigo = 0;
+     aVengoDe = "";
+     nCampo = 0;
+     aFich = "";
+     aDef = "";
+     aFabre = "";
+     aBases = "";
+|FIN;
+
+|PROCESO TipoBS;
+     |MODULO aVengoDe;
+     |QBF aVengoDe;
+     aVengoDe = aVengoDe % -102;
+     |SI aVengoDe = "02";
+          #129#1 = 602;                           || codigo BS
+          #129#2 = "Anticipos Reintegrables";     || descripcion BS
+          nCampo = 10;
+     |FINSI;
+     |SI aVengoDe = "03";
+          #129#1 = 603;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 33;
+     |FINSI;
+     |SI aVengoDe = "40";
+          #129#1 = 640;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 00;
+     |FINSI;
+     |SI aVengoDe = "41";
+          #129#1 = 641;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 21;
+     |FINSI;
+     |SI aVengoDe = "05";
+          #129#1 = 605;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 11;
+     |FINSI;
+     |SI aVengoDe = "06";
+          #129#1 = 606;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 7;
+     |FINSI;
+     |SI aVengoDe = "07";
+          #129#1 = 607;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 8;
+     |FINSI;
+     |SI aVengoDe = "80";
+          #129#1 = 680;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 00;
+     |FINSI;
+     |SI aVengoDe = "81";
+          #129#1 = 681;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 10;
+     |FINSI;
+     |SI aVengoDe = "09";
+          #129#1 = 609;                           || codigo BS
+          #129#2 = "";     || descripcion BS
+          nCampo = 8;
+     |FINSI;
+     |SI nCampo ! 0;
+          nImporte = #0nCampo;
+     |FINSI;
+|FPRC;
+
+|PROCESO Enlace;
+     |DBASE aBases;
+     aBases = aBases + "bin/producci.tab";
+     aFabre = "rb  " + aBases;
+     |FABRE aFabre;
+     |SI FSalida ] 0;
+          aDef = "/u/dsmedida/dsparque/def/parqm129.mas";
+          aFich = "/u/dsmedida/dsparque/fich/01/";
+     |SINO;
+          |DBASS aAlfa; |QBF aAlfa;
+          aDef = aAlfa + "dsparque/def/parqm129.mas";
+          aFich = aAlfa + "dsparque/fich/01/";
+     |FINSI;
+
+     |CARGA_DEF aDef, visad129@;
+     |PATH_DAT #129 aFich;
+
+     |SI FSalida = 0;
+          nSolicitud = 0;
+          |ABRE #visad129@;
+          |SI #0#5 = 0;       || nueva Solicitud
+               |LEE 000#129u;
+               |SI FSalida ! 0;
+                    nSolicitud = 1;
+               |SINO;
+                    nSolicitud = #129#0 + 1;
+               |FINSI;
+
+               #129#0 = nSolicitud;     || Numero Solicitud
+               |HAZ TipoBS;
+               #129#3 = #0#1;           || codigo trabajador
+               #129#4 = #0#4;           || nombre trabajador
+               #129#5 = #0#2;           || fecha solicitud
+               #129#6 = nImporte;       || Importe
+               #129#7 = "N";            || Visado S/N
+               #129#9 = "N";            || denegado S/N
+               #129#12 = "N";           || Pasado a nomina S/N
+               |GRABA 020#129n;
+               |SI FSalida = 0;
+                    aSolicitud = nSolicitud;
+                    |QBF aSolicitud;
+                    aAlfa = "    La solicitud ha quedado registrada con el ";
+                    aAlfa = aAlfa + "número " + aSolicitud;
+                    |MENAV aAlfa;
+
+                    #0#5 = nSolicitud;
+               |FINSI;
+          |SINO;
+               nSolicitud = #0#5;
+               aSolicitud = "000000" + aSolicitud; aSolicitud = aSolicitud % -106;
+               #129#0 = #0#5;     || Numero Solicitud
+               |LEE 101#129.=;
+               |SI FSalida = 0;
+                    |HAZ TipoBS;
+                    || solo se regraba si cambia el importe y no esta visado
+                    |SI #129#7 = "N";
+                         |SI nImporte ! #129#6;
+                              #129#6 = nImporte;       || Importe
+                              |GRABA 020#129a;
+                              aAlfa = " Cambios realizados en la solicitud ";
+                              aAlfa = aAlfa + "número " + aSolicitud + " con exito.";
+                              |MENAV aAlfa;
+                         |FINSI;
+                    |SINO;
+                         aAlfa = " La solicitud ya esta visada. No es posible ";
+                         aAlfa = aAlfa + "cambiar el importe.";
+                         |MENAV aAlfa;
+                    |FINSI;
+               |SINO;
+                    aAlfa = "    Error en la grabacion: número de ";
+                    aAlfa = aAlfa + "solicitud " + aSolicitud + " no ";
+                    aAlfa = aAlfa + " encontrado en el registro de visados.";
+                    |MENAV aAlfa;
+               |FINSI;
+          |FINSI;
+          |CIERRA #visad129@;
+     |FINSI;
+     |DESCARGA_DEF #visad129@;
+|FPRC;

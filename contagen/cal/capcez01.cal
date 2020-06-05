@@ -1,0 +1,891 @@
+/*  anterior
+|FICHEROS;
+   capcez01 #0;
+
+   capcem01 #10;
+   capcem02 #11;
+
+   caw00100 #100;
+   caw00101 #101;
+   caw00102 #102,MANTE;
+   caw00104 #104,MANTE;
+   caw00105 #105,MANTE;
+
+   caintiva #1000;
+   cainliva #1001;
+   calibros #1002;
+   caivases #1003;
+   caivaasi #1004;
+   cacuiv2l #1005;
+   caclipro #1006;
+
+   :/modelos/def/dsmom030  #2000;
+|FIN;
+
+|VARIABLES;
+   aConce = "";
+   &eaTitErr = "";
+   &enLibro  = -1;
+   nSw       = 0;
+   nSwErr    = 0;
+   nSwError  = 0;
+   nSwImp    = 0;
+   nSwAbono  = 0;
+   nSwLeeFac = 0;
+   nSwLeeBas = 0;
+   nSwLeeIva = 0;
+   nSwLeeImp = 0;
+   nHandle   = 0;
+
+   aReg    = "";
+   aRegSob = "";
+
+   aOrigen  = "";
+   aDestino = "";
+   aIP      = "";
+
+   aAlfa      = "";
+   aAlfa1     = "";
+   aAlfa2     = "";
+   aAlfa3     = "";
+   aTag       = "";
+   aIniTag    = "";
+   aFinTag    = "";
+   aValor     = "";
+   aCRLF      = "";
+   aCR        = "";
+   aLF        = "";
+   aTab       = "";
+   aComillas  = "";
+
+   nLongReg   = 0;
+
+   nPos       = 0;
+   nCalc      = 0;
+   nCalc1     = 0;
+   nSwLen     = 0;
+   nNumBase   = 0;
+   nNumIva    = 0;
+   nLinea     = 0;
+   NumFactura = 0;
+   nNivel     = 0;
+   nAnyo      = 0;
+   nEstado    = 0;
+
+   fFecha     = @;
+
+   aLong      = "";
+   nLong      = 0;
+   nTipoIVA   = 0;
+
+   nIniBas    = 0;
+   nFinBas    = 0;
+   nIniIva    = 0;
+   nFinIva    = 0;
+
+   nContLinBlanco = 10;
+   nContSpaces    = 0;
+   nContRegs      = 50;
+|FIN;
+
+|PROCESO BuscaValor;
+   aIniTag = "<" + aTag;
+   aFinTag = "</" + aTag + ">";
+
+   aAlfa1 = aIniTag + ">";
+   aAlfa1 = aAlfa - aAlfa1;
+   |SI FSalida ! 0; aIniTag = aIniTag + ">"; |FINSI;
+
+   aIniTag = "<" + aTag;
+
+
+   aAlfa1 = aAlfa - aIniTag; nCalc = ((FSalida / 100) ! 0) + 1;
+   |SI FSalida ! 0;
+      aAlfa1 = aAlfa1 - aFinTag; nCalc1 = ((FSalida / 100) ! 0); nPos = nCalc1;
+      nCalc = (nCalc * 100) + (nCalc1 - nCalc);
+      aValor = aAlfa1 % nCalc;
+      aValor = aValor - ">";
+      |SI FSalida ! 0;
+         nCalc = FSalida + 98;
+         aValor = aValor % nCalc;
+      |FINSI;
+      FSalida = 0;
+   |SINO;
+      aValor = ""; nCalc = -1; FSalida = nCalc;
+   |FINSI;
+|FPRC;
+
+|PROCESO Interpreta;
+   aAlfa = aReg;
+
+   aAlfa1 = aAlfa - "<Invoice ";
+   |SI FSalida ! 0;
+      aConce = "";
+      |SI nSwLeeFac = 1;
+         aAlfa1 = aAlfa - "</Invoice>";
+         |SI FSalida ! 0;
+            nSwLeeBas = 0; nSwLeeIva = 0;
+            nSwLeeFac = 0;
+            |GRABA 020#caw00100.a;
+         |FINSI;
+      |FINSI;
+      nSwLeeFac = 1; nNumBase = 1; nNumIva = 1;
+      nSwAbono  = 0;
+   |FINSI;
+
+   aAlfa1 = aAlfa - "<Credit";
+   |SI FSalida ! 0;
+      |SI nSwLeeFac = 1;
+         aAlfa1 = aAlfa - "</Credit>";
+         |SI FSalida ! 0;
+            nSwLeeBas = 0; nSwLeeIva = 0;
+            nSwLeeFac = 0;
+            |GRABA 020#caw00100.a;
+         |FINSI;
+      |FINSI;
+      nSwLeeFac = 1; nNumBase = 1; nNumIva = 1;
+      nSwAbono  = 1;
+   |FINSI;
+
+   aAlfa1 = aAlfa - "<TaxDefinition>";
+   |SI FSalida ! 0;
+       aAlfa1 = aAlfa - "</TaxDefinition>";
+       |SI FSalida ! 0;
+          aTag = "TaxDefinition"; |HAZ BuscaValor;
+          |QBF aValor;
+          |SI aValor = "Drittland";    aConce = 715; |FINSI;
+          |SI aValor = "Inland";       aConce = 700; |FINSI;
+          |SI aValor = "EU";           aConce = 713; |FINSI;
+          |SI aValor = "EU-ohneUstID"; aConce = 700; |FINSI;
+       |FINSI;
+   |FINSI;
+
+   aAlfa1 = aAlfa - "<CompressedCrossEntries>";
+   |SI FSalida ! 0;
+      nSwLeeImp = 1; nNumBase = 1; nNumIva = 1;
+   |FINSI;
+   |SI nSwLeeImp = 1;
+      aAlfa1 = aAlfa - "<RevenueAccount>";
+      |SI FSalida ! 0;
+         nSwLeeBas = 1;
+
+         |DDEFECTO #caw00101;
+         #caw00101#0 = #caw00100#0;
+         #caw00101#1 = nNumBase;
+         #caw00101#6 = aConce;
+         ||#caw00101#6 = #capcem01#11;
+         |GRABA 020#caw00101.c;
+      |FINSI;
+      aAlfa1 = aAlfa - "<TaxAccount>";
+      |SI FSalida ! 0;
+         nSwLeeIva = 1;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwLeeFac = 0; |ACABA; |FINSI;
+
+   aTag = "InvoiceNo"; |HAZ BuscaValor;
+   |SI FSalida = 0;
+      |DDEFECTO #caw00100;
+      #caw00100#0 = aValor;
+      |GRABA 020#caw00100.c;
+
+      aAlfa1 = "    Importando factura " + aValor; |QBF aAlfa1;
+      aAlfa1 = (aAlfa1 + (" " * 50)) % 0150;
+      |PINTA 2301, aAlfa1;
+      nContRegs = nContRegs -1;
+      |SI nContRegs = 0; |PULSATECLA; nContRegs = 50; |FINSI;
+   |FINSI;
+
+   aTag = "CreditNo"; |HAZ BuscaValor;
+   |SI FSalida = 0;
+      |DDEFECTO #caw00100;
+      #caw00100#0 = aValor;
+      |GRABA 020#caw00100.c;
+
+      aAlfa1 = "    Importando abono factura " + aValor; |QBF aAlfa1;
+      aAlfa1 = (aAlfa1 + (" " * 50)) % 0150;
+      |PINTA 2301, aAlfa1;
+      nContRegs = nContRegs -1;
+      |SI nContRegs = 0; |PULSATECLA; nContRegs = 50; |FINSI;
+   |FINSI;
+
+   aTag = "CustomerID"; |HAZ BuscaValor;
+   |SI FSalida = 0;
+      #caw00100#1 = aValor;
+
+      #capcem01#0 = aValor;
+      |LEE 000#capcem01.=;
+      |SI FSalida ! 0; |DDEFECTO #capcem01; |FINSI;
+
+      #caw00100#4 = #capcem01#11;
+      #caw00100#5 = #capcem01#9;
+   |FINSI;
+
+   aTag = "InvoiceDate"; |HAZ BuscaValor;
+   |SI FSalida = 0;
+      aValor = (aValor % 0902) + "." + (aValor % 0602) + "." + (aValor % 0104);
+      #caw00100#2 = aValor;
+   |FINSI;
+
+   aTag = "CreditDate"; |HAZ BuscaValor;
+   |SI FSalida = 0;
+      aValor = (aValor % 0902) + "." + (aValor % 0602) + "." + (aValor % 0104);
+      #caw00100#2 = aValor;
+   |FINSI;
+
+   aTag = "InvoiceValueGross"; |HAZ BuscaValor;
+   |SI FSalida = 0;
+      #caw00100#6 = aValor;
+   |FINSI;
+
+   aTag = "CreditValueGross"; |HAZ BuscaValor;
+   |SI FSalida = 0;
+      nCalc = aValor; nCalc = -nCalc;
+      #caw00100#6 = nCalc;
+   |FINSI;
+
+   aTag = "Currency"; |HAZ BuscaValor;
+   |SI FSalida = 0; #caw00100#3 = aValor; |FINSI;
+
+   nEstado = -1;
+
+   nFinBas = 0;   nFinIva = 0;
+   nIniBas = 999; nIniIva = 999;
+   |SI nSwLeeBas = 1; |Y nSwLeeIva = 1;
+      aAlfa1 = aReg - "<RevenueAccount";
+      |SI FSalida ! 0; nIniBas = (FSalida / 100) ! 0; |SINO; nIniBas = 0; |FINSI;
+      aAlfa1 = aReg - "<TaxAccount";
+      |SI FSalida ! 0; nIniIva = (FSalida / 100) ! 0; |SINO; nIniIva = 0; |FINSI;
+      aAlfa1 = aReg - "</RevenueAccount>";
+      |SI FSalida ! 0; nFinBas = (FSalida / 100) ! 0; |SINO; nFinBas = 999; |FINSI;
+      aAlfa1 = aReg - "</TaxAccount>";
+      |SI FSalida ! 0; nFinIva = (FSalida / 100) ! 0; |SINO; nFinIva = 999; |FINSI;
+   |SINO;
+      |SI nSwLeeBas = 1; nIniBas = 0; nFinBas = 999; |FINSI;
+      |SI nSwLeeIva = 1; nIniIva = 0; nFinIva = 999; |FINSI;
+   |FINSI;
+
+   |SI nSwLeeBas = 1;
+      aTag = "AccountNo"; |HAZ BuscaValor;
+      |SI FSalida = 0; |Y nPos > nIniBas; |Y nPos < nFinBas;
+         #capcem02#0 = aValor;
+         |LEE 000#capcem02.=;
+         |SI FSalida ! 0;
+            #capcem02#0 = aValor;
+            #capcem02#1 = "V";
+            |GRABA 020#capcem02.c;
+         |FINSI;
+         #caw00101#7 = aValor;
+      |FINSI;
+      aTag = "Amount"; |HAZ BuscaValor;
+      |SI FSalida = 0; |Y nPos > nIniBas; |Y nPos < nFinBas;
+         |SI nSwAbono = 0;
+            #caw00101#2 = aValor;
+         |SINO;
+            nCalc = aValor; nCalc = -nCalc;
+            #caw00101#2 = nCalc;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwLeeIva = 1;
+      |SI nSwLeeBas = 0;
+         #caw00101#0 = #caw00100#0;
+         #caw00101#1 = nNumIva;
+         |LEE 000#caw00101.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #caw00101;
+            #caw00101#0 = #caw00100#0;
+            #caw00101#1 = nNumIva;
+            #caw00101#6 = aConce;
+            ||#caw00101#6 = #capcem01#11;
+            |GRABA 020#caw00101.c;
+         |FINSI;
+      |FINSI;
+
+      aTag = "AccountNo"; |HAZ BuscaValor;
+      |SI FSalida = 0; |Y nPos > nIniIva; |Y nPos < nFinIva;
+         #capcem02#0 = aValor;
+         |LEE 000#capcem02.=;
+         |SI FSalida ! 0;
+            #capcem02#0 = aValor;
+            #capcem02#1 = "I";
+            |GRABA 020#capcem02.c;
+         |FINSI;
+         #caw00101#8 = aValor;
+      |FINSI;
+      aTag = "TaxRate"; |HAZ BuscaValor; |SI nEstado < 0; nEstado = FSalida; |FINSI;
+      |SI FSalida = 0; #caw00101#3 = aValor; |FINSI;
+      aTag = "Amount"; |HAZ BuscaValor;
+      |SI FSalida = 0; |Y nPos > nIniIva; |Y nPos < nFinIva;
+         |SI nSwAbono = 0;
+            #caw00101#4 = aValor;
+         |SINO;
+            nCalc = aValor; nCalc = -nCalc;
+            #caw00101#4 = nCalc;
+         |FINSI;
+         |SI nEstado < 0; nEstado = FSalida; |FINSI;
+      |FINSI;
+      |SI nEstado ] 0; |GRABA 020#caw00101.a; |FINSI;
+   |FINSI;
+
+   |SI nSwLeeImp = 1;
+      aAlfa1 = aAlfa - "</RevenueAccount>";
+      |SI FSalida ! 0;
+         |GRABA 020#caw00101.a;
+         nNumBase = nNumBase + 1;
+         nSwLeeBas = 0;
+      |FINSI;
+
+      aAlfa1 = aAlfa - "</TaxAccount>";
+      |SI FSalida ! 0;
+         |GRABA 020#caw00101.a;
+         nNumIva = nNumIva + 1;
+         nSwLeeIva = 0;
+      |FINSI;
+   |FINSI;
+
+   aAlfa1 = aAlfa - "</CompressedCrossEntries>";
+   |SI FSalida ! 0;
+      nSwLeeImp = 0; nSwLeeBas = 0; nSwLeeIva = 0;
+   |FINSI;
+
+   aAlfa1 = aAlfa - "</Invoice>";
+   |SI FSalida ! 0;
+      nSwLeeBas = 0; nSwLeeIva = 0;
+      nSwLeeFac = 0;
+      |GRABA 020#caw00100.a;
+
+      aAlfa1 = aAlfa - "<Invoice ";
+      |SI FSalida ! 0;
+         nSwLeeFac = 1; nNumBase = 1; nNumIva = 1;
+         nSwAbono  = 0;
+      |FINSI;
+   |FINSI;
+
+   aAlfa1 = aAlfa - "</Credit>";
+   |SI FSalida ! 0;
+      nSwLeeBas = 0; nSwLeeIva = 0;
+      nSwLeeFac = 0;
+      |GRABA 020#caw00100.a;
+
+      aAlfa1 = aAlfa - "<Credit";
+      |SI FSalida ! 0;
+         nSwLeeFac = 1; nNumBase = 1; nNumIva = 1;
+         nSwAbono  = 1;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO RecortaLinea;
+   aReg = aReg - aCRLF;
+   |PARA; |SI FSalida ! 0; |HACIENDO; aReg = aReg - aCRLF; |SIGUE;
+   aReg = aReg - aCR;
+   |PARA; |SI FSalida ! 0; |HACIENDO; aReg = aReg - aCR; |SIGUE;
+   aReg = aReg - aLF;
+   |PARA; |SI FSalida ! 0; |HACIENDO; aReg = aReg - aLF; |SIGUE;
+
+   aAlfa1 = aReg; nPos = 0;
+   aAlfa2 = aAlfa1 % -101; aAlfa3 = "";
+   |PARA nCalc1 = 2; |SI; |HACIENDO nCalc1 = nCalc1 + 1;
+      nCalc = -((nCalc1 * 100) + 1);
+      aAlfa2 = aAlfa1 % nCalc; aAlfa3 = aAlfa2 + aAlfa3; aAlfa3 = aAlfa3 % 0102;
+      |SI aAlfa2 = ">"; nPos = nCalc1; |FINSI;
+      |SI aAlfa3 = "</";
+         |SI nPos ! 0; nCalc1 = nPos; |SAL; |FINSI;
+      |FINSI;
+   |SIGUE;
+   nCalc1 = nCalc1 - 1;
+   aAlfa = aReg % 0; nCalc = aAlfa; nCalc = nCalc - nCalc1;
+
+   aAlfa = aReg; aAlfa2 = "";
+   |PARA; |SI nCalc > 99; |HACIENDO;
+      aAlfa1 = aAlfa % 0199; aAlfa2 = aAlfa2 + aAlfa1; aAlfa = aAlfa - aAlfa1;
+      nCalc = nCalc - 99;
+   |SIGUE;
+   nCalc = nCalc + 100;
+   aAlfa2 = aAlfa2 + (aAlfa % nCalc);
+   aRegSob = aReg - aAlfa2; aReg = aAlfa2;
+
+   aAlfa = aRegSob % 0; nSwLen = aAlfa;
+   nSwLen = nLongReg - nSwLen;
+|FPRC;
+
+|PROCESO LeeDatos;
+   aAlfa = aReg % 0; nCalc = aAlfa; nSwLen = nLongReg - nCalc;
+   |PARA; |SI nCalc < nLongReg; |HACIENDO;
+      FSalida = 0; nContLinBlanco = 10;
+      |PARA; |SI FSalida = 0; |HACIENDO;
+         |XLEE nHandle, nSwLen, aAlfa;
+         |SI FSalida = 0; nContLinBlanco = nContLinBlanco - 1; |FINSI;
+         |SI nContLinBlanco = 0; |SAL; |FINSI;
+      |SIGUE;
+      aReg = aReg + aAlfa;
+      |SI nContLinBlanco = 0; |SAL; |FINSI;
+
+      |HAZ FiltraBlancos;
+      aAlfa = aReg % 0; nCalc = aAlfa; nSwLen = nLongReg - nCalc;
+   |SIGUE;
+|FPRC;
+
+|PROCESO FiltraBlancos;
+   nSw = 0;
+   aAlfa = aReg; aAlfa2 = "";
+   |PARA; |SI aAlfa ! ""; |HACIENDO;
+      aAlfa1 = aAlfa % 0101;
+      aAlfa = aAlfa - aAlfa1;
+
+      |SI aAlfa1 = aCR; |O aAlfa1 = aLF; |O aAlfa1 = aTab; aAlfa1 = ""; |FINSI;
+
+      |SI aAlfa1 = "<"; |Y nSw = 0; nSw = 1; |FINSI;
+      |SI aAlfa1 = aComillas; |Y nSw = 0; nSw = 1; |FINSI;
+      |SI aAlfa1 = " "; |Y nSw = 1;
+         nSw = 2; nContSpaces = 0;
+      |FINSI;
+      |SI nSw = 2;
+         |SI aAlfa1 = " ";
+            nContSpaces = nContSpaces + 1;
+            |SI nContSpaces > 3; aAlfa1 = ""; |FINSI;
+         |SINO;
+            nSw = 0;
+         |FINSI;
+      |FINSI;
+      aAlfa2 = aAlfa2 + aAlfa1;
+   |SIGUE;
+   aReg = aAlfa2;
+|FPRC;
+
+|PROCESO RevisaCuentas;
+   aAlfa = #capcem02#2; |QBF aAlfa;
+   |SI aAlfa = "";
+      #caw00104#0 = #capcem02#0;
+      |LEE 000#caw00104.=;
+      |SI FSalida ! 0;
+         |DDEFECTO #caw00104;
+         #caw00104#0 = #capcem02#0;
+         #caw00104#1 = #capcem02#1;
+         #caw00104#2 = #capcem02#2;
+         |GRABA 020#caw00104.c;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RevisaCuentas;
+#capcem02#1;
+;
+INICIO;
+FINAL;
+;
+NULL, RevisaCuentas;
+|FIN;
+
+|RUTINA inf;
+   #caw00104#0 = "          ";
+|FRUT;
+
+|RUTINA sup;
+   #caw00104#0 = "zzzzzzzzzz";
+|FRUT;
+
+|PROCESO VuelcaCuentas;
+   #capcem02#0 = #caw00104#0;
+   |LEE 101#capcem02.=;
+   |SI FSalida = 0;
+      #capcem02#2 = #caw00104#2;
+      |GRABA 020#capcem02.a; |LIBERA #capcem02;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE VuelcaCuentas;
+#caw00104#1;
+;
+INICIO;
+FINAL;
+;
+NULL, VuelcaCuentas;
+|FIN;
+
+|PROCESO RevisaResultados;
+   nSwErr = 0;
+
+   aAlfa = #caw00100#1; |QBF aAlfa;
+   |SI aAlfa = "";
+      eaTitErr = " La factura " + #caw00100#0; |QBF eaTitErr;
+      eaTitErr = eaTitErr + " tiene el codigo de cliente vacio.";
+      nSwErr = 1;
+   |FINSI;
+
+   #capcem01#0 = #caw00100#1;
+   |LEE 000#capcem01.=;
+   |SI FSalida ! 0;
+      |SI nSwErr = 0;
+         eaTitErr = " La factura " + #caw00100#0; |QBF eaTitErr;
+         eaTitErr = eaTitErr + " tiene un codigo de cliente que no existe en el mantenimiento.";
+         nSwErr = 1;
+      |FINSI;
+   |FINSI;
+
+   aAlfa = #capcem01#8; |QBF aAlfa;
+   |SI aAlfa = "";
+      |SI nSwErr = 0;
+         eaTitErr = " El cliente " + #capcem01#8 + " (codigo " + #capcem01#0; |QBF eaTitErr;
+         eaTitErr = eaTitErr + " factura " + #caw00100#0; |QBF eaTitErr;
+         eaTitErr = eaTitErr + ") tiene el campo NIF/CIF vacio.";
+         nSwErr = 1;
+      |FINSI;
+   |FINSI;
+
+   |SI #capcem01#11 = 0;
+      |SI nSwErr = 0;
+         eaTitErr = " El cliente " + #capcem01#8 + " (codigo " + #capcem01#0; |QBF eaTitErr;
+         eaTitErr = eaTitErr + " factura " + #caw00100#0; |QBF eaTitErr;
+         eaTitErr = eaTitErr + ") tiene el campo concepto contable vacio.";
+         nSwErr = 1;
+      |FINSI;
+   |FINSI;
+
+   |SI nSwErr = 1;
+      |SI nSwImp = 0;
+         |IMPRE 0;
+         |SI FSalida = 0;
+            |INFOR "capcez01";
+            |SI FSalida = 0;
+               nSwImp = 1;
+            |SINO;
+               |MENAV "    Informe no encontrado";
+               |FINIMP;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |PRINT;
+      nSwError = 1;
+   |FINSI;
+
+|FPRC;
+
+|DEFBUCLE RevisaResultados;
+#caw00100#1;
+;
+INICIO;
+FINAL;
+;
+NULL, RevisaResultados;
+|FIN;
+
+|PROCESO PideLibro;
+   |PUSHV 0501 2380;
+   |PINPA #0#caw00105; |PINDA #0#caw00105;
+   |ENDATOS #1#caw00105;
+   |SI FSalida = 0;
+      enLibro = #caw00105#0;
+   |FINSI;
+   |POPV;
+|FPRC;
+
+|PROCESO BuscaNumero;
+   |ABRE #caivaasi;
+   |LEE 000#caivaasi.p;
+   |SI FSalida ! 0; |DDEFECTO #caivaasi; |FINSI;
+   |CIERRA #caivaasi;
+
+   |SI #caivaasi#44 = "N";
+       #calibros#0 = #caintiva#0;
+       |LEE 101#calibros.=;
+       |SI FSalida = 0;
+           NumFactura  = #calibros#4;
+           #calibros#4 = #calibros#4 + #calibros#3;
+           |GRABA 020#calibros.a;
+       |FINSI;
+       |LIBERA #calibros;
+   |SINO;
+       |ABRE #caivases;
+       #caivases#0 = #cainliva#26;
+       #caivases#1 = "R";
+       |LEE 101#caivases.=;
+       |SI FSalida = 0;
+           NumFactura = #caivases#3;
+           #caivases#3 = #caivases#3 + #caivases#4;
+           |GRABA 020#caivases.a;
+       |FINSI;
+       |LIBERA #caivases;
+       |CIERRA #caivases;
+   |FINSI;
+|FPRC;
+
+|PROCESO BuscaNivel;
+   aLong = aAlfa % 0; nLong = aLong;
+   nNivel = 0;
+   |SI nLong > 0;
+      |SI nLong = #48#14; nNivel = 1; |FINSI;
+      |SI nLong = #48#15; nNivel = 2; |FINSI;
+      |SI nLong = #48#16; nNivel = 3; |FINSI;
+      |SI nLong = #48#17; nNivel = 4; |FINSI;
+      |SI nLong = #48#18; nNivel = 5; |FINSI;
+      |SI nLong = #48#19; nNivel = 6; |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO GrabaBases;
+   |REPON_DATOS #cainliva; |SALVA_DATOS #cainliva;
+
+   #cainliva#3 = #caw00101#1;
+
+
+   #dsmom030#0 = #caw00101#6;
+   |LEE 000#dsmom030.=;
+   |SI FSalida ! 0; |DDEFECTO #dsmom030; |FINSI;
+
+   #cainliva#5 = #capcem01#10; aAlfa = #cainliva#5; |HAZ BuscaNivel;
+   #cainliva#65 = #capcem01#10;
+   #cainliva#6 = nNivel;
+   #cainliva#7 = #caw00101#6;
+   #cainliva#8 = #dsmom030#1;
+   #cainliva#9 = 1;
+
+   #cacuiv2l#0  = "R";
+   aAlfa = #cainliva#4; |QBF aAlfa;
+   aAlfa = aAlfa % -104; nAnyo = aAlfa;
+   #cacuiv2l#12 = nAnyo;
+   #cacuiv2l#13 = "01.01.0000";
+   #cacuiv2l#01 = 1;
+   |LEE 000#cacuiv2l.];
+   |PARA; |SI FSalida = 0; |Y #cacuiv2l#12 = nAnyo; |HACIENDO;
+      |SI #cacuiv2l#13 < #cainliva#4;
+         |SI #cacuiv2l#2 = #caw00101#3;
+            fFecha = #cacuiv2l#13; nTipoIVA = #cacuiv2l#1;
+         |FINSI;
+      |SINO;
+         |SAL;
+      |FINSI;
+
+      |LEE 000#cacuiv2l.s;
+   |SIGUE;
+
+   #cainliva#10 = nTipoIVA;
+   #cainliva#12 = #caw00101#2;
+   #cainliva#13 = #caw00101#3;
+   #cainliva#14 = #caw00101#4;
+
+   #capcem02#0 = #caw00101#7;
+   |LEE 000#capcem02.=;
+   |SI FSalida ! 0; |DDEFECTO #capcem02; |FINSI;
+   #cainliva#17 = #capcem02#2; aAlfa = #cainliva#17; |HAZ BuscaNivel;
+   #cainliva#18 = nNivel;
+
+   #capcem02#0 = #caw00101#8;
+   |LEE 000#capcem02.=;
+   |SI FSalida ! 0; |DDEFECTO #capcem02; |FINSI;
+
+   #cainliva#20 = #capcem02#2; aAlfa = #cainliva#20; |HAZ BuscaNivel;
+   #cainliva#21 = nNivel;
+   #cainliva#27 = #capcem01#1;
+   #cainliva#29 = #caw00100#6;
+
+  || #cainliva#30 = #capcem01#8;
+   #caclipro#23 = "C";
+   #caclipro#10 = #cainliva#5;
+   |LEE 000#caclipro.=;
+   |SI FSalida ! 0; |DDEFECTO #caclipro; |FINSI;
+   #cainliva#30 = #caclipro#9;
+
+   aAlfa = #cainliva#4; |QBF aAlfa;
+   aAlfa = aAlfa % 0402;
+   #cainliva#31 = aAlfa;
+   #cainliva#38 = "R";
+   #cainliva#50 = "R";
+   #cainliva#53 = #caw00101#0;
+   #cainliva#54 = #dsmom030#72;
+   #cainliva#62 = "X";
+   #cainliva#67 = #cainliva#29;
+   |GRABA 020#cainliva.n;
+|FPRC;
+
+|DEFBUCLE GrabaBases;
+#caw00101#1;
+;
+#caw00100#0, 01;
+#caw00100#0, 99;
+;
+NULL, GrabaBases;
+|FIN;
+
+|PROCESO RellenaEntradaIva;
+   #capcem01#0 = #caw00100#1;
+   |LEE 000#capcem01.=;
+   |SI FSalida ! 0; |DDEFECTO #capcem01; |FINSI;
+
+   |HAZ BuscaNumero;
+
+   |DDEFECTO #cainliva;
+   #cainliva#0 = enLibro;
+   #cainliva#1 = nLinea;    nLinea = nLinea    + 1;
+   #cainliva#2 = NumFactura;
+   #cainliva#4 = #caw00100#2;
+   |SALVA_DATOS #cainliva;
+   |BUCLE GrabaBases;
+   |REPON_DATOS #cainliva;
+|FPRC;
+
+|DEFBUCLE RellenaEntradaIva;
+#caw00100#1;
+;
+INICIO;
+FINAL;
+;
+NULL, RellenaEntradaIva;
+|FIN;
+
+|PROGRAMA;
+   |ABRE #capcez01;
+   |LEE 000#capcez01.p;
+   |SI FSalida ! 0; |DDEFECTO #capcez01; |GRABA 020#capcez01.b; |FINSI;
+   #caw00102#0 = #capcez01#0;
+
+   aCRLF   = &13 + &10;
+   aCR     = &13;
+   aLF     = &10;
+   aTab    = &9;
+   aComillas = &34;
+   nLongReg   = 220;
+
+   |PUSHV 0501 2380;
+
+   |PINPA #0#caw00102; |PINDA #0#caw00102;
+|ET VuelveAPedir;
+   |ENDATOS #1#caw00102;
+   |SI FSalida = 0;
+      aAlfa = #caw00102#0; |QBF aAlfa;
+      |SI aAlfa = "";
+         |MENAV "    Proceso cancelado"; |POPV; |ACABA;
+      |FINSI;
+      #capcez01#0 = #caw00102#0;
+
+      |XABRE "E", aAlfa, nHandle;
+      |SI FSalida < 0;
+         |XABRE "CE", aAlfa, nHandle;
+         |SI FSalida < 0;
+            |MENAV "    Fichero inexistente";
+            |VETE VuelveAPedir;
+         |SINO;
+            || Lo copio a una ubicacion del servidor
+            aAlfa = #caw00102#0; |QBF aAlfa;
+            aAlfa1 = aAlfa % -101; aAlfa = aAlfa % -299;
+            |PARA; |SI aAlfa1 ! "/"; |Y aAlfa1 ! "\"; |HACIENDO;
+               aAlfa2 = aAlfa1 + aAlfa2;
+               aAlfa1 = aAlfa % -101; aAlfa = aAlfa % -299;
+            |SIGUE;
+
+            |DBASE aAlfa; |QBF aAlfa;
+            aAlfa = aAlfa + "tmp/"; aDestino = aAlfa + aAlfa2;
+            aOrigen = #caw00102#0; |QBF aOrigen;
+            aIP = ""; |IP_REMOTO aIP;
+            |SI aIP = "";
+               |COPIA_FICHERO aOrigen, aDestino;
+            |SINO;
+               |RECIBE_FICHERO aOrigen, aDestino;
+            |FINSI;
+            #caw00102#0 = aDestino; |PINTA #caw00102#0;
+         |FINSI;
+      |FINSI;
+
+      |GRABA 020#capcez01.a; |LIBERA #capcez01;
+
+      aAlfa = "tfc" + Usuario; |NOME_DAT #caw00100#aAlfa#;
+      aAlfa = "tfl" + Usuario; |NOME_DAT #caw00101#aAlfa#;
+      |DELINDEX #caw00100; |ABRE #caw00100;
+      |DELINDEX #caw00101; |ABRE #caw00101;
+
+      |ABRE #capcem01; |ABRE #capcem02;
+
+      nSw = 0; nSwLen = nLongReg;
+      aAlfa = #caw00102#0; |QBF aAlfa;
+      |XABRE "B", aAlfa, nHandle;
+      |SI FSalida ] 0;
+         |PARA; |SI nContLinBlanco > 0; |HACIENDO;
+            |HAZ LeeDatos; |HAZ RecortaLinea;
+            |HAZ Interpreta;
+
+            aAlfa = aRegSob % 0; nCalc = aAlfa;
+            |SI nCalc > 170;
+               aReg = aRegSob; aRegSob = ""; |HAZ Interpreta;
+               nSwLen = nLongReg;
+            |FINSI;
+
+            aReg = aRegSob; aRegSob = "";
+         |SIGUE;
+         aReg = aRegSob; aRegSob = ""; |HAZ Interpreta;
+         |XCIERRA nHandle;
+
+         aAlfa = "tcl" + Usuario; |NOME_DAT #caw00104#aAlfa#;
+         |DELINDEX #caw00104; |ABRE #caw00104;
+         |BUCLE RevisaCuentas;
+         |LEE 000#caw00104.p;
+         |SI FSalida = 0;
+            |ENTLINEAL #1#caw00104, -1, 2, 22, 1, inf, sup;
+
+            aAlfa = "     " + &191 + " Continuar con los cambios ?";
+            |CONFI aAlfa;
+            |SI FSalida = 0; |BUCLE VuelcaCuentas; |FINSI;
+         |FINSI;
+         |CIERRA #caw00104; |DELINDEX #caw00104;
+
+         nSwError = 0; nSwImp = 0;
+         |BUCLE RevisaResultados;
+         |SI nSwImp = 1;
+            |MENAV "    Se han encontrado errores. El proceso no continuar ";
+
+            |PIEINF; |FININF;
+            |FINIMP;
+         |SINO;
+            ||  Rellenar los campos de la entrada del registro de iva
+            |ABRE #caintiva; |ABRE #calibros; |ABRE #dsmom030;
+            |ABRE #cacuiv2l; |ABRE #caintiva; |ABRE #cainliva;
+            |ABRE #caclipro;
+
+            |SI enLibro < 0; |HAZ PideLibro; |FINSI;
+
+            #calibros#0 = enLibro;
+            |LEE 000#calibros.=;
+            |SI FSalida ! 0; |DDEFECTO #calibros; |FINSI;
+
+            |DDEFECTO #caintiva;
+            #caintiva#0 = enLibro;
+            |LEE 000#caintiva.=;
+            |SI FSalida ! 0;
+               #caintiva#0 = enLibro;
+               #caintiva#1 = #calibros#1;
+               |GRABA 020#caintiva.c;
+            |FINSI;
+
+            #cainliva#0 = enLibro;
+            #cainliva#1 = 999;
+            |LEE 000#cainliva.];
+            |SI FSalida = 0;
+               |LEE 000#cainliva.a;
+            |SINO;
+               |LEE 000#cainliva.u;
+            |FINSI;
+            |SI FSalida = 0; |Y #cainliva#0 = enLibro;
+               nLinea = #cainliva#1 + 1;
+            |SINO;
+               nLinea = 1;
+            |FINSI;
+            |BUCLE RellenaEntradaIva;
+
+            |CIERRA #caclipro;
+            |CIERRA #cacuiv2l; |CIERRA #caintiva; |CIERRA #cainliva;
+            |CIERRA #dsmom030; |CIERRA #calibros; |CIERRA #caintiva;
+         |FINSI;
+      |FINSI;
+      |CIERRA #capcem01; |CIERRA #capcem02;
+      |CIERRA #caw00101; |DELINDEX #caw00101;
+      |CIERRA #caw00100; |DELINDEX #caw00100;
+   |SINO;
+      |MENAV "    Proceso cancelado";
+   |FINSI;
+   |POPV;
+
+   |CIERRA #capcez01;
+|FPRO;
+*/

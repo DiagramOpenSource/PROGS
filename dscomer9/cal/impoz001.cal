@@ -1,0 +1,428 @@
+|FICHEROS;
+     impoz001 #0;
+
+     psioa001 #1;
+
+     otrodef@ #999;
+
+     agifa104 #104;      ||Pedidos Vta
+     agifa010 #10;       ||Albaranes
+     agifa084 #84;       ||Facturas directas
+
+     impow001;      ||Ficheros a importar
+|FIN;
+
+|VARIABLES;
+     nUltimo = 0;
+     aUsuario = "";
+     nLinea = 0;
+     aCien = "";
+     nEmpErp = 0;
+     aAplicaErp = "";
+     aDefErp = "";
+     aClaveErp = "";
+
+     nExiste = 0;
+     aMensaje = "";
+     aRespuesta = "";
+     aPath = "";
+     aFichero = "";
+     aLetra = "";
+     aNombre = "";
+     aLong = "";
+     nLong = 0;
+     nConta = 0;
+     nCampo = 0;
+     aValor = "";
+     aTipoDoc = "";
+     aSerie = "";
+     nNumero = 0;
+     aNumero = "";
+
+     aErp = "";
+     nSwCargaDef = 0;
+     aBass = "";
+     aPathErp = "";
+
+     nSwEsta = 0;
+     aOrigen = "";
+     aDestino = "";
+     aPathYa = "";
+
+     aComodin = "";
+     nComodNum = 0;
+     aDirDSERP = "";
+     aDirDocs = "";
+     nNumAnt = 0;
+     aExtension = "";
+     aSoloNombre = "";
+|FIN;
+
+|PROCESO CargaDef;
+     |DBASS aBass;
+     |QBF aBass;
+     aErp = aBass + "dserp/def/dserpm09.mas";
+     |XABRE "E", aErp, 0;
+     |SI FSalida ] 0;
+          |CARGA_DEF aErp, otrodef@;
+          |SI FSalida = 0;
+                 aPathErp = aBass + "dserp/fich/";
+                 |PATH_DAT #999 aPathErp;
+                 nSwCargaDef = 1;
+                 |ABRE #otrodef@;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO impow001;
+     aFichero = #impow001#0;
+     |QBF aFichero;
+
+/*
+     aMensaje = "0000Procesar " + aFichero;
+     |MENAV aMensaje;
+*/
+
+     |HAZ ImportaFichero;
+
+     |BORRA 020#impow001.a;
+|FPRC;
+
+|DEFBUCLE impow001;
+ #impow001#1;
+ ;
+ INICIO;
+ FINAL;
+ be;
+ NULL, impow001;
+|FIN;
+
+|PROCESO Principal;
+     aUsuario = Usuario % 810;
+
+     aPath = #impoz001#4;
+     |QBF aPath;
+
+     |SI aPath = "";
+          aMensaje = "0000Directorio de importacion vacio. Importacion cancelada";
+          |MENAV aMensaje;
+     |FINSI;
+
+     aLetra = aPath % -101;
+     |SI aLetra ! "/"; |Y aLetra ! "\";
+          aPath = aPath + "/";
+     |FINSI;
+
+     aPathYa = aPath + "yaProcesados/";
+     |SI #impoz001#3 = "C";
+          |RMKDIR aPathYa;
+     |SINO;
+          |MKDIR aPathYa;
+     |FINSI;
+
+     |HAZ CargaDef;
+
+     |DELINDEX #impow001;
+     |ABRE #impow001;
+
+     aFichero = aPath + "*.pdf";
+     |HAZ LeeDirPDir;
+
+     aFichero = aPath + "*.PDF";
+     |HAZ LeeDirPDir;
+
+     |CIERRA #impow001;
+
+     |BUCLE impow001;
+
+     |SI nSwCargaDef = 1;
+          |CIERRA #otrodef@;
+          |DESCARGA_DEF #otrodef@;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeDirPDir;
+     |SI #impoz001#3 = "C";
+          |R_PDIR aFichero;
+     |SINO;
+          |_PDIR aFichero;
+     |FINSI;
+     |PARA; |SI; |HACIENDO;
+          |SI FSalida ! 0; |SAL; |FINSI;
+
+          |DDEFECTO #impow001;
+          |LEE 000#impow001.u;
+          |SI FSalida = 0;
+               nUltimo = #impow001#1 + 1;
+          |SINO;
+               nUltimo = 1;
+          |FINSI;
+          |DDEFECTO #impow001;
+          #impow001#1 = nUltimo;
+          |LEE 101#impow001.=;
+          |SI FSalida ! 0;
+               |SI #impoz001#3 = "C";         ||ESTAMOS EN WINDOWS
+                                             ||Lo pasamos a mayusculas
+                    aFichero = aFichero > aFichero;
+               |FINSI;
+
+               #impow001#0 = aFichero;
+               |GRABA 020#impow001.n;
+          |FINSI;
+          |LIBERA #impow001;
+
+          |SI #impoz001#3 = "C";
+               |R_SDIR aFichero;
+          |SINO;
+               |_SDIR aFichero;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO SacaNombre;
+     aNombre = "";
+     aLong = aFichero % A0;
+     nLong = aLong;
+     |PARA nConta = nLong; |SI nConta ] 1; |HACIENDO nConta = nConta - 1;
+          nCampo = (100 * nConta) + 1;
+          aValor = aFichero % nCampo;
+          |SI aValor ! "/"; |Y aValor ! "\";
+               aNombre = aValor + aNombre;
+          |SINO;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO SacaDocumento;
+     aLong = aNombre % A0;
+     nLong = aLong;
+     |PARA nConta = 1; |SI nConta [ nLong; |HACIENDO nConta = nConta + 1;
+          nCampo = (100 * nConta) + 1;
+          aValor = aNombre % nCampo;
+          |SI nConta = 1;
+               aTipoDoc = aValor;
+          |SINO;
+               |SI nConta < 7;
+                    |SI aValor = "_";
+                         aValor = "";
+                    |FINSI;
+                    aSerie = aSerie + aValor;
+               |SINO;
+                    |SI nConta < 13;
+                         aNumero = aNumero + aValor;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+     |QBF aSerie;
+     aSerie = (aSerie + "     ") % 105;
+
+     nNumero = aNumero;
+|FPRC;
+
+|PROCESO ImportaFichero;
+     |HAZ SacaNombre;
+
+     aTipoDoc = "";
+     aSerie = "";
+     aNumero = "";
+     |HAZ SacaDocumento;
+
+     |SI aTipoDoc ! "P"; |Y aTipoDoc ! "A"; |Y aTipoDoc ! "F";
+          |ACABA;
+     |FINSI;
+
+     nSwEsta = 0;
+     |SI aTipoDoc = "P";
+          |ABRE #agifa104;
+          #agifa104#25 = aSerie;
+          #agifa104#0 = nNumero;
+          |LEE 000#agifa104.=;
+          |SI FSalida ! 0;
+               aMensaje = "0000El Pedido [" + aSerie + "/" + aNumero + "] no existe en el sistema";
+               |MENAV aMensaje;
+
+               |HAZ MueveAProcesados;
+          |SINO;
+               nSwEsta = 1;
+          |FINSI;
+          |CIERRA #agifa104;
+     |FINSI;
+
+     |SI aTipoDoc = "A";
+          |ABRE #agifa010;
+          #agifa010#52 = aSerie;
+          #agifa010#0 = nNumero;
+          |LEE 000#agifa010.=;
+          |SI FSalida ! 0;
+               aMensaje = "0000El Albaran [" + aSerie + "/" + aNumero + "] no existe en el sistema";
+               |MENAV aMensaje;
+
+               |HAZ MueveAProcesados;
+          |SINO;
+               nSwEsta = 1;
+          |FINSI;
+          |CIERRA #agifa010;
+     |FINSI;
+
+     |SI aTipoDoc = "F";
+          |ABRE #agifa084;
+          #agifa084#48 = aSerie;
+          #agifa084#0 = nNumero;
+          |LEE 000#agifa084.=;
+          |SI FSalida ! 0;
+               aMensaje = "0000La Factura Directa [" + aSerie + "/" + aNumero + "] no existe en el sistema";
+               |MENAV aMensaje;
+
+               |HAZ MueveAProcesados;
+          |SINO;
+               nSwEsta = 1;
+          |FINSI;
+          |CIERRA #agifa084;
+     |FINSI;
+
+     |SI nSwEsta = 0; |ACABA; |FINSI;
+
+
+     aCien = " " * 100;
+     nEmpErp = #48#0;
+     aAplicaErp = "dscomer9";
+     |SI aTipoDoc = "P";
+          aDefErp = "agifa104";
+     |FINSI;
+     |SI aTipoDoc = "A";
+          aDefErp = "agifa010";
+     |FINSI;
+     |SI aTipoDoc = "F";
+          aDefErp = "agifa084";
+     |FINSI;
+
+     aClaveErp = aSerie + ("000000" + nNumero) % -106;
+     |QBF aClaveErp;
+     aClaveErp = (aClaveErp + aCien) % 199;
+     aClaveErp = aClaveErp + " ";
+
+
+     |DDEFECTO #otrodef@;
+     #otrodef@#7 = aAplicaErp;
+     #otrodef@#6 = nEmpErp;
+     #otrodef@#0 = aDefErp;
+     #otrodef@#1 = aClaveErp;
+     #otrodef@#2 = 99;
+     |LEE 000#otrodef@.];
+     |SI FSalida = 0;
+          |LEE 000#otrodef@.a;
+     |SINO;
+          |LEE 000#otrodef@.u;
+     |FINSI;
+     |SI FSalida = 0; |Y #otrodef@#7 = aAplicaErp; |Y #otrodef@#6 = nEmpErp;
+      |Y #otrodef@#0 = aDefErp; |Y #otrodef@#1 = aClaveErp;
+          nLinea = #otrodef@#2 + 1;
+          |SI nLinea = 100;
+               nLinea = 1;
+          |FINSI;
+     |SINO;
+          nLinea = 1;
+     |FINSI;
+     |DDEFECTO #otrodef@;
+     #otrodef@#7 = aAplicaErp;
+     #otrodef@#6 = nEmpErp;
+     #otrodef@#0 = aDefErp;
+     #otrodef@#1 = aClaveErp;
+     #otrodef@#2 = nLinea;
+     |LEE 101#otrodef@.=;
+     |SI FSalida ! 0; |GRABA 020#otrodef@.b; |FINSI;
+
+     #otrodef@#4 = aUsuario;
+
+     aExtension = aNombre % -103;
+     |HAZ NombreFic;
+     #otrodef@#3 = aSoloNombre;
+
+     ||Dime Nombre del fichero  OK.
+
+     |GRABA 020#otrodef@.a;
+     |LIBERA #otrodef@;
+
+     ||Copia el documento a documentos
+     aOrigen = aFichero;
+     aDestino = aDirDocs + "/" + aSoloNombre;
+
+     |SI #impoz001#3 = "C";
+          |RECIBE_FICHERO aOrigen, aDestino;
+     |SINO;
+          |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+     |HAZ MueveAProcesados;
+|FPRC;
+
+|PROCESO NombreFic;
+     |DBASS aBass;
+     |QBF aBass;
+     aDirDSERP = aBass + "dserp/";
+     aDirDocs = aDirDSERP + "documentos";
+     |MKDIR aDirDocs;
+
+     aDestino = aDirDocs + "/*";
+     |_PDIR aDestino;
+     nNumAnt = 0;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+        aComodin  = aDestino % -509;
+        nComodNum = aComodin;
+        |SI nComodNum > nNumAnt;
+            nNumAnt = nComodNum;
+        |FINSI;
+        |_SDIR aDestino;
+     |SIGUE;
+     aComodin = aDestino % -101;
+
+     nComodNum = nNumAnt;
+     |SI aComodin = "*";
+        aDestino = aDirDocs + "/DOCUMENTO000000000." + aExtension;
+        aSoloNombre = "DOCUMENTO000000000." + aExtension;
+     |SINO;
+        nComodNum = nComodNum + 1;
+        aDestino  = aDirDocs + "/DOCUMENTO" + (("000000000" + nComodNum) % -109) + "." + aExtension;
+        aSoloNombre = "DOCUMENTO" + (("000000000" + nComodNum) % -109) + "." + aExtension;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO MueveAProcesados;
+     ||aPathYa
+
+     aOrigen = aFichero;
+     aDestino = aPathYa + aNombre;
+
+     |SI #impoz001#3 = "C";
+          |RRENOMBRA_FICHERO aOrigen, aDestino;
+     |SINO;
+          |RENOMBRA_FICHERO aOrigen, aDestino;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |ABRE #0;
+     |DDEFECTO #0;
+     |LEE 101#0p;
+     nExiste = FSalida;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          aRespuesta = #impoz001#5;
+          #impoz001#5 = "NO";
+          |SI nExiste = 0;
+               |GRABA 020#0a;
+          |SINO;
+               |GRABA 020#0n;
+          |FINSI;
+          |SI aRespuesta = "SI";
+              |HAZ Principal;
+          |FINSI;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+|FPRO;

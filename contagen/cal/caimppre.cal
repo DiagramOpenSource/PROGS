@@ -1,0 +1,294 @@
+|FICHEROS;
+   caimppre #0;    || def de la importacion
+   cacuepre #1;    || fichas presupuestarias
+   cacuenta #3;    || plan contable
+   canempre #30;
+|FIN;
+
+|VARIABLES;
+   alfa1 = "";
+   alfa2 = "";
+   nume1 = 0;
+   nume2 = 0;
+   nume3 = 0;
+   nume4 = 0;
+   fech1 = @;
+   fech2 = @;
+   FEstado = 0;
+   dir_empresa = "";
+   emp_act = 0;
+   eje_act = 0;
+   nom_act = "";
+   seleccio = 0;
+   sw = 0;
+   factor = 0;
+   &r_emp = 0;
+   &r_per = 0;
+   &aparam = "";
+   swsuma = 0;
+
+   nCalc    = 0;
+   nDesv    = 0;
+   nSigno   = 0;
+   nPara1   = 0;
+
+|FIN;
+
+|INCLUYE dscont_i;
+
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO hasnivel;
+   |SI #caimppre#5 > #caimppre#9;
+      |MENAV "    Error en Nivel !!! ";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO antesque;  |TIPO 8;
+   aparam = PARAMETRO;
+   |QBF aparam;
+   |SI aparam = "fech";
+      |NOME_DAT #3 "cabalano";
+      |NOME_DAT #1 "cabalpre";
+   |FINSI;
+
+   |HAZ inicio;
+   nom_act = #canempre#1;
+   emp_act = #canempre#2;
+   eje_act = #canempre#3;
+
+   aMonedaA = eaMoneda;
+|FPRC;
+
+
+|PROCESO cuenta; |TIPO 0;
+     eaCuenta = #caimppre#Campo#;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #caimppre#Campo# = eaCuenta;
+     |PINTA #caimppre#Campo#;
+|FPRC;
+
+|PROCESO empresa; |TIPO 0;
+   |SI FSalida ! 2;
+      |ABRE #30;
+      #canempre#2 = #caimppre#0;
+      #canempre#3 = #caimppre#1;
+      |LEE 001#30=;
+      |SI FSalida ! 0;
+         |MENAV "    Empresa Inexistente ...";
+         |CIERRA #30;
+         |ERROR;
+         |ACABA;
+      |FINSI;
+      |SI #canempre#13 ! dig3;  |O #canempre#14 ! dig4;  |O #canempre#15 ! dig5;
+         |O #canempre#16 ! dig6;  |O #canempre#17 ! dig7;
+         |O #canempre#18 ! dig8;  |O #canempre#19 ! dig9;
+         |MENAV "     NO CORRESPONDEN LOS NIVELES";
+      |FINSI;
+      |ATRI I;
+      |PINTA 0811, #canempre#1;
+      |ATRI 0;
+      |CIERRA #30;
+      aMonedaC = #canempre#28;
+   |FINSI;
+|FPRC;
+
+|PROCESO consulta;
+   |SI FSalida ! 9;  |ACABA;  |FINSI;
+   |SUB_EJECUTA "caconemp";
+   |ERROR;
+   |SI Campo = 0;
+      #caimppre#0 = r_emp;
+      #caimppre#1 = r_per;
+      |PTEC 802;
+      |PTEC 802;
+   |FINSI;
+|FPRC;
+
+____________________________________/ CALCULOS DE IMPORTACION
+|PROCESO nivel;
+   sw = 0;
+   alfa1 = #cacuenta#0;
+   |QBF alfa1;
+   alfa2 = alfa1 % 0;
+   nume1 = alfa2;
+   |SI dig4 = nume1;  sw = 1;  |FINSI;
+   |SI dig5 = nume1;  sw = 2;  |FINSI;
+   |SI dig6 = nume1;  sw = 3;  |FINSI;
+   |SI dig7 = nume1;  sw = 4;  |FINSI;
+   |SI dig8 = nume1;  sw = 5;  |FINSI;
+   |SI dig9 = nume1;  sw = 6;  |FINSI;
+|FPRC;
+
+|PROCESO lee_cuentas1;
+   #caimppre#4 = #cacuenta#0; |PINTA #caimppre#4;
+   |HAZ nivel;
+   |SI sw = 0;                   |ACABA; |FINSI;
+   |SI sw > #caimppre#9;                |ACABA; |FINSI;
+   |SI sw < #caimppre#5; |Y #cacuenta#3 = "N"; |ACABA; |FINSI;
+
+   swsuma = 0;
+   |SI #caimppre#11 = "S";
+      swsuma = 1;
+   |SINO;
+      nume2 = 9;  |SI #caimppre#6 = "N"; nume2 = 12; |FINSI;
+      nume3 = 49; |SI #caimppre#7 = "N"; nume3 = 46; |FINSI;
+      |PARA nume1 = nume2; |SI nume1 [ nume3; |HACIENDO nume1 = nume1 + 1;
+         |SI #cacuenta#nume1# ! 0;
+             swsuma = 1;
+             |SAL;
+         |FINSI;
+      |SIGUE;
+   |FINSI;
+
+   |SI swsuma = 0; |ACABA; |FINSI; || No grabo porque no tiene movimientos
+
+   |DDEFECTO #1;
+   #cacuepre#19 = #caimppre#8;      || agrupacion
+   #cacuepre#00 = #cacuenta#0;      || cuenta
+   #cacuepre#01 = sw;               || nivel
+   |LEE 101#1=;
+   FEstado = FSalida;
+
+   alfa1 = #cacuenta#5;
+   |SI alfa1 = "A"; alfa1 = "D"; |FINSI;
+   |SI alfa1 = "P"; alfa1 = "H"; |FINSI;
+   #cacuepre#2 = alfa1;                         || signo
+
+   || ...........................   |SI #3#53 ] 0;  #1#2 = "D";  |FINSI;
+   || ...........................   |SI #3#53 < 0;  #1#2 = "H";  |FINSI;
+   #cacuepre#03 = "M";                          || tipo mensual
+
+   |SI #cacuepre#02 = "D";  factor =  1;  |FINSI;
+   |SI #cacuepre#02 = "H";  factor = -1;  |FINSI;
+   |SI #caimppre#12 = "S";
+      nDesv = (#caimppre#13 / 100) ! 4; nSigno = 1;
+      |SI #caimppre#14 = "-"; nSigno = -1; |FINSI;
+   |FINSI;
+
+   |SI aMonedaC ! aMonedaA;
+       |PARA nPara1 = 9; |SI nPara1 [ 53; |HACIENDO nPara1 = nPara1 + 1;
+             impMoneda = #cacuenta#nPara1#;
+             |HAZ ElCambioMoneda;
+              #cacuenta#nPara1# = impMoneda;
+       |SIGUE;
+   |FINSI;
+
+   nCalc = #cacuenta#14 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#04 = nCalc;     || enero
+   nCalc = #cacuenta#17 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#05 = nCalc;     || enero
+   nCalc = #cacuenta#20 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#06 = nCalc;     || enero
+   nCalc = #cacuenta#23 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#07 = nCalc;     || enero
+   nCalc = #cacuenta#26 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#08 = nCalc;     || enero
+   nCalc = #cacuenta#29 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#09 = nCalc;     || enero
+   nCalc = #cacuenta#32 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#10 = nCalc;     || enero
+   nCalc = #cacuenta#35 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#11 = nCalc;     || enero
+   nCalc = #cacuenta#38 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#12 = nCalc;     || enero
+   nCalc = #cacuenta#41 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#13 = nCalc;     || enero
+   nCalc = #cacuenta#44 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#14 = nCalc;     || enero
+   nCalc = #cacuenta#47 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+   #cacuepre#15 = nCalc;     || enero
+
+   |SI #caimppre#6 = "S";
+      nCalc = #cacuenta#11 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+      #cacuepre#04 = #cacuepre#04 + nCalc;
+   |FINSI; || apertura
+
+   |SI #caimppre#7 = "S";
+      nCalc = #cacuenta#50 * factor; nCalc = nCalc + (nCalc * (nDesv * nSigno));
+      #cacuepre#15 = #cacuepre#15 + nCalc;
+   |FINSI; || cierre
+
+/*
+   #cacuepre#04 = #cacuenta#14 * factor;     || enero
+   #cacuepre#05 = #cacuenta#17 * factor;     || febrero
+   #cacuepre#06 = #cacuenta#20 * factor;     || marzo
+   #cacuepre#07 = #cacuenta#23 * factor;     || abril
+   #cacuepre#08 = #cacuenta#26 * factor;     || mayo
+   #cacuepre#09 = #cacuenta#29 * factor;     || junio
+   #cacuepre#10 = #cacuenta#32 * factor;     || julio
+   #cacuepre#11 = #cacuenta#35 * factor;     || agosto
+   #cacuepre#12 = #cacuenta#38 * factor;     || septiembre
+   #cacuepre#13 = #cacuenta#41 * factor;     || octubre
+   #cacuepre#14 = #cacuenta#44 * factor;     || noviembre
+   #cacuepre#15 = #cacuenta#47 * factor;     || diciembre
+
+   |SI #caimppre#6 = "S"; #cacuepre#04 = #cacuepre#04 + ( #cacuenta#11 * factor ); |FINSI; || apertura
+   |SI #caimppre#7 = "S"; #cacuepre#15 = #cacuepre#15 + ( #cacuenta#50 * factor ); |FINSI; || cierre
+*/
+
+   #cacuepre#16 = 0;                  || presup. anual
+   |PARA nume1 = 4; |SI nume1 [ 15; |HACIENDO nume1 = nume1 + 1;
+      #cacuepre#16 = #cacuepre#16 + #cacuepre#nume1#;
+   |SIGUE;
+   #cacuepre#17 = #cacuenta#56;              || desde mes
+   #cacuepre#18 = #cacuenta#57;              || hasta mes
+
+   |SI FEstado = 0;  |GRABA 020#1a;  |FINSI;
+   |SI FEstado ! 0;  |GRABA 020#1n;  |FINSI;
+   |LIBERA #1;
+   seleccio = 1;
+|FPRC;
+
+|DEFBUCLE lee_cuentas;
+   #3#1;
+   ;
+   #0#2;
+   #0#3;
+   e;
+   NULL, lee_cuentas1;
+|FIN;
+
+|PROCESO borrar;
+   |BORRA 011#1a;
+   |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE borra_ctas;
+   #1#1;
+   ;
+   #0#8, "            ", 0;
+   #0#8, "zzzzzzzzzzzz", 9;
+   e;
+   NULL, borrar;
+|FIN;
+
+|PROCESO importa; |TIPO 3;
+
+   |DBASE dir_empresa;
+   alfa1 = #caimppre#0;  alfa1 = "00000" + alfa1;  alfa1 = alfa1 % -105;
+   alfa2 = #caimppre#1;
+   dir_empresa = dir_empresa + "fich/" + alfa1 + alfa2 + "/";
+
+   |PATH_DAT #cacuenta #dir_empresa#;
+   |SI #caimppre#10 = "N";
+       |BUCLE borra_ctas;
+   |FINSI;
+
+   |ABRET #1;
+   |BUCLE lee_cuentas;
+   |SI seleccio = 0;
+      |MENAV "    ATENCION!!! Seleccion vacia ...";
+   |FINSI;
+   |CIERRAT #1;
+|FPRC;
+
+|PROCESO Desv;
+   |SI #caimppre#12 = "S";
+      |C_M #caimppre#13, 1, "S"; |C_M #caimppre#14, 1, "S";
+   |SINO;
+      #caimppre#13 = 0; |PINTA #caimppre#13;
+      |C_M #caimppre#13, 1, "N"; |C_M #caimppre#14, 1, "N";
+   |FINSI;
+|FPRC;

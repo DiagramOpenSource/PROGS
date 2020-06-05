@@ -1,0 +1,284 @@
+|FICHEROS;
+     laborn05;           || este def el del lineal
+
+     labregis;
+     nompmail;
+     labornx5;
+|FIN;
+
+|VARIABLES;
+     &eaDirDest  = "";
+     &eaAsunto   = "";
+     &eaTexto    = "";
+     &eaFichero  = "";
+
+     aParam = "";
+     &eaUsuario = "";
+     &eaFecha = "";
+     &eaHora = "";
+     aTipo = "";
+     sw = 0;
+     aAlfa  = "";
+     aAlfa1 = "";
+     FEstado = 0;
+     nMes = 0;
+     &enEmpresa = 0;
+     &enTrabajador = 0;
+     &eaFechaIni = "";
+     &eaFechaFin = "";
+     &enMeses = 0;
+     &enDias = 0;
+     &nLabornet = 0;
+     &nRegistro = 0;
+     &nNroProrr = 0;
+     aUsuarioD = "";
+     aUsuarioH = "";
+     aSiEsX    = "";
+
+     &nEmpExt = 0;
+     &eaVengoDe = "laborn05";
+     &eaEmpresa = "";
+
+     &eaParam       = "";
+     &enFSalida     = 0;
+     &efFecha       = @;
+     &enBorrado     = 0;
+     &enActualizado = 0;
+     &eaEstado      = "";
+     &eaMotiv       = "";
+
+     nCampo = 0;
+     &swMeHeSalido = 0;
+|FIN;
+
+|PROCESO Actualizacion;
+     || a ver aqui que hacemos con la prorroga
+     enEmpresa = #laborn05#5;
+     enTrabajador = #laborn05#6;
+     eaFechaIni = #laborn05#8;
+     eaFechaFin = #laborn05#9;
+     enMeses = #laborn05#12;
+     enDias = #laborn05#13;
+     nLabornet = 1;
+
+     |ABRE #labregis;
+     |SELECT #2#labregis;
+     #labregis#1 = #laborn05#5;
+     #labregis#2 = #laborn05#6;
+     |LEE 000#labregis.=;
+     |SI FSalida = 0;
+          |SUB_EJECUTA "labprorr";
+     |SINO;
+          |SUB_EJECUTA "labproli";
+     |FINSI;
+     |CIERRA #labregis;
+|FPRC;
+
+|PROCESO Email;
+     || Emite correo electronico al usuario de que la
+     aAlfa = ("00000" + #laborn05#6) % -105;
+     eaTexto = &13 + &10 + "El administrador ha hecho efectiva la prórroga del trabajador (" + aAlfa + ") " + #laborn05#15; |QBF eaTexto;
+     aAlfa = ("00000" + #laborn05#5) % -106;
+     eaTexto = eaTexto + " de la empresa (" + aAlfa + ") " + #laborn05#14; |QBF eaTexto;
+
+     eaTexto = eaTexto + &13 + &10 + &13 + &10;
+     eaTexto = eaTexto + " Actualización con fecha " + #laborn05#3 + " a las " + #laborn05#4 + &13 + &10;
+
+     aAlfa  = ("00000" + #laborn05#5) % -106;
+     aAlfa1 = ("00000" + #laborn05#6) % -105;
+     eaAsunto  = "Efectivo prórroga trabajador (" + aAlfa + "/" + aAlfa1 + ") " + #laborn05#15; |QBF eaAsunto;
+     eaFichero = "";
+     eaDirDest = "";
+
+     aAlfa = #laborn05#5; |QBF aAlfa;
+     eaEmpresa = ("00000" + aAlfa) % -105;
+     |HAZ ConsEmail2;
+|FPRC;
+
+|PROCESO Actualiza;
+     nLabornet = 1;
+
+     |SI swMeHeSalido = 1;
+          |MENAV "    Proceso cancelado";
+          |PONCONTROL 23, "SI";
+          |PTEC 808;
+          |ACABA;
+     |FINSI;
+
+     aAlfa = "    ATENCION: se procederá a continuar con la grabación";
+     aAlfa = aAlfa + " de la prórroga solicitada.";
+     |MENAV aAlfa;
+     aAlfa = "    S¿Desea continuar?";
+     |CONFI aAlfa;
+     |SI FSalida = 0;
+          |HAZ Actualizacion;
+          |SI nRegistro = 0; |O nNroProrr = 0;
+               aAlfa = "    No se ha realizado la grabación de la prórroga ";
+               aAlfa = aAlfa + "del trabajador.";
+               |MENAV aAlfa;
+          |SINO;
+               || primero me paso todos los campos del registro que voy a borrar
+               || a un temporal, ya que ha habido varios fallos en los que al
+               || borrar el registro pierde la clave, asi me aseguro
+
+               |DDEFECTO #labornx5;
+               |PARA nCampo = 0; |SI nCampo [ 26; |HACIENDO nCampo = nCampo + 1;
+                    #labornx5#nCampo# = #laborn05#nCampo#;
+               |SIGUE;
+
+               |BORRA 020#laborn05.a;
+
+               |PARA nCampo = 0; |SI nCampo [ 26; |HACIENDO nCampo = nCampo + 1;
+                    #laborn05#nCampo# = #labornx5#nCampo#;
+               |SIGUE;
+
+               #laborn05#0 = "A";
+               #laborn05#16 = Usuario % 0810;
+               #laborn05#17 = ~;
+               |HORA aAlfa;
+               #laborn05#18 = aAlfa;
+               |GRABA 020#laborn05.n;
+               |LIBERA #laborn05;
+
+               aAlfa1 = nRegistro; |QBF aAlfa1; aAlfa1 = ("000000" + aAlfa1) % -106;
+               aAlfa = "    Se ha grabado con éxito la prórroga con el ";
+               aAlfa = aAlfa + "número de registro " + aAlfa1;
+               |MENAV aAlfa;
+
+               |ABRE #nompmail; |LEE 000#nompmail.p; |CIERRA #nompmail;
+               |SI #nompmail#11 = "S";
+                    |HAZ Email;
+               |FINSI;
+
+               enEmpresa = enEmpresa;
+               enTrabajador = enTrabajador;
+               |HAZ ActualizaLabornet;
+
+               enActualizado = 1;
+          |FINSI;
+     |FINSI;
+     |PONCONTROL 23, "SI";
+     |PTEC 808;
+|FPRC;
+
+|PROCESO Consulta;
+     eaUsuario = #laborn05#1;      || permito modificar
+     eaFecha = #laborn05#3;
+     eaHora = #laborn05#4;
+     |SUB_EJECUTA "laborn15;CONSUL";
+     |ACABA;
+|FPRC;
+
+|PROCESO Modificacion;
+     eaUsuario = #laborn05#1;      || permito modificar
+     eaFecha = #laborn05#3;
+     eaHora = #laborn05#4;
+     |SUB_EJECUTA "laborn15;MODIF";
+     |ACABA;
+|FPRC;
+
+|PROCESO Opciones; |TIPO 0;
+     |SI enFSalida ! 0;
+          FSalida = enFSalida;
+     |FINSI;
+     || consulta de datos introducidos
+     |SI FSalida = 10;
+          |SI aParam = "USUARIO"; |O aParam = "ADMIN";  || consulta el usuario los datos que
+               |HAZ Modificacion;
+          |FINSI;
+          |SI aParam = "HISTO"; |O aParam = "HISTO";
+               |HAZ Consulta;           || consulta de datos introducidos
+          |FINSI;                       || o ya actualizados, solo visualizar
+          |ACABA;
+     |FINSI;
+
+     |SI FSalida = 11;  |Y #laborn05#0 = "P"; |Y aParam = "ADMIN";
+          |HAZ Modificacion;
+          |HAZ Actualiza;
+          |ACABA;
+     |FINSI;
+
+     |SI FSalida = 12;  |Y #laborn05#0 = "P";
+          enBorrado = 1;
+
+          |LEE 101#laborn05.=;
+          |BORRA 020#laborn05.a;
+          |LIBERA #laborn05;
+
+          #laborn05#0 = "R";
+          #laborn05#23 = eaMotiv;
+          |GRABA 020#laborn05.n;
+          |LIBERA #laborn05;
+     |FINSI;
+|FPRC;
+
+|PROCESO Mensa;  |TIPO 7;
+     |SI #laborn05#0 = "P";        || pendientes de actualizar
+          |SI aParam = "USUARIO";
+               |MENSA "0000 <F2> Ver/modificar Datos. <F4> Borrar registro.";
+          |SINO;
+               |MENSA "0000 <F2> Ver datos. <F3> Actualizar prorroga. <F4> Borrar registro.";
+          |FINSI;
+     |SINO;                   || ya actualizados
+          |MENSA "0000 <F2> Consultar Datos.";
+     |FINSI;
+|FPRC;
+
+|PROCESO RecogeCampos;
+     #laborn05#1 = eaUsuario;
+     #laborn05#3 = efFecha;
+     #laborn05#4 = eaHora;
+     #laborn05#0 = eaEstado;
+|FPRC;
+
+|PROGRAMA;
+     |SI enFSalida ! 12;
+          |CLS;
+     |FINSI;
+     |CABEZA "Prórrogas";
+
+     aAlfa = Usuario % 0810;
+     |SI aParam = "ADMIN"; |O aParam = "HISTO";
+          aUsuarioD = "";
+          aUsuarioH = "zzzzzzzzzz";
+     |FINSI;
+     |SI aParam = "USUARIO"; |O aParam = "HISTOUSU";
+          aUsuarioD = aAlfa;
+          aUsuarioH = aAlfa;
+     |FINSI;
+
+     |ABRE #laborn05;
+     |SI aParam = "ADMIN"; |O aParam = "USUARIO";
+          aTipo = "P";   || los pendientes de actualizar
+          |HAZ RecogeCampos;
+          |LEE 000#laborn05.=;
+          |HAZ Opciones;
+     |FINSI;
+     |SI aParam = "HISTO"; |O aParam = "HISTOUSU";
+          aTipo = "A";   || consulta del historico, los ya actualizados
+          |HAZ RecogeCampos;
+          |LEE 000#laborn05.=;
+          |HAZ Opciones;
+     |FINSI;
+     |CIERRA #laborn05;
+|FPRO;
+
+|PROCESO Tipo80n05;  |TIPO 80;
+     |SI PARAMETRO = "";  |ACABA;  |FINSI;
+
+     aSiEsX = PARAMETRO % 101;
+     |SI aSiEsX = "X";
+         aAlfa     = PARAMETRO % 202;   enFSalida = aAlfa;
+         eaEstado  = PARAMETRO % 401;
+         eaUsuario = PARAMETRO % 510;
+         aAlfa     = PARAMETRO % 1510;  efFecha = aAlfa;
+         eaHora    = PARAMETRO % 2508;
+         eaParam   = PARAMETRO % 3310;  |QBF eaParam;
+         aParam    = eaParam;
+     |SINO;
+          aParam = PARAMETRO;  |QBF aParam;
+          |SI eaParam ! "";
+              eaParam = aParam;
+          |FINSI;
+     |FINSI;
+|FPRC;

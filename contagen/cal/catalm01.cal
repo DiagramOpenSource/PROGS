@@ -1,0 +1,592 @@
+|FICHEROS;
+    catalz01 #10;
+    catalm01 #0,MANTE;
+    cacuenta #1;
+
+    camanrec #5;
+    caclipro #6;
+   &regisnif@ #709;
+
+    imagen1@ #100;
+|FIN;
+
+|VARIABLES;
+    &entrada  = 1;
+    &nSwAct   = 0;
+    &aDPagar  = "";
+
+    men0 = "";
+    men1  = "2400NDesea modificar TALON y ponerlo como NO emitido: ";
+    men11 = "2400NDesea poner como NO emitida CARTA: ";
+    men12 = "2400NDesea poner como NO emitido TALON: ";
+    men2  = "     Talon Contabilizado. No puede modificar Cuenta Cargo. ";
+    men3  = "2400NDesea imprimirlo: ";
+    men31 = "2400NDesea imprimir la CARTA: ";
+    men32 = "2400NDesea imprimir el TALON: ";
+    {-1}menu  = "";           || Variables menu Carta o Talon
+        menu1 = "2400";
+        menu2 = "1";
+        menu3 = "Elija : ";
+        menu4 = "CT";
+        menu5 = " Carta ";
+        menu6 = " Talon ";
+
+    nModoEntrada = 0;
+    aProvAnt     = "";
+    nSwDos       = 0;
+    nSwPtec      = 0;
+    aNif         = "";
+
+    nNume1 = 0;
+    aAlfa1 = "";
+    aAlfa2 = "";
+
+    informe  = "caemital";
+    nTalon   = 0;
+    &sw      = 0;
+    &importe = 0;
+    &prov    = "";
+    &prov1   = "";
+    &cc1     = "";
+    &cc2     = "";
+    &cc3     = "";
+    &des     = "";
+    &dni     = "";
+    &dir     = "";
+    &pob     = "";
+    &pro     = "";
+    &dia     = "";
+    &mes     = "";
+    &any     = "";
+    &dia_e   = "";
+    &mes_e   = "";
+    &any_e   = "";
+    &dianum  = 0;
+    sw_act   = 0;
+    pagban   = "";
+    x        = 0;
+    &dpant   = "";
+    &eaVarDni  = "";
+    &enCalcCif = 0;
+    &snFilBa  = "";
+
+    fecha1     = @;
+    fecha2     = @;
+    fecha3     = @;
+    fecha4     = @;
+    aFecha     = "";
+    nNumero    = 0;
+    nPara1     = 0;
+    nDocumento = 0;
+    nMes       = 0;
+    nSwFinMesE = 0;
+    nSwFinMesV = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+**************************************************************************
+    CALCULOS DESDE CAMPOS
+**************************************************************************
+|CALCULO modifi; |TIPO 0;   || pone Talon como no impreso y guarda proveedor
+ nSwDos  = 0;
+ nSwPtec = 0;
+
+ nModoEntrada = (FEntrada / 100 ) ! 0;
+ |SI nModoEntrada = 2;
+     aProvAnt = #0#1;
+     |SI #0#10 = "S"; |O #0#12 = "S";
+         nSwDos = 1;
+         men0 = men1;
+         |SI #0#10 = "S"; |Y #0#12 = "N"; men0 = men11; nSwDos = 2; |FINSI;
+         |SI #0#10 = "N"; |Y #0#12 = "S"; men0 = men12; nSwDos = 3; |FINSI;
+         |CONFI men0;
+         |SI FSalida ! 0;
+             |PTEC 807;
+         |SINO;
+             nSwPtec = 1;
+             #0#10 = "N";
+             #0#12 = "N";
+             |SI nSwDos ! 2; #0#11 = 0; |FINSI;
+             |PINTA #0#10;
+             || .. |PINTA #0#11;
+             |PINTA #0#12;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+
+ |C_M #0#23, 1, "N";
+ |SI nModoEntrada = 1; |C_M #0#23, 1, "S";  |FINSI;
+|FCAL;
+
+|CALCULO elDNI; |TIPO 6;
+  |SI FSalida = 10;
+      enCalcCif = 1;
+      eaVarDni  = #0Campo;
+      |HAZ CalculoDNI;
+      #0Campo = eaVarDni;
+      |PINTA #0Campo;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+
+     eaVarDni  = #0Campo;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "             ") % 112;
+     |SI #0Campo ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #0Campo = eaVarDni;  |PINTA #0Campo;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+|FCAL;
+
+|CALCULO LeeTipo; |TIPO 0;
+ |ABRE #5;
+ |DDEFECTO #5;
+ #5#0 = #0#16;
+ |LEE 000#5=;
+ |PINTA 1730, #5#1;
+ |CIERRA #5;
+|FCAL;
+
+|CALCULO elTipo13; |TIPO 13;
+ |HAZ LeeTipo;
+ |HAZ VerVtos;
+|FCAL;
+
+|CALCULO AntesDepar; |TIPO 7;
+   |SI eaDepar = "N"; |ACABA; |FINSI;
+   |SI Haybasica = 1;
+       |MENSA "    <F2> Consultar Actividades";
+   |SINO;
+       |MENSA "    <F2> Consultar Departamentos";
+   |FINSI;
+   nModoEntrada = (FEntrada / 100) ! 0;
+   |SI nModoEntrada = 1;
+       #0Campo = dpant; |PINTA #0Campo;
+   |FINSI;
+|FCAL;
+
+|CALCULO TrasDepar; |TIPO 0;
+   |SI eaDepar = "N"; |ACABA; |FINSI;
+   eOpDep = 0; || 1 = Consulta pantalla
+   |SI FSalida = 10; eOpDep = 1;  |FINSI;
+   enEmpresa   = #0#18;
+   enActividad = #0#20;
+   eaCodDep    = #0#20;
+   |HAZ Actividad;
+   |SI eswLect = 1;
+       |MENAV "    Error.! No Existe Actividad / Departamento";
+       |ERROR;
+   |SINO;
+       #0#20 = eaCodDep;    |PINTA #0#20;
+       #0#21 = eaNombreAct; |PINTA #0#21;
+       |SI efActFin > "01.01.1900"; |Y snFilBa = "S";
+           aAlfa1 = "    NAtencion!!!. Actividad con Fecha de BAJA " + efActFin + ", Desea introducir Facturas ? ";
+           |CONFI aAlfa1;
+           |SI FSalida ! 0;
+               |ERROR;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+       |SI eaEsCom = "S";
+           |CONFI "    NAtencion!!!. Actividad Comunera, ¨ Desea introducir Movimientos ? ";
+           |SI FSalida ! 0;
+               |ERROR;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO Ptec; |TIPO 7;
+ |PTEC 816;
+|FCAL;
+
+|| ... Cuentas
+|CALCULO cuenta; |TIPO 6;
+   emCta = 1;        || Dar mensajes de error
+
+   eaCuenta = #0Campo;
+   salidas  = FSalida;
+   |HAZ FiltraPuntos;
+   #0Campo = eaCuenta;
+   |PINTA #0Campo;
+
+   nNume1 = Campo + 1;
+   |HAZ SacaNivel;
+   #0nNume1 = enNivel;
+
+   FSalida = salidas;
+|FCAL;
+
+|CALCULO refresca; |TIPO 0;
+
+ nModoEntrada = (FEntrada / 100) ! 0;
+ |SI nModoEntrada = 2; |Y Campo = 1;
+    |SI #0#1 ! aProvAnt;
+        |SI #0#7 = "S"; |O #0#8 = "S";
+            |MENAV men2;
+            #0#1 = aProvAnt;
+            |PINTA #0#1;
+            |ERROR;
+            |ACABA;
+        |FINSI;
+    |FINSI;
+ |FINSI;
+
+  emCta = 1;        || Dar mensajes de error
+  eaCuenta = #0Campo;
+  |HAZ LeeCuenta;
+  |SI eswCta = 0;
+      nNume1 = 14; |SI Campo = 3; nNume1 = 22; |FINSI;
+      #0nNume1 = #cacuenta#2;
+      |PINTA #0nNume1;
+      |SI Campo = 1; |HAZ LeeCliPro; |FINSI;
+  |FINSI;
+|FCAL;
+
+|PROCESO LeeCliPro;
+ aNif = "";
+ |ABRE #6;
+ #6#23 = "P";
+ #6#10 = #0#1;
+ |LEE 041#6=;
+ |SI FSalida ! 0;
+     #6#23 = "C";
+     #6#10 = #0#1;
+     |LEE 041#6=;
+     |SI FSalida = 0;
+         aNif = #6#9;
+     |FINSI;
+ |SINO;
+     aNif = #6#9;
+ |FINSI;
+ |CIERRA #6;
+ |SI aProvAnt ! #0#1;
+     #0#15 = aNif; |PINTA #0#15;
+ |FINSI;
+|FPRC;
+
+|PROCESO Vtos; |TIPO 0;
+    |C_M #0#23, 0, aAlfa1;
+    |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+    aAlfa1 = "S";
+    |SI #0#23 = "S"; aAlfa1 = "N"; |FINSI;
+    |C_M #0#24, 1, aAlfa1;
+    #0#24 = 2;
+    |HAZ VerVtos;
+|FPRC;
+
+|PROCESO VerVtos;
+
+    |SI #0#23 = "S";
+        |C_V #0#24, 1, "N";
+        |PINTA 1556, "                 ";
+    |SINO;
+        |C_V #0#24, 1, "S";
+        |PINTA 1556, "Numero Vtos.:    ";
+        |PINTA #0#24;
+    |FINSI;
+|FPRC;
+
+|CALCULO elTipo3; |TIPO 3;
+ #0#18 = #10#1;
+ #0#19 = #10#2;
+ dpant = #0#20;
+
+ |SI nModoEntrada = 1; |Y #0#23 = "N";
+     |HAZ AltaOtros;
+     |PTEC 816;
+     |PTEC 808;
+     |PONCONTROL 23, "SI";
+ |FINSI;
+|FCAL;
+
+|| ==============================================================
+|PROCESO BuscoNumero;
+         #100#18 = #0#18;
+         #100#0  = 999999;
+         |LEE 041#100];
+         |SI FSalida = 0;
+             |LEE 041#100a;
+          |SINO;
+             |LEE 041#100u;
+          |FINSI;
+          nDocumento = 1;
+          |SI FSalida = 0; |Y #100#18 = #0#18;
+              nDocumento = #100#0 + 1;
+          |FINSI;
+          |SI nDocumento > nNumero;
+              nNumero = nDocumento - 1;
+          |FINSI;
+|FPRC;
+
+|PROCESO SumaFecha;
+      nMes   = nMes + 1;
+      nNume1 = nMes / 1000;
+      aFecha = nNume1;
+      aFecha = aFecha + "000";
+      fecha1  = #0#6 + aFecha;
+      fecha3  = #0#5 + aFecha;
+
+      |SI nSwFinMesV = 1;
+          fecha2  = fecha1 + "1.000000";
+          aAlfa1  = fecha1; aAlfa1 = aAlfa1 % 0402;
+          aAlfa2  = fecha2; aAlfa2 = aAlfa2 % 0402;
+          |SI aAlfa2 = aAlfa1;
+              fecha1 = fecha2;
+          |FINSI;
+      |FINSI;
+      |SI nSwFinMesE = 1;
+          fecha4  = fecha3 + "1.000000";
+          aAlfa1  = fecha3; aAlfa1 = aAlfa1 % 0402;
+          aAlfa2  = fecha4; aAlfa2 = aAlfa2 % 0402;
+          |SI aAlfa2 = aAlfa1;
+              fecha3 = fecha4;
+          |FINSI;
+      |FINSI;
+|FPRC;
+
+|PROCESO AltaOtros;
+      |DBASE aAlfa1; |QBF aAlfa1;
+      aAlfa2 = aAlfa1 + "def/catalm01.mas";
+      |CARGA_DEF aAlfa2, imagen1@;
+      |SI FSalida ! 0;
+          |MENAV "    Error al cargar Def catalm01";
+          |ACABA;
+      |FINSI;
+
+      nSwFinMesV = 0;
+      aAlfa1 = #0#6; aAlfa1 = aAlfa1 % 105;
+      |SI aAlfa1 = "30.04"; |O aAlfa1 = "30.06"; |O aAlfa1 = "30.09";
+       |O aAlfa1 = "30.11"; |O aAlfa1 = "28.02"; |O aAlfa1 = "29.02";
+          nSwFinMesV = 1;
+      |FINSI;
+      nSwFinMesE = 0;
+      aAlfa1 = #0#5; aAlfa1 = aAlfa1 % 105;
+      |SI aAlfa1 = "30.04"; |O aAlfa1 = "30.06"; |O aAlfa1 = "30.09";
+       |O aAlfa1 = "30.11"; |O aAlfa1 = "28.02"; |O aAlfa1 = "29.02";
+          nSwFinMesE = 1;
+      |FINSI;
+
+      |ABRE #100;
+      nMes    = 0;
+      nNumero = #0#0;
+      |HAZ BuscoNumero;  ||por si no era el ultimo registro
+      fecha1  = #0#6;
+      fecha3  = #0#5;
+      |PARA nPara1 = 2; |SI nPara1 [ #0#24; |HACIENDO nPara1 = nPara1 + 1;
+
+            nNumero = nNumero + 1;
+            |HAZ SumaFecha;
+            #100#0  = nNumero;
+            #100#18 = #0#18;
+            |LEE 141#100=;
+            |SI FSalida ! 0;
+                #100#0  = nNumero;
+                #100#18 = #0#18;
+                |GRABA 020#100b;
+            |FINSI;
+            #100#01 = #0#01;  #100#02 = #0#02;
+            #100#03 = #0#03;  #100#04 = #0#04;
+            #100#05 = fecha3; #100#6  = fecha1;
+            #100#07 = #0#07;  #100#08 = #0#08;
+            #100#09 = #0#09;  #100#10 = #0#10;
+            #100#11 = #0#11;  #100#12 = #0#12;
+            #100#13 = #0#13;  #100#14 = #0#14;
+            #100#15 = #0#15;  #100#16 = #0#16;
+            #100#17 = #0#17;
+            #100#19 = #0#19;  #100#20 = #0#20;
+            #100#21 = #0#21;  #100#22 = #0#22;
+            #100#23 = "S";;   #100#24 = 1;
+            |GRABA 020#100a;
+            |LIBERA #100;
+
+      |SIGUE;
+
+      |CIERRA #100;
+      |DESCARGA_DEF #imagen1@;
+
+      #0#23 = "S";
+      #0#24 = 1;
+|FPRC;
+|| ==============================================================
+|PROCESO inf100;
+  #100#0  = 000001;
+  #100#3  = "             ";
+  #100#6  = "01.01.0000";
+  #100#18 = #0#18;
+|FPRC;
+
+|PROCESO sup100;
+  #100#0  = 999999;
+  #100#3  = "zzzzzzzzzzzzz";
+  #100#6  = "31.12.2999";
+  #100#18 =  #0#18;
+|FPRC;
+
+|PROCESO elTipo11; |TIPO 11;
+  |SI FSalida = 10;
+      |DBASE aAlfa1; |QBF aAlfa1;
+      aAlfa2 = aAlfa1 + "def/catalm01.mas";
+      |CARGA_DEF aAlfa2, imagen1@;
+      |SI FSalida = 0;
+          |ABRE #100;
+          #100#0  = #0#0;
+          #100#3  = #0#3;
+          #100#6  = #0#6;
+          #100#18 = #0#18;
+          |CONSULTA_F_CLAVE #2#100,inf100,sup100;
+          #0#18= #100#18;
+          #0#0 = #100#0;
+          |CIERRA #100;
+          |DESCARGA_DEF #imagen1@;
+          |ERROR;
+          |PTEC 802;
+          |PTEC 802;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+**************************************************************************
+    IMPRESION DEL Talon
+**************************************************************************
+/*
+|PROCESO imprimir;  |TIPO 30;
+ |SI nSwPtec ! 0;
+     nSwPtec = 0;
+     men0 = men3;
+     |SI nSwDos = 2; men0 = men31; |FINSI;
+     |SI nSwDos = 3; men0 = men32; |FINSI;
+     |CONFI men0;
+     |SI FSalida = 0;
+         nTalon = #0#0;
+         |HAZ impre;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+
+|PROCESO impre;
+ |SI nSwDos = 2; informe = "caemital"; |FINSI;
+ |SI nSwDos = 3;
+     |SI #9#36 [ 10; x = #9#36 + 6; |FINSI;
+     |SI #9#36 > 10; x = #9#36 + 14; |FINSI;
+     informe = #9x; nSwDos = 3;
+ |FINSI;
+ |SI nSwDos = 1;
+     |MENU menu;
+     |SI FSalida ! 1; |Y FSalida ! 2; |ACABA; |FINSI;
+     |SI FSalida = 1;
+         informe = "caemital"; nSwDos = 2;
+     |SINO;
+         |SI #9#36 [ 10; x = #9#36 + 6; |FINSI;
+         |SI #9#36 > 10; x = #9#36 + 14; |FINSI;
+         informe = #9x; nSwDos = 3;
+     |FINSI;
+ |FINSI;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0;  |FINIMP;  |ACABA;   |FINSI;
+
+  |ABRE #2;
+  |SELECT #2#2;
+  |ABRE #6;
+    des = #0#14;
+    dni = " ";
+    dir = " ";
+    pob = " ";
+    pro = " ";
+    #6#23 = "P";
+    #6#10 = #0#1;
+    #6#11 = #0#2;
+ |LEE 001#6=;        || lee el proveedor
+ |SI FSalida = 0;
+     dni = #6#9;
+     dir = #6#2;
+     pob = #6#6;
+     |QBF pob;
+     alfa1 = #6#3;  alfa1 = "00"  + alfa1;  alfa1 = alfa1 % -102;
+     alfa2 = #6#4;  alfa2 = "000" + alfa2;  alfa2 = alfa2 % -103;
+     pob = "(" + alfa1 + alfa2 + ") " + pob;
+     pro = #6#5;
+ |FINSI;
+
+ #2#10 = #0#3;
+ #2#11 = #0#4;
+ |LEE 001#2=;
+ |SI FSalida ! 0;  |DDEFECTO #2;  |FINSI;
+ cc1 = #2#9 % 104;
+ cc2 = #2#9 % 604;
+ cc3 = #2#9;
+ |QBF cc3;
+ cc3 = cc3 % -102;
+ importe = #0#9;
+ sw = 1;
+ |HAZ fecha_hoy;
+ |PRINT;
+ |PIEINF;
+ |FININF;
+ |FINIMP;
+
+ |CIERRA #2;
+ |CIERRA #6;
+ |SI sw_act = 0;
+     #0#10 = "S"; #0#12 = "S";
+ |SINO;
+     |SI nSwDos = 2; #0#10 = "S"; |FINSI;
+     |SI nSwDos = 3; #0#12 = "S"; |FINSI;
+ |FINSI;
+
+ || ............ |PINTA #0#11;
+ |PINTA #0#10;
+ |PINTA #0#12;
+
+ |GRABA 020#0a;
+|FPRC;
+
+|PROCESO fecha_hoy;
+  alfa1 = #0#5;
+  dia_e = alfa1 % 102;
+  mes_e = alfa1 % 402;
+  any_e = alfa1 % -102;
+  |SI mes_e = "01";  mes_e = "Enero     ";  |FINSI;
+  |SI mes_e = "02";  mes_e = "Febrero   ";  |FINSI;
+  |SI mes_e = "03";  mes_e = "Marzo     ";  |FINSI;
+  |SI mes_e = "04";  mes_e = "Abril     ";  |FINSI;
+  |SI mes_e = "05";  mes_e = "Mayo      ";  |FINSI;
+  |SI mes_e = "06";  mes_e = "Junio     ";  |FINSI;
+  |SI mes_e = "07";  mes_e = "Julio     ";  |FINSI;
+  |SI mes_e = "08";  mes_e = "Agosto    ";  |FINSI;
+  |SI mes_e = "09";  mes_e = "Septiembre";  |FINSI;
+  |SI mes_e = "10";  mes_e = "Octubre   ";  |FINSI;
+  |SI mes_e = "11";  mes_e = "Noviembre ";  |FINSI;
+  |SI mes_e = "12";  mes_e = "Diciembre ";  |FINSI;
+  dianum =dia_e;
+
+  alfa1 = #0#6;
+  dia = alfa1 % 102;
+  mes = alfa1 % 402;
+  any = alfa1 % -102;
+  |SI mes = "01";  mes = "Enero     ";  |FINSI;
+  |SI mes = "02";  mes = "Febrero   ";  |FINSI;
+  |SI mes = "03";  mes = "Marzo     ";  |FINSI;
+  |SI mes = "04";  mes = "Abril     ";  |FINSI;
+  |SI mes = "05";  mes = "Mayo      ";  |FINSI;
+  |SI mes = "06";  mes = "Junio     ";  |FINSI;
+  |SI mes = "07";  mes = "Julio     ";  |FINSI;
+  |SI mes = "08";  mes = "Agosto    ";  |FINSI;
+  |SI mes = "09";  mes = "Septiembre";  |FINSI;
+  |SI mes = "10";  mes = "Octubre   ";  |FINSI;
+  |SI mes = "11";  mes = "Noviembre ";  |FINSI;
+  |SI mes = "12";  mes = "Diciembre ";  |FINSI;
+|FPRC;
+*/

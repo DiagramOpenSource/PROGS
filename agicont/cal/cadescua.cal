@@ -1,0 +1,207 @@
+|FICHEROS;
+    cadescua #0;
+    camaasic #1;
+    camaasil #2;
+    cadescu1 #3;
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    aAlfa1  = "";
+
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    seleccio = 0;
+    seleccio2 = 0;
+{-1}menu = "";
+    menu1 = "2400";
+    menu2 = "1";
+    menu3 = " Elija opcion: ";
+    menu4 = "IP";
+    menu5 = " Impresora ";
+    menu6 = " Pantalla ";
+    debe_p = 0;
+    haber_p = 0;
+    saldo_p = 0;
+    saldo_a = 0;
+    opcion = 0;
+    &error = "";
+    &numero = 0;
+    mas = 0;
+    posic = 0;
+    linea = 0;
+    prime = 0;
+    &antdia = 0;
+    &antfec = @;
+    &antdoc = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+
+|PROCESO defectos; |TIPO 7;        || desde campo 'desde diario'
+  #0#2 = fec1;
+  #0#3 = fec2;
+  |PINTA #0#2;
+  |PINTA #0#3;
+|FPRC;
+
+|PROCESO fecha; |TIPO 0;           || desde campos 'desde/hasta fecha'
+  |SI #0Campo < fec1; |Y #0Campo > fec2;
+      |MENAV "    ATENCION!!! Fecha fuera de periodo ...";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO correte;
+  |CAMPO_POSICION #3#0,0,posic; posic=posic+mas; |CAMPO_POSICION #3#0,1,posic;
+  |CAMPO_POSICION #3#1,0,posic; posic=posic+mas; |CAMPO_POSICION #3#1,1,posic;
+  |CAMPO_POSICION #3#2,0,posic; posic=posic+mas; |CAMPO_POSICION #3#2,1,posic;
+  |CAMPO_POSICION #3#3,0,posic; posic=posic+mas; |CAMPO_POSICION #3#3,1,posic;
+|FPRC;
+
+|PROCESO pantalla2;
+  linea = linea + 1;
+  seleccio = 1;
+  |DDEFECTO #3;
+  #3#0 = antdia;    || diario
+  #3#1 = antfec;    || fecha
+  #3#2 = antdoc;    || documento
+  #3#3 = error;   || incidencia
+  |PINDA #0#3;
+  |SI linea < 12;
+      mas = 100;
+  |SINO;
+      mas = -1100;
+      linea = 0;
+      |PAUSA;
+      |PINPA #0#3;
+  |FINSI;
+  |HAZ correte;
+|FPRC;
+
+|PROCESO impresora2;
+  seleccio = 1;
+  |PRINT;
+|FPRC;
+
+|PROCESO haycambio;
+  #1#0 = antdia;
+  #1#1 = antfec;
+  #1#2 = antdoc;
+  |LEE 011#1=;
+  saldo_a = #1#4 - #1#5;
+  saldo_p = debe_p - haber_p;
+  aAlfa1 = saldo_a; |QBF aAlfa1;
+  |SI aAlfa1 = "0"; |O aAlfa1 = "-0";
+       saldo_a = 0;
+  |FINSI;
+  aAlfa1 = saldo_p; |QBF aAlfa1;
+  |SI aAlfa1 = "0"; |O aAlfa1 = "-0";
+       saldo_p = 0;
+  |FINSI;
+
+  error = "";
+  |SI saldo_a ! 0;|O saldo_p ! 0;
+      |SI saldo_a ! saldo_p;
+          error = "Saldos Asiento y Apuntes distintos. Descuadre.";
+      |SINO;
+          error = "Descuadre.";
+      |FINSI;
+  |FINSI;
+  |SI error ! "";
+      numero = numero + 1;
+      |SI opcion = 1;  |HAZ impresora2;  |FINSI;
+      |SI opcion = 2;  |HAZ pantalla2;   |FINSI;
+  |FINSI;
+  antdia = #2#0;
+  antfec = #2#1;
+  antdoc = #2#2;
+  debe_p = 0;
+  haber_p = 0;
+|FPRC;
+|PROCESO informa;
+  seleccio2 = 1;
+  |SI prime = 0;
+      prime = 1;
+      antdia = #2#0;
+      antfec = #2#1;
+      antdoc = #2#2;
+      debe_p = 0;
+      haber_p = 0;
+  |FINSI;
+  |SI #2#0 ! antdia;  |O #2#1 ! antfec;  |O #2#2 ! antdoc;
+      |HAZ haycambio;
+  |FINSI;
+  |SI #2#8 = "D";
+      debe_p = (debe_p + #2#9) ! EURODB;
+  |SINO;
+      haber_p = (haber_p + #2#9) ! EURODB;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_asientos;
+ #2#1;
+ ;
+ #0#0, #0#2, #0#4, 1;
+ #0#1, #0#3, #0#5, 9999;
+ e;
+ NULL, informa;
+|FIN;
+
+|PROCESO pantalla;
+  |PINPA #0#3;
+  |ABRE #1;
+  |BUCLE lee_asientos;
+  |HAZ haycambio;
+  |CIERRA #1;
+  |SI seleccio2 ! 0;
+      |SI seleccio ! 0;
+          |PAUSA;
+      |SINO;
+          |MENAV "    No hay descuadres ...";
+      |FINSI;
+  |SINO;
+      |MENAV "    No hay apuntes ...";
+  |FINSI;
+|FPRC;
+
+|PROCESO impresora;
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR "cadescua";
+  |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+  |ABRE #1;
+  |BUCLE lee_asientos;
+  |HAZ haycambio;
+  |CIERRA #1;
+  |SI seleccio2 ! 0;
+      |SI seleccio ! 0;
+          |PIEINF;
+      |SINO;
+          |MENAV "    No hay descuadres ...";
+      |FINSI;
+  |SINO;
+      |MENAV "    No hay apuntes ...";
+  |FINSI;
+  |FININF;
+  |FINIMP;
+|FPRC;
+
+|PROCESO descuadra; |TIPO 3;       || desde campo 'diario'
+  |MENU menu;
+  opcion = FSalida;
+  |SI opcion > 0;
+      |SI opcion = 1;  |HAZ impresora;  |FINSI;
+      |SI opcion = 2;  |HAZ pantalla;   |FINSI;
+  |FINSI;
+|FPRC;

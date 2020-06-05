@@ -1,0 +1,1467 @@
+|FICHEROS;
+   caxactim #0;
+   caxcontr #1;    || control expor./impor.
+
+   excuenta #11;
+   exmaasil #12;
+   exmaniva #13;
+   exivalin #14;
+   exclipro #17;
+
+   exivarep #15;
+   exivasop #16;
+   exivaref #115;
+   exivasof #116;
+
+   cacuenta #21;
+   camaasil #22;    || apuntes lins.
+   camaasic #20;    || apuntes cabs.
+   camaniva #23;    || Mantenimiento IVA/IRPF (CAB)
+   caivalin #24;    || Mantenimiento IVA/IRPF (LIN)
+   caclipro #26;    || Clientes y proveedores
+   caconasi #10;    || contador de asientos
+   calibros #25;    || actualizacion libros de iva
+
+   casiim01;
+   exsiim01;
+   casiim02;
+   exsiim02;
+   caivatm4;
+
+   Referen@ #6;
+   catmpasi #999;
+|FIN;
+
+|VARIABLES;
+   aAlfa  = "";
+   aAlfa1 = "";
+   aAlfa2 = "";
+   nNume1 = 0;
+   nNume2 = 0;
+   nNume3 = 0;
+   nPara1 = 0;
+   nPara2 = 0;
+
+   nAlguno = 0;
+   FEstado = 0;
+   swfecha  = 0;
+   fabre    = "";
+   aPath    = "";
+   fcanl    = "";
+   Version  = "";
+
+   nFichero   = 0;
+   c_camaasil = 24;
+   c_caivarep = 62;
+   c_caivasop = 61;
+   c_camancob = 27;
+   c_caivapag = 26;
+   c_cacuenta = 59;
+   c_caclipro = 28;
+
+   nSwSerie   = 0;
+   aNCampo    = "";
+   field      = "";
+   field1     = "";
+   field2     = "";
+   field3     = "";
+   field4     = "";
+   aFichero   = "";
+
+   Caracter = "";
+   nCalc    = 0;
+   nCalc1   = 0;
+   nSelec   = 0;
+   nLong    = 0;
+   SwYA     = 0;
+   nError   = 0;
+   nBase     = 0;
+   Documento = 0;
+   nLibro    = 0;
+   nEstado   = 0;
+
+   nExis      = 0;
+   aSiiPro    = "";
+   nSiiLib    = 0;
+   aSiiSer    = "";
+   aSiiDoc    = "";
+   nSiiDoc    = 0;
+   nSiiFra    = 0;
+   aSiiRef    = "";
+   aBlancos   = "";
+   aZetas     = "";
+
+   &eaNomFich = "";
+   &enImpExp  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|PROCESO importa; |TIPO 3;
+
+   |SI #0#0 ! "SI";  |ACABA;  |FINSI;
+
+   |DBASE aPath; |QBF aPath;
+   aPath = "rb  " + aPath;
+   fabre = aPath + "contagen.men";
+   |FABRE fabre;
+   |SI FSalida ] 0;
+       fcanl = FSalida;
+       Caracter = " "; aAlfa = ""; aAlfa1 = &13; aAlfa2 = &10;
+       |PARA; |SI; |HACIENDO;
+              Caracter = fcanl + " " + 1;
+              |FLEE Caracter;
+              |SI Caracter ! aAlfa1; |Y Caracter ! aAlfa2;
+                  aAlfa = aAlfa + Caracter;
+              |SINO;
+                  |SAL;
+              |FINSI;
+       |SIGUE;
+       Version = aAlfa % -0109;
+   |FINSI;
+   |FCIERRA fcanl;
+
+   |DFICE aPath; |QBF aPath;
+   aPath = "rb  " + aPath;
+
+   nSelec = 0;
+   |SI #1#5 = "S";  |HAZ cuentas0; |FINSI;
+   |SI #1#2 = "S";  |HAZ apuntes0; |FINSI;
+   |SI swfecha = 1;       |ACABA;  |FINSI;
+   |SI #1#3 = "S";
+       enImpExp = 1;
+       |HAZ iva0;
+       enImpExp = 0;
+   |FINSI;
+   |SI nSelec = 0;
+       |MENAV "    Importacion vacia ...";
+   |FINSI;
+|FPRC;
+
+|| ****************************************************************************
+|| ************************************************** IMPORTACION DE IVA/IRPF
+|PROCESO iva3;
+   |DDEFECTO #25;
+   |ABRE #25;
+   #25#0 = #23#0;
+   |LEE 000#25=;
+   |SI FSalida ! 0;
+      #25#0 = #23#0;
+      #25#1 = "[IVA/IRPF]";
+      #25#2 = #23#36;
+      |GRABA 020#25n;
+   |FINSI;
+   |CIERRA #25;
+|FPRC;
+
+|PROCESO iva0;
+   #0#3 = "IVA/IRPF    "; |PINTA #0#3;
+   |SI #1#11 = "S";
+        nError = 0;
+        |HAZ PrimBoIva;
+   |FINSI;
+
+   eaNomFich  = ("0p" + Usuario) % 108;
+   |NOME_DAT #caivatm4#eaNomFich#;
+   |DELINDEX #caivatm4;
+   nAlguno = 0;
+   nError  = 0;
+   |ABRE #caivatm4;
+   |SI #1#9 = 1; |HAZ PaseRepSop; |FINSI;
+   |SI #1#9 = 2; |HAZ PaseManIva; |FINSI;
+   |CIERRA #caivatm4;
+
+   |SI #1#13 = "S";
+       |SI nAlguno = 1;
+           |HAZ casiiman0;
+       |FINSI;
+   |SINO;
+       |SUB_EJECUTA_NP "caut0018;PASE";
+   |FINSI;
+|FPRC;
+
+____________________________________/ Para datos SiiBase
+|PROCESO GraboAuxtm4;
+   #caivatm4#0 = 0;
+   #caivatm4#1 = 0;
+   #caivatm4#2 = nSiiLib;
+   #caivatm4#3 = nSiiDoc;
+   |LEE 041#caivatm4.=;
+   |SI FSalida ! 0;
+       #caivatm4#0 = 0;
+       #caivatm4#1 = 0;
+       #caivatm4#2 = nSiiLib;
+       #caivatm4#3 = nSiiDoc;
+       |GRABA 020#caivatm4.n;
+   |FINSI;
+   |LIBERA #caivatm4;
+|FPRC;
+
+|PROCESO BuscaNum;
+       nSiiDoc = 0;
+       aAlfa1 = field % 1102; aSiiSer = aAlfa1;
+       aAlfa1 = field % 1306; nSiiFra = aAlfa1;
+       #camaniva#0 = nSiiLib;
+       #camaniva#2 = aSiiSer;
+       #camaniva#3 = nSiiFra;
+       |LEE 141#camaniva.=;
+       |SI FSalida = 0;
+           nSiiDoc = #camaniva#1;
+       |FINSI;
+|FPRC;
+
+|PROCESO ActuaCamaniva;
+    |SI nSiiDoc ! 0; |Y aSiiRef ! "";
+        #camaniva#22 = aSiiRef;
+        |GRABA 020#camaniva.a;
+    |FINSI;
+    |LIBERA #camaniva;
+|FPRC;
+
+|PROCESO casiiman1;
+   aSiiPro = "camaniva";
+   aAlfa1 = field % 0902; nSiiLib = aAlfa1;
+   |SI #1#9 = 1;
+       nNume2 = 19;
+       |HAZ BuscaNum;
+   |SINO;
+       aAlfa1 = field % 1110; nSiiDoc = aAlfa1;
+       nNume2 = 21;
+   |FINSI;
+   |SI nSiiDoc = 0;
+       |LIBERA #camaniva;
+       |ACABA;
+   |FINSI;
+
+   |DDEFECTO #casiim01;
+   #casiim01#0 = aSiiPro;
+   #casiim01#1 = nSiiLib;
+   #casiim01#2 = nSiiDoc;
+   |LEE 041#casiim01.=;
+   nEstado = FSalida;
+
+   |DDEFECTO #exsiim01;
+   |PARA nPara1 = 3; |SI nPara1 [ 12; |HACIENDO nPara1 = nPara1 + 1;
+
+        aAlfa1 = #exsiim01#nPara1#;
+        aAlfa1 = aAlfa1 % 0;
+        nNume1 = aAlfa1;
+        nNume3 = (nNume2 * 100) + nNume1;
+        nNume2 = nNume2 + nNume1;
+        aAlfa1 = field % nNume3;
+        #casiim01#nPara1# = aAlfa1;
+   |SIGUE;
+
+   #casiim01#13 = field1;
+
+   nNume2 = 1;
+   |PARA nPara1 = 14; |SI nPara1 [ 32; |HACIENDO nPara1 = nPara1 + 1;
+        aAlfa1 = #exsiim01#nPara1#;
+        aAlfa1 = aAlfa1 % 0;
+        nNume1 = aAlfa1;
+        nNume3 = (nNume2 * 100) + nNume1;
+        nNume2 = nNume2 + nNume1;
+        aAlfa1 = field2 % nNume3;
+        #casiim01#nPara1# = aAlfa1;
+   |SIGUE;
+
+   nNume2 = 1;
+   |PARA nPara1 = 33; |SI nPara1 [ 65; |HACIENDO nPara1 = nPara1 + 1;
+        aAlfa1 = #exsiim01#nPara1#;
+        aAlfa1 = aAlfa1 % 0;
+        nNume1 = aAlfa1;
+        nNume3 = (nNume2 * 100) + nNume1;
+        nNume2 = nNume2 + nNume1;
+        aAlfa1 = field3 % nNume3;
+        #casiim01#nPara1# = aAlfa1;
+   |SIGUE;
+
+   nNume2 = 1;
+   |PARA nPara1 = 66; |SI nPara1 [ 72; |HACIENDO nPara1 = nPara1 + 1;
+        aAlfa1 = #exsiim01#nPara1#;
+        aAlfa1 = aAlfa1 % 0;
+        nNume1 = aAlfa1;
+        nNume3 = (nNume2 * 100) + nNume1;
+        nNume2 = nNume2 + nNume1;
+        aAlfa1 = field4 % nNume3;
+        #casiim01#nPara1# = aAlfa1;
+   |SIGUE;
+   |SI #1#9 = 1;
+       aSiiRef = #casiim01#66; |QBF aSiiRef;
+       |HAZ ActuaCamaniva;
+   |FINSI;
+
+
+   |SI nEstado ! 0; |GRABA 040#casiim01.n; |FINSI;
+   |SI nEstado = 0; |GRABA 040#casiim01.a; |FINSI;
+|FPRC;
+
+|PROCESO casiiman2;
+
+   aSiiPro = "camaniva";
+   aAlfa1 = field % 0902; nSiiLib = aAlfa1;
+   |SI #1#9 = 1;
+       nNume2 = 19;
+       |HAZ BuscaNum;
+   |SINO;
+       aAlfa1 = field % 1110; nSiiDoc = aAlfa1;
+       nNume2 = 21;
+   |FINSI;
+   |SI nSiiDoc = 0;
+       |LIBERA #camaniva;
+       |ACABA;
+   |FINSI;
+
+   |DDEFECTO #exsiim02;
+   #casiim02#0 = aSiiPro;
+   #casiim02#1 = nSiiLib;
+   #casiim02#2 = nSiiDoc;
+   |PARA nPara1 = 3; |SI nPara1 [ 4; |HACIENDO nPara1 = nPara1 + 1;
+
+        aAlfa1 = #exsiim02#nPara1#;
+        aAlfa1 = aAlfa1 % 0;
+        nNume1 = aAlfa1;
+        nNume3 = (nNume2 * 100) + nNume1;
+        nNume2 = nNume2 + nNume1;
+        aAlfa1 = field % nNume3;
+        #casiim02#nPara1# = aAlfa1;
+   |SIGUE;
+
+   |GRABA 000#casiim02.n;
+|FPRC;
+
+|PROCESO casiiman0;
+
+   #0#3 = "DATOS SII   "; |PINTA #0#3;
+
+   nError = 1;
+   fabre = aPath + "exsiim01.asc";
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   |SI #1#9 = 2;
+       field = fcanl + " 10";
+       |FLEE field;
+       |SI FSalida > 0;
+            aAlfa = field % -0109;
+            |SI aAlfa ! Version; |Y Version ! "";
+                aAlfa = "    NEl fichero de Datos SII(Cab) no corresponde a la Version actual (" + Version + ")";
+                |CONFI aAlfa;
+                |SI FSalida ! 0;
+                    |FCIERRA fcanl;
+                    |ACABA;
+                |FINSI;
+            |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SI #1#9 = 1;
+       |ABRE #camaniva;
+       |SELECT #3#camaniva;
+   |FINSI;
+
+   |ABRE #casiim01;
+   |PARA; |SI; |HACIENDO;
+          |SI #1#9 = 1;
+              field = fcanl + " 42";
+          |SINO;
+              field = fcanl + " 44";
+          |FINSI;
+          |FLEE field;
+          |SI FSalida > 0;
+              field1 = fcanl + " 240";
+              |FLEE field1;
+              |SI FSalida > 0;
+                  field2 = fcanl + " 228";
+                  |FLEE field2;
+                  |SI FSalida > 0;
+                      field3 = fcanl + " 245";
+                      |FLEE field3;
+                      |SI FSalida > 0;
+                          field4 = fcanl + " 175";
+                          |FLEE field4;
+                          |SI FSalida > 0;
+                              |HAZ casiiman1;
+                          |FINSI;
+                      |FINSI;
+                   |FINSI;
+              |FINSI;
+          |SINO;
+              |SAL;
+          |FINSI;
+    |SIGUE;
+    |CIERRA #casiim01;
+    |FCIERRA fcanl;
+    Pos = -1;
+
+    fabre = aPath + "exsiim02.asc";
+    |FABRE fabre;
+    |SI FSalida ] 0;
+        fcanl = FSalida;
+        |ABRE #casiim02;
+        |PARA; |SI; |HACIENDO;
+               field = fcanl + " 88";
+               |FLEE field;
+               |SI FSalida > 0;
+                   |HAZ casiiman2;
+               |SINO;
+                   |SAL;
+               |FINSI;
+         |SIGUE;
+         |CIERRA #casiim02;
+         |FCIERRA fcanl;
+    |FINSI;
+    Pos = -1;
+    |SI #1#9 = 1;
+       |SELECT #1#camaniva;
+       |CIERRA #camaniva;
+   |FINSI;
+|FPRC;
+||-------------------------- Pase de Contagen a Contagen
+
+||-------------------------- Pase de Contagen a Contagen
+|PROCESO PaseManIva;
+   |HAZ PaseCab;
+   |SI nError = 0; |HAZ PaseLin; |FINSI;
+|FPRC;
+
+|PROCESO IvaCab2;
+   |PARA nPara1 = 0; |SI nPara1 [ nCalc; |HACIENDO nPara1 = nPara1 + 1;
+         #23nPara1 = #Referen@#nPara1#;
+   |SIGUE;
+   |GRABA 000#23n;
+   |SI FSalida = 0;
+       nAlguno = 1;
+       nError  = 0;
+       nSelec  = 1;
+       #0#4 = #23#4; |PINTA #0#4;
+       |HAZ iva3;
+   |FINSI;
+|FPRC;
+
+|PROCESO PaseCab;
+   nError = 1;
+   fabre = aPath + "exmaniva.asc";
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   field = fcanl + " 10";
+   |FLEE field;
+   |SI FSalida > 0;
+        aAlfa = field % -0109;
+        |SI aAlfa ! Version; |Y Version ! "";
+            aAlfa = "    NEl fichero de iva/irpf(Cab) no corresponde a la Version actual (" + Version + ")";
+            |CONFI aAlfa;
+            |SI FSalida ! 0;
+                |FCIERRA fcanl;
+                |ACABA;
+            |FINSI;
+        |FINSI;
+   |FINSI;
+
+   |ABRE #23;
+   |REFERENCIA_DEF Referen@, #13;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ IvaCab2;
+              |SI #1#13 = "N";
+                  nSiiLib = #23#0;
+                  nSiiDoc = #23#1;
+                  |HAZ GraboAuxtm4;
+             |FINSI;
+          |SINO;
+              |SAL;
+          |FINSI;
+  |SIGUE;
+  |CIERRA #23;
+  |FCIERRA fcanl;
+  Pos = -1;
+|FPRC;
+
+|PROCESO IvaLin2;
+   |PARA nPara1 = 0; |SI nPara1 [ nCalc; |HACIENDO nPara1 = nPara1 + 1;
+         #24nPara1 = #Referen@#nPara1#;
+   |SIGUE;
+   |GRABA 000#24n;
+   |SI FSalida = 0; nSelec = 1; |FINSI;
+|FPRC;
+
+|PROCESO PaseLin;
+   fabre = aPath + "exivalin.asc";
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   field = fcanl + " 10";
+   |FLEE field;
+   |SI FSalida > 0;
+
+        aAlfa = field % -0109;
+        |SI aAlfa ! Version; |Y Version ! "";
+            aAlfa = "    NEl fichero de iva/irpf(Lin) no corresponde a la Version actual (" + Version + ")";
+            |CONFI aAlfa;
+            |SI FSalida ! 0;
+                |FCIERRA fcanl;
+                |ACABA;
+            |FINSI;
+        |FINSI;
+   |FINSI;
+
+   |ABRE #24;
+   |REFERENCIA_DEF Referen@, #14;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ IvaLin2;
+          |SINO;
+              |SAL;
+          |FINSI;
+  |SIGUE;
+  |CIERRA #24;
+  |FCIERRA fcanl;
+  Pos = -1;
+|FPRC;
+
+|| -------------------------------- Pase de StarIII a Contagen
+|PROCESO PaseRepSop;
+   nFichero = 3; |HAZ PaseDatos; |HAZ PaseDatos2;
+   nFichero = 4; |HAZ PaseDatos; |HAZ PaseDatos2;
+|FPRC;
+
+|PROCESO PaseDatos;
+   aFichero = "exivarep.asc";
+   aTipoIVA = "R";
+   |SI nFichero = 4;
+       aFichero = "exivasop.asc";
+       aTipoIVA = "S";
+   |FINSI;
+
+   nError = 1;
+   fabre = aPath + aFichero;
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   |SI nFichero = 3;
+      |REFERENCIA_DEF Referen@, #15;
+   |SINO;
+      |REFERENCIA_DEF Referen@, #16;
+   |FINSI;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ IvaAnterior;
+              |SI #1#13 = "N";
+                  nSiiLib = #23#0;
+                  nSiiDoc = #23#1;
+                  |HAZ GraboAuxtm4;
+             |FINSI;
+          |SINO;
+              |SAL;
+          |FINSI;
+  |SIGUE;
+  |FCIERRA fcanl;
+  Pos = -1;
+|FPRC;
+
+|PROCESO PaseDatos2;
+   aFichero = "exivaref.asc";
+   aTipoIVA = "R";
+   |SI nFichero = 4;
+       aFichero = "exivasof.asc";
+       aTipoIVA = "S";
+   |FINSI;
+
+   nError = 1;
+   fabre = aPath + aFichero;
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   |SI nFichero = 3;
+      |REFERENCIA_DEF Referen@, #115;
+   |SINO;
+      |REFERENCIA_DEF Referen@, #116;
+   |FINSI;
+   |ABRE #23;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ FOpAnterior;
+          |SINO;
+              |SAL;
+          |FINSI;
+  |SIGUE;
+  |FCIERRA fcanl;
+  |CIERRA #23;
+  Pos = -1;
+|FPRC;
+
+|PROCESO BuscaCuentas;
+    |SI #22#16 = "            ";  |Y  #22#10 = "            ";
+        |Y #22#9  = 0;
+           |BORRA 020#22a;
+           |LIBERA #22;
+           |ACABA;
+    |FINSI;
+
+    |SI #22#19 = "B";
+        |SI #22#20 = 0;
+            #24#12 = #22#4;
+        |SINO;
+            |SI #22#20 = nBase; #24#12 = #22#4; |FINSI;
+        |FINSI;
+    |FINSI;
+    |SI #22#19 = "I";
+        |SI #22#20 = 0;
+            #24#13 = #22#4;
+        |SINO;
+           |SI #22#20 = nBase; #24#13 = #22#4; |FINSI;
+       |FINSI;
+    |FINSI;
+    |SI #22#19 = "R";
+        |SI #22#20 = 0;
+            #24#14 = #22#4;
+        |SINO;
+            |SI #22#20 = nBase; #24#14 = #22#4; |FINSI;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaCuentas;
+  #22#5;
+  ;
+  #23#0,#23#2,#23#3;
+  #23#0,#23#2,#23#3;
+  be;
+  NULL,BuscaCuentas;
+|FIN;
+
+|PROCESO BuscaDocumento
+   #23#0 = nLibro;
+   #23#1 = 9999999999;
+   |LEE 010#23];
+   |SI FSalida = 0;
+       |LEE 040#23a;
+   |SINO;
+       |LEE 040#23u;
+   |FINSI;
+   Documento = 1;
+   |SI FSalida = 0; |Y #23#0 = nLibro;
+       Documento = #23#1 + 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO IvaAnterior;
+
+     |ABRE #23;
+     |ABRE #24;
+
+     nLibro = #Referen@#0;
+     |HAZ BuscaDocumento;
+     |DDEFECTO #23;
+     #23#0  = nLibro;                           || Libro
+     #23#1  = Documento;                        || N§ Registro
+     #23#2  = #Referen@#27;                     || Serie
+     #23#3  = #Referen@#2;                      || Factura/Registro
+     #23#4  = #Referen@#3;                      || Fecha Registro
+     #23#5  = #Referen@#44;                     || Periodo
+     #23#6  = #Referen@#28;                     || Liquidada
+     #23#7  = #Referen@#45;                     || Diario
+     #23#8  = #Referen@#46;                     || Fecha contable
+     #23#9  = #Referen@#47;                     || Documento contable
+     #23#10 = #Referen@#49;                     || Departamento
+
+     #23#12 = #Referen@#4;                      || Cuenta Cli/Pro
+     #23#13 = #Referen@#50;                     || Nombre Cli/Pro
+     #23#14 = #Referen@#51;                     || CIF Cli/Pro
+
+     #23#19 = #Referen@#8 + #Referen@#9 + #Referen@#10 + #Referen@#52 + #Referen@#53;
+
+     #23#20 = 0;
+     #23#21 = #Referen@#26;                     || Total Factura
+     #23#22 = "";                               || N§ Factura Proveedor
+     #23#23 = #Referen@#14 + #Referen@#15 + #Referen@#16 + #Referen@#56 + #Referen@#57;
+     #23#23 = #23#23 + #Referen@#20 + #Referen@#21 + #Referen@#22 + #Referen@#60 + #Referen@#61;
+
+     eSwNoalta = 1;
+     enActividad = #23#10;
+     eaCodDep    = #23#10;
+     |HAZ Actividad;
+     #23#24 = eaNombreAct;                      || Descripcion Departamento
+     #23#25 = "";                               || Descripcion SubDepartamento
+     #23#26 = 0;                                || Total Descuentos
+
+     #23#27 = #Referen@#6;                      || Concepto Cli/Pro
+     #23#28 = #Referen@#7;                      || Descripcion Cli/Pro
+     #23#29 = #Referen@#6;                      || Concepto IVA
+     #23#30 = #Referen@#7;                      || Descripcion IVA
+     #23#31 = "N";                              || Desglose IVA
+     #23#32 = "N";                              || Desglose Contrapartidas
+     #23#33 = "N";                              || Desglose IRPF
+     #23#34 = "N";                              || Desglose Descuento
+     |SI #Referen@#48 = "S";
+         #23#35 = "I";                           || Inversion S/N
+     |SINO;
+         #23#35 = "N";                           || Inversion S/N
+     |FINSI;
+     #23#36 = aTipoIVA;                          || Soportado/Repercutido
+     #23#38 = 1;
+     |SI nFichero = 3; #23#38 = #Referen@#62; |FINSI;
+
+     |SI #23#21 ! 0;
+         |GRABA 020#23n;
+         nAlguno = 1;
+         nSelec = 1;
+         |LEE 010#23=;
+         |HAZ iva3;
+
+         |PARA nBase = 1; |SI nBase [ 5; |HACIENDO nBase = nBase + 1;
+               |DDEFECTO #24;
+               #24#0 = #23#0;                       || Libro
+               #24#1 = #23#1;                       || N§ registro
+               #24#2 = nBase;                             || Linea de base
+               #24#3 = #Referen@#6;                       || Concepto linea
+               #24#4 = #Referen@#7;                       || Descripcion linea
+               #24#5 = #Referen@#23;                      || Deducible S/N
+
+               |SI nBase = 1;                                    || Base imponible
+                   #24#6  = #Referen@#8;
+                   #24#7  = #Referen@#11;
+                   #24#8  = #Referen@#14;
+                   #24#9  = #Referen@#17;
+                   #24#10 = #Referen@#20;
+              |FINSI;
+              |SI nBase = 2;
+                  #24#6  = #Referen@#9;
+                  #24#7  = #Referen@#12;
+                  #24#8  = #Referen@#15;
+                  #24#9  = #Referen@#18;
+                  #24#10 = #Referen@#21;
+              |FINSI;
+              |SI nBase = 3;
+                  #24#6  = #Referen@#10;
+                  #24#7  = #Referen@#13;
+                  #24#8  = #Referen@#16;
+                  #24#9  = #Referen@#19;
+                  #24#10 = #Referen@#22;
+              |FINSI;
+              |SI nBase = 4;
+                  #24#6  = #Referen@#52;
+                  #24#7  = #Referen@#54;
+                  #24#8  = #Referen@#56;
+                  #24#9  = #Referen@#58;
+                  #24#10 = #Referen@#60;
+              |FINSI;
+              |SI nBase = 5;
+                  #24#6  = #Referen@#53;
+                  #24#7  = #Referen@#55;
+                  #24#8  = #Referen@#57;
+                  #24#9  = #Referen@#59;
+                  #24#10 = #Referen@#61;
+              |FINSI;
+              #24#11 = 0;
+              #24#15 = "";
+              #24#17 = #Referen@#48;
+
+              |BUCLE BuscaCuentas;
+              efFechaIVA = #camaniva#4;
+              enPorcIVA = #caivalin#7;  enPorcREC = #caivalin#9;
+              eaCtaIVA  = #caivalin#13; eaCtaREC = #caivalin#14;
+              |HAZ BuscaTipoIVA;
+              #caivalin#16 = enLineaIVA;
+
+              |SI #24#6 ! 0; |O #24#8 ! 0; |O #24#11 ! 0;  |O #24#20 ! 0;  |O #24#22 ! 0;
+                  |GRABA 020#24n;
+              |FINSI;
+        |SIGUE;
+        |LIBERA #23;
+     |FINSI;
+
+     |CIERRA #24;
+     |CIERRA #23;
+|FPRC;
+
+|PROCESO FOpAnterior;
+     |SELECT #3#23;
+     nLibro = #Referen@#0;
+     #23#0  = nLibro;                       || Libro
+     #23#2  = #Referen@#1;                  || Serie
+     #23#3  = #Referen@#2;                  || Factura/Registro
+     |LEE 101#23=;
+     |SI FSalida = 0;
+         #23#41 = #Referen@#3;              || Fecha Operacion
+         |SI nFichero = 3;
+             #23#45 = #Referen@#4;          || Identificacion Rectificativa
+         |FINSI;
+         |GRABA 020#23a;
+     |FINSI;
+     |LIBERA #23;
+     |SELECT #1#23;
+|FPRC;
+
+|| ********************************************************************
+|PROCESO PrimBoIva;
+   |SI #1#9 = 1; |HAZ BorraRepSop; |FINSI;
+   |SI #1#9 = 2; |HAZ BorraManIva; |FINSI;
+|FPRC;
+
+||-------------------------- Pase de Contagen a Contagen
+|PROCESO BorraManIva;
+   |HAZ BorraCab;
+   |SI nError = 0; |HAZ BorraLin; |FINSI;
+|FPRC;
+
+|PROCESO BorraLinIVA;
+ |BORRA 020#24a;
+ |LIBERA #24;
+|FPRC;
+
+|DEFBUCLE BorraLinIVA;
+ #24#1;
+ ;
+ #23#0,#23#1,01;
+ #23#0,#23#1,99;
+ be;
+ NULL, BorraLinIVA;
+|FIN;
+
+|PROCESO IvaCabB2;
+   #23#0 = #Referen@#0;
+   #23#1 = #Referen@#1;
+   |LEE 101#23=;
+   |SI FSalida ! 0; |LIBERA #23; |ACABA; |FINSI;
+
+   |BUCLE BorraLinIVA;
+   |BORRA 020#23a;
+   |SI FSalida = 0;
+       nError = 0;
+       nSelec = 1;
+       #0#4 = #23#4; |PINTA #0#4;
+   |FINSI;
+   |LIBERA #23;
+|FPRC;
+
+|PROCESO BorraCab;
+   nError = 1;
+   fabre = aPath + "exmaniva.asc";
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   field = fcanl + " 10";
+   |FLEE field;
+   |SI FSalida > 0;
+        aAlfa = field % -0109;
+        |SI aAlfa ! Version; |Y Version ! "";
+            aAlfa = "    NEl fichero de iva/irpf(Cab) no corresponde a la Version actual (" + Version + ")";
+            |CONFI aAlfa;
+            |SI FSalida ! 0;
+                |FCIERRA fcanl;
+                |ACABA;
+            |FINSI;
+        |FINSI;
+   |FINSI;
+
+   |ABRE #23;
+   |REFERENCIA_DEF Referen@, #13;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ IvaCabB2;
+          |SINO;
+              |SAL;
+          |FINSI;
+  |SIGUE;
+  |CIERRA #23;
+  |FCIERRA fcanl;
+  Pos = -1;
+|FPRC;
+
+|PROCESO IvaLinB2;
+   #24#0 = #Referen@#0;
+   #24#1 = #Referen@#1;
+   #24#2 = #Referen@#2;
+   |LEE 101#24=;
+   |SI FSalida = 0;
+       |BORRA 020#24a;
+   |FINSI;
+   |LIBERA #24;
+|FPRC;
+
+|PROCESO BorraLin;
+   fabre = aPath + "exivalin.asc";
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   field = fcanl + " 10";
+   |FLEE field;
+   |SI FSalida > 0;
+
+        aAlfa = field % -0109;
+        |SI aAlfa ! Version; |Y Version ! "";
+            aAlfa = "    NEl fichero de iva/irpf(Lin) no corresponde a la Version actual (" + Version + ")";
+            |CONFI aAlfa;
+            |SI FSalida ! 0;
+                |FCIERRA fcanl;
+                |ACABA;
+            |FINSI;
+        |FINSI;
+   |FINSI;
+
+   |ABRE #24;
+   |REFERENCIA_DEF Referen@, #14;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ IvaLinB2;
+          |SINO;
+              |SAL;
+          |FINSI;
+  |SIGUE;
+  |CIERRA #24;
+  |FCIERRA fcanl;
+  Pos = -1;
+|FPRC;
+
+|| -------------------------------- Pase de StarIII a Contagen
+|PROCESO BorraRepSop;
+   nFichero = 3; |HAZ BorraDatos;
+   nFichero = 4; |HAZ BorraDatos;
+|FPRC;
+
+|PROCESO BorraDatos;
+   aFichero = "exivarep.asc";
+   aTipoIVA = "R";
+   |SI nFichero = 4;
+       aFichero = "exivasop.asc";
+       aTipoIVA = "S";
+   |FINSI;
+
+   nError = 1;
+   fabre = aPath + aFichero;
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   |SI nFichero = 3;
+      |REFERENCIA_DEF Referen@, #15;
+   |SINO;
+      |REFERENCIA_DEF Referen@, #16;
+   |FINSI;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ IvaAnteriorB;
+          |SINO;
+              |SAL;
+          |FINSI;
+  |SIGUE;
+  |FCIERRA fcanl;
+  Pos = -1;
+|FPRC;
+
+|PROCESO IvaAnteriorB;
+     |ABRE #23;
+     |DDEFECTO #23;
+     |SELECT #3#23;
+     #23#0  = #Referen@#0;                      || Libro
+     #23#2  = #Referen@#27;                     || Serie
+     #23#3  = #Referen@#2;                      || Factura/Registro
+     |LEE 101#23=;
+     |SI FSalida = 0;
+         |BUCLE BorraLinIVA;
+         |BORRA 020#23a;
+     |FINSI;
+     |LIBERA #23;
+     |SELECT #1#23;
+     |CIERRA #23;
+|FPRC;
+
+|| **************************************************************************
+|| ****************************************** IMPORTACION DE CUENTAS
+|PROCESO cuentas2;
+   #21#0 = #Referen@#0;
+   |LEE 000#21=;
+   nEstado = FSalida;
+   |SI nEstado = 0; |Y #1#11 = "N";
+       |ACABA;
+   |FINSI;
+
+   |PARA nPara1 = 0; |SI nPara1 [ nCalc; |HACIENDO nPara1 = nPara1 + 1;
+         #21nPara1 = #Referen@#nPara1#;
+   |SIGUE;
+
+   |SI nEstado ! 0; |GRABA 000#21n; |FINSI;
+   |SI nEstado = 0; |GRABA 000#21a; |FINSI;
+
+   |SI FSalida = 0; nSelec = 1; |FINSI;
+
+|FPRC;
+
+|PROCESO cuentas0;
+
+   #0#3 = "CUENTAS     "; |PINTA #0#3;
+   #0#4 = "01.01.0001";   |PINTA #0#4;
+
+   fabre = aPath + "excuenta.asc";
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   |SI #1#9 = 2;
+       field = fcanl + " 10";
+       |FLEE field;
+       |SI FSalida > 0;
+
+           aAlfa = field % -0109;
+           |SI aAlfa ! Version; |Y Version ! "";
+               aAlfa = "    NEl fichero de plan contable no corresponde a la Version actual (" + Version + ")";
+               |CONFI aAlfa;
+               |SI FSalida ! 0;
+                   |FCIERRA fcanl;
+                   |ACABA;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   nFichero = 1;
+
+   |ABRE #21;
+
+   |REFERENCIA_DEF Referen@, #11;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ cuentas2;
+          |SINO;
+              |SAL;
+          |FINSI;
+   |SIGUE;
+   |CIERRA #21;
+   |FCIERRA fcanl;
+   Pos = -1;
+
+   |HAZ cliprov0;
+|FPRC;
+
+|| **************************************************************************
+|| ************************************** IMPORTACION DE CLIENTES/PROVEEDORES
+|PROCESO cliprov2;
+   #26#23= #Referen@#23;
+   #26#10= #Referen@#10;
+   |LEE 000#26=;
+   nEstado = FSalida;
+   |SI nEstado = 0; |Y #1#11 = "N";
+       |ACABA;
+   |FINSI;
+
+   |PARA nPara1 = 0; |SI nPara1 [ nCalc; |HACIENDO nPara1 = nPara1 + 1;
+         #26nPara1 = #Referen@#nPara1#;
+   |SIGUE;
+
+   |SI nEstado ! 0; |GRABA 000#26n; |FINSI;
+   |SI nEstado = 0; |GRABA 000#26a; |FINSI;
+
+   |SI FSalida = 0; nSelec = 1; |FINSI;
+
+|FPRC;
+
+|PROCESO cliprov0;
+
+   #0#3 = "CLIEN./PROV."; |PINTA #0#3;
+   #0#4 = "01.01.0001";   |PINTA #0#4;
+
+   fabre = aPath + "exclipro.asc";
+   |FABRE fabre;
+   |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+   fcanl = FSalida;
+
+   nFichero = 7;
+
+   |ABRE #26;
+
+   |REFERENCIA_DEF Referen@, #17;
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ cliprov2;
+          |SINO;
+              |SAL;
+          |FINSI;
+   |SIGUE;
+   |CIERRA #26;
+   |FCIERRA fcanl;
+   Pos = -1;
+|FPRC;
+
+|| *************************************************** IMPORTACION DE APUNTES
+|PROCESO apuntes4;
+   |DDEFECTO #10;
+   |ABRE #10;
+   |LEE 101#10p;
+   |SI FSalida ! 0;  |GRABA 020#10b;  |FINSI;
+   |SI #20#2 > #10#1;
+       #10#1 = #20#2;
+       |GRABA 020#10a;
+   |FINSI;
+   |LIBERA #10;
+   |CIERRA #10;
+|FPRC;
+
+|PROCESO apuntes3;
+   |DDEFECTO #20;
+   #20#0 = #22#0;
+   #20#1 = #22#1;
+   #20#2 = #22#2;
+   |LEE 101#20=;
+   FEstado = FSalida;
+   #20#0 = #22#0;         || diario
+   #20#1 = #22#1;         || fecha
+   #20#2 = #22#2;         || documento
+   #20#3 = #20#2;         || asiento
+   |SI #22#8 = "D";
+       #20#4 = #20#4 + #22#9;
+       |SI #20#09 = 0; #20#08 = #22#4; #20#09 = #22#5; |FINSI;      || contrp.HABER
+   |FINSI;
+   |SI #22#8 = "H";
+       #20#5 = #20#5 + #22#9;
+       |SI #20#11 = 0; #20#10 = #22#4; #20#11 = #22#5; |FINSI;      || contrp.DEBE
+   |FINSI;
+   #20#6 = #20#4 - #20#5;
+   #20#12 = #22#24;
+   |SI #22#12 = "R"; #20#13 = 1; |FINSI;
+   |SI #22#12 = "S"; #20#13 = 2; |FINSI;
+   |SI #22#12 = "N"; #20#13 = 3; |FINSI;
+   #20#15 = #22#25;
+   #20#16 = #22#27;
+   #20#17 = #22#28;
+   |SI FEstado = 0;  |GRABA 020#20a;  |FINSI;
+   |SI FEstado ! 0;  |GRABA 020#20n;  |FINSI;
+   |LIBERA #20;
+|FPRC;
+
+|PROCESO apuntes_lin_1;
+
+   |PARA nPara1 = 0; |SI nPara1 [ nCalc; |HACIENDO nPara1 = nPara1 + 1;
+         #22nPara1 = #Referen@#nPara1#;
+   |SIGUE;
+
+   |LEE 001#22=;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   |SI #22#1 < fec1; |O #22#1 > fec2;
+      swfecha = 1;
+      |MENAV "    ERROR!, LOS DATOS A IMPORTAR NO CORRESPONDEN AL EJERCICIO";
+      |ACABA;
+   |FINSI;
+   |SI #22#1 [ fec3;
+       |SI SwYA = 0;
+           |MENAV "    ERROR!, Asientos inferior o igual a la fecha bloqueo, no se actualizan";
+           SwYA = 1;
+       |FINSI;
+       |ACABA;
+   |FINSI;
+
+   |GRABA 000#22n;
+   |SI FSalida = 0;
+       nSelec = 1;
+       |HAZ apuntes3;
+       |HAZ apuntes4;
+       MasMenos     = #22#9;
+       DebeHaber    = #22#8;
+       aCUENTA      = #22#4;
+       nREGISTRO    = #22#24;
+       nDIARIO      = #22#0;
+       aFECHA       = #22#1;
+       nDOCUMENTO   = #22#2;
+       nNIVELCUENTA = #22#5;
+       |HAZ ActDiario;          || diario
+       |HAZ ActCuenta;          || cuenta
+       |HAZ ActTesteo;
+       #0#4 = #22#1;     |PINTA #0#4;
+   |FINSI;
+|FPRC;
+
+|PROCESO apuntes0;
+
+   #0#3 = "APUNTES     "; |PINTA #0#3;
+
+   fabre = aPath + "exmaasil.asc";
+
+   |FABRE fabre;
+   |SI FSalida < 0; Pos = -1; |ACABA; |FINSI;
+   fcanl = FSalida;
+
+   |SI #1#9 = 2;
+       field = fcanl + " 10";
+       |FLEE field;
+       |SI FSalida > 0;
+           aAlfa = field % -0109;
+           |SI aAlfa ! Version; |Y Version ! "";
+               aAlfa = "    NEl fichero de Apuntes no corresponde a la Version actual (" + Version + ")";
+               |CONFI aAlfa;
+               |SI FSalida ! 0;
+                   |FCIERRA fcanl;
+                   |ACABA;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |SI #1#11 = "S"; |HAZ PrimBoAstos; |FINSI;
+
+   nFichero = 2;
+   |ABRE #20;
+   |ABRE #22;
+   |REFERENCIA_DEF Referen@, #12;
+
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ apuntes_lin_1;
+              |SI swfecha = 1; |SAL; |FINSI;
+          |SINO;
+              |SAL;
+          |FINSI;
+   |SIGUE;
+   |CIERRA #22;
+   |CIERRA #20;
+   |FCIERRA fcanl;
+   Pos = -1;
+|FPRC;
+
+|PROCESO GrabaAuxiliar;
+ #999#0 = #20#0;
+ #999#1 = #20#1;
+ #999#2 = #20#2;
+ #999#3 = 1;
+ |GRABA 000#999n;
+|FPRC;
+
+|PROCESO apuntes5;
+   |DDEFECTO #20;
+   #20#0 = #22#0;
+   #20#1 = #22#1;
+   #20#2 = #22#2;
+   |LEE 101#20=;
+   |SI FSalida = 0;
+       |BORRA 020#20a;
+       |HAZ GrabaAuxiliar;
+   |FINSI;
+   |LIBERA #20;
+|FPRC;
+
+|PROCESO apuntes_lin_2;
+
+   #22#0 = #Referen@#0;
+   #22#1 = #Referen@#1;
+   #22#2 = #Referen@#2;
+   #22#3 = #Referen@#3;
+
+   |SI #22#1 < fec1; |O #22#1 > fec2;
+      swfecha = 1;
+      |ACABA;
+   |FINSI;
+   |SI #22#1 [ fec3; |ACABA; |FINSI;
+
+   |LEE 101#22=;
+   |SI FSalida ! 0; |LIBERA #22; |ACABA; |FINSI;
+
+   |BORRA 020#22a;
+   |SI FSalida = 0;
+       |HAZ apuntes5;
+       MasMenos     = -#22#9;
+       DebeHaber    = #22#8;
+       aCUENTA      = #22#4;
+       nREGISTRO    = #22#24;
+       nDIARIO      = #22#0;
+       aFECHA       = #22#1;
+       nDOCUMENTO   = #22#2;
+       nNIVELCUENTA = #22#5;
+       |HAZ ActDiario;          || diario
+       |HAZ ActCuenta;          || cuenta
+       #0#4 = #22#1;     |PINTA #0#4;
+   |FINSI;
+   |LIBERA #22;
+|FPRC;
+
+|PROCESO Repaso_L;
+   |BORRA 020#22a;
+   |LIBERA #22;
+   MasMenos     = -#22#9;
+   DebeHaber    = #22#8;
+   aCUENTA      = #22#4;
+   nREGISTRO    = #22#24;
+   nDIARIO      = #22#0;
+   aFECHA       = #22#1;
+   nDOCUMENTO   = #22#2;
+   nNIVELCUENTA = #22#5;
+   |HAZ ActDiario;   || diario
+   |HAZ ActCuenta;   || cuenta
+   #0#4 = #22#1;     |PINTA #0#4;
+|FPRC;
+
+|DEFBUCLE Repaso_L;
+ #22#1;
+ ;
+ #999#0, #999#1, #999#2, 0001;
+ #999#0, #999#1, #999#2, 9999;
+ be;
+ NULL, Repaso_L;
+|FIN;
+
+|PROCESO RepasoLineas;
+ |BUCLE Repaso_L;
+|FPRC;
+
+|DEFBUCLE RepasoLineas;
+ #999#1;
+ ;
+ 00, "01.01.1900", 000001, 0001;
+ 99, "31.12.2999", 999999, 9999;
+ ;
+ NULL, RepasoLineas;
+|FIN;
+
+|PROCESO PrimBoAstos;
+
+   aFichero = "b" + Usuario;
+   |NOME_DAT #999 aFichero;
+   |DELINDEX #999;
+
+   nFichero = 2;
+   |ABRE #20;
+   |ABRE #22;
+   |ABRE #999;
+   |REFERENCIA_DEF Referen@, #12;
+
+   |PARA; |SI; |HACIENDO;
+          nLong = 0;
+          |HAZ SacaRegistro;
+          |SI nLong ! 0;
+              |HAZ apuntes_lin_2;
+              |SI swfecha = 1; |SAL; |FINSI;
+          |SINO;
+              |SAL;
+           |FINSI;
+   |SIGUE;
+   |CIERRA #999;
+   |CIERRA #22;
+   |CIERRA #20;
+   |FCIERRA fcanl;
+   Pos = -1;
+
+   |FABRE fabre;
+   |SI FSalida < 0; Pos = -1; |ACABA; |FINSI;
+   fcanl = FSalida;
+
+   |SI #1#9 = 2;
+       field = fcanl + " 10";
+       |FLEE field;
+   |FINSI;
+
+   |BUCLE RepasoLineas;
+
+   |DELINDEX #999;
+|FPRC;
+
+|| ---------------------------------------------------------------------
+|PROCESO SacaRegistro;
+
+   aAlfa = "|NC";
+   nCalc = #Referen@#aAlfa#;
+   nCalc = nCalc - 1;
+
+   nSwSerie = 5;
+   |SI #1#9 = 1;      ||Del pase de star3
+       nSwSerie = 2;
+       |SI nFichero = 1; nCalc = c_cacuenta; |FINSI;
+       |SI nFichero = 2; nCalc = c_camaasil; |FINSI;
+       |SI nFichero = 7; nCalc = c_caclipro; |FINSI;
+   |FINSI;
+
+   |PARA nPara2 = 0; |SI nPara2 [ nCalc; |HACIENDO nPara2 = nPara2 + 1;
+
+        aAlfa = ("000" + nPara2) % -103;
+        aAlfa = "|C" + aAlfa + "NOMBRE";
+        aNCampo = #Referen@#aAlfa#;
+        aNCampo = aNCampo > " "; |QBT aNCampo;
+        |SI aNCampo ! "SERIE";
+            aAlfa = ("000" + nPara2) % -103;
+            aAlfa = "|C" + aAlfa + "LONGITUD";
+            nCalc1 = #Referen@#aAlfa#;
+        |SINO;
+            nCalc1 = nSwSerie;
+        |FINSI;
+        |SI aNCampo = "NRO.ACUMULADORIVA";
+            |SI #1#9 = "1"; nCalc1 = 1; |FINSI;
+        |FINSI;
+        |SI aNCampo = "IMPORTE";
+            |SI #1#9 = "1"; nCalc1 = 10; |FINSI;
+        |FINSI;
+        |SI nPara2 = 24; |Y #1#9 = 1; |Y nFichero = 2;
+            nCalc1 = 30;
+        |FINSI;
+
+        aAlfa = fcanl + " " + nCalc1;
+        |FLEE aAlfa;
+        |SI FSalida > 0; nLong = nLong + FSalida; |SINO; |SAL; |FINSI;
+        #Referen@#nPara2# = aAlfa;
+
+        |SI nPara2 = 24; |Y #1#9 = 1; |Y nFichero = 2;
+            |QBF aAlfa;
+            |SI aAlfa ! "";
+                #12#7 = aAlfa + " " + #12#7;
+            |FINSI;
+        |FINSI;
+
+   |SIGUE;
+
+|FPRC;
+
+
+|PROGRAMA;
+
+   |ABRE #1;
+   |LEE 000#1p;
+   |SI FSalida = 0;
+      |SI #1#1 = "E";
+          |MENAV "    Control configurado para la Exportacion ...";
+          |CIERRA #1;
+          |ACABA;
+      |SINO;
+          |HAZ inicial;
+      |FINSI;
+   |SINO;
+      |MENAV "    Debera definir el Control de Exportaciones/Importaciones ...";
+      |CIERRA #1;
+      |ACABA;
+   |FINSI;
+
+   |CIERRA #1;
+   |CLS;
+   |SUB_EJECUTA "caxcopia.run";
+   |HAZ DirAplicSt;
+   |HAZ eLeeParametro;
+
+   |CABEZA "Importacion";
+   |PINPA #0#0;
+   |PINDA #0#0;
+   |ENDATOS #1#0;
+|FPRO;

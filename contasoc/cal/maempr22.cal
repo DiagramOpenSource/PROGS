@@ -1,0 +1,175 @@
+|FICHEROS;
+     maempr22,MANTE;
+     maempz22;
+
+    :/basica/def/agidanif;
+    &regisnif@ #709;
+    &sgpaises@ #718;
+|FIN;
+
+|VARIABLES;
+     aAlfa      = "";
+     aAlfa1     = "";
+     nModo      = 0;
+     nCampo     = 0;
+     nNume1     = 0;
+     fHoy       = @;
+     nDia1      = 0;
+     nDia2      = 0;
+     nMes1      = 0;
+     nMes2      = 0;
+     nAny1      = 0;
+     nAny2      = 0;
+     nEdad      = 0;
+
+     &enCalcCif = 0;
+     &eaVarDni  = "";
+     &eaCodPais = "";
+     &eaCodNif  = "";
+     &eswNif    = 0;
+|FIN;
+
+|PROCESO Tipo2; |TIPO 2;
+    #maempz22#0 = #maempz22#0 +. (#maempr22#11 + #maempr22#12);
+    |PINTA 2374, #maempz22#0;
+|FPRC;
+
+|PROCESO Tipo0C11; |TIPO 0;
+    |SI FSalida = 2; |ACABA; |FINSI;
+
+    |SI #maempr22#11 ! 0;
+||        #maempr22#12 = 0; |PINTA #maempr22#12;
+        #maempr22#4  = "F";
+    |FINSI;
+
+    nNume1 = #maempz22#0 + (#maempr22#11 + #maempr22#12);
+    |SI nNume1 > 100; |Y #maempr22#11 ! 0;
+        |MENAV "0000Suma de Porcentaje mayor del 100%. Modificar";
+        |ERROR;
+    |FINSI;
+|FPRC;
+
+|PROCESO Tipo0C12; |TIPO 0;
+    |SI FSalida = 2; |ACABA; |FINSI;
+
+    |SI #maempr22#12 ! 0;
+||        #maempr22#11 = 0; |PINTA #maempr22#11;
+        #maempr22#4  = "J";
+    |FINSI;
+
+    nNume1 = #maempz22#0 + (#maempr22#11 + #maempr22#12);
+    |SI nNume1 > 100; |Y #maempr22#12 ! 0;
+        |MENAV "0000Suma de Porcentaje mayor del 100%. Modificar";
+        |ERROR;
+    |SINO;
+        |SI #maempr22#11 = 0; |Y #maempr22#12 = 0;
+            |MENAV "0000Error Porcentajes igual a 0";
+            |ERROR;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO LetraNif;  |TIPO 6;
+     |SI FSalida = 10;
+         enCalcCif = 1;
+         eaVarDni  =  #maempr22#Campo#;
+         |HAZ CalculoDNI;
+         #maempr22#Campo# = eaVarDni;
+         |PINTA #maempr22#Campo#;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #maempr22#Campo#;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "            ") % 112;
+     |SI #maempr22#Campo# ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #maempr22#Campo# = eaVarDni;  |PINTA #maempr22#Campo#;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeePaism22; |TIPO 6;
+     eaCodPais = #maempr22#Campo#;
+     |HAZ eLeePais;
+     nCampo = Campo + 1;
+     #maempr22#nCampo# = #718#1; |PINTA #maempr22#nCampo#;
+|FPRC;
+
+|PROCESO PonDatos;
+     aAlfa1 = Contenido;
+     nModo  = (FEntrada / 100) ! 0;
+     aAlfa  = #maempr22#5; |QBF aAlfa;
+
+     |SI nModo = 1; |O aAlfa = ""; |O aAlfa1 ! #maempr22#3;
+
+         eaCodNif  = #maempr22#3;
+         |HAZ LeeNifs;
+
+         #maempr22#10 = "01.01.0000";
+         #maempr22#5  = #709#1;  |PINTA #maempr22#5;
+     |FINSI;
+     |HAZ Tipo0FecNac;
+|FPRC;
+
+|PROCESO Tipo0FecNac;
+     |SI #maempr22#10 [ "01.01.0001";
+         |ABRE #agidanif;
+         #agidanif#0  = #maempr22#3;
+         #agidanif#1  = 1;
+         |LEE 040#agidanif.=;
+         |SI FSalida = 0; |Y #agidanif#13 > "01.01.0000";
+             #maempr22#10 = #agidanif#13; |PINTA #maempr22#10;
+         |FINSI;
+         |CIERRA #agidanif;
+     |FINSI;
+
+     fHoy = ~;
+     |SI #maempr22#10 > fHoy;    || nacimientos futuros como que no
+          |HAZ PonSiglo20;       ||/se cambia sin preguntar
+     |FINSI;
+
+     |SI #maempr22#10 ] "01.01.2001"; |Y #maempr22#10 [ fHoy;  || presuntos ni¤os,
+                                                                       ||/se pregunta
+         |HAZ CumpleAnyos;
+         |SI nEdad < 18;
+             aAlfa = "0000SLa fecha puede ser incorrecta. Ha introducido un contribuyente menor de edad. Corregir fecha?";
+             |CONFI aAlfa;
+             |SI FSalida = 0;
+                 |ERROR;
+                 || |HAZ PonSiglo20;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO CumpleAnyos;
+     aAlfa1 = fHoy;         aAlfa1 = aAlfa1 % -104; nAny1 = aAlfa1;
+     aAlfa1 = #maempr22#10; aAlfa1 = aAlfa1 % -104; nAny2 = aAlfa1;
+     nEdad  = nAny1 - nAny2;
+
+     |SI nEdad ! 18; |ACABA; |FINSI;
+
+     aAlfa1 = fHoy;         aAlfa1 = aAlfa1 % 402; nMes1 = aAlfa1;
+     aAlfa1 = #maempr22#10; aAlfa1 = aAlfa1 % 402; nMes2 = aAlfa1;
+
+     |SI nMes2 > nMes1;  nEdad = nEdad - 1; |FINSI;
+     |SI nMes1 ! nMes2;  |ACABA;            |FINSI;
+
+     aAlfa1 = fHoy;         aAlfa1 = aAlfa1 % 102; nDia1 = aAlfa1;
+     aAlfa1 = #maempr22#10; aAlfa1 = aAlfa1 % 102; nDia2 = aAlfa1;
+
+     |SI nDia2 > nDia1;  nEdad = nEdad - 1; |FINSI;
+|FPRC;
+
+|PROCESO PonSiglo20;
+     aAlfa1    = (#maempr22#10 % 106) + "19" + (#maempr22#10 % -102);
+     #maempr22#10 = aAlfa1;
+     |PINTA #maempr22#10;
+|FPRC;

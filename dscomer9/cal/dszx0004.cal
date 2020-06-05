@@ -1,0 +1,172 @@
+|FICHEROS;
+     dszx0004 #0;
+     agifa210 #210,MANTE;
+     agifa211 #211;
+     agifa104 #104;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     &eaSerie = "";
+     &enCodigo = 0;
+     &Tempo = "";
+     &fec_alb = @;
+     &abo_alb = "";
+     &ser_alb = "";
+     &num_alb = 0;
+     &abono = "";
+     aAcc = "";
+     aSer = "";
+     aAlb = "";
+     aAlfa = "";
+     nHay = 0;
+     aFec = "";
+     aTempo = "";
+     nHandle = 0;
+|FIN;
+
+|PROCESO Tecla; |TIPO 0;
+     |SI FSalida = 0; |Y #0Campo = Contenido;
+          aAlfa = "dszx0003;V" + #0#0 + (("000000"+#0#1)%-106);
+          |SUB_EJECUTA_NP aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min;
+     #0#0 = "     ";
+     #0#1 = 000000;
+|FPRC;
+
+|PROCESO Max;
+     #0#0 =  "zzzzz";
+     #0#1 = 999999;
+|FPRC;
+
+|PROCESO Pedidos;
+     #104#25 = #211#31;
+     #104#0 = #211#12;
+     |LEE 000#104=;
+     |SI FSalida = 0;
+          nHay = nHay + 1;
+          #0#0 = #104#25;
+          #0#1 = #104#0;
+          #0#2 = #104#1;
+          #0#3 = #104#4;
+          #0#4 = #104#8;
+          #0#5 = #210#52;
+          #0#6 = #210#0;
+          |GRABA 020#0n;
+     |FINSI;
+|FPRC;
+
+|PROCESO VerPedido;
+     |HAZ CreaTempo;
+     |NOME_DAT #0 Tempo; |DELINDEX #0;
+     |ABRE #104;
+     |ABRE #0;
+     |BUCLELIN 2 Pedidos #210;
+     |CIERRA #0;
+     |CIERRA #104;
+     |SI nHay = 0;
+          |MENAV "0000No se encuentran pedidos para este albaran...";
+     |SINO;
+          |SI nHay = 1;
+               aAlfa = "dszx0003;V" + #0#0 + (("000000"+#0#1)%-106);
+               |SUB_EJECUTA_NP aAlfa;
+          |SINO;
+               |CLS;
+               |ENTLINEAL #1#0, 1, 4, 22, 1, Min, Max;
+          |FINSI;
+     |FINSI;
+     |DELINDEX #0; |HAZ BoraTempo;
+|FPRC;
+
+|PROGRAMA;
+     aAcc = PARAMETRO % 101;
+     aSer = PARAMETRO % 205;
+     aAlb = PARAMETRO % 706;
+     aFec = PARAMETRO % 1310;
+
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |ABRE #210;
+     #210#52 = aSer;
+     #210#0 = aAlb;
+     |LEE 020#210=;
+     |SI FSalida = 0;
+          |SI aAcc = "V";     ||Ver Alb
+               |PINPA #0#210;
+               |PINDA #0#210;
+               |ENDATOS #4#210;
+          |FINSI;
+          |SI aAcc = "I";     ||Imprimir;
+               ser_alb = #210#52;
+               num_alb = #210#0;
+               abono = #210#43;
+               |SUB_EJECUTA_NP "agifa014";
+          |FINSI;
+          |SI aAcc = "A";     ||Adjudicar
+               ser_alb = #210#52;
+               num_alb = #210#0;
+               fec_alb = aFec;
+               abo_alb = #210#43;
+               |SUB_EJECUTA_NP "agifa057";       ||Facturar Albaranes
+          |FINSI;
+          |SI aAcc = "F";     ||Ver Factura
+               |SI #210#38 = "S";
+                    aAlfa = "dszx0005;V" + #210#53 + (("000000" + #210#39)% -106);
+                    |SUB_EJECUTA_NP aAlfa;
+               |SINO;
+                    |MENAV "0000Albaran no facturado...";
+               |FINSI;
+          |FINSI;
+          |SI aAcc = "P";     ||Ver Pedido
+               |HAZ VerPedido;
+          |FINSI;
+          |SI aAcc = "M";     ||Modificar
+               |LEE 121#210=;
+               |PINPA #0#210;
+               |PINDA #0#210;
+               |ENDATOS #2#210;
+               |SI FSalida = 0;
+                    |GRABA 020#210a;
+                    |LIBERA #210;
+                    |HAZ _Final;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #210;
+|FPRO;
+
+|PROCESO _Final; ||Como el tipo 30
+     |HAZ EsInforAlba;
+     |SI FSalida = 0;
+          eaSerie = #210#52;
+          enCodigo = #210#0;
+          |SUB_EJECUTA_NP "ialbz005";
+     |FINSI;
+
+     |CONFI "2400NDesea imprimir este albaran? ";
+     |SI FSalida = 0;
+          ser_alb = #210#52;
+          num_alb = #210#0;
+          abono = #210#43;
+          |SUB_EJECUTA_NP "agifa014";
+     |FINSI;
+
+     |SI #142#17 = "S"; |Y #210#51 = "S";
+          |SI #142#19 = "S";
+               |CONFI "2400NDesea Facturar este Albaran : ";
+               |SI FSalida = 0;
+                    ser_alb = #210#52;
+                    num_alb = #210#0;
+                    fec_alb = #210#1;
+                    abo_alb = #210#43;
+                    |HAZ EsSematel;
+                    |SI FSalida = 0; fec_alb = ~; |FINSI;
+
+                    |SUB_EJECUTA_NP "agifa057";       ||Facturar Albaranes
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;

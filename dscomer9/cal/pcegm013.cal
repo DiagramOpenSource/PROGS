@@ -1,0 +1,452 @@
+|FICHEROS;
+     pcegm013 #0;        || agifa148 recibos adelantados
+     agifa024 #1;
+     pcegm004 #4;        || Pedido (C)
+     pcegm005 #5;        ||        (L)
+     agifa177 #98;       || Tipos de recibos.
+     agifa142 #99;       || Parametros generales.
+     dscamrec@ #600;     || Fichero puente cartera
+     agifa324  #601;
+     agifa091 #91;
+    dsm00289 #289;
+|FIN;
+
+|VARIABLES;
+     &enTotalPed = 0;
+     &aDivisa = "";
+     &aMoneda = "";
+     &eaCta = "";
+     &eswCta = 0;
+     nModiImpre = 0;
+     &eaTag = "";
+     &enSigno = 0;
+     &Tempo = "";
+     nNume = 0;
+     aTempo148 = "";
+     aTempo600 = "";
+     &aCPath = ""; &aCNome = "";
+     &nDeci_Div = 0;
+     &enErr   = 0;
+     &TipoCta = "";
+     &Cliente = "";
+     &SPedido = "";
+     &NPedido = 0;
+     &PPedido = "";
+     &FPedido = @;
+     &TPedido = 0;
+     &BAdela  = 0;
+     &aTmp148 = "";
+
+     nSwError = 0;
+     Divisa = ""; CambioBase = 0; CambioDiv = 0;
+     cta       = "";
+     alfa      = "";
+     total     = 0;
+     impo      = 0;
+     dto       = 0;
+     modo      = 0;
+     hay       = 0;
+     actual    = 0;
+     tped      = 0;
+     trec      = 0;
+     entra     = 0;
+     nBase     = 0;
+     nEuro     = 0;
+     nFlag     = 0;
+
+     aPath = ""; aDef00 = ""; aMensa = ""; aAlfa = "";
+     Comodin = ""; aSubProg = ":dscarter/dsrecibo";
+     nHandle = 0;
+|FIN;
+
+|PROCESO MCta002;|TIPO 0;
+  eaCta = #0Campo;
+  |HAZ MFiltraPtos;
+  #0Campo = eaCta; |PINTA #0Campo;
+
+  |HAZ MCtaContable;
+  |SI eswCta = 1;
+      |MENAV "    Error. Longitud de Cuenta fuera de Nivel";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO Mayus;
+      #0Campo = #0Campo > #0Campo;
+      |PINTA #0Campo;
+|FPRC;
+
+|PROCESO PonDatos;  |TIPO 7;
+     |DDEFECTO #1;
+     |ABRE #1;
+     #1#0 = Cliente;
+     |LEE 000#1=;
+     |CIERRA #1;
+
+     entra = (FEntrada/100) ! 0;
+     |SI entra = 1;
+          #0#2  = #1#0;
+          #0#3  = #1#1;
+          #0#4  = #1#29;
+          #0#7  = FPedido;
+          #0#12 = #1#16;
+          #0#24 = PPedido;
+          |SI BAdela ! 2;
+               #0#9 = tped - trec;
+          |FINSI;
+          |ABRE #91;
+          #91#0 = #4#9;
+          |LEE 000#91=;
+          |SI FSalida = 0;
+               #0#22 = #91#69;
+          |FINSI;
+          |CIERRA #91;
+     |FINSI;
+|FPRC;
+
+______/ COGE POR LA CTA.DE COBRO
+|PROCESO defecto; |TIPO 7;
+     alfa = #0#28;
+     |QBF alfa;
+     |SI alfa = "";
+          |ABRE #98;
+          |ABRE #99;
+          |LEE 000#99p;
+          |SI FSalida ! 0; |DDEFECTO #99; |FINSI;
+          |SI #99#63 = "S";
+               #98#0 = #0#22;
+               |LEE 000#98=;
+               |SI FSalida = 0;
+                    alfa = #98#3;
+                    |QBF alfa;
+                    |SI alfa ! "";
+                         #0#28 = #98#3;      || CTA.CONTABLE TIPO RECIBO.
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |CIERRA #98;
+          |CIERRA #99;
+     |FINSI;
+|FPRC;
+-----------------------------------------------------------------------
+|RUTINA ClaveBaja;
+     #0#30 = TipoCta;
+     #0#20 = SPedido;
+     #0#17 = NPedido;
+     #0#18 = 1;
+|FRUT;
+
+|RUTINA ClaveAlta;
+     #0#30 = TipoCta;
+     #0#20 = SPedido;
+     #0#17 = NPedido;
+     #0#18 = 99;
+|FRUT;
+
+|PROCESO BorraAdelanta;
+     |DDEFECTO #600;
+||||  #600#1  = #0#19;       ||Serie  Thu May 11 18:54:20 CEST 2006
+     #600#1  = #0#20;       ||Serie
+     #600#2  = #0#17;       ||Fact
+     #600#3  = #0#18;       ||N� Rec
+     #600#5  = #0#7;        ||Fecha emision
+     #600#22 = #0#18;
+     |DFICE Comodin;
+     Comodin = Comodin % -106;
+     Comodin = Comodin % 0105;
+     #600#25 = Comodin;        || Empresa ges
+     #600#27 = "V";            || Tipo (Ventas/Compras)
+     #600#28 = "B";            || Operacion (Alta/Modificacion/Baja)
+     #600#35 = TipoCta;
+     #600#36 = #pcegm013#28;
+     |GRABA 020#600n;
+
+     |BORRA 020#0a;
+     |LIBERA #0;
+
+     enSigno = -1;
+     eaTag = "RAP";
+     |HAZ Riesgos;
+     enSigno = 1;
+|FPRC;
+
+|DEFBUCLE manw0005;
+     #0#1;
+     ;
+     TipoCta, SPedido, NPedido, 00;
+     TipoCta, SPedido, NPedido, 99;
+     be;
+     NULL, BorraAdelanta;
+|FIN;
+--------------------------------------------------------------------
+|PROCESO CalcuRec;
+     trec = 0;
+     #0#30 = TipoCta;
+     #0#20 = SPedido;
+     #0#17 = NPedido;
+     #0#18 = 1;
+     |LEE 000#0];
+     |PARA; |SI FSalida = 0; |Y #0#20 = SPedido; |Y #0#17 = NPedido;
+                             |Y #0#30 = TipoCta; |HACIENDO;
+          trec = trec + #0#9;
+          |LEE 000#0s;
+     |SIGUE;
+|FPRC;
+-----------------------------------------------------
+|PROCESO HallaMoneda;
+     Divisa  = #4#35;
+     CambioBase = #4#41;
+     CambioDiv = #4#36;
+|FPRC;
+
+|PROCESO ControlModi; |TIPO 6;
+     |SI Campo = 9;
+          nNume = #0#9 + trec;
+          |SI nNume > tped;
+               nNume = nNume - tped;
+               aAlfa = "0000Se supera el importe en: " + nNume;
+               |MENAV aAlfa;
+               |ERROR;
+          |FINSI;
+     |FINSI;
+
+     |SI #0Campo ! Contenido;
+          nModiImpre = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo2; |TIPO 2;
+     |SI nSwError ! 0; nSwError = 0; |ERROR; |ACABA; |FINSI;
+
+     |HAZ ControlUsuEC;
+     |SI enErr ! 0; nSwError = 1; |ERROR; |ACABA; |FINSI;
+
+     ||컴컴컴컴컴컴컴컴컴컴컴
+     nFlag = 0 +. 1;
+     |SI #0#10 = "S"; |Y nFlag = -1;
+          nModiImpre = 0;
+          |CONFI "0000NRecibo impreso. Continuar?...";
+          |SI FSalida = 0;
+               nModiImpre = 1;
+               #0#10 = "N";
+          |SINO;
+               nSwError = 1;
+               |ERROR; |ACABA;
+          |FINSI;
+     |FINSI;
+     |SI nFlag = 1; |Y nModiImpre = 1; |Y #0#10 = "N";
+          nModiImpre = 0;
+          |MENAV "0000Recibo no modificado, se marca como impreso";
+          #0#10 = "S";
+     |FINSI;
+
+     |SI nFlag < 0;
+        nSwError = 0;
+     |SINO;
+        |SI nSwError ! 0; |ACABA; |FINSI;
+     |FINSI;
+
+     trec = trec +. #0#9;
+
+     |DBASS aAlfa;
+     aAlfa = aAlfa + "dscarter/fich/dscam000.dat";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida = 0;
+        |DBASS aPath;
+        aPath = aPath + "dscarter/";
+        aDef00 = aPath + "def/dscamrec";
+
+        |CARGA_DEF aDef00, dscamrec@;
+        |SI FSalida ! 0;
+           aMensa = "0000Error al cargar:" + aDef00;
+           |MENAV aMensa;
+           aDef00 = "";
+        |SINO;
+           |HAZ CreaTempo; aTempo600 = Tempo;
+           |PATH_DAT #600 aPath; |NOME_DAT #600 aTempo600; |DELINDEX #600;
+           |ABRE #600;
+           aCPath = aPath; aCNome = aTempo600;
+        |FINSI;
+
+        |HAZ HallaMoneda;
+
+        |DFICE Comodin;
+        Comodin = Comodin % -106;
+        Comodin = Comodin % 0105;
+
+        |ABRE #agifa324;
+        |ABRE #agifa024;
+        #agifa324#0 = Divisa;
+        #agifa024#0 = #pcegm013#2;   ||cli
+        |LEE 020#agifa324.=;
+        |LEE 020#agifa024.=;
+        |CIERRA #agifa324;
+        |CIERRA #agifa024;
+        nDeci_Div = #agifa324#7;
+        |DDEFECTO #dscamrec@;
+      ||#600#0  =              ||Libro
+        #600#1  = SPedido;     ||Serie
+        #600#2  = NPedido;     ||Fact
+        #600#3  = #pcegm013#18;||N� Rec
+        #600#4  = #pcegm013#8; ||F.V
+        #600#5  = #pcegm013#7; ||F.E
+        #600#6  = #pcegm013#12;||Cuenta Cli
+        #600#7  = #pcegm013#3; ||Nom Cli
+        #600#8  = #pcegm013#4; ||Nom Banco
+        #600#9  = #agifa024#32;      ||Entidad
+        #600#10 = #agifa024#33;      ||Sucursal
+        #600#11 = #agifa024#31;      ||DC
+        #600#12 = #agifa024#30;      ||Cuenta
+        #600#13 = #pcegm013#22;||Tipo Rec
+      ||#600#14 =      ||Departa
+        #600#15 = #pcegm013#9; ||Importe
+        #600#16 = #pcegm013#15;||A aceptar
+        #600#17 = #pcegm013#6; ||Aceptado
+        #600#18 = #pcegm013#2; ||Cliente
+        #600#21 = #agifa024#3; ||Zona
+        #600#22 = 1;           ||Documento
+      ||#600#23 =      ||Empresa Contable
+      ||#600#24 =      ||Periodo
+        #600#25 = Comodin;       ||Empresa ges
+      ||#600#26 =      ||A cuenta
+        #600#27 = "V";         ||Tipo
+        |SI nFlag > 0;
+           #600#28 = "A";         ||Ope
+        |SINO;
+           #600#28 = "B";
+        |FINSI;
+        #600#29 = #agifa324#0;      ||Divisa
+        #600#30 = #agifa324#1;      ||Nombre
+        #600#31 = CambioDiv;        ||Cambio Divisa
+        #600#32 = CambioBase;       ||Cambio Base
+        #600#33 = #agifa024#203;
+        #600#34 = 0;
+        #600#35 = TipoCta;
+        #600#36 = #pcegm013#28;
+        #600#38 = #pcegm013#16;
+        #600#39 = #pcegm013#10;
+
+        aAlfa = "|NC"; aAlfa = #600#aAlfa#;
+        |SI aAlfa > 48;
+             #600#48 = #agifa024#215;
+             #600#49 = #agifa024#216;
+        |FINSI;
+        |SI aAlfa > 50;
+             #600#50 = #agifa024#217;
+             |ABRE #289;
+             #289#0 = #agifa024#0;
+             |LEE 000#289=;
+             |SI FSalida ! 0; |DDEFECTO #289; |FINSI;
+             |CIERRA #289;
+             #600#51 = #289#1;
+        |FINSI;
+        |GRABA 020#600n;
+
+        |SUB_EJECUTA_NP aSubProg;
+
+        #600#22 = 1;           ||Documento
+        |LEE 000#600=;
+        |SI FSalida ! 0; |O #600#37 = "ERROR               ";
+           nSwError = 1;
+           |MENAV "    La entrega tiene movimientos. Proceso abortado";
+           |SI aDef00 ! "";
+              |CIERRA #600; |DELINDEX #600; |DESCARGA_DEF #dscamrec@;
+           |FINSI;
+           |ERROR; |ACABA;
+        |FINSI;
+
+        |SI aDef00 ! "";
+             |CIERRA #600;
+             |DELINDEX #600;
+             |DESCARGA_DEF #dscamrec@;
+        |FINSI;
+
+        eaTag = "RAP";
+        |HAZ Riesgos;
+     |FINSI;
+|FPRC;
+
+|PROCESO MiraImporte;
+|FPRC;
+
+--------------------------------------------------------------------
+|PROGRAMA;
+     |CLS;
+
+     |ABRE #4;
+     #4#25 = SPedido;
+     #4#0 = NPedido;
+     |LEE 020#4=;
+     |CIERRA #4;
+
+     aDivisa = #4#35;
+     aMoneda = #4#37;
+     |HAZ Divisas104;
+
+     |PINPA #0#4;
+     |PINDA #0#4;
+
+     Cliente = #4#4;
+     FPedido = #4#1;
+     PPedido = #4#9;
+     TPedido = #4#11;
+     TipoCta = "P";
+
+     |DBASE aPath;
+     |SI BAdela = 1;
+        |DBASS aAlfa;
+        aAlfa = aAlfa + "dscarter/fich/dscam000.dat";
+        |XABRE "E", aAlfa, nHandle;
+        |SI FSalida = 0;
+           |DBASS aPath;
+           aPath = aPath + "dscarter/";
+           aDef00 = aPath + "def/dscamrec";
+           |CARGA_DEF aDef00, dscamrec@;
+           |SI FSalida ! 0;
+              aMensa = "0000Error al cargar:" + aDef00;
+              |MENAV aMensa;
+              aDef00 = "";
+           |SINO;
+              |HAZ CreaTempo; aTempo600 = Tempo;
+              |PATH_DAT #600 aPath; |NOME_DAT #600 aTempo600; |DELINDEX #600;
+              |ABRE #600;
+              aCPath = aPath; aCNome = aTempo600;
+           |FINSI;
+           |BUCLE manw0005;
+           |SUB_EJECUTA_NP aSubProg;
+
+           |SI aDef00 ! "";
+              |CIERRA #600;
+              |DELINDEX #600;
+              Tempo = aTempo600; |HAZ BoraTempo;
+              |DESCARGA_DEF #dscamrec@;
+           |FINSI;
+           |ACABA;
+        |SINO;
+           |ACABA;
+        |FINSI;    || borrado
+     |FINSI;
+
+     |DDEFECTO #1;
+     |ABRE #1;
+     #1#0 = Cliente;
+     |LEE 000#1=;
+     |CIERRA #1;
+
+     |ABRE #0;
+     |ABRE #5;
+     |HAZ CalcuPedido;  || Calculo segun la unidades pendientes de facturar
+     tped = enTotalPed;
+     |HAZ CalcuRec;
+     |CIERRA #0;
+     |CIERRA #5;
+
+     |HAZ ControlUsuEC1;
+     |SI enErr = 0;
+          |PINPA #0#0;
+          #4#45 = tped;
+          |PINTA 1366, #4#45;
+          |ENTLINEAL #1#0, -4, 2, 22, 0, ClaveBaja, ClaveAlta;
+     |FINSI;
+     Tempo = aTempo600; |HAZ BoraTempo;
+|FPRO;

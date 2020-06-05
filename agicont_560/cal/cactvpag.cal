@@ -1,0 +1,528 @@
+  ||  el #5 y el #8 estan reservados para los 'INCLUYE'
+  || /para 'cacuenta' y 'catradia' respect.
+|FICHEROS;
+    cactvpag #00;
+    cactvptm #01,MANTE;  || temporal de seleccion
+    camaasic #02;   || apuntes cabs.
+    camaasil #03;   || apuntes lins.
+    capagcab #06;   || pagares cabs.
+    capaglin #07;   || pagares lins.
+    cacuadre #09;   || control pagares y talones
+    camandia #10;   || diarios
+    cacuebal #11;   || cuentas balance
+    camanpag #12;   || pagos
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    arteris = 0;
+    swarteris = 0;
+    mes_anyo = "";
+    muestra = "";
+    digito = 0;
+    longi = 0;
+    asie = 0;
+    apun = 0;
+    cuen = "";
+    digi = 0;
+    sign = "";
+    ptas = 0;
+    desc = "";
+    descrip = "";
+    impo = 0;
+    sw = 0;
+    FEstado = 0;
+
+    mensa2   = "     No esta definida esta cuenta en Cuentas de Balance";
+    uno = "";
+    dos = "";
+    mascara = "";
+    seleccio = 0;
+    sw_tipo = 0;
+    opcion = 0;
+{-1}menu = "";
+    menu1 = "2400";
+    menu2 = "1";
+    menu3 = "";
+    menu4 = "RCS";
+    menu5 = " Revisar ";
+    menu6 = " Contabilizar ";
+    menu7 = " Salir ";
+|FIN;
+
+|INCLUYE inicio_i;
+|INCLUYE actcta_i;
+|INCLUYE conasi_i;
+
+|| ................... Controla la seleccion de tipos de recibo
+|PROCESO tipo_recibo;
+    #12#0 = #7#2;        || libro
+    #12#1 = #7#3;        || orden
+    #12#2 = #7#9;        || serie
+    #12#3 = #7#4;        || nro.pago
+|LEE 000#12=;
+|SI FSalida = 0;
+    |SI #12#11 < #0#11;|O #12#11 > #0#12;
+            sw_tipo = 1;
+    |FINSI;
+|SINO;
+        alfa1 = "    Pago [" + #12#0 + "." + #12#1 + "." + #12#2 + "." + #12#3 + "] inaccesible ...";
+    |MENAV alfa1;
+|FINSI;
+|ERROR;
+|FPRC;
+
+|| ................... Controla la grabacion de asientos
+|PROCESO contab2;    || graba apunte
+    #0#08 = #6#0;   |PINTA #0#08;
+    #0#09 = asie;   |PINTA #0#09;
+    #0#10 = apun;   |PINTA #0#10;
+|DDEFECTO #3;
+    #3#00 = #0#4;   || diario
+    #3#01 = #1#10;  || fecha
+    #3#02 = asie;   || asiento
+    #3#03 = apun;   || apunte
+    #3#04 = cuen;   || cuenta
+    #3#05 = digi;   || digito
+    #3#06 = #0#5;   || concepto
+    #3#07 = desc;   || descripcion
+    #3#08 = sign;   || signo
+    #3#09 = ptas;   || importe
+|SI #3#8 = "D";
+        #3#16 = #3#4;
+        #3#17 = #3#5;
+        #3#10 = "";
+        #3#11 = 0;
+|SINO;
+        #3#16 = "";
+        #3#17 = 0;
+        #3#10 = #3#4;
+        #3#11 = #3#5;
+|FINSI;
+|GRABA 020#3n;
+|HAZ cabecera;           || cabecera apunte
+    ressum = #3#9;
+|HAZ actualiz1;          || cuenta
+|HAZ actualiz3;          || diario
+    opera = "A";
+|HAZ altatra;            || subniveles
+|FPRC;
+
+|PROCESO contab1;   || controla la grabacion de apuntes
+
+seleccio = 1;
+
+|HAZ descripcion;
+|SI apun = 1;
+    |HAZ contador;
+        asie = #20#1;
+|FINSI;
+    apun = apun + 10;
+    cuen = #6#3;
+    digi = #6#4;
+    sign = "H";
+    ptas = #6#9;
+    desc = descrip;
+|HAZ contab2;
+|SI arteris = 1;
+        apun = apun + 10;
+    |HAZ filtro;
+        cuen = alfa2;
+        digi = #6#2;
+        sign = "D";
+        ptas = #6#9;
+        desc = descrip;
+    |HAZ cuenta;
+    |HAZ contab2;
+        apun = 1;
+|SINO;
+        impo = impo + #6#9;
+|FINSI;
+    #6#8 = "S";
+|GRABA 020#6a;
+|LIBERA #6;
+|FPRC;
+
+|PROCESO contabiliza;
+    #6#0 = #1#0;
+|LEE 121#6=;
+|SI FSalida = 0;
+    |HAZ contab1;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE seleccionados;
+ #1#2;
+ 6;
+ "            ",      1, "*";      || ordena por proveedor+pagare
+ "zzzzzzzzzzzz", 999999, "*";
+ ;
+ NULL, contabiliza;
+|FIN;
+
+|PROCESO graba_temporal;
+sw_tipo = 0;
+|BUCLELIN 2tipo_recibo#6;
+|SI sw_tipo ! 0;  |ACABA;   |FINSI;
+
+|DDEFECTO #1;
+    #1#0 = #6#0;         || nro.pagare
+    #1#1 = #6#1;         || proveedor
+    #1#2 = #6#5;         || f.emision
+    #1#3 = #6#6;         || f.vto
+    #1#4 = #6#9;         || importe
+    #1#5 = #6#11;        || nro.banco
+    #1#6 = "*";          || marcado SI
+    #1#7 = #6#3;         || banco
+|DDEFECTO #5;  #5#0 = #6#3;   #5#1 = #6#4;   |LEE 000#5=;
+    #1#8 = #5#2;         || descrip. banco
+    #1#9 = #12#11;       || tipo recibo
+    #1#10 = #0#7;        || fecha contable
+|GRABA 020#1n;
+|SI FSalida = 0;
+        seleccio = 1;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE cactvpag0;
+ #6#1;
+ 6, 12, 7, 8, 3;
+ #0#0, #0#2, "S", "S", "N", #0#13;      || f.vto., impreso, emision SI,
+ #0#1, #0#3, "S", "S", "N", #0#14;      ||/vto.NO, cuenta banco
+ be;
+ NULL, graba_temporal;
+|FIN;
+
+|PROCESO min1;
+    #1#0 = 1;
+|FPRC;
+
+|PROCESO max1;
+    #1#0 = 999999;
+|FPRC;
+
+|PROCESO temporal;
+    alfa1 = Usuario; |QBF alfa1;    |NOME_DAT #1 alfa1; |DELINDEX #1;
+|ABRE #1;       || temporal seleccion
+|BUCLE cactvpag0;
+|CIERRA #1;
+|SI seleccio ! 0;
+    |PUSHV 0501 2380;
+    |PARA; |SI; |HACIENDO;
+        |ENTLINEAL #1#1, 1, 3, 22, 1, min1, max1;
+        |MENU menu;
+            opcion = FSalida;
+        |SI opcion ! 1;
+            |SAL;
+        |FINSI;
+    |SIGUE;
+    |POPV;
+|SINO;
+        opcion = 2;
+|FINSI;
+|FPRC;
+
+|PROCESO proceso; |TIPO 3;
+|ABRE #9;
+|LEE 000#9p;
+|SI FSalida = 0;
+    |ABRE #2;       || apuntes cabs.
+    |ABRE #3;       || apuntes lins.
+    |ABRE #5;       || cuentas
+    |ABRE #12;      || pagos
+    |HAZ temporal;
+    |SI opcion = 2;
+        |SI seleccio ! 0;
+                seleccio = 0;
+                apun = 1;
+            |HAZ arteris;
+            |SI arteris ! 2;          || error en el calculo 'digito'
+                |ABRE #6;
+                |BUCLE seleccionados;
+                |CIERRA #6;
+                |SI impo ! 0;
+                    |HAZ final;  || contrapartida englobada
+                |FINSI;
+            |FINSI;
+            |SI seleccio = 0;
+                |MENAV "    Seleccion sin marcas ...";
+            |FINSI;
+        |SINO;
+            |MENAV "    Seleccion vacia ...";
+        |FINSI;
+    |FINSI;
+    |CIERRA #2;
+    |CIERRA #3;
+    |CIERRA #5;
+    |CIERRA #12;
+    |DELINDEX #1;
+|SINO;
+    |MENAV "    ATENCION!!! Control de Pageres y Talones sin definir ...";
+|FINSI;
+|HAZ subniveles;
+|CIERRA #9;
+|FPRC;
+
+|PROCESO arteris;     || desglosa la contrapartida del control
+    alfa1 = #9#21;
+|QBF alfa1;
+    alfa2 = alfa1 % 0;
+    longi = alfa2;            || 'longi' sirve despues (no tocar)
+    nume3 = (longi * 100) + 1;
+    alfa2 = alfa1 % nume3;
+|SI alfa2 = "*";|O alfa2 = "%";
+        nume3 = 99 + longi;
+        muestra = alfa1 % nume3;
+        arteris = 1;
+        swarteris = 0;
+    |SI alfa2 = "%";
+            swarteris = 1;
+    |FINSI;
+|SINO;
+    |HAZ digito;
+    |SI sw = 0;   arteris = 2;  |FINSI; || contrapartida fuera de nivel!!!
+    |SI sw ! 0;   arteris = 0;  |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO final;     || graba apunte cuando la contrapartida es unica
+|SI arteris = 0;
+        apun = apun + 10;
+        cuen = #9#21;
+        digi = digito;
+        sign = "D";
+        ptas = impo;
+        desc = #0#6;
+    |QBF desc;
+        desc = desc + " " + #0#7;
+    |HAZ cuenta;
+    |HAZ contab2;
+|FINSI;
+|FPRC;
+
+|PROCESO descripcion;
+    descrip = #0#6;
+    |QBF descrip;
+||  alfa1 = #6#0;  alfa1 = "000000" + alfa1;  alfa1 = alfa1 % -106;
+    alfa1 = #6#11;  alfa1 = "000000000000" + alfa1;  alfa1 = alfa1 % -112;
+    alfa1 = alfa1 + " " + #6#6;
+    descrip = descrip + " " + alfa1 + "/" + #1#3;
+|FPRC;
+
+|PROCESO subniveles;     || actualiza subniveles de cuentas
+|SI modcon = 0;
+    |ABRE #8;
+    |DDEFECTO #8;
+        #8#0 = codcon;
+    |LEE 001#8=;
+    |SI FSalida = 0;
+        |BORRA 020#8a;
+    |FINSI;
+    |CIERRA #8;
+|SINO;
+    |SUB_EJECUTA "camaapua.run";
+|FINSI;
+|FPRC;
+
+|PROCESO cabecera;       || actualiza cabeceras
+|SI #3#09 ! 0;
+    |DDEFECTO #2;
+        #2#00 = #3#0; ||  diario
+        #2#01 = #3#1; ||  fecha
+        #2#02 = #3#2; ||  documento
+        #2#03 = #3#2; ||  asiento
+    |LEE 101#2=;
+        FEstado = FSalida;
+    |SI #3#08 = "D";
+            #2#04 = #2#04 + #3#09;
+        |SI #2#09 = 0; #2#08 = #3#4; #2#09 = #3#5; |FINSI;  || contrp.HABER
+    |FINSI;
+    |SI #3#08 = "H";
+            #2#05 = #2#05 + #3#09;
+        |SI #2#11 = 0; #2#10 = #3#4; #2#11 = #3#5; |FINSI;  || contrp.DEBE
+    |FINSI;
+        #2#6 = #2#4 - #2#5;      || saldo
+    |SI FEstado = 0;  |GRABA 020#2a;  |FINSI;
+    |SI FEstado ! 0;  |GRABA 020#2n;  |FINSI;
+    |LIBERA #2;
+|FINSI;
+|FPRC;
+
+|PROCESO actualiz3;
+|ABRE #10;
+    #10#0 = #3#0;
+|LEE 121#10=;
+|SI FSalida = 0;
+    |SI #3#8 = "D";  #10#2 = #10#2 + #3#9;  |FINSI;
+    |SI #3#8 = "H";  #10#3 = #10#3 + #3#9;  |FINSI;
+    |GRABA 020#10a;
+|FINSI;
+|LIBERA #10;
+|CIERRA #10;
+|FPRC;
+
+|PROCESO digito;         || saca el digito de la contrapartida del control
+    sw   = 0;
+    digito = 0;  || inicializa el digito
+|SI longi = dig4; |Y dig4 ! 0; sw = 1; digito = 1; |FINSI;
+|SI longi = dig5; |Y dig5 ! 0; sw = 1; digito = 2; |FINSI;
+|SI longi = dig6; |Y dig6 ! 0; sw = 1; digito = 3; |FINSI;
+|SI longi = dig7; |Y dig7 ! 0; sw = 1; digito = 4; |FINSI;
+|SI longi = dig8; |Y dig8 ! 0; sw = 1; digito = 5; |FINSI;
+|SI longi = dig9; |Y dig9 ! 0; sw = 1; digito = 6; |FINSI;
+|SI sw = 0;
+    |MENAV "    Contrapartida de Pagos Fuera de Nivel!!! Proceso Abortado ...";
+|FINSI;
+|FPRC;
+
+|PROCESO filtro;         || construye la contrapartida individual
+|SI #6#2 = 1;  nume1 = dig4;  |FINSI;
+|SI #6#2 = 2;  nume1 = dig5;  |FINSI;
+|SI #6#2 = 3;  nume1 = dig6;  |FINSI;
+|SI #6#2 = 4;  nume1 = dig7;  |FINSI;
+|SI #6#2 = 5;  nume1 = dig8;  |FINSI;
+|SI #6#2 = 6;  nume1 = dig9;  |FINSI;
+    nume2 = nume1 - (longi - 1);
+|SI swarteris = 0;
+        nume2 = (100 * longi) + nume2;
+        alfa1 = #6#1 % nume2;
+        alfa2 = muestra + alfa1;             || si es "*"
+|SINO;
+        nume2 = nume2 - 4;
+    |SI nume2 < 0;
+        |MENAV "    Cuenta 'Efec.Pagar' del Control Pagares con longitud fuera de nivel ...";
+            nume2 = nume2 + 4;
+            alfa1 = "0" * nume2;
+            alfa2 = muestra + alfa1;
+    |SINO;
+        |SI nume2 = 0;  alfa1 = "";              |FINSI;   || cuenta ajustada
+        |SI nume2 > 0;  alfa1 = "0" * nume2;     |FINSI;   || rellena de ceros
+            mes_anyo = (#6#6 % 402) + (#6#6 % -102);
+            alfa2 = muestra + alfa1 + mes_anyo;  || si es "%"
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO cuenta;    || comprueba si la cuenta esta dada de alta
+|ABRE #5;
+    #5#0 = cuen;
+    #5#1 = digi;
+|LEE 001#5=;
+|SI FSalida ! 0;
+    |DDEFECTO #5;
+        #5#0 = cuen;
+        #5#1 = digi;
+    |HAZ defect1;
+    |PUSHV 0501 2380;
+    |PINPA #0#5;
+    |PINDA #0#5;
+    |ENDATOS #1#5;
+    |SI FSalida = 0;
+        |GRABA 020#5n;
+    |FINSI;
+    |POPV;
+|FINSI;
+|CIERRA #5;
+|FPRC;
+
+|PROCESO defect1;
+|ABRE #11;
+    uno = #5#0;
+|QBF uno;
+    dos = uno + "000000000000";
+    uno = dos % A101;
+    #11#0 = uno;
+|LEE 000#11=;
+|SI FSalida ! 0;
+        uno = dos % A102;
+        #11#0 = uno;
+    |LEE 000#11=;
+    |SI FSalida ! 0;
+            uno = dos % A103;
+            #11#0 = uno;
+        |LEE 000#11=;
+        |SI FSalida ! 0;
+                uno = dos % A104;
+                #11#0 = uno;
+            |LEE 000#11=;
+            |SI FSalida ! 0;
+                |MENAV mensa2;
+            |SINO;
+                |HAZ saca1;
+            |FINSI;
+        |SINO;
+            |HAZ saca1;
+        |FINSI;
+    |SINO;
+        |HAZ saca1;
+    |FINSI;
+|SINO;
+    |HAZ saca1;
+|FINSI;
+|CIERRA #11;
+
+ || la 3a clave esta formada por la cta + zzzz y el campo fantasma del nivel;
+    mascara = #5#0;
+|QBF mascara;
+    mascara = mascara +"zzzzzzzzzzzz";
+    mascara = mascara % 112;
+    #5#54    = mascara;
+    #5#55    = #5#1;
+|FPRC;
+
+|PROCESO saca1;
+    #5#4 = #11#1;
+    #5#5 = #11#2;
+    #5#6 = #11#3;
+    #5#7 = #11#4;
+    #5#8 = #11#5;
+|FPRC;
+
+**************************************************************************
+          CALCULOS DESDE CAMPOS
+**************************************************************************
+
+|PROCESO limite; |TIPO 0;
+|SI #0#7 < fec1;|O #0#7 > fec2;
+    |MENAV "    ATENCION!!! La fecha no corresponde al ejercicio contable ...";
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO final816; |TIPO 7;
+ |PTEC 816;
+|FPRC;
+
+**************************************************************************
+          CALCULOS DESDE CAMPOS SELECCION
+**************************************************************************
+|PROCESO tipo11; |TIPO 11;
+|SI FSalida = 9;
+    |SI #1#6 = "*";
+            #1#6 = " ";
+    |SINO;
+            #1#6 = "*";
+    |FINSI;
+    |PINTA #1#6;
+    |GRABA 020#1a;
+|FINSI;
+|FPRC;
+
+|PROCESO limite1; |TIPO 0;
+|SI #1#10 < fec1;|O #1#10 > fec2;
+    |MENAV "    ATENCION!!! La fecha no corresponde al ejercicio contable ...";
+    |ERROR;
+|FINSI;
+|FPRC;

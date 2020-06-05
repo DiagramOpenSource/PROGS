@@ -1,0 +1,201 @@
+|FICHEROS;
+     maempr10 #200;
+     isom0000 #100;
+     isom0013 #113,MANTE;
+
+     maempr11 #201;
+     isow0006 #907;
+|FIN;
+
+|VARIABLES;
+     nCampoD        = 0;
+     nCampoH        = 0;
+     nVentana       = 0;
+     nRango         = 0;
+     nGrid          = 0;
+
+     aAlfa          = "";
+
+     {-1}aVent      = "";
+         aVent1     = 0;
+         aVent2     = 0;
+         aVent3     = 0;
+         aVent4     = 0;
+         aVent5     = "";
+
+     &enEmpresa      = 0;
+     &enAnyo         = 0;
+     &enCalcCif      = 0;
+     &eaVarDni       = "";
+     &enModoConsulta = 0;
+     &enSaltaError   = 0;
+|FIN;
+
+|PROCESO Tipo12;  |TIPO 12;
+|FPRC;
+
+|PROCESO LetraNif;
+     |SI FSalida = 10;
+         enCalcCif = 1;
+         eaVarDni  =  #113Campo;
+         |HAZ CalculoDNI;
+         #113Campo = eaVarDni;
+         |PINTA #113Campo;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #113Campo;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "            ") % 112;
+     |SI #113Campo ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #113Campo = eaVarDni;  |PINTA #113Campo;
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo80;  |TIPO 80;
+     FSalida = 2399;
+|FPRC;
+
+|PROCESO Baja113;
+     #113#0  = #200#0;
+     #113#1  = #200#1;
+     #113#2  = 1;
+|FPRC;
+
+|PROCESO Alta113;
+     #113#0  = #200#0;
+     #113#1  = #200#1;
+     #113#2  = 9999;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ SaltaError;
+
+     |ABRE #200;
+     #200#0 = enEmpresa;
+     #200#1 = enAnyo;
+     |LEE 000#200=;
+     |SI FSalida ! 0;  |DDEFECTO #200;  |FINSI;
+     |CIERRA #200;
+
+     |ABRE #201;
+     #201#0 = enEmpresa;
+     #201#1 = enAnyo;
+     #201#2 = 39;
+     |LEE 040#201=;
+     |SI FSalida ! 0;
+         |MENAV "     La Empresa no tiene activada el Caracter de la declaracion 39";
+         |CIERRA #201;
+
+         |SI enSaltaError = 0;  |ACABA;  |FINSI;
+     |FINSI;
+     |CIERRA #201;
+
+     aAlfa = "";
+     |SI enModoConsulta = 1;
+         aAlfa = "(MODO CONSULTA)   ";
+     |FINSI;
+
+     aAlfa =  aAlfa + "Grupos de sociedades, Art.42 (" + (("00000" + #200#0) % -105) + " / " + #200#1 + " " + #200#2;
+     |QBF aAlfa;
+     aAlfa = aAlfa + ")";
+     |VENTANA 0501, 2399, -1, 16, aAlfa;
+     nVentana = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |SI enModoConsulta = 1;
+         |ABRE #113;
+         |ABRE #100;
+         #100#0 = enEmpresa;
+         #100#1 = enAnyo;
+         |LEE 000#100=;
+         |SI FSalida ! 0;    |DDEFECTO #100;  |FINSI;
+         |CIERRA #100;
+
+         #907#0 = #100#80;
+
+         |PINPA #0#907;
+         |PINDA #0#907;
+
+         nRango =  4 + 8 + 16 + 32;
+
+         |LINEAL_SIMPLE #1#113, nRango, 1040, 2268, Baja113, Alta113, NULL;
+         nGrid = FSalida;
+
+         |PAUSA;
+
+         |CIERRA #113;
+
+         |DESTRUYECONTROL nGrid;
+
+         aVent1 = -1;
+         aVent2 = -1;
+         aVent3 = 0;
+         aVent4 = nVentana;
+         aVent5 = "MODELESS";
+         |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+         |PULSATECLA;
+
+         |FINVENTANA nVentana;
+         |ACABA;
+     |FINSI;
+
+     |ABRE #113;
+     |ABRE #100;
+     #100#0 = enEmpresa;
+     #100#1 = enAnyo;
+     |LEE 101#100=;
+     |SI FSalida ! 0;
+         |DDEFECTO #100;
+         #100#0 = enEmpresa;
+         #100#1 = enAnyo;
+         |GRABA 020#100b;
+     |FINSI;
+
+     #907#0 = #100#80;
+
+     |PINPA #0#907;
+     |PINDA #0#907;
+
+     nRango = 1 + 4 + 8 + 16 + 32;
+
+     |LINEAL_SIMPLE #1#113, nRango, 1040, 2268, Baja113, Alta113, NULL;
+     nGrid = FSalida;
+
+     |ENDATOS #1#907;
+     |SI FSalida = 0;
+         #100#80 = #907#0;
+         |GRABA 020#100a;
+     |FINSI;
+
+     |LIBERA #100;
+     |CIERRA #100;
+     |CIERRA #113;
+
+      |DESTRUYECONTROL nGrid;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PULSATECLA;
+
+     |FINVENTANA nVentana;
+|FPRO;

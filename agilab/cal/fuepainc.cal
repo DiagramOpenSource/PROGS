@@ -1,0 +1,247 @@
+|FICHEROS;
+    fuepainc #0;
+    labregis #1;
+    labtraba #2;
+    fuecatip #3;
+    fuelitip #4;
+    labempre #5;
+|FIN;
+
+|VARIABLES;
+    fecsys = @;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    linea = 0;
+    antempre = 0;
+    fecalt = @;
+    fecbaj = @;
+    fecini = @;
+    fecfin = @;
+    numini = 0;
+    numfin = 0;
+    nummes = 0;
+    fecalf1 = @;
+    fecalf2 = @;
+    d_tot = 0;
+    d_per = 0;
+    d_jor = 0;
+    swt_graba = 0;
+    mes = 0;
+    sw = 0;
+    bis = 0;
+    antmes = 0;
+    aany = "";
+|FIN;
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO defecto; |TIPO 7; ||calcula el a¤o por defecto segun fecha sistema
+    fecsys = ~;
+    alfa1 = fecsys;
+    alfa1 = alfa1 % -102;
+    #0Campo = alfa1;
+    #0Campo = #0Campo - 1;
+    |SI #0Campo < 0;
+         #0Campo = 0;
+    |FINSI;
+|PINTA #0Campo;
+|FPRC;
+
+|PROCESO limites;
+||Calcular para cada mes cual es su rango de fechas. Cuidado con FEB.
+    alfa2 = mes;
+    alfa2 = ("00" + alfa2) % -102;
+    alfa3 = #0#0;
+    alfa3 = ("00" + alfa3) % -102;
+    |SI #0#0 > 80;
+        aany = "19" + alfa3;
+    |SINO;
+        aany = "20" + alfa3;
+    |FINSI;
+
+    alfa1 = "01." + alfa2 + "." + aany;   fecini = alfa1;    numini = fecini;
+    |SI mes = 1; |O mes = 3; |O mes = 5;  |O mes = 7; |O mes = 8; |O mes = 10; |O mes = 12;
+        alfa1 = "31." + alfa2 + "." + aany;   fecfin = alfa1;    numfin = fecfin;
+    |SINO;
+        |SI mes = 4; |O mes = 6; |O mes = 9;  |O mes = 11;
+            alfa1 = "30." + alfa2 + "." + aany;   fecfin = alfa1;    numfin = fecfin;
+        |SINO;
+            || Quiere decir que es FEB (02). Atencion con bisiestos
+            sw = aany $ 4;
+            |SI sw = 0;
+                ||bisiesto
+                alfa1 = "29." + alfa2 + "." + aany;   fecfin = alfa1;    numfin = fecfin;
+            |SINO;
+                alfa1 = "28." + alfa2 + "." + aany;   fecfin = alfa1;    numfin = fecfin;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+    nummes = numfin - numini + 1;
+|FPRC;
+
+|PROCESO mayus; |TIPO 0;
+    #0Campo = #0Campo > #0Campo;
+|PINTA #0Campo;
+|FPRC;
+____________________________________/ LECTURA Y GRABACION
+|PROCESO grabalin;
+    #4#00 = #2#0;   || empresa
+    #4#01 = #0#0;   || anyo
+    #4#02 = linea;  || linea
+    #4#12 = mes;    || Grabar el numero del mes
+    #4#03 = #2#33;  || grupo de tarifa
+    #4#05 = #2#1;   || codigo trabajador
+    #4#06 = fecalt; || fecha alta
+    #4#07 = fecbaj; || fecha baja
+    #4#08 = d_tot;  || dias totales
+    #4#09 = d_per;  || dias ejercicio
+    #4#10 = d_jor;  || (%) jornada
+    #4#11 = "";      || observaciones
+    |SI #2#42 = "X";|O #2#42 = "T";
+        |SI #2#234 ! 0;|Y #2#234 ! 40;
+            #4#11 = "Tiempo parcial: proporcion " + #2#234 + "/40";
+            #4#10 = #4#10 * (#2#234 / 40);
+        |FINSI;
+    |FINSI;
+|GRABA 020#4n;
+|FPRC;
+
+|PROCESO situate;   || se situa en la linea a grabar
+    |SI antempre ! #2#0;|O antempre = 0;
+         #3#0 = #2#0;
+         #3#1 = #0#0;
+         #3#4 = mes;
+         |LEE 101#3=;
+         |SI FSalida ! 0;
+            #3#3 = nummes;    || dias ejercicio
+            |GRABA 020#3b;
+         |SINO;
+            |BUCLELIN 1NULL#3;
+            #3#3 = nummes;    || dias ejercicio
+            |GRABA 020#3a;
+         |FINSI;
+         |LIBERA #3;
+         antempre = #2#0;
+         linea = 1;
+    |SINO;
+         linea = linea + 1;
+    |FINSI;
+|FPRC;
+
+|PROCESO cal_dias;
+    nume1 = fecalt;
+    nume2 = fecbaj;
+    d_tot = (nume2 - nume1) + 1;   || dias totales
+    nume1 = fecalf1;
+    nume2 = fecalf2;
+    d_per = (nume2 - nume1) + 1;   || dias ejercicio
+    ||SI fecalf1 = fecini;|Y fecalf2 = fecfin;|Y d_per = 366;
+    ||    d_per = #0#7;              || si es bisiesto y esta todo el a¤o
+    ||FINSI;                            ||/coge los 'dias a¤os bisiestos'
+    d_jor = d_per / nummes;        || jornada
+|FPRC;
+
+|PROCESO cal_fech;
+    swt_graba = 0;
+    nume1 = fecalt;
+    nume2 = fecbaj;
+    |SI nume1 [ 0; nume1 = numini; fecalt = fecini; |FINSI;
+    |SI nume2 [ 0; nume2 = numfin; fecbaj = fecfin; |FINSI;
+    |SI nume1 > numfin;|O nume2 < numini;
+        swt_graba = 1;
+    |SINO;
+        |SI nume1 < numini;
+                fecalf1 = fecini;   || fecha alta tope periodo
+        |SINO;
+                fecalf1 = fecalt;   || fecha alta fuente
+        |FINSI;
+        |SI nume2 > numfin;|O nume2 = 0;
+                fecalf2 = fecfin;   || fecha baja tope periodo
+        |SINO;
+                fecalf2 = fecbaj;   || fecha baja fuente
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO labregis;            || datos del registro de contratos
+    fecalt = #1#7;       || fecha alta (1er.contrato)
+    |SI #1#15 = 0;
+        fecbaj = #1#8;   || fecha baja contrato
+    |SINO;
+        fecbaj = #1#20;  || fecha baja prorrogas
+    |FINSI;
+    #4#4 = #1#4;         || tipo contrato
+|FPRC;
+
+|PROCESO labtraba;            || datos del trabajador
+    fecalt = #2#36;      || fecha alta
+    fecbaj = #2#37;      || fecha baja
+    #4#04 = #2#45;       || tipo contrato
+|FPRC;
+
+|PROCESO labempre;            || datos de la empresa
+    |DDEFECTO #5;
+    #5#0 = #2#0;
+    |LEE 000#5=;
+|FPRC;
+
+|PROCESO lee_traba1;
+    #0#3 = #2#0;
+    #0#4 = #2#1;
+    |PINDA #0#0;
+    |HAZ labempre;                || lee empresa
+    |SI #0#6 = "C";
+        #1#1 = #2#0;
+        #1#2 = #2#1;
+        |LEE 000#1=;
+        |SI FSalida = 0;
+             |HAZ labregis;
+        |SINO;
+             |HAZ labtraba;
+        |FINSI;
+    |SINO;
+        |HAZ labtraba;
+    |FINSI;
+    |HAZ cal_fech;
+    |SI swt_graba = 0;
+        |HAZ cal_dias;
+        |HAZ situate;
+        |HAZ grabalin;
+        #0#5 = #0#5 + 1;
+    |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_traba;
+ #2#1;
+ ;
+ #0#1,     1;
+ #0#2, 99999;
+ ;
+ NULL, lee_traba1;
+|FIN;
+
+|PROCESO tipo3; |TIPO 3;
+|ABRE #1;
+|ABRE #3;
+|ABRET #4;
+|ABRE #5;
+|SELECT #2#1;
+|PARA mes = #fuepainc#8; |SI mes [ #fuepainc#9; |HACIENDO mes = mes +1;
+     ||los limites para cada mes
+     |HAZ limites;
+     antempre = 0;
+     |BUCLE lee_traba;
+|SIGUE;
+|SI #0#5 = 0;
+    |MENAV "    Seleccion vacia ...";
+|FINSI;
+|PINDA #0#0;
+|CIERRA #1;
+|CIERRA #3;
+|CIERRAT #4;
+|CIERRA #5;
+|FPRC;

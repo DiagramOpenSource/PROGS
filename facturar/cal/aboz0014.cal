@@ -1,0 +1,566 @@
+|FICHEROS;
+     aboz0014 #900;
+     abow0026 #901;
+
+     abom0002 #2;
+     abom0012 #12;
+     abom0013 #13;
+     abom0014 #14;
+     abom0015 #15;
+     abom0602 #602;
+
+     abom0514 #514;
+     dsam0119 #119;
+     dsam0120 #120;
+     dsam0121 #121;
+     dsam0122 #122;
+|FIN;
+
+|VARIABLES;
+     aRutaOrigen    = "";
+     aRutaDestino   = "";
+     aPathDestino   = "";
+     aPathPlantilla = "";
+     aAlfa          = "";
+     aAlfa1         = "";
+     aAlfa2         = "";
+     aAlfa3         = "";
+     aOrigen        = "";
+     aDestino       = "";
+     aPrograma      = "";
+     aDocumento     = "";
+     aDesProg       = "";
+     aDesUbica      = "";
+     aFichero       = "";
+     aBase          = "";
+     aMas           = "";
+     aOri           = "";
+     aDes           = "";
+     aBaseDoc       = "";
+     aLong          = "";
+     aCaracter      = "";
+     aDocRemoto     = "";
+     aDocServidor   = "";
+
+     nLong          = 0;
+     nPos           = 0;
+     nCarac         = 0;
+     nUbica         = 0;
+     nError         = 0;
+     nHandle        = 0;
+     nNume          = 0;
+     nNume1         = 0;
+     nNume2         = 0;
+     nNume3         = 0;
+
+     fFechaDoc      = @;
+
+     {1}aContiene   = "";
+
+      &eaDSMAC      = "";
+|FIN;
+
+|PROCESO GrabaError;
+     #900#0 = aPrograma;
+     #900#1 = aDocumento;
+     |LEE 000#900=;
+     |SI FSalida = 0;  |ACABA;  |FINSI;
+
+     #900#0 = aPrograma;
+     #900#1 = aDocumento;
+     #900#2 = aDesProg;
+     #900#3 = nUbica;
+     #900#4 = aDesUbica;
+     #900#5 = nError;
+
+     |SI nError = 1210;
+         #900#6 = "No existe la ubicacion, no puedo leer el documento";
+     |FINSI;
+
+     |SI nError = 1221;
+         #900#6 = "No existe la ubicacion en la maquina que ha ejecutado el pase";
+     |FINSI;
+
+     |SI nError = 1223;
+         #900#6 = "No existe la ruta origen en la maquina que ha ejecutado el pase";
+     |FINSI;
+
+     |SI nError = 1;
+         #900#6 = "No existe el documento en la direccion origen";
+     |FINSI;
+
+     |SI nError = 2;
+         #900#6 = "No se ha podido copiar el documento en la ubicacion destino";
+     |FINSI;
+
+     |GRABA 020#900n;
+     |LIBERA #900;
+|FPRC;
+
+|PROCESO LeeUbica;
+     |ABRE #121;
+     #121#0 = nUbica;
+     |LEE 040#121=;
+     |SI FSalida ! 0;
+         nError = 1210;
+         |HAZ GrabaError;
+         |CIERRA #121;
+         |ACABA;
+     |FINSI;
+     |CIERRA #121;
+
+     |ABRE #122;
+     #122#0 = nUbica;
+     #122#1 = eaDSMAC;
+     |LEE 040#122=;
+     |SI FSalida ! 0;
+         nError = 1221;
+         |HAZ GrabaError;
+         |CIERRA #122;
+         |ACABA;
+     |FINSI;
+     |CIERRA #122;
+
+     aDesUbica    = #121#1;
+     aRutaOrigen  = #122#3;   |QBF aRutaOrigen;
+     aRutaDestino = aPathDestino + "/" + (("0000" + #121#0) % -104);
+     |MKDIR aRutaDestino;
+
+     |SI aRutaOrigen = "";
+         nError = 1223;
+         |HAZ GrabaError;
+         |ACABA;
+     |FINSI;
+
+     |SI #121#4 = "S";
+         |SI fFechaDoc ! "00.00.0000";
+             aAlfa = fFechaDoc % 102;  nNume1 = aAlfa;
+             aAlfa = fFechaDoc % 402;  nNume2 = aAlfa;
+             aAlfa = fFechaDoc % 704;  nNume3 = aAlfa;
+
+             |SI nNume1 < 1;  |O nNume1 > 31;
+                 nNume1 = 1;
+                 nNume2 = 1;
+                 nNume3 = 0;
+             |FINSI;
+
+             |SI nNume2 < 1;  |O nNume2 > 31;
+                 nNume1 = 1;
+                 nNume2 = 1;
+                 nNume3 = 0;
+             |FINSI;
+
+             |SI nNume3 < 1900;  |O nNume2 > 2999;
+                 nNume1 = 1;
+                 nNume2 = 1;
+                 nNume3 = 0;
+             |FINSI;
+
+             aAlfa1 = (("00" + nNume1) % -102) + ".";
+             aAlfa1 = aAlfa1 + (("00" + nNume2) % -102) + ".";
+             aAlfa1 = aAlfa1 + (("0000" + nNume3) % -104);
+
+             aAlfa        = (fFechaDoc % -104) + (fFechaDoc % 402);
+             aRutaOrigen  = aRutaOrigen  + "\" + aAlfa;
+
+             fFechaDoc    = aAlfa1;
+             aAlfa        = (fFechaDoc % -104) + (fFechaDoc % 402);
+             aRutaDestino = aRutaDestino + "/" + aAlfa;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CopiaFicheros;
+     aOrigen  = aRutaOrigen + "\" + aDocumento;   |QBF aOrigen;
+     aDestino = aRutaDestino + "/" + aDocumento;  |QBF aDestino;
+
+     |RMKDIR aRutaOrigen;
+     |MKDIR aRutaDestino;
+
+     aOri = aOrigen;
+     aDes = aDestino;
+
+     aContiene1 = aOri;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = aDes;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     |SI aDocRemoto ! aDocServidor;
+         |RECIBE_FICHERO aOri, aDes;
+     |FINSI;
+
+     |XABRE "EC", aOrigen, nHandle;
+     |SI FSalida < 0;
+         nError = 1;
+         |HAZ GrabaError;
+         |ACABA;
+     |FINSI;
+
+     |XABRE "E", aDestino, nHandle;
+     |SI FSalida < 0;
+         nError = 2;
+         |HAZ GrabaError;
+         |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO abom0002;
+     nError     = 0;
+     nUbica     = #2#10;
+     fFechaDoc  = #2#4;
+     aPrograma  = "abom0002";
+     aDesProg   = "Documentos";
+     aDocumento = #2#3;  |QBF aDocumento;
+     |SI aDocumento = "";  |ACABA;  |FINSI;
+
+     |HAZ LeeUbica;
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     |HAZ CopiaFicheros;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     #2#4  = fFechaDoc;
+     #2#11 = "S";
+     |GRABA 020#2a;
+     |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE abom0002;
+     #2#1;
+     11;
+     00000000, 00000, "N";
+     99999999, 99999, "N";
+     be;
+     NULL, abom0002;
+|FIN;
+
+|PROCESO abom0012;
+     nError     = 0;
+     nUbica     = #514#9;
+     fFechaDoc  = #12#6;
+     aPrograma  = "abom0012";
+     aDesProg   = "Bandeja de entrada correos general";
+     aDocumento = (("00000000" + #12#0) % -108) + ".eml";
+
+     |HAZ LeeUbica;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     |HAZ CopiaFicheros;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     #12#6 = fFechaDoc;
+     #12#7 = "S";
+     |GRABA 020#12a;
+     |LIBERA #12;
+|FPRC;
+
+|DEFBUCLE abom0012;
+     #12#1;
+     7;
+     00000000, "N";
+     99999999, "N";
+     be;
+     NULL, abom0012;
+|FIN;
+
+|PROCESO abom0013;
+     nError     = 0;
+     nUbica     = #514#9;
+     fFechaDoc  = #13#6;
+     aPrograma  = "abom0013";
+     aDesProg   = "Bandeja de entrada expedientes";
+     aDocumento = (("00000000" + #13#0) % -108) + (("0000" + #13#1) % -104) + ".eml";
+
+     |HAZ LeeUbica;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     |HAZ CopiaFicheros;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     #13#6  = fFechaDoc;
+     #13#7  = "S";
+     |GRABA 020#13a;
+     |LIBERA #13;
+|FPRC;
+
+|DEFBUCLE abom0013;
+     #13#1;
+     7;
+     000000000, 0000, "N";
+     999999999, 9999, "N";
+     be;
+     NULL, abom0013;
+|FIN;
+
+|PROCESO abom0014;
+     nError     = 0;
+     nUbica     = #514#9;
+     fFechaDoc  = #14#8;
+     aPrograma  = "abom0014";
+     aDesProg   = "Bandeja salida de correos general";
+     aDocumento = (("00000000" + #14#0) % -108) + ".txt";
+
+     |HAZ LeeUbica;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     |HAZ CopiaFicheros;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     aDocumento = #14#5;   |QBF aDocumento;
+
+     |SI aDocumento ! "";
+         |HAZ CopiaFicheros;
+     |FINSI;
+
+     #14#8  = fFechaDoc;
+     #14#10 = "S";
+     |GRABA 020#14a;
+     |LIBERA #14;
+|FPRC;
+
+|DEFBUCLE abom0014;
+     #14#1;
+     10;
+     00000000, "N";
+     99999999, "N";
+     ;
+     NULL, abom0014;
+|FIN;
+
+|PROCESO abom0015;
+     nError     = 0;
+     nUbica     = #514#9;
+     fFechaDoc  = #15#7;
+     aPrograma  = "abom0015";
+     aDesProg   = "Bandeja salida de correos expedientes";
+     aDocumento = (("00000000" + #15#0) % -108) + (("0000" + #15#1) % -104) + ".txt";
+
+     |HAZ LeeUbica;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     |HAZ CopiaFicheros;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     aDocumento = #15#5;   |QBF aDocumento;
+
+     |SI aDocumento ! "";
+         |HAZ CopiaFicheros;
+     |FINSI;
+
+     #15#7  = fFechaDoc;
+     #15#10 = "S";
+     |GRABA 020#15a;
+     |LIBERA #15;
+|FPRC;
+
+|DEFBUCLE abom0015;
+     #15#1;
+     10;
+     000000000, 0000, "N";
+     999999999, 9999, "N";
+     ;
+     NULL, abom0015;
+|FIN;
+
+|PROCESO abom0602;
+     nError     = 0;
+     nUbica     = #602#2;
+     fFechaDoc  = "00.00.0000";
+     aPrograma  = "abom0602";
+     aDesProg   = "Mailing";
+
+     |HAZ LeeUbica;
+     aDocumento = #602#4;                 |QBF aDocumento;
+     aDocumento = aDocumento + ".doc";
+
+     |HAZ LeeUbica;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     |HAZ CopiaFicheros;
+
+     |SI nError ! 0;  |ACABA;  |FINSI;
+
+     #602#6 = "S";
+     |GRABA 020#602a;
+     |LIBERA #602;
+|FPRC;
+
+|DEFBUCLE abom0602;
+     #602#1;
+     6;
+     000, "N";
+     999, "N";
+     ;
+     NULL, abom0602;
+|FIN;
+
+|PROCESO TraePlantilla;
+     aLong   = aAlfa % 0;
+     nLong   = aLong;
+     aAlfa2  = "";
+     |PARA nCarac = nLong;  |SI nCarac ] 1;  |HACIENDO nCarac = nCarac - 1;
+           nPos      = (nCarac * 100) + 1;
+           aCaracter = aAlfa % nPos;
+           |SI aCaracter = "/";  |O aCaracter = "\";
+               |SAL;
+           |FINSI;
+           aAlfa2 = aAlfa2 + aCaracter;
+     |SIGUE;
+
+     aLong     = aAlfa2 % 0;
+     nLong     = aLong;
+     aAlfa3    = "";
+     |PARA nCarac = nLong;  |SI nCarac ] 1;  |HACIENDO nCarac = nCarac - 1;
+           nPos      = (nCarac * 100) + 1;
+           aCaracter = aAlfa2 % nPos;
+           aAlfa3    = aAlfa3 + aCaracter;
+     |SIGUE;
+
+     aOri = aAlfa;
+     aDes = (aRutaDestino + "/" + aAlfa3) < "";
+     |RECIBE_FICHERO aOri, aDes;
+|FPRC;
+
+|PROCESO dsam0120;
+     aAlfa  = #120#4;  |QBF aAlfa;
+     |SI aAlfa = "";  |ACABA;  |FINSI;
+
+     aRutaDestino = aPathPlantilla + "/" + (("00" + #120#0) % -102);
+     |MKDIR aRutaDestino;
+
+     aAlfa1 = aAlfa % -101;
+     |SI aAlfa1 = "*";
+         #119#0 = #120#0;
+         |LEE 000#119=;
+         |SI FSalida ! 0;  |DDEFECTO #119;  |FINSI;
+
+
+         aAlfa = (aAlfa + "." + #119#3) < "";  |QBF aAlfa;
+         |R_PDIR aAlfa;
+         |PARA;   |SI  FSalida = 0;  |HACIENDO;
+             |HAZ TraePlantilla;
+
+             |R_SDIR aAlfa;
+         |SIGUE;
+     |SINO;
+         |HAZ TraePlantilla;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsam0120;
+     #120#1;
+     ;
+     01, eaDSMAC;
+     99, eaDSMAC;
+     ;
+     NULL, dsam0120;
+|FIN;
+
+|PROCESO Baja900;
+     #900#0 = "";
+     #900#1 = "";
+|FPRC;
+
+|PROCESO Alta900;
+     #900#0 = "zzzzzzzz";
+     #900#1 = "z" * 30;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #514;
+     |LEE 000#514p;
+     |SI FSalida ! 0;  |DDEFECTO #514;  |FINSI;
+     |CIERRA #514;
+
+     |SI #514#21 ! "C";
+         |MENAV "0000 Tiene la opcion de DISTRIBUIDA, el pase no procede.";
+         |ACABA;
+     |FINSI;
+
+     |CLS;
+
+/*
+     |PINTA 1210, "Introduzca la IP de este terminal :              ";
+     E_sup     = "15";
+     aIPRemoto = 1246 ? 1;
+*/
+
+     |PINPA #0#900;
+
+     |BLANCO 0601 2380;
+     |CUADRO 0601 2380;
+
+     |CONFI "0000NRealizamos el pase";
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |ATRI I;
+     |PINTA 1220, "P A S A N D O   D O C U M E N T O S";
+     |ATRI i;
+
+     |ATRI S;
+     |PINTA 1420, "Espere por favor ...";
+     |ATRI s;
+
+     aFichero = ("b8" + Usuario + "zzzzzzzz") % 108;  |NOME_DAT #900 aFichero;
+     |ABRE #900;  |CIERRA #900;  |DELINDEX #900;
+
+     aFichero = ("b9" + Usuario + "zzzzzzzz") % 108;  |NOME_DAT #901 aFichero;
+     |ABRE #901;  |CIERRA #901;  |DELINDEX #901;
+
+     |DBASE aBaseDoc;  |QBF aBaseDoc;
+     aPathDestino = aBaseDoc + "ipabogad";
+     |MKDIR aPathDestino;
+
+     aPathDestino = aPathDestino + "/documentos";
+     |MKDIR aPathDestino;
+
+     aPathDestino = aPathDestino + "/" + (("00" + #48#0) % -102);
+     |MKDIR aPathDestino;
+
+     aPathPlantilla = aBaseDoc + "ipabogad";
+     |MKDIR aPathPlantilla;
+
+     aPathPlantilla = aPathPlantilla + "/plantillas";
+     |MKDIR aPathPlantilla;
+
+     |ABRE #900;
+     |ABRE #901;
+
+     |HAZ CogeMac;
+
+     |BUCLE abom0002;
+     |BUCLE abom0012;
+     |BUCLE abom0013;
+     |BUCLE abom0014;
+     |BUCLE abom0015;
+     |BUCLE abom0602;
+
+
+     |ABRE #119;
+     |BUCLE dsam0120;
+     |CIERRA #119;
+
+     |LEE 000#900p;
+     |SI FSalida = 0;
+         |ENTLINEAL #1#900, 1, 4, 22, 1, Baja900, Alta900;
+     |FINSI;
+
+     |CIERRA #900;
+     |CIERRA #901;
+
+     |DELINDEX #900;
+     |DELINDEX #901;
+|FPRO;

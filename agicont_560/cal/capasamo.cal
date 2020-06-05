@@ -1,0 +1,504 @@
+|FICHEROS;
+    capasamo #00;
+    cacuenta #05;
+    camaasil #31;
+    camaasic #32;
+    camocabe #40;
+    camoline #41;
+    camogrup #42;
+    catmpamo #43;
+    camogrup #44;
+|FIN;
+
+|VARIABLES;
+       &entrada = 1;
+       fecalf = "";
+       fecsys = @;
+       ini = 0;
+       mes = "";
+       mesfec = 0;
+       mesac = 0;
+       a = 0;
+       b = 0;
+       c = 0;
+       modcon = 0;
+       importe = 0;
+       opera = "";
+
+       alfa1 = "";
+       alfa2 = "";
+       alfa3 = "";
+       alfa4 = "";
+       x = 0;
+
+       dos    = "";
+       tres   = "";
+       cuatro ="";
+       cinco  = "";
+
+       cuenta = "";
+       cuenta1= "";
+       conter = 0;
+       signo  = "";
+
+       dig_dos = 0;
+       dig_tre = 0;
+       dig_cua = 0;
+       dig_cin = 0;
+       digito  = 0;
+       digito1 = 0;
+       digit   = 0;
+       impor = 0;
+
+     cuenta_ini = "";
+     grupo_ini = 0;
+     nivel_ini = 0;
+     sw_tmp = 0;
+     num_lin = 0;
+     lin_grabada = "N";
+     nombre = "";
+     sw_paso = 0;
+     tot = 0;
+|FIN;
+
+|INCLUYE inicio_i;  || lectura de la empresa
+|INCLUYE conasi_i;  || contador de asientos
+|INCLUYE actudi_i;  || actualizacion diario
+|INCLUYE numamo_i;  || amortizacion
+
+|PROCESO numamo; |TIPO 0;
+    x_alfa1 = #0Campo;
+|HAZ x_punto;
+    #0Campo = x_alfa1;
+    |PINTA #0Campo;
+|FPRC;
+
+
+|PROCESO mayor;
+  alfa1 = #0Campo > " ";
+  #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO final816; |TIPO 7;
+ |PTEC 816;
+|FPRC;
+
+|PROCESO fin_anyo; |TIPO 7;
+    #0Campo = fec2;
+|PINTA #0Campo;
+|FPRC;
+
+|PROCESO limite; |TIPO 0;
+|SI #0Campo > fec2;|O #0Campo < fec1;
+    |MENAV "   ATENCION!!! ESTA FECHA NO CORRESPONDE AL EJERCICIO ";
+    |ERROR;
+|FINSI;
+|FPRC;
+
+|PROCESO defecto; |TIPO 7;
+       fecsys = fec2
+       alfa1 = fecsys % -104;
+       #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|| *****************************
+|| ***** lectura lineas amortiz.
+
+|PROCESO lineas2;              || acum. imp para asiento y act. contabilizado
+|SI #41#4 ! "A";|ACABA; |FINSI;
+|SI #41#9 =  0;|ACABA; |FINSI;
+          cuenta  = dos;
+          digito  = dig_dos;
+          cuenta1 = tres;
+          digito1 = dig_tre;
+    sw_paso = 1;
+    impor = #41#9;
+    tot = tot + impor;
+    |SI #0#7 = "S"; |HAZ graba_cuen; |FINSI; || acum en grupo
+    #41#6 = "S";
+    |GRABA 020#41a;
+    |LIBERA #41;
+|FPRC;
+
+|PROCESO act_asiento; || crea asiento contable por linea
+    |HAZ contador;         || recoge el nro. de asiento
+    |PARA x = 1; |SI x [ 2; |HACIENDO x = x + 1;
+        |SI x = 1;
+                conter = cuenta;
+                digit = digito;
+                signo = "D";
+        |SINO;
+                conter = cuenta1;
+                digit = digito1;
+                signo = "H";
+        |FINSI;
+        |DDEFECTO #31;
+            #31#0 = #0#3;      || diario
+            #31#1 = #0#4;      || fecha asiento
+            #31#2 = #20#1;     || nro. de asiento
+            #31#3 = x;         || lineas de apuntes
+            #31#4 = conter;    || cuenta
+            #31#5 = digit;     || digito
+            #31#6 = #0#5;      || concepto contable
+            #31#7 = #0#6;      || descripcion
+            #31#8 = signo;     || signo
+            #31#9  = impor;     || importe
+            #31#21 = #40#28;   || Departamento
+        |SI #31#8 = "D";
+                #31#16 = #31#4;         || carga en el debe
+                #31#17 = #31#5;
+                #31#10 = "";
+                #31#11 = 0;
+        |SINO;
+                #31#16 = "";            || carga en el haber
+                #31#17 = 0;
+                #31#10 = #31#4;
+                #31#11 = #31#5;
+        |FINSI;
+
+        |GRABA 020#31n;
+        |SI FSalida = 0;
+            |DDEFECTO #32;
+                #32#0 = #31#0;  || diario
+                #32#1 = #31#1;  || fecha
+                #32#2 = #31#2;  || documento
+            |LEE 101#32=;
+            |SI FSalida ! 0;
+                    #32#3 = #31#2;  || asiento
+                |GRABA 020#32n;
+                |LIBERA #32;
+                |LEE 121#32=;
+            |FINSI;
+            |HAZ actualiz1;
+                opera = "A";
+            |HAZ altatra;
+                d_diari = #31#0;   || diario
+                d_opera = #31#8;   || signo
+                d_impor = #31#9;   || importe
+            |HAZ actu_diari;       || actualiza el diario
+            |LIBERA #32;
+        |FINSI;
+    |SIGUE;
+|FPRC;
+
+|PROCESO graba_cuen;
+     |DDEFECTO #43;
+     #43#0 = #40#15;
+     #43#1 = cuenta;
+     #43#2 = digito;
+     |LEE 101#43=;
+     |SI FSalida ! 0; |GRABA 021#43b; |FINSI;
+     #43#3 = #43#3 + #41#9; || ............... cantidad al DEBE
+        ||#44#4 = #41#3;
+     |GRABA 021#43a; |LIBERA #43;
+     |DDEFECTO #43;
+     #43#0 = #40#15;
+     #43#1 = cuenta1;
+     #43#2 = digito1;
+     |LEE 101#43=;
+     |SI FSalida ! 0; |GRABA 021#43b; |FINSI;
+     #43#4 = #43#4 + #41#9; || ................ cantidad al HABER
+     |GRABA 021#43a; |LIBERA #43;
+       ||#44#4 = #41#3;
+|FPRC;
+
+|DEFBUCLE capasamo1; || lee lineas de amortizaciones clave 2
+ #41#2;
+ ;
+ #40#0,#40#1,   1, #0#2, "N";
+ #40#0,#40#1, 999, #0#2, "N";
+ be;
+ NULL, lineas2;
+|FIN;
+
+|| ********************************
+|| ***** lectura cabeceras amortiz.
+
+|PROCESO lineas; || lee grupo de amortizaciones
+|ABRE #42;
+    #42#0 = #40#15;
+    |LEE 001#42=;
+    |SI FSalida = 0;
+          dos     = #42#1;  || cta. amortiz
+          dig_dos = #42#2;  || digito
+          tres    = #42#3;  || cta. amortiz acum
+          dig_tre = #42#4;  || digito
+          cuatro  = #42#5;  || cta. amortiz. regulariz.
+          dig_cua = #42#6;  || digito
+          cinco   = #42#7;  || cta. amortiz. regulariz. acum
+          dig_cin = #42#8;  || digito
+          |PINTA 2039, #40#0; |PINTA 2050, #40#1;
+          tot = 0;
+          sw_paso = 0;
+          |BUCLE capasamo1;
+          |SI #0#7 = "N";
+              |SI sw_paso = 1;
+                  impor = tot;
+                  |HAZ act_asiento;
+              |FINSI;
+          |FINSI;
+     |FINSI;
+|CIERRA #42;
+|FPRC;
+
+|DEFBUCLE capasamo0; || lee cabeceras de amortizaciones
+#40#1;
+;
+#0#0,#0#8;
+#0#1,#0#9;
+e;
+NULL, lineas;
+|FIN;
+
+|PROCESO grabalin;
+     lin_grabada = "S";
+     |SI sw_tmp = 0;
+          |LIBERA #32;
+          FSalida = 0;
+          |PARA ; |SI FSalida = 0; |HACIENDO;
+               |HAZ contador;
+               #32#0 = #0#3;
+               #32#1 = #0#4;
+               #32#2 = #20#1;
+               |LEE 001#32=;
+          |SIGUE;
+          |GRABA 021#32b;
+          grupo_ini = #43#0;
+          cuenta_ini = #43#1;
+          nivel_ini = #43#2;
+          sw_tmp = 1;
+     |FINSI;
+     |SI #43#0 ! grupo_ini;
+          |LIBERA #32;
+          FSalida = 0;
+          |PARA ; |SI FSalida = 0; |HACIENDO;
+               |HAZ contador;
+               #32#0 = #0#3;
+               #32#1 = #0#4;
+               #32#2 = #20#1;
+               num_lin = 0;
+               |LEE 001#32=;
+          |SIGUE;
+          |GRABA 021#32b;
+     |FINSI;
+     |DDEFECTO #31;
+     #31#0 = #0#3;       ||Diario
+     #31#1 = #0#4;       ||Fecha
+     #31#2 = #20#1;      ||Cuenta
+     #31#6 = #0#5;       ||Concepto
+     #31#7 = #0#6;       ||Descripcion del concepto
+     conter = #43#1;
+     digit = #43#2;
+     |SI #43#3 ! 0;      ||Cuenta de debe
+          num_lin = num_lin + 1;
+          #31#3 = num_lin;    ||linea
+          #31#8 = "D";
+          #31#4 = #43#1;      ||Cuenta
+          #31#5 = #43#2;      ||nivel
+          #31#9 = #43#3;
+          #31#16 = #43#1;
+          #31#17 = #43#2;
+          #31#10 = "";
+          #31#11 = 0;
+          signo = "D";
+          |HAZ actualiz1;
+                opera = "A";
+            |HAZ altatra;
+                d_diari = #31#0;   || diario
+                d_opera = #31#8;   || signo
+                d_impor = #31#9;   || importe
+            |HAZ actu_diari;       || actualiza el diario
+          |GRABA 021#31c;
+     |FINSI;
+     |SI #43#4 ! 0;
+          num_lin = num_lin + 1;
+          #31#3 = num_lin;    ||linea
+          #31#8 = "H";
+          #31#9 = #43#4;
+          #31#4 = #43#1;      ||Cuenta
+          #31#5 = #43#2;      ||nivel
+          #31#10 = #43#1;
+          #31#11 = #43#2;
+          #31#16 = "";
+          #31#17 = 0;
+          signo = "H";
+          |HAZ actualiz1;
+                opera = "A";
+            |HAZ altatra;
+                d_diari = #31#0;   || diario
+                d_opera = #31#8;   || signo
+                d_impor = #31#9;   || importe
+            |HAZ actu_diari;       || actualiza el diario
+          |GRABA 021#31c;
+     |FINSI;
+     |LIBERA #31;
+     grupo_ini = #43#0;
+     cuenta_ini = #43#1;
+     nivel_ini = #43#2;
+|FPRC;
+
+|DEFBUCLE recup_tmp; || para grabar asiento por grupos
+#43#1;
+;
+   0 , "            " , 0 , " ";
+9999 , "¥¥¥¥¥¥¥¥¥¥¥¥" , 9 , "z";
+e;
+NULL , grabalin;
+|FIN;
+
+|PROCESO proceso; |TIPO 3;
+|ABRE #32;
+|ABRE #31;
+|ABRE #42;
+|SI #0#7 = "S"; || .... ..... ..... por grupos
+     nombre = "con" + Usuario;
+     nombre = nombre % 108;
+     |QBF nombre;
+     |NOME_DAT #43 nombre;
+     |ABRE #43;
+     |CIERRA #43;
+     |DELINDEX #43;
+     |ABRE #44;
+     |ABRE #43;
+     |CIERRA #44;
+|FINSI;
+     |BUCLE capasamo0;
+|SI #0#7 = "S";
+     |CIERRA #43;
+     |BUCLE recup_tmp;
+     |DELINDEX #43;
+|FINSI;
+|CIERRA #32;
+|CIERRA #31;
+|CIERRA #42;
+|SI modcon = 0;
+    |ABRE #8;
+    |DDEFECTO #8;
+        #8#0 = codcon;
+    |LEE 001#8=;
+    |SI FSalida = 0;
+        |BORRA 020#8a;
+    |FINSI;
+    |CIERRA #8;
+|SINO;
+    |SUB_EJECUTA "camaapua.run";
+|FINSI;
+|FPRC;
+
+**********************************************************************
+    ACTUALIZACION DE CUENTAS
+**********************************************************************
+
+|PROCESO actualiz1;
+|ABRE #5;
+    #5#0 = conter;
+    #5#1 = digit;
+|LEE 101#5=;
+|SI #31#0 = 0;
+    |SI #31#8 = "D";
+            #5#9 = #5#9 + #31#9;
+            #5#51 = #5#51 + #31#9;
+    |SINO;
+            #5#10 = #5#10 + #31#9;
+            #5#52 = #5#52 + #31#9;
+    |FINSI;
+        #5#11 = #5#9 - #5#10;
+        #5#53 = #5#51 - #5#52;
+|SINO;
+    |SI #31#0 = 99;
+        |SI #31#8 = "D";
+                #5#48 = #5#48 + #31#9;
+                #5#51 = #5#51 + #31#9;
+        |SINO;
+                #5#49 = #5#49 + #31#9;
+                #5#52 = #5#52 + #31#9;
+        |FINSI;
+            #5#50 = #5#48 - #5#49;
+            #5#53 = #5#51 - #5#52;
+    |SINO;
+        |HAZ actualiz2;
+    |FINSI;
+|FINSI;
+|SI #5#58 < #31#1;
+        #5#58 = #31#1;
+|FINSI;
+|GRABA 020#5a;
+|LIBERA #5;
+|CIERRA #5;
+|HAZ actualiz3;
+|FPRC;
+
+|PROCESO actualiz2;
+    ini = dig1;      || numero de niveles
+    fecalf = #31#1;
+    mes = fecalf % 402;
+    mesfec = mes;
+|SI ini = 1;
+        mesac = mesfec;
+|SINO;
+        mesac = (mesfec - ini) + 1;
+    |SI mesac [ 0;
+            mesac = (13 - ini) + mesfec;
+    |FINSI;
+|FINSI;
+    a = (mesac * 3) + 9;
+    b = a + 1;
+    c = a + 2;
+|SI #31#8 = "D";
+        #5a = #5a + #31#9;
+        #5#51 = #5#51 + #31#9;
+|SINO;
+        #5b = #5b + #31#9;
+        #5#52 = #5#52 + #31#9;
+|FINSI;
+    #5c = #5a - #5b;
+    #5#53 = #5#51 - #5#52;
+|FPRC;
+
+|PROCESO actualiz3;
+|SI #31#8 = "D";
+        #32#4 = #32#4 + #31#9;
+    |SI #32#09 = 0; #32#08 = #31#4; #32#09 = #31#5; |FINSI; || contrp.HABER
+|FINSI;
+|SI #31#8 = "H";
+        #32#5 = #32#5 + #31#9;
+    |SI #32#11 = 0; #32#10 = #31#4; #32#11 = #31#5; |FINSI; || contrp.DEBE
+|FINSI;
+|GRABA 020#32a;
+|FPRC;
+
+**********************************************************************
+    ACTUALIZACION DE 'camaasic' (PARA LA ACTUALIZACION DE NIVELES)
+**********************************************************************
+
+|PROCESO altatra;
+    modcon = 1;
+|ABRE #8;
+    #8#0 = codcon;
+    #8#1 = #31#4;
+    #8#2 = #31#5;
+    #8#3 = #31#1;
+    #8#4 = #31#8;
+    #8#6 = #31#0;
+|LEE 101#8=;
+|SI FSalida ! 0;
+    |DDEFECTO #8;
+        #8#0 = codcon;
+        #8#1 = #31#4;
+        #8#2 = #31#5;
+        #8#3 = #31#1;
+        #8#4 = #31#8;
+        #8#6 = #31#0;
+    |GRABA 101#8b;
+|FINSI;
+    importe = #31#9;  || aqui si que se usa el importe real
+|SI opera = "B";
+        importe = -importe;
+|FINSI;
+    #8#5 = #8#5 + importe;
+|GRABA 101#8a;
+|LIBERA #8;
+|CIERRA #8;
+|FPRC;

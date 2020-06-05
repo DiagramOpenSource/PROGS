@@ -1,0 +1,222 @@
+|FICHEROS;
+     facemp3  #1;
+     facge280  #280;
+     Ref0001@ #1000;
+|FIN;
+
+|VARIABLES;
+     aAlfa    = "";
+     aBase    = "";
+     aFich    = "";
+     aDir     = "";
+
+     nPeriodo = 0;
+     aMensaje = "";
+     nBoton = 0;
+
+     nSalida = 0;
+     nArchi = 0;
+     aPath = "";
+     nHandle = 0;
+     aAlfa1 = "";
+     nSwNO  = 0;
+     aClave = "";
+     aPassword = "";
+     nume1     = 0;
+|FIN;
+
+|PROCESO AltaNueva;
+     |DFICE aAlfa;   |QBF aAlfa;
+     aAlfa = aAlfa + (("00" + #1#0) % -102) + "/";
+     |MKDIR aAlfa;
+
+     |SI #1#3 = "S";
+         |MENSA "     Creando Nuevos Clientes en la Empresa de Facturacion";
+         |SUB_EJECUTA_NP ":integral/dsaz0003;CLIENTES";
+         |MENAV "0000 Clientes Creados en la Nueva Empresa de Facturacion.";
+     |FINSI;
+|FPRC;
+
+|PROCESO Boton;
+     ||TODO CCC
+     ||Mirar si tengo dsarchi y si tengo activo la FacturaE.
+     nArchi = 0;
+     |DBASS aPath; |QBF aPath;
+     aPath = aPath + "dsarchi/def/dsarm001.mas";
+     |XABRE "E", aPath, 0;
+     |SI FSalida = 0;
+        |DBASS aAlfa; |QBF aAlfa;
+        aAlfa = aAlfa + "dsarchi/def/dsarm001.mas";
+        |CARGA_DEF aAlfa, Ref0001@;
+        |SI FSalida = 0;
+           |DBASS aAlfa; |QBF aAlfa;
+           aAlfa = aAlfa + "dsarchi/fich/"; |PATH_DAT #1000 aAlfa;
+           |ABRE #Ref0001@;
+           |DDEFECTO #Ref0001@;
+           |LEE 000#Ref0001@.p;
+           |SI FSalida ! 0; |DDEFECTO #Ref0001@; |FINSI;
+
+           |SI #Ref0001@#3 = "S";
+              nArchi = 1;
+           |FINSI;
+           |CIERRA #Ref0001@; |DESCARGA_DEF #Ref0001@;
+        |FINSI;
+     |SINO;
+          aMensaje = "0000Para usar la Factura Electronica, se necesita el DSARCHI";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |SI nArchi = 0;
+          aMensaje = "0000No esta conectada en el DSARCHI la FacturaE con FACTURAR";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |ABRE #facge280;
+
+     |PUSHV 0501 2380;
+     |BLANCO 0501 2380;
+     |CUADRO 0501 2380;
+
+     |DDEFECTO #facge280;
+     #facge280#0 = #facemp3#0;
+     |LEE 101#facge280.=;
+     nSalida = FSalida;
+
+     |PINPA #0#facge280;
+     |PINDA #0#facge280;
+
+     |ENDATOS #2#facge280;
+     |SI FSalida = 0;
+          |SI nSalida = 0;
+               |GRABA 020#facge280.a;
+          |SINO;
+               |GRABA 020#facge280.n;
+          |FINSI;
+     |FINSI;
+     |LIBERA #facge280;
+
+     |POPV;
+     |CIERRA #facge280;
+|FPRC;
+
+|PROCESO Tipo2; |TIPO 2;
+
+ nume1 = 0 +. 1;
+
+ |SI nume1 = -1;
+     |HAZ MiraClave;
+     |SI nSwNO = 1;
+         |ERROR;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO MiraClave;
+     nSwNO = 0;
+     aPassword = "";
+     |BLANCO 2302 2379;
+     |PINTA 2327, "Entre la CLAVE: ";
+     E_inf = "";
+     E_sup = "10";
+     aPassword = 2343 ? -1;
+     |QBF aPassword;
+     aClave = #1#2; |QBF aClave;
+     |SI aPassword ! aClave;
+         |MENAV "     Clave incorrecta.";
+         nSwNO = 1;
+     |FINSI;
+     |BLANCO 2302 2379;
+|FPRC;
+
+|PROCESO Tipo11;  |TIPO 11;
+     |SI FSalida = 10;
+
+         |CONTROL_SIMPLE 0, "BOTON,Datos FacturaE", 1225, 1240, Boton;
+          nBoton = FSalida;
+
+         |LEE 101#1=;
+         |ENDATOS #2#1;
+         |SI FSalida = 0;
+            |GRABA 020#1a;
+         |FINSI;
+         |LIBERA #1;
+         |ERROR;
+
+         |FIN_CONTROL_WINDOWS nBoton;
+     |FINSI;
+
+     |SI FSalida = 11;
+         |HAZ MiraClave;
+         |SI nSwNO = 0;
+            |CONFI "0000NEsta seguro de borrar la Empresa de Facturacion ";
+            |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+            aDir = "";
+            |DIRECTORIO aDir;
+            |DBASS aBase;   |QBT aBase;
+            aBase = aBase + "facturar/fich/";
+            aFich = aBase + (("00" + #1#0) % -102);
+            aAlfa = aDir + "bin/agirm -r " + aFich;
+            |SYSTEM aAlfa;
+
+            |LEE 101#1=;
+            |SI FSalida = 0;  |BORRA 020#1a;  |FINSI;
+            |LIBERA #1;
+
+            |PONCONTROL 23, "SI";
+         |FINSI;
+     |FINSI;
+
+     |SI FSalida = 12;
+         |CONFI "0000NEsta seguro de crear una Empresa Nueva ";
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+         |SALVA_DATOS #1;
+
+         |PUSHV 0501 2380;
+         |PARA;  |SI;  |HACIENDO;
+              |CUADRO 0723 1151;
+              |BLANCO 0824 1050;
+              |PINTA 0824, "Introduzca la Empresa Nueva ";
+              E_inf = 0;
+              E_sup = 99;
+              nPeriodo = 1036 ? 1;
+
+              #1#0 = nPeriodo;
+              |LEE 040#1=;
+              |SI FSalida = 0;
+                  |MENAV "     El Periodo ya Existe";
+              |SINO;
+                  |SAL;
+              |FINSI;
+         |SIGUE;
+         |POPV;
+
+         |DDEFECTO #1;
+         #1#0  = nPeriodo;
+         |GRABA 020#1b;
+
+         |PINTA #1#0;
+
+         |ENDATOS #1#1;
+         |GRABA 020#1a;
+         |LIBERA #1;
+         |HAZ AltaNueva;
+
+         |PONCONTROL 23, "SI";
+     |FINSI;
+|FPRC;
+
+|RUTINA ClaveBaja1;
+     #1#0 = 00;
+|FRUT;
+
+|RUTINA ClaveAlta1;
+     #1#0 = 99;
+|FRUT;
+
+|PROGRAMA;
+      |ENTLINEAL #1#1, -1, 4, 22, 1, ClaveBaja1, ClaveAlta1;
+|FPRO;

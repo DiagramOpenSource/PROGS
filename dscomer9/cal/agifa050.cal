@@ -1,0 +1,686 @@
+|FICHEROS;
+     agifa050 #0;             ||Necesidades
+     agifa054 #54,MANTE;             ||Necesidades
+     agifa017 #1;             ||Articulos
+     agifa048 #2;             ||Cabecera de Escandallos
+     agifa049 #3;             ||Lineas de Escandallos
+     agifa090 #4;             ||Ordenes de Fabricacion
+     agifa074 #5;             ||Lineas Ordenes de Fabricacion
+     agifa027 #6;             ||Contadores
+     agifa019 #7;             ||Articulos
+     agifa081 #8;             ||Pedido compras (C)
+     agifa067 #9;             ||Pedido compras (L)
+     agifa112 #10;            ||Proveedor
+     agifa007 #11;            ||Series
+     agifa321 #321;
+     agifa324 #324;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     &enAlta = 1;
+     &eaArticulo = "";
+     nDNivel        = 0;
+     nHNivel        = 0;
+     nHayOrd        = 0;
+     nHayCom        = 0;
+     nSwOrden       = 0;
+     nSwCompra      = 0;
+     nSwImp         = 0;
+     aEsEscandallo  = "";
+     nNivel         = 0;
+     &Tempo         = "";
+     aTempo50       = "";
+     &aDivisa       = "";
+     &aMoneda       = "";
+     &nDeci_Base = 0;
+     &nDeci_PreBase = 0;
+     &aModulo       = "agifa050";
+     &aEscanOri     = "";
+     &aEscanFin     = "";
+     &enSwMenu      = 1;
+
+     aEscanOrden    = "";
+     aClaveCont     = "";
+     aSerPedi       = "";
+     aUltProve      = "";
+     aMensaje       = "";
+
+     {100}PnCanti   = 0;
+
+     &nCanti        = 0;
+     nCantiOri      = 0;
+     nLinea050      = 0;
+     nTecla         = 0;
+     nUltOrden      = 0;
+     nLinOrden      = 0;
+     nContador      = 0;
+     nCantiFabricar = 0;
+     nAlmacenOrden  = 0;
+     nFabricar      = 0;
+     nAnterior      = 0;
+
+     &fecha         = @;
+     fecha1         = @;
+
+     norden = 99; ||Para que empiece por el nivel mas bajo
+     ordleidas = 0;
+     escprinc = "";
+     pendrec = 0;
+
+
+ {-1}aMenu = "";
+     aMenu1 = "2400";
+     aMenu2 = "1";
+     aMenu3 = "";
+     aMenu4 = "NIOCS";
+     aMenu5 = " Nuevo    ";
+     aMenu6 = " Imprimir ";
+     aMenu7 = " Orden    ";
+     aMenu8 = " Compra   ";
+     aMenu9 = " Salir    ";
+
+|FIN;
+
+|INCLUYE i_escand;
+
+||Este proceso verifica que el producto de entrada sea un escandallo
+
+|PROCESO EsUnEscan; |TIPO 0;
+     |ABRE #agifa048;
+     #agifa048#0 = #agifa050#0;
+     |LEE 001#agifa048.=;
+     |SI FSalida ! 0 ; |MENAV "0000Esto no es un Escandallo"; |ERROR; |FINSI;
+     |CIERRA #agifa048;
+|FPRC;
+
+
+|PROCESO Inicializa;
+     ||Inicializa las variables de entorno y empieza de nuevo
+
+     |ABRE #agifa050;
+     |CIERRA #agifa050;
+|FPRC;
+
+|PROCESO LinEscan;
+     |HAZ EscanLinea;
+|FPRC;
+
+|PROCESO pro1;
+     #agifa050#0 = #54#0;
+     #agifa050#1 = 1;
+     #agifa050#2 = "                    ";
+     #agifa050#7 = 1;
+     #agifa050#12 = nDNivel;
+|FPRC;
+
+|PROCESO pro2;
+     #agifa050#0 = #54#0;
+     #agifa050#1 = 999;
+     #agifa050#2 = "zzzzzzzzzzzzzzzzzzzz";
+     #agifa050#7 = 99999;
+     #agifa050#12 = nHNivel;
+|FPRC;
+
+||__________________________________/ PROCESOS DE CONFIRMACION PEDIDOS COMPRA
+
+|PROCESO CabePedi;          ||Creando la cabecera de los pedidos de compras
+     #8#25 = aSerPedi;
+     enSwMenu = 1;
+     |HAZ ContaPC7;
+
+     |ATRI P;
+||     #8#8  = NombrePro;  ||Divisas
+     #8#5 = #agifa112#24;||Dto.
+     #8#17= #agifa112#41;||Dto Acumulado
+     #8#6 = #agifa112#25;||Dto. P.P.
+     aMensaje = "0000Procesando Proveedor " + #agifa050#10;
+     |MENSA aMensaje;
+
+     #8#1 = fecha;               ||Fecha
+     #8#26 = #8#25 + "/"+ #8#0;
+
+     #54#5 = fecha;
+     |C_M #54#5, 1, "S";
+     |ENCAMPO #5#54;
+     |C_M #54#5, 1, "N";
+     fecha1 = #54#5;
+
+     #8#2 = fecha1;              ||Fecha Entrega
+     #8#4 = #agifa050#10;        ||Proveedor
+
+     #8#27 = #agifa112#81;
+     #8#29 = #agifa112#82;
+     |HAZ CambioMoneda;
+
+     |DEFECTO #8#10;
+     |GRABA 021#agifa081.b;
+|FPRC;
+
+|PROCESO CreaLinPedi;         ||Creando las lineas de pedido de compras
+     |DDEFECTO #agifa067;
+     nLinOrden = nLinOrden + 1;
+     #9#28 = aSerPedi;
+     #9#0 = #8#0;
+     #9#1 = nLinOrden;
+     #9#2 = #agifa050#2;         ||Articulo
+     #9#3 = #agifa050#7;         ||Almacen
+     #9#5 = #agifa050#6;         ||Unidades a Comprar
+     #9#13 = #8#2;        ||Fecha Prevista
+     #9#14 = #agifa019#30;       ||Tipo de Iva que tare del Articulo
+     #9#37 = #agifa019#5;        ||Unidades Pedidas
+     |GRABA 021#agifa067.b;
+     |HAZ defeclpc;
+     Campo = 4;
+     |HAZ lpctotal;
+     |HAZ lpcacart;
+     |GRABA 021#agifa067.a;
+     |LIBERA #agifa067;
+     Campo = 1;
+
+     |SI #8#29 = "D"; || Si la moneda de trabajo es la divisa
+        #8#37 = #8#34;
+        #8#38 = #8#35;
+        #8#39 = #8#36;
+        #8#40 = #8#11;
+        #8#41 = #8#12;
+        #8#42 = #8#13;
+     |SINO;
+        #8#37 = #8#11;
+        #8#38 = #8#12;
+        #8#39 = #8#13;
+        #8#40 = #8#34;
+        #8#41 = #8#35;
+        #8#42 = #8#36;
+     |FINSI;
+     |GRABA 021#agifa081.a;
+|FPRC;
+
+||____________________________________/ PROCESOS DE CONFIRMACION DE ORDEN
+
+|PROCESO CreaLinOrden;
+     |DDEFECTO #agifa074;
+     nLinOrden = nLinOrden + 1;
+     #agifa074#0 = #agifa090#0;
+     #agifa074#1 = nLinOrden;
+     #agifa074#2 = aEscanOrden;         ||Codigo del Escandallo
+     #agifa074#4 = nCantiFabricar;      ||Cantidad a Fabricar
+     #agifa074#7 = nAlmacenOrden;       ||Almacen;
+     #agifa074#8 = #agifa090#2;         ||Fecha Prevista
+     #agifa074#9 = #agifa090#20;
+     |GRABA 021#agifa074.b;
+     |HAZ ordartic;
+     |GRABA 021#agifa074.a;
+     |LIBERA #agifa074;
+|FPRC;
+
+|PROCESO CabeOrden;
+     #agifa090#20 = aSerPedi;
+     enSwMenu = 1;
+     |HAZ ContaOF7;
+
+     |ATRI P;
+     aMensaje = "0000Procesando Orden " + #agifa050#8;
+     |MENSA aMensaje;
+     |ATRI p;
+
+     #agifa090#1 = fecha;          ||Fecha
+     #54#6 = fecha;
+     |C_M #54#6, 1, "S";
+     |ENCAMPO #6#54;
+     |C_M #54#6, 1, "N";
+     fecha1 = #54#6;
+
+     #agifa090#2 = fecha1;               ||Fecha Prevista
+
+     #agifa090#3 = "01.01.1990";         ||Fecha Entrega
+
+     #agifa090#19 = nAlmacenOrden;      ||Almacen
+     |GRABA 021#agifa090.c;
+|FPRC;
+
+
+||_________________________/ PROCESO PRINCIPAL BUCLE LEENECES
+
+|PROCESO ordencab;
+||Grabo la orden de Cabecera -> Escandallo principal. Orden inverso (Carlos)
+          #0#8 = 0;
+          nAlmacenOrden = 1;
+          |HAZ CabeOrden;
+          nLinOrden = 0;
+          aEscanOrden = #agifa050#0;
+          nCantiFabricar = nCanti;
+          |HAZ CreaLinOrden;
+|FPRC;
+
+|PROCESO MiraNecesOrd;
+     nHayOrd = 0;
+     ordleidas = 1;
+     |SI nUltOrden ! #agifa050#8;
+          nAlmacenOrden = 1;
+          |HAZ CabeOrden;
+          nLinOrden = 0;
+     |FINSI;
+     aEscanOrden = #agifa050#2;
+     nCantiFabricar = #agifa050#5;
+     nAlmacenOrden = #agifa050#7;
+     |HAZ CreaLinOrden;
+     nUltOrden = #agifa050#8;
+|FPRC;
+
+|PROCESO LeeProve;
+     |ABRE #agifa112;
+     |DDEFECTO #agifa112;
+     #agifa112#0 = aUltProve;
+     |LEE 001#agifa112.=;
+||DIVISAS
+||     NombrePro = #agifa112#1; ||Nombre del Proveedor
+||     Proveedor = aUltProve;   ||Proveedor
+||DIVISAS
+||     prov_divisa =Proveedor;  ||Proveedor
+||     DivisaPro = #agifa112#80;||Cambio Pactado Divisa
+||     defecto = #agifa112#98;  ||Divisa por Defecto
+     |CIERRA #agifa112;
+|FPRC;
+
+|PROCESO MiraNecesPed;
+     |SI aUltProve = "zxzx";            ||Grabo la Cabecera y la linea del Principal
+          aUltProve = #agifa050#10;
+          |HAZ LeeProve;
+          |HAZ CabePedi;
+          nLinOrden = 0;
+          aUltProve = #agifa050#10;
+          |HAZ LeeProve;
+     |FINSI;
+     |SI aUltProve ! #agifa050#10;
+          aUltProve = #0#10;
+          |HAZ LeeProve;
+          |HAZ CabePedi;
+          nLinOrden = 0;
+     |FINSI;
+     aDivisa = #agifa081#27;
+     aMoneda = #agifa081#29;
+     |HAZ Divisas081;
+     |HAZ CreaLinPedi;
+     aUltProve = #agifa050#10;
+     |HAZ LeeProve;
+     nHayCom = 1;
+|FPRC;
+
+
+|DEFBUCLE LeeNecesOrd;
+#agifa050#4;
+5;
+  1 , "                    " , "                    " ,         0.001;
+ 99 , "zzzzzzzzzzzzzzzzzzzz" , "zzzzzzzzzzzzzzzzzzzz" , 99999999.9999;
+;
+NULL , MiraNecesOrd , NULL , NULL , ordencab;
+|FIN;
+
+|DEFBUCLE LeeNecesPed;
+#agifa050#3;
+;
+"                    " , "    " , "                    " ,         0.001;
+"zzzzzzzzzzzzzzzzzzzz" , "zzzz" , "zzzzzzzzzzzzzzzzzzzz" , 99999999.9999;
+;
+NULL , MiraNecesPed;
+|FIN;
+
+|PROCESO ConfirmaOrden;
+     |AVISO;
+     |SI nSwOrden = 1;
+          |MENAV "0000Ordenes creadas....";
+          |ACABA;
+     |FINSI;
+     |CONFI "2400NDesea Confirmar las ordenes entradas :";
+     |SI FSalida = 0;
+          nSwOrden = 1;
+          aClaveCont = "ordenfab";
+          nUltOrden = 0;
+
+          |C_M #54#4, 1, "S";
+          |ENCAMPO #4#54;
+          aSerPedi =  #54#4;
+          |C_M #54#4, 1, "S";
+
+          |ABRE #agifa007;
+          #agifa007#26 = aSerPedi;
+          |LEE 020#agifa007.=;
+          |CIERRA #agifa007;
+
+          |ABRE #agifa090;
+          |ABRE #agifa074;
+          |ABRE #agifa027;
+          ordleidas = 0;
+          nHayOrd = 0;
+          |BUCLE LeeNecesOrd;
+          |SI ordleidas = 0; ||Si solo existe la orden de cabecera
+             #0#0 = escprinc;  ||Sino aqui lo ha perdido
+             |HAZ ordencab;
+          |FINSI;
+          ordleidas=0;
+          |CIERRA #agifa027;
+          |CIERRA #agifa090;
+          |CIERRA #agifa074;
+          |SI nHayOrd = 1;
+               |MENAV "0000Ordenes Creadas...";
+          |SINO;
+               |MENAV "0000No hay articulos a ordenar...";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ConfirmaCompra;
+     |SI nSwCompra = 1;
+          |MENAV "0000Compra de Materia realizada";
+          |ACABA;
+     |FINSI;
+     |AVISO;
+     |CONFI "2400NDesea Confirmar las Compras de Materia : ";
+     |SI FSalida = 0;
+          nSwCompra = 1;
+          aClaveCont = "vpedcom";
+          aUltProve = "zxzx";
+
+          |C_M #54#3, 1, "S";
+          |ENCAMPO #3#54;
+          |C_M #54#3, 1, "N";
+          aSerPedi = #54#3;
+
+          |ABRE #agifa007;
+          #agifa007#26 = aSerPedi;
+          |LEE 001#agifa007.=;
+          |CIERRA #agifa007;
+
+          |ABRE #agifa081;
+          |ABRE #agifa067;
+          |ABRE #agifa027;
+          |BUCLE LeeNecesPed;
+          |LIBERA #agifa081;
+          |CIERRA #agifa027;
+          |CIERRA #agifa067;
+          |CIERRA #agifa081;
+          |BLIN 24;
+          |SI nHayCom = 0;
+               |MENAV "0000No hay articulos a comprar...";
+          |SINO;
+               |MENAV "0000Pedidos Compras creados...";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+||____________________________________/ PROCESOS DE IMPRESION
+
+|PROCESO Aimprimir;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE LeerImpresion;
+     #agifa050#1;
+     12;
+     "                    " , "                    " ,     0 ,   0, nDNivel;
+     "zzzzzzzzzzzzzzzzzzzz" , "zzzzzzzzzzzzzzzzzzzz" , 99999 , 999, nHNivel;
+     ;
+     NULL , Aimprimir;
+|FIN;
+
+|| Proceso de Impresion del Calculo de Necesidades
+|PROCESO Impresion;
+     |CONFI "2400NDesea Impresion del Calculo de Necesidades : ";
+     |SI FSalida = 0;
+          |IMPRE 0;
+          |SI FSalida = 0;
+               |INFOR "agifa050";
+               |SI FSalida = 0;
+                    |ATRI P;
+                    |MENSA "0000Imprimiendo Necesidades Segun Estimacion";
+                    |ATRI p;
+                    |BUCLE LeerImpresion;
+                    |PIEINF;
+                    |FININF;
+               |FINSI;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+|FPRC;
+
+|PROCESO EscanLinea;
+     #agifa048#0 = #agifa049#2;
+     |LEE 000#agifa048.=;
+     |SI FSalida = 0;
+          aEsEscandallo = "S";
+     |SINO;
+          aEsEscandallo = "N";
+     |FINSI;
+
+     |DDEFECTO #agifa017;               ||Leo el Almacen para saber como
+     #agifa017#0 = #agifa049#2;         ||estamos de stocks
+     #agifa017#1 = #agifa049#9;
+     |LEE 001#agifa017.=;
+
+     |DDEFECTO #agifa019;               ||Leo el Articulo para saber cual
+     #agifa019#0 = #agifa049#2;         ||es el proveedor
+     |LEE 001#agifa019.=;
+
+     |SI #agifa019#135 ! "N";           || No es Articulo de entrada....
+
+          #agifa050#0 = #54#0;
+          #agifa050#2 = #agifa049#2;
+          #agifa050#7 = #agifa049#9;                   ||Almacen
+          #agifa050#1 = 1;
+          |LEE 101#agifa050.];
+
+           ||Si el almacen o la materia no coinciden, linea nueva
+          |SI FSalida ! 0; |O #agifa050#2 ! #agifa049#2;
+                           |O #agifa050#7 ! #agifa049#9;
+
+               |DDEFECTO #agifa050;
+               nLinea050 = nLinea050 + 1;
+               #agifa050#0 = #54#0;                         ||Escandallo Original
+               #agifa050#1 = nLinea050;                     ||Numero de linea
+               #agifa050#2 = #agifa049#2;                   ||Materia Prima
+               #agifa050#7 = #agifa049#9;                   ||Almacen
+
+               #agifa050#4 = #agifa017#39;                  ||Stock Disponible
+               #agifa050#11 = #agifa017#9;                  ||En Fabricacion (Carlos)
+               pendrec = #agifa017#43;                      ||Pendiente de recibir
+               #agifa050#9 = aEsEscandallo;
+               #agifa050#10= #agifa019#27;                  ||Proveedor
+               |GRABA 021#agifa050.b;
+          |FINSI;
+
+          #agifa050#3 = #agifa050#3 + nCantiEscan;
+
+          |SI aEsEscandallo = "S";
+               #agifa050#5 = #agifa050#3 - #agifa050#4 - #agifa050#11; ||Carlos
+               |SI #agifa050#5 [ 0;
+                    #agifa050#5 = 0;
+                    #agifa050#8 = 0;
+               |SINO;
+                    #agifa050#8 = norden;
+                    norden = norden - 1;
+               |FINSI;
+          |SINO;
+               #agifa050#6 = #agifa050#3 - #agifa050#4 - pendrec;
+               |SI #agifa050#6 < 0; #agifa050#6 = 0; |FINSI;
+          |FINSI;
+          #0#12 = nNivelEscan;
+          #0#13 = #agifa019#1;
+          |GRABA 021#agifa050.a;
+          |LIBERA #agifa050;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo11; |TIPO 11;
+     |SI FSalida = 9;    ||Funcion 1
+          |HAZ CambioFabrica;
+          |ERROR;
+     |SINO;
+          |SI FSalida = 10;   ||Funcion 2
+               |HAZ CambioCompra;
+               |ERROR;
+          |SINO;
+               |SI FSalida = 11;                  ||Funcion 3
+                    |HAZ CambiaOrden;
+                    |ERROR;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO CambioFabrica;
+     nAnterior = #agifa050#5;
+     |LEE 101#agifa050.=;
+     |SI FSalida = 0; |Y #agifa050#5 ! 0;          ||Es a Fabricar
+          |ENCAMPO #5#0;
+          |SI FSalida = 0;
+               |SI #agifa050#5 < nAnterior;
+                    |MENAV "0000No puede Fabricar menos cantidad";
+                    #agifa050#5 = nAnterior;
+                    |PINTA #agifa050#5;
+               |SINO;
+                    #agifa050#3 = #agifa050#3 + (#agifa050#5 - nAnterior);
+                    |GRABA 021#agifa050.a;
+                    |LIBERA #agifa050;
+                    |HAZ RecalNeces;
+                    nTecla = 9;
+               |FINSI;
+               |SI nTecla ! 9;
+                    |GRABA 021#agifa050.a;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |LIBERA #agifa050;
+|FPRC;
+
+|PROCESO CambioCompra;
+     nAnterior = #agifa050#6;
+     |LEE 101#agifa050.=;
+     |SI FSalida = 0; |Y #agifa050#6 ! 0;          ||Es a Comprar
+          |ENCAMPO #6#0;
+          |SI FSalida = 0;
+               |SI #agifa050#6 < nAnterior;
+                    |MENAV "0000No Puede Comprar menos cantidad, Imposible Fabricar";
+                    #agifa050#6 = nAnterior;
+                    |PINTA #agifa050#6;
+               |FINSI;
+               |GRABA 021#agifa050.a;
+          |FINSI;
+     |FINSI;
+     |LIBERA #agifa050;
+|FPRC;
+
+|PROCESO CambiaOrden;
+     |LEE 101#agifa050.=;
+     |SI FSalida = 0; |Y #agifa050#5 ! 0; |Y #agifa050#9 = "S";
+                                            ||Cambio Orden
+          |ENCAMPO #8#0;
+          |SI FSalida = 0;
+               |GRABA 021#agifa050.a;
+          |FINSI;
+     |FINSI;
+     |LIBERA #agifa050;
+|FPRC;
+
+|PROCESO RecalNeces;          ||Recalcula las necesidades de nuevo
+     nCantiOri = #agifa050#5 - nAnterior;
+     aEscanOri = #agifa050#2; |QBF aEscanOri;
+     |PTEC 807;
+|FPRC;
+
+|PROCESO CambioMoneda;
+     |ABRE #321; |LEE 000#321p; |CIERRA #321;
+     |ABRE #324;
+     #324#0 = #321#9;
+     |LEE 000#324=;
+     #8#33 = #324#3;
+
+     #324#0 = #8#33;
+     |LEE 000#324=;
+     #8#28 = #324#3;
+|FPRC;
+
+|PROCESO Tipo12; |TIPO 12;
+|FPRC;
+
+|PROCESO Calculo;
+     |ABRE #agifa017;
+     |ABRE #agifa019;
+     |ABRE #agifa050;
+     |ABRE #agifa048;
+
+     nLinea050 = 0;
+     fecha = ~;
+
+     aEscan = #54#0;
+     nCantiEscan = #54#2;
+     |HAZ DesglosaEscan;
+
+     |CIERRA #agifa050;
+     |CIERRA #agifa017;
+     |CIERRA #agifa019;
+     |CIERRA #agifa048;
+|FPRC;
+
+|PROCESO Sal; |TIPO 6;
+     |SI FSalida = 1;
+          |ERROR;
+          |PTEC 807;
+     |SINO;
+          eaArticulo = #54Campo;
+          |HAZ LlenaArticulo;
+          |SI FSalida = 0;
+               #54Campo = eaArticulo;
+               |PINTA #54Campo;
+          |SINO;
+               |ERROR; |ACABA;
+          |FINSI;
+          |SI #142#12 = "X";
+               |ABRE #2;
+               #2#0 = #54#0;
+               |LEE 000#2=;
+               |CIERRA #2;
+               |SI #2#33 = "K";
+                    |MENAV "0000El escandallo es un KIT";
+                    |ERROR;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |HAZ CreaTempo; aTempo50 = Tempo;
+     |NOME_DAT #54 aTempo50;
+     |DELINDEX #0;
+     |CLS;
+     |PINPA #0#54;
+     |PINDA #0#54;
+     |ENTLINEAL #1#0 , -4 , 7 , 20 , 0 , pro1 , pro2;
+     |C_M #54#3, 1, "N";
+     |C_M #54#4, 1, "N";
+     |C_M #54#5, 1, "N";
+     |C_M #54#6, 1, "N";
+     |PARA; |SI; |HACIENDO;
+          |ENDATOS #1#54;
+          |SI FSalida ! 0; |SAL; |FINSI;
+          nDNivel = 1;
+          |SI #54#7 = "A"; nHNivel = 99; |SINO; nHNivel = 1; |FINSI;
+          nSwOrden = 0;
+          nSwCompra = 0;
+          |HAZ Calculo;
+          |ENTLINEAL #5#0 , -5 , 4 , 20 , 0 , pro1 , pro2;
+          |PARA aMenu2 = 2; |SI aMenu2 ! 1 ; |HACIENDO;
+               |MENU aMenu;
+               aMenu2 = FSalida;
+               |SI aMenu2 = 5; |O aMenu2 [ 0; |ACABA; |FINSI;
+               |PUSHV 1001 2380;
+               |SI aMenu2 = 2; |HAZ Impresion; |FINSI;
+               |SI aMenu2 = 3; |HAZ ConfirmaOrden; |FINSI;
+               |SI aMenu2 = 4; |HAZ ConfirmaCompra; |FINSI;
+               |POPV;
+          |SIGUE;
+     |SIGUE;
+     |DELINDEX #0; Tempo = aTempo50; |HAZ BoraTempo;
+|FPRO;

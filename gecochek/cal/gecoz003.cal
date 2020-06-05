@@ -1,0 +1,166 @@
+|FICHEROS;
+   gecoz003 #0;
+
+   gecom007 #10;
+   gecom008 #11;
+   gecom006 #12;
+   gecom005 #13;
+
+   camasil@ #100;
+   canempr@ #101;
+|FIN;
+
+|VARIABLES;
+   aAlfa = "";
+   aDCuenta = "";
+   aHCuenta = "";
+
+   nPer  = 0;
+   nAnyo = 0;
+
+   nSaldo = 0;
+|FIN;
+
+|PROCESO BorraSaldos;
+   |BORRA 020#gecom006.a;
+|FPRC;
+
+|DEFBUCLE BorraSaldos;
+#gecom006#1;
+;
+#gecom007#0,#0#1,001;
+#gecom007#0,#0#1,999;
+;
+NULL,BorraSaldos;
+|FIN;
+
+|PROCESO Asientos;
+   |SI #camasil@#8 = "D";
+      nSaldo = nSaldo + #camasil@#9;
+   |SINO;
+      nSaldo = nSaldo - #camasil@#9;
+   |FINSI;
+   nSaldo = nSaldo ! 2;
+|FPRC;
+
+|DEFBUCLE Asientos;
+#camasil@#3004;
+;
+aDCuenta, #0#1, 000000, 0000;
+aHCuenta, #0#1, 999999, 9999;
+;
+NULL,Asientos;
+|FIN;
+
+|PROCESO PlanLins;
+
+    aAlfa = " Cargando linea planilla " + #gecom008#1;
+    |ATRI I; |PINTA 2305, aAlfa; |ATRI N;
+
+    aDCuenta = #gecom008#3; aHCuenta = #gecom008#4;
+
+    #gecom005#0 = #gecom008#0;
+    |LEE 000#gecom005.=;
+    |SI FSalida ! 0;
+       #gecom005#0 = #gecom008#0;
+       #gecom005#1 = #gecoz003#1;
+       |GRABA 020#gecom005.n;
+    |FINSI;
+
+    #gecom006#0 = #gecom008#0;
+    #gecom006#1 = #gecoz003#1;
+    #gecom006#2 = #gecom008#1;
+    #gecom006#3 = #gecom008#2;
+
+    nSaldo = 0;
+    |BUCLE Asientos;
+
+    #gecom006#4 = nSaldo;
+    |GRABA 020#gecom006.n;
+|FPRC;
+
+|DEFBUCLE PlanLins;
+#gecom008#1;
+;
+#gecom007#0,001;
+#gecom007#0,999;
+;
+NULL,PlanLins;
+|FIN;
+
+|PROCESO PlanCabs;
+   |BUCLE BorraSaldos;
+
+   aAlfa = #0#1; |QBF aAlfa;
+   aAlfa = aAlfa % 0902; nAnyo = aAlfa;
+   #canempr@#2 = #gecom007#0;
+   #canempr@#3 = 0;
+   |LEE 000#canempr@.];
+   |PARA; |SI FSalida = 0; |Y #canempr@#2 = #gecom007#0; |HACIENDO;
+      |SI nAnyo = #canempr@#26; |SAL; |FINSI;
+      |LEE 000#canempr@.s;
+   |SIGUE;
+   |SI nAnyo = #canempr@#26;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "contagen/fich/" + (("00000" + #canempr@#2) % -105) + #canempr@#3 + "/";
+      |PATH_DAT #100 aAlfa; |ABRE #camasil@;
+
+      |BUCLE PlanLins; |BLIN 23;
+
+      |CIERRA #camasil@;
+   |SINO;
+      |MENAV "    No encuentro una empresa contable para el ejercicio vigente";
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE PlanCabs;
+#gecom007#1;
+;
+INICIO;
+FINAL;
+;
+NULL,PlanCabs;
+|FIN;
+
+|PROCESO Carga;
+   |ABRE #gecom005; |ABRE #gecom006;
+
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "contagen/def/camaasil.mas";
+   |CARGA_DEF aAlfa, camasil@;
+   |SI FSalida ! 0;
+      |MENAV "    Problemas para cargar el def de asientos contables";
+      |ERROR; |ACABA;
+   |FINSI;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "contagen/def/canempre.mas";
+   |CARGA_DEF aAlfa, canempr@;
+   |SI FSalida ! 0;
+      |MENAV "    Problemas para cargar el def de empresas contables";
+      |DESCARGA_DEF #camasil@;
+      |ERROR; |ACABA;
+   |FINSI;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "contagen/fich/"; |PATH_DAT #101 aAlfa;
+   |ABRE #canempr@;
+   |BUCLE PlanCabs;
+   |CIERRA #canempr@; |DESCARGA_DEF #canempr@;
+   |DESCARGA_DEF #camasil@;
+
+   |CIERRA #gecom005; |CIERRA #gecom006;
+|FPRC;
+
+|PROGRAMA;
+   |SI PARAMETRO = "";
+      |CLS;
+      |CABEZA " Carga de saldos por planillas ";
+      |PINDA #0#0; |PINPA #0#0;
+      |ENDATOS #1#0;
+      |SI FSalida = 0; |Y #0#0 = "S";
+         |HAZ Carga;
+      |FINSI;
+   |SINO;
+      #0#0 = "S"; #0#1 = PARAMETRO;
+      |HAZ Carga;
+   |FINSI;
+|FPRO;

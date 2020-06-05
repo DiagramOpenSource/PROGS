@@ -1,0 +1,415 @@
+|FICHEROS;
+     iber0077 #0;
+     iber0076 #1;
+     agifa048 #2;
+     agifa049 #3;
+     dsm00018 #4;
+     agifa046 #5;
+|FIN;
+
+|VARIABLES;
+     &nDeci_EsCab = 0;
+     &nDeci_EsLin = 0;
+
+     &enReceta = 0;
+
+     aPathImg   = "";
+     aIP        = "";
+     nDeci      = 0;
+     nRegistro  = 0;
+     aBase      = "";
+     aAlfa1     = "";
+     aAbre      = "";
+     nWord      = 0;
+     aOrigen    = "";
+     aDestino   = "";
+     aAlfa      = "";
+     bAlfa      = "";
+     eaImporte  = "";
+     aAsigna    = "";
+     nVoc       = 0;
+
+     nPosi      = 0;
+
+     aCadena    = "";
+     aLen       = "";
+     nLen       = 0;
+     aCaracter  = "";
+     nCampo     = 0;
+     nPos       = 0;
+     aImpor1    = "";
+     aImpor2    = "";
+     aImpor3    = "";
+     aImpor4    = "";
+     aImpor5    = "";
+     aDecimales = "";
+     swCar      = 0;
+     aLin       = "";
+     aCodigo    = "";
+     nLinEsca   = 0;
+     nLinNota   = 0;
+ {1000}CamWord   = "";
+     nCamWord   = 0;
+|FIN;
+ÄÄÄÄÄÄÄÄÄÄÄ
+|PROCESO AbreWord;
+     |DBASE aBase;  |QBT aBase;
+
+     aAlfa = "C:/DS/IMPRESIO"; |RMKDIR aAlfa;
+     nRegistro = 0;
+     aOrigen   = aBase + "word/receta.doc";       |QBT aOrigen;
+     aDestino  = "C:/ds/impresio/receta.doc";     |QBT aDestino;
+
+     aIP = "";
+     |IP_REMOTO aIP; |QBF aIP;
+     |SI aIP = "";
+          |COPIA_FICHERO aOrigen, aDestino;
+          |XABRE "E", aDestino, 0;
+          |SI FSalida ! 1;
+               aAlfa1 = "0000No se pudo copiar " + aOrigen + " a " + aDestino;
+               |MENAV aAlfa1;
+          |FINSI;
+     |SINO;
+          |ENVIA_FICHERO aOrigen, aDestino;
+          |XABRE "EC", aDestino, 0;
+          |SI FSalida ! 1;
+               aAlfa1 = "0000No se pudo copiar " + aOrigen + " a " + aDestino;
+               |MENAV aAlfa1;
+          |FINSI;
+     |FINSI;
+
+     aAbre = aDestino;
+
+     |MENSA "      Abriendo el Documento, espere un Momento.";
+
+     |WORD_ABRE nWord, aAbre;
+     |WORD_PROPIEDADES nWord, "Visible", "NO";
+     nCamWord = 0;
+|FPRC;
+
+|PROCESO aSignaCampo;
+     ICamWord = CamWord1<-;
+     ICamWord = ICamWord + (nCamWord);
+     CamWord = aAsigna;
+     ICamWord = ICamWord + 1;
+     CamWord = aAlfa;
+     nCamWord = nCamWord + 2;
+|FPRC;
+
+|PROCESO Importe;    || Calculo para poner las comas en el importe
+     aLen = eaImporte % 0;
+     nLen = aLen;
+     |HAZ sacaDeci;
+     aLen = eaImporte % 0;
+     nLen = aLen;
+     eaImporte = "             " + eaImporte;
+     eaImporte = eaImporte % -113;
+     aImpor1  = eaImporte % -103;
+     aImpor2  = eaImporte % -403;
+     aImpor3  = eaImporte % -703;
+     aImpor4  = eaImporte % -1004;
+     |SI nLen ] 10;
+         |SI aImpor4 ! "  -";
+             eaImporte = aImpor4 + "." + aImpor3  + "." + aImpor2 + "." + aImpor1;
+         |SINO;
+             eaImporte = aImpor4 + aImpor3  + "." + aImpor2 + "." + aImpor1;
+      |FINSI;
+    |SINO;
+        |SI nLen ] 7;
+            |SI aImpor3 ! "  -";
+                eaImporte = aImpor3  + "." + aImpor2 + "." + aImpor1;
+            |SINO;
+                eaImporte = aImpor3 + aImpor2 + "." + aImpor1;
+            |FINSI;
+        |SINO;
+            |SI nLen ] 4;
+                |SI aImpor2 ! "  -";
+                    eaImporte = aImpor2 + "." + aImpor1;
+                |SINO;
+                    eaImporte = aImpor2 + aImpor1;
+                |FINSI;
+            |SINO;
+                eaImporte = aImpor1;
+            |FINSI;
+        |FINSI;
+     |FINSI;
+
+     |SI swCar = 1;
+          eaImporte = eaImporte + aDecimales;
+     |FINSI;
+     eaImporte = "             " + eaImporte;
+     eaImporte = eaImporte % -113;
+
+     |SI eaImporte = "            0";  eaImporte = "             ";  |FINSI;
+|FPRC;
+
+|PROCESO PonComas;  || Sustituye el punto del decimal por una coma.
+     |QBF aDecimales;
+     aCadena = "";
+     aLen    = aDecimales % 0;
+     nLen    = aLen;
+     |PARA nCampo = 1;  |SI nCampo [ nLen;  |HACIENDO nCampo = nCampo + 1;
+           nPos = (100 * nCampo) + 1;
+           aCaracter = aDecimales % nPos;
+           |SI aCaracter = ".";  aCaracter = ","; |FINSI;
+           aCadena = aCadena + aCaracter;
+     |SIGUE;
+     aDecimales = aCadena;
+|FPRC;
+
+|PROCESO sacaDeci;
+     swCar = 0;
+     aDecimales = "";
+     aCadena = "";
+     |PARA nCampo = 1;  |SI nCampo [ nLen;  |HACIENDO nCampo = nCampo + 1;
+           nPos = (100 * nCampo) + 1;
+           aCaracter = eaImporte % nPos;
+           |SI aCaracter = ".";
+               swCar = 1;
+           |FINSI;
+           |SI swCar = 1;
+                aDecimales = aDecimales + aCaracter;
+           |FINSI;
+     |SIGUE;
+     |SI swCar = 1;
+          eaImporte = eaImporte - aDecimales;
+          |HAZ PonComas;
+     |FINSI;
+|FPRC;
+
+|PROCESO QuitaRaros;
+     |QBF aAlfa;
+     aCadena = "";
+     aLen    = aAlfa % 0;
+     nLen    = aLen;
+     |PARA nCampo = 1;  |SI nCampo [ nLen;  |HACIENDO nCampo = nCampo + 1;
+           nPosi = (100 * nCampo) + 1;
+           aCaracter = aAlfa % nPosi;
+           |SI aCaracter = "¥";  aCaracter = &209; |FINSI;
+           |SI aCaracter = "¤";  aCaracter = &241; |FINSI;
+           |SI aCaracter = " ";  aCaracter = &225; |FINSI;
+           |SI aCaracter = "‚";  aCaracter = &233; |FINSI;
+           |SI aCaracter = "¡";  aCaracter = &237; |FINSI;
+           |SI aCaracter = "¢";  aCaracter = &243; |FINSI;
+           |SI aCaracter = "£";  aCaracter = &250; |FINSI;
+           |SI aCaracter = "§";  aCaracter = &176; |FINSI;
+           |SI aCaracter = "¦";  aCaracter = &170; |FINSI;
+           aCadena = aCadena + aCaracter;
+     |SIGUE;
+     aAlfa = aCadena;
+|FPRC;
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+|PROCESO Resto018;
+     aLin = ("00" + nLinNota) % -102;
+     aAsigna = "#N" + aLin; aAlfa = "";
+     |HAZ aSignaCampo;
+|FPRC;
+
+|PROCESO dsm00018;
+     nLinNota = nLinNota + 1;
+     aLin = ("00" + #4#1) % -102;
+     ||Notas
+     aAsigna = "#N" + aLin; aAlfa = #4#2; |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+|FPRC;
+
+|DEFBUCLE dsm00018;
+     #4#1;
+     ;
+     aCodigo, "IB", 1;
+     aCodigo, "IB", 999;
+     ;
+     NULL, dsm00018;
+|FIN;
+
+|PROCESO Resto049;
+     aLin = ("00" + nLinEsca) % -102;
+     ||Articulo
+     aAsigna = "#CD" + aLin; aAlfa = "";
+     |HAZ aSignaCampo;
+
+     ||Nom Articulo...................................................
+     aAsigna = "#D" + aLin; aAlfa = "";
+     |HAZ aSignaCampo;
+
+     ||Cod Unidades...................................................
+     aAsigna = "#C" + aLin; aAlfa = "";
+     |HAZ aSignaCampo;
+
+     ||Unidades...................................................
+     aAsigna = "#U" + aLin; aAlfa = "";
+     |HAZ aSignaCampo;
+|FPRC;
+
+|PROCESO agifa049;
+     nLinEsca = nLinEsca + 1;
+     aLin = ("00" + #3#1) % -102;
+     ||Articulo
+     aAsigna = "#CD" + aLin; aAlfa = #3#2;  |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Nom Articulo...................................................
+     aAsigna = "#D" + aLin; aAlfa = #3#3; |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Cod Unidades...................................................
+     aAsigna = "#C" + aLin; aAlfa = #3#14;  |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Unidades...................................................
+     aAsigna = "#U" + aLin; eaImporte = #3#12; nDeci = #5#2; |HAZ Importe; aAlfa = eaImporte;
+     |HAZ aSignaCampo;
+|FPRC;
+
+|DEFBUCLE agifa048;
+     #2#1;
+     ;
+     #1#2;
+     #1#2;
+     ;
+     NULL, NULL, agifa049;
+|FIN;
+
+|PROCESO CopiaImg;
+     |DBASE aPathImg;
+     aPathImg = aPathImg + "recetas/";
+
+     aOrigen = aPathImg + #1#16;             |QBT aOrigen;
+
+     aAlfa1 = aOrigen - ".bmp";
+     |SI aAlfa1 ! aOrigen;    aDestino  = "C:/ds/bin/receta.bmp";     |FINSI;
+
+     aAlfa1 = aOrigen - ".jpg";
+     |SI aAlfa1 ! aOrigen;    aDestino  = "C:/ds/bin/receta.jpg";     |FINSI;
+
+     aIP = "";
+     |IP_REMOTO aIP; |QBF aIP;
+     |SI aIP = "";
+          |COPIA_FICHERO aOrigen, aDestino;
+          |XABRE "E", aDestino, 0;
+          |SI FSalida ! 1;
+               aAlfa1 = "0000No se pudo copiar " + aOrigen + " a " + aDestino;
+               |MENAV aAlfa1;
+          |FINSI;
+     |SINO;
+          |ENVIA_FICHERO aOrigen, aDestino;
+          |XABRE "EC", aDestino, 0;
+          |SI FSalida ! 1;
+               aAlfa1 = "0000No se pudo copiar " + aOrigen + " a " + aDestino;
+               |MENAV aAlfa1;
+          |FINSI;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO iber0076;
+     |HAZ CopiaImg;
+
+     nWord  = 1;
+     |HAZ AbreWord;
+     |MENSA "      Asignando Campos al Documento, espere un momento.";
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+     ||Receta
+     bAlfa = #1#0; |QBF bAlfa; bAlfa = ("000000" + bAlfa) % -106;
+     aAsigna = "#REC"; aAlfa = bAlfa; |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Nom Receta...................................................
+     aAsigna = "#NOM"; aAlfa = #1#1;  |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Escandallo...................................................
+     aAsigna = "#ESC"; aAlfa = #1#2;  |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Des. Escandallo...................................................
+     aAsigna = "#DES"; aAlfa = #1#3;  |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Fecha Crea....................................................
+     aAsigna = "#FEC"; aAlfa = #1#4;  |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     ||Fecha Modi....................................................
+     aAsigna = "#FEM"; aAlfa = #1#5;  |HAZ QuitaRaros;
+     |HAZ aSignaCampo;
+
+     nLinEsca  = 0;
+     nLinNota  = 0;
+     |BUCLE agifa048;
+     |PARA; |SI nLinEsca < 15; |HACIENDO nLinEsca = nLinEsca + 1;
+          |HAZ Resto049;
+     |SIGUE;
+
+     aCodigo = ("000000" + #1#0) % -106;
+     |BUCLE dsm00018;
+     |PARA; |SI nLinNota < 15; |HACIENDO nLinNota = nLinNota + 1;
+          |HAZ Resto018;
+     |SIGUE;
+     ||ÄÄÄÄÄÄÄÄÄÄÄÄÄÄ Asigna Campos Word ÄÄÄÄÄ
+     ICamWord = CamWord1<-;
+     nCamWord = nCamWord / 2;
+     aAlfa = nCamWord; |QBT aAlfa;
+     |WORD_ASIGNA_TEXTO nWord, aAlfa, CamWord;
+     |SI #0#4 = "S";
+          |WORD_PROPIEDADES nWord, "Visible", "SI";
+          FSalida = "NO";
+          |PARA;  |SI FSalida = "NO";  |HACIENDO;
+                |PULSATECLA;
+                |WORD_PROPIEDADES nWord, "Quit", "";
+          |SIGUE;
+     |SINO;
+          |MENSA "      Imprimiendo el Documento.";
+          |WORD_PROPIEDADES nWord, "Visible", "NO";
+          |WORD_IMPRIME nWord, "";
+
+          |SLEEP 5;
+          |WORD_SALVA nWord, "";
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE iber0076;
+     #1#1;
+     5;
+     #0#0, #0#2;
+     #0#1, #0#3;
+     ;
+     NULL, iber0076;
+|FIN;
+
+|PROCESO Tipo3;
+     |ABRE #5; |LEE 000#5p; |CIERRA #5;
+     nDeci_EsCab = #5#15;
+     nDeci_EsLin = #5#16;
+     |BUCLE iber0076;
+
+     |GRABA 020#0a;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     #0#0 = 1;
+     #0#1 = 999999;
+     #0#2 = ~;
+     #0#3 = ~;
+
+     |SI enReceta = 0;
+          |CLS;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #2#0;
+          |SI FSalida = 0;
+               |HAZ Tipo3;
+          |FINSI;
+     |SINO;
+          #0#0 = enReceta;
+          #0#1 = enReceta;
+          #0#2 = "01.01.0000";
+          #0#3 = "31.12.9999";
+          |HAZ Tipo3;
+     |FINSI;
+
+     |CIERRA #0;
+|FPRO;

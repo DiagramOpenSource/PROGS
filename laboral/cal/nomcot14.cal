@@ -1,0 +1,463 @@
+|FICHEROS;
+     nomcalca;
+     nomcot02;
+     nomcot03;
+     nomcot27;
+     nomcot28;
+     nomcot08;
+
+     nomcot04;
+     nomcot2a;
+     nomcot2b;
+
+     nompluri;
+     nompluba;
+
+     nomcot2x;
+     labtraba;
+     nomparam;
+|FIN;
+
+|VARIABLES;
+     nCampo = 0;
+     &nElAny = 0;
+     &nElMes = 0;
+     nConcepto = 0;
+     aDesdeSit = "";
+     aHastaSit = "";
+     nImporte = 0;
+     nDato = 0;
+     aAlfa = "";
+     nCampoMant = 0;
+     nDesdeBon = 0;
+     nHastaBon = 0;
+     nNume = 0;
+
+     swPluriempleo = 0;
+     FEstado = 0;
+
+     aAlfa1 = "";
+     aAlfa2 = "";
+     &runnom = "";
+     &swFijoDisc = 0;
+     aNaf = "";
+|FIN;
+
+|| excepciones
+
+|PROCESO Excepciones;
+     || contratos de formacion, la cuota de cc no puede ser la de las lineas
+     || si estan bonificados, lo arreglo asi
+     |SI #labtraba#45 = 421;
+          nNume = #nomcot08#48 + #nomcot08#49;
+          nNume = nNume ! 0;
+          |SI nNume [ 0;
+               #nomcot08#48 = 0;
+               #nomcot08#49 = 0;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|| por ultimo leo los calculos grabados, para buscar si existe el concepto
+
+|PROCESO nomcot04_busca;
+     |PARA nCampo = 0; |SI nCampo [ 7; |HACIENDO nCampo = nCampo + 1;
+          #nomcot02#nCampo# = #nomcot04#nCampo#;
+     |SIGUE;
+     |LEE 000#nomcot02.=;
+     |SI FSalida = 0;
+          |SI #nomcot02#99 = 100;
+          |Y #nomcot02#27 = "ERE";
+               || eres exonerados al 100%, no tengo en cuenta estas
+               || bonificaciones
+
+               || ojo, s¡ que tengo que tenerlas en cuenta en EREs a TP
+               || ejemplo con bonif. del mantenimiento (tiquet 135.5234)
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     nDato = 0;
+
+     |SI #nomcot2b#4 = 1; nDato = #nomcot04#12; |FINSI;
+     |SI #nomcot2b#4 = 2; nDato = #nomcot04#14; |FINSI;
+     |SI #nomcot2b#4 = 3; nDato = #nomcot04#16; |FINSI;
+     |SI #nomcot2b#4 = 4; nDato = #nomcot04#17; |FINSI;
+     |SI #nomcot2b#4 = 5; nDato = #nomcot04#18; |FINSI;
+     |SI #nomcot2b#4 = 6; nDato = #nomcot04#10; |FINSI;
+
+     |SI #nomcot2b#6 = "+";
+          nImporte = nImporte + nDato;
+     |FINSI;
+     |SI #nomcot2b#6 = "-";
+          nImporte = nImporte - nDato;
+     |FINSI;
+     |SI #nomcot2b#6 = " ";
+          nImporte = nDato;
+     |FINSI;
+|FPRC;
+
+|| leo los tramosde bonif, para buscar en este trabajador y periodo las lineas
+|| donde existe esa bonificacion
+
+|DEFBUCLE nomcot04;
+     #nomcot04#3;
+     ;
+     #nomcalca#0, #nomcalca#1, #nomcalca#184, #nomcalca#2, #nomcalca#3, nDesdeBon;
+     #nomcalca#0, #nomcalca#1, #nomcalca#184, #nomcalca#2, #nomcalca#3, nHastaBon;
+     ;
+     NULL, nomcot04_busca;
+|FIN;
+
+|PROCESO nomcot2b;
+     nDesdeBon = #nomcot2b#2;
+     nHastaBon = #nomcot2b#3;
+     |BUCLE nomcot04;
+|FPRC;
+
+|| aqui buscamos desde que bonificacion hasta cual hay que incluir los importes
+|| o bases en los campos del mantenimiento
+
+|DEFBUCLE nomcot2b;
+     #nomcot2b#1;
+     ;
+     #nomcot2a#0, 01;
+     #nomcot2a#0, 99;
+     ;
+     NULL, nomcot2b;
+|FIN;
+
+|PROCESO nomcot2a;
+     nImporte = 0;
+     nCampoMant = #nomcot2a#0;
+     |BUCLE nomcot2b;
+
+     #nomcot08#nCampoMant# = nImporte;
+|FPRC;
+
+|| este bucle lee la cabecera de los campos del mantenimiento de calculos
+|| que vamos a regrabar que tienen que ver con bonificaciones
+
+|DEFBUCLE nomcot2a;
+     #nomcot2a#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, nomcot2a;
+|FIN;
+
+|| por ultimo leo los calculos grabados, para buscar si existe el concepto
+
+|PROCESO nomcot02_busca;
+     nDato = 0;
+
+     || caso de que un trabajador se calculara con un NAF por error y luego
+     || se volviera a calcular con el NAF correcto, en los tramos se ha quedado
+     || grabado el antiguo y el nuevo tambien, al traerse los importes
+     || se trae los dos, con esto lo evito
+
+     aNaf = #labtraba#75;
+     |QBF aNaf;
+     aAlfa1 = aNaf % 102;
+     aAlfa2 = aNaf % 310;
+     |QBF aAlfa2;
+     aAlfa2 = ("0000000000" + aAlfa2) % -110;
+     aNaf = aAlfa1 + aAlfa2;
+
+     aAlfa2 = #nomcot02#5; |QBF aAlfa2;
+
+     |SI aNaf ! aAlfa2;
+          |ACABA;
+     |FINSI;
+
+     |SI #nomcot27#0 = 180;
+     |Y #nomcot02#27 = "ERE";
+     |Y #nomcot02#99 = 100;
+          || eres exonerados al 100%, no tengo en cuenta estas
+          || bonificaciones
+          |ACABA;
+     |FINSI;
+
+
+     |SI #nomcot27#0 = 40;
+     |Y #nomcot02#27 = "ETP";
+          |SI #nomcot02#98 = "MAT"; |O #nomcot02#98 = "PAT";
+          |O #nomcot02#98 = "RIE"; |O #nomcot02#98 = "CON";
+               || ETP, la parte que no esta en ERE esta en lo que sea
+               || de cotizacion solo empresarial
+               || no tiene que ir nada a la base de Prof.
+               || lo pongo aqui porque la 603 se usa en las dos situaciones
+
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     #nomcot03#0 = #nomcot02#0;
+     #nomcot03#1 = #nomcot02#1;
+     #nomcot03#2 = #nomcot02#2;
+     #nomcot03#3 = #nomcot02#3;
+     #nomcot03#4 = #nomcot02#4;
+     #nomcot03#5 = #nomcot02#5;
+     #nomcot03#6 = #nomcot02#6;
+     #nomcot03#7 = #nomcot02#7;
+     #nomcot03#10 = nConcepto;
+     |LEE 000#nomcot03.=;
+     |SI FSalida = 0;
+          |SI #nomcot28#6 = 1; nDato = #nomcot03#12; |FINSI;
+          |SI #nomcot28#6 = 2; nDato = #nomcot03#14; |FINSI;
+          |SI #nomcot28#6 = 3; nDato = #nomcot03#16; |FINSI;
+          |SI #nomcot28#6 = 4; nDato = #nomcot03#17; |FINSI;
+
+          |SI #nomcot27#0 = 45;
+          |Y #nomcot02#27 = "ERE";
+          |Y nConcepto = 998;
+               || eres exonerados al 100% o al % que sea
+               || si esta cuota sale negativa, es porque ademas este tramo
+               || esta bonificado al 100%, en este caso, el negativo que sale
+               || es el importe de la exoneracion, pero no voy a exonerar
+               || nada realmente, ya que todo esta bonificado
+               || no debe ir importe negativo al campo SS Empresa
+               |SI nDato < 0;
+                    |ACABA;
+               |FINSI;
+          |FINSI;
+
+          |SI #nomcot28#8 = "+";
+               nImporte = nImporte + nDato;
+          |FINSI;
+          |SI #nomcot28#8 = "-";
+               nImporte = nImporte - nDato;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|| primero leo los tramos, para buscar en este trabajador y periodo las lineas
+|| donde existe esa situacion
+
+|DEFBUCLE nomcot02;
+     #nomcot02#4;
+     ;
+     #nomcalca#0, #nomcalca#1, #nomcalca#184, #nomcalca#2, #nomcalca#3, aDesdeSit;
+     #nomcalca#0, #nomcalca#1, #nomcalca#184, #nomcalca#2, #nomcalca#3, aHastaSit;
+     ;
+     NULL, nomcot02_busca;
+|FIN;
+
+|PROCESO nomcot28;
+     aAlfa = #nomcot28#4;
+     |QBF aAlfa;
+     |SI aAlfa = "";
+          aDesdeSit = "   ";
+          aHastaSit = "zzz";
+     |SINO;
+          aDesdeSit = aAlfa;
+          aHastaSit = aAlfa;
+     |FINSI;
+     nConcepto = #nomcot28#2;
+
+     || excepcion pluriempleo (de momento)
+     || base de CP igual a la base de COMUNES
+     |SI #labtraba#237 = "S"; |Y #nomcot28#0 = 40; |Y #nomcot28#1 = 1;
+          nConcepto = 500;
+     |FINSI;
+
+     || excepcion formacion (de momento)
+     || bonificacion horas que no sume en el campo TOTAL
+     |SI #labtraba#45 = 421; |Y #nomcot28#0 = 180; |Y #nomcot28#1 = 2;
+          nConcepto = 000;
+     |FINSI;
+
+     || excepcion sin carencia en ENF o ACC
+     || la base del 603 no tiene que ir al campo de la base de de CP
+     |SI #labtraba#241 = "N"; |Y #labtraba#138 = "N";
+          |SI #nomcot27#0 = 39; |O #nomcot27#0 = 40;
+               |SI #nomcot28#4 = "ENF"; |O #nomcot28#4 = "ACC";
+                    nConcepto = 000;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |BUCLE nomcot02;
+|FPRC;
+
+|| aqui buscamos los conceptos que en las diferentes situaciones sumaremos o
+|| restaremos para hallar el valor de los campos
+
+|DEFBUCLE nomcot28;
+     #nomcot28#1;
+     ;
+     #nomcot27#0, 01;
+     #nomcot27#0, 99;
+     ;
+     NULL, nomcot28;
+|FIN;
+
+|PROCESO nomcot27;
+     nImporte = 0;
+     nCampoMant = #nomcot27#0;
+     |BUCLE nomcot28;
+
+     #nomcot08#nCampoMant# = nImporte;
+|FPRC;
+
+|| este bucle lee la cabcera de los campos del mantenimiento de calculos
+|| que vamos a regrabar
+
+|DEFBUCLE nomcot27;
+     #nomcot27#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, nomcot27;
+|FIN;
+
+|PROCESO BasesPluriempleo;
+     || me sirvo de la estructura y bucles ya definidos para rellenar los
+     || campos de las bases del nompluba caso de que haya pluriempleo
+
+     swPluriempleo = 0;
+     |SI #labtraba#237 = "S";
+          |ABRE #nompluri;
+          #nompluri#0 = #labtraba#0;
+          #nompluri#1 = #labtraba#1;
+          |LEE 000#nompluri.=;
+          |SI FSalida = 0;
+               swPluriempleo = 1;
+          |FINSI;
+          |CIERRA #nompluri;
+     |FINSI;
+
+     |SI swPluriempleo = 1;
+          |ABRE #nompluba;
+          #nompluba#0 = #nomcalca#0;
+          #nompluba#1 = #nomcalca#1;
+          #nompluba#2 = nElAny;
+          #nompluba#3 = nElMes;
+          #nompluba#4 = 0;
+          |LEE 101#nompluba.=;
+          FEstado = FSalida;
+
+          aDesdeSit = "   ";
+          aHastaSit = "zzz";
+
+          || comunes
+          nImporte = 0;
+          nConcepto = 500;
+          |BUCLE nomcot02;
+          #nompluba#5 = nImporte;
+
+          || desempleo: 701
+          nImporte = 0;
+          nConcepto = 701;
+          |BUCLE nomcot02;
+          #nompluba#6 = nImporte;
+
+          || desempleo: 702
+          nImporte = 0;
+          nConcepto = 702;
+          |BUCLE nomcot02;
+          #nompluba#7 = nImporte;
+
+          || desempleo: 703
+          nImporte = 0;
+          nConcepto = 703;
+          |BUCLE nomcot02;
+          #nompluba#8 = nImporte;
+
+          |SI FEstado = 0;
+               |GRABA 020#nompluba.a;
+          |SINO;
+               |GRABA 020#nompluba.n;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO TraspasoCEC;
+     |SI runnom = "nomcalfi";
+          |ACABA;
+     |FINSI;
+
+     |ABRE #nomcot08;
+     |ABRE #nomcot02;
+     |ABRE #nomcot03;
+     |ABRE #nomcot27;
+     |ABRE #nomcot28;
+
+     #nomcot08#0 = #nomcalca#0;
+     #nomcot08#1 = #nomcalca#1;
+     #nomcot08#2 = #nomcalca#2;
+     #nomcot08#3 = #nomcalca#3;
+     #nomcot08#4 = #nomcalca#4;
+     |LEE 101#nomcot08.=;
+     |SI FSalida = 0;
+          |BORRA 020#nomcot08.a;
+     |FINSI;
+     |LIBERA #nomcot08;
+
+     || primero me paso los campos del nomcalca al nomcot08
+
+     |PARA nCampo = 0; |SI nCampo [ 205; |HACIENDO nCampo = nCampo + 1;
+          #nomcot08#nCampo# = #nomcalca#nCampo#
+     |SIGUE;
+
+     || este es para los campos del mantenimiento que no son bonificaciones
+     |BUCLE nomcot27;
+
+     || este es para los campos del mantenimiento que SI son bonificaciones
+
+     |BUCLE nomcot2a;
+
+     |HAZ Excepciones;
+
+     |GRABA 020#nomcot08.n;
+     |LIBERA #nomcot08;
+
+     |HAZ BasesPluriempleo;
+
+     || si tengo el NIF introducido en el mantenimiento para arreglar casos
+     || para que vayan por el CEC, que se copie el mantenimiento CEC sobre
+     || el de siempre, para que la nomina completa sea la correcta
+
+     || a partir de 16.01.2018 ... para todos
+
+     || lo voy a hacer depender de un parametro del nomparam para seguir
+     || teniendo acceso facil a las pruebas
+
+     |ABRE #nomparam; |DDEFECTO #nomparam; |LEE 000#nomparam.=; |CIERRA #nomparam;
+
+     |SI #nomparam#3 = 0;
+          |PARA nCampo = 0; |SI nCampo [ 205; |HACIENDO nCampo = nCampo + 1;
+               |SI nCampo = 48; |O nCampo = 49;
+                    |SI #labtraba#97 = 4;
+                         || chapuza, pero de moemento no hay mas remedio
+                         || las cuotas de ss a cargo del trabajador no las
+                         || cambio en caso de ajustes a liquido, ahi es normal
+                         || que se vaya algo, y no salga la nomina por el
+                         || liquido exacto, esto volvera a salir 05.02.2018
+                    |SINO;
+                         #nomcalca#nCampo# = #nomcot08#nCampo#
+                    |FINSI;
+               |SINO;
+                    #nomcalca#nCampo# = #nomcot08#nCampo#
+               |FINSI;
+          |SIGUE;
+     |SINO;
+          |ABRE #nomcot2x;
+          #nomcot2x#0 = #labtraba#7; #nomcot2x#1 = nElAny; #nomcot2x#2 = nElMes;
+          |LEE 000#nomcot2x.=;
+          |SI FSalida = 0;
+               |PARA nCampo = 0; |SI nCampo [ 205; |HACIENDO nCampo = nCampo + 1;
+                    #nomcalca#nCampo# = #nomcot08#nCampo#
+               |SIGUE;
+          |FINSI;
+     |FINSI;
+
+     |CIERRA #nomcot2x;
+     |CIERRA #nomcot28;
+     |CIERRA #nomcot27;
+     |CIERRA #nomcot03;
+     |CIERRA #nomcot02;
+     |CIERRA #nomcot08;
+|FPRC;

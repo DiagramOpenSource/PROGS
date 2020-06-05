@@ -1,0 +1,212 @@
+|FICHEROS;
+   iberw013 #0;
+   agifa501 #1;
+|FIN;
+
+|VARIABLES;
+   nCalc    = 0;
+   nCanal   = 0;
+   nCentro  = 0;
+   nCaja    = 0;
+   nImporte = 0;
+   SwBueno  = 0;
+   nCont    = 0;
+   nDocum   = 0;
+   NumDigF  = 0;
+   Salir    = 0;
+
+   DFecha = @;
+   HFecha = @;
+   fFecha = @;
+
+   aAlfa   = "";
+   aAlfa1  = "";
+   aPath   = "";
+   aFecha  = "";
+|FIN;
+
+|RUTINA inf;
+   #iberw013#0 = 000;
+   #iberw013#1 = "01.01.0000";
+   #iberw013#2 = 00000;
+|FRUT;
+
+|RUTINA sup;
+   #iberw013#0 = 999;
+   #iberw013#1 = "31.12.9999";
+   #iberw013#2 = 99999;
+|FRUT;
+
+|PROCESO Carga;
+   aAlfa = "rb  " + aPath;
+   |FABRE aAlfa;
+   |SI FSalida < 0;
+      |MENAV "    Problemas para abrir el fichero origen "; |ACABA;
+   |FINSI;
+   nCanal = FSalida;
+   nCont = 1;
+   |PARA; |SI; |HACIENDO;
+      aAlfa = " Importando registros : " + nCont + "        ";
+      |ATRI I; |PINTA 2320, aAlfa; |ATRI N; nCont = nCont + 1;
+      |DDEFECTO #iberw013;
+
+      aAlfa = NumDigF;
+      aAlfa = nCanal + " " + aAlfa;  |FLEE aAlfa; |SI FSalida ! NumDigF; |SAL; |FINSI;
+      aAlfa1 = aAlfa % 0201;
+      |SI aAlfa1 = "/"; aAlfa = "0" + aAlfa; |FINSI;
+      aAlfa1 = aAlfa % 0501;
+      |SI aAlfa1 = "/"; aAlfa = (aAlfa % 0103) + "0" + (aAlfa % 0499); |FINSI;
+      aFecha = aAlfa;
+
+      aAlfa = nCanal + " 5";  |FLEE aAlfa; aAlfa = aAlfa % 0103;
+      nCentro = aAlfa;
+
+      aAlfa = nCanal + " 11"; |FLEE aAlfa;
+      nCaja = aAlfa;
+
+      #iberw013#0 = nCentro;
+      #iberw013#1 = aFecha;
+      #iberw013#2 = nCaja;
+      |LEE 000#iberw013.=;
+      |SI FSalida ! 0;
+         |DDEFECTO #iberw013;
+         #iberw013#0 = nCentro;
+         #iberw013#1 = aFecha;
+         #iberw013#2 = nCaja;
+         |GRABA 020#iberw013.b;
+      |FINSI;
+
+      aAlfa = nCanal + " 14"; |FLEE aAlfa;
+      aAlfa = nCanal + " 1";  |FLEE aAlfa;
+      |SI aAlfa = "T"; |O aAlfa = "F";
+         SwBueno = 1;
+      |SINO;
+         SwBueno = 0;
+      |FINSI;
+      aAlfa = nCanal + " 4"; |FLEE aAlfa;
+
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Docum
+      nDocum = aAlfa;
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Bruto
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Total Iva
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Total Factura
+      nCalc = aAlfa; #iberw013#9 = #iberw013#9 + nCalc;
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Base  1
+      nCalc = aAlfa; #iberw013#3 = #iberw013#3 + nCalc;
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Cuota 1
+      nCalc = aAlfa; #iberw013#4 = #iberw013#4 + nCalc;
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Base  2
+      nCalc = aAlfa; #iberw013#5 = #iberw013#5 + nCalc;
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Cuota 2
+      nCalc = aAlfa; #iberw013#6 = #iberw013#6 + nCalc;
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Base  3
+      nCalc = aAlfa; #iberw013#7 = #iberw013#7 + nCalc;
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Cuota 3
+      nCalc = aAlfa; #iberw013#8 = #iberw013#8 + nCalc;
+
+      aFecha = (aFecha % 0102) + "." + (aFecha % 0402) + "." + (aFecha % 0704);
+      fFecha = aFecha;
+      |SI DFecha > fFecha; |O fFecha > HFecha;
+         SwBueno = 0;
+      |FINSI;
+
+      |SI SwBueno = 1;
+         |GRABA 020#iberw013.a;
+      |SINO;
+         |BORRA 020#iberw013.a;
+      |FINSI;
+      |LIBERA #iberw013;
+
+      aAlfa = nCanal + " 22"; |FLEE aAlfa; || Descuento
+
+      aAlfa = nCanal + " 1";  |FLEE aAlfa;
+   |SIGUE;
+   aAlfa = " " * 60; |PINTA 2310, aAlfa;
+   FSalida = nCanal; |FCIERRA FSalida;
+|FPRC;
+
+|PROCESO CargaAscii; |TIPO 11;
+   |SI FSalida = 11;
+      |CIERRA #iberw013;
+      |DELINDEX #iberw013;
+      |ABRE #iberw013; |ERROR;
+   |FINSI;
+   |SI FSalida = 10;
+      |CONFI "    NEfectuar la carga desde un fichero ASCII ? ";
+      |SI FSalida = 0;
+         |PUSHV 1904 2176;
+         |BLANCO 2005 2176;
+         |ATRI R; |PINTA 1905, " Seleccione el intervalo de fechas "; |ATRI N;
+         |PINTA 2005, " Desde fecha           hasta fecha ";
+         Salir = 0;
+         |PARA; |SI Salir = 0; |HACIENDO;
+            E_sup = 10; E_inf = ""; aFecha = DFecha;
+            aFecha = 2018 ? 1;
+            |SI FSalida ! 7; |Y FSalida ! 1;
+               DFecha = aFecha; nCalc = DFecha; DFecha = nCalc; aAlfa = DFecha; |QBF aAlfa;
+               |SI aAlfa = aFecha; Salir = 1; |FINSI;
+            |SINO;
+               Salir = -1;
+            |FINSI;
+         |SIGUE;
+         |SI Salir < 0; |VETE Salida; |FINSI;
+         DFecha = aFecha; Salir = 0;
+         |PARA; |SI Salir = 0; |HACIENDO;
+            E_sup = 10; E_inf = ""; aFecha = HFecha;
+            aFecha = 2040 ? 1;
+            |SI FSalida ! 7; |Y FSalida ! 1;
+               HFecha = aFecha; nCalc = HFecha; HFecha = nCalc; aAlfa = HFecha; |QBF aAlfa;
+               |SI aAlfa = aFecha; Salir = 1; |FINSI;
+            |SINO;
+               Salir = -1;
+            |FINSI;
+         |SIGUE;
+         |SI Salir < 0; |VETE Salida; |FINSI;
+         HFecha = aFecha;
+         |BLANCO 2005 2176;
+         |ATRI R; |PINTA 1905, " Introduzca el path del fichero origen "; |ATRI N;
+         |PARA; |SI; |HACIENDO;
+            E_sup = 72; E_inf = ""; aPath = "";
+            aPath = 2005 ? 1;
+            |SI FSalida = 7; |O FSalida = 1; aPath = ""; |FINSI;
+            |QBF aPath;
+            |SI aPath = ""; |SAL; |FINSI;
+            |XABRE "E", aPath, nCanal;
+            |SI FSalida < 0;
+               |MENAV "    No es encuentra el fichero. Revise el camino ";
+            |SINO;
+               |SAL;
+            |FINSI;
+         |SIGUE;
+         |POPV;
+         |SI aPath ! "";
+            |PUSHV 1904 2176;
+            |BLANCO 2005 2176;
+            |ATRI R; |PINTA 2005, " Indique el ancho de la fecha del secuencial (9/10) "; |ATRI N;
+            |PARA; |SI NumDigF ! 9; |Y NumDigF ! 10; |HACIENDO;
+               E_sup = 99999;
+               E_inf = 0;
+               NumDigF = 0;
+               NumDigF = 2057 ? 2;
+            |SIGUE;
+            |POPV;
+            |HAZ Carga;
+         |FINSI;
+|ET Salida;
+      |FINSI;
+      |ERROR;
+      |PONCONTROL 23,"si";
+   |FINSI;
+|FPRC;
+
+|PROCESO VuelcaDatos;
+   |ABRE #iberw013;
+   |CIERRA #iberw013;
+|FPRC;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Datos Tiquets TPV DS";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENTLINEAL #1#iberw013,-2,4,20,1,inf,sup;
+|FPRO;

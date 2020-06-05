@@ -1,0 +1,815 @@
+|FICHEROS;
+   recappla #0;
+   reeospla #1;
+
+   eosactiv@ #2;
+   eosclien@ #3;
+   eosm3130@ #4;
+   eosm0020@ #5;
+   eosplan1@ #6;
+   eoscomul@ #7;
+   agicontr@ #10;
+
+   rem00025 #8;
+   rem00026 #9;
+   rem00058 #58;
+   rem00031 #11;
+   retabla1 #401;
+   :/agitool/def/zmonedas #999;
+|FIN;
+
+|VARIABLES;
+   nPorceGasto = 0;
+   nPorce     = 0;
+   Comodin    = "";
+   Comodin1   = "";
+   Path       = "";
+   Concepto   = 0;
+   Calc1      = 0;
+   Calc2      = 0;
+   Linea1     = 0;
+   nImpCompra = 0;
+   nImpVenta  = 0;
+   nCampo     = 0;
+   ExistIni   = 0;
+   ExistFin   = 0;
+
+   nActivid   = 0;
+   nActi      = 0;
+   Calc       = 0;
+   nLinea     = 0;
+   nAnyoRenta = 0;
+   nPagos     = 0;
+
+   Trim      = 0;
+   SimpNorm  = 0;
+   FEstado = 0;
+
+   Pasada  = 0;
+   Tipo    = "";
+   Cont    = 0;
+   TipoNum = 0;
+   nPatrones = 0;
+   Comunidad = 0;
+   aTipo     = "";
+
+   &eaPrograma = "";
+   &eaPunto    = "";
+   &enEmpresa   = 0;
+
+   &enEmprEos  = 0;
+   &enActiEos  = 0;
+   &enEmprRen  = 0;
+   &eaCaracter = "";
+   &eaTitCony  = "";
+|FIN;
+
+|PROCESO Comunidad;
+   #eosactiv@#0 = #recappla#0;
+   #eosactiv@#1 = #recappla#1;
+   #eosactiv@#2 = nAnyoRenta;
+   |LEE 010#eosactiv@.=;
+   |SI FSalida = 0;
+      |SI #eosactiv@#46 = "S";
+         Comunidad = 1;
+         |C_M #recappla#5,1,"S";
+         |C_M #recappla#6,1,"S";
+      |SINO;
+         Comunidad = 0;
+         |C_M #recappla#5,1,"N";
+         |C_M #recappla#6,1,"N";
+      |FINSI;
+   |SINO;
+      Comunidad = 0;
+      |C_M #recappla#5,1,"N";
+      |C_M #recappla#6,1,"N";
+   |FINSI;
+|FPRC;
+
+|PROCESO rem00031;
+     |BORRA 020#11a;
+     |LIBERA #11;
+|FPRC;
+
+|DEFBUCLE rem00031;
+     #11#2;
+     2;
+     #recappla#2, 1, aTipo;
+     #recappla#2, 9, aTipo;
+     be;
+     NULL, rem00031;
+|FIN;
+
+|PROCESO PagosACuenta;
+   || Se elimina el registro de renta que apunta a la actividad
+
+   |SI #recappla#3 = "T";
+       aTipo = "TITULAR   ";
+   |SINO;
+       aTipo = "CONYUGE   ";
+   |FINSI;
+
+   |BUCLE rem00031;
+
+   |SELECT #1#rem00031;
+   Linea1 = 1;
+   |PARA; |SI; |HACIENDO;
+          #rem00031#0  = #recappla#2;
+          #rem00031#1  = Linea1;
+          |LEE 000#11=;
+          |SI FSalida ! 0;  |SAL;  |FINSI;
+          Linea1 = Linea1 + 1;
+   |SIGUE;
+
+   || Se crea de nuevo el registro en vacio
+
+   |DDEFECTO #rem00031;
+   #rem00031#0  = #recappla#2;
+   #rem00031#1  = Linea1;
+   |SI #eosactiv@#22 ! "A";
+      |SI #eosactiv@#42 = "N";
+         #rem00031#16 = 9;
+      |SINO;
+         |SI #eosactiv@#46 ! "S";
+            #rem00031#16 = #eosactiv@#1;
+         |SINO;
+            #rem00031#16 = #eosactiv@#6;
+         |FINSI;
+      |FINSI;
+   |SINO;
+      #rem00031#16 = 0;
+   |FINSI;
+   |SI #recappla#3 = "T";
+       #rem00031#2 = "TITULAR";
+   |SINO;
+       #rem00031#2 = "CONYUGE";
+   |FINSI;
+
+   || Se leen los 4 periodos del modelo
+
+   |PARA Cont = 1; |SI Cont [ 4; |HACIENDO Cont = Cont + 1;
+      |SI #eosactiv@#22 ! "A";
+         || El modelo 130 en caso de que la actividad no sea de modulos
+         |SI #eosactiv@#42 = "N";
+            |SI #eosactiv@#46 ! "S";
+               #eosm3130@#0 = #recappla#0;
+            |SINO;
+               #eosm3130@#0 = #recappla#5;
+            |FINSI;
+            #eosm3130@#1 = 9;
+         |SINO;
+            |SI #eosactiv@#46 ! "S";
+               #eosm3130@#0 = #recappla#0;
+               #eosm3130@#1 = #recappla#1;
+            |SINO;
+               #eosm3130@#0 = #recappla#5;
+               #eosm3130@#1 = #recappla#6;
+            |FINSI;
+         |FINSI;
+         #eosm3130@#2 = Cont;
+         #eosm3130@#3 = nAnyoRenta;
+         |LEE 010#eosm3130@.=;
+         |SI FSalida = 0;
+            |SI #eosm3130@#4 ! "          ";
+               Calc = Cont + 10;
+
+               |SI #eosm3130@#46 > 0;
+                    #rem00031#Calc# = #rem00031#Calc# + #eosm3130@#46;
+               |FINSI;
+
+               #rem00031#15    = #rem00031#15    + (#eosm3130@#23 + #eosm3130@#36);
+            |FINSI;
+         |FINSI;
+      |SINO;
+         || El modelo 131 en caso de que la actividad sea de modulos
+         |SI Comunidad = 0;
+            #eosm0020@#0 = #recappla#0;
+         |SINO;
+            #eosm0020@#0 = #recappla#5;
+         |FINSI;
+         #eosm0020@#1 = nAnyoRenta;
+         #eosm0020@#2 = Cont;
+         |LEE 010#eosm0020@.=;
+         |SI FSalida = 0; |Y #eosm0020@#4 ! "01.01.0000";
+            Calc = Cont + 10;
+            |SI #eosm0020@#47 > 0;
+                #rem00031#Calc# = #rem00031#Calc# + #eosm0020@#47;
+            |FINSI;
+            #rem00031#15    = #rem00031#15 + #eosm0020@#54;
+         |FINSI;
+      |FINSI;
+   |SIGUE;
+
+   |SI #rem00031#11 ! 0; |O #rem00031#12 ! 0; |O #rem00031#13 ! 0;
+    |O #rem00031#14 ! 0; |O #rem00031#15 ! 0;
+       #rem00031#17 = #eosactiv@#14;
+
+       |GRABA 020#rem00031.n;
+       |LIBERA #rem00031;
+       nPagos = 1;
+
+       |LEE 010#rem00031.=;
+   |FINSI;
+   |LIBERA #rem00031;
+
+   enEmpresa    = #recappla#2;
+   eaPrograma   = "rem00031";
+   eaPunto      = "  ";
+   |HAZ ProgramaActivo;
+|FPRC;
+
+|PROCESO Recalcula;
+   |SI #eosactiv@#22 = "C";
+        #rem00025#29 = #rem00025#26 + #rem00025#27 + #rem00025#28;
+        #rem00025#44 = 0;
+        |PARA nCampo = 30;  |SI nCampo [ 43;  |HACIENDO nCampo = nCampo + 1;
+           #rem00025#44 = #rem00025#44 + #rem00025#nCampo#;
+        |SIGUE;
+
+        #rem00025#45 = #rem00025#29 - #rem00025#44;
+        #rem00025#47 = 0;
+        |SI #rem00025#46 = "S";  #rem00025#47 = #rem00025#45 % 30;  |FINSI;
+        || |SI #rem00025#47 < 0;    #rem00025#47 = 0;              |FINSI;
+        #rem00025#48 = #rem00025#45 - #rem00025#47;
+  |SINO;
+        #rem00026#29 = #rem00026#26 + #rem00026#27 + #rem00026#28;
+        #rem00026#42= 0;
+        |PARA nCampo = 30;  |SI nCampo [ 41;  |HACIENDO nCampo = nCampo + 1;
+           #rem00026#42 = #rem00026#42 + #rem00026#nCampo#;
+        |SIGUE;
+
+        #rem00026#43 = #rem00026#29 - #rem00026#42;
+
+        nPorceGasto = 5;
+        |SI #rem00026#17 = "6";
+            nPorceGasto = 10;
+        |FINSI;
+
+        #rem00026#44 = #rem00026#49;
+        |SI #rem00026#43 > 0;  #rem00026#44 = #rem00026#44 + (#rem00026#43 % nPorceGasto);  |FINSI;
+
+        #rem00026#45 = #rem00026#43 - #rem00026#44;
+        #rem00026#47 = 0;
+        |SI #rem00026#46 = "S";  #rem00026#47 = #rem00026#45 % 30;  |FINSI;
+        || |SI #rem00026#47 < 0;    #rem00026#47 = 0;              |FINSI;
+        #rem00026#48 = #rem00026#45 - #rem00026#47;
+  |FINSI;
+|FPRC;
+
+|PROCESO Clasifica;
+   |SI #eosactiv@#22 = "B";
+
+      |SI #eosactiv@#14 = "S";
+         #rem00026#14 = "S";
+         #eoscomul@#3 = #recappla#0;
+         #eoscomul@#5 = #recappla#1;
+         #eoscomul@#7 = nAnyoRenta;
+         |LEE 010#eoscomul@.=;
+         |SI FSalida = 0;
+            #rem00026#15 = #eoscomul@#6;
+         |FINSI;
+      |SINO;
+         #rem00026#14 = "N";
+         #rem00026#15 = 0;
+      |FINSI;
+      #rem00026#17 = Tipo;
+      |SI #rem00025#17 = " ";
+          |SI #rem00025#18 = "P"; #rem00025#17 = "5";  |FINSI;
+          |SI #rem00025#18 = "A"; #rem00025#17 = "4";  |FINSI;
+          |SI #rem00025#18 = "E";
+              #rem00025#17 = "1";
+          |FINSI;
+      |FINSI;
+
+      #rem00026#26 = nImpVenta;
+
+      |SI TipoNum = 1;  #rem00026#30 = #rem00026#30 + nImpCompra; |FINSI;
+      |SI TipoNum = 2;  #rem00026#31 = #rem00026#31 + nImpCompra; |FINSI;
+      |SI TipoNum = 3;  #rem00026#32 = #rem00026#32 + nImpCompra; |FINSI;
+      |SI TipoNum = 4;  #rem00026#33 = #rem00026#33 + nImpCompra; |FINSI;
+      |SI TipoNum = 5;  #rem00026#34 = #rem00026#34 + nImpCompra; |FINSI;
+      |SI TipoNum = 6;  #rem00026#35 = #rem00026#35 + nImpCompra; |FINSI;
+      |SI TipoNum = 7;  #rem00026#36 = #rem00026#36 + nImpCompra; |FINSI;
+      |SI TipoNum = 8;  #rem00026#36 = #rem00026#36 + nImpCompra; |FINSI;
+      |SI TipoNum = 9;  #rem00026#37 = #rem00026#37 + nImpCompra; |FINSI;
+      |SI TipoNum = 10; #rem00026#38 = #rem00026#38 + nImpCompra; |FINSI;
+      |SI TipoNum = 11; #rem00026#39 = #rem00026#39 + nImpCompra; |FINSI;
+      |SI TipoNum = 12; #rem00026#41 = #rem00026#41 + nImpCompra; |FINSI;
+      |SI TipoNum = 13; #rem00026#40 = #rem00026#40 + nImpCompra; |FINSI;
+   |SINO;
+      |SI #eosactiv@#14 = "S";
+         #rem00025#14 = "S";
+         #eoscomul@#3 = #recappla#0;
+         #eoscomul@#5 = #recappla#1;
+         #eoscomul@#7 = nAnyoRenta;
+         |LEE 010#eoscomul@.=;
+         |SI FSalida = 0;
+            #rem00025#15 = #eoscomul@#6;
+         |FINSI;
+      |SINO;
+         #rem00025#14 = "N";
+         #rem00025#15 = 0;
+      |FINSI;
+      #rem00025#17 = Tipo;
+      |SI #rem00025#17 = " ";
+          |SI #rem00025#18 = "P"; #rem00025#17 = "5";  |FINSI;
+          |SI #rem00025#18 = "A"; #rem00025#17 = "4";  |FINSI;
+          |SI #rem00025#18 = "E";
+              #rem00025#17 = "1";
+          |FINSI;
+      |FINSI;
+
+      #rem00025#26 = nImpVenta;
+
+      |SI TipoNum = 1;  #rem00025#30 = #rem00025#30 + nImpCompra; |FINSI;
+      |SI TipoNum = 2;  #rem00025#31 = #rem00025#31 + nImpCompra; |FINSI;
+      |SI TipoNum = 3;  #rem00025#32 = #rem00025#32 + nImpCompra; |FINSI;
+      |SI TipoNum = 4;  #rem00025#33 = #rem00025#33 + nImpCompra; |FINSI;
+      |SI TipoNum = 5;  #rem00025#34 = #rem00025#34 + nImpCompra; |FINSI;
+      |SI TipoNum = 6;  #rem00025#35 = #rem00025#35 + nImpCompra; |FINSI;
+      |SI TipoNum = 7;  #rem00025#36 = #rem00025#36 + nImpCompra; |FINSI;
+      |SI TipoNum = 8;  #rem00025#37 = #rem00025#37 + nImpCompra; |FINSI;
+      |SI TipoNum = 9;  #rem00025#37 = #rem00025#37 + nImpCompra; |FINSI;
+      |SI TipoNum = 10; #rem00025#38 = #rem00025#38 + nImpCompra; |FINSI;
+      |SI TipoNum = 11; #rem00025#39 = #rem00025#39 + nImpCompra; |FINSI;
+      |SI TipoNum = 12; #rem00025#40 = #rem00025#40 + nImpCompra; |FINSI;
+      |SI TipoNum = 13; #rem00025#42 = #rem00025#42 + nImpCompra; |FINSI;
+      |SI TipoNum = 14; #rem00025#43 = #rem00025#43 + nImpCompra; |FINSI;
+      |SI TipoNum = 15; #rem00025#41 = #rem00025#41 + nImpCompra; |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Graba58E1;
+     |ABRE #58;
+     |SELECT #1#58;
+     #58#0 = #8#0;
+     #58#1 = 99;
+     |LEE 040#58];
+     |SI FSalida = 0;
+         |LEE 040#58a;
+     |SINO;
+         |LEE 040#58u;
+     |FINSI;
+     nLinea = 1;
+
+     |SI FSalida = 0;  |Y #58#0 = #8#0;
+         nLinea = #58#1 + 1;
+     |FINSI;
+
+     |DDEFECTO #58;
+     #58#0  = #8#0;
+     #58#1  = nLinea;
+     #58#2  = #8#2;
+     #58#3  = "R";
+     #58#4  = #8#4;
+     #58#5  = #8#5;
+     #58#6  = #8#6;
+     #58#7  = #8#7;
+     #58#8  = #8#8;
+     #58#9  = #8#9;
+     #58#10 = #8#10;
+     #58#11 = #8#15;
+     #58#12 = #8#21;
+     #58#13 = 3;
+     #58#14 = "E1";
+     #58#15 = #8#1;
+     #58#22 = #8#45 % #58#11;
+     #58#35 = #8#47 % #58#11;
+     #58#23 = #58#34 + #58#35;
+     #58#24 = #58#22 - #58#23;
+     |GRABA 020#58n;
+     |LIBERA #58;
+
+     |CIERRA #58;
+
+     enEmpresa    = #58#0;
+     eaPrograma   = "rem00058";
+     eaPunto      = "  ";
+     |HAZ ProgramaActivo;
+|FPRC;
+
+|PROCESO Graba58E2;
+     |ABRE #58;
+     |SELECT #1#58;
+     #58#0 = #9#0;
+     #58#1 = 99;
+     |LEE 040#58];
+     |SI FSalida = 0;
+         |LEE 040#58a;
+     |SINO;
+         |LEE 040#58u;
+     |FINSI;
+     nLinea = 1;
+
+     |SI FSalida = 0;  |Y #58#0 = #9#0;
+         nLinea = #58#1 + 1;
+     |FINSI;
+
+     |DDEFECTO #58;
+     #58#0  = #9#0;
+     #58#1  = nLinea;
+     #58#2  = #9#2;
+     #58#3  = "R";
+     #58#4  = #9#4;
+     #58#5  = #9#5;
+     #58#6  = #9#6;
+     #58#7  = #9#7;
+     #58#8  = #9#8;
+     #58#9  = #9#9;
+     #58#10 = #9#10;
+     #58#11 = #9#15;
+     #58#12 = #9#21;
+     #58#13 = 3;
+     #58#14 = "E2";
+     #58#15 = #9#1;
+     #58#22 = #9#45 % #58#11;
+     #58#35 = #9#47 % #58#11;
+     #58#23 = #58#34 + #58#35;
+     #58#24 = #58#22 - #58#23;
+     |GRABA 020#58n;
+     |LIBERA #58;
+
+     |CIERRA #58;
+
+     enEmpresa    = #58#0;
+     eaPrograma   = "rem00058";
+     eaPunto      = "  ";
+     |HAZ ProgramaActivo;
+|FPRC;
+
+|PROCESO PasaPlanilla;
+   #eosplan1@#0  = #recappla#0;
+   #eosplan1@#83 = #recappla#1;
+   #eosplan1@#1  = nAnyoRenta;
+   #eosplan1@#2  = 1;
+   |LEE 010#eosplan1@.];
+   |SI FSalida = 0; |Y #eosplan1@#0 = #recappla#0; |Y #eosplan1@#83 = #recappla#1; |Y #eosplan1@#1 = nAnyoRenta;
+      |PARA; |SI FSalida = 0; |Y #eosplan1@#0 = #recappla#0; |Y #eosplan1@#83 = #recappla#1; |Y #eosplan1@#1 = nAnyoRenta; |HACIENDO;
+         Trim = #eosplan1@#2;
+         |LEE 010#eosplan1@.s;
+      |SIGUE;
+   |SINO;
+      |MENAV "    No hay planilla con datos";
+      |ACABA;
+   |FINSI;
+
+   #eosplan1@#0  = #recappla#0;
+   #eosplan1@#83 = #recappla#1;
+   #eosplan1@#1  = nAnyoRenta;
+   #eosplan1@#2  = Trim;
+   |LEE 010#eosplan1@.=;
+
+   |SI #eosactiv@#22 = "B";
+      SimpNorm = 0;
+      Linea1 = 1;
+      #rem00026#0 = #recappla#2;
+      #rem00026#1 = 1;
+      |LEE 010#rem00026.];
+      |PARA; |SI FSalida = 0; |Y #rem00026#0 = #recappla#2; |HACIENDO;
+          Linea1 = #rem00026#1 + 1;
+          |LEE 010#rem00026.s;
+      |SIGUE;
+
+      |DDEFECTO #rem00026;
+      #rem00026#0 = #recappla#2;
+      #rem00026#1 = Linea1;
+      |SI #recappla#3 = "T";
+         #rem00026#2 = "TITULAR";
+      |SINO;
+         #rem00026#2 = "CONYUGE";
+      |FINSI;
+
+      #rem00026#18 = #eosactiv@#4;
+      #rem00026#19 = #eosactiv@#5;
+      #rem00026#20 = #eosactiv@#41;
+      #rem00026#21 = #eosclien@#1;
+      #rem00026#22 = #eosactiv@#6;
+      #rem00026#23 = #eosactiv@#11;
+      #rem00026#24 = #eosactiv@#12;
+      #rem00026#25 = #eosactiv@#9;
+   |SINO;
+      SimpNorm = 60;
+      Linea1 = 1;
+      #rem00025#0 = #recappla#2;
+      #rem00025#1 = 1;
+      |LEE 010#rem00025.];
+      |PARA; |SI FSalida = 0; |Y #rem00025#0 = #recappla#2; |HACIENDO;
+          Linea1 = #rem00025#1 + 1;
+          |LEE 010#rem00025.s;
+      |SIGUE;
+
+      |DDEFECTO #rem00025;
+      #rem00025#0 = #recappla#2;
+      #rem00025#1 = Linea1;
+      |SI #recappla#3 = "T";
+         #rem00025#2 = "TITULAR";
+      |SINO;
+         #rem00025#2 = "CONYUGE";
+      |FINSI;
+
+      #rem00025#18 = #eosactiv@#4;
+      #rem00025#19 = #eosactiv@#5;
+      #rem00025#20 = #eosactiv@#41;
+      #rem00025#21 = #eosclien@#1;
+      #rem00025#22 = #eosactiv@#6;
+      #rem00025#23 = #eosactiv@#11;
+      #rem00025#24 = #eosactiv@#12;
+      #rem00025#25 = #eosactiv@#9;
+   |FINSI;
+
+   nImpVenta  = #eosplan1@#92; ExistIni = #eosplan1@#48; ExistFin = #eosplan1@#49;
+   |PARA Cont = 1; |SI Cont [ 20; |HACIENDO Cont = Cont + 1;
+      Concepto = Cont;
+      |SI Cont [ 9;
+         Calc1 = Cont + 68;
+      |SINO;
+         Calc1 = Cont + 109;
+      |FINSI;
+      nImpCompra = #eosplan1@#Calc1#;
+      |SI #eosactiv@#23 = "P";
+         Calc2 = Concepto + 20 + SimpNorm;
+         Tipo = "P";
+      |SINO;
+         Calc2 = Concepto + 40 + SimpNorm;
+         |SI #recappla#4 = "M";
+            Tipo = "M";
+         |SINO;
+            Tipo = "N";
+         |FINSI;
+      |FINSI;
+      TipoNum = #reeospla#Calc2#;
+      |HAZ Clasifica;
+   |SIGUE;
+
+   |SI #eosactiv@#22 = "B";
+      |SI ExistFin ] ExistIni;
+         #rem00026#30 = #rem00026#30 - (ExistFin - ExistIni);
+      |SINO;
+         #rem00026#30 = #rem00026#30 + (ExistIni - ExistFin);
+      |FINSI;
+   |SINO;
+      |SI ExistFin ] ExistIni;
+         #rem00025#30 = #rem00025#30 - (ExistFin - ExistIni);
+      |SINO;
+         #rem00025#30 = #rem00025#30 + (ExistIni - ExistFin);
+      |FINSI;
+   |FINSI;
+
+   |HAZ Recalcula;
+
+   nPorce = 100;
+   |SI #eosactiv@#22 = "B";
+      |SI #eosactiv@#46 = "S";
+         #eoscomul@#3 = #recappla#5;
+         #eoscomul@#5 = #recappla#6;
+         #eoscomul@#7 = nAnyoRenta;
+         |LEE 010#eoscomul@.=;
+         |SI FSalida = 0;
+            #rem00026#14 = "S";
+            #rem00026#15 = #eoscomul@#6;
+            nPorce       = #eoscomul@#6;
+         |FINSI;
+      |FINSI;
+      |GRABA 020#rem00026.n;
+
+      enEmpresa    = #rem00026#0;
+      eaPrograma   = "rem00026";
+      eaPunto      = "  ";
+      |HAZ ProgramaActivo;
+
+      |SI #rem00026#14 = "S";  |HAZ Graba58E2;  |FINSI;
+   |SINO;
+      |SI #eosactiv@#46 = "S";
+         #eoscomul@#3 = #recappla#5;
+         #eoscomul@#5 = #recappla#6;
+         #eoscomul@#7 = nAnyoRenta;
+         |LEE 010#eoscomul@.=;
+         |SI FSalida = 0;
+            #rem00025#14 = "S";
+            #rem00025#15 = #eoscomul@#6;
+            nPorce       = #eoscomul@#6;
+         |FINSI;
+      |FINSI;
+      |GRABA 020#rem00025.n;
+
+      enEmpresa    = #rem00025#0;
+      eaPrograma   = "rem00025";
+      eaPunto      = "  ";
+      |HAZ ProgramaActivo;
+
+      |SI #rem00025#14 = "S";  |HAZ Graba58E1;  |FINSI;
+   |FINSI;
+
+   |SI nPagos = 1;  |ACABA;  |FINSI;
+
+   |SELECT #1#rem00031;
+   Linea1 = 1;
+   |PARA; |SI; |HACIENDO;
+          #rem00031#0  = #recappla#2;
+          #rem00031#1  = Linea1;
+          |LEE 000#11=;
+          |SI FSalida ! 0;  |SAL;  |FINSI;
+          Linea1 = Linea1 + 1;
+   |SIGUE;
+
+   || Se crea de nuevo el registro en vacio
+
+   |DDEFECTO #rem00031;
+   #rem00031#0  = #recappla#2;
+   #rem00031#1  = Linea1;
+   |SI #eosactiv@#22 ! "A";
+      |SI #eosactiv@#42 = "N";
+         #rem00031#16 = 9;
+      |SINO;
+         |SI #eosactiv@#46 ! "S";
+            #rem00031#16 = #eosactiv@#1;
+         |SINO;
+            #rem00031#16 = #eosactiv@#6;
+         |FINSI;
+      |FINSI;
+   |SINO;
+      #rem00031#16 = 0;
+   |FINSI;
+   |SI #recappla#3 = "T";
+       #rem00031#2 = "TITULAR";
+   |SINO;
+       #rem00031#2 = "CONYUGE";
+   |FINSI;
+
+   #rem00031#15 = #eosplan1@#79 % nPorce;
+
+   |GRABA 020#rem00031.n;
+   |LIBERA #rem00031;
+
+   enEmpresa    = #recappla#2;
+   eaPrograma   = "rem00031";
+   eaPunto      = "  ";
+   |HAZ ProgramaActivo;
+|FPRC;
+
+|PROCESO DesglosaBien;
+      Comodin1 = Comodin + "eoscomul.mas";
+      |CARGA_DEF Comodin1,eoscomul@;
+
+      |PATH_DAT #7 Path;
+
+      |ABRE #eoscomul@;
+      |SELECT #2#eoscomul@;
+      #eoscomul@#3 = #0#0;
+      #eoscomul@#5 = #0#1;
+      #eoscomul@#7 = nAnyoRenta;
+      |LEE 010#eoscomul@.=;
+      |SI FSalida = 0;
+          #0#0 = #eoscomul@#0;
+          #0#1 = #eoscomul@#1;
+          #0#5 = #eoscomul@#3;
+          #0#6 = #eoscomul@#5;
+      |FINSI;
+      |CIERRA #eoscomul@;
+      |DESCARGA_DEF #eoscomul@;
+|FPRC;
+
+|PROGRAMA;
+   |ABRE #401;
+   |LEE 040#401p;
+   nPatrones = FSalida;
+   |CIERRA #401;
+
+   |SI nPatrones ! 0;
+       |SUB_EJECUTA_NP "rez00001;INSTALAR";
+   |FINSI;
+
+   |HAZ QueVersion;
+
+   nAnyoRenta = 11;
+
+   || Revisar Paths de Agicli
+
+   |DBASS Comodin; |QBF Comodin;
+   Comodin1 = Comodin + "agicli/def/agicontr.mas";
+   |CARGA_DEF Comodin1,agicontr@;
+   |PATH_DAT #10 Comodin;
+
+   |ABRE #agicontr@;
+   |LEE 010#agicontr@.p;
+   |SI FSalida = 0;
+      Path = #agicontr@#3;
+      |QBF Path;
+      |SI Path = "*"; |Y Path = "";
+         |DBASS Comodin; |QBF Comodin;
+         Path = Comodin + "agieos/fich/";
+      |FINSI;
+   |SINO;
+      |DBASS Comodin; |QBF Comodin;
+      Path = Comodin + "agieos/fich/";
+   |FINSI;
+   |CIERRA #agicontr@;
+   |DESCARGA_DEF #agicontr@;
+
+   |PATH_DAT #999 Path;
+   |ABRE #999;
+   |LEE 040#999p;
+   |SI FSalida ! 0;  |O #999#1 ! "E";
+       |CIERRA #999;
+       |MENAV "    Para poder hacer el pase la REO debe estar en EUROS.";
+       |ACABA;
+   |FINSI;
+   |CIERRA #999;
+
+   Comodin = Comodin + "agieos/def/";
+
+   |SI enEmpresa ! 0;
+      #0#0 = enEmprEos;
+      #0#1 = enActiEos;
+      #0#2 = enEmprRen;
+      #0#4 = eaCaracter;
+      #0#3 = eaTitCony;
+      |HAZ DesglosaBien;
+      FSalida = 0;
+   |SINO;
+      |CLS;
+      |CABEZA "Captura datos de planillas de REO a renta"
+      |PINPA #0#0;
+      |PINDA #0#0;
+
+      Comodin1 = Comodin + "eosactiv.mas";
+      |CARGA_DEF Comodin1,eosactiv@;
+      |PATH_DAT #2  Path;
+      |ABRE #eosactiv@;
+
+      |ENDATOS #1#0;
+      FEstado = FSalida;
+
+      |CIERRA #eosactiv@;
+      |DESCARGA_DEF #eosactiv@;
+      FSalida = FEstado;
+   |FINSI;
+
+   |SI FSalida = 0;
+       Comodin1 = Comodin + "eosplan1.mas";  |CARGA_DEF Comodin1,eosplan1@;
+       Comodin1 = Comodin + "eosclien.mas";  |CARGA_DEF Comodin1,eosclien@;
+       Comodin1 = Comodin + "eosactiv.mas";  |CARGA_DEF Comodin1,eosactiv@;
+       Comodin1 = Comodin + "eosm0020.mas";  |CARGA_DEF Comodin1,eosm0020@;
+       Comodin1 = Comodin + "eosm3130.mas";  |CARGA_DEF Comodin1,eosm3130@;
+       Comodin1 = Comodin + "eoscomul.mas";  |CARGA_DEF Comodin1,eoscomul@;
+
+      |PATH_DAT #2  Path;
+      |PATH_DAT #3  Path;
+      |PATH_DAT #4  Path;
+      |PATH_DAT #5  Path;
+      |PATH_DAT #6  Path;
+      |PATH_DAT #7  Path;
+
+      |ABRE #rem00031;
+      |ABRE #rem00025;
+      |ABRE #rem00026;
+      |ABRE #reeospla;
+      |ABRE #eosactiv@;
+      |ABRE #eosclien@;
+      |ABRE #eosm3130@;
+      |ABRE #eosm0020@;
+      |ABRE #eosplan1@;
+      |ABRE #eoscomul@;
+      |SELECT #2#eoscomul@;
+
+      #eosactiv@#0 = #recappla#0;
+      #eosactiv@#1 = #recappla#1;
+      #eosactiv@#2 = nAnyoRenta;
+      |LEE 010#eosactiv@.=;
+      |SI FSalida = 0;
+         |LEE 010#reeospla.p;
+         |SI FSalida = 0;
+            nPagos = 0;
+            |HAZ PagosACuenta;
+            |HAZ PasaPlanilla;
+         |SINO;
+            |MENAV "    No se ha definido el control de planillas";
+         |FINSI;
+      |SINO;
+         |MENAV "    No se han encontrado datos de dicha actividad";
+      |FINSI;
+
+      |SELECT #1#eoscomul@;
+      |CIERRA #eoscomul@;
+      |CIERRA #rem00031;
+      |CIERRA #rem00025;
+      |CIERRA #rem00026;
+      |CIERRA #reeospla;
+      |CIERRA #eosplan1@;
+      |CIERRA #eosm3130@;
+      |CIERRA #eosm0020@;
+      |CIERRA #eosactiv@;
+      |CIERRA #eosclien@;
+
+      |DESCARGA_DEF #eoscomul@;
+      |DESCARGA_DEF #eosm3130@;
+      |DESCARGA_DEF #eosm0020@;
+      |DESCARGA_DEF #eosactiv@;
+      |DESCARGA_DEF #eosclien@;
+      |DESCARGA_DEF #eosplan1@;
+   |FINSI;
+|FPRO;
+
+|PROCESO Tipo80;  |TIPO 80;
+     FSalida = 2499;
+|FPRC;

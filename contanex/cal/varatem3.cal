@@ -1,0 +1,201 @@
+|FICHEROS;
+   varatem3 #0;
+   vatr0002 #1;
+   vadacoli #2;         || Fichero para Cargar Datos
+   varatemp #103;       || Fichero de Ratios - Empresas
+   vaformul #104;       || Formulas
+|FIN;
+
+|VARIABLES;
+   sw       = 0;
+   &empresa = 0;
+   &anyo    = 0;
+   &codrati = 0;
+   &codform = 0;
+   &nombre  = "";
+   &descrip = "";
+   &fec_con = @;
+   &fec_pre = @;
+   &fec_ant = @;
+   &periodo = 0;
+
+   &opcion  = 0;
+   &modo    = 0;
+   &sw_act  = 0;
+   &dirfich0 = "";
+
+   estado    = 0;
+   para1     = 0;
+   para2     = 0;
+   tipo_cal  = 1;
+|FIN;
+
+|INCLUYE calrat_v;  || Calculo de Ratios
+|INCLUYE i_ficher;
+
+|| **************************************************************************
+||                            CALCULOS DE PANTALLA
+|| **************************************************************************
+
+|PROGRAMA;
+ |DDEFECTO #0;
+ |PINPA #0#0;
+ |PINDA #0#0;
+ |ENDATOS #1#0;
+|FPRO;
+
+|PROCESO mayor;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO cuadro2; |TIPO 7;   || Meses de Contabilidad
+ |PUSHV  1601 2359;
+ |CUADRO 1601 2359;
+ |ATRI R;
+ |PINTA 1702, " En la Entrada Gral  solo  esta el Saldo Inicial y Final ";
+ |PINTA 1802, " de las Cuentas, por tanto calcula el ratio del Primer y ";
+ |PINTA 1902, " Ultimo mes. ¨ Que Importe desea para los otros meses ?  ";
+ |PINTA 2002, " ------------------------------------------------------- ";
+ |PINTA 2102, " (S) IGUAL al Importe del Primer mes.                    ";
+ |PINTA 2202, " (N) Importes a CERO (0).                                ";
+ |ATRI r;
+|FPRC;
+
+|PROCESO cuadro1; |TIPO 7;  || Datos Anteriores
+ |PUSHV  1701 2380;
+ |CUADRO 1701 2059;
+ |ATRI R;
+ |PINTA 1802, " (S) Pasa Datos CONTABILIDAD actuales a Datos ANTERIORES ";
+ |PINTA 1902, " (N) NO modifica Datos ANTERIORES                        ";
+ |ATRI r;
+|FPRC;
+
+|PROCESO cuadro; |TIPO 7;    || Datos Prevision
+ |PUSHV  1704 2359;
+ |CUADRO 1704 2159;
+ |ATRI R;
+ |PINTA 1805, " (S) Deja Datos PREVISION igual a Datos CONTABILIDAD  ";
+ |PINTA 1905, " (N) Pone a Cero Datos PREVISION                      ";
+ |PINTA 2005, " (D) NO modifica Datos PREVISION                      ";
+ |ATRI r;
+|FPRC;
+
+|PROCESO repon; |TIPO 0;
+ |POPV;
+|FPRC;
+
+|| **************************************************************************
+|PROCESO graba_cta;
+ sw = 1;
+ #1#0  = #2#3; || Cuenta
+ #1#1  = 6;    || Nivel (6)
+ |LEE 001#1=;
+ |SI FSalida ! 0;
+     |DDEFECTO #1;
+     #1#0  = #2#3; || Cuenta
+     #1#1  = 6;    || Nivel (6)
+     |GRABA 020#1b;
+ |FINSI;
+ #1#2  = #2#5;         || Saldo Inicial.
+ #1#14 = #2#6 - #2#7;  || Saldo Diciembre.
+ |GRABA 020#1a;
+ |LIBERA #1;
+ |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE carga_cta;
+ #2#1;
+ ;
+ empresa, anyo, 0001;
+ empresa, anyo, 9999;
+ be;
+ NULL, graba_cta;
+|FIN;
+
+|PROCESO tipo3; |TIPO 3;
+ sw_act  = 0;
+ |SI #0#4 = "NO"; |ACABA; |FINSI;
+
+ |ABRE #103;                     || ...... Lee el Registro Ratio/Empresa
+ #103#0 = empresa;
+ #103#1 = anyo;
+ #103#2 = codrati;
+ |LEE 040#103=;
+ estado = FSalida;
+ |SI FSalida ! 0;
+     |DDEFECTO #103;
+     #103#0 = empresa;
+     #103#1 = anyo;
+     #103#2 = codrati;
+     #103#4 = codform;
+ |FINSI;
+
+ |ABRE #104;                      || Lee la Formula
+ #104#0 = codform;
+ |LEE 040#104=;
+ |SI FSalida ! 0;
+     |MENAV "    NO EXISTE FORMULA ... ";
+     |CIERRA #103;
+     |CIERRA #104;
+     |ACABA;
+ |FINSI;
+ |CIERRA #104;
+
+|| ........................... Prepara Fichero Auxiliar de Cuentas
+ |HAZ fichero;
+ |NOME_DAT #1 fichero;
+ |ABRE #1;
+ |CIERRA #1;
+ |DELINDEX #1;
+
+ |D_CUADRO 2121,2344;
+ |ATRI P; |PINTA 2222,  "      <TEMPORAL>      "; |ATRI 0;
+
+ sw = 0;
+ |ABRE #1;
+ |BUCLE carga_cta;
+ |CIERRA #1;
+ |SI sw = 0;
+     |MENAV "    NO EXISTEN DATOS DE LA EMPRESA EN ENTRADA GENERAL ";
+     |CIERRA #103;
+     |DELINDEX #1;
+     |ACABA;
+ |FINSI;
+
+ |SI #0#3 = "S";
+     fec_ant = #103#28;
+     |PARA para1 = 30; |SI para1 [ 41; |HACIENDO para1 = para1 + 1;
+           para2 = para1 - 14;
+           #103para1 = #103para2;
+     |SIGUE;
+ |FINSI;
+
+ |ATRI I; |PINTA 2222,  " Calculando Ratio ... "; |ATRI 0;
+ |HAZ calculo_ratio;
+
+ |SI error = 0;
+     sw_act = 1;
+     fec_con = #0#1;
+     |SI #0#5 = "N"; |PDEFECTO #103,17,27; |FINSI;
+     |SI #0#2 ! "D";
+         fec_pre = "00.00.0000";
+         |SI #0#2 = "S";
+             |PARA para1 = 44; |SI para1 [ 55; |HACIENDO para1 = para1 + 1;
+                   para2 = para1 - 28;
+                   #103para1 = #103para2;
+             |SIGUE;
+         |FINSI;
+         |SI #0#2 = "N"; |PDEFECTO #103, 43,56; |FINSI;
+     |FINSI;
+
+     #103#28 = fec_con;
+     #103#42 = fec_ant;
+     #103#56 = fec_pre;
+     |SI estado = 0; |GRABA 020#103a; |FINSI;
+     |SI estado ! 0; |GRABA 020#103b; |FINSI;
+     |LIBERA #103;
+ |FINSI;
+ |CIERRA #103;
+ |DELINDEX #1;
+|FPRC;

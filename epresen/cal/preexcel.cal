@@ -1,0 +1,236 @@
+|FICHEROS;
+     preexcel #0;
+     prequiva #1;
+     preimxls #2;
+     prejorna #3;
+     referen@;
+|FIN;
+
+|VARIABLES;
+     &enError = 0;
+     aLetras = "C D E F G H I J K L M N O P Q R S T U V X Y Z AAABACADAEAFAGAH";
+     aLetra = "";
+     nDia = 0;
+     nPos = 0;
+     fHoy = @;
+     aExcel = "";
+     aAlfa = "";
+     aRuta = "";
+     nBoton1 = 0;
+     nHoja = 0;
+     nXls = 0;
+     nSal = 0;
+     aDato = "";
+     nBlanco = 0;
+     nInfor = -1;
+     nImpre = -1;
+     nPrime = 0;
+|FIN;
+
+|PROCESO Actualiza;
+     #2#0 = #referen@#0;
+     #2#1 = #referen@#1;
+     #2#2 = #referen@#2;
+     #2#3 = #referen@#3;
+     #2#4 = #referen@#4;
+     #2#5 = #referen@#5;
+     |GRABA 020#2n;
+|FPRC;
+
+|DEFBUCLE Actualiza;
+     #referen@#1004;
+     ;
+     0000, 00000, 00000, "01.01.0000";
+     9999, 99999, 99999, "31.12.9999";
+     ;
+     NULL, Actualiza;
+|FIN;
+
+|PROCESO Imprime;
+     |SI nPrime = 0;
+          nPrime = 1;
+          |IMPRE 0;
+          nImpre = FSalida;
+          |SI FSalida = 0;
+               |INFOR "preexcel";
+               nInfor = FSalida;
+          |SINO;
+               |MENAV "0000Error en informe 'preexcel'";
+          |FINSI;
+     |FINSI;
+     #2#0 = #referen@#0;
+     #2#1 = #referen@#1;
+     #2#2 = #referen@#2;
+     #2#3 = #referen@#3;
+     #2#4 = #referen@#4;
+     #2#5 = #referen@#5;
+     |SI nInfor = 0; |PRINT; |FINSI;
+|FPRC;
+
+|PROCESO Chequea;
+     #3#0 = #referen@#4;
+     |LEE 000#3=;
+     |SI FSalida ! 0;
+          enError = 1;
+          |HAZ Imprime;
+     |SINO;
+          #2#0 = #referen@#0;
+          #2#1 = #referen@#1;
+          #2#2 = #referen@#2;
+          #2#3 = #referen@#3;
+          |LEE 000#2=;
+          |SI FSalida = 0;
+               enError = 2;
+               |HAZ Imprime;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Chequea;
+     #referen@#1004;
+     ;
+     0000, 00000, 00000, "01.01.0000";
+     9999, 99999, 99999, "31.12.9999";
+     ;
+     NULL, Chequea;
+|FIN;
+
+|PROCESO Registro;
+     #1#0 = aDato;
+     |LEE 000#1=;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |PARA nDia = 1; |SI nDia [ 31; |HACIENDO nDia = nDia + 1;
+          nPos = (nDia - 1) * 200 + 102;
+          aLetra = aLetras % nPos; |QBF aLetra;
+
+          aDato = aLetra + nXls; |ALFACALLDLL "agixl97.dll", "peek_dato", aDato;
+          |SI FSalida ! 0; nSal = 1; |SAL; |FINSI;
+
+          aAlfa = (("00"+nDia)%-102) + "." +  (("00"+#0#1)%-102) + "." +  (("0000"+#0#2)%-104);
+          |QBF aDato;
+          |SI aDato ! "";
+               #referen@#0 = #1#0;
+               #referen@#1 = #1#1;
+               #referen@#2 = #1#2;
+               #referen@#3 = aAlfa;
+               #referen@#4 = aDato;
+               #referen@#5 = #1#7;
+               |GRABA 000#referen@.n;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "preimxls";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida ! 0;
+          |MENAV "0000Error al cargar 'preimxls'";
+          |ACABA;
+     |FINSI;
+     aAlfa = Usuario % 810;
+     |NOME_DAT #referen@#aAlfa#; |DELINDEX #referen@; |ABRE #referen@;
+
+     |ABRE #1;
+     aExcel = #0#3; |QBF aExcel;
+     |XABRE "CE", aExcel, 0;
+     |SI FSalida < 0
+          |MENAV "0000No puedo abrir el fichero a importar";
+     |SINO;
+          |CARGADLL "agixl97.dll";
+          |SI FSalida < 0;
+               |MENAV "0000No se puede usar agixl97.dll";
+          |SINO;
+               |ALFACALLDLL "agixl97.dll", "carga_book", aExcel;
+               |ALFACALLDLL "agixl97.dll", "selecciona_hoja", "Hoja1";
+               |SI FSalida = 0;
+                    |PARA nXls = 1; |SI nXls < 65536; |HACIENDO nXls = nXls + 1;
+                         aAlfa = "Importando: " + nXls;
+                         |PINTA 2003, aAlfa;
+
+                         aDato = "A" + nXls; |ALFACALLDLL "agixl97.dll", "peek_dato", aDato;
+                         |SI FSalida ! 0; |SAL; |FINSI;
+
+                         |QBF aDato;
+                         |SI aDato = ""; ||termina si hay 10 filas blancas
+                              nBlanco = nBlanco + 1;
+                              |SI nBlanco ] 10; |SAL; |FINSI;
+                         |SINO;
+                              |HAZ Registro;
+                              |SI nSal = 1; |SAL; |FINSI;
+                         |FINSI;
+                    |SIGUE;
+               |FINSI;
+|| peta en vista
+||               |ALFACALLDLL "agixl97.dll", "fin_book", "salva";
+          |FINSI;
+          |DESCARGADLL "agixl97.dll";
+     |FINSI;
+     |CIERRA #1;
+
+     |LEE 000#referen@.p;
+     |SI FSalida ! 0;
+          |MENAV "0000No se ha importado ning£n registro...";
+     |SINO;
+||CONSULTA_CLAVE #1#referen@;
+          |ABRE #2;
+          |ABRE #3;
+          |BUCLE Chequea;
+          |CIERRA #3;
+          |SI enError = 0;
+               |BUCLE Actualiza;
+          |FINSI;
+          |CIERRA #2;
+     |FINSI;
+
+     |SI nInfor = 0; |PIEINF; |FININF; |FINSI;
+     |SI nImpre = 0; |FINIMP; |FINSI;
+
+     |DELINDEX #referen@; |CIERRA #referen@;
+     |DESCARGA_DEF #referen@;
+|FPRC;
+
+|PROCESO Browser; |TIPO 0;
+     |SI FSalida ! 13; |ACABA; |FINSI;
+
+     aRuta = "F*.xls";
+
+     |BROWSE aRuta;
+
+     aRuta = aRuta % 2; |QBF aRuta;
+     |SI aRuta = "F"; aRuta = ""; |FINSI;
+
+     |QBF aRuta;
+     |SI aRuta = "";
+          |ERROR;
+     |SINO;
+          #0#3 = aRuta;
+          |PINTA #0#3;
+     |FINSI;
+|FPRC;
+
+|PROCESO Boton1;
+     |PTEC 824;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |CONTROL_SIMPLE 0, "BOTON,  Fichero ", 0906, 0913, Boton1;
+     nBoton1 = FSalida;
+     |ABRE #0;
+||     |LEE 101#0p;
+||     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     fHoy = ~;
+     aAlfa = fHoy % 402; #0#1 = aAlfa;
+     aAlfa = fHoy % 704; #0#2 = aAlfa;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+||          |GRABA 020#0a;
+     |FINSI;
+     |CIERRA #0;
+     |FIN_CONTROL_WINDOWS nBoton1;
+     |PULSATECLA;
+|FPRO;

@@ -1,0 +1,348 @@
+|FICHEROS;
+   camaasic #0;
+   camaasil #1;
+
+   camaniva #10;
+   caivalin #11;
+
+   :/integral/def/dsam0017 #17;
+   :/integral/def/dsam0018 #18;
+
+|FIN;
+
+|VARIABLES;
+   nHay      = 0;
+   nImporte  = 0;
+   nImpTotal = 0;
+   nImpEspe  = 0;
+   nSw       = 0;
+   fFecha    = @;
+   nOpera    = 0;
+   aAlfa1    = "";
+   aAlfa2    = "";
+
+   &enDCliente = 0;
+   &enHCliente = 0;
+   &enDTEmbargo = 0;
+   &enHTEmbargo = 0;
+   &efDFecEmb   = @;
+   &efHFecEmb   = @;
+   &eaDNif      = "";
+   &eaHNif      = "";
+
+   &eaEmbSig   = "";
+   &enEmbCon   = 0;
+   &eaEmbCon   = "";
+   &enEmbDia   = 0;
+   &enEmbDoc   = 0;
+   &enEmbLin   = 0;
+   &enSwEmb    = 0;
+   &enEmbModo  = 0;
+
+   &enNuevo0   = 0;
+   &efNuevo1   = @;
+   &enNuevo2   = 0;
+   &enNuevo3   = 0;
+
+   nLinea      = 0;
+   aDNomina    = "";
+   aHNomina    = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|PROCESO AltaLin;
+
+    |ABRE #18;
+    #18#0 = #17#0;
+    #18#1 = #17#1;
+    #18#2 = #17#2;
+    #18#3 = 99;
+    |LEE 041#18];
+    |SI FSalida = 0;
+        |LEE 041#18a;
+    |SINO;
+        |LEE 041#18u;
+    |FINSI;
+    nLinea = 1;
+    |SI FSalida = 0; |Y #18#0 = #17#0; |Y #18#1 = #17#1; |Y #18#2 = #17#2;
+        nLinea = #18#3 + 1;
+    |FINSI;
+
+    |DDEFECTO #18;
+    #18#0 = #17#0;
+    #18#1 = #17#1;
+    #18#2 = #17#2;
+    #18#3 = nLinea;
+    #18#4 = efFechaE;
+    #18#5 = eaEmbCon;
+    #18#6 = nImpTotal;
+    #18#7 = enEmbDia;
+    #18#8 = efFechaE;
+    #18#9 = enEmbDoc;
+    #18#10 = enEmbLin;
+    #18#11 = enPeriodo;
+    |GRABA 020#18n;
+    |LIBERA #18;
+    |CIERRA #18;
+
+    #17#9  = #17#9 + #18#6; |SI #17#9 > #17#8; #17#9 = #17#8; |FINSI;
+    #17#10 = #17#8 - #17#9;
+    |GRABA 020#17a;
+|FPRC;
+
+|PROCESO LeeEmbargos;
+    |SI efFechaE ] #17#3;
+
+        |SI #17#4 < "01.01.1900"; |O efFechaE < #17#4;
+
+            |SI nOpera = 0;
+                nHay = 1;
+                nImporte = nImporte + #17#10;
+            |FINSI;
+
+            |SI nOpera = 1;
+                nImpTotal = 0;
+                |SI #17#10 > 0;
+                    |SI enEmbImp [ #17#10;
+                        nImpTotal = enEmbImp;
+                        enEmbImp  = 0;
+                    |SINO;
+                        nImpTotal = #17#10;
+                        enEmbImp  = (enEmbImp - #17#10) ! 2;
+                    |FINSI;
+                |FINSI;
+                nImporte = (nImporte + nImpTotal) ! 2;
+                |SI nImpTotal ! 0;
+                    |HAZ AltaLin;
+                |FINSI;
+                |SI enEmbImp = 0;  |ERROR10; |FINSI;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+
+    |LIBERA #17;
+|FPRC;
+
+|DEFBUCLE LeeEmbargos;
+   #17#1;
+   13;
+   enEmpresa, eaCodNif, 01, aDNomina;
+   enEmpresa, eaCodNif, 99, aHNomina;
+   be;
+   NULL, LeeEmbargos;
+|FIN;
+
+|DEFBUCLE LeeEmbargosNIF;
+   #17#2;
+   13;
+   eaCodNif, "01.01.0000", enEmpresa, 01, "N";
+   eaCodNif, "31.12.2999", enEmpresa, 99, "N";
+   be;
+   NULL, LeeEmbargos;
+|FIN;
+
+|PROCESO eVerEmbargos;
+
+   aDNomina = " ";
+   aHNomina = "z";
+   nHay     = 0;
+   nImporte = enEmbImp;
+   nOpera   = 0;
+
+   |BUCLE LeeEmbargos;
+
+   |SI nHay = 1; |Y nImporte ! 0;
+       aAlfa1 = nImporte;
+       aAlfa2 = "    SProveedor con Embargos anotados, pendiente: " + aAlfa1 + " euros. Desea consultar la ficha";
+       |CONFI aAlfa2;
+       |SI FSalida = 0;
+           enDCliente = enEmpresa;
+           enHCliente = enEmpresa;
+           enDTEmbargo = 0;
+           enHTEmbargo = 9;
+           efDFecEmb   = "01.01.0000";
+           efHFecEmb   = "31.12.2999";
+           eaDNif      = eaCodNif % 0112;
+           eaHNif      = eaCodNif % 0112;
+           |SUB_EJECUTA_NP ":integral/dsaz0023;ConsultaNif";
+       |FINSI;
+       enEmbImp = nImporte;
+   |FINSI;
+|FPRC;
+
+|PROCESO eVerEmbPagos;
+
+   aDNomina = "N";
+   aHNomina = "N";
+   nHay     = 0;
+   nImporte = 0;
+   nOpera   = 0;
+   |BUCLE LeeEmbargos;
+
+   |SI nHay = 1; |Y nImporte ! 0;
+       nImpTotal= 0;
+       nImporte = 0;
+       nOpera   = 1;
+       |BUCLE LeeEmbargos;
+       |SI nImporte ! 0; |Y nSw ! 1;
+           aAlfa1 = nImporte;
+           aAlfa2 = "    Importe Embargado Anotado: " + aAlfa1 + " euros";
+           |MENAV aAlfa2;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO eVerSiExis;
+   |SI nOpera = 0;     ||Ver si existe
+       enSwEmb = 1;
+       |ERROR10;
+   |FINSI;
+
+   |SI nOpera = 1;    || Borrar linea y actualizar Cabecera
+       #17#0 = #18#0;
+       #17#1 = #18#1;
+       #17#2 = #18#2;
+       |LEE 141#17=;
+       |SI FSalida = 0;
+           #17#9  = #17#9 - #18#6; |SI #17#9 > #17#8; #17#9 = #17#8; |FINSI;
+           #17#10 = #17#8 - #17#9;
+           |GRABA 020#17a;
+       |FINSI;
+       |LIBERA #17;
+       |BORRA 020#18a;
+   |FINSI;
+
+   |SI nOpera = 2;    || sumar importe embargado
+       enSwEmb = 1;
+       nImporte = (nImporte + #18#6) ! EURODB;
+   |FINSI;
+
+   |SI nOpera = 3;    || cambiar concepto
+       #18#5 = eaEmbCon;
+       |GRABA 020#18a;
+   |FINSI;
+
+   |SI nOpera = 4;    || ajustar cantidades
+       #17#0 = #18#0;
+       #17#1 = #18#1;
+       #17#2 = #18#2;
+       |LEE 141#17=;
+       |SI FSalida = 0;
+           #17#9  = #17#9 - #18#6; |SI #17#9 > #17#8; #17#9 = #17#8; |FINSI;
+           #17#10 = #17#8 - #17#9;
+
+           #18#6  = 0;
+           |SI #17#10 > 0;
+               |SI enEmbImp [ #17#10;
+                   #18#6 = enEmbImp;
+                   enEmbImp  = 0;
+               |SINO;
+                   #18#6 = #17#10;
+                   enEmbImp  = (enEmbImp - #17#10) ! 2;
+                |FINSI;
+           |FINSI;
+           nImporte = (nImporte + #18#6) ! 2;
+           |GRABA 020#18a;
+
+           #17#9  = #17#9 + #18#6; |SI #17#9 > #17#8; #17#9 = #17#8; |FINSI;
+           #17#10 = #17#8 - #17#9;
+           |GRABA 020#17a;
+        |FINSI;
+        |LIBERA #17;
+    |FINSI;
+
+    |SI nOpera = 5;    || borrar los 0
+        |SI #18#6 = 0;
+            |BORRA 020#18a;
+        |FINSI;
+    |FINSI;
+
+    |SI nOpera = 6;    || Cambiar clave del asiento
+        #18#7  = enNuevo0;
+        #18#8  = efNuevo1;
+        #18#9  = enNuevo2;
+        #18#10 = enNuevo3;
+        |GRABA 020#18a;
+    |FINSI;
+    |LIBERA #18;
+|FPRC;
+
+|DEFBUCLE eVerSiExis;
+  #18#2;
+  ;
+  enEmpresa, enPeriodo, enEmbDia, efFechaE, enEmbDoc, enEmbLin, 01;
+  enEmpresa, enPeriodo, enEmbDia, efFechaE, enEmbDoc, enEmbLin, 99;
+  be;
+  NULL, eVerSiExis;
+|FIN;
+
+|PROCESO eVerExisEmb;
+   enSwEmb = 0;
+   nOpera  = 0;
+   |BUCLE eVerSiExis;
+|FPRC;
+
+|PROCESO eBajaEmbargo;
+   nOpera  = 1;
+   |ABRE #17;
+   |BUCLE eVerSiExis;
+   |CIERRA #17;
+|FPRC;
+
+|PROCESO eVerEmbPagosM;
+   nSw      = 0;
+   enSwEmb  = 0;
+   nImporte = 0;
+   nOpera   = 2;
+   eaCodNif = eaCodNif % 0112;
+   |BUCLE eVerSiExis;
+   |SI enSwEmb = 0;         || si no estaba anotado, como si fuese una alta
+       enSwEmb = 2;
+   |SINO;
+       |SI #18#1 ! eaCodNif;   || si no es el mismo nif, borramos las lineas
+           enSwEmb = 2;        || anteriores y como si fuese un alta
+       |SINO;
+           |SI enCEmbargo ! 0; |Y enCEmbargo ! enEmbCon; ||ya no es de Embargo
+               enSwEmb = 0;                              ||no da alta
+           |SINO;
+               |SI eaEmbSig ! "D";                       ||No es debe
+                   enSwEmb = 0;                          ||no da alta
+               |FINSI;
+           |FINSI;
+       |FINSI;
+       |SI enSwEmb ! 1;          || primero damos de baja
+           |HAZ eBajaEmbargo;
+       |SINO;
+           |SI nImporte = enEmbImp;
+               nOpera = 3;
+               |BUCLE eVerSiExis;
+           |SINO;
+               nImpEspe = enEmbImp;
+               nImporte = 0;
+               |ABRE #17;
+               nOpera = 4;
+               |BUCLE eVerSiExis;
+               |CIERRA #17;
+               |SI enEmbImp > 0;
+                   nSw = 1;
+                   |HAZ eVerEmbPagos;
+                   nSw = 0;
+               |FINSI;
+               nOpera = 5;
+               |BUCLE eVerSiExis;
+               |SI nImpEspe ! 0;
+                   aAlfa1 = nImpEspe;
+                   aAlfa2 = "    Importe Embargado Anotado: " + aAlfa1 + " euros";
+                   |MENAV aAlfa2;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO eCambioApteEmb;
+   enSwEmb = 0;
+   nOpera  = 6;
+   |BUCLE eVerSiExis;
+|FPRC;

@@ -1,0 +1,221 @@
+|FICHEROS;
+    ca8ut000 #0;
+    cacuenta #1;         || cuentas
+
+    ca8cumay #410;  || Control de Balances
+    ca8m0000 #420;  || Descripcion Numero de Balance
+    ca8m0001 #421;  || Def Balance Textos
+    ca8m0002 #422;  || Def Balance Linea Cuentas
+
+    canempre #30;        || empresas
+    caselem1 #998;
+|FIN;
+
+|VARIABLES;
+   informe   = "ca8ut000";
+   &entrada  = 1;
+   aAlfa1    = "";
+   aAlfa2    = "";
+   nNume1    = 0;
+   nNume2    = 0;
+   nCampo    = 0;
+
+   &aError   = "";
+   aDCuenta    = "";
+   aHCuenta    = "";
+   nError      = 0;
+
+   mascara  = "";
+   uno      = "";
+   dos      = "";
+   nNoBal8  = 0;
+   nNoBalX  = 0;
+
+   nTipo   = 0;
+   mensa  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ========================================================================
+||                        CALCULOS PANTALLA
+|| ========================================================================
+|PROCESO descri; |TIPO 6;
+ |ABRE #420;
+ |DDEFECTO #420;
+ #420#0 = #0Campo;
+ |LEE 001#420=;
+ |SI FSalida ! 0;
+     |MENAV "   Error. No existe Numero de Balance";
+     |ERROR;
+ |FINSI;
+ |CIERRA #420;
+ nCampo = Campo + 1;
+ #0nCampo = #420#1; |PINTA #0nCampo;
+|FPRC;
+
+|| ------------------------------------------------------------------------
+|PROCESO saca2008;
+   nNoBal8 = 0;
+|FPRC;
+
+|DEFBUCLE saca2008;
+   #ca8m0002#2;
+   ;
+   enEjerBal, #0#2, nTipo, uno;
+   enEjerBal, #0#2, nTipo, uno;
+   ;
+   NULL, saca2008;
+|FIN;
+
+|PROCESO Mirodefect;
+  uno = (uno + "     " ) % 105;
+  |BUCLE saca2008;
+|FPRC;
+
+|PROCESO LeoCuentas;
+
+ nTipo = 9;
+ aAlfa1 = #1#0; aAlfa1 = aAlfa1 % 101;
+ |SI aAlfa1 ] "0"; |Y aAlfa1 [ "5";
+     nTipo = 0;
+ |FINSI;
+ |SI aAlfa1 ] "6"; |Y aAlfa1 [ "7";
+     nTipo = 1;
+ |FINSI;
+ |SI #0#0 ! nTipo;
+     |SI #0#0 ! 2; |O nTipo > 2;
+         |ACABA;
+     |FINSI;
+ |FINSI;
+
+ |SI nTipo = 0;
+     |SI #1#5 ! "A"; |Y #1#5 ! "P";
+         aError = "CTA SITUACION MAL INFORMADA EN MANTENIMIENTO";
+         |PRINT;
+         nError = 1;
+     |FINSI;
+ |FINSI;
+ |SI nTipo = 1;
+     |SI #1#5 ! "D"; |Y #1#5 ! "H";
+         aError = "CTA RESULTADOS MAL INFORMADA EN MANTENIMIENTO";
+         |PRINT;
+         nError = 1;
+     |FINSI;
+ |FINSI;
+ |SI nTipo = 2;
+     |SI #1#5 ! "G"; |Y #1#5 ! "I";
+     |FINSI;
+ |FINSI;
+
+ uno     = #1#0; |QBF uno;
+ |SI uno = ""; |ACABA; |FINSI;
+
+ nNoBal8 = 1;
+
+ uno  = #1#0; |QBF uno;
+ dos  = uno + "000000000000";
+
+ uno = dos % A105;
+ |HAZ Mirodefect;
+ |SI nNoBal8 = 0; |ACABA;  |FINSI;
+
+ uno = dos % A104;
+ |HAZ Mirodefect;
+ |SI nNoBal8 = 0; |ACABA;  |FINSI;
+
+ uno = dos % A103;
+ |HAZ Mirodefect;
+ |SI nNoBal8 = 0; |ACABA;  |FINSI;
+
+ uno = dos % A102;
+ |HAZ Mirodefect;
+ |SI nNoBal8 = 0; |ACABA;  |FINSI;
+
+||  uno = dos % A101;
+||  |HAZ Mirodefect;
+ |SI nNoBal8 = 1;
+     |SI nTipo = 0; aAlfa1 = "SITUACION"; |FINSI;
+     |SI nTipo = 1; aAlfa1 = "RESULTADOS"; |FINSI;
+     aError = "NO EXISTE EN BALANCE " + aAlfa1;
+     |PRINT;
+     nError = 1;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoCuentas;
+   #1#1;
+   3;
+   aDCuenta, "S";
+   aHCuenta, "S";
+   e;
+   NULL, LeoCuentas;
+|FIN;
+
+|PROCESO HazTodo;
+  |SI enEjercicio < 2008; |ACABA; |FINSI;
+
+  aDCuenta = "            ";
+  aHCuenta = "zzzzzzzzzzzz";
+  nError = 0;
+  |BUCLE LeoCuentas;
+  |SI nError ! 0;
+      |PIEINF;
+  |SINO;
+      |SI mensa = 0;
+          |MENAV "    No detectado Error en las Estructuras y Plan Contable";
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO Cheque12; |TIPO 12;
+     |SI #0#4 = "N"; |ACABA; |FINSI;
+
+     |IMPRE 0;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+     |INFOR informe;
+     |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+     |SI #48#27 = "S";
+         mensa = 1;
+         |HAZ MultiEmpresa;
+     |SINO;
+         |DFICE dirfich0; |QBF dirfich0;
+         mensa = 0;
+         |HAZ HazTodo;
+     |FINSI;
+
+     |FININF;
+     |FINIMP;
+|FPRC;
+
+|| **********************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

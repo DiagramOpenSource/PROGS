@@ -1,0 +1,254 @@
+|FICHEROS;
+     agitp001 #0;
+     agifa019 #1;
+     agifa112 #2;
+     agifa324 #3; ||Fichero de divisas
+     agifa321 #4; ||Parametros de divisas
+     agifa112 #112;
+     dsm00010 #910;
+     dsm00076 #976;
+|FIN;
+
+|VARIABLES;
+     &eaArtiSeri = "";
+     aPrv = "";
+     &eaArticulo = "";
+     &nDeci_PreDiv = 0;
+     &nDeci_Base   = 0;
+     &nDeci_PreBase =0;
+     cambio_div   = 0;
+     cambio_base  = 0;
+     proveedor = "";
+     modo = 0;
+
+     nSwAlbero  = 0;
+     nBoton     = 0;
+     fFecha     = @;
+     aParametro = "";
+     aAlfa      = "";
+     nModo = 0;
+     nNume = 0;
+|FIN;
+
+|| *************************************************************************
+|| *********************** PROCESO DE PANTALLA
+|| *************************************************************************
+|PROCESO Tipo66; |TIPO 66;
+     |ABRE #112;
+     #112#0 = #0#0;
+     |LEE 000#112];
+     |CONSULTA_CLAVE #1#112;
+     |SI FSalida = 0; #0#0 = #112#0; |SINO; |ERROR; |FINSI;
+     |CIERRA #112;
+|FPRC;
+
+|PROCESO Tipo6; |TIPO 6;
+     |SI FSalida = 10;
+          |ABRE #0;
+          |LEE 000#0p;
+          |CONSULTA_CLAVE #1#0
+          |SI FSalida ! 0; |ERROR; |FINSI;
+          |CIERRA #0;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo7; |TIPO 7;
+     |PINTA #0#0;
+     |SI nSwAlbero = 0;
+         |SI #0#8 ! "   ";
+             |ESTADO_CONTROL nBoton, "ENABLE";
+         |SINO;
+             |ESTADO_CONTROL nBoton, "DISABLE";
+         |FINSI;
+     |FINSI;
+     |ABRE #910; |LEE 000#910p; |CIERRA #910;
+     |ABRE #1;
+     #1#0 = #0#1;
+     |LEE 000#1=;
+     |SI FSalida ! 0; |DDEFECTO #1; |FINSI;
+     |CIERRA #1;
+     |SI #1#176 = "S";
+          |MENSA "0000<F5> Consulta division articulo";
+     |SINO;
+          |MENSA "0000Articulo";
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo11; |TIPO 11;
+     |SI #1#176 = "S"; |Y FSalida = 13;
+          nModo = (FEntrada / 100) ! 0;
+          |PUSHV 0501 2380;
+          nNume = #910#21;
+          aAlfa = "\" + #910#23 + "+#";
+          |CAMPO_ANCHO  #976#2, 1, nNume;
+          |CAMPO_MAXIMO #976#2, 1, aAlfa;
+          |BLANCO 1801 2380;
+          |PINPA #0#976;
+          |ATRI R; |PINTA 1904, #910#20; |ATRI 0;
+          |ENTCOLUMNA #1#976, 3, 4, 5, 0, Min976, Max976;
+          |POPV;
+          |ERROR; |ACABA;
+     |FINSI;
+     eaArtiSeri = #0Campo;
+     |HAZ Seripafer;       ||Modulo 000184
+     #0Campo = eaArtiSeri;
+|FPRC;
+
+|PROCESO PedidoCompraTp;
+     fFecha = ~;
+     aParametro = #0#0 + #0#1 + "00000";
+     aParametro = aParametro + "000000000000000";
+     aParametro = aParametro + fFecha;
+     aParametro = aParametro + "          ";
+     aAlfa      = "|albz0008;" + aParametro;
+     |SUB_EJECUTA_NP aAlfa;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ LeeDecimBase;
+     |CLS;
+     |CABEZA "Tarifas Proveedores";
+
+     |PINPA #0#0;
+
+     |HAZ EsAlbero;
+     nSwAlbero = FSalida;
+
+     |SI nSwAlbero = 0;
+          |CONTROL_SIMPLE 0, "BOTON, Crear Pedido Compra", 0650, 0670, PedidoCompraTp;
+          nBoton = FSalida;
+     |FINSI;
+
+     |ENTLINEAL #1#0, 2, 7, 20, 0, min, max;
+
+     |PARA;  |SI;  |HACIENDO;
+          |SI nSwAlbero = 0;
+              |ESTADO_CONTROL nBoton, "DISABLE";
+          |FINSI;
+
+          |C_M #0#0,1,"S";
+          |ENCAMPO #0#0;
+          |SI FSalida = 1; |O FSalida = 7;
+              |SAL;
+          |FINSI;
+
+          proveedor = #0#0;
+          |PINTA #0#0;
+          |C_M #0#0,1,"N";
+
+          |ENTLINEAL #1#0, -2, 2, 20, 0, min, max;
+
+     |SIGUE;
+
+     |SI nSwAlbero = 0;
+         |FIN_CONTROL_WINDOWS nBoton;
+         |PULSATECLA;
+     |FINSI;
+|FPRO;
+
+|RUTINA min;
+     #0#0 = proveedor;
+     #0#1 = "            ";
+|FRUT;
+
+|RUTINA max;
+     #0#0 = proveedor;
+     #0#1 = "zzzzzzzzzzzz";
+|FRUT;
+
+|CALCULO divtp;|TIPO 0;
+     |SI #0Campo ! Contenido; ||Aqui porque debe leer lo anterior
+          |SI Campo = 8;  ||Estoy en campo divisa
+               #0#3 = #0#9 / cambio_base * cambio_div; || Precio (en Div)
+               #0#3 = #0#3 ! nDeci_PreDiv;
+               #0#9 = #0#3 / cambio_div * cambio_base;  || Precio en Mon. Base
+          |FINSI;
+          |SI Campo = 3; ||Estoy en Precio (Divisa)
+               #0#9 = #0#3 / cambio_div * cambio_base;  || Precio en Mon. Base
+          |FINSI;
+          |SI Campo = 9; ||Estoy en Precio (Divisa)
+               #0#3 = #0#9 / cambio_base * cambio_div;  || Precio en Mon. Base
+          |FINSI;
+          |PINTA #0#3;
+          |PINTA #0#9;
+     |FINSI;
+|FCAL;
+
+|PROCESO DivisaPrv; |TIPO 0;
+     |ABRE #2;
+     #2#0 = #0#0;
+     |LEE 020#2=;
+     |CIERRA #2;
+     #agitp001#8 = #2#81;
+     |HAZ decdivtp;
+|FPRC;
+
+|PROCESO Art0; |TIPO 0;
+     |SI #0Campo ! Contenido;
+          |ABRE #1;
+          #1#0 = #0#1;
+          |LEE 020#1=;
+          |CIERRA #1;
+          #0#2 = #1#134;
+     |FINSI;
+     |HAZ decdivtp;
+|FPRC;
+
+|CALCULO decdivtp;
+     |ABRE #agifa324;
+     #agifa324#0 = #agitp001#8;
+     |LEE 001#agifa324.=;
+     nDeci_PreDiv = #agifa324#9;
+     cambio_div = #agifa324#3;
+     |ABRE #agifa321;
+     |LEE 001#agifa321.p;
+     #agifa324#0 = #agifa321#9; ||Igualo a moneda base
+     |LEE 001#agifa324.=;
+     nDeci_Base = #agifa324#7;  ||Decimales moneda base
+     nDeci_PreBase = #agifa324#9;  ||Decimales precio de moneda base
+     cambio_base = #agifa324#3;
+     |CIERRA #agifa321;
+     |CIERRA #agifa324;
+     |SI #0#8 = "   ";
+          #0#8 = #agifa321#9; ||Pongo por defecto Divisa Base
+          |SI #agifa321#2 = "N";
+               |CAMPO_MODIFICA #0#8,1,"N";
+          |FINSI;
+          |PINTA #0Campo;
+     |FINSI;
+|FCAL;
+
+|PROCESO LeeDecimBase; |TIPO 8;
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 001#agifa321.p;
+     #agifa324#0 = #agifa321#9; ||Igualo a moneda base
+     |LEE 001#agifa324.=;
+     nDeci_Base = #agifa324#7;  ||Decimales moneda base
+     nDeci_PreBase = #agifa324#9;  ||Decimales precio de moneda base
+     |CIERRA #agifa321;
+     |CIERRA #agifa324;
+|FPRC;
+
+|PROCESO Llena001; |TIPO 6;
+     eaArticulo = #0Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #0Campo = eaArticulo;
+          |PINTA #0Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO Min976;
+     #976#0 = #0#0;
+     #976#1 = #0#1;
+     #976#2 = "      ";
+|FPRC;
+
+|PROCESO Max976;
+     #976#0 = #0#0;
+     #976#1 = #0#1;
+     #976#2 = "zzzzzz";
+|FPRC;

@@ -1,0 +1,259 @@
+|FICHEROS;
+     nagmail0 #0;
+|FIN;
+
+|VARIABLES;
+     aFlagEnv = "";
+     aFlagRec = "";
+     aAux = "";
+     aLogDscorreo = "";
+     nHandleLog = 0;
+     nSwLog = 0;
+     aTxtLog = "";
+     aFecha = "";
+     fFecha = @;
+     aHora = "";
+
+     nPara = 0;
+     nSaliendo = 1;
+     nSiscoDebuga = 0;
+     aAlfa = "";
+     nUnError = 0;
+     aServCorreo = "";
+     aIPServ = "";
+     aDirDestino = "";
+     aPwd = "";
+     aDirEntrantes = "";
+     aFichero = "";
+     aAsunto = "";
+     aHayError = "";
+     nPos = 0;
+     aDirOrigen = "";
+     aFrom = "";
+     aServidor = "";
+     aBass = "";
+     nHandle = 0;
+
+     eaEntrada = "";
+     eaSalida = "";
+     aAlfaPLB = "";
+     nNumChar = 0;
+     nContPLB = 0;
+     nCalcPLB = 0;
+
+     aDBass = "";
+     aShell = "";
+|FIN;
+
+|PROCESO Autenti; |TIPO 0;
+     |SI #0#10 = "S";
+          |C_M #0#7, 1, "S";
+          |C_M #0#8, 1, "S";
+     |SINO;
+          |C_M #0#7, 1, "N";
+          |C_M #0#8, 1, "N";
+     |FINSI;
+|FPRC;
+
+|PROCESO RecibeDsCorreo;
+     nUnError = 0;
+     aServCorreo = #0#6;      |QBF aServCorreo;
+     aFrom = #0#9;            |QBF aFrom;
+     aPwd = #0#8;             |QBF aPwd;
+     |DBASS aDirEntrantes;    |QBF aDirEntrantes;
+     aDirEntrantes = aDirEntrantes + "spool/";
+     aFichero = "fichero.txt";
+     ||SISCO
+     nSiscoDebuga = 0;
+     |SI nSiscoDebuga = 0;
+          |SLEEP 300;
+     |FINSI;
+
+     nSaliendo = 0;
+     |PARA; |SI; |HACIENDO;
+          |DSCORREO_RECIBE aIPServ, aServCorreo, aFrom, aPwd, aDirEntrantes, aFichero;
+          aAsunto = FSalida;
+          aAlfa         = FSalida;
+          aAlfa         = aAlfa % 101;
+          |SI aAlfa ! "0";
+              |SI nUnError = 0;
+                  |SI aAlfa ! "1";
+                       aHayError = 1;
+                  |FINSI;
+                  |SAL;
+                  nUnError = 1;
+              |SINO;
+                  |SI aAlfa ! "1";
+                       aHayError = 1;
+                  |FINSI;
+                  |SAL;
+              |FINSI;
+          |SINO;
+              nUnError = 0;
+          |FINSI;
+
+          |SI aAlfa = "0";
+              aAsunto = aAsunto % 0299;  |QBF aAsunto;
+              aAsunto = aAsunto - "]";
+              |SI FSalida ! 0;
+                  aAlfa = FSalida;
+                  nPos  = FSalida;
+                  |SI nPos > 1000;
+                      aAlfa = aAlfa % 102;
+                  |SINO;
+                      aAlfa = aAlfa % 101;
+                  |FINSI;
+                  nPos = aAlfa;
+                  nPos = nPos + 1;
+                  nPos = (nPos * 100) + 99;
+                  aAsunto = aAsunto % nPos;
+              |FINSI;
+          |FINSI;
+          |SI nSaliendo = 1;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+     |SI aHayError = "1";
+          ||SISCO. ERROR
+          ||MENAV "0000 DSCORREO ERROR";
+          aAlfa = aFlagRec;
+          |XABRE "W", aAlfa, nHandle;
+          |SI FSalida = 0;
+               aAlfa = "ERROR AL RECIBIR";
+               |XGRABA nHandle, aAlfa;
+               |PARA nPara = 1; |SI nPara < 200; |HACIENDO nPara = nPara + 1;
+                    aAlfa = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                    |XGRABA nHandle, aAlfa;
+               |SIGUE;
+               |XCIERRA nHandle;
+
+               fFecha = ~;
+               aFecha = fFecha;
+               |HORA aHora;
+               |QBF aHora;
+
+               aTxtLog = aFecha + " " + aHora + " " + "ERROR AL RECIBIR";
+               |HAZ MeteLog;
+          |FINSI;
+     |SINO;
+          ||SISCO. OK
+          ||MENAV "0000 DSCORREO OK";
+          aAlfa = aFlagRec;
+          |XABRE "WB", aAlfa, nHandle;
+          |SI FSalida ] 0;
+               aAlfa = "";
+               |XGRABA nHandle, aAlfa;
+               |XCIERRA nHandle;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Chequeo;
+     aIPServ = #0#1;                    |QBF aIPServ;
+     aIPServ = aIPServ + "." + #0#2;    |QBF aIPServ;
+     aIPServ = aIPServ + "." + #0#3;    |QBF aIPServ;
+     aIPServ = aIPServ + "." + #0#4;    |QBF aIPServ;
+     |SI PARAMETRO ! "";
+          aIPServ = PARAMETRO;
+     |FINSI;
+     aServidor = #0#5;   |QBF aServidor;
+
+     |SI #0#10 = "S";
+          aDirOrigen = #0#8;  |QBF aDirOrigen;
+          aDirOrigen = aDirOrigen + ":" + #0#9;   |QBF aDirOrigen;
+          aDirOrigen = aDirOrigen + ":" + #0#7;  |QBF aDirOrigen;
+     |SINO;
+          aDirOrigen = #0#9;   |QBF aDirOrigen;
+     |FINSI;
+
+     aDirDestino = #0#9; |QBF aDirDestino;
+     aAsunto = "Chequeo DsCorreo Nagios";
+     aFichero = "/tmp/fichero.txt";
+     |DSCORREO_ENVIA aIPServ, aServidor, aDirOrigen, aDirDestino, aAsunto, aAsunto, aFichero;
+     aAlfa = FSalida;
+     aAlfa = aAlfa % 101;
+     |SI aAlfa ! "0";
+          ||HAZ ERROR;
+          ||SISCO
+          aAlfa = aFlagEnv;
+          |XABRE "W", aAlfa, nHandle;
+          |SI FSalida = 0;
+               aAlfa = "ERROR AL ENVIAR";
+               |XGRABA nHandle, aAlfa;
+               |PARA nPara = 1; |SI nPara < 200; |HACIENDO nPara = nPara + 1;
+                    aAlfa = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
+                    |XGRABA nHandle, aAlfa;
+               |SIGUE;
+               |XCIERRA nHandle;
+
+               fFecha = ~;
+               aFecha = fFecha;
+               |HORA aHora;
+               |QBF aHora;
+
+               aTxtLog = aFecha + " " + aHora + " " + "ERROR AL ENVIAR";
+               |HAZ MeteLog;
+          |FINSI;
+     |SINO;
+          aAlfa = aFlagEnv;
+          |XABRE "WB", aAlfa, nHandle;
+          |SI FSalida = 0;
+               aAlfa = "";
+               |XGRABA nHandle, aAlfa;
+               |XCIERRA nHandle;
+          |FINSI;
+     |FINSI;
+
+     |HAZ RecibeDsCorreo;
+|FPRC;
+
+|PROCESO MeteLog;
+     |SI nSwLog = 0;
+          |XABRE "A", aLogDscorreo, nHandleLog;
+          |SI FSalida = 0;
+               nSwLog = 1;
+          |FINSI;
+     |FINSI;
+
+     |SI nSwLog = 1;
+          |XGRABA nHandleLog, aTxtLog;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aFlagEnv = "/tmp/.dscorreo.env";
+     aFlagRec = "/tmp/.dscorreo.rec";
+
+||   No tengo permisos para escribir en este directorio.
+||     aLogDscorreo = "/var/log/dscorreo.log";
+     aLogDscorreo = "/tmp/dscorreo.log";
+
+
+     |SI PARAMETRO ! "";
+          |ABRE #0; |LEE 000#0p;
+          |HAZ Chequeo;
+          |CIERRA #0;
+     |SINO;
+          |CLS;
+          |ABRE #0;
+          |LEE 101#0p;
+          |SI FSalida ! 0;    |GRABA 020#0b; |FINSI;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0;
+               |GRABA 020#0a;
+          |FINSI;
+
+          |CONFI "2400N Realizar chequeo del dscorreo?"
+          |SI FSalida = 0;
+               |HAZ Chequeo;
+          |FINSI;
+          |LIBERA #0;
+          |CIERRA #0;
+     |FINSI;
+
+     |SI nSwLog ! 0;
+          |XCIERRA nHandleLog;
+     |FINSI;
+|FPRO;

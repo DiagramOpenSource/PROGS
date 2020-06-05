@@ -1,0 +1,409 @@
+     Copiado del calcutpv
+
+|FICHEROS;
+     agifa501 #0;
+     agifa502 #1
+     agifa505 #4;
+     agifa510 #7;
+     agifa509 #8;
+     agifa024 #14;
+     agifa515 #19;
+     agifa516 #20;
+     agifa517 #30;
+     agifa571 #35;
+     agifa572 #36;
+     dsm00058 #58;
+     dsm00060 #60;
+     dsm00061 #61;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     &nCaja = 0;
+     &fFecha = @;
+     &enForma = 0;
+     &eaOpeTP = "";
+
+     &enImpCliDto = 0;
+     &enImpCliMar = 0;
+     &enImpCliFac = 0;
+     &enImpCliCom = 0;
+     &eaCliente = "";
+     &efFecha = @;
+
+     nImpo = 0;
+     i = 0;
+     j = 0;
+     mensaje = "";
+     nLin = 0;
+     tipo = 0;
+     nForma = 0;
+     puente_n = 0;
+     puente_a = "";
+     empresa = "";
+     periodo = 0;
+     operacion = "";
+     nPuntos = 0;
+     diferido =  "";
+     actu_dia =  "";
+     beta = 0;
+     nDto = 0;
+     fmes =  "";
+     mes = 0;
+     imneto = 0;
+
+|FIN;
+
+|PROCESO lee_horario;
+     |ABRE #7;              ||Cargo los Valores del Codigo Horario
+     #7#0 = #4#18;
+     |LEE 001#7=;
+     |CIERRA #7;
+|FPRC;
+
+|PROCESO horario;
+     periodo = 0;
+     |PARA i = 1; |SI i [ 19; |HACIENDO i = i + 2;
+          j = i + 1;
+          periodo = periodo + 1;
+          |SI puente_n ] #7#i#; |Y puente_n [ #7#j#;
+               mensaje = "";
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO actua_deuda;
+/*
+     |ABRE #14;
+     #14#0 = #0#1;
+     |LEE 121#14=;
+     |SI FSalida = 0;
+          #14#49 = #14#49 +. #0#41;  ||Riesgo Cliente
+          |GRABA 021#14a;
+     |FINSI;
+     |CIERRA #14;
+*/
+     |ABRE #35;
+     |DDEFECTO #35;
+     #35#0 = #0#1;         ||Leo el cliente de las deudas
+     |LEE 101#35=;
+     |SI FSalida ! 0;
+          #35#1 = #14#1;
+          |GRABA 021#35b;
+     |FINSI;
+     #35#2 = #35#2 +. #0#41;
+     #35#4 = #35#4 +. #0#41;
+     |ABRE #36;
+     |SI tipo = 1;
+          #36#0 = #35#0;
+          #36#1 = 9999;
+          |LEE 001#36];
+          |SI FSalida = 0;
+               |LEE 001#36a;
+          |SINO;
+               |LEE 001#36u;
+          |FINSI;
+          |SI FSalida = 0; |Y #35#0 = #36#0;
+               puente_n = #36#1 + 1;
+          |SINO;
+               puente_n = 1;
+          |FINSI;
+          |DDEFECTO #36;
+          #36#0 = #35#0;
+          #36#1 = puente_n;
+          #36#2 = #0#57;        ||Serie
+          #36#3 = #0#0;         ||Registro
+          #36#4 = #0#58;        ||Documento
+          #36#5 = #0#14;        ||Fecha
+          #36#6 = #0#12;        ||Caja
+          #36#7 = #0#33;        ||Cajero
+          #36#8 = #0#41;        ||Importe
+          #36#9 = #0#41;        ||Importe Pdte
+          #36#10 = #0#9;        ||Importe Total
+          #36#13 = #0#36;
+          |GRABA 021#36n;
+     |SINO;
+          |SELECT #3#36;
+          #36#3 = #0#0;
+          #36#13 = #0#36;
+          |BORRA 021#36c;
+     |FINSI;
+     |CIERRA #36;
+     |GRABA 021#35a;
+     |LIBERA #35;
+     |CIERRA #35;
+|FPRC;
+
+|PROCESO lee_diario;          ||Grabacion del fichero de diarios
+     |DFICE puente_a;         |QBF puente_a;
+     puente_a = puente_a % -205;
+     empresa = puente_a;
+
+     |DDEFECTO #8;
+     #8#63 = empresa;
+     #8#0 = nCaja;
+     #8#1 = fFecha;
+     |LEE 101#8=;
+     |SI FSalida ! 0;
+          |GRABA 021#8b;
+     |FINSI;
+|FPRC;
+
+|PROCESO actua_tarj;               ||Actualiza las tarjetas
+     |SI #0#40 ! 0;
+          |ABRE #19;
+          |DDEFECTO #19;
+          #19#0 = #0#46;
+          |LEE 101#19=;
+          |SI FSalida ! 0;    |GRABA 021#19b; |FINSI;
+          #19#2 = #19#2 + (#0#40*tipo);    ||Total Ptas cargadas
+          #19#3 = #0#14;                  ||Fecha Ult. Oper.
+          #19#4 = #0#40;                  ||Ptas Cargadas
+          |GRABA 021#19a;
+          |LIBERA #19;
+          |CIERRA #19;
+          |ABRE #20;
+          |DDEFECTO #20;
+          #20#0 = #0#46;
+          #20#1 = #0#14;
+          |LEE 101#20=;
+          |SI FSalida ! 0;    |GRABA 021#20b; |FINSI;
+          #20#2 = #20#2 + (#0#40*tipo);    ||Total Ptas cargadas
+          |GRABA 021#20a;
+          |LIBERA #20;
+          |CIERRA #20;
+     |FINSI;
+|FPRC;
+
+|PROCESO actua_dia;
+     puente_a = (#0#34 % 102) + (#0#34 % 402);
+     puente_n = puente_a;
+     |HAZ lee_horario;
+     |HAZ horario;
+     puente_n = periodo + 29;
+     #8#puente_n# = #8#puente_n# + tipo;
+     puente_n = puente_n + 10;
+     #8#puente_n# = #8#puente_n# + ((#0#9 - #0#4)*tipo);
+     |SI #4#163 = "S"; |O #0#9 > 0;
+          #8#52 = #8#52 + ((#0#38)*tipo);     ||Efectivo
+          #8#55 = #8#55 + ((#0#38 + #0#40 + #0#39)*tipo);
+     |FINSI;
+     #8#53 = #8#53 + (#0#40*tipo);            ||Tarjeta
+     #8#54 = #8#54 + (#0#39*tipo);            ||Cheque
+     #8#58 = #8#58 + (#0#41*tipo);            ||Pendiente de credito
+     #8#57 = #8#57 + (#0#15*tipo);            ||Restos no  cobrados
+|FPRC;
+
+|PROCESO Historico;
+     |SI #0#35 = "T"; operacion = "TI"; |FINSI;
+     |SI #0#35 = "A"; operacion = "AV"; |FINSI;
+     |SI #0#35 = "F"; operacion = "FC"; |FINSI;
+     ||--------------------Historico
+     enForma = nForma;
+     eaOpeTP = operacion;
+     |HAZ ModiHistoTPV;
+     ||----------------------------lineas
+     #1#9 = #0#14;   || Fecha
+     #1#15 = #0#12;  ||Caja
+     #1#16 = #0#34;  ||Hora
+     #1#17 = #0#33;  ||Cajero
+     #1#18 = #0#35;  || Tipo
+     |GRABA 021#1a;
+|FPRC;
+
+|PROCESO PuntosCli;
+     |SI #0#9 ] #58#1;
+          nPuntos = #58#3;
+     |FINSI;
+     |SI #0#9 ] #58#1; |Y #0#9 [ #58#2;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE PuntosCli;
+     #58#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, PuntosCli;
+|FIN;
+
+|DEFBUCLE Historico;
+     #1#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, Historico;
+|FIN;
+
+|PROCESO ActCab;
+     |ABRE #30;
+     |LEE 001#30p;
+     |CIERRA #30;
+
+     diferido = #30#6;
+     actu_dia = #30#7;
+     tipo = 1;
+     nForma = 1;
+
+
+     |ABRE #8;
+     |HAZ lee_diario;
+     |SI #0#9 > 0; |O #0#31 ! "V";
+          |SI #0#3 > 0; beta = 1; |SINO; beta = -1; |FINSI;
+          #0#3 = #0#3 * beta;
+          nDto = (((#0#3 < #0#17) < #0#19) < #0#18) * beta;
+          #0#3 = #0#3 * beta;
+          nDto = #0#3 - nDto;   || Total Dto Cabecera
+          ||...............................................
+          ||-------------------- Cliente
+          |SI diferido = "N"; |Y #0#31 ! "V";
+               |ABRE #14;
+               |DDEFECTO #14;
+               #14#0 = #0#1;
+               |LEE 101#14=;
+               |SI FSalida ! 0; |GRABA 020#14b; |FINSI;
+               fmes = #0#14 % A402;
+               mes = ((fmes - 1) * 4) + 54;
+               imneto = #0#3 - nDto;
+               |SI #0#35 = "A";
+                    #14#50 = #14#50 +. imneto;
+               |SINO;
+                    |SI #142#115 = "N";
+                         nImpo = (imneto * 100) / (100 - #0#18);
+                         nDto = nDto + (imneto - nImpo);
+                    |SINO;
+                         nImpo = imneto;
+                    |FINSI;
+                    #14mes = #14mes +. nImpo;
+                    mes = mes + 1;
+                    #14mes = #14mes +. nDto;
+                    mes = mes + 1;
+                    #14mes = #14mes +. #0#8;
+                    #14#102 = #14#102 +. nImpo;
+                    #14#103 = #14#103 +. nDto;
+                    #14#104 = #14#104 +. #0#8;
+                    beta = (FEntrada / 100) ! 0;
+                    |SI beta = 1;
+                         #14#45 = #0#14;
+                    |FINSI;
+                    #14#46 = imneto;
+                    #14#110 = #14#110 +. imneto;
+
+                    enImpCliCom = (nImpo * nForma);
+                    enImpCliDto = (nDto * nForma);
+                    enImpCliMar = (#0#8 * nForma);
+                    enImpCliFac = imneto * nForma;
+                    eaCliente = #0#1;
+                    efFecha = #0#14;
+                    |HAZ AcumulaCli;
+
+               |FINSI;
+               |GRABA 020#14a;
+               |CIERRA #14;
+          |FINSI;
+          ||--------------------Resumen
+          |SI #0#35 = "T"; |O #0#35 = "F"; |O #0#35 = "A";
+               |SI diferido = "N";|O actu_dia = "S";
+                    |SI #0#31 ! "V";
+                         #8#24 = #8#24 +. #0#9;   ||Venta con imp.
+                         #8#25 = #8#25 +. #0#4;   ||Total iva
+                         #8#26 = #8#26 +. (#0#22+#0#25+#0#47+#0#50+#0#53);
+                         #8#27 = #8#24 - #8#25 - #8#26; || Pruebas Redondeo....#8#27 +. (#0#20+#0#23+#0#26+#0#30+#0#48+#0#51);
+                         #8#28 = #8#28 +. #0#28;  ||Total dto
+                         #8#29 = #8#29 +. #0#3;   ||Total bruto
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          #8#84 = #8#84 +. #0#66;  ||Vales
+          |SI #0#31 ! "V";
+               |SI diferido = "N";|O actu_dia = "S";
+                   |HAZ actua_dia;                    ||Actualiza el resumen diario
+               |FINSI;
+               |SI diferido = "N";
+                   |HAZ actua_tarj;                   ||Actualiza la tarjeta
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |SI #0#35 = "T";                     ||Tiquet;
+          #8#6 = #8#6 +. 1;
+          |SI #0#31 ! "V";
+               #8#15 = #8#15 +. #0#9;
+          |FINSI;
+     |FINSI;
+     |SI #0#35 = "A";              ||Albaran
+          #8#8 = #8#8 +. 1;
+          |SI #0#31 ! "V";
+               #8#17 = #8#17 +. #0#9;
+          |FINSI;
+     |FINSI;
+     |SI #0#35 = "F";
+          #8#7 = #8#7 +. 1;
+          |SI #0#31 ! "V";
+               #8#16 = #8#16 +. #0#9;
+          |FINSI;
+     |FINSI;
+     |SI diferido = "N";|O actu_dia = "S";
+          |GRABA 021#8a;
+          |LIBERA #8;
+     |FINSI;
+     |CIERRA #8;
+     ||--------------------Historico + Sobres + Lineas
+     |SI diferido = "N";
+          |BUCLE Historico;
+     |FINSI;
+     |SI #0#41 ! 0;
+          |HAZ actua_deuda;
+     |FINSI;
+     ||컴컴컴컴컴컴컴컴컴컴컴컴횾untos Cliente
+     nPuntos = 0;
+     |BUCLE PuntosCli;
+     |SI nPuntos ! 0;
+          |ABRE #60;
+          |ABRE #61;
+          |DDEFECTO #60;
+          #60#0 = #0#1;
+          |LEE 101#60=;
+          |SI FSalida ! 0; |GRABA 020#60b; |FINSI;
+          |SI nForma = 1;
+               #61#0 = #60#0;
+               #61#1 = 99999;
+               |LEE 000#61];
+               |SI FSalida = 0;
+                    |LEE 000#61a;
+               |SINO;
+                    |LEE 000#61u;
+               |FINSI;
+               |SI FSalida = 0; |Y #60#0 = #61#0;
+                    nLin = #61#1 + 1;
+               |SINO;
+                    nLin = 1;
+               |FINSI;
+               |DDEFECTO #61;
+               #61#0 = #60#0;
+               #61#1 = nLin;
+               #61#2 = #0#35;
+               #61#3 = #0#57;
+               #61#4 = #0#58
+               #61#5 = #0#14;
+               #61#6 = #0#9;
+               #61#7 = nPuntos;
+               |GRABA 020#61n;
+          |SINO;
+               |SELECT #2#61;
+               #61#2 = #0#35;
+               #61#3 = #0#57;
+               #61#4 = #0#58
+               |BORRA 020#61c;
+          |FINSI;
+          #60#1 = #60#1 +. #61#6;
+          #60#2 = #60#2 +. #61#7;
+          |GRABA 020#60a;
+          |CIERRA #60;
+          |CIERRA #61;
+     |FINSI;
+|FPRC;

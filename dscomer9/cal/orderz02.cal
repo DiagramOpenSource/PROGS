@@ -1,0 +1,158 @@
+|FICHEROS;
+     orderz02 #0;
+     orderm02 #20;
+|FIN;
+
+|VARIABLES;
+     &enCtrFin = 0;
+     &enContaAlb = 0;
+     nRango = 0;
+     nGrid = 0;
+     nModo = 0;
+     nForma = 0;
+     nBtnPdte = 0;
+     nBtnTodo = 0;
+     nBtnProc = 0;
+     nBtnAnula = 0;
+     nPanta = 0;
+     nClave = 0;
+     aAlfa = "";
+|FIN;
+
+|PROCESO BtnProc;
+     |CONFI "0000N¨Procesar pendientes?";
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |HAZ AdjPedido;
+
+     |PULSATECLA;
+     |SI nClave = 1;
+          |HAZ BtnTodo;
+     |SINO;
+          |HAZ BtnPdte;
+     |FINSI;
+     |SI enContaAlb > 1;
+          aAlfa = "0000Creados: " + enContaAlb + " albaranes...";
+     |SINO;
+          aAlfa = "0000Creado: " + enContaAlb + " albaran...";
+     |FINSI;
+     |MENAV aAlfa;
+|FPRC;
+
+|PROCESO BtnAnula;
+     |SI nClave = 1;
+          |SELECT #1#20;
+     |SINO;
+          |SELECT #2#20;
+     |FINSI;
+     |LEE 121#20=;
+     |SI FSalida = 0;
+          |SI #20#10 = "N";
+               aAlfa = #20#4; |QBF aAlfa;
+               aAlfa = aAlfa + "/" + ("000000" + #20#5) % -106;
+               aAlfa = aAlfa + "/" + ("000" + #20#6) % -103;
+               aAlfa = aAlfa + "?" + &13 + &13;
+               aAlfa = aAlfa + " artículo: " + #20#7; |QBF aAlfa;
+               aAlfa = "0000N¿Anular línea pedido: " + aAlfa;
+               |CONFI aAlfa;
+               |SI FSalida = 0;
+                    #20#10 = "X";
+                    #20#14 = ~;
+                    |HORA aAlfa;
+                    #20#15 = aAlfa;
+                    aAlfa = Usuario % 810;
+                    #20#16 = aAlfa;
+                    |GRABA 020#20a;
+                    |REFRESCACONTROL nGrid;
+               |FINSI;
+          |SINO;
+               |SI #20#10 = "S";
+                    |MENAV "0000El registro esta actualizado...";
+               |SINO;
+                    |MENAV "0000El registro esta anulado...";
+               |FINSI;
+          |FINSI;
+          |LIBERA #20;
+     |FINSI;
+|FPRC;
+
+|PROCESO Evt;
+     |SI FSalida = 1; |O FSalida = 2;
+          |SI nClave = 1;
+               |SELECT #1#20;
+          |SINO;
+               |SELECT #2#20;
+          |FINSI;
+          |LEE 000#20=;
+     |FINSI;
+     |SI FSalida = 4;
+          |HAZ BtnAnula;
+     |FINSI;
+|FPRC;
+
+|PROCESO BtnPdte;
+     |DESTRUYECONTROL nGrid;
+     |PULSATECLA;
+     |LINEAL_SIMPLE #2#20, nRango, 1102, 2999, Min, Max, Evt;
+     nGrid = FSalida;
+     |ESTADO_CONTROL nBtnPdte, "DISABLE";
+     |ESTADO_CONTROL nBtnTodo, "ENABLE";
+     nClave = 2;
+|FPRC;
+
+|PROCESO BtnTodo;
+     |DESTRUYECONTROL nGrid;
+     |PULSATECLA;
+     |LINEAL_SIMPLE #1#20, nRango, 1102, 2999, Min, Max, Evt;
+     nGrid = FSalida;
+     |ESTADO_CONTROL nBtnPdte, "ENABLE";
+     |ESTADO_CONTROL nBtnTodo, "DISABLE";
+     nClave = 1;
+|FPRC;
+
+|PROCESO Min;
+     #20#0 = 1;
+     #20#4 = "     ";
+     #20#5 = 000000;
+     #20#6 = 000;
+     #20#10 = "N";
+|FPRC;
+
+|PROCESO Max;
+     #20#0 = 99999999;
+     #20#4 = "zzzzz";
+     #20#5 = 999999;
+     #20#6 = 999;
+     #20#10 = "N";
+|FPRC;
+
+|PROGRAMA;
+     |ABRET #20;
+     |SI PARAMETRO = "menu";
+          |PINPA #0#0;
+          nPanta = FSalida;
+
+          |CONTROL_SIMPLE nPanta, "BOTON,{{137}}&Pendientes", 1002, 1014, BtnPdte;
+          nBtnPdte = FSalida;
+
+          |CONTROL_SIMPLE nPanta, "BOTON,{{137}}&Todas", 1016, 1028, BtnTodo;
+          nBtnTodo = FSalida;
+
+          |CONTROL_SIMPLE nPanta, "BOTON,{{137}}P&rocesar pendientes", 1030, 1047, BtnProc;
+          nBtnProc = FSalida;
+
+     ||     |CONTROL_SIMPLE nPanta, "BOTON,{{137}}Marca Desmarca anulada", 1078, 1098, BtnAnula;
+          nBtnAnula = FSalida;
+
+          |LEE 000#20u;
+
+          nRango =  4 + 8 + 16 + 32;
+          |LINEAL_SIMPLE #1#20, nRango, 1102, 2999, Min, Max, Evt;
+          |HAZ BtnPdte;
+          nGrid = FSalida;
+          enCtrFin = nGrid;
+          |HAZ EsperaFin;
+     |SINO;
+          |HAZ AdjPedido;
+     |FINSI;
+     |CIERRAT #20;
+|FPRO;

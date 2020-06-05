@@ -1,0 +1,266 @@
+|FICHEROS;
+     agifa019@ #19;
+     agifa142 #142;
+     dsm00010 #910;
+|FIN;
+
+|VARIABLES;
+     &eaArticulo = "";
+     &enAlta = 0;        || Si del mantenimiento que llama se
+                         || puede dar de alta
+     &eaEsTPV = 0;       || Cuando biene del agifa502 eaEsTPV=1
+
+     &eAlfa = "";
+     nEsCB = 0;
+     aLong = "";
+     aDef19 = "";
+     largo   = 0;
+     largo2  = 0;
+     fin     = 0;
+     ini     = 0;
+     i_k     = 0;
+     alfa    = "";
+     walfa   = "";
+     beta    = 0;
+     codi    = "";
+     long    = 0;
+     prov    = "";
+     prov2   = "";
+     cara    = "";
+     cara2   = "";
+     wguarda = "";
+     nume    = 0;
+     xalfa   = "";
+     nError = 0;
+
+     bcodart   = 0;
+     balfa     = "";
+     lt        = 0;
+     se        = "";
+     nu        = "";
+     li        = 0;
+     i_alfa    = "";
+     bbeta     = 0;
+     bprov     = "";
+     bprov2    = "";
+     nNum = 0;
+     aAlfa = "";
+     aRelle = "";
+     nPos = 0;
+     nSal = 0;
+|FIN;
+
+|PROCESO LlenaArticulo;  || Retorna FSalida = 0 si todo esta bien
+
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     |ABRE #910; |LEE 000#910p; |CIERRA #910;
+
+     nError = 0;
+
+     |SI #910#1 ! "S";
+          |SI #142#53 = "N";
+               |HAZ Normal;
+          |SINO;
+               |SI eaEsTPV = 1; |ACABA; |FINSI;||El tpv tiene su propio relleno
+
+               nEsCB = 1;
+               |HAZ AbreArticulo;
+               |SI FSalida = 0;
+                    |SELECT #4#19;
+                    #19#128 = eaArticulo;
+                    |LEE 000#19=;
+                    nEsCB = FSalida;
+               |FINSI;
+               |HAZ CierraArticulo;
+               |SI nEsCB ! 0; |HAZ Normal; |FINSI;
+          |FINSI;
+     |SINO;
+          |SI #910#2 [ 2;
+               eAlfa = eaArticulo;
+               |SUB_EJECUTA_NP "dsz99990";         || Por Puntos
+               |SI eAlfa = "-1";
+                    nError = 1;
+               |SINO;                        || RPRIEGO: 700000-4215
+                    eaArticulo = eAlfa;      || RPRIEGO: 700000-4215
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     enAlta = 0;
+     FSalida = nError;
+|FPRC;
+
+|PROCESO Normal;
+     xalfa = eaArticulo;
+     |QBF xalfa;
+
+     |SI #142#43 ! "S"; |O xalfa = ""; || Relleno codigo articulo
+          |ACABA;
+     |FINSI;
+
+     codi = "";
+     largo = #142#62;
+     beta = #142#44 + 100;
+     prov = (eaArticulo % beta);
+     long = #142#44 + 1;
+     cara = #142#45;
+     |SI #142#61 = "S";                 || Relleno a partir del proveedor
+          aLong = xalfa % A0;
+          |SI aLong < #142#44;
+               |MENAV "0000Longitud Proveedor incorrecta";
+               nError = 1;
+               |ACABA;
+          |FINSI;
+          nNum = (#142#62 - #142#44)*100 + 20 - (#142#62 - #142#44);
+          aAlfa = eaArticulo % nNum; |QBF aAlfa;
+          aRelle = #142#45 * (#142#62 - #142#44);
+          nPos = -1*(100 + #142#62 - #142#44);
+          aAlfa = (aRelle + aAlfa) % nPos;
+          eaArticulo = prov + aAlfa;
+     |SINO;
+          nNum = #142#62 + 100;
+          aAlfa = eaArticulo % nNum; |QBF aAlfa;
+          aRelle = #142#45 * #142#62;
+          nPos = -1*(100 + #142#62);
+          aAlfa = aRelle + aAlfa;
+          eaArticulo = aAlfa % nPos;
+     |FINSI;
+
+     |HAZ ExisteArti;
+     |SI FSalida = 0; |ACABA; |FINSI;
+
+     |SI #142#65 = "S"; |Y enAlta = 1;  || Automatio a partir del proveedor
+          |HAZ ArtiAutoPrv;
+     |FINSI;
+     |SI #142#61 = "S";|Y enAlta = 1;   || Relleno a partir de l Proveedor
+          wguarda = eaArticulo; |QBT wguarda;
+          alfa = eaArticulo;    |QBT alfa;
+          codi = alfa;
+          beta = long * 100 + 1;
+          alfa = (alfa % beta);
+          |SI alfa = "";
+               codi = codi + "zzzzzzzzzzzzzzzzzzzz";
+               eaArticulo = codi % 120;
+               |HAZ ultimo_art;
+          |FINSI;
+     |FINSI;
+
+     ||---...........ni idea para que es esto .....
+
+     |PARA i_k = largo; |SI i_k ] long; |HACIENDO i_k = i_k - 1;
+          beta = i_k * 100 + 1;
+          alfa = eaArticulo % beta; |QBF alfa;
+          |SI alfa ! ""; |SAL; |FINSI;
+     |SIGUE;
+     fin = i_k - long + 1;
+     |SI fin ! 0;        || Si es 0 codigo en blanco;
+          largo2 = largo + 1;
+          beta = largo2 - (fin + long);
+          alfa = cara * beta;
+          beta = long * 100 + fin;
+          codi = prov + alfa + (eaArticulo % beta);
+          eaArticulo = codi;
+     |FINSI;
+|FPRC;
+
+|PROCESO ultimo_art;
+     |HAZ AbreArticulo;
+     |SI FSalida = 0;
+          #19#0 = eaArticulo;
+          |LEE 111#19];
+          |SI FSalida = 0;
+               |LEE 111#19a;
+          |SINO;
+               |LEE 111#19u;
+          |FINSI;
+          beta = #142#44 + 100;
+          prov2 = (#19#0 % beta);
+          |QBT prov2;
+          |SI FSalida = 0;|Y prov2 = wguarda;
+               |PARA i_k = largo; |SI i_k ] 0; |HACIENDO i_k = i_k - 1;
+                    beta = i_k * 100 + 1;
+                    alfa = #19#0 % beta;
+                    walfa = alfa;|QBT walfa;
+                    cara2 = cara;|QBT cara2;
+                    |SI walfa = cara2;
+                         |SAL;
+                    |FINSI;
+               |SIGUE;
+               i_k = i_k + 1;
+               largo2 = largo + 1;
+               beta = (largo2 - i_k) + 1;
+               beta = i_k * 100 + beta;
+               alfa = #19#0 % beta; |QBF alfa;
+               nume = alfa;
+               nume = nume + 1;
+               eaArticulo = prov + nume;
+          |SINO;
+               alfa= wguarda + 1;
+               |QBT alfa;
+               eaArticulo = alfa;
+          |FINSI;
+     |FINSI;
+     |HAZ CierraArticulo;
+|FPRC;
+
+|PROCESO AbreArticulo;
+     |DDEF aDef19;
+     aDef19 = aDef19 + "agifa019";
+     |CARGA_DEF aDef19, agifa019@;
+     |SI FSalida = 0;
+          |ABRE #19;
+     |SINO;
+          aDef19 = "0000ERROR al cargar 'agifa019'.(dsz99951) [" + FSalida + "]";
+          |MENAV aDef19;
+          aDef19 = "";
+     |FINSI;
+|FPRC;
+
+|PROCESO CierraArticulo;
+     |SI aDef19 ! "";
+          |CIERRA #19; aDef19 = "";
+          |DESCARGA_DEF #agifa019@;
+     |FINSI;
+|FPRC;
+
+|PROCESO ExisteArti;
+     |HAZ AbreArticulo;
+     |SI FSalida = 0;
+          #19#0 = eaArticulo;
+          |LEE 000#19=;
+          nSal = FSalida;
+     |FINSI;
+     |HAZ CierraArticulo;
+     FSalida = nSal;
+|FPRC;
+
+|PROCESO ArtiAutoPrv;
+     balfa = eaArticulo;
+     |HAZ AbreArticulo;
+     |SI FSalida = 0;
+          bbeta = #142#44 + 100;        || LONG.INICIAL,DIGITOS PROV.
+          bprov = (eaArticulo % bbeta); || GUARDA EL COD.PROVEEDOR.
+          balfa = bprov + "z";          || MONTA EL COD.ARTICULO
+          #19Campo = balfa;             || PARA QUE BUSQUE EL ULTIMO.
+          |LEE 000#19];
+          |SI FSalida = 0;
+               |LEE 000#19a;
+          |SINO;
+               |LEE 000#19u;
+          |FINSI;
+          bprov2 = (#19Campo % bbeta);
+          |SI FSalida = 0; |Y bprov = bprov2;
+               bbeta = #142#44 + 1;
+               bbeta = bbeta * 100 + #142#62;
+               balfa = #19Campo % bbeta;
+               bcodart = balfa;
+               bcodart = bcodart + 1;
+               balfa = bprov + bcodart;
+               eaArticulo = balfa;
+          |SINO;
+               balfa = bprov + "1";
+               eaArticulo = balfa;
+          |FINSI;
+     |FINSI;
+     |HAZ CierraArticulo;
+|FPRC;

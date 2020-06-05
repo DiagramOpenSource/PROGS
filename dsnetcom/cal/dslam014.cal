@@ -1,0 +1,487 @@
+|FICHEROS;
+     dsnetm00 #0;
+     dsnetm07 #7;
+     dslam014 #1;
+
+     dslam009 #9;
+     dslam010 #10;
+
+     dslam016 #100;
+     labtraba@ #900;
+|FIN;
+
+|VARIABLES;
+     aOrigen = "";
+     aDestino = "";
+     aDestino2 = "";
+     aBase = "";
+     aAlfa = "";
+     aPeriodo = "";
+     aMes = "";
+     aAny = "";
+     nCol = 0;
+     nFila = 0;
+     aCol = "";
+     aFila = "";
+     aCelda = "";
+     nHoja = 0;
+     aHoja = "";
+     swNuevaHoja = 0;
+     aConceptos = "";
+     nConcepto = "";
+     aElConcepto = "";
+     nNume = 0;
+     nPos = 0;
+     aValor = "";
+     nEmpAnt = 0;
+     nConAnt = 0;
+     aMas = "";
+     aFich = "";
+     nEmpresa = 0;
+     nConvenio = 0;
+     fFecha = @;
+     aFecha = "";
+     aDescripcion = "";
+     aEmpresa = "";
+     aFichero = "";
+     aDirDestino = "";
+     aUsuDestino = "";
+     aXLSDestino = "";
+     nLibrosLocal = 0;
+     aCreaDestino = "";
+     aUsuario = "";
+     aSystem = "";
+|FIN;
+
+/*************** PROCESOS DESDE EL MANTENIMIENTO ****************************/
+
+|PROCESO Defecto; |TIPO 7;
+     fFecha = ~;
+     aFecha = fFecha;
+
+     aAlfa = aFecha % 402;
+     nNume = aAlfa;
+     #1#2 = nNume;
+     |PINTA #1#2;
+
+     aAlfa = aFecha % -104;
+     nNume = aAlfa;
+     #1#3 = nNume;
+     |PINTA #1#3;
+|FPRC;
+
+/****************************************************************************/
+
+/*************  PROCESOS PARA GRABAR LA HOJA EXCEL **************************/
+
+|PROCESO AbreLibro;
+     aOrigen  = aBase + "dsnetcom/plantillas/conceptos.xls";
+     |QBF aOrigen;
+     aDestino = "C:\DOCUMENTOS";                |RMKDIR aDestino;
+     aDestino = "C:\DOCUMENTOS\XLSLOCAL";       |RMKDIR aDestino;
+     aEmpresa = #100#0;
+     |QBF aEmpresa;    aEmpresa = "00000" + aEmpresa; aEmpresa = aEmpresa % -105;
+     aMes = #1#2;
+     |QBF aMes;  aMes = "00" + aMes;  aMes = aMes % -102;
+     aAny = #1#3;
+     |QBF aAny;
+     aFichero = aEmpresa + "_" + aAny + "_" + aMes + "_";
+     aFichero = aFichero + "conceptos" + "_TRA" + ".xls"
+     aDestino = aDestino + "\" + aFichero;
+     |QBF aDestino;
+
+     aFichero = aFichero - "_TRA";  || me hara falta despues al cerrar libro
+
+     |ENVIA_FICHERO aOrigen, aDestino;
+
+     |CARGADLL "agixl97.dll";
+     |SI FSalida < 0;
+          |MENAV "0000No se puede usar agixl97.dll";
+          |ACABA;
+     |FINSI;
+     aOrigen = aDestino;
+
+     |ALFACALLDLL "agixl97.dll", "carga_book", aDestino;
+|FPRC;
+
+|PROCESO GrabaCelda;
+     aCol = &nCol;   |QBF aCol;
+     aFila = nFila; |QBF aFila;
+     aCelda = aCol + aFila;
+     |QBF aValor;
+     aValor = aCelda + "," + aValor;
+     |ALFACALLDLL "agixl97.dll", "poke_dato", aValor;
+|FPRC;
+
+|PROCESO BuscaDescripcion;
+     #dslam010#1 = #100#0;
+     #dslam010#2 = #100#1;
+     #dslam010#3 = nConcepto;
+     |LEE 000#dslam010.=;
+     |SI FSalida = 0;
+          aDescripcion = #dslam010#5;
+     |SINO;
+          aDescripcion = "";
+     |FINSI;
+|FPRC;
+
+|PROCESO RellenaHoja;
+     |SI swNuevaHoja = 1;
+          nHoja = nHoja + 1;
+          |HAZ MensajeEstado2;
+     |FINSI;
+     aHoja = nHoja;
+     |QBF aHoja;
+     aAlfa = "Hoja" + aHoja;
+     |ALFACALLDLL "agixl97.dll", "selecciona_hoja", aAlfa;
+
+     |SI swNuevaHoja = 1;
+          nCol = 67;
+          nFila = 1;
+          aValor = #100#0;
+          |QBF aValor;
+          aValor = "00000" + aValor; aValor = aValor % -105;
+          aValor = aValor + " - " + #100#3;
+          |QBF aValor;
+          |HAZ GrabaCelda
+
+          nCol = 67;
+          nFila = 2;
+          aValor = #100#1;
+          |QBF aValor;
+          aValor = "000" + aValor; aValor = aValor % -103;
+          aValor = aValor + " - " + #100#4;
+          |QBF aValor;
+          |HAZ GrabaCelda
+
+          nCol = 69;
+          nFila = 1;
+          aValor = aMes;
+          |QBF aValor;
+          |HAZ GrabaCelda
+
+          nCol = 69;
+          nFila = 2;
+          aValor = aAny;
+          |QBF aValor;
+          |HAZ GrabaCelda
+
+          nCol = 67;
+          nFila = 3;
+          aValor = #100#8;
+          |QBF aValor;
+          |HAZ GrabaCelda
+
+          aConceptos = #100#7;
+          nCol = 67;
+          |PARA; |SI; |HACIENDO;
+               |QBF aConceptos;
+               |SI aConceptos = "";
+                    |SAL;
+               |FINSI;
+               nPos = 104;
+               aElConcepto = aConceptos % nPos;
+
+               nFila = 4;
+               nCol = nCol + 1;
+               aValor = aElConcepto - ",";
+               |HAZ GrabaCelda
+
+               nFila = 5;
+               nCol = nCol;
+               aAlfa = aElConcepto - ",";
+               nConcepto = aAlfa;
+               |HAZ BuscaDescripcion;
+               aValor = aDescripcion;
+               |HAZ GrabaCelda
+
+               aConceptos = aConceptos - aElConcepto;
+          |SIGUE;
+
+          nFila = 7;
+     |SINO;
+          nFila = nFila + 1;
+     |FINSI;
+
+     nCol = 64;
+
+     nFila = nFila;           || codigo trabajador
+     nCol = nCol + 1;
+     aValor = #100#2;
+     |QBF aValor;   aValor = "00000" + aValor;    aValor = aValor % -105;
+     |HAZ GrabaCelda
+
+     nFila = nFila;           || NIF
+     nCol = nCol + 1;
+     aValor = #100#6;
+     |QBF aValor;
+     |HAZ GrabaCelda
+
+     nFila = nFila;           || nombre trabajador
+     nCol = nCol + 1;
+     aValor = #100#5;
+     |QBF aValor;
+     |HAZ GrabaCelda
+|FPRC;
+
+|PROCESO dsnetm07;
+     || aXLSDestino es la ruta del libro final donde me llevare la hoja creada
+
+     aDirDestino = #dsnetm00#7;
+     |QBF aDirDestino;
+     aUsuDestino = #dsnetm07#0;
+     |QBF aUsuDestino;
+     aXLSDestino = aDirDestino
+     |MKDIR aXLSDestino;
+     aXLSDestino = aXLSDestino + aUsuDestino + "/"
+     |MKDIR aXLSDestino;
+
+     aCreaDestino = aXLSDestino + "CLI_CTOS" + "/";
+     |MKDIR aCreaDestino;
+     aCreaDestino = aXLSDestino + "ASE_HIS_CTOS" + "/";
+     |MKDIR aCreaDestino;
+     aCreaDestino = aXLSDestino + "ASE_OTROS" + "/";
+     |MKDIR aCreaDestino;
+
+     aXLSDestino = aXLSDestino + "ASE_CTOS" + "/";
+     |MKDIR aXLSDestino;
+     aXLSDestino = aXLSDestino + aFichero;
+     |RECIBE_FICHERO aDestino2, aXLSDestino;
+     |QUE_SISTEMA aSystem;
+     |SI aSystem = "ESBSD";
+          aSystem = "chmod 777 " + aXLSDestino;
+          |SYSTEM aSystem;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsnetm07;
+     #dsnetm07#1;
+     ;
+     "          ", "LABORAL ", nEmpresa;
+     "zzzzzzzzzz", "LABORAL ", nEmpresa;
+     ;
+     NULL, dsnetm07;
+|FIN;
+
+|PROCESO CierraLibro;
+     || aOrigen es la ruta del xls de trabajo (con el "_TRA")
+     || aDestino2 es la ruta del fichero que dejare copiado en local si se me pide
+     || que es ademas el que enviare al directorio donde se quedara
+     || aDestino no la uso mas
+
+     aDestino2 = aOrigen - "_TRA";
+     |RFBORRA aDestino2;
+
+     |ALFACALLDLL "agixl97.dll", "fichero_destino", aDestino2;
+
+     |ALFACALLDLL "agixl97.dll", "fin_book", "salva";
+     |DESCARGADLL "agixl97.dll";
+
+     |RFBORRA aOrigen;
+
+     nEmpresa = aEmpresa;
+     |BUCLE dsnetm07;
+
+     |SI #1#4 = "N";
+          |RFBORRA aDestino2;
+     |SINO;
+          nLibrosLocal = nLibrosLocal + 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO MensajeEstado3;
+     ||            2         3         4         5         6
+     ||            012345678901234567890123456789012345678901
+     |PINTA 2020, "³                                        ³";
+     |PINTA 2120, "³                                        ³";
+     |PINTA 2037, "FINALIZADA";
+     |PINTA 2126, "LA GENERACION DE LIBROS EXCEL";
+     |SI #1#4 = "N";
+          |PAUSA;
+     |FINSI;
+|FPRC;
+
+|PROCESO MensajeEstado2;
+     aAlfa = nHoja;
+     aAlfa = "Hoja " + aAlfa;
+     |PINTA 2134, "             ";
+     |PINTA 2137, aAlfa;
+|FPRC;
+
+|PROCESO MensajeEstado1;
+     aAlfa = #100#0; aAlfa = "00000" + aAlfa; aAlfa = aAlfa % -105;
+     aAlfa = "³ Creando libro Excel para Empresa " + aAlfa + " ³";
+     |PINTA 1920, "ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿";
+     |PINTA 2020, aAlfa;
+     |PINTA 2120, "³                                        ³";
+     |PINTA 2220, "ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ";
+|FPRC;
+
+|PROCESO grabaexcel;
+     swNuevaHoja = 0;
+     |SI nEmpAnt ! 0; |Y nEmpAnt ! #100#0;
+          |HAZ CierraLibro;
+     |FINSI;
+     |SI nEmpAnt = 0; |O nEmpAnt ! #100#0;
+          nHoja = 0;
+          |HAZ MensajeEstado1;
+          |HAZ AbreLibro;
+     |FINSI;
+     |SI nConAnt = 0; |O nConAnt ! #100#1;
+          nFila = 7;
+          swNuevaHoja = 1;
+     |FINSI;
+     |HAZ RellenaHoja;
+     nEmpAnt = #100#0;
+     nConAnt = #100#1;
+|FPRC;
+
+|DEFBUCLE leetemp;
+     #100#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, grabaexcel
+|FIN;
+
+|PROCESO CreaExcel;
+     nEmpAnt = 0;
+     nConAnt = 0;
+     swNuevaHoja = 0;
+     nHoja = 0;
+     nLibrosLocal = 0;
+     |ABRE #dslam010;
+     |BUCLE leetemp;
+     |HAZ CierraLibro;      || para cerrar el ultimo
+     |HAZ MensajeEstado3;
+     |SI nLibrosLocal > 0;
+          aAlfa = nLibrosLocal;
+          aAlfa = "    Se han generado " + aAlfa;
+          aAlfa = aAlfa + " libros Excel en la carpeta C:\DOCUMENTOS\XLSLOCAL";
+          |MENAV aAlfa;
+     |FINSI;
+     |CIERRA #dslam010;
+|FPRC;
+/****************************************************************************/
+
+/*************  PROCESOS PARA GRABAR EL TEMPORAL ****************************/
+
+|PROCESO BuscaUsuario;
+     |SELECT #3#dsnetm07;
+     #dsnetm07#2 = #900#0;
+     |LEE 000#dsnetm07.=;
+     |SI FSalida = 0;
+          aUsuario = #dsnetm07#0;
+     |FINSI;
+|FPRC;
+
+|PROCESO grabaTMP;
+     #100#0 = #900#0;         || codigo empresa
+     #100#1 = #900#87;        || codigo convenio
+     #100#2 = #900#1;         || codigo trabajador
+     #100#3 = #9#2;           || nombre empresa
+     #100#4 = #900#25;        || nombre convenio
+     #100#5 = #900#2;         || nombre trabajador
+     #100#6 = #900#7;         || nif
+     #100#7 = aConceptos;     || ristra de conceptos
+     |HAZ BuscaUsuario;
+     #100#8 = aUsuario;       || Usuario, grabo el primero que veo
+     |GRABA 020#100n;
+|FPRC;
+
+|PROCESO Conceptos;
+     aAlfa = #10#3;
+     aConceptos = aConceptos + aAlfa + ",";
+|FPRC;
+
+|DEFBUCLE dslam010;
+     #dslam010#1;
+     ;
+     nEmpresa, nConvenio, 101;
+     nEmpresa, nConvenio, 999;
+     ;
+     NULL, Conceptos;
+|FIN;
+
+|PROCESO dslam010;
+     aConceptos = "";
+     nEmpresa = #900#0;
+     nConvenio = #900#87;
+     |BUCLE dslam010;
+     |SI aConceptos ! "";
+          |HAZ grabaTMP;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE labtraba;
+     #labtraba@#1002;
+     44;
+     #9#1, 00001, "A";
+     #9#1, 99999, "A";
+     ;
+     NULL, dslam010;
+|FIN;
+
+|PROCESO labtraba;
+     |BUCLE labtraba;
+|FPRC;
+
+|DEFBUCLE dslam009
+     #dslam009#1;
+     ;
+     #1#0;
+     #1#1;
+     ;
+     NULL, labtraba;
+|FIN;
+
+|PROCESO GrabaTemporal;
+     aAlfa = Usuario;      |QBT aAlfa;    aAlfa = ("t" + aAlfa) % 108;
+     |NOME_DAT #100 aAlfa;
+     |DELINDEX #100;
+
+     |ABRE #100;
+     |BUCLE dslam009;
+     |CIERRA #100;
+|FPRC;
+
+/****************************************************************************/
+
+|PROCESO Tipo3; |TIPO 3;
+     |ABRE #0;
+     |LEE 040#0p;
+     |SI FSalida ! 0;  |DDEFECTO #0;  |FINSI;
+     |CIERRA #0;
+
+     |DBASS aBase;  |QBF aBase;
+
+     |SI #0#1 = "S";
+         aMas  = aBase + "laboral/def/labtraba.mas";
+         aFich = aBase + "laboral/fich/";
+     |SINO;
+         aMas  = aBase + "aginom/def/labtraba.mas";
+         aFich = aBase + "aginom/fich/";
+     |FINSI;
+
+     |CARGA_DEF aMas, labtraba@;
+     |SI FSalida ! 0;
+         aAlfa = "0000 No puedo cargar el Def " + aMas;
+         |MENAV aAlfa;
+         |ACABA;
+     |FINSI;
+
+     |PATH_DAT #900 aFich;
+
+     |ABRE #900;
+     |ABRE #dsnetm07;
+
+     |HAZ GrabaTemporal;
+
+     |HAZ CreaExcel;
+
+     |CIERRA #dsnetm07;
+     |CIERRA #900;
+
+     |DESCARGA_DEF #labtraba@;
+|FPRC;

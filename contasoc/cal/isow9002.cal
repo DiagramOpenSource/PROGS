@@ -1,0 +1,187 @@
+|FICHEROS;
+     isow9002 #904;
+
+     :/integral/def/dsam0000 #0;
+     :/integral/def/dsam0116 #116;
+     :/integral/def/dsam0117 #117;
+
+     :/contagen/def/canempre #800;
+     :/modelos/def/dsmom100  #810;
+     :/facturar/def/asclient #701;
+
+     dsaw0035@ #916;
+|FIN;
+
+|VARIABLES;
+     aBase       = "";
+     aAlfa       = "";
+     aMas        = "";
+     aID         = "";
+
+     nID         = 0;
+     nNume       = 0;
+     nFSalida    = 0;
+     nBanco      = 0;
+
+     {10} aPopup = "";
+
+     &eaEntidad   = "";
+     &eaSucursal  = "";
+     &eaCuenta    = "";
+     &eaDC        = "";
+     &eaCta       = "";
+     &eaPais      = "";
+     &eaIBAN      = "";
+     &enPanta9002 = 0;
+|FIN;
+
+|PROCESO Tipo12w9002;  |TIPO 12;
+     eaCta  = #isow9002#2 + #isow9002#3 + #isow9002#4 + #isow9002#5;
+     eaPais = #isow9002#8;
+     |HAZ CheqIBAN;
+
+     aAlfa = #isow9002#9;    |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |MENAV "0000El codigo IBAN puede ser erroneo.";
+     |FINSI;
+|FPRC;
+
+|PROCESO ConsEntidad;  |TIPO 66;
+     |DBASS aMas;  |QBF aMas;
+     aMas = aMas + "integral/def/dsaw0035.mas";
+     |CARGA_DEF aMas, dsaw0035@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |ABRE #916;
+     |SELECT #4#916;
+     #916#2 = #904#2;
+     #916#3 = #904#3;
+     #916#0 = #904#0;
+     |LEE 040#916];
+     |SI FSalida ! 0;
+         |LEE 040#916p;
+     |FINSI;
+     |CONSULTA_CLAVE #4#916;
+     nFSalida = FSalida;
+     |CIERRA #916;
+
+     |SI nFSalida = 0;
+         #904#0  = #916#0;   |PINTA #904#0;
+         #904#1  = #916#1;   |PINTA #904#1;
+         #904#2  = #916#2;   |PINTA #904#2;
+         #904#3  = #916#3;   |PINTA #904#3;
+         #904#7  = #916#5;   |PINTA #904#7;
+     |FINSI;
+
+     |DESCARGA_DEF #dsaw0035@;
+|FPRC;
+
+|PROCESO SinBanco;
+     |C_M #904#1,  1, "S";
+     |C_M #904#3,  1, "S";
+     |C_M #904#7,  1, "S";
+     |C_M #904#4,  1, "S";
+     |C_M #904#5,  1, "S";
+
+     |SI #904#2 = "    ";
+                                #904#0  = 0;   |PINTA #904#0;
+         |C_M #904#1,  1, "N";  #904#1  = "";  |PINTA #904#1;
+         |C_M #904#7, 1,  "N";  #904#7  = "";  |PINTA #904#7;
+         |C_M #904#3,  1, "N";  #904#3  = "";  |PINTA #904#3;
+         |C_M #904#5,  1, "N";  #904#5  = "";  |PINTA #904#5;
+         |C_M #904#4,  1, "N";  #904#4  = "";  |PINTA #904#4;
+     |FINSI;
+|FPRC;
+
+|PROCESO ChequeaBanco;
+     |SI #904#2 = "    ";  |ACABA;  |FINSI;
+
+     |ABRE #116;
+     |SELECT #4#116;
+     #116#2 = #904#2;
+     #116#3 = #904#3;
+     #116#0 = #904#0;
+     |LEE 040#116];
+     |SI FSalida ! 0;  |O #116#2 ! #904#2;  |O  #116#3 ! #904#3;
+         #116#2 = #904#2;
+         #116#3 = #904#3;
+         #116#0 = 0;
+         |LEE 040#116];
+         |SI FSalida ! 0;  |O #116#2 ! #904#2;  |O  #116#3 ! #904#3;
+             |MENAV "0000No existe el Banco. Creelo en gesti¢n de ficheros";
+             |ERROR;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     #904#0  = #116#0;   |PINTA #904#0;
+     #904#1  = #116#1;   |PINTA #904#1;
+     #904#7 = #116#5;   |PINTA #904#7;
+     |CIERRA #116;
+
+     aAlfa = #904#1;  |QBF aAlfa;
+     |C_M #904#1, 1, "N";
+     |SI aAlfa = "";  |C_M #904#1, 1, "S";  |FINSI;
+
+     aAlfa = #904#7;  |QBF aAlfa;
+     |C_M #904#7, 1, "N";
+     |SI aAlfa = "";  |C_M #904#7, 1, "S";  |FINSI;
+|FPRC;
+
+|PROCESO DC;
+     eaEntidad  = #904#2; |QBF eaEntidad;
+     eaSucursal = #904#3; |QBF eaSucursal;
+     eaCuenta   = #904#5; |QBF eaCuenta;
+     eaDC       = "";
+
+     |SI eaEntidad = "";  |Y eaSucursal = "";  |Y eaCuenta = "";
+         |ACABA;
+     |FINSI;
+
+     |HAZ CalculoDC;
+
+     |SI FSalida ! 10;
+         |SI #904#4 ! eaDC;
+             aAlfa = "     El Digito de Control deberia ser " + eaDC;
+             |MENAV aAlfa;
+         |FINSI;
+         |ACABA;
+     |FINSI;
+
+     #904#4 = eaDC;
+     |PINTA #904#4;
+|FPRC;
+
+|PROCESO Tipo7IBAN_Fw9002;  |TIPO 7;
+     aAlfa = #isow9002#9;   |QBF aAlfa;
+
+     |SI aAlfa ! "";  |ACABA;  |FINSI;
+
+     eaCta  = #isow9002#2 + #isow9002#3 + #isow9002#4 + #isow9002#5;
+     eaPais = #isow9002#8;
+     |HAZ CalcuIBAN;
+
+     #isow9002#9 = eaIBAN;
+|FPRC;
+
+|PROCESO Tipo0IBAN_Fw9002;  |TIPO 0;
+     eaCta  = #isow9002#2 + #isow9002#3 + #isow9002#4 + #isow9002#5;
+     eaPais = #isow9002#8;
+     |HAZ CheqIBAN;
+
+     aAlfa = #isow9002#9;    |QBF aAlfa;
+     |SI aAlfa ! eaIBAN;
+         |CONFI "0000SEl codigo IBAN puede ser erroneo, quiere calcularlo.";
+         |SI FSalida = 0;
+             #isow9002#9 = eaIBAN;
+             |PINTA #isow9002#9;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo80w9002;  |TIPO 80;
+     |SI enPanta9002 = 0;  |ACABA;  |FINSI;
+
+     FSalida = 2299;
+|FPRC;

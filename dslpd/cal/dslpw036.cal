@@ -1,0 +1,255 @@
+|FICHEROS;
+     dslpm001 #1;
+     dslpm505 #505;
+     dslpw036 #936;
+|FIN;
+
+|VARIABLES;
+     nCampoD      = 0;
+     nCampoH      = 0;
+     nPanta1      = 0;
+     nBoton1_1    = 0;
+     nBoton2_1    = 0;
+     nRango       = 0;
+     nPos1        = 0;
+     nPos2        = 0;
+     nLong        = 0;
+     nCaracter    = 0;
+     nPos         = 0;
+
+     aDirec       = "";
+     aLong        = "";
+     aLogo        = "";
+     aCaracter    = "";
+     aBase        = "";
+     aPathLogo    = "";
+     aOrigen      = "";
+     aDestino     = "";
+     aExtension   = "";
+     aIPRemoto    = "";
+     aTecla       = "";
+
+     &enEstado    = 0;
+     &enCliente   = 0;
+     &enModo      = 0;
+     &eaVarDni    = "";
+     &enCalcCif   = 0;
+|FIN;
+
+|| ------------------------------------------------------
+|| Procesos del Boton 1_2
+|| ------------------------------------------------------
+
+|PROCESO Evento505;
+     |SI FSalida = 1;
+         |LEE 000#505c;
+     |FINSI;
+
+     |SI FSalida = 4;
+         |PTEC 806;
+     |FINSI;
+|FPRC;
+
+|PROCESO Boton1_1;
+     |ESTADO_CONTROL nBoton1_1, "DISABLE";
+
+     nRango = 4 + 8 + 16;
+     nPos1  = 0602;
+     nPos2  = 2098;
+
+     |ABRE #505;
+     |SELECT #2#505;
+     #505#1 = #936#17;
+     |LEE 000#505=;
+
+     |LINEAL_SIMPLE #2#505, nRango, nPos1, nPos2, NULL, NULL, Evento505;
+
+     #936#17 = #505#1;
+     |PINTA #936#17;
+     |CIERRA #505;
+
+     |ESTADO_CONTROL nBoton1_1, "ENABLE";
+|FPRC;
+
+|| ------------------------------------------------------
+|| Procesos del Boton 2_1
+|| ------------------------------------------------------
+
+|PROCESO Boton2_1;
+     #936#18 = "";  |PINTA #936#18;
+
+     aDirec = "F";
+     |BROWSE aDirec;
+     aDirec = aDirec % 290;  |QBF aDirec;
+     |SI aDirec = "";  |ACABA;  |FINSI;
+
+     aLong = aDirec % 0;
+     nLong = aLong;
+     aLogo = "";
+     |PARA nCaracter = 1;  |SI nCaracter [ nLong;  |HACIENDO nCaracter = nCaracter + 1;
+           nPos      = (100 * nCaracter) + 1;
+           aCaracter = aDirec % nPos;
+           |SI aCaracter = "/";  |O aCaracter = "\";
+               aLogo = "";
+           |SINO;
+               aLogo = aLogo + aCaracter;
+           |FINSI;
+     |SIGUE;
+
+     |DBASE aBase;  |QBF aBase;
+     aPathLogo = aBase + "documentos/logos";            |MKDIR aPathLogo;
+     aPathLogo = aBase + "documentos/logos/clientes";   |MKDIR aPathLogo;
+     aPathLogo = aBase + "documentos/logos/clientes/";
+
+     aOrigen    = aDirec;
+     aExtension = (aDirec % -103) < "";
+     aDestino   = aPathLogo + (("00000" + #936#0) % -105) + "." + aExtension;
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+     |SI aIPRemoto ! "";
+         |RECIBE_FICHERO aOrigen, aDestino;
+     |SINO;
+         |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+
+     #936#18 = aDestino;  |PINTA #936#18;
+|FPRC;
+
+|| ------------------------------------------------------
+|| Procesos del Incio del Programa
+|| ------------------------------------------------------
+
+|PROCESO BotonesPanta1;
+     |CONTROL_SIMPLE nPanta1, "BOTON,{{155}}", 2689, 2691, Boton1_1;
+     nBoton1_1 = FSalida;
+
+     |CONTROL_SIMPLE nPanta1, "BOTON,{{136}}", 2395, 2397, Boton2_1;
+     nBoton2_1 = FSalida;
+|FPRC;
+
+|PROCESO CodCliente;
+     |SI enModo ! 1;  |ACABA;  |FINSI;
+
+     |SELECT #2#1;
+     #1#1 = #936#0;
+     |LEE 000#1=;
+     |SI FSalida = 0;
+         |MENAV "0000 El Codigo ya Existe.";
+         |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO LetraDni;  |TIPO 6;
+     |SI FSalida = 10;
+         eaVarDni   = #936Campo;
+         enCalcCif  = 1;
+         |HAZ CalculoDNI;
+         #936Campo = eaVarDni;
+         |PINTA #936Campo;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     eaVarDni  = #936Campo;
+     enCalcCif = 0;
+     |HAZ CalculoDNI;
+     eaVarDni = (eaVarDni + "            ") % 112;
+     |SI #936Campo ! eaVarDni;
+         |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+         |SI FSalida = 0;
+             #936Campo = eaVarDni;  |PINTA #936Campo;
+             |ERROR;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo12;  |TIPO 12;
+|FPRC;
+
+|PROCESO Tipo80;  |TIPO 80;
+     FSalida = 2899;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #1;
+     |SI enModo ! 1;
+         #1#0 = enEstado;
+         #1#1 = enCliente;
+         |LEE 101#1=;
+         |SI FSalida ! 0;  |DDEFECTO #1; |FINSI;
+
+         |PARA nCampoD = 1;  |SI nCampoD [ 18;  |HACIENDO nCampoD = nCampoD + 1;
+               nCampoH = nCampoD - 1;
+               #936nCampoH = #1nCampoD;
+         |SIGUE;
+
+         #936#18 = #1#38;
+     |FINSI;
+
+     |SI #1#19 = "S";
+         |MENAV "0000 El Cliente viene de la Exportacion, solo modificaremos membrete, e_mail y actividad";
+     |FINSI;
+
+     |CABEZA "Clientes";
+
+     |PINPA #0#936;  nPanta1 = FSalida;
+     |PINDA #0#936;
+
+     |HAZ BotonesPanta1;
+
+     |C_M #936#0, 1, "S";
+     |SI enModo ! 1;
+         |C_M #936#0, 1, "N";
+     |FINSI;
+
+     |SI #1#19 = "S";
+         |C_M #936#0,  1, "N";
+         |C_M #936#1,  1, "N";
+         |C_M #936#2,  1, "N";
+         |C_M #936#3,  1, "N";
+         |C_M #936#4,  1, "N";
+         |C_M #936#5,  1, "N";
+         |C_M #936#6,  1, "N";
+         |C_M #936#7,  1, "N";
+         |C_M #936#8,  1, "N";
+         |C_M #936#9,  1, "N";
+         |C_M #936#10, 1, "N";
+         |C_M #936#11, 1, "N";
+         |C_M #936#12, 1, "N";
+         |C_M #936#13, 1, "N";
+         |C_M #936#14, 1, "N";
+         |C_M #936#15, 1, "N";
+     |FINSI;
+
+     |ENDATOS #1#936;
+
+     |SI FSalida = 0;
+         #1#0 = enEstado;
+         #1#1 = #936#0;
+         |LEE 101#1=;
+         |SI FSalida ! 0;
+             |DDEFECTO #1;
+             #1#0 = enEstado;
+             #1#1 = #936#0;
+             |GRABA 020#1b;
+         |FINSI;
+
+         |PARA nCampoD = 1;  |SI nCampoD [ 18;  |HACIENDO nCampoD = nCampoD + 1;
+               nCampoH = nCampoD - 1;
+               #1nCampoD = #936nCampoH;
+         |SIGUE;
+         #1#38 = #936#18;
+         |GRABA 020#1a;
+         |LIBERA #1;
+
+         enCliente = #1#1;
+     |FINSI;
+     |CIERRA #1;
+
+     |FIN_CONTROL_WINDOWS nBoton1_1;
+     |FIN_CONTROL_WINDOWS nBoton2_1;
+
+     |PULSATECLA;
+|FPRO;

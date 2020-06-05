@@ -1,0 +1,219 @@
+|FICHEROS;
+     labnct08 #0;
+     labnct10;
+     labnct18 #100,MANTE;
+
+     labempre;
+     labtraba;
+|FIN;
+
+|VARIABLES;
+     nOpcionSS = 0;
+     aParam = "";
+     nFecha = 0;
+     aFecha = "";
+     fFecha = @;
+     aFechaDesde = "";
+     fFechaDesde = @;
+     aFechaHasta = "";
+     fFechaHasta = @;
+     aAlfa = "";
+
+     swSigue = 0;
+     seleccio = 0;
+     swRegistrado = 0;
+     nOperacion = 0;
+     &eaOpcion = "";
+     &eaVengoDe = "";
+|FIN;
+
+|PROCESO Defectos;
+     fFecha = ~;
+     nFecha = fFecha;
+     nFecha = nFecha - 14;
+     fFecha = nFecha;
+     aFecha = fFecha;
+     #0#0 = aFecha;
+
+     fFecha = ~;
+     nFecha = fFecha;
+     nFecha = nFecha + 14;
+     fFecha = nFecha;
+     aFecha = fFecha;
+     #0#1 = aFecha;
+|FPRC;
+
+|PROCESO sel_min;
+     #100#6 = " ";
+     #100#0 = 00001;
+     #100#1 = 00001;
+|FPRC;
+
+|PROCESO sel_max;
+     #100#6 = "*";
+     #100#0 = 99999;
+     #100#1 = 99999;
+|FPRC;
+
+|PROCESO Busca;
+     swRegistrado = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE BuscaRegistro;
+     #labnct10#1;
+     ;
+     #labtraba#0, #labtraba#1, 001, nOperacion, "01.01.2010", "        ";
+     #labtraba#0, #labtraba#1, 999, nOperacion, "31.12.2999", "zzzzzzzz";
+     ;
+     NULL, Busca;
+|FIN;
+
+|PROCESO Registro;
+     swRegistrado = 0;
+     |ABRE #labnct10;
+     |SI aParam = "A";
+          nOperacion = 001;
+     |FINSI;
+     |SI aParam = "B";
+          nOperacion = 002;
+     |FINSI;
+     |BUCLE BuscaRegistro;
+     |CIERRA #labnct10;
+|FPRC;
+
+|PROCESO labtraba;
+     || este sera el proceso del pase
+
+     swSigue = 1;        || por defecto SI
+
+     #labempre#0 = #labtraba#0;
+     |LEE 000#labempre.=;
+
+     |SI aParam = "A";
+          aFecha = #labtraba#36;
+     |FINSI;
+     |SI aParam = "B";
+          aFecha = #labtraba#37;
+     |FINSI;
+     fFecha = aFecha;
+
+     fFechaDesde = #0#0;
+     fFechaHasta = #0#1;
+     |SI fFechaDesde [ fFecha; |Y fFecha [ fFechaHasta;
+          || entra
+     |SINO;
+          swSigue = 0;
+     |FINSI;
+
+     || aqui se seleccionaran los trabajadores y grabare el temporal
+
+     |SI swSigue = 1;
+          seleccio = 1;
+
+          #100#0 = #labtraba#0;
+          #100#1 = #labtraba#1;
+          #100#2 = #labempre#2;
+          #100#3 = #labtraba#2;
+          #100#4 = aFecha;
+          #100#5 = #labtraba#45;
+          swRegistrado = 0;
+          |HAZ Registro;
+          |SI swRegistrado = 1;
+               #100#6 = "*";
+          |SINO;
+               #100#6 = " ";
+          |FINSI;
+          |GRABA 020#100n;
+          |LIBERA #100;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE labtraba;
+     #labtraba#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, labtraba;
+|FIN;
+
+|PROCESO lectura;             || INICIO DEL CALCULO
+     |ABRE #labempre;
+     |ABRE #labtraba;
+
+     |BUCLE labtraba;
+
+     |CIERRA #labtraba;
+     |CIERRA #labempre;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     |QBF aParam;
+
+     aAlfa = Usuario;         |QBF aAlfa;
+     aAlfa = "t" +  aAlfa;
+     |NOME_DAT #100 aAlfa;
+     |DELINDEX #100;
+
+     |CLS;
+     |SI aParam = "A";
+          |CABEZA "Altas de Trabajadores Según Selección por Fechas";
+     |FINSI;
+     |SI aParam = "B";
+          |CABEZA "Bajas de Trabajadores Según Selección por Fechas";
+     |FINSI;
+     |HAZ Defectos;
+     |PINPA #0#0;
+
+     |SI aParam = "A";
+          |ATRI R;
+          |PINTA 0830, "ALTAS";
+          |ATRI 0;
+
+          |PINTA 1239, "alta";
+          |PINTA 1439, "alta";
+     |FINSI;
+
+     |SI aParam = "B";
+          |ATRI R;
+          |PINTA 0830, "BAJAS";
+          |ATRI 0;
+
+          |PINTA 1239, "baja";
+          |PINTA 1439, "baja";
+     |FINSI;
+
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+
+     |SI FSalida = 0;
+          |ABRE #100;
+          |HAZ lectura;
+          |CIERRA #100;
+     |SINO;
+          |ACABA;
+     |FINSI;
+
+     || si se va a presentar un lineal con la seleccion este es el momento
+
+     |SI seleccio = 0;
+          |ATRI P;
+
+          |SI aParam = "A";
+               |MENAV "    No se han encontrado altas de trabajadores en las fechas seleccionadas";
+          |FINSI;
+          |SI aParam = "B";
+               |MENAV "    No se han encontrado bajas de trabajadores en las fechas seleccionadas";
+          |FINSI;
+
+          |ATRI 0;
+     |SINO;
+          eaOpcion = aParam;
+          |ENTLINEAL #2#100, -2, 4, 22, 1, sel_min, sel_max;
+     |FINSI;
+
+     |DELINDEX #100;
+     |CIERRA #100;
+|FPRO;

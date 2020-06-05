@@ -1,0 +1,271 @@
+|FICHEROS;
+     psion027 #0;
+     psion025 #25; || Parametros
+     psion026 #26; || Historico
+|FIN;
+
+|VARIABLES;
+     {1}aLocal = "";
+     aServidor = "";
+     aFrom = "";
+     aTo = "";
+     aSubject = "";
+     aDjunto = "";
+     aIP = "";
+
+     aAlf3 = "";
+     aAlf4 = "";
+     nSwCorrecto = 0;
+     nSwMensa = 0;
+     aDes = "";
+     nConta = 0;
+     i = 0;
+     guarda = 0;
+     nCampo = 0;
+ {90}Valor = "";
+     aReg = "";
+     aLon = "";
+     aDato = "";
+     nPos = 0;
+     aLetra = "";
+     aTab = "";
+
+     aFic = "";
+     nHandle = 0;
+     aDir = "";
+     aDSCorreo = "";
+     aUsu = "";
+     aPwd = "";
+     aProxyEnt = "";
+     aNombre = "";
+     aAlfa = "";
+     aMensaje = "";
+     aPath = "";
+     nCorreos = 0;
+     nError = 0;
+     aCar = "";
+|FIN;
+
+|PROCESO SacaNombre;     || Busca el ";" para sacar el nombre
+     aAlfa = "";
+     aLon = aNombre % A0;
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = i * 100 + 1;
+          aCar = aNombre % nPos;
+          |SI aCar = ";"; |SAL; |FINSI;
+          aAlfa = aAlfa + aCar;
+     |SIGUE;
+     aNombre = aAlfa;
+|FPRC;
+
+|PROCESO Dato;
+     IValor = Valor1<-;
+     |PARA i = 1; |SI i [ 90; |HACIENDO i = i + 1;
+          Valor = "";
+          IValor = IValor + 1;
+     |SIGUE;
+     nCampo = 1;
+     IValor = Valor1<-;
+     aLon = aDato % A0;
+     aReg = "";
+     aTab = &9;
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = i * 100 + 1;
+          aLetra = aDato % nPos;
+          |SI aLetra = aTab;
+               Valor = aReg;
+               aReg = "";
+               nCampo = nCampo + 1;
+               IValor = IValor + 1;
+          |SINO;
+               aReg = aReg + aLetra;
+          |FINSI;
+          |SI nCampo > 90; |SAL; |FINSI;     || Por si.... :)
+     |SIGUE;
+     Valor = aReg;
+|FPRC;
+
+|PROCESO ProcesaCorreo;
+     nSwCorrecto = 0;
+     aFic = aNombre;
+     |XABRE "U", aFic, nHandle;
+     |SI FSalida ! 0;
+          aMensaje = "0000No puedo abrir adjunto: " + aFic;
+          |SI nSwMensa = 1;
+               |MENSA aMensaje;
+          |SINO;
+               |MENAV aMensaje;
+          |FINSI;
+     |SINO;
+          |XLEE nHandle, 250, aDato;
+          |SI FSalida ] 0;
+               |HAZ Dato;
+               |SI Valor1 = "G";
+                    nSwCorrecto = 1;
+               |FINSI;
+          |FINSI;
+          |XCIERRA nHandle;
+     |FINSI;
+     |SI nSwCorrecto = 0;
+          aMensaje = "0000ERROR al procesar adjunto, archivo incorrecto: " + aFic;
+          |SI nSwMensa = 1;
+               |MENSA aMensaje;
+          |SINO;
+               |MENAV aMensaje;
+          |FINSI;
+     |SINO;
+          aDes = #25#14; |QBF aDes;
+          |QBT Valor2;
+          |QBT Valor3;
+          |QBT Valor4;
+          aAlf3 = Valor3;
+          aAlf4 = Valor4;
+          aAlf3 = (aAlf3 % 102) + (aAlf3 % 402) + (aAlf3 % 704)
+          aAlf4 = (aAlf4 % 102) + (aAlf4 % 402) + (aAlf4 % 702)
+          aDes = aDes + "/" + Valor2 + aAlf3 + aAlf4 + ".txt";
+          |COPIA_FICHERO aNombre, aDes;
+          |SI FSalida = 0;
+               |ABRE #26;
+               #26#0 = Valor2;
+               aAlfa = (Valor3 % 102) +":" + (Valor3 % 402) + ":" + (Valor3 % 704);
+               #26#1 = aAlfa;
+               #26#2 = Valor4;
+               #26#3 = "N";
+               #26#4 = Valor5;
+               |GRABA 020#26n;
+               |CIERRA #26;
+          |SINO;
+               aMensaje = "0000ERROR al mover adjunto al destino "+ aDes;
+               |SI nSwMensa = 1;
+                    |MENSA aMensaje;
+               |SINO;
+                    |MENAV aMensaje;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Recoge;
+     aDir = #25#14;       |QBF aDir;          || directorio destino
+     |MKDIR aDir;   ||He de asegurarme que exista el directorio destino
+
+     |SI #25#20 = "F";
+          aDSCorreo = #25#19;  |QBF aDSCorreo;
+     |SINO;
+          |SI #25#20 = "L";   |IP_REMOTO aDSCorreo;    |FINSI;
+          |SI #25#20 = "S";   |IP_LOCAL aDSCorreo;     |FINSI;
+     |FINSI;
+     aUsu = #25#12;       |QBF aUsu;          || usuario
+     aPwd = #25#13;       |QBF aPwd;          || password
+     aProxyEnt = #25#11;  |QBF aProxyEnt;     || servidor proxy entrante
+     aNombre = "";
+
+     aAlfa = "0000Recibiendo [" + aDSCorreo + "]";
+     |MENSA aAlfa;
+     |DSCORREO_RECIBE aDSCorreo, aProxyEnt, aUsu, aPwd, aDir, aNombre;
+     nError = FSalida;
+     |HAZ SacaNombre;
+
+     |BLIN 4;
+     |SI nError < 0;
+          aMensaje = "    Problemas al recibir correo ..." + nError;
+          |SI nSwMensa = 1;
+               |MENSA aMensaje;
+          |SINO;
+               |MENAV aMensaje;
+          |FINSI;
+     |FINSI;
+     |SI nError = 0;
+          aMensaje = "    Correo recibido con exito [" + nError + "][" + aNombre + "]";
+          |MENSA aMensaje;
+     |FINSI;
+     |SI nError = 1;
+          |SI nCorreos = 1;
+               |SI nSwMensa = 1;
+                    |MENSA "    No hay correo ...";
+               |SINO;
+                    |MENAV "    No hay correo ...";
+               |FINSI;
+          |SINO;
+               i = nCorreos - 1;
+               aAlfa = "0000" + i + " Correos recibidos...";
+               |SI nSwMensa = 1;
+                    |MENSA aAlfa;
+               |SINO;
+                    |MENAV aAlfa;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO EnviaCorreo;
+     |SI #25#20 = "F";
+          aIP = #25#19;  |QBF aIP;
+     |SINO;
+          |SI #25#20 = "L";   |IP_REMOTO aIP;    |FINSI;
+          |SI #25#20 = "S";   |IP_LOCAL aIP;     |FINSI;
+     |FINSI;
+
+     |ESPECIFICA "RBASS", aLocal;
+     aDjunto = aLocal + "vacio.txt";
+     |XABRE "CW", aDjunto, nHandle;
+     |XCIERRA nHandle;
+
+     aServidor = #25#21; |QBF aServidor;
+     aFrom = #25#22; |QBF aFrom;
+     aTo = #25#24; |QBF aTo;
+     i = nCorreos - 1;
+     aMensaje = "Correos recibidos: " + i;
+     aSubject = "Correo automatico";
+     |SI aTo ! "";
+          |DSCORREO_ENVIA aIP, aServidor, aFrom, aTo, aSubject, aMensaje, aDjunto;
+          |SI FSalida ! 0;
+               aAlfa = "0000ERROR al enviar correo";
+               |MENSA aAlfa;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO RecogeCorreo;
+     nCorreos = 0;
+     |PARA; |SI; |HACIENDO;
+          nError = 0;
+          nCorreos = nCorreos + 1;
+          |HAZ Recoge;
+          |SI nError ! 0; |SAL; |FINSI;
+
+          |MENSA "2403Procesando...";
+          aPath = #25#14;
+          |QBF aPath;
+          aPath = aPath + "/";
+
+          |HAZ ProcesaCorreo;
+          |SLEEP 2;
+     |SIGUE;
+
+     aAlfa = #25#22; |QBF aAlfa;
+     |SI nCorreos > 1; |Y aAlfa ! "";
+          |HAZ EnviaCorreo;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#0 = "SI";
+          |HAZ RecogeCorreo;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #25; |LEE 000#25p; |CIERRA #25;
+
+     |SI PARAMETRO = "";
+          nSwMensa = 1;
+     |FINSI;
+
+     |SI nSwMensa = 1;
+          #0#0 = "SI";
+          |HAZ Tipo3;
+     |SINO;
+          |MANTE #0;
+     |FINSI;
+|FPRO;

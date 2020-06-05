@@ -1,0 +1,263 @@
+|FICHEROS;
+     pdfcontr #0;
+|FIN;
+
+|VARIABLES;
+     aUsuario = "";
+     aRuta = "";
+     aRuta0 = "";
+     nSw = 0;
+     aLon = "";
+     i = 0;
+     nPos = 0;
+     aFic = "";
+     aAlfa = "";
+     aAlfa1 = "";
+     aPath = "";
+     aDes = ""
+     aOrigen = "";
+     aDestino = "";
+     nCanal = 0;
+     aLinea = "";
+     aTipoArchivo = "";
+     FEstado = 0;
+     aIP = "";
+
+ {-1}menu = "";
+     menu1 = "2310";
+     menu2 = "3";
+     menu3 = "";
+     menu4 = "AMS";
+     menu5 =" Busqueda Automatica ";
+     menu6 ="   Busqueda Manual   ";
+     menu7 ="        Salir        ";
+     nOpcion = 0;
+  {1}version = "";
+     aLongitud = "";
+     nLongitud = 0;
+     aCaracter = "";
+     nCaracter = 0;
+     &aVengoDe = "";
+     swError = 0;
+|FIN;
+
+|PROCESO LeeConfig;
+     aOrigen = "C:\pdfconf.txt";
+     |SI FSalida ] 0;
+          |XABRE "C", aOrigen, nCanal;
+          |SI FSalida ] 0;
+               |XLEE nCanal, 250, aLinea;
+          |FINSI;
+          |XCIERRA nCanal;
+          |QBF aLinea;
+     |FINSI;
+     |RFBORRA aOrigen;
+|FPRC;
+
+|PROCESO CopiaLocal;          || ME TRAIGO EL nc.exe DEL SERVIDOR A LOCAL
+     aIP = "";
+     |IP_REMOTO aIP;
+     |DBASE aOrigen;
+     aOrigen = aOrigen + "pdf/nc.exe";
+     aDestino = "C:\ds\ut\nc.exe";
+     |QBF aOrigen;
+     |QBF aDestino;
+     |XABRE "CE", aDestino, nCanal;
+     |SI FSalida < 0;         || FSalida = 0: no existe el nc.exe en C:\ds\ut
+          |SI aIP ! "";
+               |ENVIA_FICHERO aOrigen, aDestino;
+          |SINO;
+               |COPIA_FICHERO aOrigen, aDestino;
+          |FINSI;
+     |FINSI;
+     |XCIERRA nCanal;
+|FPRC;
+
+|PROCESO CopiaRemota;         || COPIO EL pdfcont.bat DEL SERVIDOR A C:\
+     aIP = "";
+     |IP_REMOTO aIP;
+     |DBASE aOrigen;
+     aOrigen = aOrigen + "pdf/pdfconf.bat";
+     aDestino = "C:\pdfconf.bat";
+     |QBF aOrigen;
+     |QBF aDestino;
+     |SI aIP ! "";
+          |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+          |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+|FPRC;
+
+|PROCESO CompruebaRuta;
+     |QBF aPath;
+     |XABRE "CE", aPath, nCanal;
+     |SI aPath = ""; |O FSalida < 0;
+          |XCIERRA nCanal;
+          aAlfa = "    No se ha encontrado el directorio donde esta instalado ";
+          aAlfa = aAlfa + "Adobe Acrobat Reader. ";
+          |MENAV aAlfa;
+          aAlfa = "    Debera efectuar la instalacion manualmente.";
+          |MENAV aAlfa;
+          swError = 1;
+          #0#1 = "ERROR: APLICACION NO ENCONTRADA";
+          |PINTA #0#1;
+          nOpcion = 3;        || pa que se salga
+     |FINSI;
+|FPRC;
+
+|PROCESO ExtraePath;
+     aPath = version1;
+     aLongitud = aPath % 0;
+     nLongitud = aLongitud;
+     |PARA nPos = 1; |SI nPos [ nLongitud; |HACIENDO nPos = nPos + 1;
+          nCaracter = (nPos * 100) + 1;
+          aCaracter = aPath % nCaracter;
+          |SI aCaracter = ",";
+               nPos = nLongitud - nPos;
+               nPos = nPos + 100;
+               nPos = (-1) * nPos;
+               aPath = aPath % nPos;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+
+     aPath = aPath - "[";
+     aPath = aPath - "]";
+     |QBF aPath;
+     #0#1 = aPath;
+     |PINTA #0#0;
+     |PINTA #0#1;
+|FPRC;
+
+|PROCESO Localiza;
+     swError = 0;
+     ||aAlfa = "C:\assoc .pdf > pdfconf.txt";
+     ||RSYSTEM aAlfa;
+     ||HAZ LeeConfig;
+     ||aLinea = aLinea - ".pdf=";
+     ||QBF aLinea;
+
+     version1 = "AcroExch.Document";
+     |ESPECIFICA "VERSION_PROGRAMA",version;
+     |HAZ ExtraePath;
+     |SI aPath = "NO LOCALIZADO";
+          version1 = "AcroExch.App";
+          |ESPECIFICA "VERSION_PROGRAMA",version;
+          |HAZ ExtraePath;
+     |FINSI;
+
+     |SI aPath ! "NO LOCALIZADO";
+          |HAZ CompruebaRuta;
+          |SI swError = 0;          || todo ok
+               |HAZ MensajeOK;
+               |PAUSA;
+          |SINO;
+               |ACABA;             || hay Acrobat pero no lo encuentra
+          |FINSI;
+     |SINO;
+          swError = 2;
+          |HAZ MensajeFallo;       || se supone que no esta instalado
+          |PAUSA;                  || el Acrobat
+          #0#1 = "ERROR: APLICACION NO INSTALADA";
+          |PINTA #0#1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Manual;
+     aRuta = "F";
+     aFic = "";
+     |BROWSE aRuta;
+
+     |SI aRuta ! "F";
+          nSw = 0;
+          aRuta0 = "";
+          aLon = aRuta % A0;
+          |PARA i = 1; |SI i < aLon; |HACIENDO i = i + 1;
+               nPos = -1 * (i * 100 + 1);
+               aAlfa = aRuta % nPos;
+               |SI aAlfa = "/"; |O aAlfa = "\"; |O nSw = 1;
+                    nSw = 1;
+                    aRuta0 = aAlfa + aRuta0;
+               |SINO;
+                    aRuta0 = aAlfa + aRuta0;
+                    aFic = aAlfa + aFic;
+               |FINSI;
+          |SIGUE;
+          |QBT aFic;
+          aFic = aFic < "";
+          aDes = aPath + aFic;
+          aDes = aDes < "";
+          #0#1 = aRuta0;
+          |PINTA #0#1;
+     |FINSI;
+|FPRC;
+
+|PROCESO MensajeOK;
+     |CUADRO 16212062;
+     |ATRI I;
+     |PINTA 1723, "   Se ha configurado correctamente    ";
+     |PINTA 1823, "   el sistema para la impresion de    ";
+     |PINTA 1923, "      documentos en formato PFD       ";
+     |ATRI 0;
+|FPRC;
+
+|PROCESO MensajeFallo;
+     |CUADRO 16162166;
+     |ATRI I;
+     |PINTA 1717, " No se ha podido localizar  de manera automatica ";
+     |PINTA 1817, " la carpeta donde esta instalado Acrobat Reader. ";
+     |PINTA 1917, " Compruebe que la aplicacion esta instalada y si ";
+     |PINTA 2017, "  es asi, efectue la busqueda de manera manual.  ";
+     |ATRI 0;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #0;
+     |CLS;
+     |CABEZA "CONFIGURACION IMPRESION PDF";
+     |PINPA #0#0;
+     aIP = "";
+     |IP_REMOTO aIP;
+     |QBF aIP;
+     #0#0 = aIP;
+     |ABRE #0;
+     |LEE 101#0=;
+     aAlfa = #0#1;
+     |QBF aAlfa;
+     FEstado = FSalida;
+     aAlfa1 = aAlfa % 105;
+     |SI FSalida ! 0; |O aAlfa = ""; |O aAlfa1 = "ERROR"; |O aVengoDe ! "";
+          |HAZ Localiza;
+          aAlfa = aPath % 105;
+          |SI aPath = ""; |O aAlfa = "ERROR";
+               aVengoDe = "";      || PARA QUE ENTRE EN EL MENU
+          |FINSI;
+     |FINSI;
+     |PINDA #0#0;
+     |SI aVengoDe = "";
+          |PARA; |SI; |HACIENDO;
+               |BLANCO 16152367;
+               |MENU menu;
+               nOpcion = FSalida;
+               |SI nOpcion = 1;
+                    |HAZ Localiza;
+               |FINSI;
+               |SI nOpcion = 2;
+                    |HAZ Manual;
+                    swError = 0;
+               |FINSI;
+               |SI nOpcion = 3; |O FSalida = 0;
+                    |SAL;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+     aAlfa = #0#1;
+     |QBF aAlfa;
+     |SI aAlfa ! "";
+          |SI FEstado ! 0;
+               |GRABA 020#0n;
+          |SINO;
+               |GRABA 020#0a;
+          |FINSI;
+     |FINSI;
+|FPRO;

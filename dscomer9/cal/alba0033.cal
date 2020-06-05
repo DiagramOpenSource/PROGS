@@ -1,0 +1,785 @@
+|FICHEROS;
+     alba0033 #0;
+     alba0034 #1;   || Cabecera.
+     alba0035 #2;   || Lineas.
+     agifa024 #3;   || Clientes.
+     agifa019 #4;   || Articulos.
+     psion013 #6;   || Cobros Facturas.
+     psion015 #7;   || Movimientos de Almacen.
+     psion019 #8;   || Cobros Albaranes.
+     alba0031 #9;   || Mto. Pase Datos Psion.
+     agifa321 #14;  || Divisas-Parametros.
+     agifa324 #15;  || Divisas-Divisas.
+     dsm00134 #10;
+|FIN;
+
+|CAMPOS;
+#9#29 path;
+|FIN;
+
+|VARIABLES;
+     &enTiva = 0;
+     &efFiva = @;
+     &eaDiva = "";
+     &enIva = 0;
+     &enRec = 0;
+     nIva = 0;
+     nRec = 0;
+     nCamIva = 0;
+     nCamBase = 0;
+     nCamRec = 0;
+     nError = 0;
+     nBruto = 0;
+     nPrim  = 0;
+
+     base     = 0;
+     almacen  = "";
+     represen = "";
+     liquid   = 0;
+     fra      = 0;
+     conta    = 0;
+     texto    = "PONGO EN EL CAMPO";
+     texto1   = "EL DATO:"
+     texto2   = "";
+     empresa  = "";
+     cadena   = "";
+     fichero  = "";
+     long     = "";
+     caracter = "";
+     campo    = "";
+     i        = 0;
+     v        = 0;
+     f        = 0;
+     ind      = 0;
+     valor    = 0;
+     sw       = 0;
+     pasa     = 0;
+     jj       = 0;
+     sal      = 0;
+     guarda   = 0;
+     bruto    = 0;
+     impuesto = 0;
+     total    = 0;
+     linea    = 0;
+     iva      = 0;
+     nRepresen = 0;
+|FIN;
+
+|| ----------------- LEE EL FICHERO SEQUENCIAL DEL PSION --------------------
+|PROCESO cabecera;
+     empresa  = "";
+     cadena   = "";
+     fichero  = "";
+     long     = "";
+     caracter = "";
+     campo    = "";
+     i        = 0;
+     f        = 0;
+     ind      = 0;
+     valor    = 0;
+     sw       = 0;
+     pasa     = 0;
+     jj       = 0;
+     sal      = 0;
+     guarda   = 0;
+     |ABRE #1;
+     empresa = path;
+     |QBF empresa;
+     empresa = empresa + "cabalb.asc";
+     |QBF empresa;
+     fichero = "rt  " + empresa;
+     |QBF empresa;
+     |FABRE fichero;
+     f = FSalida;
+     sal = 0;
+     |SI FSalida = 0;
+         |PARA jj = 1; |SI sal ] 0; |HACIENDO jj = jj + 1;
+               cadena = f + " " + 254;
+               |FLEE cadena;
+               sal = FSalida;
+               |SI FSalida > 1;
+                   |PINTA 2003,"                                                                       ";
+                   |PINTA 2003,cadena;
+                   long = cadena % 0;
+                   sw = 0;
+                   |PARA ind = 1; |SI ind [ long; |HACIENDO ind = ind + 1;
+                         i = (ind * 100) + 1;
+                         caracter = cadena % i;
+                         valor = &caracter;
+                         |SI valor ! 9; |Y valor ! 13;|Y valor ! 10;
+                             campo = campo + caracter;
+                         |FINSI;
+                         |SI valor = 9; |O long = ind;
+                             pasa = sw;
+                             |SI sw = 5; pasa = 6; |FINSI;
+                             |SI sw = 6; pasa = 7; |FINSI;
+                             |SI sw < 7;
+                                 #1pasa = campo;
+                             |FINSI;
+                             campo = "";
+                             sw = sw + 1;
+                             |SI pasa = 2;
+                                 |LEE 141#1=;
+                                 |LIBERA #1;
+                                 guarda = FSalida;
+                             |FINSI;
+                         |FINSI;
+                   |SIGUE;
+                   #1#7 = #1#7 ! #15#7;
+                   |HAZ grabacabeza;
+                   campo = "";
+               |FINSI;
+         |SIGUE;
+     |FINSI;
+     FSalida = f;
+     |SI f < 0;
+         FSalida = 0;
+     |FINSI;
+     |FCIERRA FSalida;
+     |LIBERA #1;
+     |CIERRA #1;
+     Pos = -1;
+|FPRC;
+
+|| ------------------------ GRABA FICHERO CABECERA --------------------------
+|PROCESO Suma;
+     enTiva = #2#9;
+     efFiva = #1#3;
+     |HAZ SacaIVA;
+
+||T.Linea
+    #2#10 = ((#2#12 * #2#7) < #2#8) ! #15#7;
+
+||Bruto
+     #1#11 = #3#37;
+     #1#12 = #3#38;
+
+     #1#8 = (#1#8 +. #2#10) ! #15#7;
+     nBruto = (((#2#10 < #1#11) < #1#13) < #1#12);
+     nBruto = nBruto + #2#15;
+     #1#32 = (#1#32 +. #2#15) ! #15#7;
+
+     nError = 1;
+     |SI #1#8 < 0; nError = -1; |FINSI;
+     #1#8 = #1#8 * nError;
+
+||Dto
+     #1#11 = #3#37;
+     #1#12 = #3#38;
+
+     #1#30 = (((#1#8 < #1#11) < #1#13) < #1#12) ! #15#7;
+     #1#30 = #1#30 * nError;
+     #1#8 = #1#8 * nError;
+     #1#30 = #1#8 - #1#30;
+
+||Ivas
+     |SI #2#9 = 0;
+          #1#14 = (#1#14 +. nBruto) ! #15#7;
+     |SINO;
+          nCamBase = #2#9 - 1 + 15;
+          nCamIva = #2#9 - 1 + 20;
+          nCamRec = #2#9 - 1 + 25;
+          #1nCamBase = (#1nCamBase +. nBruto) ! #15#7;
+          #1nCamIva = (#1nCamBase %  enIva) ! #15#7;
+          |SI #3#47 = "S";
+               #1nCamRec = (#1nCamBase % enRec) ! #15#7;
+          |FINSI;
+     |FINSI;
+
+||T.IVA
+     #1#31 = #1#20+#1#21+#1#22+#1#23+#1#24+#1#25+#1#26+#1#27+#1#28+#1#29;
+     #1#31 = #1#31 ! #15#7;
+
+||Total
+     #1#9 = ((#1#8 - #1#30 + #1#31) + #1#32) ! #15#7;
+|FPRC;
+
+|DEFBUCLE totalalb;
+     #2#1;
+     ;
+     #1#0,#1#2,#1#1,000;
+     #1#0,#1#2,#1#1,999;
+     be;
+     NULL, Suma;
+|FIN;
+
+|PROCESO grabacabeza;
+     #1#8 = 0;
+     #1#9 = 0;
+     #1#32 = 0;
+     |PARA i = 14; |SI i [ 31; |HACIENDO i = i + 1;
+          #1i = 0;
+     |SIGUE;
+
+     |ABRE #3;
+     #3#0 = #1#4;
+     |LEE 000#3=;
+     |CIERRA #3;
+
+     |BUCLE totalalb;
+
+     |ABRE #3;
+     #3#0 = #1#4;
+     |LEE 000#3=;
+     #1#5 = #3#2;
+     #1#10 = #3#25;
+     |SI #0#3 = "S";
+         #1#10 = represen;
+     |SINO;
+         |SI nRepresen = 1;
+             #1#10 = #3#25;      || representante 1 del cliente
+         |FINSI;
+         |SI nRepresen = 2;
+             #1#10 = #3#26;      || representante 2 del cliente
+         |FINSI;
+     |FINSI;
+     |LIBERA #3;
+     |CIERRA #3;
+     |SI #1#7 [ 0;
+         #1#6 = "N";
+     |FINSI;
+     |SI #1#7 ] #1#9;
+         #1#6 = "S";
+     |FINSI;
+     |SI #1#7 < #1#9; |Y #1#7 > 0;
+         #1#6 = "P";
+     |FINSI;
+     total = #1#9 - #1#7;
+     total = total ! #15#7;
+     |SI total [ 1;
+         #1#6 = "S";
+         #1#7 = #1#9;
+     |FINSI;
+     #1#11 = #3#37;
+     #1#12 = #3#38;
+     |SI guarda ! 0;
+         |GRABA 121#1n;
+     |SINO;
+         |GRABA 121#1a;
+     |FINSI;
+     |LIBERA #1;
+|FPRC;
+
+|PROCESO grabacobros;             ||Cobros De Facturas.
+     |SI guarda ! 0;
+         |GRABA 121#6n;
+     |SINO;
+         |GRABA 121#6a;
+     |FINSI;
+     |LIBERA #6;
+|FPRC;
+
+|PROCESO grabacobalb;             ||Cobros De Albaranes.
+     |SI guarda ! 0;
+         |GRABA 121#8n;
+     |SINO;
+         |GRABA 121#8a;
+     |FINSI;
+     |LIBERA #8;
+|FPRC;
+
+|| ------------------------ GRABA FICHERO Movimi --------------------------
+|PROCESO grabamovimi;
+     #7#5 = ~;
+     |SI guarda ! 0;
+         |GRABA 121#7n;
+     |SINO;
+         |GRABA 121#7a;
+     |FINSI;
+     |LIBERA #7;
+     |DDEFECTO #7;
+|FPRC;
+
+|| ------------- LEE LINEAS ---------------
+|PROCESO lineas;
+     empresa  = "";
+     cadena   = "";
+     fichero  = "";
+     long     = "";
+     caracter = "";
+     campo    = "";
+     i        = 0;
+     f        = 0;
+     ind      = 0;
+     valor    = 0;
+     sw       = 0;
+     pasa     = 0;
+     jj       = 0;
+     sal      = 0;
+     guarda   = 0;
+     impuesto = 0;
+     |ABRE #2;
+     empresa = path;
+     |QBF empresa;
+     empresa = empresa + "linalb.asc";
+     |QBF empresa;
+     fichero = "rt  " + empresa;
+     |QBF empresa;
+     |FABRE fichero;
+     f = FSalida;
+     sal = 0;
+     linea = 1;
+
+     |SI FSalida = 0;
+       |PARA jj = 1; |SI sal ] 0; |HACIENDO jj = jj + 1;
+          cadena = f + " " + 254;
+          |FLEE cadena;
+          sal = FSalida;
+          |SI FSalida > 1;
+               |PINTA 2003,"                                                                       ";
+               |PINTA 2003,cadena;
+               ||linea = 1;
+               long = cadena % 0;
+               sw = 0;
+               |PARA ind = 1; |SI ind [ long; |HACIENDO ind = ind + 1;
+                    i = (ind * 100) + 1;
+                    caracter = cadena % i;
+                    valor = &caracter;
+                    |SI valor ! 9; |Y valor ! 13;|Y valor ! 10;
+                         campo = campo + caracter;
+                    |FINSI;
+                    |SI valor = 9; |O long = ind;
+                         pasa = sw;
+                         |SI pasa [ 18;
+                              |SI pasa = 3;
+                                   |SI fra ! #2#1;
+                                        linea = 1
+                                        fra = #2#1;
+                                   |FINSI;
+                                   #2pasa = linea;
+                                   campo ="";
+                                   texto2 = texto + pasa + texto1 + linea;
+                                   linea = linea + 1;
+                                   sw = sw + 1;
+                                   |LEE 000#2=;
+                                   |LIBERA #2;
+                                   guarda = FSalida;
+                              |SINO;
+                                   |SI pasa=5;pasa = 6;sw=sw+1;|FINSI;
+                                   |SI pasa = 10;
+                                        sw = sw + 2;
+                                   |SINO;
+                                        |SI pasa = 11;
+                                             pasa = 13;
+                                        |SINO;
+                                             |SI pasa = 13;pasa = 12;|FINSI;
+                                             |SI pasa = 14;pasa = 13;|FINSI;
+                                             |SI pasa = 15;pasa = 14;|FINSI;
+                                             |SI pasa = 16;pasa = 15;|FINSI;
+                                             |SI pasa = 17;pasa = 16;|FINSI;
+                                             |SI pasa = 18;pasa = 17;|FINSI;
+                                        |FINSI;
+                                        #2pasa = campo;
+                                   |FINSI;
+                                   texto2 = texto + pasa + texto1 + campo;
+                                   campo = "";
+                                   sw = sw + 1;
+                              |FINSI;
+                         |FINSI;
+                    |FINSI;
+               |SIGUE;
+               |HAZ grabalineas;
+               campo = "";
+           |FINSI;
+     |SIGUE;
+ |FINSI;
+ FSalida = f;
+ |SI f < 0;
+     FSalida = 0;
+ |FINSI;
+ |FCIERRA FSalida;
+ |LIBERA #2;
+ |CIERRA #2;
+ Pos = -1;
+|FPRC;
+
+|| ------------------------ GRABA FICHERO LINEAS ----------------------------
+|PROCESO grabalineas;
+     bruto    = 0;
+     impuesto = 0;
+     |ABRE #4;           || Articulos
+     #4#0 = #2#4;
+     |LEE 000#4=;
+     #2#5 = #4#1;
+     |LIBERA #4;
+     |CIERRA #4;
+
+     enTiva = #2#9;
+     efFiva = #1#3;
+     |HAZ SacaIVA;
+     impuesto = enIva;
+     |ABRE #3;
+     #3#0 = #1#4;
+     |LEE 000#3=;
+     |SI #3#47 = "S"; impuesto = enIva + enRec; |FINSI;
+
+     bruto = #2#12 * #2#7;          || base.
+     bruto = bruto < #2#8;         || dto.
+     bruto = bruto ! #15#7;
+     #2#10 = bruto;                || bruto.
+     #2#11 = almacen;                 || Almacen.
+     #2#15 = #2#6 * #4#179;
+     |LIBERA #3;
+     |CIERRA #3;
+
+     |HAZ EsAlbadis;
+     |SI FSalida = 0;
+          |HAZ AlbaDtoLin;
+     |FINSI;
+
+     |SI guarda ! 0;
+         |GRABA 121#2n;
+     |SINO;
+         |GRABA 121#2a;
+     |FINSI;
+     |LIBERA #2;
+     |DDEFECTO #2;
+|FPRC;
+
+|PROCESO AlbaDtoLin;
+     |ABRE #1;
+     #1#0 = #2#0;
+     #1#2 = #2#2;
+     #1#1 = #2#1;
+     |LEE 000#1=;
+     |CIERRA #1;
+
+     |ABRE #10;
+     #10#0 = #1#4;
+     #10#1 = #2#4;
+     |LEE 000#10=;
+     |SI FSalida = 0; |Y #1#3 ] #10#6; |Y #1#3 [ #10#7;
+          |SI #10#5 ! 0;
+               #2#7 = #2#16;
+               #2#8 = 100 * #2#14 / #2#16;
+               #2#10 = #2#16 - #2#14;
+          |FINSI;
+     |FINSI;
+     |CIERRA #10;
+|FPRC;
+
+|PROCESO movimi;
+|| ----------------- LEE EL FICHERO SEQUENCIAL DEL PSION --------------------
+     empresa  = "";
+     cadena   = "";
+     fichero  = "";
+     long     = "";
+     caracter = "";
+     campo    = "";
+     i        = 0;
+     f        = 0;
+     ind      = 0;
+     valor    = 0;
+     sw       = 0;
+     pasa     = 0;
+     jj       = 0;
+     sal      = 0;
+     guarda   = 0;
+     |ABRE #7;
+     empresa = path;
+     |QBF empresa;
+     empresa = empresa + "movimie.asc";
+     |QBF empresa;
+     fichero = "rt  " + empresa;
+     |QBF empresa;
+     |FABRE fichero;
+     f = FSalida;
+     sal = 0;
+     |SI FSalida = 0;
+         |PARA jj = 1; |SI sal ] 0; |HACIENDO jj = jj + 1;
+               cadena = f + " " + 254;
+               |FLEE cadena;
+               sal = FSalida;
+               |SI FSalida > 1;
+                   |PINTA 2003,"                                                                       ";
+                   |PINTA 2003,cadena;
+                   long = cadena % 0;
+                   sw = 0;
+                   |PARA ind = 1; |SI ind [ long; |HACIENDO ind = ind + 1;
+                         i = (ind * 100) + 1;
+                         caracter = cadena % i;
+                         valor = &caracter;
+                         |SI valor ! 9; |Y valor ! 13;|Y valor ! 10;
+                             campo = campo + caracter;
+                         |FINSI;
+                         |SI valor = 9; |O long = ind;
+                             pasa = sw;
+                             #7pasa = campo;
+                             campo = "";
+                             sw = sw + 1;
+                             |SI sw = 5;
+                                 sw = sw + 2;
+                             |FINSI;
+                             |SI pasa = 2;
+                                 conta = conta + 1;
+                                 #7#6 = conta;
+                                 |LEE 141#7=;
+                                 |LIBERA #7;
+                                 guarda = FSalida;
+                             |FINSI;
+                         |FINSI;
+                   |SIGUE;
+                   |HAZ grabamovimi;
+                   campo = "";
+               |FINSI;
+         |SIGUE;
+     |FINSI;
+     FSalida = f;
+     |SI f < 0;
+         FSalida = 0;
+     |FINSI;
+     |FCIERRA FSalida;
+     |LIBERA #7;
+     |CIERRA #7;
+     Pos = -1;
+
+|FPRC;
+
+|PROCESO cobros;
+|| ----------------- LEE EL FICHERO SEQUENCIAL DEL PSION --------------------
+     empresa  = "";
+     cadena   = "";
+     fichero  = "";
+     long     = "";
+     caracter = "";
+     campo    = "";
+     i        = 0;
+     f        = 0;
+     ind      = 0;
+     valor    = 0;
+     sw       = 0;
+     pasa     = 0;
+     jj       = 0;
+     sal      = 0;
+     guarda   = 0;
+     |ABRE #6;
+     empresa = path;
+     |QBF empresa;
+     empresa = empresa + "cobros.asc";
+     |QBF empresa;
+     fichero = "rt  " + empresa;
+     |QBF empresa;
+     |FABRE fichero;
+     f = FSalida;
+     sal = 0; nPrim = 1;
+     |SI FSalida = 0;
+         |PARA jj = 1; |SI sal ] 0; |HACIENDO jj = jj + 1;
+               cadena = f + " " + 254;
+               |FLEE cadena;
+               sal = FSalida;
+               |SI FSalida > 1;
+                   |PINTA 2003,"                                                                       ";
+                   |PINTA 2003,cadena;
+                   long = cadena % 0;
+                   sw = 0;
+                   |PARA ind = 1; |SI ind [ long; |HACIENDO ind = ind + 1;
+                         i = (ind * 100) + 1;
+                         caracter = cadena % i;
+                         valor = &caracter;
+                         |SI valor ! 9; |Y valor ! 13;|Y valor ! 10;
+                             campo = campo + caracter;
+                         |FINSI;
+                         |SI valor = 9; |O long = ind;
+                             pasa = sw;
+                             |SI pasa ! 7;
+                                #6pasa = campo;
+                                sw = sw + 1;
+                             |SINO;
+                                |SI nPrim = 1;
+                                   nPrim = 0;
+                                |SINO;
+                                   #6pasa = campo;
+                                   sw = sw + 1;
+                                |FINSI;
+                             |FINSI;
+                             campo = "";
+                             |SI pasa = 2;
+                                 |LEE 141#6=;
+                                 |LIBERA #6;
+                                 guarda = FSalida;
+                             |FINSI;
+                         |FINSI;
+                   |SIGUE;
+                   |SI #6#6 = "S";
+                       #6#4 = #6#4 ! #15#7;
+                       #6#5 = #6#5 ! #15#7;
+                       |HAZ grabacobros;
+                   |FINSI;
+                   campo = ""; nPrim = 1;
+               |FINSI;
+         |SIGUE;
+     |FINSI;
+     FSalida = f;
+     |SI f < 0;
+         FSalida = 0;
+     |FINSI;
+     |FCIERRA FSalida;
+     |LIBERA #6;
+     |CIERRA #6;
+     Pos = -1;
+|FPRC;
+
+|PROCESO cobrosalb;
+|| ----------------- LEE EL FICHERO SEQUENCIAL DEL PSION --------------------
+     empresa  = "";
+     cadena   = "";
+     fichero  = "";
+     long     = "";
+     caracter = "";
+     campo    = "";
+     i        = 0;
+     f        = 0;
+     ind      = 0;
+     valor    = 0;
+     sw       = 0;
+     pasa     = 0;
+     jj       = 0;
+     sal      = 0;
+     guarda   = 0;
+     |ABRE #8;
+     empresa = path;
+     |QBF empresa;
+     empresa = empresa + "cobros1.asc";
+     |QBF empresa;
+     fichero = "rt  " + empresa;
+     |QBF empresa;
+     |FABRE fichero;
+     f = FSalida;
+     sal = 0;
+     |SI FSalida = 0;
+         |PARA jj = 1; |SI sal ] 0; |HACIENDO jj = jj + 1;
+               cadena = f + " " + 254;
+               |FLEE cadena;
+               sal = FSalida;
+               |SI FSalida > 1;
+                   |PINTA 2003,"                                                                       ";
+                   |PINTA 2003,cadena;
+                   long = cadena % 0;
+                   sw = 0;
+                   |PARA ind = 1; |SI ind [ long; |HACIENDO ind = ind + 1;
+                         i = (ind * 100) + 1;
+                         caracter = cadena % i;
+                         valor = &caracter;
+                         |SI valor ! 9; |Y valor ! 13;|Y valor ! 10;
+                             campo = campo + caracter;
+                         |FINSI;
+                         |SI valor = 9; |O long = ind;
+                             pasa = sw;
+                             |SI pasa ! 7;
+                                 #8pasa = campo;
+                             |FINSI;
+                             campo = "";
+                             sw = sw + 1;
+                             |SI pasa = 2;
+                                 |LEE 141#8=;
+                                 |LIBERA #8;
+                                 guarda = FSalida;
+                             |FINSI;
+                         |FINSI;
+                   |SIGUE;
+                   |SI #8#6 = "S";
+                       #8#4 = #8#4 ! #15#7;
+                       #8#5 = #8#5 ! #15#7;
+                       |HAZ grabacobalb;
+                   |FINSI;
+                   campo = "";
+               |FINSI;
+         |SIGUE;
+     |FINSI;
+     FSalida = f;
+     |SI f < 0;
+         FSalida = 0;
+     |FINSI;
+     |FCIERRA FSalida;
+     |LIBERA #8;
+     |CIERRA #8;
+     Pos = -1;
+|FPRC;
+
+|| ------------------------- RUTINA PRINCIPAL -------------------------------
+|PROCESO captura; |TIPO 3;
+     |SI #0#1 = "SI";|O #0#1 = "si";
+         |HAZ LeeDivisa;
+         |ABRE #1; |CIERRA #1; |DELINDEX #1;
+         |ABRE #2; |CIERRA #2; |DELINDEX #2;
+         |ABRE #6; |CIERRA #6; |DELINDEX #6;
+         |ABRE #7; |CIERRA #7; |DELINDEX #7;
+         |ABRE #8; |CIERRA #8; |DELINDEX #8;
+
+             |ABRE #9;
+             #9#0 = #0#2;
+             |LEE 000#9=;
+             |SI FSalida = 0;
+                 empresa  = #9#29;
+                 path     = #9#29;
+                 almacen  = #0#0;
+                 represen = #0#4;
+                 |HAZ inicio;
+             |FINSI;
+             |LIBERA #9;
+             |CIERRA #9;
+          |FINSI;
+          |ATRI P;
+          |MENAV "0000FIN DE PROCESOS";
+          |ATRI p;
+|FPRC;
+
+|CALCULO inicio;
+
+          |ABRE #1;
+          |PINTA 1916 , "                           ";
+          |PINTA 1916 , "Documentos Cabeceras ......";
+          |HAZ cabecera;
+          |LIBERA #1;
+          |CIERRA #1;
+
+          |ABRE #2;
+          |PINTA 1916 , "                           ";
+          |PINTA 1916 , "Documentos Lineas .........";
+          |HAZ lineas;
+          |LIBERA #2;
+          |CIERRA #2;
+
+          |ABRE #6;
+          |PINTA 1916 , "                           ";
+          |PINTA 1916 , "Cobros Facturas............";
+          |HAZ cobros;
+          |LIBERA #6;
+          |CIERRA #6;
+          |ABRE #8;
+          |PINTA 1916 , "                           ";
+          |PINTA 1916 , "Cobros Albaranes...........";
+          |HAZ cobrosalb;
+          |LIBERA #8;
+          |CIERRA #8;
+          |ABRE #7;
+          |PINTA 1916 , "                           ";
+          |PINTA 1916 , "Movimientos Almacen .......";
+          |HAZ movimi;
+          |LIBERA #7;
+          |CIERRA #7;
+|FCAL;
+
+|PROCESO LeeDivisa;
+     |ABRE #14;
+     |ABRE #15;
+     #14#0 = "A";
+     |LEE 001#14=;
+     |SI FSalida ! 0; |DDEFECTO #14; |FINSI;
+     #15#0 = #14#9;
+     |LEE 001#15=;
+     |SI FSalida ! 0; |DDEFECTO #15; |FINSI;
+     |LIBERA #14;
+     |LIBERA #15;
+     |CIERRA #14;
+     |CIERRA #15;
+|FPRC;
+
+|CALCULO repres;|TIPO 0;
+|CAMPO_MODIFICA #0#4 , 1 , "N";
+|SI #0#3 = "S";
+   |CAMPO_MODIFICA #0#4 , 1 , "S";
+   #0#4 = #0#0;
+   |PINTA #0#4;
+|FINSI;
+|FCAL;

@@ -1,0 +1,508 @@
+|FICHEROS;
+     iber0200 #0;
+     iber0020 #120;
+     agifa321 #321;
+     agifa324 #324;
+     iber0066 #166;      ||Tarifas C
+     iber0067 #167;      ||Tarifas L
+     agifa024 #14;
+     iber0019 #19;
+     iber0140 #140;
+     agifa501 #501;
+     agifa505;
+     agifa571 #571;
+     agifa572 #572;
+     agifa084 #84;
+     agifa069 #69;
+     ib__rese;
+     ib__data;
+     ib__tick;
+     ib__ticd;
+     ibxxtarj;
+     ibxxtarl;
+     iber0088;
+     dsw00050 #50;
+     agifa084 #84;
+     agifa069 #69;
+     iber0078 #78;
+     iber0079 #79;
+     iber0080 #80;
+
+     tmp00010;
+     tmp00071;
+     agifa010;
+     agifa071;
+|FIN;
+
+|VARIABLES;
+     &codigo  = "";
+     &descrip = "";
+     &dto    = 0;
+     &precio = 0;
+     &unid   = 0;
+     &imptot = 0;
+     &tiva   = 0;
+     &linea  = 1;
+
+     nBase0 = 0;
+     nTotal0 = 0;
+     &tarifa = 0;
+     nTari = 0;
+     &enEsIber = 0;
+     &fFecRese = @;
+     aNota     = "";
+     i           = 0;
+     &Tempo      = "";
+     &nDeudaPtas = 0;
+     &nDeudaEuros = 0;
+     nLinCre   = 0;
+     nDeu      = 0;
+     nConta    = 0;
+     &EURO = 0;
+     &EURODB = 0;
+     &EURODV = 0;
+     &nDeci_Base = 0;
+     &nDeci_PreBase = 0;
+     &nImporteConPesetas = 0;      || mostrar columna pesetas 1-si 0-no
+     &afecha   = "";
+     &acaja    = 0;
+     &nElTicket= 0;
+     &aLogCajon= "";
+     &aTarjeta = "";
+     &aNomTarjeta = "";
+
+     &eaCentro = "";
+     &enPreTPV = 0;
+     &aArticulo= "";
+     &nDPunto  = 0;
+     &nHPunto  = 0;
+     &enIva    = 0;
+     &eaMoneda = "";
+     &enValMone= 0;
+     &eaIVAsn  = "";
+     &nPuntoDeVenta = 0;
+
+     nCentro   = 0;
+     nLin      = 0;
+     nLinLog   = 0;
+     aHora     = "";
+     aAlfa     = "";
+|FIN;
+컴컴컴컴컴컴컴컴컴컴컴컴컴Llamdas de la dll
+|PROCESO &DameTarjeta;
+     |DDEFECTO #iber0088;
+     |ABRE #iber0088;
+     #iber0088#0 = aTarjeta;
+     |LEE 000#iber0088.=;
+     |CIERRA #iber0088;
+     aNomTarjeta = #iber0088#1;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴Llamdas de iber1200
+|PROCESO Divisa;
+     |ABRE #agifa321;
+     |LEE 000#agifa321.p;
+     |CIERRA #agifa321;
+
+     |ABRE #agifa324;
+     #agifa324#0 = #agifa321#9; ||Igualo a moneda base
+     |LEE 000#agifa324.=;
+     |CIERRA #agifa324;
+     nDeci_Base = #agifa324#7;     ||Decimales moneda base
+     nDeci_PreBase = #agifa324#9;  ||Decimales precio de moneda base
+
+     eaMoneda = #agifa321#9;
+     enValMone = #agifa324#2;
+
+     |SI #agifa324#2 = 1;|Y #agifa324#3 = 1;                || en EUROS
+          EURO = 166.186;
+          EURODB = 2;
+          EURODV = 0;
+          nImporteConPesetas = 0;
+     |FINSI;
+
+     |SI #agifa324#2 = 166.386;|Y #agifa324#3 = 166.386;    || en PESETAS
+          EURO = 1 / 166.186;
+          EURODB = 0;
+          EURODV = 2;
+          nImporteConPesetas = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO PasaLinBascula;
+     #ibxxtarl#0 = #ibxxtarj#0;    ||Tarje
+     #ibxxtarl#1 = #ib__ticd#1;    ||Lin
+     #ibxxtarl#2 = #ib__ticd#2;    ||Art
+     #ibxxtarl#3 = #ib__ticd#3;    ||Art D
+     #ibxxtarl#4 = nLin;           ||Lin Tiq
+     |GRABA 020#ibxxtarl.n;
+     |BORRA 020#ib__ticd.a;
+|FPRC;
+
+|DEFBUCLE PasaLinBascula;
+     #ib__ticd#1;
+     ;
+     #ib__tick#0, #ib__tick#1, 0001;
+     #ib__tick#0, #ib__tick#1, 9999;
+     be;
+     NULL, PasaLinBascula;
+|FIN;
+
+|PROCESO Pasa_Bascula;
+     #ibxxtarj#0 = aTarjeta;
+     #ibxxtarj#1 = 9999;
+     |LEE 000#ibxxtarj.];
+     |SI FSalida = 0;
+          |LEE 000#ibxxtarj.a;
+     |SINO;
+          |LEE 000#ibxxtarj.u;
+     |FINSI;
+     |SI FSalida = 0;|Y #ibxxtarj#0 = aTarjeta;
+          nLin = #ibxxtarj#1 + 1;
+     |SINO;
+          nLin = 1;
+     |FINSI;
+
+     |DDEFECTO #ibxxtarj;
+     #ibxxtarj#0 = aTarjeta;    || Tarjeta
+     #ibxxtarj#1 = nLin;        || Lin
+     #ibxxtarj#2 = #ib__tick#2; || Arti
+     |SI nImporteConPesetas ! 0;
+          #ibxxtarj#3 = #ib__tick#8; || Prec ptas
+     |SINO;
+          #ibxxtarj#3 = #ib__tick#9; || Prec euros
+     |FINSI;
+     #ibxxtarj#4 = #ib__tick#7;   || Unida
+     #ibxxtarj#5 = "";            || Fich
+     #ibxxtarj#6 = #ib__tick#3;   || Confi
+     #ibxxtarj#7 = #ib__tick#12;  || Desc
+     #ibxxtarj#8 = #ib__tick#13;  || Emitido
+     #ibxxtarj#9 = #ib__tick#11;  || Plato
+     #ibxxtarj#10 = #ib__tick#14; || Seccion
+     |GRABA 020#ibxxtarj.n;
+
+     |BUCLE PasaLinBascula;
+     |BORRA 020#ib__tick.a;
+|FPRC;
+
+|DEFBUCLE PasaBascula;
+     #ib__tick#1;
+     ;
+     nElTicket, 0001;
+     nElTicket, 9999;
+     ;
+     NULL, Pasa_Bascula;
+|FIN;
+
+|PROCESO PasaBascula;
+     nLin = 0;
+     aTarjeta = ("000000" + aTarjeta) % -106;
+     |HAZ Divisa;
+     |ABRE #ibxxtarl;
+     |BUCLE PasaBascula;
+     |CIERRA #ibxxtarl;
+|FPRC;
+
+|PROCESO LogCajon;
+     |ABRE #ib__data;
+     #ib__data#10 = eaCentro;
+     #ib__data#11 = nPuntoDeVenta;
+     #ib__data#0 = nElTicket;
+     #ib__data#1 = 999999;
+     |LEE 000#ib__data.];
+     |SI FSalida = 0;
+          |LEE 000#ib__data.a;
+     |SINO;
+          |LEE 000#ib__data.u;
+     |FINSI;
+     |SI FSalida = 0; |Y #ib__data#0 = nElTicket;
+                      |Y #ib__data#10 = eaCentro;
+                      |Y #ib__data#11 = nPuntoDeVenta;
+          nLinLog = #ib__data#1 + 1000;
+     |SINO;
+          nLinLog = 1000;
+     |FINSI;
+     aAlfa = ("00000" + acaja) % -105;
+     aAlfa = aAlfa + "-" + #0#4;
+     |HORA aHora;
+     |DDEFECTO #ib__data;
+     #ib__data#10 = eaCentro;
+     #ib__data#11 = nPuntoDeVenta;
+     #ib__data#0 = nElTicket;
+     #ib__data#1 = nLinLog;
+     #ib__data#2 = "Z";
+     #ib__data#4 = aLogCajon;
+     #ib__data#7 = afecha;
+     #ib__data#8 = aHora;
+     #ib__data#9 = "Apertura Cajon";
+     |GRABA 000#ib__data.n;
+     |CIERRA #ib__data;
+|FPRC;
+
+|PROCESO BuscaPre;
+     #166#0 = #167#0;
+     #166#1 = #167#1;
+     #166#2 = #167#2;
+     #166#3 = #167#3;
+     |LEE 000#166=;
+
+     enPreTPV = #167#9;
+     eaIVAsn = #166#7;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE BuscaPre;
+     #167#2;
+     ;
+     nCentro, nDPunto, nTari, aArticulo, " ", afecha;
+     nCentro, nHPunto, nTari, aArticulo, "z", "01.01.0000";
+     ;
+     NULL, BuscaPre;
+|FIN;
+
+|PROCESO BuscaPrecio;
+     nCentro = eaCentro;
+     |SI enEsIber = 0;
+          nTari = #14#39;
+     |SINO;
+          nTari = tarifa;
+     |FINSI;
+
+     |ABRE #19;
+     #19#0 = nCentro;
+     #19#1 = nPuntoDeVenta;
+     |LEE 000#19=;
+     |CIERRA #19;
+
+     |ABRE #166;
+     |BUCLE BuscaPre;
+     |CIERRA #166;
+|FPRC;
+
+|PROCESO ControlCaja;
+     |ABRE #140;
+     |LEE 000#140u;
+     |SI FSalida = 0;
+          nConta = #140#0 + 1;
+     |SINO;
+          nConta = 1;
+     |FINSI;
+     |DDEFECTO #140;
+     #140#0 = nConta;
+     #140#1 = #501#36;
+     #140#2 = #501#0;
+     #140#3 = #501#57;
+     #140#4 = #501#58;
+     #140#5 = #501#35;
+     #140#6 = #501#9;
+     |GRABA 020#140n;
+     |CIERRA #140;
+|FPRC;
+
+|PROCESO CreaDeuda;
+     |SI nImporteConPesetas = 1;
+          nDeu = nDeudaPtas;
+     |SINO;
+          nDeu = nDeudaEuros;
+     |FINSI;
+
+     |ABRE #571;
+     |ABRE #572;
+
+     |DDEFECTO #571;
+     #571#0 = #501#1;
+     |LEE 101#571=;
+     |SI FSalida ! 0; |GRABA 020#571b; |FINSI;
+     #571#1 = #14#1;
+     #571#2 = #571#2 + nDeu;
+     #571#4 = #571#2 - #571#3;
+     |GRABA 020#571a;
+
+     #572#0 = #571#0;
+     #572#1 = 9999;
+     |LEE 000#572];
+     |SI FSalida = 0;
+          |LEE 000#572a;
+     |SINO;
+          |LEE 000#572u;
+     |FINSI;
+     |SI FSalida = 0; |Y #572#0 = #571#0;
+          nLinCre = #572#1 + 1;
+     |SINO;
+          nLinCre = 1;
+     |FINSI;
+     |DDEFECTO #572;
+     #572#0 = #571#0;
+     #572#1 = nLinCre;
+     #572#2 = #501#36;
+     #572#3 = (("000000" + #501#0) % -106);
+     #572#4 = #501#58;
+     #572#5 = ~;
+     #572#6 = #501#12;
+     #572#7 = #501#33;
+     #572#8 = nDeu;
+     #572#9 = nDeu;
+     #572#10 = #501#9;
+     ||#572#11
+     ||#572#12
+     #572#13 = #501#36;
+     |GRABA 020#572n;
+
+     |CIERRA #572;
+     |CIERRA #571;
+|FPRC;
+
+|PROCESO BorraCredi;
+     |ABRE #571;
+     |ABRE #572;
+     |SELECT #3#572;
+     #572#13 = #501#36;
+     #572#3 = (("000000" + #501#0) % -106);
+     |LEE 121#572=;
+     |SI FSalida = 0;
+          |BORRA 020#572a;
+          #571#2 = #571#2 - #572#8;
+          #571#4 = #571#2 - #571#3;
+          |GRABA 020#571a;
+     |FINSI;
+
+     |CIERRA #572;
+     |CIERRA #571;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO Tmp;
+     |PARA i = 0; |SI i [ 43; |HACIENDO i = i + 1;
+          #69i = #50i;
+     |SIGUE;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE Tmp;
+     #50#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp;
+|FIN;
+
+|PROCESO agifa069;
+     |PARA i = 0; |SI i [ 43; |HACIENDO i = i + 1;
+          #50i = #69i;
+     |SIGUE;
+     |LEE 000#50=;
+     |SI FSalida = 0;
+          #50#5 = #50#5 + #69#5;
+          #50#9 = #50#5 * #50#6;
+
+          #50#7 = #50#7 + #69#7;
+          #50#28 = #50#28 + #69#28;
+          #50#29 = #50#29 + #69#29;
+          |GRABA 020#50a;
+     |SINO;
+          |GRABA 020#50n;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa069;
+     #69#1;
+     ;
+     #84#48, #84#0, 001;
+     #84#48, #84#0, 999;
+     ;
+     NULL, agifa069;
+|FIN;
+
+|PROCESO ImpreFac;
+     |HAZ CreaTempo; |NOME_DAT #50 Tempo; |DELINDEX #50;
+     |ABRE #50;
+
+     |BUCLE agifa069;
+     |CIERRA #50;
+     |BUCLE Tmp;
+     |DELINDEX #50; |HAZ BoraTempo;
+|FPRC;
+
+|PROCESO iber0080;
+     aNota = aNota + " " + #80#5;
+     |QBF aNota;
+|FPRC;
+
+|DEFBUCLE iber0080;
+     #80#1;
+     ;
+     #79#0, #79#1, #79#2, #79#3, 01;
+     #79#0, #79#1, #79#2, #79#3, 99;
+     ;
+     NULL, iber0080;
+|FIN;
+
+|PROCESO iber0079;
+     |SI #79#13 = "N";
+          |LEE 000#ib__rese.u;
+          |SI FSalida = 0;
+               nConta = #ib__rese#0;
+          |SINO;
+               nConta = 0;
+          |FINSI;
+          aNota= "";
+          |BUCLE iber0080;
+          nConta = nConta + 1;
+          |DDEFECTO #ib__rese;
+          #ib__rese#0 = nConta;
+          #ib__rese#1 = #79#4;
+          #ib__rese#2 = #79#5;
+          #ib__rese#3 = #79#2;
+
+          aAlfa = ("0000" + #79#7) % -104;
+          #ib__rese#4 = aAlfa;
+
+          aAlfa = ("0000" + #79#8) % -104;
+          #ib__rese#5 = aAlfa;
+
+          #ib__rese#6 = #79#9;
+          #ib__rese#7 = #79#10;
+          #ib__rese#8 = aNota;
+          #ib__rese#9 = #79#11;
+          #ib__rese#10 = #79#15;
+          #ib__rese#11 = #79#16;
+          |GRABA 020#ib__rese.n;
+
+          #79#14 = nConta;
+          #79#13 = "S";
+          |GRABA 020#79a;
+          |LIBERA #79;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE CargaRese;
+     #78#1;
+     ;
+     nCentro, nPuntoDeVenta, fFecRese;
+     nCentro, nPuntoDeVenta, fFecRese;
+     be;
+     NULL, NULL, iber0079;
+|FIN;
+
+|PROCESO CargaReserva;
+     nCentro = eaCentro;
+     fFecRese = ~;
+     |ABRE #ib__rese;
+     |BUCLE CargaRese;
+     |CIERRA #ib__rese;
+|FPRC;
+
+|PROCESO ParcheImpAlb; || Para poder imprir el formato estandar 'agifa010'
+     |SALVA_DATOS #agifa010;
+     |REPON_DATOS #tmp00010;
+     |SALVA_DATOS #agifa071;
+     |REPON_DATOS #tmp00071;
+
+     codigo  = #tmp00071#2;
+     descrip = #tmp00071#3;
+     dto    = #tmp00071#8;
+     precio = #tmp00071#6;
+     unid   = #tmp00071#5;
+     imptot = #tmp00071#9;
+     tiva   = #tmp00071#11;
+     linea  = 1;
+|FPRC;

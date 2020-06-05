@@ -1,0 +1,154 @@
+|FICHEROS;
+     malpe091 #0;
+     malpe090 #1;
+     malpe004 #23;       || Orden Carga (C)
+     malpe005 #24;       ||             (L)
+     malpe087 #25;       || Pedido (C)
+     malpe088 #26;       ||        (L)
+     malpe104 #27;       || Servicios
+     malpe085 #22;
+|FIN;
+
+|VARIABLES;
+     nUni = 0;
+     &n_dec = 0;
+     &enForma = 0;
+     uni = 0;
+     quito = 0;
+     pend = 0;
+     aAlfa = "";
+     aUni = 0;
+
+     &eaLote = "";
+     &eaLoteRese = "";
+     &enUniPedi = 0;
+|FINS;
+
+|PROCESO StockAdjMp;
+     eaLote = #27#10;
+     eaLoteRese = #27#12;
+     enUniPedi = nUni;
+     |HAZ AcumulaAdjMp;
+|FPRC;
+
+|PROCESO Modifica2; |TIPO 2;     || Fecha de Servicios
+     uni = #0#5 * (-1);
+     |SI enForma = 1;
+     ||\\ por jose
+         quito = 0;
+         |SI #26#35 > 0;
+                |SI #26#35 > uni;
+                   #26#35 = #26#35 - uni;
+                   quito = uni;
+                   uni = 0;
+                |SINO;
+                   uni = uni - #26#35;
+                   quito = #26#35;
+                   #26#35 = 0;
+                |FINSI;
+         |FINSI;
+         ||\\ hasta aqui
+          |SI uni > #27#7;
+               uni = uni - #27#7;
+               nUni = #27#7; |HAZ StockAdjMp;
+               #27#7 = 0;
+               |SI #27#5=#27#7;#27#6="S";|SINO;#27#6="N";|FINSI;
+               |GRABA 021#27a;
+               |LEE 101#27>;
+               |PARA; |SI FSalida = 0; |Y #27#0 = #24#32;
+                    |Y #27#1 = #24#33; |Y #27#2 = #24#34; |Y uni > 0;
+                    |HACIENDO;
+                    |SI uni ] #27#7;
+                         nUni = #27#7; |HAZ StockAdjMp;
+                         uni = uni - #27#7;
+                         #27#7 = 0;
+                    |SINO;
+                         nUni = uni; |HAZ StockAdjMp;
+                         #27#7 = #27#7 - uni;
+                         uni = 0;
+                    |FINSI;
+                    |SI #27#5=#27#7;#27#6="S";|SINO;#27#6="N";|FINSI;
+                    |GRABA 021#27a;
+                    |LIBERA #27;
+                    |LEE 101#27>;
+               |SIGUE;
+          |SINO;
+               nUni = uni; |HAZ StockAdjMp;
+               #27#7 = #27#7 - uni;
+               |SI #27#5=#27#7;#27#6="S";|SINO;#27#6="N";|FINSI;
+               |GRABA 021#27a;
+          |FINSI;
+     |SINO;
+          pend = #27#5 - #27#7;
+          |SI uni > pend;
+               uni = uni - pend;
+               nUni = pend; |HAZ StockAdjMp;
+               #27#7 = #27#7 + pend;
+               |SI #27#5=#27#7;#27#6="S";|SINO;#27#6="N";|FINSI;
+               |GRABA 021#27a;
+               |LIBERA #27;
+               |LEE 101#27>;
+               |PARA; |SI FSalida = 0; |Y #27#0 = #24#32;
+                    |Y #27#1 = #24#33; |Y #27#2 = #24#34; |Y uni > 0;
+                    |HACIENDO;
+                    pend = #27#5 - #27#7;
+                    |SI uni ] pend;
+                         nUni = pend; |HAZ StockAdjMp;
+                         uni = uni - pend;
+                         #27#7 = #27#5;
+                    |SINO;
+                         nUni = uni; |HAZ StockAdjMp;
+                         #27#7 = #27#7 + uni;
+                         uni = 0;
+                    |FINSI;
+                    |SI #27#5=#27#7;#27#6="S";|SINO;#27#6="N";|FINSI;
+                    |GRABA 021#27a;
+                    |LIBERA #27;
+                    |LEE 101#27>;
+               |SIGUE;
+               quito = 0;
+               |SI uni > 0 ;
+                    #26#35 = #26#35 + uni;
+                    quito = uni;
+                    uni = 0;
+               |FINSI;
+          |SINO;
+               quito = 0;
+               nUni = uni; |HAZ StockAdjMp;
+               #27#7 = #27#7 + uni;    || Servidas
+               |SI #27#5=#27#7;#27#6="S";|SINO;#27#6="N";|FINSI;
+               |GRABA 021#27a;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Modifica3;  |TIPO 2;    || Pedido
+     uni = (#0#5 * -1) - quito;
+     #26#43 = #26#43 - (uni * enForma);
+     |GRABA 020#26a;
+     |HAZ CalCabMalpe087;
+|FPRC;
+
+|PROCESO Modifica4;  |TIPO 2;    || Orden de Carga
+     |ABRE #22;
+     #22#0 = #24#2;
+     #22#1 = #24#3;
+     #22#2 = #24#31;
+     |LEE 000#22=;
+     |SI FSalida ! 0 ; |DDEFECTO #22; |FINSI;
+     |CIERRA #22;
+
+     uni = #0#5 * enForma;
+     #24#5 = (#24#5 + uni) ! n_dec;   || Unidades
+     #24#30= #24#5 / #22#4;    || Palets
+     #24#7 = #24#5 * #24#6;   || Importe
+     #24#9 = #24#7 < #24#8;
+     #24#9 = #24#9 < #24#29;
+     #24#9 = #24#9 < #24#23;  || Dto
+     #24#9 = #24#9 < #24#25;  || Acumu
+     #24#9 = #24#9 < #24#24;  || P.P.
+     #23#18 = #23#18 - ((((#0#5 * #22#3) ! 0 ) * -1)*enForma); || Peso actual
+     #23#14 = #23#14 - (#24#9*enForma);                  || Total Importe
+     |GRABA 021#23a;
+     |GRABA 021#24a;
+|FPRC;

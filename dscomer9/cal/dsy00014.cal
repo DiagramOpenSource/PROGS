@@ -1,0 +1,327 @@
+|| LISTADO RESUMEN DE VENTAS POR FAMILIA
+
+
+|FICHEROS;
+     dsy00014 #0;   || Listado 2
+     tmp00002 #1;   || Temporal listado 2
+     agifa010 #2;   || Albaran
+     agifa071 #3;   || Lineas
+     lisinfor #4;   || Nombres informes de listados standar
+     agifa024 #5;   || Clientes
+     agifa060 #6;   || Familia
+     agifa084 #7;   || Factura Contado
+     agifa069 #8;   || Lineas Factura Contado
+|FIN;
+
+|VARIABLES;
+     &Tempo = "";
+     aTmp1 = "";
+    nmargen     =  0;
+    nleer       =  0;
+    informe     = "";
+|FIN;
+
+|INCLUYE i_varart;
+
+|| ************************ IMPRESION DEL TEMPORAL ***************************
+|PROCESO leeclien;
+    |DDEFECTO #agifa024;
+    #agifa024#0 = #tmp00002#0;
+    |LEE 001#agifa024.=;
+|FPRC;
+
+
+|PROCESO imprimir;
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE imprimir;
+    #tmp00002#1;
+    ;
+    "  ";
+    "zz";
+    e;
+    NULL, imprimir;
+|FIN;
+
+|| ************************ CREACION DEL TEMPORAL ***************************
+|| Leo la familia para descargarla en el temporal. El informe lo tengo muy
+|| cargado de operaciones y cuantas menos cosas haga el informe mejor.
+|PROCESO leefami;
+   |DDEFECTO #agifa060;
+   #agifa060#0 = #tmp00002#0;
+   |LEE 001#agifa060.=;
+|FPRC;
+
+
+|| Si ha pasado todos los filtros cargamos en el temporal
+|PROCESO cargatemp;
+   |DDEFECTO #tmp00002;
+   #tmp00002#0 = #agifa071#13;  || Familia
+   |LEE 101#tmp00002.=;
+
+   |SI FSalida ! 0;
+       |GRABA 021#tmp00002.b;
+   |FINSI;
+
+   || Sumo valores, tengo en cuenta si es abono o no, multiplicando por dicho
+   || campo
+   #tmp00002#1 = #tmp00002#1 + ((#agifa071#5) - (2*#agifa071#5*#agifa010#43)); || Unidades
+   #tmp00002#2 = #tmp00002#2 + ((#agifa071#9) - (2*#agifa071#9*#agifa010#43)); || Ptas
+
+   nmargen = #agifa071#9 - #agifa071#14;
+   nmargen = nmargen - (2*nmargen*#agifa010#43);
+   #tmp00002#3 = #tmp00002#3 + nmargen;
+
+   #tmp00002#6 = #tmp00002#6 + #agifa071#14;
+
+   |HAZ leefami;
+   #tmp00002#4 = #agifa060#1;     || Nombre de la familia
+
+     |SI #agifa010#5 ! 0; |O #agifa010#7 ! 0; |O #agifa010#32 ! 0;
+          nmargen = #agifa071#9 < #agifa010#5;
+          nmargen = nmargen < #agifa010#7;
+          nmargen = nmargen < #agifa010#32;
+          nmargen = nmargen - (2*nmargen*#agifa010#43); || Ptas
+          #tmp00002#5 = #tmp00002#5 + nmargen;
+     |FINSI;
+
+   |GRABA 021#tmp00002.a;
+   |LIBERA #tmp00002;
+|FPRC;
+
+|PROCESO leelin2;
+     |SI #0#18 ! "T";
+          |SI #0#18 = "S";
+               |SI #agifa071#6 = 0; |O #agifa071#8 = 100; |O #agifa071#33 = 100;
+                    |ACABA;
+               |FINSI;
+           |FINSI;
+           |SI #0#18 = "N";
+                |SI #agifa071#6 ! 0; |Y #agifa071#8 ! 100; |Y #agifa071#33 ! 100;
+                    |ACABA;
+                |FINSI;
+          |FINSI;
+     |FINSI;
+
+    || Articulo entre limites
+    || Familia entre limites
+    |SI #agifa071#2 ] #dsy00014#13; |Y #agifa071#2 [ #dsy00014#14;
+    |Y #agifa071#13 ] #dsy00014#15 ; |Y #agifa071#13 [ #dsy00014#16;
+        || Con coste o sin el
+        |SI #dsy00014#10 = "S" ;|Y #agifa071#14 ! 0;
+            |HAZ cargatemp;
+        |FINSI;
+        |SI #dsy00014#10 = "T";
+            |HAZ cargatemp;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO leelin;
+    nleer = 0;
+
+    || Este montaje con los SI es porque no se pueden encadenar con parentesis
+    || y cuando comprueba que con dos operandos no se cumple la condicion no
+    || sigue.
+
+    || Albaranes facturados o no
+    |SI #dsy00014#9 ! "T";
+       |SI  #dsy00014#9  = "F";|Y #agifa010#38 = "S";
+           nleer = 1;
+       |SINO;
+           |SI  #dsy00014#9  = "S";|Y #agifa010#38 = "N";
+              nleer = 1;
+           |FINSI;
+       |FINSI;
+    |SINO;
+       nleer = 1;
+    |FINSI;
+
+    |SI nleer = 1;
+       |BUCLELIN 0leelin2#agifa010;
+    |FINSI;
+
+|FPRC;
+
+|DEFBUCLE leealba;
+   #agifa010#3;
+   ;
+   #dsy00014#1,#dsy00014#7,#dsy00014#3,#dsy00014#5;
+   #dsy00014#2,#dsy00014#8,#dsy00014#4,#dsy00014#6;
+   e;
+   NULL, leelin;
+|FIN;
+
+|| ************************ COMUN ************************************
+|| Mira si existe algun informe predefinido
+|PROCESO mirainf;
+    |ABRE #lisinfor;
+    #lisinfor#0 = "dsy00014";
+    |LEE 001#lisinfor.=;
+    |SI FSalida = 0;
+       informe = #lisinfor#1;
+       |QBF informe;
+    |SINO;
+       informe = "dsy00014";
+    |FINSI;
+
+    |CIERRA #lisinfor;
+|FPRC;
+
+||___________________________________/ LECTURA DE FACTURAS CONTADO
+
+|PROCESO lee_c;
+     |BUCLELIN 2leelin_c#7;
+|FPRC;
+
+|PROCESO leelin_c;
+     |SI #0#18 ! "T";
+          |SI #0#18 = "S";
+               |SI #agifa069#6 = 0; |O #agifa069#8 = 100; |O #agifa069#21 = 100;
+                    |ACABA;
+               |FINSI;
+          |FINSI;
+          |SI #0#18 = "N";
+               |SI #agifa069#6 ! 0; |Y #agifa069#8 ! 100; |Y #agifa069#21 ! 100;
+                    |ACABA;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+    || Articulo entre limites
+    || Familia entre limites
+     |SI #agifa069#2 ] #dsy00014#13; |Y #agifa069#2 [ #dsy00014#14;
+     |Y #agifa069#13 ] #dsy00014#15 ; |Y #agifa069#13 [ #dsy00014#16;
+          || Con coste o sin el
+          |SI #dsy00014#10 = "S" ;|Y #agifa069#14 ! 0;
+               |HAZ cargatemp_c;
+          |FINSI;
+          |SI #dsy00014#10 = "T" ;
+               |HAZ cargatemp_c;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO cargatemp_c;
+   |DDEFECTO #tmp00002;
+   #tmp00002#0 = #agifa069#13;  || Familia
+   |LEE 101#tmp00002.=;
+
+   |SI FSalida ! 0;
+       |GRABA 021#tmp00002.b;
+   |FINSI;
+
+   || Sumo valores, tengo en cuenta si es abono o no, multiplicando por dicho
+   || campo
+   #tmp00002#1 = #tmp00002#1 + #agifa069#5;
+   #tmp00002#2 = #tmp00002#2 + #agifa069#9;
+
+   nmargen = #agifa069#9 - #agifa069#14;
+   #tmp00002#3 = #tmp00002#3 + nmargen;
+
+   #tmp00002#6 = #tmp00002#6 + #agifa069#14;
+
+   |HAZ leefami;
+   #tmp00002#4 = #agifa060#1;     || Nombre de la familia
+
+          ||Nuevo, son los descuentos
+
+     |SI #agifa084#5 ! 0; |O #agifa084#7 ! 0; |O #agifa084#32 ! 0;
+          nmargen = #agifa069#9 < #agifa084#5;
+          nmargen = nmargen < #agifa084#7;
+          nmargen = nmargen < #agifa084#32;
+          #tmp00002#5 = #tmp00002#5 + nmargen;
+     |FINSI;
+   |GRABA 021#tmp00002.a;
+   |LIBERA #tmp00002;
+|FPRC;
+
+
+|DEFBUCLE lee_conta;
+   #agifa084#3;
+   ;
+   #dsy00014#1,#dsy00014#7,#dsy00014#3,#dsy00014#5;
+   #dsy00014#2,#dsy00014#8,#dsy00014#4,#dsy00014#6;
+   e;
+   NULL, lee_c;
+|FIN;
+
+
+|| ************************** PRINCIPAL ***********************************
+|PROGRAMA;
+     |CLS;
+     |CABEZA "Resumen Ventas por Familia";
+
+     || Abro y cargo el fichero de definicion donde tengo guardados los
+     || valores del ultimo listado
+     |PINPA #0#dsy00014;
+     |ABRE #dsy00014;
+     #dsy00014#0 = "dsy00014";
+     |LEE 101#dsy00014.=
+     |SI FSalida ! 0;
+         |GRABA 021#dsy00014.b;
+     |FINSI;
+     |PINDA #0#dsy00014;
+     |ENDATOS #2#dsy00014;
+     |SI FSalida = 0;
+         |IMPRE 0;
+         |SI FSalida = 0;
+              |HAZ mirainf;
+              |INFOR informe;
+              |SI FSalida = 0;
+                  |ATRI P;
+                  |MENSA "0000 Ordenando Albaranes ...";
+                  |ATRI p;
+
+                  |HAZ CreaTempo; aTmp1 = Tempo; |DELINDEX #1;
+                  |NOME_DAT #1 aTmp1;
+
+                  |ABRE #tmp00002;
+                  |ABRE #agifa060;    || Familia
+                  |BUCLE leealba;
+                  |SI #dsy00014#17 = "S";
+                       |ATRI P;
+                       |MENSA "0000 Ordenando Facturas Contado ...";
+                       |ATRI p;
+                       |BUCLE lee_conta;
+                  |FINSI;
+
+                  |CIERRA #tmp00002;
+                  |CIERRA #agifa060;    || Familia
+
+                  |GRABA 021#dsy00014.a;
+                  |LIBERA #dsy00014;
+                  |CIERRA #dsy00014;
+
+                  |BLIN 4;
+                  |ATRI P;
+                  |MENSA "0000 Imprimiendo ...";
+                  |ATRI p;
+
+                  || Lo abro aqui porque desde el informe me hacia cosas raras
+                  |ABRE #agifa060;
+                  |ABRE #agifa024;
+                  |BUCLE imprimir;
+                  |CIERRA #agifa060;
+                  |ABRE #agifa024;
+
+                  |PIEINF;
+                  Tempo = aTmp1; |HAZ BoraTempo; |DELINDEX #1;
+          |FINSI;
+          |FININF;
+       |FINSI;
+     |FINSI;
+     |FINIMP;
+|FPRO;
+
+|PROCESO Llena002; |TIPO 6;
+     enAlta = 1;
+     eaArticulo = #0Campo;
+     |HAZ LlenaArticulo;
+     |SI FSalida = 0;
+          #0Campo = eaArticulo;
+          |PINTA #0Campo;
+     |SINO;
+          |ERROR; |ACABA;
+     |FINSI;
+|FPRC;

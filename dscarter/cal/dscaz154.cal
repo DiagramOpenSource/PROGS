@@ -1,0 +1,444 @@
+|FICHEROS;
+   dscaz154 #0;
+
+   dscaw105 #10;
+   dscaw106 #11;
+   dscaw107 #12;
+
+   dscaw108 #13;
+
+   dscam003 #20;
+   dscam004 #21;
+   dscam044 #22;
+
+   agif134@ #100;
+   agif071@ #101;
+   agif084@ #102;
+   agif069@ #103;
+|FIN;
+
+|VARIABLES;
+   nSw      = 0;
+   nSwNoLiq = 0;
+   nResult  = 0;
+   nNumRecs = 0;
+
+   aSerie     = "";
+   nFactura   = 0;
+   nDoc       = 0;
+   nCalc      = 0;
+   nSignoOp   = 0;
+
+   nDocAgr    = 0;
+   nDocDiv    = 0;
+   aSerieB    = "";
+
+   aAlfa       = "";
+   &enSwLinea  = 0;
+
+ {1000}nSwLinLiq    = 0;
+ {1000}aSerieBase   = "";
+ {1000}nDocDividido = 0;
+ {1000}nDocAgrup    = 0;
+|FIN;
+
+|PROCESO MiraLineas;
+   |SI #dscam004#6 < #dscaz154#0; |O #dscam004#6 > #dscaz154#1; |ACABA; |FINSI;
+
+   |SI #dscam004#5 = "COB"; |O #dscam004#5 = "REM";
+    |O #dscam004#5 = "RPT"; |O #dscam004#5 = "CAC";
+       |SI nSwLinLiq ! 99; nSwLinLiq = 1; |FINSI;
+   |FINSI;
+   |SI #dscam004#5 = "IMP";
+      |SI nSwLinLiq ! 99; nSwLinLiq = 2; |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraLineas;
+#dscam004#1;
+;
+#dscam003#40, 01;
+#dscam003#40, 99;
+;
+NULL,MiraLineas;
+|FIN;
+
+|PROCESO MiraDivid;
+   |BUCLE MiraLineas;
+
+   |SI #dscam003#14 = "A"; |O #dscam003#14 = "D";
+      |SALVA_FICHA #dscam003;
+      |SELECT #1#dscam003;
+      |SI #dscam003#14 = "A"; |HAZ Agrupado;  |FINSI;
+      |SI #dscam003#14 = "D"; |HAZ Divididos; |FINSI;
+      |SELECT #6#dscam003;
+      |REPON_FICHA #dscam003;
+   |FINSI;
+   |SI #dscam003#14 ! "A"; |Y #dscam003#14 ! "D"; |Y #dscam003#14 ! "L"; nSwLinLiq = 99; |FINSI;
+|FPRC;
+
+|DEFBUCLE Divididos;
+#dscam003#6;
+83;
+00, aSerieB, 000000, 000, " ", 000000001, nDocDiv;
+99, aSerieB, 999999, 999, "z", 999999999, nDocDiv;
+;
+NULL, MiraDivid;
+|FIN;
+
+|PROCESO Divididos;
+   aSerieBase = #dscam003#0; nDocDividido = #dscam003#40;
+   aSerieB = aSerieBase; nDocDiv = nDocDividido;
+   IaSerieBase = IaSerieBase + 1;
+   InDocDividido = InDocDividido + 1;
+   |BUCLE Divididos;
+
+   InDocDividido = InDocDividido - 1;
+   IaSerieBase = IaSerieBase - 1;
+   aSerieB = aSerieBase; nDocDiv = nDocDividido;
+|FPRC;
+
+|PROCESO Agrupado;
+   InDocAgrup = InDocAgrup + 1;
+   nDocAgrup = #dscam003#41; nDocAgr = nDocAgrup;
+   #dscam003#40 = nDocAgrup;
+   |LEE 000#dscam003.=;
+   |SI FSalida = 0; |BUCLE MiraLineas; |FINSI;
+
+   |SI #dscam003#14 = "A"; |O #dscam003#14 = "D";
+      |SALVA_FICHA #dscam003;
+      |SELECT #1#dscam003;
+      |SI #dscam003#14 = "A"; |HAZ Agrupado;  |FINSI;
+      |SI #dscam003#14 = "D"; |HAZ Divididos; |FINSI;
+      |SELECT #6#dscam003;
+      |REPON_FICHA #dscam003;
+   |FINSI;
+   |SI #dscam003#14 ! "A"; |Y #dscam003#14 ! "D"; |Y #dscam003#14 ! "L"; nSwLinLiq = 99; |FINSI;
+   InDocAgrup = InDocAgrup - 1;
+   nDocAgr = nDocAgrup;
+|FPRC;
+
+|PROCESO MiraRecibos;
+   nSwLinLiq = 0; |BUCLE MiraLineas;
+
+   |SI #dscam003#14 = "A"; |O #dscam003#14 = "D";
+      |SALVA_FICHA #dscam003;
+      |SELECT #1#dscam003;
+      InDocAgrup = nDocAgrup1<-;
+      |SI #dscam003#14 = "A"; |HAZ Agrupado;  |FINSI;
+      |SI #dscam003#14 = "D"; |HAZ Divididos; |FINSI;
+      |SELECT #6#dscam003;
+      |REPON_FICHA #dscam003;
+   |FINSI;
+
+   |SI nSwLinLiq = 0; |O nSwLinLiq = 99; nSwNoLiq = 1; |ERROR10; |FINSI;
+|FPRC;
+
+|DEFBUCLE Seguimiento;
+#dscam003#6;
+;
+00, aSerie, nFactura, 000, " ", 000000001;
+99, aSerie, nFactura, 999, "z", 999999999;
+;
+NULL,MiraRecibos;
+|FIN;
+
+|PROCESO IncluyeRecibo;
+   |SI #dscam003#33 < #dscaz154#3; |O #dscam003#33 > #dscaz154#4; |ACABA; |FINSI;
+
+   #dscaw108#0 = #dscam003#0;
+   #dscaw108#1 = #dscam003#1;
+   |LEE 000#dscaw108.=;
+   |SI FSalida = 0;
+      nSwNoLiq = #dscaw108#2;
+   |SINO;
+      |SALVA_FICHA #dscam003; |SALVA_FICHA #dscam004;
+      nSwNoLiq = 0; aSerie = #dscam003#0; nFactura = #dscam003#1; |BUCLE Seguimiento;
+      |REPON_FICHA #dscam004; |REPON_FICHA #dscam003;
+      |DDEFECTO #dscaw108;
+      #dscaw108#0 = #dscam003#0;
+      #dscaw108#1 = #dscam003#1;
+      #dscaw108#2 = nSwNoLiq;
+      |GRABA 020#dscaw108.n;
+   |FINSI;
+
+   |SI nSwNoLiq = 1; |ACABA; |FINSI;
+
+   #dscam044#0 = #dscam003#46;
+   |LEE 000#dscam044.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam044; |FINSI;
+   aAlfa = #dscam044#1; |QBF aAlfa;
+   aAlfa = aAlfa + "fich/" + (("00000" + #dscam003#46) % -105) + "/";
+   |PATH_DAT #agif134@#aAlfa#; |PATH_DAT #agif071@#aAlfa#;
+   |PATH_DAT #agif084@#aAlfa#; |PATH_DAT #agif069@#aAlfa#;
+   |ABRE #agif134@; |ABRE #agif071@;
+   |ABRE #agif084@; |ABRE #agif069@;
+
+   #agif134@#49 = #dscam003#0;
+   #agif134@#0  = #dscam003#1;
+   |LEE 000#agif134@.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #agif134@;
+      #agif084@#48 = #dscam003#0;
+      #agif084@#0  = #dscam003#1;
+      |LEE 000#agif084@.=;
+      |SI FSalida ! 0; |DDEFECTO #agif084@; |FINSI;
+   |FINSI;
+
+   #dscaw105#0 = #dscam003#33;
+   #dscaw105#1 = #dscam003#34;
+   |LEE 000#dscaw105.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscaw105;
+      #dscaw105#0 = #dscam003#33;
+      #dscaw105#1 = #dscam003#34;
+      aAlfa = "Del " + #dscaz154#0; |QBF aAlfa;
+      aAlfa = aAlfa + " al " + #dscaz154#1;
+      #dscaw105#2 = aAlfa;
+      |GRABA 020#dscaw105.n;
+   |FINSI;
+
+   #dscaw106#0  = #dscam003#33;
+   #dscaw106#1  = #dscam003#0;
+   #dscaw106#2  = #dscam003#1;
+   #dscaw106#3  = #dscam003#2;
+   #dscaw106#4  = #dscam003#4;
+   #dscaw106#18 = #dscam003#40;
+   |LEE 000#dscaw106.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscaw106;
+      #dscaw106#0  = #dscam003#33;
+      #dscaw106#1  = #dscam003#0;
+      #dscaw106#2  = #dscam003#1;
+      #dscaw106#3  = #dscam003#2;
+      #dscaw106#4  = #dscam003#4;
+      #dscaw106#5  = #dscam003#80;
+      #dscaw106#6  = #dscam003#81;
+      #dscaw106#7  = nNumRecs;
+      #dscaw106#8  = #dscam003#32;
+      #dscaw106#9  = #dscam003#6;
+      |SI #agif134@#49 = #dscam003#0; |Y #agif134@#0 = #dscam003#1;
+         #dscaw106#11 = #agif134@#101;
+         nCalc = #dscam003#30 / #agif134@#101;
+         #dscaw106#10 = #dscaw106#10 + (((#agif134@#111 * nCalc) ! 2) * nSignoOp);
+      |SINO;
+         #dscaw106#11 = #agif084@#73;
+         nCalc = #dscam003#30 / #agif084@#73;
+         #dscaw106#10 = #dscaw106#10 + (((#agif084@#26 * nCalc) ! 2) * nSignoOp);
+      |FINSI;
+      #dscaw106#12 = #dscam003#4;
+      #dscaw106#13 = #dscam003#26;
+      #dscaw106#14 = #dscam003#15;
+      #dscaw106#15 = #dscam003#30;
+      #dscaw106#18 = #dscam003#40;
+      |GRABA 020#dscaw106.c;
+
+      || Calculo el n§ de recibos .....
+      nNumRecs = 0;
+      #dscaw106#0  = #dscam003#33;
+      #dscaw106#1  = #dscam003#0;
+      #dscaw106#2  = #dscam003#1;
+      #dscaw106#3  = 0;
+      #dscaw106#4  = "01.01.0000";
+      #dscaw106#18 = 0;
+      |LEE 000#dscaw106.];
+      |PARA; |SI FSalida = 0; |Y #dscaw106#0 = #dscam003#33;
+       |Y #dscaw106#1 = #dscam003#0; |Y #dscaw106#2 = #dscam003#1; |HACIENDO;
+         |SI #dscaw106#4 = #dscam003#4; nNumRecs = nNumRecs + 1; |FINSI;
+         |LEE 000#dscaw106.s;
+      |SIGUE;
+
+      || Grabo el n§ de recibos .....
+      #dscaw106#0  = #dscam003#33;
+      #dscaw106#1  = #dscam003#0;
+      #dscaw106#2  = #dscam003#1;
+      #dscaw106#3  = 0;
+      #dscaw106#4  = "01.01.0000";
+      #dscaw106#18 = 0;
+      |LEE 000#dscaw106.];
+      |PARA; |SI FSalida = 0; |Y #dscaw106#0 = #dscam003#33;
+       |Y #dscaw106#1 = #dscam003#0; |Y #dscaw106#2 = #dscam003#1; |HACIENDO;
+         |SI #dscaw106#4 = #dscam003#4;
+            #dscaw106#7  = nNumRecs;
+            |GRABA 020#dscaw106.a;
+         |FINSI;
+         |LEE 000#dscaw106.s;
+      |SIGUE;
+   |FINSI;
+
+   |CIERRA #agif069@; |CIERRA #agif084@;
+   |CIERRA #agif071@; |CIERRA #agif134@;
+|FPRC;
+
+|PROCESO RecogeAgrup;
+   |SI #dscam003#49 = "S"; |O #dscam003#82 = "S";
+      |HAZ BucleRecibos;
+   |SINO;
+      |HAZ IncluyeRecibo;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RecogeAgrup;
+#dscam003#8;
+;
+000000001, nDocAgr;
+999999999, nDocAgr;
+;
+NULL, RecogeAgrup;
+|FIN;
+
+|PROCESO RecogeDivis;
+   |SELECT #1#dscam003;
+   #dscam003#40 = nDocDiv;
+   |LEE 000#dscam003.=;
+   |SI FSalida = 0;
+      |SI #dscam003#49 = "S"; |O #dscam003#82 = "S";
+         |HAZ BucleRecibos;
+      |SINO;
+         |HAZ IncluyeRecibo;
+      |FINSI;
+   |FINSI;
+   |SELECT #8#dscam003;
+|FPRC;
+
+|PROCESO BucleRecibos;
+   |SI #dscam003#49 = "S";
+      |SALVA_FICHA #dscam003;
+      nDocAgr = #dscam003#40;
+      |BUCLE RecogeAgrup;
+      |REPON_FICHA #dscam003;
+   |FINSI;
+   |SI #dscam003#82 = "S";
+      |SALVA_FICHA #dscam003;
+      nDocDiv = #dscam003#83;
+      |HAZ RecogeDivis;
+      |REPON_FICHA #dscam003;
+   |FINSI;
+|FPRC;
+
+|PROCESO HistoricoCobros;
+   || Solo cogemos los movimientos que implicarian un cambio en las comisiones
+   ||  pendientes o ya pagadas
+   |SI #dscam004#5 ! "REM"; |Y #dscam004#5 ! "COB"; |Y #dscam004#5 ! "RPT";
+    |Y #dscam004#5 ! "IMP"; |Y #dscam004#5 ! "CAC";
+       |ACABA;
+   |FINSI;
+   |SI #dscam004#5 = "REM"; |O #dscam004#5 = "COB";
+    |O #dscam004#5 = "RPT"; |O #dscam004#5 = "CAC";
+      nSignoOp = 1;
+   |FINSI;
+   |SI #dscam004#5 = "IMP";
+      nSignoOp = -1;
+   |FINSI;
+
+   aAlfa = "Comprobando recibo " + #dscam004#17;
+   |ATRI I; |PINTA 2305, aAlfa; |ATRI N;
+
+   #dscam003#40 = #dscam004#17;
+   |LEE 000#dscam003.=;
+   |SI FSalida = 0; |Y #dscam003#47 = "N";
+      |SI #dscam003#49 = "S"; |O #dscam003#82 = "S";
+         |HAZ BucleRecibos;
+      |SINO;
+         |HAZ IncluyeRecibo;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE HistoricoCobros;
+#dscam004#7;
+;
+#dscaz154#0, 000000001;
+#dscaz154#1, 999999999;
+;
+NULL,HistoricoCobros;
+|FIN;
+
+|PROCESO ImprimeDet1;
+   |SI #dscaz154#2 = "R";
+      |DDEFECTO #dscaw107;
+      |PRINT;
+   |SINO;
+      ||BUCLE ImprimeDet2;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE ImprimeDet1;
+#dscaw106#1;
+;
+#dscaw105#0, "     ", 000000, 000, "00.00.0000", 000000001;
+#dscaw105#0, "zzzzz", 999999, 999, "31.12.9999", 999999999;
+;
+NULL, ImprimeDet1;
+|FIN;
+
+|PROCESO Imprime;
+   |BUCLE ImprimeDet1;
+|FPRC;
+
+|DEFBUCLE Imprime;
+#dscaw105#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Imprime;
+|FIN;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "INFORME PAGO DE COMISIONES POR REPRESENTANTE";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      aAlfa = #48#17; |QBF aAlfa;
+      aAlfa = aAlfa + "def/agifa134.mas";
+      |CARGA_DEF aAlfa, agif134@;
+      |SI FSalida = 0;
+         aAlfa = #48#17; |QBF aAlfa;
+         aAlfa = aAlfa + "def/agifa071.mas";
+         |CARGA_DEF aAlfa, agif071@;
+
+         aAlfa = #48#17; |QBF aAlfa;
+         aAlfa = aAlfa + "def/agifa084.mas";
+         |CARGA_DEF aAlfa, agif084@;
+
+         aAlfa = #48#17; |QBF aAlfa;
+         aAlfa = aAlfa + "def/agifa069.mas";
+         |CARGA_DEF aAlfa, agif069@;
+
+         aAlfa = "l1" + Usuario; |NOME_DAT #dscaw105#aAlfa#;
+         aAlfa = "l2" + Usuario; |NOME_DAT #dscaw106#aAlfa#;
+         aAlfa = "l3" + Usuario; |NOME_DAT #dscaw107#aAlfa#;
+         aAlfa = "l4" + Usuario; |NOME_DAT #dscaw108#aAlfa#;
+         |DELINDEX #dscaw105; |ABRE #dscaw105;
+         |DELINDEX #dscaw106; |ABRE #dscaw106;
+         |DELINDEX #dscaw107; |ABRE #dscaw107;
+         |DELINDEX #dscaw108; |ABRE #dscaw108;
+
+         |DFICB aAlfa; |PATH_DAT #dscam044#aAlfa#;
+         |ABRE #dscam003; |ABRE #dscam044;
+         |BUCLE HistoricoCobros;
+         |CIERRA #dscam003; |CIERRA #dscam044;
+
+         Impresora = "CrystalReport";
+         |IMPRE -1;
+         |SI FSalida = 0;
+            |INFOR "dscaz154";
+            |SI FSalida = 0;
+               |BUCLE Imprime;
+               |PIEINF; |FININF;
+            |FINSI;
+            |FINIMP;
+         |FINSI;
+
+         |CIERRA #dscaw105; |DELINDEX #dscaw105;
+         |CIERRA #dscaw106; |DELINDEX #dscaw106;
+         |CIERRA #dscaw107; |DELINDEX #dscaw107;
+         |CIERRA #dscaw108; |DELINDEX #dscaw108;
+
+         |DESCARGA_DEF #agif069@; |DESCARGA_DEF #agif084@;
+         |DESCARGA_DEF #agif071@; |DESCARGA_DEF #agif134@;
+      |FINSI;
+   |FINSI;
+|FPRO;

@@ -1,0 +1,111 @@
+    AdjJamaica  -> moulo 001901
+
+|FICHEROS;
+     agis0002 #2;
+     agifa010 #10;
+     agifa142 #142;
+     dscam003@ #3;
+     dscam045@ #45;
+|FIN;
+
+|VARIABLES;
+     &enSwEntregaNoEntra = 0;
+     &eaSerPed = "";
+     &enNumPed = 0;
+     aAlfa = "";
+     nEmp = 0;
+     aPath = "";
+     aBase = "";
+     nEntrega = 0;
+|FIN;
+
+|PROCESO dscam045;
+     |SI #10#52 ] #dscam045@#4; |Y #10#52 [ #dscam045@#5;
+          aAlfa = aBase + "dscarter/fich/" + (("00000" + #dscam045@#6) % -105) + "/";
+          |PATH_DAT #dscam003@#aAlfa#;
+
+          |ABRE #dscam003@;
+          |SELECT #6#dscam003@;
+          #dscam003@#27 = 0;
+          #dscam003@#0 = eaSerPed;
+          #dscam003@#1 = enNumPed;
+          #dscam003@#2 = #2#18;
+          #dscam003@#69 = "P";
+          #dscam003@#40 = 0;
+          |LEE 101#dscam003@.];
+          |SI FSalida = 0; |Y #dscam003@#27 = 0;
+                    |Y #dscam003@#0 = eaSerPed;
+                    |Y #dscam003@#1 = enNumPed;
+                    |Y #dscam003@#2 = #2#18;
+                    |Y #dscam003@#69 = "P";
+                    |Y #dscam003@#46 = nEmp;
+
+               #dscam003@#0 = #10#52;
+               #dscam003@#1 = #10#0;
+               #dscam003@#2 = #2#18;
+               #dscam003@#69 = "A";
+               |GRABA 020#dscam003@.a;
+          |FINSI;
+          |CIERRA #dscam003@;
+
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dscam045;
+     #dscam045@#1002;
+     2;
+     nEmp, 001, "V";
+     nEmp, 999, "V";
+     ;
+     NULL, dscam045;
+|FIN;
+
+
+|| Borra la entrega del pedido y se la pone al albaran
+|| y lo mismo con el recibo de cartera
+
+|PROCESO AdjJamaica;
+     |SI #142#86 = "N"; |ACABA; |FINSI;
+     enSwEntregaNoEntra = 1;  || para el tipo 15 del agis0002
+
+     nEntrega = 0;
+     |ABRE #2;
+     #2#30 = "P";
+     #2#20 = eaSerPed;
+     #2#17 = enNumPed;
+     #2#18 = 0;
+     |LEE 000#2];
+     |PARA; |SI FSalida = 0; |Y #2#30 = "P"; |Y #2#20 = eaSerPed; |Y #2#17 = enNumPed; |HACIENDO;
+          nEntrega = nEntrega + #2#9;
+          |BORRA 020#2a;
+          #2#30 = "A";
+          #2#20 = #10#52;
+          #2#17 = #10#0;
+          |GRABA 020#2n;
+          |SI FSalida = 0;
+               |DBASS aBase;
+               aPath = aBase + "dscarter/def/";
+
+               aAlfa = aPath + "dscam045";
+               |CARGA_DEF aAlfa, dscam045@;
+               |SI FSalida = 0;
+                    aAlfa = aPath + "dscam003";
+                    |CARGA_DEF aAlfa, dscam003@;
+                    |SI FSalida = 0;
+                         aPath = aBase + "dscarter/fich/";
+
+                         |PATH_DAT #dscam045@#aPath#;
+                         |DFICE aAlfa; aAlfa = aAlfa % -205; nEmp = aAlfa;
+
+                         |BUCLE dscam045;
+
+                         |DESCARGA_DEF #dscam003@;
+                    |FINSI;
+                    |DESCARGA_DEF #dscam045@;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+     |CIERRA #2;
+     enSwEntregaNoEntra = 0;
+     #10#61 = nEntrega;
+|FPRC;

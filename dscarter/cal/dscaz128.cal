@@ -1,0 +1,422 @@
+|FICHEROS;
+   dscaz128 #0;
+
+   dscam003 #10;
+   dscam004 #11;
+   dscam044 #12;
+   dscam045 #13;
+
+   agis0002@ #100;
+   agifa010@ #101;
+   agifa071@ #102;
+
+   dscam003@ #200;
+   dscam004@ #201;
+|FIN;
+
+|VARIABLES;
+
+   &enEmpresa    = 0;
+   &enEmpCartera = 0;
+   &enEmpGestion = 0;
+   &eaSerie      = "";
+   &nImporte     = 0;
+   &eaCliGest    = "";
+   &eaTipoOper   = "";
+   &eaTipoR      = "";
+
+   aSerie    = "";
+   aSerie1   = "";
+   nFactura  = 0;
+   nFactura1 = 0;
+
+   Linea    = 0;
+   LinCob   = 0;
+   nEmpresa = 0;
+   nEmprAnt = -1;
+   nSwGraba = 0;
+
+   nImpDiv  = 0;
+   nImpBase = 0;
+
+   Comodin  = "";
+   aAlfa    = "";
+   CtaCobro = "";
+|FIN;
+
+|PROCESO SaldaRecibos;
+|ACABA;
+||    Escribo el movimiento del recibo cobrado y actualizo el recibo a cobrar
+
+|| Compruebo si el importe de la entrega saldara por completo el recibo o no
+||   Si es asi, escribo un movimiento por el total del recibo y por una parte
+||   de la entrega.
+||   Si no, escribo un movimiento por el total de la entrega y por una parte
+||   del recibo.
+
+   |SI #dscam003#23 = 0; |ACABA; |FINSI;
+
+   |SI #dscam003#23 > #dscam003@#31;
+      nImpDiv = #dscam003@#31; nImpBase = #dscam003@#65;
+   |SINO;
+      nImpDiv = #dscam003#23;  nImpBase = #dscam003#23;
+   |FINSI;
+
+   || Movimiento Recibo
+   LinCob = 1;
+   #dscam004@#17 = #dscam003@#40;
+   #dscam004@#3  = 1;
+   |LEE 000#dscam004@.];
+   |SI FSalida = 0; |Y #dscam004@#17 = #dscam003@#40;
+      |PARA; |SI FSalida = 0; |Y #dscam004@#17 = #dscam003@#40; |HACIENDO;
+         CtaCobro = #dscam004#42;
+         LinCob = #dscam004@#3 + 1;
+         |LEE 000#dscam004@.s;
+      |SIGUE;
+   |FINSI;
+
+   Linea = 1;
+   #dscam004#17 = #dscam003#40;
+   #dscam004#3  = 1;
+   |LEE 000#dscam004.];
+   |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40;
+      |PARA; |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40; |HACIENDO;
+         Linea = #dscam004#3 + 1;
+         |LEE 000#dscam004.s;
+      |SIGUE;
+   |FINSI;
+
+   |DDEFECTO #dscam004@;
+   #dscam004@#17 = #dscam003@#40;
+   #dscam004@#3  = LinCob;
+   |GRABA 020#dscam004@.b;
+   #dscam004@#0 = #dscam003@#0;
+   #dscam004@#1 = #dscam003@#1;
+   #dscam004@#2 = #dscam003@#2;
+   #dscam004@#4 = CtaCobro;
+   #dscam004@#5 = "CAC";
+   #dscam004@#6 = ~;
+   #dscam004@#7 = #dscam003@#23;
+   |SI #dscam003@#31 ] nImpDiv;
+      #dscam004@#8  = nImpDiv; #dscam004@#26 = nImpBase;
+   |SINO;
+      #dscam004@#8  = #dscam003@#31; #dscam004@#26 = #dscam003@#65;
+   |FINSI;
+   #dscam004@#15 = #dscam003@#27;
+   Comodin = ("000000000" + #dscam003#40) % -109;
+   Comodin = "Cobro entr. " + Comodin;
+   #dscam004@#16 = Comodin;
+   #dscam004@#25 = #dscam003@#61;
+   #dscam004@#40 = #dscam003#40;
+   #dscam004@#41 = Linea;
+   #dscam004@#42 = #agis0002@#28;
+   |GRABA 020#dscam004@.a; |LIBERA #dscam004@;
+
+   enEmpCartera = #48#0;   enEmpGestion = #dscam003@#46;
+   eaSerie = #dscam003@#0; eaCliGest = #dscam003@#32; nImporte = #dscam004@#26;
+   eaTipoOper = "-4";
+   |HAZ BucleRiesgo;
+
+   |SI #dscam003@#31 ] nImpDiv;
+      #dscam003@#23 = #dscam003@#23 + nImpDiv;
+      #dscam003@#61 = #dscam003@#61 + nImpBase;
+   |SINO;
+      #dscam003@#23 = #dscam003@#23 + #dscam003@#31; nImpDiv  = #dscam003@#31;
+      #dscam003@#61 = #dscam003@#61 + #dscam003@#65; nImpBase = #dscam003@#65;
+      #dscam003@#31 = 0; #dscam003@#65 = 0;
+   |FINSI;
+   #dscam003@#30 = #dscam003@#22 + #dscam003@#24 + #dscam003@#25 + #dscam003@#38;
+   #dscam003@#30 = #dscam003@#30 - (#dscam003@#54 + #dscam003@#55);
+   #dscam003@#64 = #dscam003@#60 + #dscam003@#62 + #dscam003@#63 + #dscam003@#66 + #dscam003@#56;
+   #dscam003@#64 = #dscam003@#64 - (#dscam003@#67 + #dscam003@#68);
+   #dscam003@#31 = #dscam003@#30 - #dscam003@#23; #dscam003@#65 = #dscam003@#64 - #dscam003@#61;
+   #dscam003@#26 = #dscam003#4;
+   |SI #dscam003@#31 = 0;
+      #dscam003@#14 = "L";
+      #dscam003@#15 = "Recibo Liquidado";
+   |SINO;
+      |SI #dscam003@#23 = 0;
+         |SI #dscam003@#16 = 0;
+            #dscam003@#14 = "P";
+            #dscam003@#15 = "Pendiente de cobro";
+         |SINO;
+            #dscam003@#14 = "I";
+            #dscam003@#15 = "Impagado";
+         |FINSI;
+      |SINO;
+         #dscam003@#14 = "C";
+         #dscam003@#15 = "Parcialmente cobrado";
+      |FINSI;
+   |FINSI;
+   |GRABA 020#dscam003@.a; |LIBERA #dscam003@;
+
+   ||  Movimiento de la entrega a cuenta
+
+   |DDEFECTO #dscam004;
+   #dscam004#17 = #dscam003#40;
+   #dscam004#3  = Linea;
+   |GRABA 020#dscam004.b;
+   #dscam004#0 = #dscam003#0;
+   #dscam004#1 = #dscam003#1;
+   #dscam004#2 = #dscam003#2;
+   #dscam004#4 = #agis0002@#28;
+   #dscam004#5 = "REC";
+   #dscam004#6 = ~;
+   #dscam004#7 = #dscam003#23;
+   #dscam004#8  = -nImpDiv; #dscam004#26 = -nImpBase;
+   #dscam004#23 = nImpDiv;  #dscam004#32 = nImpBase;
+   #dscam004#15 = #dscam003#27;
+   Comodin = ("0000000000" + #dscam003@#40) % -110;
+   Comodin = "Cobro Doc. " + Comodin;
+   #dscam004#16 = Comodin;
+   #dscam004#25 = #dscam003#61;
+   |GRABA 020#dscam004.a; |LIBERA #dscam004;
+
+   enEmpCartera = #48#0;     enEmpGestion = #dscam003#46;
+   eaSerie = #dscam003#0; eaCliGest = #dscam003#32; nImporte = -#dscam004#26;
+   eaTipoOper = ""; eaTipoR = "";
+   |SI #dscam003#69 = "P"; eaTipoOper = "-5"; eaTipoR = "P"; |FINSI;
+   |SI #dscam003#69 = "A"; eaTipoOper = "-5"; eaTipoR = "A"; |FINSI;
+   |SI eaTipoOper ! ""; |HAZ BucleRiesgo; |FINSI;
+   eaTipoR = "";
+
+   #dscam003#23 = #dscam003#23 - nImpDiv;
+   #dscam003#61 = #dscam003#61 - nImpBase;
+   #dscam003#55 = #dscam003#55 + nImpDiv;
+   #dscam003#68 = #dscam003#68 + nImpBase;
+   |SI #dscam003#31 = #dscam003#23;
+      #dscam003#14 = "L";
+      #dscam003#15 = "Recibo Compensado";
+   |SINO;
+      |SI #dscam003#23 = 0;
+         #dscam003#14 = "e";
+         #dscam003#15 = "Pendiente de compensar";
+      |SINO;
+         #dscam003#14 = "E";
+         #dscam003#15 = "Compensado parcialmente";
+      |FINSI;
+   |FINSI;
+   #dscam003#30 = #dscam003#22 + #dscam003#24 + #dscam003#25 + #dscam003#38;
+   #dscam003#30 = #dscam003#30 - (#dscam003#54 + #dscam003#55);
+   #dscam003#64 = #dscam003#60 + #dscam003#62 + #dscam003#63 + #dscam003#66 + #dscam003#56;
+   #dscam003#64 = #dscam003#64 - (#dscam003#67 + #dscam003#68);
+   #dscam003#31 = #dscam003#30 - #dscam003#23; #dscam003#65 = #dscam003#64 - #dscam003#61;
+   |GRABA 020#dscam003.a; |LIBERA #dscam003;
+|FPRC;
+
+|DEFBUCLE SaldaRecibos;
+#dscam003@#6005;
+47;
+00, #agifa010@#53, #agifa010@#39, 001, " ", "N";
+00, #agifa010@#53, #agifa010@#39, 999, " ", "N";
+;
+NULL,SaldaRecibos;
+|FIN;
+
+|PROCESO Regenera;
+   #dscam004#17 = #dscam003#40;
+   #dscam004#3  = 1;
+   |LEE 000#dscam004.];
+   |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40; |ACABA; |FINSI;
+
+   #agis0002@#30 = #dscam003#69;
+   #agis0002@#20 = #dscam003#0;
+   #agis0002@#17 = #dscam003#1;
+   #agis0002@#18 = #dscam003#2;
+   |LEE 000#agis0002@.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   #agifa010@#52 = #dscam003#0;
+   #agifa010@#0  = #dscam003#1;
+   |LEE 000#agifa010@.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa010@; |FINSI;
+
+   |DDEFECTO #dscam004;
+   #dscam004#17 = #dscam003#40;
+   #dscam004#3 = 1;
+   |LEE 000#dscam004.];
+   |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40;
+      |PARA; |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40; |HACIENDO;
+         Linea = #dscam004#3 + 1;
+         |LEE 000#dscam004.s;
+      |SIGUE;
+   |SINO;
+      Linea = 1;
+   |FINSI;
+
+   |DDEFECTO #dscam004;
+   #dscam004#17 = #dscam003#40;
+   #dscam004#3  = Linea;
+   |GRABA 020#dscam004.b;
+   #dscam004#0 = #dscam003#0;
+   #dscam004#1 = #dscam003#1;
+   #dscam004#2 = #dscam003#2;
+   #dscam004#4 = #agis0002@#28;
+   #dscam004#5 = "RAC";
+   #dscam004#6 = #agis0002@#16;
+   #dscam004#7 = 0;
+   #dscam004#8 = #dscam003#30; #dscam004#26 = #dscam003#64;
+   #dscam004#15 = #dscam003#27;
+   Comodin = "Entrega a cuenta";
+   #dscam004#16 = Comodin;
+   #dscam004#25 = 0;
+   #dscam004#42 = #agis0002@#28;
+   |GRABA 020#dscam004.a; |LIBERA #dscam004;
+
+   nSwGraba = 0;
+   |SI #dscam003#57 = "   ";
+      #dscam003#57 = #agifa010@#68;
+      |SI #dscam003#57 = "EUR"; #dscam003#58 = "EURO"; |FINSI;
+      nSwGraba = 1;
+   |FINSI;
+   |SI #dscam003#31 ! 0;
+      #dscam003#23 = #dscam003#30;
+      #dscam003#61 = #dscam003#64;
+      #dscam003#31 = 0; #dscam003#65 = 0;
+      nSwGraba     = 1; |GRABA 020#dscam003.a;
+   |FINSI;
+
+   |SI nSwGraba = 1; |GRABA 020#dscam003.a; |LIBERA #dscam003; |FINSI;
+
+   #agifa010@#52 = #dscam003#0;
+   #agifa010@#0  = #dscam003#1;
+   |LEE 000#agifa010@.=;
+   |SI FSalida = 0;
+      |BUCLE SaldaRecibos;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Regenera;
+#dscam003#6;
+;
+00, "     ", 000000, 000, "A", 000000001;
+99, "zzzzz", 999999, 999, "A", 999999999;
+be;
+NULL, Regenera;
+|FIN;
+
+|PROCESO RegeneraEntregas;
+   |SI nEmprAnt = #dscam045#0; |ACABA; |FINSI;
+   nEmprAnt = #dscam045#0;
+
+   #dscam044#0 = #dscam045#0;
+   |LEE 000#dscam044.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam044; |FINSI;
+
+   aAlfa = #dscam044#1; |QBF aAlfa;
+   aAlfa = aAlfa + "fich/" + (("00000" + #dscam045#0) % -105) + "/";
+   |PATH_DAT #agis0002@#aAlfa#; |PATH_DAT #agifa010@#aAlfa#; |PATH_DAT #agifa071@#aAlfa#;
+   |ABRE #agis0002@; |ABRE #agifa010@;
+   |BUCLE Regenera;
+   |CIERRA #agis0002@; |CIERRA #agifa010@;
+|FPRC;
+
+|DEFBUCLE RegeneraEntregas;
+#dscam045#2;
+;
+nEmpresa;
+nEmpresa;
+;
+NULL,RegeneraEntregas;
+|FIN;
+
+|DEFBUCLE SaldaEntr;
+#dscam003#6;
+;
+00, aSerie1, nFactura1, 001, "A", 000000001;
+00, aSerie1, nFactura1, 999, "A", 999999999;
+be;
+NULL,SaldaRecibos;
+|FIN;
+
+|PROCESO Albaranes;
+   aSerie1   = #agifa010@#52; nFactura1 = #agifa010@#0;
+   |BUCLE SaldaEntr;
+|FPRC;
+
+|DEFBUCLE Albaranes;
+#agifa010@#5004;
+;
+aSerie, nFactura, "     ", 000001;
+aSerie, nFactura, "zzzzz", 999999;
+;
+NULL,Albaranes;
+|FIN;
+
+|PROCESO Recibos;
+   |SI #dscam003@#14 ! "P"; |Y #dscam003@#14 ! "C"; |Y #dscam003@#14 ! "I"; |ACABA; |FINSI;
+   aSerie   = #dscam003@#0; nFactura = #dscam003@#1;
+   |BUCLE Albaranes;
+|FPRC;
+
+|DEFBUCLE Recibos;
+#dscam003@#6005;
+47;
+00, "     ", 000001, 000, " ", "N";
+99, "zzzzz", 999999, 999, " ", "N";
+be;
+NULL, Recibos;
+|FIN;
+
+|PROCESO Resalda;
+   |SI nEmprAnt = #dscam045#0; |ACABA; |FINSI;
+   nEmprAnt = #dscam045#0;
+
+   #dscam044#0 = #dscam045#0;
+   |LEE 000#dscam044.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam044; |FINSI;
+
+   aAlfa = #dscam044#1; |QBF aAlfa;
+   aAlfa = aAlfa + "fich/" + (("00000" + #dscam045#0) % -105) + "/";
+   |PATH_DAT #agis0002@#aAlfa#; |PATH_DAT #agifa010@#aAlfa#; |PATH_DAT #agifa071@#aAlfa#;
+   |ABRE #agis0002@; |ABRE #agifa010@;
+   |BUCLE Recibos;
+   |CIERRA #agis0002@; |CIERRA #agifa010@;
+|FPRC;
+
+|DEFBUCLE Resalda;
+#dscam045#2;
+;
+nEmpresa;
+nEmpresa;
+;
+NULL,Resalda;
+|FIN;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA " Recalculo entregas a cuenta ";
+
+   |PINPA #0#dscaz128; |PINDA #0#dscaz128;
+   |ENDATOS #1#dscaz128;
+   |SI FSalida = 0; |Y #dscaz128#0 = "S";
+      |DBASS aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscomer9/def/agis0002.mas";
+      |CARGA_DEF aAlfa, agis0002@;
+      |SI FSalida = 0;
+         |DBASS aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscomer9/def/agifa010.mas";
+         |CARGA_DEF aAlfa, agifa010@;
+
+         |DBASS aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscomer9/def/agifa071.mas";
+         |CARGA_DEF aAlfa, agifa071@;
+
+         |DDEF aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscam003.mas";
+         |CARGA_DEF aAlfa, dscam003@;
+         |DDEF aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscam004.mas";
+         |CARGA_DEF aAlfa, dscam004@;
+
+         |DFICE aAlfa; |PATH_DAT #dscam003@#aAlfa#; |ABRE #dscam003@;
+         |DFICE aAlfa; |PATH_DAT #dscam004@#aAlfa#; |ABRE #dscam004@;
+
+         |DFICB aAlfa; |QBF aAlfa; |PATH_DAT #dscam044#aAlfa#; |PATH_DAT #dscam045#aAlfa#;
+         nEmpresa = #48#0;
+
+         |ABRE #dscam004;   |ABRE #dscam044;
+         nEmprAnt = 0; |BUCLE RegeneraEntregas;
+         nEmprAnt = 0; ||BUCLE Resalda;
+         |CIERRA #dscam004; |CIERRA #dscam044;
+
+         |DESCARGA_DEF #dscam004@; |DESCARGA_DEF #dscam003@;
+         |DESCARGA_DEF #agifa071@; |DESCARGA_DEF #agifa010@; |DESCARGA_DEF #agis0002@;
+      |FINSI;
+   |FINSI;
+|FPRO;

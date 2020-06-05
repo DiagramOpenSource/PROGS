@@ -1,0 +1,175 @@
+|FICHEROS;
+     goconpla #0;
+     goinform #1;
+|FIN;
+----------------------------------------------------------------------
+|VARIABLES;
+     cDocumentos    = "";
+     cUsuario       = "";
+     cPathApli      = "";
+     cPathDsin      = "";
+     cAplicaci      = "";
+     cNumeroIp      = "";
+     cOrigen        = "";
+     cDestino       = "";
+     cPermiso       = "";
+
+     nModo          = 0;
+     aRuta = "";
+     aAlfa = "";
+     aAlfa1 = "";
+     aDirPlan = "";
+     aDirCont = "";
+     aOrigen = "";
+     aDestino = "";
+     aLongitud = "";
+     nLongitud = 0;
+     aIP = "";
+|FIN;
+----------------------------------------------------------------------
+|PROCESO BuscaRuta;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          aRuta = "F";
+          |BROWSE aRuta;
+          |QBF aRuta;
+          |SI aRuta ! "F";
+               aLongitud = aRuta % 0;
+               nLongitud = aLongitud;
+               nLongitud = nLongitud - 1;
+               nLongitud = 200 + nLongitud;
+               aRuta = aRuta % nLongitud;
+               aOrigen = aRuta;
+
+               |DBASE cDocumentos;
+               |QBF cDocumentos;
+
+               cDocumentos= cDocumentos + "docs/";
+               |MKDIR cDocumentos;
+               aDirPlan = cDocumentos + "plantillas/";
+               |MKDIR aDirPlan;
+               aDirCont = cDocumentos + "contratos/";
+               |MKDIR aDirCont;
+
+               aDestino = #0#0;
+               |QBF aDestino;
+               aDestino = aDirPlan + aDestino + ".doc";
+               |IP_REMOTO aIP;
+               |SI aIP = "";
+                    |COPIA_FICHERO aOrigen, aDestino;
+               |SINO;
+                    |RECIBE_FICHERO aOrigen, aDestino;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO DirDoc; |TIPO 0;
+/*
+     |DBASE cDocumentos;
+     |QBF cDocumentos;
+     cDocumentos= cDocumentos + "docs/";
+     |MKDIR cDocumentos;
+*/
+|FPRC;
+
+|PROCESO BlancoNo;
+     aAlfa = #0#0;
+     |QBF aAlfa;
+     |SI aAlfa = "";
+          |ERROR;
+     |FINSI;
+|FPRC;
+----------------------------------------------------------------------
+|PROCESO EditaCont; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 2;
+          |CONFI "0000S¿Desea editar el contrato?."
+          |SI FSalida = 0;
+               cUsuario = Usuario % 810;
+               |QBF cUsuario;
+               #1#0 = cUsuario;
+               |ABRE #1;
+               |LEE 000#1=;
+               |SI FSalida ! 0;
+                    |MENAV "0000NO ESTAN DEFINIDOS LOS  PARAMETROS DE IMPRESION DE ESTE USUARIO";
+                    |ERROR;
+                    |ACABA;
+               |FINSI;
+               cPathApli = #1#2;
+               |QBF cPathApli;
+               cPathApli = cPathApli + "\winword.exe";
+               cPathDsin = #1#6;
+               |QBF cPathDsin;
+               nModo = (FEntrada / 100) ! 0;
+               |SI nModo = 2;
+                    |DBASE cOrigen;
+                    |QBF cOrigen;
+                    aAlfa = #0#0;
+                    |QBF aAlfa;
+                    cOrigen = cOrigen + "docs/plantillas/" + aAlfa + ".doc";
+                    aAlfa1 = Usuario;
+                    aAlfa1 = "000000" + Usuario;
+                    aAlfa1 = aAlfa1 % -108;
+                    cDestino = aAlfa + "_" + aAlfa1;
+                    cDestino = cDestino + ".doc";
+                    cDestino = cPathDsin + "\" + cDestino;
+
+                    |IP_REMOTO aIP;
+                    |SI aIP ! "";
+                         |ENVIA_FICHERO cOrigen, cDestino;
+                    |SINO;
+                         |COPIA_FICHERO cOrigen, cDestino;
+                    |FINSI;
+
+                    |SI FSalida ! 0;
+                         aAlfa = #0#0;
+                         |QBF aAlfa;
+                         aAlfa = aAlfa + ".doc";
+                         aAlfa = "    ATENCION: Plantilla " + aAlfa + " no encontrada.";
+                         |MENAV aAlfa;
+                         aAlfa = "    Vuelva a dar la ficha de la plantilla de alta ";
+                         aAlfa = aAlfa + " si es necesario.";
+                         |MENAV aAlfa;
+                         |ACABA;
+                    |FINSI;
+
+                    || DBASE cPermiso;
+                    || QBF cPermiso;
+                    || cDestino = cPermiso + "docs/" + #0#0;
+                    || QBF cDestino;
+                    || cDestino = cDestino + ".doc";
+                    || cPermiso = cPermiso + "docs/permisos " + cDestino;
+                    || QBF cPermiso;
+                    || SYSTEM cPermiso;
+               |FINSI;
+               cPathDsin = cPathDsin + "\" + #0#0;
+               |QBF cPathApli;
+               |QBF cPathDsin;
+               cAplicaci = cPathApli + " " + cDestino;
+               |RSYSTEM cAplicaci;
+
+               |SI aIP = "";
+                    |COPIA_FICHERO cDestino, cOrigen;
+               |SINO;
+                    |RECIBE_FICHERO cDestino, cOrigen;
+               |FINSI;
+
+               |RFBORRA cDestino;
+          |FINSI;
+     |FINSI;
+|FPRC;
+----------------------------------------------------------------------
+|PROCESO BajaFicha; |TIPO 2;
+     nModo = (FEntrada/100) ! 0;
+     |SI nModo = 3;
+          |DBASE cOrigen;
+          |QBF cOrigen;
+          aAlfa = #0#0;
+          |QBF aAlfa;
+          aAlfa = aAlfa + ".doc";
+          cDestino = cOrigen + "docs/plantillas/" + aAlfa;
+          |FBORRA cDestino;
+     |FINSI;
+|FPRC;
+-------------------------------------------------------------------------------

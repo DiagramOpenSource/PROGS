@@ -1,0 +1,784 @@
+|FICHEROS;
+  c3gec300 #0;    || def entrada
+  caman300 #2;    || modelo 300
+  caivarep #4;    || iva repercutido
+  caivasop #5;    || iva soportado
+  caiva300 #6;    || control iva
+  cacon300 #7;    || Conceptos de IVA a 300
+  caportad #8;    || hacienda
+  canempre #30;
+|FIN;
+
+|VARIABLES;
+  alfa1 = "";
+  alfa2 = "";
+  alfa3 = "";
+  alfa4 = "";
+  nume1 = 0;
+  nume2 = 0;
+  nume3 = 0;
+  nume4 = 0;
+  fech1 = @;
+  fech2 = @;
+  fech3 = @;
+  fech4 = @;
+  FEstado = 0;
+  dir_reo = "";
+  per_ant = -1;
+  &compens = 0;
+  x1 = 0;
+  x2 = 0;
+  x3 = 0;
+  x4 = 0;
+  x5 = 0;
+  t_ivasop = 0;
+  tot_iva = 0;
+  tot_bas = 0;
+  total = 0;
+  perio = 0;
+  sw_per = 0;
+  activi = "";
+  sw_error = 0;
+    sw_exi = 0;
+    &a_emp = 0;
+    &a_per = 0;
+    &ac_pe = 0;
+    i_cm1 = 6;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE multie_i;
+
+***************************************************************************
+             DATOS PANTALLA
+***************************************************************************
+|PROCESO tipo8;  |TIPO 8;
+  |HAZ inicio;
+  any = #30#26;
+  |HAZ coloca;
+|FPRC;
+
+|PROCESO defectos; |TIPO 0;
+ #0#3 = any;
+ #0#1 = 1;
+ #0#2 = 4; |SI #0#0 = "M"; #0#2 = 12; |FINSI;
+ |PINTA #0#3;
+ |PINTA #0#1;
+ |PINTA #0#2;
+|FPRC;
+
+|PROCESO mayor;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO h_per; |TIPO 0;
+ |SI #0#0 = "T"; |Y #0#2 > 4;
+     |ERROR;
+     |ACABA;
+ |FINSI;
+ |SI #0#0 = "A"; |Y #0#2 > 1;
+     |ERROR;
+     |ACABA;
+ |FINSI;
+ |SI #0#1 > #0#2;
+     |ERROR;
+     |ACABA;
+ |FINSI;
+|FPRC;
+
+|| ***********************************************************************
+|PROCESO sel_multi;
+  |SI #30#26 ! #0#3;  |ACABA; |FINSI;
+  |SI #30#21 = "I";   |ACABA; |FINSI;
+  sw_error = 0;
+
+  alfa1 = #30#2;
+  alfa2 = #30#3;
+  alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+  alfa2 = "0"     + alfa2;   alfa2 = alfa2 % -101;
+  dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+
+  || ... Busca Datos de Portada
+  |PATH_DAT #8 dirfich0;
+  |DDEFECTO #8;
+  |ABRE #8;
+  #8#0 = #30#2;
+  #8#1 = #30#26;
+  |LEE 000#8=;
+  |SI FSalida ! 0;
+      sw_error = 1;
+  |FINSI;
+  |CIERRA #8;
+
+||   |SI sw_error = 0; leidos = 1; |FINSI;
+  leidos = 1;
+|FPRC;
+
+|PROCESO esbuena2;
+ |SI FSalida = 2; |ACABA; |FINSI;
+ |CAMPO_MODIFICA #0Campo,0,alfa1;
+ |SI alfa1 = "N"; |ACABA; |FINSI;
+ |SI sw_error !  0; |Y leidos = 1;
+     |SI sw_error = 1; |MENAV "    No encontrado Fichero Portadas Modelos"; |FINSI;
+     leidos = 0;
+     |ERROR;
+ |FINSI;
+|FPRC;
+
+|| ***********************************************************************
+|| ---------- Seleccion DESDE / HASTA Empresa.
+|PROCESO esdesd1;
+  alfa1 = #30#2;
+  alfa2 = #30#3;
+  alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+  alfa2 = "0"   + alfa2;   alfa2 = alfa2 % -101;
+  dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+  sw_error = 0;
+  leidos = 0;
+  |HAZ sel_multi;
+  |SI leidos = 1; |Y sw_error = 0;
+      |HAZ haztodo;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE esdesde;
+ #30#1;
+ ;
+ d_empres, d_period;
+ h_empres, h_period;
+ e;
+ NULL,esdesd1;
+|FIN;
+
+|| ---------- Seleccion en parrilla.
+|PROCESO esunaauna;
+  |PARA xx = i_cm6; |SI xx [ i_cm7; |HACIENDO xx = xx + 1;
+        |SI #0xx = 0;  |SAL;  |FINSI;
+        yy = xx + 20;
+        alfa1 = #0xx;
+        alfa2 = #0yy;
+
+        || ... lee empresa
+           |ABRE #30;
+           |DDEFECTO #30;
+           #30#2 = #0xx;
+           #30#3 = #0yy;
+           |LEE 011#30=;
+           |CIERRA #30;
+           leidos = 0; sw_error = 0;
+           |HAZ sel_multi;
+           |SI leidos = 0; |O sw_error ! 0; |VETE otramas; |FINSI;
+        || ...................
+
+        alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+        alfa2 = "0"     + alfa2;   alfa2 = alfa2 % -101;
+        dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+
+        |HAZ haztodo;
+ |ET otramas;
+  |SIGUE;
+|FPRC;
+
+***************************************************************************
+               GRABACION DEL 300
+***************************************************************************
+||.........TOTALES 300
+
+|PROCESO totaliza_300;
+  #2#29 = compens;
+  compens = 0;
+  #2#20 = #2#07+#2#10+#2#13+#2#16+#2#19+#2#48+#2#50;      || t. devengado
+  #2#25 = #2#21+#2#22+#2#51+#2#23+#2#24+#2#43+#2#44+#2#58;|| t. deducible
+  #2#26 = #2#20-#2#25;                                    || diferencia
+  #2#28 = #2#26%#2#27;                                    || atribuible
+  #2#31 = 0;
+  #2#32 = 0;
+  #2#33 = 0;
+  |SI #2#28 > 0;  #2#33 = #2#28;  |FINSI;                 || a ingresar
+  |SI #2#28 < 0;  #2#32 = #2#28;  |FINSI;                 || a compensar
+  |SI #2#28 < 0;  #2#31 = #2#28;  |FINSI;                 || a devolver
+|| totales
+  #2#20 = #2#7 + #2#10 + #2#13 + #2#16 + #2#19 + #2#48 + #2#50;
+  #2#25 = #2#21 + #2#22 + #2#23 + #2#24 + #2#43 + #2#44 + #2#51 + #2#58;
+  #2#26 = #2#20 - #2#25;
+  #2#35 = #2#54;
+  #2#52 = #2#49;
+  #2#42 = #2#5  + #2#8  + #2#11;
+  #2#42 = #2#42 + #2#34 + #2#35 + #2#36 + #2#37 + #2#38 + #2#39
+  #2#42 = #2#42 - #2#40 - #2#41;
+
+  total = #2#28 - #2#29 - #2#30;
+  |SI total = 0;
+      #2#33 = 0;
+      #2#31 = 0;
+      #2#32 = 0;
+  |FINSI;
+  |SI total > 0;
+      #2#33 = total;
+      #2#31 = 0;
+      #2#32 = 0;
+  |SINO;         ||total negativo
+      total = total * (-1);
+      #2#33 = 0;
+      #2#32 = total;
+      #2#31 = 0;
+      |SI #8#71 = "D";
+          |SI #2#45 = "T"; |Y #2#1 = 4;
+              #2#32 = 0;
+              #2#31 = total;
+          |FINSI;
+          |SI #2#45 = "M"; |Y #2#1 = 12;
+              #2#32 = 0;
+              #2#31 = total;
+          |FINSI;
+          |SI #2#45 = "A";
+              #2#32 = 0;
+              #2#31 = total;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+||.........IVA SOPORTADO
+
+|PROCESO iva_sop;
+  t_ivasop = #5#14+#5#15+#5#16+#5#20+#5#21+#5#22+#5#56+#5#57+#5#60+#5#61; || suma recargo
+  |SI #5#23 = "S";
+      |SI #5#48 = "S";
+          #2#43 = #2#43 + t_ivasop;   || operaciones interiores inversiones
+      |SINO;
+          #2#21 = #2#21 + t_ivasop;   || operaciones interiores corrientes
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO acum_sop;
+  tot_iva = #5#14 + #5#15 + #5#16 + #5#56 + #5#57; || no suma recargo
+  tot_bas = #5#8 + #5#10 + #5#9 + #5#52 + #5#53;
+  |SI #5#23 = "S";
+      |SI #5#48 = "N";         ||Si no es de inversion
+          |HAZ noinver;
+      |SINO;         ||SI es de inversiones
+          |HAZ inver;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO inver;
+  |SI #7#1 = 5;
+      #2#24 = #2#24 + tot_iva;
+  |SINO;
+      |SI #7#1 = 6;       ||Op. Interiores Inversiones
+           #2#43 = #2#43 + tot_iva;
+      |SINO;
+           |SI #7#1 = 7;  ||Importaciones Inversiones
+               #2#44 = #2#44 + tot_iva;
+           |SINO;
+               |SI #7#1 = 8;
+                   #2#54 = #2#54 - tot_bas;
+                   #2#35 = #2#35 - tot_bas;
+               |SINO;
+                   |SI #7#1 = 3;
+                       #2#58 = #2#58 + tot_iva;
+                       |SI #7#2 = 2;
+                           #2#49 = #2#49 + tot_bas;          ||base intracomunitario
+                           #2#50 = #2#50 + tot_iva;
+                           #2#52 = #2#52 + tot_bas;
+                       |FINSI;
+                   |SINO;
+                       #2#24 = #2#24 + tot_iva;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO noinver;
+  |SI #7#1 = 1;       ||Operaciones Corrientes
+      #2#21 = #2#21 + tot_iva;
+  |SINO;
+      |SI #7#1 = 2;  ||Importaciones
+          #2#22 = #2#22 + tot_iva;
+      |SINO;
+          |SI #7#1 = 3;  ||Adj. Intracomunitaria
+              #2#51 = #2#51 + tot_iva;
+              |SI #7#2 = 2;
+                  #2#49 = #2#49 + tot_bas;          ||base intracomunitario
+                  #2#50 = #2#50 + tot_iva;
+                  #2#52 = #2#52 + tot_bas;
+              |FINSI;
+          |SINO;
+              |SI #7#1 = 4;  ||Regimen AGp
+                  #2#23 = #2#23 + tot_iva;
+              |SINO;
+                  |SI #7#1 = 8;  ||Entrega intracom
+                      #2#54 = #2#54 - tot_bas;
+                      #2#35 = #2#35 - tot_bas;
+                  |SINO;
+                      #2#21 = #2#21 + tot_iva;
+                  |FINSI;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO abre_300_sop;
+  perio  = #0#2;
+  activi = #0#0;
+  any    = #0#3;
+  |SI perio ! 1;
+      |HAZ lee_ant;        || carga compensar
+  |SINO;
+       |HAZ lee_any_a;     || el del a¤o pasado
+  |FINSI;
+  |DDEFECTO #2;
+  #2#00 = #30#2;       || empresa
+  #2#45 = #0#0;        || actividad
+  #2#01 = #0#2;       || periodo
+  #2#02 = #0#3;        || a¤o
+  |LEE 101#2=;
+  FEstado = FSalida;
+  #2#00 = #30#2;       || empresa
+  #2#45 = #0#0;        || actividad
+  #2#01 = #0#2;       || periodo
+  #2#02 = #0#3;        || a¤o
+  |SI FSalida ! 0;
+      #2#06 = #6#1;
+      #2#09 = #6#2;
+      #2#12 = #6#3;
+      #2#15 = #6#4;
+      #2#18 = #6#5;
+      #2#47 = #6#6;
+  |FINSI;
+|FPRC;
+
+|PROCESO cierra_300_sop;
+||  |SI per_ant = -1; |ACABA;  |FINSI;
+    |SI per_ant = -1;
+        |HAZ abre_300_sop;
+    |FINSI;
+  |HAZ totaliza_300;
+  |SI FEstado = 0;  |GRABA 020#2a;  |FINSI;
+  |SI FEstado ! 0;  |GRABA 020#2n;  |FINSI;
+  |LIBERA #2;
+|FPRC;
+
+|PROCESO sopor1;
+
+  |SI #5#44 < #0#2; |Y #5#28 = "S";
+      |ACABA;
+  |FINSI;
+
+  |ATRI R;
+  |PINTA 2262, "Sop:";
+  |PINTA 2266, #5#44;
+  |PINTA 2269, #5#0;
+  |PINTA 2272, #5#2;
+  |ATRI 0;
+  |SI per_ant ! #0#2;
+      |HAZ cierra_300_sop;
+      |HAZ abre_300_sop;
+      per_ant = #0#2;
+  |FINSI;
+  #7#0 = #5#6;
+  |LEE 001#7=;
+  |SI FSalida = 0;
+      |SI #7#1 ! 9;
+          |HAZ acum_sop;
+      |FINSI;
+  |SINO;
+      |HAZ iva_sop;
+  |FINSI;
+  #5#28 = "S";
+  #5#44 = #0#2;
+  |GRABA 011#5a;
+|FPRC;
+
+|DEFBUCLE sopor;
+ #5#1;
+ 44;
+ #0#4,      1, "  ", #0#1;
+ #0#5, 999999, "zz", #0#2;
+ e;
+ NULL, NULL, NULL, NULL, NULL, sopor1;
+ #5#44, #5#0, #5#2, #5#27;    || ordena por periodo
+|FIN;
+
+||.........IVA REPERCUTIDO
+
+|PROCESO acum_rep;
+  tot_bas = #4#8  + #4#9  + #4#10 + #4#52 + #4#53; ||Total bases
+  tot_iva = #4#14 + #4#15 + #4#16 + #4#56 + #4#57; || Total IVA
+  tot_iva = tot_iva + #4#20 + #4#21 + #4#22 + #4#60 + #4#61; || + recargo
+
+  |SI #7#2 = 2;  ||Adq Intracomunitarias
+      #2#49 = #2#49 + tot_bas;          ||base intracomunitario
+      #2#50 = #2#50 + tot_iva;
+      |SI #7#1 = 3;
+          |SI #4#48 = "N"; #2#51 = #2#51 + tot_iva; |FINSI;
+          |SI #4#48 = "S"; #2#58 = #2#58 + tot_iva; |FINSI;
+      |FINSI;
+      #2#52 = #2#52 + tot_bas; || Pto. 89
+  |FINSI;
+
+  |SI #7#2 = 3;       ||Entrada Intracomunitaria
+      #2#54 = #2#54 + tot_bas;
+      #2#35 = #2#35 + tot_bas; || Pto. 83
+  |FINSI;
+
+  |SI #7#2 = 4;       ||Operaciones Regimen Simplificado
+      #2#34 = #2#34 + tot_bas; || Pto. 80
+  |FINSI;
+
+  |SI #7#2 = 5;       ||Op. AGyP
+      #2#38 = #2#38 + tot_bas; || Pto. 81
+  |FINSI;
+
+  |SI #7#2 = 6;       ||Recargo de equivalencia
+      #2#39  = #2#39 + tot_bas; || Pto. 82
+  |FINSI;
+
+  |SI #7#2 = 7;       ||Op.sujetas que originan el derecho a devolucion
+      #2#59  = #2#59 + tot_bas; || Pto. 91
+  |FINSI;
+
+  |SI #7#2 = 8;       ||Exportaciones y otras con derecho a deduccion
+      #2#36 = #2#36 + tot_bas; || Pto. 84
+  |FINSI;
+
+  |SI #7#2 = 9;       ||Op Exentas sin derecho a deduccion
+      #2#37 = #2#37 + tot_bas; || Pto. 85
+  |FINSI;
+
+  |SI #7#2 = 10;      ||Entrega bienes inmuebles
+      #2#40 = #2#40 + tot_bas; || Pto. 86
+  |FINSI;
+
+  |SI #7#2 = 11;      ||Ventas a distancia no sujetas
+      #2#53 = #2#53 + tot_bas; || Pto. 90
+  |FINSI;
+
+  |SI #7#2 = 12;      ||Entrega bienes objetos de otros estados miembros
+      #2#56 = #2#56 + tot_bas; || Pto. 92
+  |FINSI;
+
+  |SI #7#2 = 13;      ||Entregas Interiores de Bienes
+       #2#57 = #2#57 + tot_bas; || Pto 93
+  |FINSI;
+
+  |SI #7#2 = 14;      ||Entrega bienes de inversion
+      #2#41 = #2#41 + tot_bas; || Pto 87
+  |FINSI;
+
+|FPRC;
+
+|PROCESO recargo;
+  x1 = 0;  x2 = 0;  x3 = 0;  x4 = 0;  x5 = 0;
+  |SI #4#17 = #6#4;   x1 = 14;  |FINSI;
+  |SI #4#17 = #6#5;   x1 = 17;  |FINSI;
+  |SI #4#17 = #6#6;   x1 = 46;  |FINSI;
+
+  |SI #4#18 = #6#4;   x2 = 14;  |FINSI;
+  |SI #4#18 = #6#5;   x2 = 17;  |FINSI;
+  |SI #4#18 = #6#6;   x2 = 46;  |FINSI;
+
+  |SI #4#19 = #6#4;   x3 = 14;  |FINSI;
+  |SI #4#19 = #6#5;   x3 = 17;  |FINSI;
+  |SI #4#19 = #6#6;   x3 = 46;  |FINSI;
+
+  |SI #4#58 = #6#4;   x4 = 14;  |FINSI;
+  |SI #4#58 = #6#5;   x4 = 17;  |FINSI;
+  |SI #4#58 = #6#6;   x4 = 46;  |FINSI;
+
+  |SI #4#59 = #6#4;   x5 = 14;  |FINSI;
+  |SI #4#59 = #6#5;   x5 = 17;  |FINSI;
+  |SI #4#59 = #6#6;   x5 = 46;  |FINSI;
+
+  |SI x1 ! 0;
+      #2x1 = #2x1 + #4#08;                     || base 1
+      x1 = x1 + 1;    #2x1 = #4#17;            || (%) rec. 1
+      x1 = x1 + 1;    #2x1 = #2x1 + #4#20;     || cuota rec. 1
+  |FINSI;
+  |SI x2 ! 0;
+      #2x2 = #2x2 + #4#09;                     || base 2
+      x2 = x2 + 1;    #2x2 = #4#18;            || (%) rec. 2
+      x2 = x2 + 1;    #2x2 = #2x2 + #4#21;     || cuota rec. 2
+  |FINSI;
+  |SI x3 ! 0;
+      #2x3 = #2x3 + #4#10;                     || base 3
+      x3 = x3 + 1;    #2x3 = #4#19;            || (%) rec. 3
+      x3 = x3 + 1;    #2x3 = #2x3 + #4#22;     || cuota rec. 3
+  |FINSI;
+  |SI x4 ! 0;
+      #2x4 = #2x4 + #4#52;                     || base 4
+      x4 = x4 + 1;    #2x4 = #4#58;            || (%) rec. 4
+      x4 = x4 + 1;    #2x4 = #2x4 + #4#60;     || cuota rec. 4
+  |FINSI;
+  |SI x5 ! 0;
+      #2x5 = #2x5 + #4#53;                     || base 5
+      x5 = x5 + 1;    #2x5 = #4#59;            || (%) rec. 5
+      x5 = x5 + 1;    #2x5 = #2x5 + #4#61;     || cuota rec. 5
+  |FINSI;
+|FPRC;
+
+|PROCESO iva_rep;
+  x1 = 0;  x2 = 0;  x3 = 0;  x4 = 0;  x5 = 0;
+  |SI #4#11 = #6#1;   x1 =  5;  |FINSI;
+  |SI #4#11 = #6#2;   x1 =  8;  |FINSI;
+  |SI #4#11 = #6#3;   x1 = 11;  |FINSI;
+
+  |SI #4#12 = #6#1;   x2 =  5;  |FINSI;
+  |SI #4#12 = #6#2;   x2 =  8;  |FINSI;
+  |SI #4#12 = #6#3;   x2 = 11;  |FINSI;
+
+  |SI #4#13 = #6#1;   x3 =  5;  |FINSI;
+  |SI #4#13 = #6#2;   x3 =  8;  |FINSI;
+  |SI #4#13 = #6#3;   x3 = 11;  |FINSI;
+
+  |SI #4#54 = #6#1;   x4 =  5;  |FINSI;
+  |SI #4#54 = #6#2;   x4 =  8;  |FINSI;
+  |SI #4#54 = #6#3;   x4 = 11;  |FINSI;
+
+  |SI #4#55 = #6#1;   x5 =  5;  |FINSI;
+  |SI #4#55 = #6#2;   x5 =  8;  |FINSI;
+  |SI #4#55 = #6#3;   x5 = 11;  |FINSI;
+
+  |SI x1 ! 0;
+      #2x1 = #2x1 + #4#08;                     || base 1
+      x1 = x1 + 1;    #2x1 = #4#11;            || (%) iva 1
+      x1 = x1 + 1;    #2x1 = #2x1 + #4#14;     || cuota iva 1
+  |FINSI;
+  |SI x2 ! 0;
+      #2x2 = #2x2 + #4#09;                     || base 2
+      x2 = x2 + 1;    #2x2 = #4#12;            || (%) iva 2
+      x2 = x2 + 1;    #2x2 = #2x2 + #4#15;     || cuota iva 2
+  |FINSI;
+  |SI x3 ! 0;
+      #2x3 = #2x3 + #4#10;                     || base 3
+      x3 = x3 + 1;    #2x3 = #4#13;            || (%) iva 3
+      x3 = x3 + 1;    #2x3 = #2x3 + #4#16;     || cuota iva 3
+  |FINSI;
+  |SI x4 ! 0;
+      #2x4 = #2x4 + #4#52;                     || base 4
+      x4 = x4 + 1;    #2x4 = #4#54;            || (%) iva 4
+      x4 = x4 + 1;    #2x4 = #2x4 + #4#56;     || cuota iva 4
+  |FINSI;
+  |SI x5 ! 0;
+      #2x5 = #2x5 + #4#53;                     || base 5
+      x5 = x5 + 1;    #2x5 = #4#55;            || (%) iva 5
+      x5 = x5 + 1;    #2x5 = #2x5 + #4#57;     || cuota iva 5
+  |FINSI;
+|FPRC;
+
+|PROCESO abre_300_rep;
+  perio  = #0#2; || periodo (1-12)
+  activi = #0#0;  || tipo (T/M/A)
+  any    = #0#3;  || any
+  |SI perio ! 1;
+       |HAZ lee_ant;        || carga compensar
+  |SINO;
+       |HAZ lee_any_a; || el del a¤o pasado
+  |FINSI;
+  #2#00 = #30#2;       || empresa
+  #2#45 = #0#0;        || actividad
+  #2#01 = #0#2;       || periodo
+  #2#02 = #0#3;        || a¤o
+
+  |LEE 001#2=;
+  |SI FSalida = 0;
+      |BORRA 020#2a;
+  |FINSI;
+  |DDEFECTO #2;
+  #2#00 = #30#2;       || empresa
+  #2#45 = #0#0;        || actividad
+  #2#01 = #0#2;       || periodo
+  #2#02 = #0#3;        || a¤o
+  #2#06 = #6#1;
+  #2#09 = #6#2;
+  #2#12 = #6#3;
+  #2#15 = #6#4;
+  #2#18 = #6#5;
+  #2#47 = #6#6;
+|FPRC;
+
+|PROCESO cierra_300_rep;
+  |SI per_ant = -1;  |ACABA;  |FINSI;
+  |HAZ totaliza_300;
+  |GRABA 020#2n;
+|FPRC;
+
+|PROCESO reper1;
+
+  |SI #4#44 < #0#2; |Y #4#28 = "S";
+      |ACABA;                          || No seleccionado
+  |FINSI;
+
+  |ATRI R;
+  |PINTA 2262, "Rep:";
+  |PINTA 2266, #4#44;
+  |PINTA 2269, #4#0;
+  |PINTA 2272, #4#2;
+  |ATRI 0;
+  |SI per_ant ! #0#2;
+      |HAZ cierra_300_rep;
+      |HAZ abre_300_rep;
+      per_ant = #0#2;
+  |FINSI;
+  #7#0 = #4#6;
+  |LEE 001#7=;
+  |SI FSalida = 0;
+      |SI #7#2 = 1; |O #7#2 = 0;
+          |HAZ iva_rep;
+          |HAZ recargo;
+      |SINO;
+          |SI #7#2 = 14;  |O #7#2 = 10;
+              |HAZ iva_rep;
+              |HAZ recargo;
+          |FINSI;
+          |HAZ acum_rep;
+      |FINSI;
+  |SINO;
+      |HAZ iva_rep;
+      |HAZ recargo;
+  |FINSI;
+  #4#28 = "S";
+  #4#44 = #0#2;
+  |GRABA 011#4a;
+|FPRC;
+
+|DEFBUCLE reper;
+ #4#1;
+ 44;
+ #0#4,      0 , "  ", #0#1;
+ #0#5, 999999 , "zz", #0#2;
+ e;
+ NULL, NULL, NULL, NULL, NULL, reper1;
+ #4#44, #4#0, #4#2, #4#27;    || ordena por periodo
+|FIN;
+
+|PROCESO borrando;
+  |BORRA 020#2a;
+|FPRC;
+
+|DEFBUCLE borra;
+ #2#1;
+ ;
+ #0#0, #0#1, #0#3;
+ #0#0, #0#2, #0#3;
+ e;
+ NULL, borrando;
+|FIN;
+
+|PROCESO lee_ant;
+     compens = 0;
+     perio = perio - 1;
+     #2#45 = activi;
+     #2#1 = perio;
+     #2#2 = any;
+     |LEE 001#2=;
+     |SI FSalida = 0;
+          compens = #2#32;
+     |FINSI;
+     perio = perio + 1;
+     sw_per = 1;
+|FPRC;
+
+|PROCESO lee_any_a;
+     compens = 0;
+     sw_exi = 0;
+     || lee el a¤o anterior, para ver si existe
+     |ABRE #30;
+     a_emp = #30#2;
+     ac_pe = #30#3;
+     a_per = ac_pe - 1;
+     |SI a_per < 0; a_per = 9; |FINSI;
+     #30#3 = a_per;
+     |LEE 011#30=;
+     |SI FSalida ! 0;
+         sw_exi = 1;
+     |FINSI;
+     #30#2 = a_emp;
+     #30#3 = ac_pe;
+     |LEE 011#30=;
+     |CIERRA #30;
+     |SI sw_exi = 1; |ACABA; |FINSI;
+
+   |SUB_EJECUTA "caany300";
+|FPRC;
+
+|| ==========================================================================
+|PROCESO reo300g; |TIPO 3;
+  |PUSHV 2102 2378;
+  |ATRI I;
+  |CUADRO 2102 2378
+  |ATRI N;
+  |ATRI R;
+  |PINTA 2203," EMPRESA:                                                                  ";
+  |ATRI 0;
+  |SI #0i_cm1 = "S";
+      |BUCLE esdesde;
+  |SINO;
+      |HAZ esunaauna;
+  |FINSI;
+|FPRC;
+
+|| ******************************** PROCESO
+|PROCESO haztodo;
+ enEmpresa = #canempre#2;
+ enPeriodo = #canempre#3;
+ swOperacion = 0;
+ |SUB_EJECUTA "camoneda";
+
+ |PATH_DAT #2 dirfich0;
+ |PATH_DAT #4 dirfich0;
+ |PATH_DAT #5 dirfich0;
+ |PATH_DAT #6 dirfich0;
+ |PATH_DAT #7 dirfich0;
+ |PATH_DAT #8 dirfich0;
+
+  |ATRI R;
+  |PINTA 2213, #30#2;
+  |PINTA 2219, #30#3;
+  |PINTA 2221, #30#1;
+  |ATRI 0;
+
+  |ABRE #6;
+  |DDEFECTO #6;
+  |LEE 001#6p;
+  |CIERRA #6;
+
+  |ABRE #2;
+  #2#00 = #30#2;     || empresa
+  #2#45 = #0#0;      || actividad
+  #2#01 = #0#2;      || periodo
+  #2#02 = #30#26;    || a¤o
+  |LEE 101#2=;
+  |SI FSalida = 0;
+      |SI #0#71 = "S";
+           |BORRA 020#2a;
+      |SINO;
+           |CIERRA #2;
+           |ACABA;
+      |FINSI;
+  |FINSI;
+  |LIBERA #2;
+
+  #0#1 = #0#2;
+  |SI #0#72 = "S"; #0#1 = 1; |FINSI;
+
+  |ABRE #7;
+  per_ant = -1;
+
+  |BUCLE reper;
+  |HAZ cierra_300_rep;
+
+  per_ant = -1;
+  |BUCLE sopor;
+  |HAZ cierra_300_sop;
+
+  |CIERRA #2;
+  |CIERRA #7;
+|FPRC;

@@ -1,0 +1,451 @@
+|| -----------------------------------------------------------------------||
+|| dsdatzzz.cal                                                [dstool]   ||
+||                                                                        ||
+|| Este programilla graba en dsdatXXX lo que hay instalado en este        ||
+|| equipo (aplicaciones, empresas y defs). se utiliza en dsvisor          ||
+|| Solo para DIAGRAM.X                                                    ||
+||                                                                        ||
+|| Ini: 04abr2006                                                         ||
+|| Ult: 11may2006                                           dsPRODUCCION  ||
+|| -----------------------------------------------------------------------||
+
+|FICHEROS;
+     :/agitool/def/dsdatapl       #101;  || aplicaciones
+     :/agitool/def/dsdatemp       #102;  || empresas
+     :/agitool/def/dsdatdef       #103;  || defs
+
+     refer@                        #200;
+
+     dsdatzzz;                            || para bloquear el proceso
+|FIN;
+
+
+|VARIABLES;
+     CADENA01  = "{{0";
+     CADENA02  = "] 0";
+
+     aDBASS    = "";
+     nFich     = 0;
+     nFich02   = 0;
+     aAlfa     = "";
+     aAlfa02   = "";
+     x         = 0;
+     xx        = 0;
+     naux      = 0;
+     nlon      = 0;
+     aLinea    = "";
+     aVal      = "";
+     aceros    = "";
+
+     afApl     = "";
+     afMen     = "";
+     aNombApl  = "";
+     afEmp     = "";
+     aNombEmp  = "";
+     aNombDat  = "";          || el nombre del .dat asociado
+     aData     = "";
+     afDef     = "";
+     aNombDef  = "";
+
+     aDirDefs  = "";
+     aLosDefs  = "";
+     nClaves   = 0;
+
+     aIniEMP   = "";
+     aFinEMP   = "";
+     aIniDEF   = "";
+     aFinDEF   = "";
+
+     aCad      = "";
+     aSub      = "";
+     nPos      = 0;
+     {300}vCad = "";
+     nItVector = 0;
+     aDelim    = " ";
+|FIN;
+
+|PROGRAMA;
+
+     |SI PARAMETRO = "menu";
+          |PINPA #0#dsdatzzz;
+          |PINDA #0#dsdatzzz;
+
+          |ENDATOS #1#dsdatzzz;
+          |SI FSalida ! 0;
+               |MENAV "0000SALIENDO ...."
+               |ACABA;
+          |FINSI;
+
+          |SI #dsdatzzz#00 ! "DIAGRAMA";
+               |MENAV "0000Clave INCORRECTA ...."
+               |ACABA;
+          |FINSI;
+
+     |FINSI;
+
+     || BLOQUEO DE PROCESO -------------------------
+     || grabamos un registro. (siempre lo intentamos para certificar que
+     || siempre hay uno.
+     |ABRE     #dsdatzzz;
+     |DDEFECTO #dsdatzzz;
+     |GRABA 040#dsdatzzz.n;
+
+     |LEE 100#dsdatzzz.p;
+     |SI FSalida ! 0;
+          |MENAV "0000Espere unos instantes y refresque de nuevo.";
+          |LIBERA   #dsdatzzz;
+          |CIERRA   #dsdatzzz;
+          |ACABA;
+     |FINSI;
+     || fin bloqueo.----------------------
+
+
+     |DELINDEX #101;
+     |DELINDEX #102;
+     |DELINDEX #103;
+
+     |ABRE     #101;
+     |ABRE     #102;
+     |ABRE     #103;
+
+     |DBASS aDBASS; |QBT aDBASS;
+     aAlfa = aDBASS + "ds.men";
+
+     |XABRE "", aAlfa, nFich;
+     |SI FSalida < 0;
+          |MENAV "0000No encuentro el ds.men .... Saliendo";
+          |ACABA;
+     |FINSI;
+
+     || Leemos todas las lineas del fichero ds.men
+     |XLEE nFich, 255, aLinea;
+     |PARA; |SI FSalida ] 0; |HACIENDO;
+          aCad = aLinea % 101;
+          |SI aCad = ";";               || esta comentado
+               naux = -100000;          || obligamos a que sea negativo
+          |FINSI;
+
+          || comprobamos si es una linea de menu de acceso a aplicacion
+          || si aparecen las cadenas CADENAXX, es buena la linea.
+          aCad = aLinea;
+          aSub = CADENA01;
+          |HAZ ExisteSubCadena;
+          naux = naux + nPos;
+
+          aCad = aLinea;
+          aSub = CADENA02;
+          |HAZ ExisteSubCadena;
+          naux = naux + nPos;
+
+          || de acuerdo :: es una linea buena....
+          |SI naux > 0;
+
+               || pasamos la linea de texto en items de vector.
+               aCad = aLinea;
+               |HAZ Cadena2Vector;
+
+               || recorremos los items de vector
+               IvCad = vCad1 <-;
+               |PARA x=1; |SI x [ nItVector; |HACIENDO x=x+1;
+
+                    naux = 0;
+
+                    || buscamos la palabra a partir del cual obtenemos
+                    || la info que nos interesa.
+                    || si es linea "tipo.1"
+                    |SI vCad = CADENA01;
+                         naux = 1;
+                    |FINSI;
+
+                    || y si es linea "tipo.2"
+                    aAlfa = vCad % -101;
+                    |SI aAlfa = "]";
+                         naux = 2;
+                    |FINSI;
+
+                    || hemos encontrado la palabra a partir de la cual
+                    || eobtenemos empresa, aplicacion, directorio ...
+                    |SI naux > 0;
+
+                         IvCad = IvCad + naux; afApl = vCad; || por el cero
+                         IvCad = IvCad + 1;                  || fich
+                         IvCad = IvCad + 1;    afEmp = vCad;
+                         IvCad = IvCad + 1;    afMen = vCad;
+
+                         |QBT afApl; |QBT afEmp; |QBT afMen;
+                         afMen = afMen - "}}";
+                         |SI afMen ! "NULL";
+
+                              || en funcion de los datos extraidos
+                              || del ds.men, cargamos el TMP.
+                              |HAZ CargaAPL;
+
+                              || Ahora, por cada aplicacion detectada
+                              || las empresas asociadas. (o NULL)
+                              |HAZ CargaEMP;
+
+                              || Y por ultimo ... los defs asociados
+                              || por cada aplicacion
+                              |HAZ CargaDEF;
+
+                         |FINSI;
+
+                    |FINSI;
+
+                    || pasamos a la siguiente palabra
+                    IvCad = IvCad + 1;
+               |SIGUE;
+          |FINSI;
+
+          || leemos la siguiente linea.
+          |XLEE nFich, 255, aLinea;
+
+     |SIGUE;
+     |XCIERRA nFich;
+
+     |CIERRA   #101;
+     |CIERRA   #102;
+     |CIERRA   #103;
+
+     || liberamos.
+     |LIBERA   #dsdatzzz;
+     |CIERRA   #dsdatzzz;
+|FPRO;
+
+
+
+|| -----------------------------------------------------------------
+|PROCESO CargaAPL;
+
+     || Para obtener el nombre de la aplicacion ...
+     || consultamos la primera linea de fichero.men que se apunta
+     || desde el ds.men principal.
+
+     aAlfa = aDBASS + afApl + "/" + afMen + ".men";
+     |XABRE "", aAlfa, nFich02;
+     |SI FSalida < 0; |ACABA; |FINSI;
+     |XLEE    nFich02, 255, aAlfa;
+     |QBF aAlfa;
+     aNombApl = aAlfa - "#:";
+     |SI aNombApl = ""; aNombApl = "<DESCONOCIDO>"; |FINSI;
+     |XCIERRA nFich02;
+
+     || Grabando en el TMP.
+     #101#00 = afApl;
+     #101#01 = aNombApl;
+     #101#03 = afEmp;
+     |SI afEmp = "NULL";
+          #101#02 = "N";
+     |SINO;
+          #101#02 = "S";
+     |FINSI;
+     #101#04 = afMen;
+     #101#05 = aDBASS + afApl + "/";
+     |GRABA 040#101.n;
+
+|FPRC;
+
+
+
+
+
+
+
+
+|| ------------------------------------------------------------------------
+|| Extraemos del fichero acceso_empresa, cada una de las empresas definidas
+|| en ese fichero.
+|PROCESO CargaEMP;
+
+     || si no tiene fichero acceso a empresa
+     |SI afEmp = "NULL";
+          #102#00 = afApl;
+          #102#01 = "NULL";
+          #102#02 = "<SIN EMPRESA>";
+          #102#03 = aDBASS + afApl + "/fich/";
+          |GRABA 040#102.n;
+          |ACABA;
+     |FINSI;
+
+     || cargamos el fichero empresa, y comprobamos lo que mide
+     || su clave para poder acceder fisicamente a los datos
+     aAlfa = aDBASS + afApl + "/def/" + afEmp;
+     |CARGA_DEF aAlfa, refer@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aVal = "|C000MAXIMO"; aAlfa = #refer@#aVal#;
+     aAlfa02 = aAlfa % 0;
+     nlon = aAlfa02;
+
+     aceros = "";
+     |PARA xx = 1; |SI xx [ nlon; |HACIENDO xx = xx + 1;
+          aceros = aceros + "0";
+     |SIGUE;
+
+     || para cada uno de los registro de acceso_empresa, grabamos
+     || una entrada en el temporal.
+     aAlfa = aDBASS + afApl + "/fich/";
+     |PATH_DAT #refer@#aAlfa#;
+
+     |ABRE   #200;
+     |LEE 000#200.p;
+     nlon = (100 + nlon) * (-1);
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          aAlfa = ( aceros + #200#00 ) % nlon;
+          #102#00 = afApl;
+          #102#01 = aAlfa;
+          #102#02 = aAlfa + " / " + #200#01;
+          #102#03 = aDBASS + afApl + "/fich/" + aAlfa + "/";
+          |GRABA 040#102.n;
+
+          |LEE 000#200.s;
+     |SIGUE;
+     |CIERRA #200;
+
+     |DESCARGA_DEF #refer@;
+
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|| -------------------------------------------------------------------
+|| en este proceso sacamos los nombres y descriptores de los defs.
+
+|PROCESO CargaDEF;
+
+     || path de los defs
+     aDirDefs = aDBASS + afApl + "/def/";
+     aLosDefs = aDirDefs + "*.mas";
+     |_PDIR aLosDefs;
+
+     |PARA; |SI FSalida]0; |HACIENDO;
+          |HAZ InfoDEF;
+          |SI nClaves > 0;
+               |DDEFECTO #103;
+               #103#00 = afApl;
+               #103#01 = afDef;
+               #103#02 = aNombDef;
+               #103#03 = aNombDat;
+               |GRABA 040#103.n;
+          |FINSI;
+          |_SDIR aLosDefs;
+     |SIGUE;
+
+|FPRC;
+
+
+
+|PROCESO InfoDEF;
+
+     afDef    = "";
+     nClaves  = 0;
+     aNombDef = "";
+     aNombDat = "";
+
+     aAlfa  = aLosDefs - ".mas";
+     |CARGA_DEF aAlfa, refer@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aVal = "|TITULO";
+     aNombDef = #refer@#aVal#;
+
+     aVal = "|FICHERO";
+     aNombDat = #refer@#aVal#;
+     aNombDat = aNombDat % -108;
+
+     aVal = "|NK";
+     aAlfa = #refer@#aVal#;
+     nClaves= aAlfa;
+
+     |DESCARGA_DEF #refer@;
+
+     || para que solo devuelva el nombre del def
+     aAlfa  = aLosDefs - ".mas";
+     afDef  = aAlfa    - aDirDefs;
+     |QBT afDef;
+
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|| ----------------------------------------------------------------
+|| PROCESO ExisteSubCadena
+|| Entrada: aCad -> cadena principal :: aSub -> lo que buscamos
+|| salida : nPos -> el caracter donde empieza la cadena buscada
+||                   XXYY como
+|| ----------------------------------------------------------------
+|| ----------------------------------------------------------------
+|| PROCESO Cadena2Vector
+|| Entrada: aCad -> cadena principal :: aDelim -> delimitador
+|| Salida : vCad -> vector de cadenas :: nItVector -> num items
+|| ----------------------------------------------------------------
+
+|VARIABLES;
+     _xx    = 0;
+     _sw    = 0;
+     _alfa  = "";
+     _naux  = 0;
+     _nLon  = 0;
+     _aChar = "";
+|FIN;
+
+
+
+|PROCESO ExisteSubCadena;
+     _alfa = aCad - aSub;
+     nPos = FSalida;
+|FPRC;
+
+
+
+|PROCESO Cadena2Vector;
+     nItVector = 0;
+     IvCad     = vCad1 <-;
+     vCad     = "";
+
+     _alfa = aCad % 0; _nLon = _alfa;  || long. de la cadena
+     _alfa = aCad;
+     _sw = 0;
+     |PARA _xx = 1; |SI _xx [ _nLon; |HACIENDO _xx = _xx + 1;
+
+          _naux = (100 * _xx) + 1; _aChar = (_alfa % _naux);
+          |SI _aChar = aDelim;
+               _sw = 1;
+               |SI vCad ! "";
+                    nItVector = nItVector + 1;
+                    IvCad     = IvCad + 1;
+                    vCad      = "";
+               |FINSI;
+          |SINO;
+              _sw = 0;
+          |FINSI;
+
+          |SI _sw = 0; vCad = vCad + _aChar; |FINSI;
+
+     |SIGUE;
+
+|FPRC;

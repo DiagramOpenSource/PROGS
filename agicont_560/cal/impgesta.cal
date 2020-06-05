@@ -1,0 +1,484 @@
+|FICHEROS;
+    impgesta #0;
+    impfich  #1;    || control directorios
+    camaasic #2;    || apuntes cabs.
+    camaasil #3;    || apuntes lins.
+    cacuenta #5;    || plan contable
+    cacuebal #6;    || cuentas de balance
+    catradia #8;    || diario de trabajo
+    caconcep #11;   || conceptos
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    para1 = 0;
+    para2 = 0;
+    para3 = 0;
+    para4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    elsw1 = 0;
+    elsw2 = 0;
+    elsw3 = 0;
+    elsw4 = 0;
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+
+   &fecalf = "";
+   &ini = 0;
+   &mes = "";
+   &mesfec = 0;
+   &mesac = 0;
+   &a = 0;
+   &b = 0;
+   &c = 0;
+   &modcon = 0;
+   &importe = 0;
+   &ressum = 0;
+   &opera = "";
+
+    fichero = "";
+    directo = "";
+    eixida = 0;
+    handle = "";
+    canal = "";
+    canal1 = "";
+    a_fecha = "";
+    a_docum = "";
+    a_cuent = "";
+    a_color = "";
+    a_conce = "";
+    a_descr = "";
+    a_impor = "";
+    a_signo = "";
+    a_apunt = "";
+    ant_doc = "-1";
+    ult_apunt = 0;
+    digcu = 0;
+    c_fecha = "";
+    conte = "";
+    canal2 = "";
+    uno = "";
+    dos = "";
+    mensa1   = "     No esta definida esta cuenta en Cuentas de Balance";
+    dire = "";
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE conasi_i;
+|INCLUYE actudi_i;
+____________________________________/ CALCULOS PANTALLA
+|PROCESO mayus; |TIPO 0;
+    #0Campo = #0Campo > #0Campo;
+|PINTA #0Campo;
+|FPRC;
+____________________________________/
+|PROCESO separa;
+    alfa1 = canal %  106;     a_fecha = alfa1;
+    alfa1 = canal %  706;     a_docum = alfa1;
+    alfa1 = canal % 1302;     a_apunt = alfa1;
+    alfa1 = canal % 1508;     a_cuent = alfa1;
+    alfa1 = canal % 2301;     a_color = alfa1;
+    alfa1 = canal % 2402;     a_conce = alfa1;
+    alfa1 = canal % 2622;     a_descr = alfa1;
+    alfa1 = canal % 4610;     a_impor = alfa1;
+    alfa1 = canal % 5601;     a_signo = alfa1;
+
+|SI a_color = #0#2;
+        #0#6 = a_color;       |PINTA #0#6;
+        #0#7 = a_docum;       |PINTA #0#7;
+        #0#8 = a_apunt;       |PINTA #0#8;
+    |SI ant_doc ! a_docum;
+            ult_apunt = 1;
+        |HAZ contador;
+            ant_doc = a_docum;
+    |FINSI;
+    |HAZ asiento;
+|FINSI;
+|FPRC;
+
+|PROCESO leyendo;
+|FABRE fichero;
+|SI FSalida ] 0;
+        handle = FSalida;
+        eixida = 1;
+    |PARA; |SI eixida > 0; |HACIENDO;
+            canal2 = "";
+        |PARA para1 = 1; |SI para1 [ 60; |HACIENDO para1 = para1 + 1;
+                canal = handle + " 1";
+            |FLEE canal;
+            |SI FSalida ! 1;  |SAL;     |FINSI;
+            |SI para1 ] 4;
+                    alfa1 = canal % 101;
+                    nume1 = &alfa1;
+                |SI nume1 < 32;    canal = "0";   |FINSI;
+                    canal2 = canal2 + (canal % 101);
+            |FINSI;
+        |SIGUE;
+            canal = canal2;
+
+        |SI FSalida = 1;
+            |HAZ separa;
+                eixida = 1;
+        |SINO;
+                eixida = 0;
+        |FINSI;
+    |SIGUE;
+    |FCIERRA handle;
+|SINO;
+    |MENAV "    ATENCION!!! Fichero no encontrado ...";
+|FINSI;
+    Pos = -1;
+|FPRC;
+
+|PROCESO prepara;
+    directo = #1#2;      |QBF directo;  directo = "rb  " + directo;
+    fichero = #0#3;      |QBF fichero;
+    fichero = directo + fichero;
+|FPRC;
+
+|PROCESO tipo3; |TIPO 3;
+|SI #0#4 = "SI";
+    |HAZ prepara;
+    |HAZ inicio_mayor;
+    |ABRE #2;
+    |ABRE #3;
+    |ABRE #11;
+    |HAZ leyendo;
+    |CIERRA #2;
+    |CIERRA #3;
+    |CIERRA #11;
+    |CONFI "    NBorrado del Fichero Fuente (S/N): ";
+    |SI FSalida = 0;
+        |HAZ borrado;
+    |FINSI;
+    |HAZ actua_mayor;
+|FINSI;
+|FPRC;
+____________________________________/ rutinas de grabacion de asientos
+|PROCESO apuntes;
+|SI a_impor ! 0;
+    |DDEFECTO #3;
+        #3#00 = #0#1;         || diario
+        #3#01 = c_fecha;      || fecha
+        #3#02 = #20#1;        || documento
+        #3#03 = ult_apunt;    || apunte
+        #3#04 = a_cuent;      || cuenta
+        #3#05 = digcu;        || digito cuenta
+        #3#06 = a_conce;      || concepto
+        #3#07 = a_descr;      || descripcion
+        #3#08 = a_signo;      || signo
+        #3#09 = a_impor;      || importe
+
+    |SI #3#8 = "D";
+        |SI #3#9 < 0;     #3#8 = "H";   #3#9 = -#3#9;   |FINSI;
+    |SINO;
+        |SI #3#9 < 0;     #3#8 = "D";   #3#9 = -#3#9;   |FINSI;
+    |FINSI;
+
+    |SI #3#08 = "D";
+            #3#16 = #3#4;
+            #3#17 = #3#5;
+    |SINO;
+            #3#10 = #3#4;
+            #3#11 = #3#5;
+    |FINSI;
+        #3#12 = "";          || soport./reperc.
+        #3#13 = 0;           || libro
+        #3#14 = 0;           || orden
+        #3#15 = "";          || serie
+        #3#19 = "";          || tipo acumulador
+        #3#20 = 0;           || numero acumulador
+        #3#21 = "";          || departamento
+
+    |GRABA 020#3n;
+    |SI FSalida = 0;
+        |HAZ cabecera;
+            ressum = #3#9;
+        |HAZ actualiz1;     || actualiza cuentas
+            opera = "A";
+        |HAZ altatra;       || actualiza niveles inferiores
+            d_diari = #3#0;
+            d_opera = #3#8;
+            d_impor = #3#9;
+        |HAZ actu_diari;    || actualiza diario
+            ult_apunt = ult_apunt + 10;
+        |HAZ concepto;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO concepto;
+|DDEFECTO #11;
+    #11#0 = #3#6;
+|LEE 000#11=;
+|SI FSalida ! 0;
+        #11#1 = #3#7;
+    |GRABA 020#11n;
+|FINSI;
+|FPRC;
+
+|PROCESO cabecera;
+|DDEFECTO #2;
+    #2#0 = #3#0;
+    #2#1 = #3#1;
+    #2#2 = #3#2;
+|LEE 101#2=;
+    FEstado = FSalida;
+    #2#0 = #3#0;         || diario
+    #2#1 = #3#1;         || fecha
+    #2#2 = #3#2;         || documento
+    #2#3 = #2#2;         || asiento
+|SI #3#8 = "D";
+        #2#4 = #2#4 + #3#9;
+    |SI #2#09 = 0; #2#08 = #3#4; #2#09 = #3#5; |FINSI; || contrp.HABER
+|FINSI;
+|SI #3#8 = "H";
+        #2#5 = #2#5 + #3#9;
+    |SI #2#11 = 0; #2#10 = #3#4; #2#11 = #3#5; |FINSI; || contrp.DEBE
+|FINSI;
+|SI FEstado = 0;  |GRABA 020#2a;  |FINSI;
+|SI FEstado ! 0;  |GRABA 020#2n;  |FINSI;
+|LIBERA #2;
+|FPRC;
+____________________________________/ rutinas de control de grabacion
+|PROCESO la_fecha;
+    alfa1 = a_fecha % 102;      || a¤o
+    alfa2 = a_fecha % 302;      || mes
+    alfa3 = a_fecha % -102;     || dia
+|SI alfa1 < "80";  alfa1="20"+alfa1;  |SINO;  alfa1="19"+alfa1;  |FINSI;
+
+    c_fecha = alfa3 + "." + alfa2 + "." + alfa1;
+|FPRC;
+
+|PROCESO el_digito;
+    digcu = 0;
+
+    alfa1 = conte;  |QBF alfa1;
+    alfa2 = alfa1 % 0;
+    nume1 = alfa2;
+
+|SI dig4 = nume1; digcu = 1;     |FINSI;
+|SI dig5 = nume1; digcu = 2;     |FINSI;
+|SI dig6 = nume1; digcu = 3;     |FINSI;
+|SI dig7 = nume1; digcu = 4;     |FINSI;
+|SI dig8 = nume1; digcu = 5;     |FINSI;
+|SI dig9 = nume1; digcu = 6;     |FINSI;
+|FPRC;
+
+|PROCESO asiento;
+    conte = a_cuent;
+|HAZ el_digito;
+|SI digcu = 0;
+    |SI digcu = 0;
+        |MENAV "    ERROR! NIVEL de CUENTA desconocido; ASIENTO ANULADO ...";
+    |FINSI;
+|SINO;
+    |HAZ la_fecha;       || construye la fecha
+        fech1 = c_fecha;
+    |SI fech1 ] fec1;|Y fech1 [ fec2;
+        |HAZ apuntes;        || realiza el apunte
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO inicio_mayor;
+|DDEFECTO #8;
+|ABRE #8;
+|LEE 101#8u;
+|SI FSalida ! 0;
+        #8#0 = 1;
+|SINO;
+        #8#0 = #8#0 + 1;
+|FINSI;
+|GRABA 000#8n;
+    codcon = #8#0;
+|LIBERA #8;
+|CIERRA #8;
+|FPRC;
+
+|PROCESO actua_mayor;
+|SI modcon = 0;
+    |ABRE #8;
+    |DDEFECTO #8;
+        #8#0 = codcon;
+    |LEE 000#8=;
+    |SI FSalida = 0;     |BORRA 020#8a;     |FINSI;
+    |CIERRA #8;
+|SINO;
+    |CORRE "camaapua.run"
+|FINSI;
+|FPRC;
+____________________________________/
+|PROCESO borrado;
+    dire = "";
+|DIRECTORIO dire;
+    alfa1 = dire + "/bin/agirm " + (fichero % 5);
+|SYSTEM alfa1;
+|FPRC;
+
+**********************************************************************
+    ACTUALIZACION DE CUENTAS
+**********************************************************************
+
+|PROCESO actualiz1;
+|DDEFECTO #5;
+|ABRE #5;
+    #5#0 = #3#4;
+    #5#1 = #3#5;
+|LEE 101#5=;
+|SI FSalida ! 0;
+    |HAZ defect;
+        #5#3 = "S";      || pase directo si
+    |GRABA 020#5n;
+    |LEE 121#5=;
+|FINSI;
+|SI #3#0 = 0;
+    |SI #3#8 = "D";
+            #5#9 = #5#9 + ressum;
+            #5#51 = #5#51 + ressum;
+    |SINO;
+            #5#10 = #5#10 + ressum;
+            #5#52 = #5#52 + ressum;
+    |FINSI;
+        #5#11 = #5#9 - #5#10;
+        #5#53 = #5#51 - #5#52;
+|SINO;
+    |SI #3#0 = 99;
+        |SI #3#8 = "D";
+                #5#48 = #5#48 + ressum;
+                #5#51 = #5#51 + ressum;
+        |SINO;
+                #5#49 = #5#49 + ressum;
+                #5#52 = #5#52 + ressum;
+        |FINSI;
+            #5#50 = #5#48 - #5#49;
+            #5#53 = #5#51 - #5#52;
+    |SINO;
+        |HAZ actualiz2;
+    |FINSI;
+|FINSI;
+|SI #5#58 < #3#1;
+        #5#58 = #3#1;
+|FINSI;
+|GRABA 020#5a;
+|LIBERA #5;
+|CIERRA #5;
+|FPRC;
+
+|PROCESO actualiz2;
+    ini = dig1;      || numero de niveles
+    fecalf = #3#1;
+    mes = fecalf % 402;
+    mesfec = mes;
+|SI ini = 1;
+        mesac = mesfec;
+|SINO;
+        mesac = (mesfec - ini) + 1;
+    |SI mesac [ 0;
+            mesac = (13 - ini) + mesfec;
+    |FINSI;
+|FINSI;
+    a = (mesac * 3) + 9;
+    b = a + 1;
+    c = a + 2;
+|SI #3#8 = "D";
+        #5a = #5a + ressum;
+        #5#51 = #5#51 + ressum;
+|SINO;
+        #5b = #5b + ressum;
+        #5#52 = #5#52 + ressum;
+|FINSI;
+    #5c = #5a - #5b;
+    #5#53 = #5#51 - #5#52;
+|FPRC;
+
+|PROCESO defect;
+|ABRE #6;
+    uno = #5#0;
+|QBF uno;
+    dos = uno + "000000000000";
+    uno = dos % A101;
+    #6#0 = uno;
+|LEE 000#6=;
+|SI FSalida = 0;
+    |HAZ saca;
+|SINO;
+        uno = dos % A102;
+        #6#0 = uno;
+    |LEE 000#6=;
+    |SI FSalida = 0;
+        |HAZ saca;
+    |SINO;
+            uno = dos % A103;
+            #6#0 = uno;
+        |LEE 000#6=;
+        |SI FSalida = 0;
+            |HAZ saca;
+        |SINO;
+                uno = dos % A104;
+                #6#0 = uno;
+            |LEE 000#6=;
+            |SI FSalida = 0;
+                |HAZ saca;
+            |SINO;
+                |MENAV mensa1;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+|FINSI;
+|CIERRA #6;
+|FPRC;
+
+|PROCESO saca;
+    #5#4 = #6#1;
+    #5#5 = #6#2;
+    #5#6 = #6#3;
+    #5#7 = #6#4;
+    #5#8 = #6#5;
+|FPRC;
+
+**********************************************************************
+    ACTUALIZACION DE 'camaapuc' (PARA LA ACTUALIZACION DE NIVELES)
+**********************************************************************
+
+|PROCESO altatra;
+    modcon = 1;
+|ABRE #8;
+    #8#0 = codcon;
+    #8#1 = #3#4;
+    #8#2 = #3#5;
+    #8#3 = #3#1;
+    #8#4 = #3#8;
+    #8#6 = #3#0;
+|LEE 101#8=;
+|SI FSalida ! 0;
+    |DDEFECTO #8;
+        #8#0 = codcon;
+        #8#1 = #3#4;
+        #8#2 = #3#5;
+        #8#3 = #3#1;
+        #8#4 = #3#8;
+        #8#6 = #3#0;
+    |GRABA 101#8b;
+|FINSI;
+    importe = #3#9;  || aqui si que se usa el importe real
+|SI opera = "B";
+        importe = -importe;
+|FINSI;
+    #8#5 = #8#5 + importe;
+|GRABA 101#8a;
+|LIBERA #8;
+|CIERRA #8;
+|FPRC;

@@ -1,0 +1,848 @@
+|FICHEROS;
+   anz00017 #0;    || def de la importacion
+
+   anm00001 #1;    || plan contable
+   camaasil #2;    || Lineas de Apuntes
+
+   anm00006 #3;    || Lineas Selector de Cuentas
+   anm00005 #4;    || Selector de Cuentas
+
+   cacuenta #5;    || Cuentas
+   anm00003 #7;    || Grupos Analiticas
+   anm00013 #13;   || Grupos Analiticas  por apuntes
+   anm0003@ #107;  || Espejo grupos analitica
+
+   anm00017 #17;   || Agrupaciones
+   anm00018 #18;   || fichas presupuestarias
+   anm0001@ #101;  || Este fichero de cuentas analiticas
+
+   anw00005 #900;
+   canempre #30;
+|FIN;
+
+|VARIABLES;
+   aFichero = "";
+   alfa1 = "";
+   alfa2 = "";
+   alfa3 = "";
+   nume1 = 0;
+   nume2 = 0;
+   nume3 = 0;
+   nume4 = 0;
+   fech1 = @;
+   fech2 = @;
+   FEstado = 0;
+   dir_empresa = "";
+
+   factor   = 0;
+   &r_emp   = 0;
+   &r_per   = 0;
+   acta     = "";
+   actaC    = "";
+
+   nCalc    = 0;
+   nDesv    = 0;
+   nSigno   = 0;
+   nPara1   = 0;
+   nPara2   = 0;
+
+   aMas = "";
+   aDef = "";
+   ndDiario = 0;
+   nhDiario = 0;
+   dig2 = 0;
+   nInkey = 0;
+  incta = "";
+  ficta = "";
+  nrot = 0;
+  nr1 = 0;
+  nr2 = 0;
+  nr3 = 0;
+  nr4 = 0;
+  selec = 0;
+  swalgun = 0;
+  swsel = 0;
+  debe = 0;
+  haber = 0;
+  ctaana = "";
+  digana = 0;
+  anacta = "";
+  sw = 0;
+
+  ctanueva = "";
+  ctaultima = "";
+  grupoc = "";
+  grupod = 0;
+  grupoh = 0;
+  acdebe = 0;
+  achaber = 0;
+  swgrupo = 0;
+  idig = 0;
+  descri = "";
+  sw_con = 0;
+
+  nSwGApte    = 0;
+  aCta2Gru    = "";
+  edn_error2  = 0;
+  grupod2     = 0;
+  acdebe2     = 0;
+  grupoh2     = 0;
+  achaber2    = 0;
+  swgrupo2    = 0;
+  ctaultima2  = "";
+  nSwOp       = 0;
+  aNuevoGrupo = "";
+  aDCuenta    = "";
+  aHCuenta    = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoan_i;
+|INCLUYE digana_i
+
+|| ***********************************************************************
+|CALCULO antesque;  |TIPO 8;
+   |HAZ InicioAna;
+   |SI  enSwAna = 0;  |ACABA;  |FINSI;
+   aMonedaA = eaMoneda;
+   dig2 = #30#12;
+
+|FCAL;
+
+|CALCULO LosDefectos; |TIPO 7;
+ #0#0 = enEmpresa;     |PINTA #0#0;
+ #0#1 = enPeriodo;     |PINTA #0#1;
+ #0#15 = enEjercicio;  |PINTA #0#15;
+ #0#16 = eaNombreEmp;  |PINTA #0#16;
+|FCAL;
+
+|CALCULO consulta;
+   nInkey = FSalida;
+   |SI nInkey ! 9;  |ACABA;  |FINSI;
+   |SUB_EJECUTA "caconemp";
+   |ERROR;
+   #0#0 = r_emp;
+   #0#1 = r_per;
+   |PTEC 802;
+   |PTEC 802;
+|FCAL;
+
+|CALCULO esbuena;
+  |SI nInkey = 9;  |ACABA;  |FINSI;
+  |ABRE #30;
+  #30#2 = #0#0;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #0#0;
+      |MENAV "     NO Existe la Empresa Contable";
+      |ERROR;
+  |FINSI;
+  |CIERRA #30;
+|FCAL;
+
+|CALCULO esbuena1;
+  nInkey = FSalida;
+  |SI nInkey = 2; |ACABA; |FINSI;
+  |ABRE #30;
+  #30#2 = #0#0;
+  #30#3 = #0#1;
+  |LEE 011#30=;
+  |SI FSalida ! 0;
+      |MENAV "     NO Existe Periodo en la empresa Contable";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  #0#16 = #30#1; |PINTA #0#16;
+  |SI #30#26 < 80;
+      #0#15 = 2000 + #30#26;
+  |SINO;
+      #0#15 = 1900 + #30#26;
+  |FINSI;
+  |PINTA #0#15;
+  aMonedaC = #30#28;
+  |CIERRA #30;
+|FCAL;
+
+|CALCULO LeeSelec; |TIPO 6;
+ |SI #0Campo = 0;
+     #0#18 = "SIN SELECTOR DE CUENTAS";
+     |C_M #0#19, 1, "S";
+     |C_M #0#20, 1, "S";
+ |SINO;
+     |C_M #0#19, 1, "N"; #0#19 = "            "; |PINTA #0#19;
+     |C_M #0#20, 1, "N"; #0#20 = "zzzzzzzzzzzz"; |PINTA #0#20;
+     |ABRE #4;
+     #4#0 = #0Campo;
+     |LEE 001#4=;
+     |SI FSalida ! 0;
+         #4#1 = "ERROR SELECTOR NO EXISTE";
+         |ERROR;
+     |FINSI;
+     #0#18 = #4#1;
+     |CIERRA #4;
+ |FINSI;
+ |PINTA #0#18;
+|FCAL;
+
+|CALCULO cuenta; |TIPO 0;
+   nInkey = FSalida;
+   |SI nInkey = 2;   |ACABA; |FINSI;
+
+   |C_M #0Campo,0,alfa1;
+   |SI alfa1 = "N"; |ACABA; |FINSI;
+
+   eaCuenta = #0Campo;
+   salidas  = FSalida;
+   |HAZ FiltraPuntos;
+   #0Campo = eaCuenta;
+   |PINTA #0Campo;
+|FCAL;
+
+
+|CALCULO anacta; |TIPO 0;
+   nInkey = FSalida;
+   |SI nInkey = 2;   |ACABA; |FINSI;
+
+   salidas = FSalida;
+   |HAZ FPuntosAna;
+
+   |SI Campo = 3; |Y #0Campo < #0#2;
+       |MENAV "    Error en la introduccion de seleccion de ctas Analticas";
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO Desv; |TIPO 0;
+   alfa1 = #0#12;
+   |C_M #0#13, 1, alfa1;
+   |C_M #0#14, 1, alfa1;
+   |SI alfa1 = "N";
+      #0#13 = 0;   |PINTA #0#13;
+      #0#14 = " "; |PINTA #0#14;
+   |FINSI;
+|FCAL;
+
+|CALCULO Leeagrupa; |TIPO 6;
+ |ABRE #17;
+ #17#0 = #0Campo;
+ |LEE 001#17=;
+ |SI FSalida = 0;
+     #0#21 = #17#2; |PINTA #0#21;
+     #0#22 = #17#3; |PINTA #0#22;
+     |C_M #0#10,1,"S";
+ |SINO;
+     |C_M #0#10,1,"N";
+     #0#10 = "N"; |PINTA #0#10;
+ |FINSI;
+ |CIERRA #17;
+|FCAL;
+
+|CALCULO Despues10; |TIPO 0;
+ |C_M #0#21,1,"S";
+ |C_M #0#22,1,"S";
+ |SI #0#10 = "S";
+     #0#21 = #17#2; |PINTA #0#21;
+     #0#22 = #17#3; |PINTA #0#22;
+     |C_M #0#21,1,"N";
+     |C_M #0#22,1,"N";
+ |FINSI;
+|FCAL;
+
+|PROCESO desglose; |TIPO 0;
+   |C_M #0#21, 0, alfa1;
+   |SI alfa1 = "N"; |ACABA; |FINSI;
+
+   alfa1 = #0#21;
+   |C_M #0#22, 1, alfa1;
+   |SI #0#21 = "N";
+       #0#22 = 0; |PINTA #0#22;
+   |FINSI;
+|FPRC;
+
+|PROCESO Pnivel7; |TIPO 7;
+  |SI #0#21 = "S"; |Y #0#22 = 0;
+      #0#22 = dig3; |PINTA #0#22;
+  |FINSI;
+|FPRC;
+
+|PROCESO Pnivel0; |TIPO 0;
+   |C_M #0#22, 0, alfa1;
+   |SI alfa1 = "N"; |ACABA; |FINSI;
+
+   |SI #0#22 = 0;
+       |ERROR;
+   |SINO;
+       |SI #0#22 > dig3;
+           |MENAV "    No existe Nivel de Cuentas";
+           |ERROR;
+       |FINSI;
+   |FINSI;
+|FPRC;
+|| ************************************************************************
+||  CALCULOS DE IMPORTACION
+|| ************************************************************************
+|PROCESO BuscaAna;
+         || si no existe la cuenta analitica en esta empresa, la doy de alta
+ |ABRE #101;
+ |DDEFECTO #101;
+ #101#0 = acta;
+ |LEE 001#101=;
+ |SI FSalida ! 0;
+     #101#0 = acta;
+     |ABRE #1;
+     #1#0 = acta;
+     |LEE 001#1=;
+     |SI FSalida = 0;
+         #101#1 = #1#1; #101#2 = #1#2;
+         #101#3 = #1#3; #101#4 = #1#4;
+         #101#5 = #1#5; #101#6 = #1#6;
+     |FINSI;
+     |CIERRA #1;
+     |GRABA 020#101n;
+ |FINSI;
+ |CIERRA #101;
+
+ || averiguo el signo en base a la cuenta contable
+ |ABRE #5;
+ #5#0 = eaCuenta;
+ |LEE 001#5=;
+ |SI FSalida = 0;
+     alfa1 = #5#5;
+     |SI alfa1 = "A"; alfa1 = "D"; |FINSI;
+     |SI alfa1 = "P"; alfa1 = "H"; |FINSI;
+     #18#2 = alfa1;
+ |FINSI;
+ |CIERRA #5;
+
+      || pone el nombre del mes desde hasta del presupuesto
+ NumMes = dig1; |HAZ NombreMes; #18#17 = NombreMes;
+ NumMes = dig2; |HAZ NombreMes; #18#18 = NombreMes;
+|FPRC;
+
+|PROCESO Recorta;
+   nume1 = 1;
+   |SI #0#22 = 1; nume1 = dig4; |FINSI;
+   |SI #0#22 = 2; nume1 = dig5; |FINSI;
+   |SI #0#22 = 3; nume1 = dig6; |FINSI;
+   |SI #0#22 = 4; nume1 = dig7; |FINSI;
+   |SI #0#22 = 5; nume1 = dig8; |FINSI;
+   |SI #0#22 = 6; nume1 = dig9; |FINSI;
+   nume1 = 100 + nume1;
+   actaC  = actaC % nume1;
+   actaC  = (actaC + "            ") % 112;
+|FPRC;
+
+|PROCESO LeeAuxiliar;
+    acta     = #900#0;
+    eaCuenta = #900#24;
+    actaC    = #900#24;
+    |SI #0#21 = "N";
+        actaC = "            ";
+    |SINO;
+        |SI dig3 ! #0#22;
+            |HAZ Recorta;
+        |FINSI;
+    |FINSI;
+    #18#19 = #0#8; ||Agrupacion;
+    #18#0  = acta;
+    #18#20 = actaC;
+    |LEE 101#18=;
+    |SI FSalida ! 0;
+        |DDEFECTO #18;
+        #18#19 = #0#8;
+        #18#0  = acta;
+        #18#20 = actaC;
+        |HAZ BuscaAna;
+        |GRABA 020#18b;
+    |FINSI;
+    #18#3 = "M";
+    |PDEFECTO #18, 4, 17;
+
+    factor = 1;
+    |SI #18#2 ! "D"; factor = -1; |FINSI;
+
+    |SI #0#12 = "S";
+        nDesv = (#0#13 / 100) ! 4; nSigno = 1;
+        |SI #0#14 = "-"; nSigno = -1; |FINSI;
+    |FINSI;
+
+    #18#16 = 0;
+    |PARA nPara1 = 4; |SI nPara1 [ 15; |HACIENDO nPara1 = nPara1 + 1;
+          nPara2 = nPara1 + 8;
+          #18nPara1 = #900nPara2;
+          |SI #0#12 = "S";
+              nCalc = #18nPara1 + nSigno * (#18nPara1 * nDesv);
+              #18nPara1 = nCalc;
+          |FINSI;
+          #18#16 = #18#16 + #18nPara1;
+    |SIGUE;
+
+   |GRABA 020#18a;
+   |LIBERA #18;
+|FPRC;
+
+|DEFBUCLE LeeAuxiliar;
+ #900#1;
+ ;
+ "       ", "            ";
+ "zzzzzzz", "zzzzzzzzzzzz";
+ ;
+ NULL, LeeAuxiliar;
+|FIN;
+
+|PROCESO GrabaFinal;
+ |ABRE #18;
+ sw    = 0;
+ acta  = "";
+ actaC = "";
+ |BUCLE LeeAuxiliar;
+ |CIERRA #18;
+
+ |ABRE #17;
+ #17#0 = #0#8;
+ |LEE 101#17=;
+ |SI FSalida = 0;
+    #17#2 = #0#21;
+    #17#3 = #0#22;
+    |GRABA 020#17a;
+ |FINSI;
+ |LIBERA #17;
+ |CIERRA #17;
+|FPRC;
+
+|PROCESO gragrup;
+
+ || ... Graba temporal de Cuentas de Analitica
+ |SI ctanueva [ "       "; |ACABA; |FINSI;
+
+ #900#0  = ctanueva;
+ #900#1  = 1;
+ #900#24 = eaCuenta;
+ |LEE 101#900=;
+ |SI FSalida ! 0;
+     |DDEFECTO #900;
+     #900#0  = ctanueva;
+     #900#1  = 1;
+     #900#24 = eaCuenta;
+     #900#8  = #900#0;
+     #900#9  = #900#1;
+     |GRABA 020#900c;
+ |FINSI;
+
+ #900#2 = #900#2 + debe;
+ #900#3 = #900#3 + haber;
+ #900#4 = #900#2 - #900#3;
+ #900#10 = "C";
+
+ |SI #2#0 = 0;
+     nume2 = 1;
+ |SINO;
+     |SI #2#0 = 99;
+          nume2 = 12;
+     |SINO;
+          alfa1 = #2#1;
+          alfa1 = alfa1 % 402;
+          nume2 = alfa1;
+          |SI nume2 ] dig1;
+              nume2 = (nume2 + 1) - dig1;
+          |SINO;
+              nume2 = (13 - dig1) + nume2;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  nume1 = nume2 + 11; ||campo del mes mes1 = 12;
+  |SI aMonedaC ! aMonedaA;
+      impMoneda = debe;  |HAZ ElCambioMoneda; debe = impMoneda;
+      impMoneda = haber; |HAZ ElCambioMoneda; haber = impMoneda;
+  |FINSI;
+  #900nume1 = #900nume1 + (debe-haber);
+  |GRABA 020#900a;
+  |LIBERA #900;
+  sw = 1;
+|FPRC;
+
+|| **************************************************************
+|| **************************************************************
+|PROCESO ggrupos2;
+ ctanueva = #107#2;
+ debe  = 0;
+ haber = 0;
+ |SI grupod2 ! 0; debe  = (grupod2 * #107#4 / 100) ! EURODB; |FINSI;
+ |SI grupoh2 ! 0; haber = (grupoh2 * #107#4 / 100) ! EURODB; |FINSI;
+
+ |SI debe ! 0; |O haber ! 0;
+     |SI ctanueva ] incta; |Y ctanueva [ ficta;
+         |HAZ gragrup;
+     |FINSI;
+ |FINSI;
+
+ swgrupo2   = 1;
+ ctaultima2 = #107#2;
+ acdebe2    = (acdebe2 + debe)   ! EURODB;
+ achaber2   = (achaber2 + haber) ! EURODB;
+|FPRC;
+
+|PROCESO fingrupo2;
+ |SI swgrupo2 = 0; |ACABA; |FINSI;
+ |SI acdebe2 = grupod2; |Y achaber2 = grupoh2; |ACABA; |FINSI;
+
+ ctanueva = ctaultima2;
+ debe  = grupod2 - acdebe2;
+ haber = grupoh2 - achaber2;
+ |SI debe ! 0; |O haber ! 0;
+     |SI ctanueva ] incta; |Y ctanueva [ ficta;
+         |HAZ gragrup;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE leegrupo2;
+ #107#1002;
+ ;
+ aCta2Gru, 000;
+ aCta2Gru, 999;
+ e;
+ NULL, ggrupos2, NULL, NULL, fingrupo2;
+|FIN;
+
+|PROCESO Subgrupo;
+ aCta2Gru = ctanueva;
+ grupod2  = debe;  acdebe2  = 0;
+ grupoh2  = haber; achaber2 = 0;
+ swgrupo2  = 0;
+ ctaultima2 = "";
+ |BUCLE leegrupo2;
+|FPRC;
+
+|PROCESO TrataCtaGrupo;
+ alfa3 = ctanueva % 103;
+ |SI alfa3 ! "GRU";   ||Tratamiento normal de Cuenta Analitica
+     |SI ctanueva ] incta; |Y ctanueva [ ficta;
+         |HAZ gragrup;
+     |FINSI;
+ |SINO;
+     |SI #0#11 = "N";   || Si quiere grabar grupos
+         |SI ctanueva ] incta; |Y ctanueva [ ficta;
+             |HAZ gragrup;
+         |SINO;
+             |HAZ Subgrupo;
+         |FINSI;
+     |SINO;
+         |HAZ Subgrupo;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO ggruposA;
+ nSwGApte = 1;
+ ctanueva = #13#6;
+ |SI #2#8 = "D";
+     debe = #13#9;
+     haber = 0;
+ |SINO;
+     debe = 0;
+     haber = #13#9;
+ |FINSI;
+
+ |HAZ TrataCtaGrupo;
+|FPRC;
+
+|DEFBUCLE leegrApte;
+ #13#1;
+ ;
+ #2#0, #2#1, #2#2, #2#3, grupoc, 000;
+ #2#0, #2#1, #2#2, #2#3, grupoc, 999;
+ e;
+ NULL, ggruposA;
+|FIN;
+
+|| -----------------
+|PROCESO ggrupos;
+ ctanueva = #7#2;
+ debe  = 0;
+ haber = 0;
+ |SI grupod ! 0; debe  = (grupod * #7#4 / 100) ! EURODB; |FINSI;
+ |SI grupoh ! 0; haber = (grupoh * #7#4 / 100) ! EURODB; |FINSI;
+
+ swgrupo   = 1;
+ ctaultima = #7#2;
+ acdebe    = (acdebe + debe)   ! EURODB;
+ achaber   = (achaber + haber) ! EURODB;
+
+ |SI debe ! 0; |O haber ! 0;
+     |HAZ TrataCtaGrupo;
+ |FINSI;
+
+|FPRC;
+
+|PROCESO fingrupo;
+|| aqui
+
+ |SI swgrupo = 0; |ACABA; |FINSI;
+ |SI acdebe = grupod; |Y achaber = grupoh; |ACABA; |FINSI;
+
+ ctanueva = ctaultima;
+ debe  = grupod - acdebe;
+ haber = grupoh - achaber;
+ |SI debe ! 0; |O haber ! 0;
+     |HAZ TrataCtaGrupo;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE leegrupo;
+ #7#1;
+ ;
+ grupoc, 000;
+ grupoc, 999;
+ e;
+ NULL, ggrupos, NULL, NULL, fingrupo;
+|FIN;
+
+
+|PROCESO BuscoOtros;
+     nSwGApte = 0;
+     grupoc  = ctanueva;
+     |BUCLE leegrApte;
+     |SI nSwGApte = 0;
+         ctanueva = #2#29;
+         swgrupo  = 0;
+         grupod   = debe;  acdebe  = 0;
+         grupoh   = haber; achaber = 0;
+         ctaultima = "";
+         |BUCLE leegrupo;
+     |FINSI;
+|FPRC;
+
+|PROCESO grabatra;  || ... Graba temporales
+ |SI #2#9 = 0; |ACABA; |FINSI;
+ |SI #2#8 = "H";
+     debe  = 0;
+     haber = #2#9;
+ |SINO;
+     debe  = #2#9;
+     haber = 0;
+ |FINSI;
+ ctanueva = #2#29;
+
+ alfa3 = ctanueva % 103;
+ |SI alfa3 ! "GRU";   ||Tratamiento normal de Cuenta Analitica
+     |HAZ gragrup;
+ |SINO;
+     |SI #0#11 = "N";   || Si quiere grabar grupos
+         |SI ctanueva ] incta; |Y ctanueva [ ficta;
+             |HAZ gragrup;
+         |SINO;
+             |HAZ BuscoOtros;
+         |FINSI;
+     |SINO;
+         |HAZ BuscoOtros;
+     |FINSI;
+ |FINSI;
+|FPRC;
+||************************************************************************
+
+|| ... Segundo nivel de grupos
+|CALCULO ver_grupo2;
+ |SI #107#2 ] incta; |Y #107#2 [ ficta;
+     dn_cuent = #107#2;
+     edn_error2 = 0;
+     |ERROR10;
+ |FINSI;
+|FCAL;
+
+|DEFBUCLE selegrupo2;
+ #107#1002;
+ ;
+ aCta2Gru, 000;
+ aCta2Gru, 999;
+ e;
+ NULL, ver_grupo2;
+|FIN;
+
+|PROCESO ver_grupo_apte;
+ nSwGApte = 1;
+ |SI #13#6 ] incta; |Y #13#6 [ ficta;
+     dn_cuent = #13#6;
+      swsel = 1;
+      |ERROR10;
+ |SINO;
+     alfa1 = #13#6 % 103;
+     |SI alfa1 = "GRU";
+         edn_error2 = 1;
+         aCta2Gru   = #13#6;
+         |BUCLE selegrupo2;
+         |SI edn_error2 = 0;
+             swsel = 1;
+             |ERROR10;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE selgruApte;
+ #13#1;
+ ;
+ #2#0, #2#1, #2#2, #2#3, #2#29, 000;
+ #2#0, #2#1, #2#2, #2#3, #2#29, 999;
+ e;
+ NULL, ver_grupo_apte;
+|FIN;
+
+|PROCESO ver_grupo;
+ |SI #7#2 ] incta; |Y #7#2 [ ficta;
+     dn_cuent = #7#2;
+     swsel = 1;
+     |ERROR10;
+ |SINO;
+     alfa1 = #7#2 % 103;
+     |SI alfa1 = "GRU";
+         edn_error2 = 1;
+         aCta2Gru   = #7#2;
+         |BUCLE selegrupo2;
+         |SI edn_error2 = 0;
+             swsel = 1;
+             |ERROR10;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE selegrupo;
+ #7#1;
+ ;
+ #2#29, 000;
+ #2#29, 999;
+ e;
+ NULL, ver_grupo;
+|FIN;
+
+|PROCESO ver_selec;
+ |SI eaCuenta ] #3#2; |Y eaCuenta [ #3#3;
+     swsel = 1;
+     |ERROR10;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE seleccion;
+ #3#1;
+ ;
+ selec, 000;
+ selec, 999;
+ e;
+ NULL, ver_selec;
+|FIN;
+
+|PROCESO LeeAstos1;
+
+ eaCuenta = #2#4;
+ |SI selec ! 0;
+     swsel = 0;
+     |BUCLE seleccion;
+     |SI swsel = 0; |ACABA; |FINSI;
+ |FINSI;
+
+ swsel = 0;           || Solo comprueba si esta dentro de la seleccion
+ alfa3 = #2#29 % 103;
+ |SI #2#29 ] incta; |Y #2#29 [ ficta;
+     dn_cuent = #2#29;
+     swsel = 1;
+ |SINO;
+     |SI alfa3 = "GRU";
+         nSwGApte = 0;
+         |BUCLE selgruApte;
+         |SI nSwGApte = 0;
+             |BUCLE selegrupo;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+ |SI swsel = 0; |ACABA; |FINSI;
+
+ |HAZ grabatra;
+|FPRC;
+
+|DEFBUCLE LeeAstos;
+   #2#1;
+   4;
+   ndDiario, "01.01.1900", 000001, 0001, aDCuenta;
+   nhDiario, "31.12.2999", 999999, 9999, aHCuenta;
+   e;
+   NULL, LeeAstos1;
+|FIN;
+
+|PROCESO borrar;
+   |BORRA 011#18a;
+   |LIBERA #18;
+|FPRC;
+
+|DEFBUCLE borra_ctas;
+   #18#1;
+   ;
+   #0#8, "            ", "       ";
+   #0#8, "zzzzzzzzzzzz", "zzzzzzz";
+   be;
+   NULL, borrar;
+|FIN;
+
+|PROCESO importa; |TIPO 3;
+
+   aFichero = ("7n" + Usuario) % 108;
+   |NOME_DAT #900 aFichero;
+   |DELINDEX #900;
+
+   |DBASE aMas;
+   aDef = aMas + "def/anm00001";
+   |CARGA_DEF aDef, anm0001@;
+   |SI FSalida ! 0;
+       |ACABA;
+   |FINSI;
+   aDef = aMas + "def/anm00003";
+   |CARGA_DEF aDef, anm0003@;
+   |SI FSalida ! 0;
+       |DESCARGA_DEF #101;
+       |ACABA;
+   |FINSI;
+
+   |DFICB dir_empresa;
+   alfa1 = #0#0;  alfa1 = "00000" + alfa1;  alfa1 = alfa1 % -105;
+   alfa2 = #0#1;
+   dir_empresa = dir_empresa + alfa1 + alfa2 + "/";
+
+   |PATH_DAT #1 dir_empresa;
+   |PATH_DAT #2 dir_empresa;
+   |PATH_DAT #5 dir_empresa;
+   |PATH_DAT #7 dir_empresa;
+   |PATH_DAT #13 dir_empresa;
+   |PATH_DAT #107 dir_empresa;
+
+
+   incta = #0#2;
+   ficta = #0#3;
+
+   |SI #0#10 = "N";
+       |BUCLE borra_ctas;
+   |FINSI;
+
+   ndDiario = 0;  |SI #0#6 = "N"; ndDiario = 1;  |FINSI;
+   nhDiario = 99; |SI #0#7 = "N"; nhDiario = 99; |FINSI;
+
+   selec = #0#17;
+   aDCuenta = "            ";
+   aHCuenta = "zzzzzzzzzzzz";
+   |SI selec = 0; aDCuenta = #0#19; aHCuenta = #0#20; |FINSI;
+
+   |ABRE #900;
+   sw   = 0;
+   acta = "";
+   |BUCLE LeeAstos;
+   |CIERRA #900;
+   |SI sw = 0;
+       |MENAV "    ATENCION!!! Seleccion vacia ...";
+   |SINO;
+       |HAZ GrabaFinal;
+   |FINSI;
+
+   |DESCARGA_DEF #107;
+   |DESCARGA_DEF #101;
+|FPRC;

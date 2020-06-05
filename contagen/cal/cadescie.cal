@@ -1,0 +1,336 @@
+|FICHEROS;
+   cadescie #0;
+   camaasil #1;    || apuntes lins.
+   camaasic #2;    || apuntes cabs.
+   cacuenta #3;    || plan contable
+   cacuebal #4;    || cuentas de balance
+   camandia #10;   || diarios
+   canempre #30;
+   anm00012 #112;
+   anm00013 #113;
+   ca8m0004 #404;
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+   alfa1 = "";
+   desdi = 0;
+   hasdi = 0;
+   desfe = @;
+   hasfe = @;
+   desdo = 0;
+   hasdo = 0;
+
+   cierre = "";
+   apertu = "";
+   fec1c  = @;
+   fec2c  = @;
+   fec3c  = @;
+   mensa1 = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+   mensa2 = "    ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+   solo   = 0;
+   cierr  = "";
+
+   aElDepar  = "";
+   eaDDepar  = "";
+   eaHDepar  = "";
+   nSwExiste = 0;
+
+   &enPeriodoO = 0;
+   &enPeriodoD = 0;
+   nEjer       = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *************************************************************************
+||                          DESDE CAMPOS DE PANTALLA
+|| *************************************************************************
+|PROCESO fecha; | TIPO 0;   || Desde fecha cierre
+   |SI #0#1 < fec1c; |O #0#1 > fec2c;
+       |MENAV mensa1;
+       |ERROR;
+   |SINO;
+       |SI #0#1 [ fec3c;
+           |MENAV mensa2;
+           |ERROR;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO nueva; || desde empresa apertura
+   |SI solo = 1; || no existe empresa de apertura, solo admite 00000
+       #0#4 = "00000";
+       |PINTA #0#4;
+       |CAMPO_MODIFICA #0#7,1,"N";
+       |ACABA;
+   |SINO;
+       |CAMPO_MODIFICA #0#7,1,"S";
+   |FINSI;
+
+   |SI #0#4 ! cierr;  |Y #0#4 ! "00000";
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   apertu = #0#4 + #0#5;  apertu = "000000" + apertu;  apertu = apertu % -106;
+   |SI #0#4 = "00000";
+       |CAMPO_MODIFICA #0#7,1,"N";
+   |SINO;
+       |CAMPO_MODIFICA #0#7,1,"S";
+   |FINSI;
+|FPRC;
+
+|CALCULO AntesDepar; |TIPO 7;
+  |SI eaDepar = "S";
+      |SI Haybasica = 1;
+          |MENSA "    <F2> Consultar Actividades";
+      |SINO;
+          |MENSA "    <F2> Consultar Departamentos";
+      |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO LosDep; |TIPO 0;
+ |SI eaDepar = "S";
+     eOpDep = 0; || 1 = Consulta pantalla
+     |SI FSalida = 10; eOpDep = 1;  |FINSI;
+     enActividad = #0Campo;
+     eaCodDep    = #0Campo;
+     |HAZ Actividad;
+     alfa1 = enActividad;
+     |SI Haybasica = 1;
+         alfa1 = ("00" + alfa1) % A02;
+     |FINSI;
+     #0Campo = eaCodDep;  |PINTA #0Campo;
+ |FINSI;
+|FCAL;
+
+|| *************************************************************************
+||                  ACTUALIZA LAS CUENTAS DE TRABAJO
+|| *************************************************************************
+|PROCESO borrodia2;
+ |BORRA 020#404a;
+ |LIBERA #404;
+|FPRC;
+
+|DEFBUCLE cacierre2;
+ #404#1;
+ ;
+ desdi, desfe, desdo,    1;
+ hasdi, hasfe, hasdo, 9999;
+ be;
+ NULL, borrodia2;
+|FIN;
+
+|PROCESO borrodia;  || trabajo por cada lineas
+  aElDepar = #1#21;
+  |SI Haybasica = 1;
+      |QBF aElDepar;
+      aElDepar = ("00" + aElDepar) % -102
+  |FINSI;
+  |SI aElDepar < eaDDepar; |O aElDepar > eaHDepar;  |ACABA; |FINSI;
+
+   MasMenos     = - #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+   nNIVELCUENTA = #camaasil#5;
+   |HAZ ActDiario;          || diario
+   |HAZ ActCuenta;          || cuenta
+   |HAZ ActTesteo;
+
+   |BORRA 020#1a;  ||   borra l¡nea
+   |LIBERA #1;
+
+  || ....  BajaGrupo;
+  alfa1 = #1#29; alfa1 = alfa1 % 103;
+  |SI alfa1 = "GRU";
+      |ABRE #112;
+      #112#0 = #1#0;
+      #112#1 = #1#1;
+      #112#2 = #1#2;
+      #112#3 = #1#3;
+      #112#4 = #1#29;
+      |LEE 101#112=;
+      |SI FSalida = 0;
+          |BUCLELIN 1NULL#112;
+          |BORRA 020#112a;
+      |FINSI;
+      |LIBERA #112;
+      |CIERRA #112;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE cacierre0;
+   #1#1;
+   ;
+   desdi, desfe, desdo,    1;
+   hasdi, hasfe, hasdo, 9999;
+   e;
+   NULL, borrodia;
+|FIN;
+
+|PROCESO VerSiExis1;
+   |SI #camaasil#8 = "D";
+       #camaasic#4 = #camaasic#4 + #camaasil#9;
+   |SINO;
+       #camaasic#5 = #camaasic#5 + #camaasil#9;
+   |FINSI;
+   #camaasic#6 = #camaasic#4 - #camaasic#5;
+   nSwExiste = 1;
+|FPRC;
+
+|DEFBUCLE VerSiExis;
+   #1#1;
+   ;
+   #camaasic#0, #camaasic#1, #camaasic#2, 0001;
+   #camaasic#0, #camaasic#1, #camaasic#2, 9999;
+   e;
+   NULL, VerSiExis1;
+|FIN;
+
+|PROCESO borrocab;     || trabajo de cabecera
+   #camaasic#4 = 0;
+   #camaasic#5 = 0;
+   #camaasic#6 = 0;
+   nSwExiste = 0;
+   |BUCLE VerSiExis;
+   |SI nSwExiste = 0;
+       |BORRA 020#2a;        ||   borra cabecera
+   |SINO;
+       |GRABA 020#2a;        ||   borra cabecera
+   |FINSI;
+   |LIBERA #camaasic;
+|FPRC;
+
+|DEFBUCLE cacierre1;
+   #2#1;
+   ;
+   desdi, desfe, desdo;
+   hasdi, hasfe, hasdo;
+   be;
+   NULL, borrocab;
+|FIN;
+
+|| ------------- Anulando el CIERRE --------------------
+
+|PROCESO cierre;
+   |DFICE dirfich0; |QBF dirfich0;
+   desdi = #0#0;
+   hasdi = #0#0;
+   desfe = #0#1;
+   hasfe = #0#1;
+   desdo = #0#2;
+   hasdo = #0#3;
+   eaDDepar = #0#9;
+   eaHDepar = #0#10;
+
+   |BUCLE cacierre0;   || borra lineas
+   |BUCLE cacierre1;   || borra cabeceras
+
+   enPeriodoD = #0#5;
+   |SI #0#11 = "S";
+       alfa1 = nEjer;
+       alfa1 = "camaccz3;D"+ nEjer;
+       |SUB_EJECUTA_NP alfa1;
+   |FINSI;
+|FPRC;
+
+
+|PROCESO apertura;
+   |SI #0#4 = "00000"; |ACABA; |FINSI;
+
+
+   |DBASE dir_fich;
+   dir_fich = dir_fich + "fich/" + apertu + "/";
+   |PATH_DAT #camaasil #dir_fich#;
+   |PATH_DAT #camaasic #dir_fich#;
+   |PATH_DAT #cacuenta #dir_fich#;
+   |PATH_DAT #cacuebal #dir_fich#;
+   |PATH_DAT #camandia #dir_fich#;
+   |PATH_DAT #anm00012 #dir_fich#;
+   |PATH_DAT #anm00013 #dir_fich#;
+   |PATH_DAT #ca8m0004 #dir_fich#;
+
+   dirfich0 = dir_fich;
+
+   desdi = #0#7;
+   hasdi = #0#7;
+   desfe = "01.01.0001";
+   hasfe = "31.12.9999";
+   desdo = "000000";
+   hasdo = "999999";
+   |BUCLE cacierre0;      || borra l¡neas
+   |BUCLE cacierre1;      || borra cabeceras
+   |BUCLE cacierre2;      || borra l¡neas
+|FPRC;
+
+|| **************************************************************************
+|PROCESO leeempre;       || lee la empresa de apertura
+   cod1 = #0#4;
+   cod2 = #0#5;
+   emEmp = 1;
+   |HAZ leelo;
+   |SI swerror = 1;
+       #0#4 = "00000"; |PINTA #0#4;
+       solo = 1
+   |FINSI;
+   apertu = #0#4 + #0#5;  apertu = "000000" + apertu;  apertu = apertu % -106;
+   #0#6 = #canempre#1;
+   |PINTA #0#6;
+|FPRC;
+
+|PROCESO apertu;         || calcula el periodo de la empresa nueva
+   |HAZ inicio;
+   enPeriodoO = enPeriodo;
+   nEjer      = enEjercicio;
+
+   cierre = #canempre#0;
+   cierre = "000000" + cierre;  cierre = cierre % -106;
+   cod2   = #canempre#3;
+   #0#4   = cod1;
+   #0#5   = cod2 + 1;
+   |SI #0#5 = 10;  #0#5 = 0;  |FINSI;
+
+   fec1c = fec1;
+   fec2c = fec2;
+   fec3c = fec3;
+   cierr = cierre % 105;
+   #0#1 = fec2;
+   |SI Haybasica = 1;
+       #0#9  = "00";
+       #0#10 = "99";
+   |SINO;
+       #0#9  = "  ";
+       #0#10 = "zz";
+   |FINSI;
+|FPRC;
+
+|| **************************************************************************
+|| **************************************************************************
+
+|PROGRAMA;
+
+   |HAZ DirAplicSt;
+   |HAZ eLeeParametro;
+   |CLS;
+   |CABEZA "Anular Cierre";
+
+   |PINPA #0#0;
+   |DDEFECTO #0;
+   |HAZ apertu;
+   |C_M #0#9, 1,eaDepar; |C_M #0#10,1,eaDepar;
+   |PINDA #0#0;
+
+   |HAZ leeempre;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+       |SI #0#8 = "SI";
+           |HAZ cierre;
+           |HAZ apertura;
+       |FINSI;
+   |FINSI;
+|FPRO;

@@ -1,0 +1,310 @@
+     TmpResultado
+
+|FICHEROS;
+     sctrz093 #0;
+     sctrw028 #28,MANTE;  || Tmp resultado
+
+     sctrm068 #68;
+     sctrm074 #74;  || Equi. tarifa
+
+     sctrm079 #79;  || Historicos
+     sctrm080 #80;  ||  ''
+     sctrm081 #81;  ||  ''
+|FIN;
+
+|VARIABLES;
+     nGraba28 = 0;
+     aLon = "";
+     aTypes = "";
+     aType = "";
+     aCar = "";
+     i = 0;
+     nPos = 0;
+     aGrupo = "";
+     aAlfa = "";
+     nIncBillete = 0;
+     nTotBillete = 0;
+     nImpDtoAuto = 0;
+     nSuplePax = 0;
+     nTotal = 0;
+     nImpTotal = 0;
+     nPax = 0;
+     nType = 0;
+     nTotalRese = 0;
+     nHayTari = 0;
+     aHayIda = "N";
+     nReg = 0;
+|FIN;
+
+|PROCESO sctrm068;
+     |SI #68#2 ! 0;
+          |SI #68#2 ! #80#3; |ACABA; |FINSI;                    || Linea
+          |SI #80#5 < #68#3; |O #80#5 > #68#4; |ACABA; |FINSI; || Servicio
+     |FINSI;
+     |SI #79#15 < #68#5; |O #79#15 > #68#7; |ACABA; |FINSI;       || F.Rese
+     |SI #79#16 < #68#6; |O #79#16 > #68#8;; |ACABA; |FINSI;       || H.Rese
+
+     nIncBillete = nIncBillete + ((nTotBillete * #68#10 / 100)!0);
+|FPRC;
+
+|DEFBUCLE sctrm068;
+     #68#2;
+     11;
+     #80#16, #80#2, 0000000, #80#4;
+     #80#16, #80#2, 9999999, #80#4;
+     ;
+     NULL, sctrm068;
+|FIN;
+
+|PROCESO IncDisBillete;
+     nIncBillete = 0;
+     |BUCLE sctrm068;
+|FPRC;
+
+|PROCESO BuscaTari;
+     aAlfa = #81#3 % 102;
+     |SI aAlfa = aGrupo;
+          nTotBillete = #81#8 + #81#9; |HAZ IncDisBillete;
+          nImpDtoAuto = #81#8 * #81#11 / 100;
+          nSuplePax = nIncBillete - nImpDtoAuto;
+          nTotal = #81#8 + #81#9 + nSuplePax;
+
+          nImpTotal = nImpTotal + (nTotal * nPax);
+
+          nHayTari = 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE BuscaTari;
+     #81#1;
+     ;
+     #80#0, #80#1, "       ";
+     #80#0, #80#1, "zzzzzzz";
+     ;
+     NULL, BuscaTari;
+|FIN;
+
+|PROCESO Graba28;
+     nReg = nReg + 1;
+     |DDEFECTO #28;
+     #28#0 = nReg;
+     #28#1 = "";
+     #28#2 = #80#15;
+     #28#3 = #80#20;
+     #28#4 = #80#21;
+     #28#5 = #80#3;
+     #28#6 = #80#19;
+     #28#7 = #80#5;
+     #28#8 = #80#6;
+     #28#9 = #80#16;
+     #28#10 = #80#17;
+     #28#11 = #80#18;
+     #28#12 = nImpTotal;
+     #28#13 = #80#7;
+     #28#14 = #80#8;
+     #28#15 = #79#18;
+     #28#16 = #80#1;
+     |GRABA 020#28n;
+
+     nGraba28 = 1;
+     nTotalRese = nTotalRese + nImpTotal;
+|FPRC;
+
+|PROCESO SacaGrupo;
+     aTypes = #74#3; |QBT aTypes;  ||Puede haber varios separados por comas
+     aLon = aTypes % A0;
+     |PARA i = 1; |SI i [ aLon; |HACIENDO i = i + 1;
+          nPos = i * 100 + 1;
+          aCar = aTypes % nPos;
+          |SI aCar ! ",";
+               |SI aCar = nType;
+                    aGrupo = ("00" + #74#1) % -102;
+                    nHayTari = 0; |BUCLE BuscaTari;
+                    |SI nHayTari ! 0;
+                         |HAZ Graba28;
+                         aHayIda = "S";
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|DEFBUCLE SacaGrupo;
+     #74#1;
+     ;
+     "999999", 00
+     "999999", 99;
+     ;
+     NULL, SacaGrupo;
+|FIN;
+
+|PROCESO CalculaResul;
+     nGraba28 = 0;
+     nImpTotal = 0;
+     |SI #80#15 = "I";
+          |SI #0#9 ! 0;  || Senior
+               nPax = #0#9;
+               nType = 1;
+               |BUCLE SacaGrupo;
+          |FINSI;
+          |SI #0#10 ! 0;  || Adulto
+               nPax = #0#10;
+               nType = 2;
+               |BUCLE SacaGrupo;
+          |FINSI;
+          |SI #0#11 ! 0;  || Joven
+               nPax = #0#11;
+               nType = 3;
+               |BUCLE SacaGrupo;
+          |FINSI;
+          |SI #0#12 ! 0;  || Ni¤o
+               nPax = #0#12;
+               nType = 4;
+               |BUCLE SacaGrupo;
+          |FINSI;
+          |SI #0#13 ! 0;  || Bebe
+               nPax = #0#13;
+               nType = 5;
+               |BUCLE SacaGrupo;
+          |FINSI;
+          |SI #0#14 ! 0;  || Otro
+               nPax = #0#14;
+               nType = 6;
+               |BUCLE SacaGrupo;
+          |FINSI;
+     |FINSI;
+     |SI nGraba28 = 0;
+          |HAZ Graba28;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE CalculaResul;
+     #80#1;
+     ;
+     #79#0, 01;
+     #79#1, 99;
+     ;
+     NULL, CalculaResul;
+|FIN;
+
+|PROCESO TmpResultado;
+     nReg = 0;
+     aHayIda = "N";
+     |ABRE #74;
+     |BUCLE CalculaResul;
+     |CIERRA #74;
+
+     |SI aHayIda = "N";
+          || Si no hay ida borra todas las vueltas
+          |CIERRA #28; |DELINDEX #28; |ABRE #28;
+     |FINSI;
+|FPRC;
+
+/******************************
+|PROCESO SacaGrupo;
+     |SELECT #2#74;
+     #74#0 = 999999;
+     #74#3 = nType;
+     |LEE 000#74=;
+     |SI FSalida ! 0; |DDEFECTO #74; |FINSI;
+     aGrupo = ("00" + #74#1) % -102;
+|FPRC;
+
+|PROCESO CalculaResul;
+     nImpTotal = 0;
+     |SI #80#15 = "I";
+          |SI #0#9 ! 0;  || Senior
+               nPax = #0#9;
+               nType = 1;
+               |HAZ SacaGrupo;
+
+               nHayTari = 0; |BUCLE BuscaTari;
+               |SI nHayTari = 0; |ACABA; |FINSI;
+          |FINSI;
+          |SI #0#10 ! 0;  || Adulto
+               nPax = #0#10;
+               nType = 2;
+               |HAZ SacaGrupo;
+
+               nHayTari = 0; |BUCLE BuscaTari;
+               |SI nHayTari = 0; |ACABA; |FINSI;
+          |FINSI;
+          |SI #0#11 ! 0;  || Joven
+               nPax = #0#11;
+               nType = 3;
+               |HAZ SacaGrupo;
+
+               nHayTari = 0; |BUCLE BuscaTari;
+               |SI nHayTari = 0; |ACABA; |FINSI;
+          |FINSI;
+          |SI #0#12 ! 0;  || Ni¤o
+               nPax = #0#12;
+               nType = 4;
+               |HAZ SacaGrupo;
+
+               nHayTari = 0; |BUCLE BuscaTari;
+               |SI nHayTari = 0; |ACABA; |FINSI;
+          |FINSI;
+          |SI #0#13 ! 0;  || Bebe
+               nPax = #0#13;
+               nType = 5;
+               |HAZ SacaGrupo;
+
+               nHayTari = 0; |BUCLE BuscaTari;
+               |SI nHayTari = 0; |ACABA; |FINSI;
+          |FINSI;
+          |SI #0#14 ! 0;  || Otro
+               nPax = #0#14;
+               nType = 6;
+               |HAZ SacaGrupo;
+
+               nHayTari = 0; |BUCLE BuscaTari;
+               |SI nHayTari = 0; |ACABA; |FINSI;
+          |FINSI;
+          aHayIda = "S";
+     |FINSI;
+
+     |DDEFECTO #28;
+     #28#0 = #80#1;
+     #28#1 = "";
+     #28#2 = #80#15;
+     #28#3 = #80#20;
+     #28#4 = #80#21;
+     #28#5 = #80#3;
+     #28#6 = #80#19;
+     #28#7 = #80#5;
+     #28#8 = #80#6;
+     #28#9 = #80#16;
+     #28#10 = #80#17;
+     #28#11 = #80#18;
+     #28#12 = nImpTotal;
+     #28#13 = #80#7;
+     #28#14 = #80#8;
+     #28#15 = #79#18;
+     #28#16 = #80#1;
+     |GRABA 020#28n;
+
+     nTotalRese = nTotalRese + nImpTotal;
+|FPRC;
+
+|DEFBUCLE CalculaResul;
+     #80#1;
+     ;
+     #79#0, 01;
+     #79#1, 99;
+     ;
+     NULL, CalculaResul;
+|FIN;
+
+|PROCESO TmpResultado;
+     aHayIda = "N";
+     |ABRE #74;
+     |BUCLE CalculaResul;
+     |CIERRA #74;
+
+     |SI aHayIda = "N";
+          || Si no hay ida borra todas las vueltas
+          |CIERRA #28; |DELINDEX #28; |ABRE #28;
+     |FINSI;
+|FPRC;
+*******************************************/

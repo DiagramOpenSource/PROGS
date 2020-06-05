@@ -1,0 +1,800 @@
+|FICHEROS;
+  cacap130 #0;    || def entrada
+  caexistl #1;    || lineas de existencias
+  cacuenta #2;    || Plan contable
+  caplctac #3;    || cabecera Planilla
+  caplctal #4;    || Lineas Planilla
+  caman130 #5;    || modelo 130
+  caportad #8;    || Portadas
+
+  caman130@ #1130;
+|FIN;
+
+|VARIABLES;
+  nDP = 0;
+  nHP = 0;
+
+  sw_def = 0;
+  sw_exi = 0;
+  y = "";
+  x = 0;
+  xx = 0;
+  &r_emp = 0;
+  &r_per = 0;
+  &r_eje = 0;
+  &estru = 0;
+  &d_mes = 0;
+  &h_mes = 0;
+  &r_nom = "";
+  exini = 0;
+  exfin = 0;
+  cc1 = 0;
+  cc2 = 0;
+  cc3 = 0;
+  cc4 = 0;
+  cc5 = 0;
+  e_anter = "";
+  v_anter = 0;
+  f_anter = 0;
+  c_anter = 0;
+  i_anter = 0;
+  r_anter = 0;
+  p_anter = 0;
+    ventas = 0;
+    compra = 0;
+    retenc = 0;
+    empreos = 0;
+    activid = 1;
+    periodo = 0;
+    ejercic = 0;
+  uno = "";
+  dos = "";
+  sumactas = 0;
+  scta = 0;
+  cta = "";
+  coefi_g = 0;
+
+  nImporte = 0;
+  nSwNeg   = 0;
+  nSumaD   = 0;
+  aBase    = "";
+  aMas     = "";
+  nHPer    = 0;
+
+  nEjer        = 0;
+  nTope        = 0;
+  nTopeAgrario = 0;
+  nSuma        = 0;
+  enNume       = 0;
+  nNume1       = 0;
+  nEl27        = 0;
+  nSiGrabo     = 0;
+  nHay         = 0;
+
+  aAlfa1       = "";
+  aAlfa2       = "";
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE i_vareos;
+
+***************************************************************************
+               CAMPO DE PANTALLA
+***************************************************************************
+
+|PROCESO defectos; |TIPO 7;
+  |SI sw_def = 1; |ACABA; |FINSI;
+
+  |DDEFECTO #3;
+  |ABRE #3;
+  |LEE 000#3p;
+  |SI FSalida = 0;
+      #0#2 = #3#0;
+      |PINTA #0#2;
+  |FINSI;
+  |CIERRA #3;
+
+  eaNombreAp = #30#1;
+  ejercic    = #30#26;
+  |HAZ control;
+  |SI sw_exi = 1;
+      |PTEC 807;
+      |ACABA;
+  |FINSI;
+
+  |SI #8#83 = "N";
+      |CAMPO_MODIFICA #0#3, 1, "S";
+      #0#3 = #8#88;
+      |PINTA #0#3;
+  |SINO;
+      |CAMPO_MODIFICA #0#3, 1, "N";
+  |FINSI;
+  #0#4 = #8#125;
+
+  aAlfa1 = "S"; |PINTA #0#4;
+  |SI ejercic < 15;
+      aAlfa1 = "N";
+      |BLIN 15;
+      |BLIN 16;
+      |BLIN 17;
+      |BLIN 18;
+      |BLIN 19;
+      #0#4 = 0;
+      #0#5 = "S";
+  |FINSI;
+  |C_V #0#4, 1, aAlfa1; |C_M #0#4, 1, aAlfa1;
+  |C_V #0#5, 1, aAlfa1; |C_M #0#5, 1, aAlfa1;
+  sw_def = 1;
+|FPRC;
+
+|CALCULO RecojoAuto; |TIPO 0;
+     |C_M #0#4,0,aAlfa1;
+     |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+     |SI FSalida = 15;
+         enEmp130 = enEmpresa;
+         enEje130 = ejercic;
+         enSwApli = 6;
+         |HAZ eGrabadsmom093;
+         #0#4 = enImporte;
+         |PINTA #0#4;
+         |ERROR;
+     |FINSI;
+|FCAL;
+
+|PROCESO h_per; |TIPO 0;
+  |SI #0#0 > #0#1; |ERROR; |FINSI;
+|FPRC;
+
+|PROCESO existenc; |TIPO 0;
+  |SI FSalida ! 9; |ACABA; |FINSI;
+  |SI #8#83 ! "N";
+      |MENAV "    La Actividad de esta Empresa es Agricola ";
+      |ACABA;
+  |FINSI;
+  |PARA x = #0#0; |SI x [ #0#1; |HACIENDO x = x + 1;
+    d_mes = 0 + (x - 1) * 3;
+    h_mes = 3 + (x - 1) * 3;
+    estru = #0#3;
+    r_emp = enEmpresa;
+    r_per = enPeriodo;
+    r_eje = ejercic;
+    r_nom = eaNombreAp;
+    |QBF r_nom;
+    r_nom = r_nom % A120;
+    y = x;
+    r_nom = r_nom + " - " + y + "§ trimestre";
+    |SUB_EJECUTA "caexicon";
+ |SIGUE;
+|FPRC;
+
+***************************************************************************
+
+|PROCESO control;
+  sw_exi = 0;
+  |DDEFECTO #8;
+  |ABRE #8;
+  #8#0 = enEmpresa;
+  #8#1 = ejercic;
+  |LEE 000#8=;
+  |SI FSalida ! 0;
+      |MENAV "    No encontrado Fichero Portadas Modelos";
+      sw_exi = 1;
+  |SINO;
+      |SI #8#82 ! "P"; |Y #8#82 ! "E";
+          |MENAV "    Esta Empresa no realiza el Modelo 130 ";
+          sw_exi = 1;
+      |FINSI;
+  |FINSI;
+  |CIERRA #8;
+|FPRC;
+
+|| ===== Calculo de Existencias
+
+|PROCESO sumaex;
+  exini = exini + #1cc1;
+  exfin = exfin + #1cc2;
+|FPRC;
+
+|DEFBUCLE lineas;
+ #1#1;
+ ;
+ #0#3, 01;
+ #0#3, 99;
+ e;
+ NULL, sumaex;
+|FIN;
+
+|PROCESO lee_exist;
+  |ABRE #1;
+  exini = 0;
+  exfin = 0;
+  |SI periodo = 1; cc1 = 11; cc2 = 14;  |FINSI;
+  |SI periodo = 2; cc1 = 14; cc2 = 17;  |FINSI;
+  |SI periodo = 3; cc1 = 17; cc2 = 20;  |FINSI;
+  |SI periodo = 4; cc1 = 23; cc2 = 23;  |FINSI;
+  |BUCLE lineas;
+|FPRC;
+
+|| ==================================================
+|PROCESO AntesAgr1;
+   v_anter = v_anter +  #5#30;
+   r_anter = r_anter +  #5#36;
+|FPRC;
+
+|DEFBUCLE AntesAgr;
+ #5#1;
+ ;
+ empreos, activid, nDP, ejercic;
+ empreos, activid, nHP, ejercic;
+ e;
+ NULL, AntesAgr1;
+|FIN;
+
+|PROCESO Casilla5;
+     p_anter = 0;
+
+     |SI ejercic ] 80;
+         nEjer = 1900 + ejercic;
+     |SINO;
+         nEjer = 2000 + ejercic;
+     |FINSI;
+
+     |SI nEjer [ 2008;
+         #5#0  = empreos;
+         #5#1  = activid;
+         #5#2  = periodo - 1;
+         #5#3  = ejercic;
+         |LEE 040#5=;
+         |SI FSalida = 0;
+             p_anter = #5#28 + #5#29;
+         |FINSI;
+
+         |ACABA;
+     |FINSI;
+
+     nHPer   = periodo - 1;
+     |PARA nNume1 = 1; |SI nNume1 [ nHPer; |HACIENDO nNume1 = nNume1 + 1;
+           |DDEFECTO #5;
+           #5#0  = empreos;
+           #5#1  = activid;
+           #5#2  = nNume1;
+           #5#3  = ejercic;
+           |LEE 040#5=;
+           |SI FSalida = 0;
+               nEl27   = 0;
+               |SI #5#27 > 0;
+                   nEl27 = #5#27;
+               |FINSI;
+
+               enNume  = nEl27 - #5#28 - #5#25;
+               |SI enNume < 0; enNume = 0; |FINSI;
+
+               p_anter = p_anter + (enNume - #5#47);
+           |FINSI;
+     |SIGUE;
+|FPRC;
+
+
+|PROCESO anterior;
+    |SI #8#83 = "N";
+        |HAZ Casilla5;
+
+        #5#0  = empreos;
+        #5#1  = activid;
+        #5#2  = periodo - 1;
+        #5#3  = ejercic;
+        |LEE 040#5=;
+        |SI FSalida = 0;
+            v_anter = #5#8;
+            f_anter = #5#11;
+            c_anter = #5#14;
+            i_anter = #5#17;
+            r_anter = #5#25;
+            e_anter = #5#48;
+        |FINSI;
+    |SINO;
+         v_anter = 0;
+         r_anter = 0;
+         nDP = 1; nHP = periodo - 1;
+         |BUCLE AntesAgr;
+    |FINSI;
+|FPRC;
+
+|PROCESO dsmod130;
+     |SI #1130#3 = 8;  |Y #1130#2 = 1;
+          nImporte = #1130#29;
+     |SINO;
+          nImporte = #1130#46;
+     |FINSI;
+
+     |SI nImporte < 0; nSwNeg = 1; |FINSI;
+
+     |SI nImporte ] 0;  |Y nSwNeg = 0; |ACABA;  |FINSI;
+
+     nSumaD = nSumaD + #1130#42;
+
+     |SI nImporte < 0;
+         #5#43 = #5#43 + -nImporte;
+     |SINO;
+         #5#43 = #5#43 - #1130#42;
+         |SI #5#43 [ 0; nSwNeg = 0; #5#43 = 0; nSumaD = 0; |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsmod130;
+     #1130#1004;
+     ;
+     #5#0, #5#1,     1, #5#3;
+     #5#0, #5#1, nHPer, #5#3;
+     ;
+     NULL, dsmod130;
+|FIN;
+
+|PROCESO CapturaNegativos130;
+     |SI #5#42 [ 0;  |ACABA;  |FINSI;
+
+     |DBASE aBase;  |QBF aBase;
+     aMas = aBase + "def/caman130.mas";
+     |CARGA_DEF aMas, caman130@;
+
+     nSwNeg   = 0;
+     nSumaD   = 0;
+     #5#43    = 0;
+     nHPer    = #5#2 - 1;
+     |BUCLE dsmod130;
+
+     |DESCARGA_DEF #caman130@;
+|FPRC;
+
+|PROCESO dsmod130Tope;
+     nTopeAgrario = nTopeAgrario + #1130#47;
+|FPRC;
+
+|DEFBUCLE dsmod130Tope;
+     #1130#1004;
+     ;
+     #5#0, #5#1,     1, #5#3;
+     #5#0, #5#1, nHPer, #5#3;
+     ;
+     NULL, dsmod130Tope;
+|FIN;
+
+|PROCESO CapturaTopeAgrario;
+     |DBASE aBase;  |QBF aBase;
+     aMas = aBase + "def/caman130.mas";
+     |CARGA_DEF aMas, caman130@;
+
+     nTopeAgrario = 0;
+     nHPer        = #5#2 - 1;
+     |BUCLE dsmod130Tope;
+
+     |DESCARGA_DEF #caman130@;
+|FPRC;
+
+|PROCESO CalculaDed130;
+     |SI nEjer < 2008;
+         #5#41 = 0;
+         #5#42 = 0;
+         #5#43 = 0;
+         #5#44 = 0;
+         #5#47 = 0;
+         |ACABA;
+     |FINSI;
+
+     #5#42 = #5#29 - #5#41;
+
+     |SI #5#42 [ 0;
+         #5#43 = 0;
+         #5#47 = 0;
+         |ACABA;
+     |FINSI;
+
+     |SI nEjer = 2008;
+         |SI #5#2 > 1;
+             |HAZ CapturaNegativos130;
+         |SINO;
+             #5#41 = 0;
+             #5#42 = 0;
+             #5#43 = 0;
+             #5#44 = 0;
+             #5#47 = 0;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     |SI nEjer ] 2009;
+         |SI #5#2 ! 1;
+             |HAZ CapturaNegativos130;
+         |FINSI;
+     |FINSI;
+
+     nSuma = #5#43 + #5#47;
+     |SI nSuma > #5#42;
+         |SI #5#43 > #5#42;
+             #5#43 = #5#42;
+             #5#47 = 0;
+             |ACABA;
+         |FINSI;
+
+         #5#47 = #5#42 - #5#43;
+     |FINSI;
+|FPRC;
+
+|| ************************************************************************
+|PROCESO dsmod130hay;
+ nHay = 1;
+|FPRC;
+
+|DEFBUCLE dsmod130hay;
+     #1130#1004;
+     ;
+     #5#0, #5#1,     1, #0#3;
+     #5#0, #5#1, nHPer, #0#3;
+     ;
+     NULL, dsmod130hay;
+|FIN;
+
+|PROCESO BuscoOtra;
+     |DBASE aBase;  |QBF aBase;
+     aMas = aBase + "def/caman130.mas";
+     |CARGA_DEF aMas, caman130@;
+
+     nHPer = #5#2 - 1;
+     nHay  = 0;
+     |BUCLE dsmod130hay;
+
+     |DESCARGA_DEF #caman130@;
+     |SI nHay = 0;
+         nSiGrabo = 1;
+         |SI #5#2 = 2; aAlfa2 = "01.04."; |FINSI;
+         |SI #5#2 = 3; aAlfa2 = "01.07."; |FINSI;
+         |SI #5#2 = 4; aAlfa2 = "01.10."; |FINSI;
+         aAlfa2   = aAlfa2 + aAlfa1;
+         efFec130 = aAlfa2;
+     |FINSI;
+|FPRC;
+
+|PROCESO ParaCalMinoracion;
+  nSiGrabo = 0;
+  |SI nEjer ] 2010;
+      aAlfa1 = nEjer;
+      |SI #5#2 = 1;
+          nSiGrabo = 1;
+          aAlfa2   = "01.01." + aAlfa1;
+          efFec130 = aAlfa2;
+      |SINO;
+          |HAZ BuscoOtra;
+      |FINSI;
+  |FINSI;
+  |SI nSiGrabo = 1;
+      enMod130 = 130;
+      enEje130 = #5#3;
+      enEmp130 = #5#0;
+      enAct130 = 1;
+      enPer130 = #5#2;
+      enRend_NoAgr = #5#22;
+      enRend_Agr   = #5#30;
+      |HAZ eGrabadsmom094;
+  |FINSI;
+|FPRC;
+
+|| ************************************************************************
+|PROCESO calcular;
+  |SI #8#83 ! "N";
+      #5#31 = #5#30 % 2;
+      #5#29 = #5#31 - #5#36;
+      |SI #5#29 < 0; #5#29 = 0; |FINSI;
+      |ACABA;
+  |FINSI;
+
+  #5#8  = #5#6 + #5#7;
+  #5#11 = #5#9;
+  #5#14 = #5#12 + #5#13;
+
+  |SI #5#16 ! 0;
+      #5#17 = #5#16;
+  |SINO;
+      #5#17 = #5#15;
+  |FINSI;
+
+  #5#18 = #5#8 + #5#11 - #5#14 - #5#17;
+
+  |SI #8#81 = "B";
+      #5#21 = #5#18 % #5#20;
+      #5#19 = 0;
+  |SINO;
+      |SI #8#82 = "P"; #5#19 = #5#8 % 1; |SINO; #5#19 = 0; |FINSI;
+      #5#21 = 0;
+  |FINSI;
+  |SI #5#3 ] 98; |O #5#3 [ 10; #5#19 = 0; |FINSI;
+
+  |SI #5#18 < 0; #5#19 = 0; #5#21 = 0; |FINSI;
+  |SI #5#21 > 2000; |Y #5#3 ] 15;
+      #5#21 = 2000;
+  |FINSI;
+
+  #5#22 = #5#18 - #5#19 - #5#21;
+  |SI #5#48 = "S"; |Y #5#22 > 0;
+      #5#49 = #5#22 % 20;
+  |SINO;
+      #5#49 = 0;
+  |FINSI;
+  #5#22 = #5#22 - #5#49;
+
+  #5#25 = #5#23 + #5#24;
+
+  |SI #8#87 = 1; #5#26 = #5#18; |SINO; #5#26 = #5#22; |FINSI;
+
+  #5#26 = #5#26 + #5#37;
+
+  #5#27 = #5#26 % 20;
+  #5#29 = #5#27 - #5#28 - #5#25;
+
+  |SI #5#29 < 0; #5#29 = 0; |FINSI;
+
+   |SI #5#3 < 80;
+       nEjer = 2000 + #5#3;
+   |SINO;
+       nEjer = 1900 + #5#3;
+   |FINSI;
+   |HAZ ParaCalMinoracion;
+
+   |SI nEjer ] 2010;
+       enEmp130 = #5#0;
+       enEje130 = #5#3;
+       enPer130 = #5#2;
+       enMod130 = 130;
+       enSwApli = 0;
+       enRend_NoAgr = #5#22;
+       enRend_Agr   = #5#30;
+       |HAZ eLeeAplica;
+   |SINO;
+       eaAplica1 = #8#103;
+       eaAplica2 = #8#105;
+       enAplica3 = 0;
+   |FINSI;
+
+   #5#41 = 0; #5#42 = 0;
+   #5#43 = 0; #5#44 = 0;
+   |SI nEjer = 2008;  |Y eaAplica1 = "S";
+       |SI #5#2 = 2;  #5#41 = 200;  |FINSI;
+       |SI #5#2 = 3;  #5#41 = 100;  |FINSI;
+       |SI #5#2 = 4;  #5#41 = 100;  |FINSI;
+   |FINSI;
+
+   |SI nEjer = 2009;  |Y eaAplica1 = "S";
+       |SI #5#2 = 1;  #5#41 = 100;  |FINSI;
+       |SI #5#2 = 2;  #5#41 = 100;  |FINSI;
+       |SI #5#2 = 3;  #5#41 = 100;  |FINSI;
+       |SI #5#2 = 4;  #5#41 = 100;  |FINSI;
+   |FINSI;
+
+   |SI nEjer ] 2010;  |Y eaAplica1 = "S";
+        #5#41 = enApli400;
+   |FINSI;
+
+    #5#47 = 0;
+    |SI nEjer ] 2009; |Y eaAplica2 = "S";
+         |SI #5#22 > 0;
+             #5#47 = #5#22 % 2;
+             |SI enAplica3 = 0;
+                 |SI #5#47 > 660.14;
+                     #5#47 = 660.14;
+                 |FINSI;
+             |SINO;
+                 |SI #5#47 > 440;
+                     #5#47 = 440;
+                 |FINSI;
+             |FINSI;
+         |SINO;
+             |SI #5#30 > 0;
+                 #5#47 = #5#30 % 2;
+                 |HAZ CapturaTopeAgrario;
+                 |SI enAplica3 = 0;
+                     nTope = 660.14 - nTopeAgrario;
+                 |SINO;
+                     nTope = 440 - nTopeAgrario;
+                 |FINSI;
+                 |SI nTope < 0;  nTope = 0;  |FINSI;
+                 |SI #5#47 > nTope;
+                     #5#47 = nTope;
+                 |FINSI;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+     |HAZ CalculaDed130;
+
+     #5#44 = #5#42 - #5#43 - #5#47;
+     #5#46 = #5#44 - #5#45;
+|FPRC;
+
+|PROCESO cal_ctas2;
+
+   cta = #2#0 + "            ";
+   cta = cta % A112;
+   |PINTA 2139, cta;
+
+   cc3 = 9;
+   cc5 = 18 + (periodo - 1) * 9;
+
+   |SI #4#4 = "H";
+       cc3 = cc3 + 1;
+       cc5 = cc5 + 1;
+   |FINSI;
+
+   |SI #4#4 = "S";
+       cc3 = cc3 + 2;
+       cc5 = cc5 + 2;
+   |FINSI;
+
+   scta = 0;
+   |PARA cc4 = cc3; |SI cc4 [ cc5; |HACIENDO cc4 = cc4 + 3;
+         scta = scta + #2cc4;
+   |SIGUE;
+
+   |SI #4#3 = "I"; |Y #4#4 = "S";
+       scta = - scta;
+   |FINSI;
+
+   sumactas = sumactas + scta;
+|FPRC;
+
+|DEFBUCLE lee_ctas;
+ #2#1;
+ 3;
+ #4#2, 0, "S";
+ dos,  9, "S";
+ e;
+ NULL, cal_ctas2;
+|FIN;
+
+|PROCESO cal_ctas1;
+   sumactas = 0;
+   |SI #4#4 = "*"; |ACABA; |FINSI;
+   uno = #4#2;
+   |QBF uno;
+   dos = uno + "999999999999";
+   dos = dos % A112;
+   |BUCLE lee_ctas;
+   |SI #4#3 = "I";
+       ventas = ventas + sumactas;
+   |FINSI;
+   |SI #4#3 = "G";
+       compra = compra + sumactas;
+   |FINSI;
+   |SI #4#3 = "R";
+       retenc = retenc + sumactas;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE ctas_130;
+ #4#1;
+ ;
+ #0#2, 001;
+ #0#2, 999;
+ e;
+ NULL, cal_ctas1;
+|FIN;
+
+|PROCESO pon_cero;
+   exini = 0;
+   exfin = 0;
+   e_anter = #8#114;
+   v_anter = 0;
+   f_anter = 0;
+   c_anter = 0;
+   i_anter = 0;
+   r_anter = 0;
+   p_anter = 0;
+   ventas = 0;
+   compra = 0;
+   retenc = 0;
+|FPRC;
+
+|PROCESO crea_130;
+
+  |HAZ pon_cero;
+
+  |SI periodo ! 1;
+      |HAZ anterior;
+  |FINSI;
+
+  |SI #8#83 = "N";
+      |HAZ lee_exist;
+  |FINSI;
+
+  |BUCLE ctas_130;
+  #5#0  = empreos;
+  #5#1  = activid;
+  #5#2  = periodo;
+  #5#3  = ejercic;
+  |LEE 040#5=;
+  |SI FSalida ! 0; |DDEFECTO #5; #5#48 = e_anter; |FINSI;
+
+  #5#0  = empreos;
+  #5#1  = activid;
+  #5#2  = periodo;
+  #5#3  = ejercic;
+
+  |SI #8#83 = "N";
+
+      #5#8  = ventas;   #5#7  = v_anter;
+
+      #5#11  = exfin;   #5#10 = f_anter;
+
+      #5#14 = compra;   #5#13 = c_anter;
+
+      #5#17 = exini;    #5#16 = i_anter;
+
+      #5#25 = retenc;   #5#24 = r_anter;
+      #5#28 = p_anter;
+
+      #5#6 = #5#8 - #5#7;    || Ventas
+      #5#9 = #5#11;
+      #5#12 = #5#14 - #5#13; || Compras
+      #5#15 = #5#17;
+      #5#23 = #5#25- #5#24;
+
+      coefi_g = 0; |SI #8#81 = "B"; coefi_g = #8#86;|FINSI;
+      #5#20 = coefi_g;
+  |SINO;
+
+      #5#30 = ventas - v_anter;
+      #5#36 = retenc - r_anter;
+
+  |FINSI;
+  |HAZ calcular;
+  |GRABA 020#5n;
+|FPRC;
+
+|| ===== Anula los registros seleccionados
+
+|PROCESO borrando;
+   |BORRA 020#5a;
+|FPRC;
+
+|DEFBUCLE borra;
+ #5#1;
+ ;
+ empreos, activid, #0#0, ejercic;
+ empreos, activid, #0#1, ejercic;
+ e;
+ NULL, borrando;
+|FIN;
+
+|| ==========================================================================
+
+|PROCESO reo130; |TIPO 3;
+
+  |SI #0#5 = "N"; |ACABA; |FINSI;
+
+  |HAZ control;
+  |SI sw_exi = 1; |ACABA; |FINSI;
+
+  |SI ejercic ] 15;
+      enImporte = #0#4;
+      enEmp130  = enEmpresa;
+      enEje130  = ejercic;
+      enSwApli  = 5;
+      |HAZ eGrabadsmom093;
+  |FINSI;
+
+  empreos = cod1;
+  activid = 1;
+
+  |BUCLE borra;
+
+
+  |ABRE #5;
+  |PARA xx = #0#0; |SI xx [ #0#1; |HACIENDO xx = xx + 1;
+
+        empreos = cod1;
+        activid = 1;
+        periodo = xx;
+        |HAZ crea_130;
+
+  |SIGUE;
+  |CIERRA #5;
+|FPRC;

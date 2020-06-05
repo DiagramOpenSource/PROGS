@@ -1,0 +1,235 @@
+|FICHEROS;
+     dstem000 #0;
+     dstem501 #501;
+     :/contagen/def/cacuenta #1100;
+     :/contagen/def/cacuebal #1101;
+     :/contagen/def/canempre #1105;
+
+     dstem501@ #900;
+|FIN;
+
+|VARIABLES;
+     &eaCuenta = "";
+     &eaNombre = "";
+     &enEmpresa = 0;
+     &enPeriodo = 0;
+
+     aBase           = "";
+     aPathFich       = "";
+     aPathTesor      = "";
+     aAcceso         = "";
+     aMas            = "";
+     aCodCta         = "";
+     aLong           = "";
+     aAlfa           = "";
+     aAlfa1          = "";
+     aAlfa2          = "";
+     aAlfa3          = "";
+     aAlfa4          = "";
+     aGuarda         = "";
+     aPunto          = "";
+     aPath           = "";
+
+     nCont           = 0;
+     nCalc           = 0;
+
+     nCampo          = 0;
+     ndigC           = 0;
+     nEmpresa        = 0;
+     nLong           = 0;
+     nNume1          = 0;
+     nPos            = 0;
+     nModo           = 0;
+     nForma          = 0;
+     nVent1          = 0;
+|FIN;
+
+|PROCESO Baja1100;
+     #1100#3 = "S";
+     #1100#0 = "4        ";
+|FPRC;
+
+|PROCESO Alta1100;
+     #1100#3 = "S";
+     #1100#0 = "799999999999999";
+|FPRC;
+
+|PROCESO Tipo66C2F501;  |TIPO 66;
+     |ABRE #1100;
+     |CONSULTA_F_CLAVE #6#1100, Baja1100, Alta1100;
+     |SI FSalida = 0;
+          #dstem501#2 = #1100#0;
+          |PINTA #dstem501#2;
+     |FINSI;
+     |CIERRA #1100;
+|FPRC;
+
+|PROCESO FiltraPtos;
+    |ABRE #1105;
+    |DDEFECTO #1105;
+    #1105#2 = #48#2;
+    #1105#3 = #48#3;
+    |LEE 000#1105.=;
+    |SI FSalida = 0;
+         nCampo = 13 + #1105#13;   ||Empieza a partir del Campo 14
+         ndigC = #1105#nCampo#;
+    |SINO;
+         ndigC = 9;
+    |FINSI;
+    |CIERRA #1105;
+
+    |SI aCodCta = "            "; |ACABA; |FINSI;
+
+    aAlfa1 = "";
+    |PARA nNume1 = 1; |SI nNume1 [ 12; |HACIENDO nNume1 = nNume1 + 1;
+          aAlfa2 = nNume1; |QBF aAlfa2;
+          aAlfa2 = aAlfa2 + "01";
+          aAlfa3 = aCodCta % aAlfa2;
+          |SI aAlfa3 = "."; |O aAlfa3 = "0"; |O aAlfa3 = "1"; |O aAlfa3 = "2";
+                            |O aAlfa3 = "3"; |O aAlfa3 = "4"; |O aAlfa3 = "5";
+                            |O aAlfa3 = "6"; |O aAlfa3 = "7"; |O aAlfa3 = "8";
+                            |O aAlfa3 = "9";
+              aAlfa1 = aAlfa1 + aAlfa3;
+          |FINSI;
+    |SIGUE;
+    aCodCta = aAlfa1;
+
+    aPunto = aCodCta - ".";
+    |SI FSalida ! 0;
+        nNume1 = FSalida;
+        nPos   = 100 + (((nNume1 / 100) ! 0) -1);
+        aAlfa2 = aCodCta % nPos;   |QBF aAlfa2;
+        nPos   = (((nNume1 / 100) ! 0) * 100) + 199;
+        aAlfa3 = aCodCta % nPos;   |QBF aAlfa3;
+
+        FSalida = nNume1;
+        |PARA; |SI FSalida ! 0; |HACIENDO;
+               aAlfa3 = aAlfa3 - "."; || limpiar mas puntos (los ignoramos)
+        |SIGUE;
+
+        nPos   = ndigC - ( (A \ aAlfa2 % 0) + (A \ aAlfa3 % 0));
+        aAlfa4 = (A\ "0" * nPos);
+        aCodCta  = (A\ aAlfa2 + aAlfa4 + aAlfa3);
+    |FINSI;
+|FPRC;
+
+
+|PROCESO Tipo0C2F501;  |TIPO 0;
+     aCodCta = #501#2;
+     |HAZ FiltraPtos;
+     #501#2 = aCodCta;
+     |PINTA #501#2;
+
+     |ABRE #1100;
+     #1100#0 = #501#2;
+     |LEE 000#1100=;
+     |SI FSalida ! 0;
+         |VENTANA 0501, 2380, -1, -1, ""; nVent1 = FSalida;
+         eaCuenta = #501#2; enEmpresa = #48#2; enPeriodo = #48#3; eaNombre = #501#1;
+         |SUB_EJECUTA ":contagen/cacuent1.tab";
+         |FINVENTANA nVent1;
+     |SINO;
+         |SI #1100#3 ! "S";
+             |MENAV "0000 Debe ser una cuenta de Pase Directo.";
+             |ERROR;
+         |FINSI;
+     |FINSI;
+
+     |CIERRA #1100; |CIERRA #1101;
+|FPRC;
+
+|PROCESO dstem000;
+     |SI nEmpresa = #0#0;  |ACABA;  |FINSI;
+
+     |DBASE aBase;  |QBF aBase;
+     aMas = aBase + "def/dstem501.mas";
+     |CARGA_DEF aMas, dstem501@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |DBASE aBase; |QBF aBase;
+     aPath = aBase + "fich/" + (("00000" + #0#0) % -105) + "/";
+     |PATH_DAT #900 aPath;
+
+     |SI nModo = 3;
+         |ABRE #900;
+         |SELECT #1#900;
+         #900#0 = #501#0;
+         |LEE 101#900=;
+         |SI FSalida = 0;
+             |BORRA 020#900a;
+             |LIBERA #900;
+         |FINSI;
+         |CIERRA #900;
+         |ACABA;
+     |FINSI;
+
+     |ABRE #900;
+     |SELECT #1#900;
+     #900#0 = #501#0;
+     |LEE 101#900=;
+     |SI FSalida ! 0;
+         |DDEFECTO #900;
+         #900#0 = #501#0;
+         |GRABA 020#900b;
+     |FINSI;
+
+     #900#1 = #501#1;
+     #900#2 = #501#2;
+
+     |GRABA 020#900a;
+     |LIBERA #900;
+     |CIERRA #900;
+|FPRC;
+
+|DEFBUCLE dstem000;
+     #0#1;
+     5;
+     00001, "S";
+     99999, "S";
+     ;
+     NULL, dstem000;
+|FIN;
+
+|PROCESO Tipo2m501;  |TIPO 2;
+     nModo    = (FEntrada / 100) ! 0;
+     nEmpresa = #48#0;
+
+     |SI nModo = 3;
+         |CONFI "0000NDesea BORRARLO de todas las Empresas Activas.";
+         |SI FSalida = 0;
+             |BUCLE dstem000;
+         |FINSI;
+         |ACABA;
+     |FINSI;
+
+     nForma = 0 +. 1;
+     |SI nForma = 1;
+         |SI nModo = 1;
+             |CONFI "0000NDesea CREARLO en todas las Empresas Activas.";
+         |SINO;
+             |CONFI "0000NDesea MODIFICARLO en todas las Empresas Activas.";
+         |FINSI;
+
+         |SI FSalida = 0;
+             |BUCLE dstem000;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo80m501;  |TIPO 80;
+     |DBASS aBase;  |QBF aBase;
+
+     |DFICE aPathTesor;  |QBF aPathTesor;
+     aAcceso = aPathTesor % -205;
+
+     |ABRE #0;
+     #0#0 = aAcceso;
+     |LEE 000#0=;
+     |SI FSalida ! 0;  |DDEFECTO #0;  |FINSI;
+     |CIERRA #0;
+
+     aPathFich = aBase + "contagen/fich/" + (("00000" + #0#2) % -105) + #0#3 + "/";
+     |PATH_DAT #1100 aPathFich; |PATH_DAT #1101 aPathFich;
+
+     FSalida = 2799;
+|FPRC;

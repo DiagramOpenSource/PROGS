@@ -1,0 +1,358 @@
+|FICHEROS;
+   dscaz105 #0;
+   dscam095 #1;     || Relaciones de pagos domiciliados cabs.
+   dscam096 #2;     || Relaciones de pagos domiciliados lins.
+   dscam008 #3;     || Recibos de compra
+   dscam002 #4;     || Sucursales bancarias
+   dscam009 #5;
+   dscaw038 #7,MANTE;
+   dscam065 #8;
+
+   dscam051 #10;
+   dscam030 #11;
+   dscaw013 #12;
+   &agif024@ #13;
+|FIN;
+
+|VARIABLES;
+    &enEmpCartera = 0; &enEmpGestion = 0; &enBanco = 0;
+    &eaSerie = ""; &eaCliGest = ""; &nImporte = 0; &eaTipoOper = "";
+    &HayGestion = 0; &HayConta = 0;
+    &aInforme = "";
+    &eaUsuario = ""; &enImpAnt = 0;  &enImpAct = 0;  &eaDescr = "";
+    &eaTipoReg = ""; &eaNumero = ""; &eaTipoOp = "";
+    &nDeci_Base = 0; &nDeci_Div = 0;
+    &Fichero   = "";  &Cmp = "";   &Tipo = ""; &CmpNum = 0;
+
+    &eaCodigo    = "";
+    &eaTipoCod   = "";
+    &aCuenta     = "";
+    &eaNif       = "";
+    &eaNombre    = "";
+    &eaDireccion = "";
+    &eaPoblacion = "";
+    &eaProvincia = "";
+    &eaCP        = "";
+    &eaCP1       = "";
+    &eaCP2       = "";
+    &eaTelefono  = "";
+
+    &Divisa = "";
+    &DirCli = "";
+    &PobCli = "";
+    &CPCli  = "";
+    &ProCli = "";
+
+    &entrada = 1;
+    aImp     = "";
+    alfa1    = "";
+    alfa2    = "";
+    aAlfa    = "";
+    aAlfa1   = "";
+    sw       = 0;
+    nSwImpre = 0;
+
+    EmpreAnt = 0; PerioAnt = 0;
+    Entidad = ""; Numero = "";
+    Calc = 0;
+    Empresa = 0;
+    LinPag = 0;
+    Comodin = "";
+    Mensaje = 0;
+    SwHay = 0;
+    SwHayNoEmit = 0;
+    &eaCodIBAN = "";
+    &eaCodSwift = "";
+    &eaIBAN = "";
+    &eaSWIFT = "";
+|FIN;
+
+|PROCESO mayus;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO lee_pago;
+    |DDEFECTO #dscam008;
+    #dscam008#40 = #2#16;
+    |LEE 021#dscam008.=;
+
+    Divisa = #dscam008#59; |HAZ TomaDecim;
+|FPRC;
+
+|PROCESO lee_banco;
+    |DDEFECTO #dscam002;
+    #dscam002#0 = #dscam008#8;
+    #dscam002#1 = #dscam008#9;
+    |LEE 010#dscam002.=;
+|FPRC;
+
+|PROCESO lee_proveedor;
+    Fichero = "Clientes"; Tipo = "G"; Cmp = "Codigo Cliente"; |HAZ ObtenDato;
+    #agif024@#CmpNum# = #dscam008#32;
+    |LEE 000#agif024@.=;
+    |SI FSalida = 0; |Y #agif024@#CmpNum# ! "      ";
+       Fichero = "Clientes"; Tipo = "G"; Cmp = "Direccion Envio"; |HAZ ObtenDato;
+       DirCli = #agif024@#CmpNum#;
+       Fichero = "Clientes"; Tipo = "G"; Cmp = "Poblacion Envio"; |HAZ ObtenDato;
+       PobCli = #agif024@#CmpNum#;
+       Fichero = "Clientes"; Tipo = "G"; Cmp = "Codigo Postal 1"; |HAZ ObtenDato;
+       aAlfa = #agif024@#CmpNum#;
+       Fichero = "Clientes"; Tipo = "G"; Cmp = "Codigo Postal 2"; |HAZ ObtenDato;
+       aAlfa1 = #agif024@#CmpNum#;
+       |QBF aAlfa; |QBF aAlfa1;
+       CPCli  = (("00" + aAlfa)%-102) + (("000" + aAlfa1)%-103);
+       Fichero = "Clientes"; Tipo = "G"; Cmp = "Provincia Envio"; |HAZ ObtenDato;
+       ProCli = #agif024@#CmpNum#;
+    |FINSI;
+|FPRC;
+
+|PROCESO lineaspri;
+    sw = 1;
+|HAZ lee_pago;
+|HAZ lee_banco;
+||HAZ lee_proveedor;
+   eaCodigo = #dscam008#32; eaTipoCod = "P"; aCuenta = #dscam008#5; |HAZ LeeDatos;
+   DirCli = eaDireccion;
+   PobCli = eaPoblacion;
+   ProCli = eaProvincia;
+   CPCli  = eaCP;
+   eaIBAN = eaCodIBAN;
+   eaSWIFT = eaCodSwift;
+
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE lineas;
+ #2#1;
+ ;
+ #1#0,   1;
+ #1#0, 999;
+ e;
+ NULL, NULL, NULL, NULL, NULL, lineaspri;
+ #2#0, #2#6, #2#2, #2#3, #2#4, #2#1;
+|FIN;
+
+|PROCESO cabecera;
+
+   |ABRE #dscam095;
+
+   #dscam095#0 = #dscaw038#0;
+   |LEE 101#dscam095.=;
+
+    nDeci_Base = 0;
+    aInforme = "Carta emision pagos domicil."; |HAZ ObtenInforme;
+    |SI aInforme = "Carta emision pagos domicil.";
+       |ABRE #dscam065; |DDEFECTO #dscam065;
+       #dscam065#0 = aInforme;
+       #dscam065#1 = "dscaz105";
+       |GRABA 020#dscam065.n;
+       |CIERRA #dscam065;
+    |FINSI;
+
+    |INFOR aInforme;
+    |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+    sw = 0;
+||BUCLELIN 0lineaspri#1;
+|BUCLE lineas;
+|SI sw = 1; |PIEINF; |FINSI;
+|SI #0#2 = "N";
+    #1#8 = "S";
+    |GRABA 020#1a;
+|FINSI;
+|LIBERA #dscam095;
+|FININF; |FINIMP;
+
+|SI HayConta = 1; |Y #0#2 = "N"; |Y #dscam051#1 = "S";
+
+   |ABRE #dscam030;
+   #dscam030#0 = #dscaw038#2;
+   |LEE 010#dscam030.=;
+   |SI FSalida = 0;
+      |SI #dscam030#4 ! #dscaw038#3; |O #dscam030#5 ! #dscaw038#4;
+         EmpreAnt = #dscam030#4; PerioAnt = #dscam030#5;
+         #dscam030#4 = #dscaw038#3; #dscam030#5 = #dscaw038#4;
+         |GRABA 020#dscam030.a;
+      |SINO;
+         EmpreAnt = -1;
+      |FINSI;
+      Comodin = Usuario; |QBF Comodin; Comodin = "ac" + Comodin;
+      |NOME_DAT #12 Comodin;
+      |DELINDEX #dscaw013; |ABRE #dscaw013;
+      |DDEFECTO #dscaw013;
+      #dscaw013#0  = 1;            #dscaw013#15 = #dscaz105#4;
+      #dscaw013#5  = #dscam096#0;  #dscaw013#6  = #dscam096#0;
+      #dscaw013#11 = "N";          #dscaw013#12 = 5;
+      #dscaw013#13 = "dscam096";   #dscaw013#14 = 0;
+      |GRABA 020#dscaw013.n;
+      |CIERRA #dscaw013;
+
+      Comodin = #dscaz105#4;
+      Comodin = "dscam033.tab;" + Comodin + ",E";
+
+      |LIBERA #dscam095; |CIERRAT #dscam095;
+      |SUB_EJECUTA_NP Comodin;
+      |ABRET #dscam095; |LEE 101#dscam095.=;
+
+      |SI EmpreAnt ! -1;
+         #dscam030#4 = EmpreAnt; #dscam030#5 = PerioAnt;
+         |GRABA 020#dscam030.a;
+      |FINSI;
+   |FINSI;
+   |CIERRA #dscam030;
+|FINSI;
+
+nSwImpre = 0;
+|SALVA_FICHA #dscaw038;
+|LEE 000#dscaw038.s;
+nSwImpre = FSalida;
+|REPON_FICHA #dscaw038;
+
+|SI nSwImpre = 0;
+   Impresora = aImp; |IMPRE -1;
+|FINSI;
+
+eaUsuario = Usuario % 0810;
+eaDescr   = "EMISION REMESA (" + (("00000" + #dscam095#0) % -105) + ") DESDE EMISION NORMAL";
+eaTipoReg = "RE";  eaNumero = ("00000" + #dscam095#0) % -105;
+eaTipoOp  = "A";   enImpAct = #dscam095#10; enImpAnt = #dscam095#10;
+|HAZ GrabaAudit;
+|FPRC;
+
+|DEFBUCLE dscam095;
+ #dscaw038#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, cabecera;
+|FIN;
+
+|PROCESO TempPagosDom;
+   |SI #dscaz105#2 = "S";
+      |SI #dscam095#8 = "N"; |ACABA; |FINSI;
+   |SINO;
+      |SI #dscam095#8 ! "N"; |ACABA; |FINSI;
+   |FINSI;
+
+   |DDEFECTO #dscaw038;
+   #dscaw038#0 = #dscam095#0;
+   #dscaw038#1 = #dscam095#10;
+   #dscaw038#2 = #dscaz105#4;
+   #dscaw038#5 = #dscam095#8;
+   |SI #dscaw038#5 = "N";
+      SwHayNoEmit = 1;
+   |FINSI;
+
+   |ABRE #dscam030;
+   #dscam030#0 = #dscaz105#4;
+   |LEE 000#dscam030.=;
+   |SI FSalida = 0;
+      #dscaw038#3 = #dscam030#4;
+      #dscaw038#4 = #dscam030#5;
+   |FINSI;
+   |CIERRA #dscam030;
+   |GRABA 020#dscaw038.n;
+|FPRC;
+
+|DEFBUCLE TempPagosDom;
+ #1#1;
+ ;
+ #0#0;
+ #0#1;
+ be;
+ NULL, TempPagosDom;
+|FIN;
+
+|RUTINA infw038;
+   #dscaw038#0 = 00001;
+   #dscaw038#5 = "N";
+|FRUT;
+
+|RUTINA supw038;
+   #dscaw038#0 = 99999;
+   #dscaw038#5 = "N";
+|FRUT;
+
+|PROCESO Reimpre;
+   |SI #dscaz105#2 = "S";
+      |C_M #dscaz105#4,1,"N"; |C_M #dscaz105#5,1,"N";
+   |SINO;
+      |SI #dscam051#1 = "S";
+         |C_M #dscaz105#4,1,"S"; |C_M #dscaz105#5,1,"S";
+      |SINO;
+         |C_M #dscaz105#4,1,"N"; |C_M #dscaz105#5,1,"N";
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraParam; |TIPO 7;
+   |SI #dscam051#1 = "S";
+      Comodin = #dscam051#61;
+      |C_M #dscaz105#4,1,Comodin;
+   |SINO;
+      |C_M #dscaz105#4,1,"N";
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+   |CLS;
+   |HAZ Tipo8;
+   |ABRE #dscam051;
+   |LEE 010#dscam051.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam051;
+      |GRABA 020#dscam051.n;
+   |FINSI;
+
+   |DDEFECTO #dscaz105;
+   |SI #dscam051#1 = "S";
+      #dscaz105#4 = #dscam051#78;
+   |SINO;
+      #dscaz105#4 = "    ";
+   |FINSI;
+
+   |SI HayConta = 1; |Y #dscam051#1 = "S";
+      |C_M #dscaz105#4,1,"S";
+   |SINO;
+      |C_M #dscaz105#4,1,"N";
+   |FINSI;
+
+   Comodin = "te" + Usuario; |QBF Comodin;
+   |NOME_DAT #7 Comodin; |DELINDEX #dscaw038;
+
+   |CABEZA "Emision de Pagos Domiciliados";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      SwHayNoEmit = 0;
+      |ABRE #dscaw038; |BUCLE TempPagosDom; |CIERRA #dscaw038;
+      |SI #dscaz105#5 = "N";
+         |SI SwHayNoEmit = 1;
+            |ENTLINEAL #1#dscaw038,1,2,19,1,infw038,supw038;
+         |SINO;
+            |MENAV "    No hay pagos domiciliados sin emitir para redireccionar";
+         |FINSI;
+      |FINSI;
+
+      Empresa = #48#0;
+
+      |IMPRE 0;
+      |SI FSalida ! 0;  |ACABA;  |FINSI;
+      aImp = Impresora;
+
+      |ABRE #dscam008;
+      |ABRE #dscam002;
+      |ABRE #dscam009;
+
+      |BUCLE dscam095;
+
+      |CIERRA #dscam009;
+      |CIERRA #dscam002;
+      |CIERRA #dscam008;
+   |FINSI;
+
+   |CIERRA #dscam051;
+   |HAZ Tipo9;
+|FPRO;

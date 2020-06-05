@@ -1,0 +1,542 @@
+|FICHEROS;
+  caimpamo #0;
+  camocabe #2;
+  camoline #3;
+  camocab1 #4;
+  camogrup #5;  || Grupo de Amortizacion
+
+  camolin@ #6;
+  camogru@ #7;
+|FIN;
+
+|VARIABLES;
+  &entrada = 1;
+  alfa1 = "";
+  alfa2 = "";
+  para1 = 0;
+  &r_emp = 0;
+  &r_per = 0;
+  nom1  = "";
+  VAlfa0 = "";
+  VAlfa1 = "";
+  VAlfa2 = "";
+  VAlfa3 = "";
+  VAlfa4 = "";
+
+  estado = 0;
+  linea  = 0;
+  swlinea = 0;
+  fich_copi = "";
+
+ sw = 0;
+ cfecha  = @;
+ importe = 0;
+ afiscal = 0;
+ acontab = 0;
+ vfecha =  @;
+ nEstado = 0;
+
+ congrupo = 0;  ||Contador de Grupos
+ grupoact = 0;  ||Grupo Actual
+ sw_grupo = 0;
+ cta68    = "";
+ dig68    = 0;
+ cta28    = "";
+ dig28    = 0;
+ desgrupo = ""; || Descripcion
+
+ Comodin = "";
+ nEjerActual   = 0;
+ nEjerAnterior = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE numamo_i;
+|INCLUYE tempo_i;
+|INCLUYE dsmone_i;
+|INCLUYE varnue_i;
+
+|| ********************************************************************
+|PROCESO ParaEmpezar; |TIPO 8;
+ |HAZ inicio;
+ |HAZ eVarEmpresa;
+ nEjerActual = enEjercicio;
+|FPRC;
+
+|PROCESO numamo; |TIPO 0;
+    x_alfa1 = #0Campo;
+    |HAZ x_punto;
+    #0Campo = x_alfa1;
+    |PINTA #0Campo;
+|FPRC;
+
+|PROCESO mayor;
+  alfa1 = #0Campo > " ";
+  #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO deentrada;  |TIPO 7;
+ aMonedaA = eaMoneda;
+ #0#5 = empre;     |PINTA #0#5;
+ #0#6 = ejerc - 1; |SI #0#6 < 0; #0#6 = 9; |FINSI;
+ |PINTA #0#6;
+ #0#7 = #30#1; |PINTA #0#7;
+|FPRC;
+
+|PROCESO esbuena;
+  |SI FSalida = 9;  |ACABA;  |FINSI;
+  |ABRE #30;
+  #30#2 = #0#5;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #0#5;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+|PROCESO consulta;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+  r_emp = 0;
+  |SUB_EJECUTA "caconemp.run";
+  |ERROR;
+  #0#5 = r_emp;
+  #0#6 = r_per;
+  |PTEC 802;
+  |PTEC 802;
+|FPRC;
+
+|PROCESO esbuena1;
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |SI #0#5 = empre; |Y #0#6 = ejerc;
+      |MENAV "    ERROR.! NO PUEDE IMPORTAR A LA EMPRESA ACTUAL ";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |ABRE #30;
+  #30#2 = #0#5;
+  #30#3 = #0#6;
+  |LEE 011#30=;
+  |SI FSalida ! 0;
+      |MENAV "     NO Existe Periodo en la empresa Contable";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI #30#13 ! dig3;  |O #30#14 ! dig4;  |O #30#15 ! dig5;
+                      |O #30#16 ! dig6;  |O #30#17 ! dig7;
+                      |O #30#18 ! dig8;  |O #30#19 ! dig9;
+      |MENAV "     NO CORRESPONDEN LOS NIVELES";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI #30#26 < 80;
+      nEjerAnterior = #30#26 + 2000;
+  |SINO;
+      nEjerAnterior = #30#26 + 1900;
+  |FINSI;
+
+  |SI nEjerAnterior ] 2008; |Y nEjerActual < 2008;
+      |MENAV "    No puede importar Amortizaciones del Ejercicio Superior ";
+      |ERROR;
+  |FINSI;
+  #0#7 = #30#1; |PINTA #0#7;
+  nom1 = #30#1;
+
+  #30#2 = empre;
+  #30#3 = ejerc;
+  |LEE 011#30=;
+  |CIERRA #30;
+
+  swOperacion = 0;
+  enEmpresa = #0#5;
+  enPeriodo = #0#6;
+  |SUB_EJECUTA_NP "camoneda";
+  aMonedaC = eaMoneda;
+|FPRC;
+
+|| *********************************************************************
+|| ************** Proceso PARA Importar Amortizaciones
+|| *********************************************************************
+|PROCESO crea_lineas;
+    || Lee y Graba con LEEDEDEF/GRABAENDEF de Empresa en la que esta (Destino)
+    || y el Bucle es de la Empresa Origen.
+
+ |DDEFECTO #6;
+ #6#0 = #3#0;
+ #6#1 = #3#1;
+ #6#2 = #3#2;
+ |LEE 001#6=;
+ |SI FSalida = 0; |ACABA; |FINSI;
+
+ |DDEFECTO #6;
+ #6#0 = #3#0;
+ #6#1 = #3#1;
+ #6#2 = #3#2;
+ #6#3 = #3#3;
+ #6#4 = #3#4;
+ #6#5 = #3#5;
+ #6#6 = #3#6;
+ #6#7 = #3#7;
+ #6#8 = #3#8;
+ #6#9 = #3#9;
+ |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+       impMoneda = #6#5; |HAZ ElCambioMoneda; #6#5 = impMoneda;
+       impMoneda = #6#9; |HAZ ElCambioMoneda; #6#9 = impMoneda;
+ |FINSI;
+ |GRABA 020#6n;
+
+ swlinea = 1;
+
+ |PINTA 2246, #3#0;
+ |PINTA 2255, #3#2;
+ |LIBERA #3;
+|FPRC;
+
+|DEFBUCLE laslineas;
+ #3#1;
+ ;
+ #4#0, #4#1, 001;
+ #4#0, #4#1, 999;
+ be;
+ NULL, crea_lineas;
+|FIN;
+|| -------------------------------
+
+|PROCESO BorraLineas;
+ |BORRA 020#6a;
+ |LIBERA #6;
+|FPRC;
+
+|DEFBUCLE BorraLineas;
+ #6#1003;
+ ;
+ #2#0, #2#1, 001;
+ #2#0, #2#1, 999;
+ be;
+ NULL, BorraLineas;
+|FIN;
+|| -------------------------------
+
+|PROCESO pasarla; || Crea las Cabeceras
+
+ #2#0 = #4#0;
+ #2#1 = #4#1;
+ |LEE 101#2=;
+ nEstado = FSalida;
+ |SI nEstado = 0; |Y #0#9 = "S";
+     |BUCLE BorraLineas;
+     |BORRA 020#2a;
+     |LIBERA #2;
+     #2#0 = #4#0;
+     #2#1 = #4#1;
+     |LEE 101#2=;
+     nEstado = FSalida;
+ |FINSI;
+
+ |SI nEstado ! 0;
+     |DDEFECTO #2;
+     |PARA para1 = 0; |SI para1 [ 23; |HACIENDO para1 = para1 + 1;
+           #2para1 = #4para1;
+     |SIGUE;
+     #2#28    = #4#31;
+     grupoact = #2#15;
+     |HAZ vergrupo;
+     #2#15 = grupoact;
+     |GRABA 020#2b;
+ |FINSI;
+
+ |ABRE #6;
+ |BUCLE laslineas;
+ |CIERRA #6;
+
+ |LIBERA #2;
+ |LIBERA #4;
+|FPRC;
+
+|DEFBUCLE pasar_a;
+ #4#1;
+ ;
+ #0#0, 00;
+ #0#1, 99;
+ e;
+ NULL, pasarla;
+|FIN;
+
+|| *********************************************************************
+|PROCESO crea_cabecera;
+ |DDEFECTO #4;
+ |PARA para1 = 0; |SI para1 [ 23; |HACIENDO para1 = para1 + 1;
+       #4para1 = #2para1;
+ |SIGUE;
+ #4#31 = #2#28;
+ |SI aMonedaC ! aMonedaA;   ||Cambio de Moneda
+      impMoneda = #4#7;  |HAZ ElCambioMoneda; #4#7  = impMoneda;
+      impMoneda = #4#12; |HAZ ElCambioMoneda; #4#12 = impMoneda;
+      impMoneda = #4#13; |HAZ ElCambioMoneda; #4#13 = impMoneda;
+      impMoneda = #4#18; |HAZ ElCambioMoneda; #4#18 = impMoneda;
+      impMoneda = #4#19; |HAZ ElCambioMoneda; #4#19 = impMoneda;
+ |FINSI;
+ eaCuenta  = #4#3; eaCta2008 = #4#3;
+ enNivel   = #4#4;
+ |SI eSwC2008 = 1; |HAZ CambioCta08; |FINSI;
+ #4#3 = eaCta2008;
+
+ |GRABA 020#4n;
+ |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE crea_aux;
+ #2#1;
+ ;
+ #0#0, 00;
+ #0#1, 99;
+ be;
+ NULL, crea_cabecera;
+|FIN;
+
+
+|PROCESO PasoGrupos;
+ grupoact = #7#0;
+ cta68    = #7#1; dig68 = #7#2;
+ cta28    = #7#3; dig28 = #7#4;
+ |SI eSwC2008 = 1;
+     eaCuenta = cta68; enNivel = dig68; eaCta2008 = eaCuenta;
+     |HAZ CambioCta08; cta68 = eaCta2008;
+
+     eaCuenta = cta28; enNivel = dig28; eaCta2008 = eaCuenta;
+     |HAZ CambioCta08; cta28 = eaCta2008;
+ |FINSI;
+ desgrupo = #7#9;
+ |HAZ altagrupo;
+|FPRC;
+
+|DEFBUCLE PasoGrupos;
+ #7#1001;
+ ;
+ 0000;
+ 9999;
+ e;
+ NULL, PasoGrupos;
+|FIN;
+
+|| *********************************************************************
+|PROCESO pase; |TIPO 3;
+
+  |SI #0#8 = "NO"; |ACABA; |FINSI;
+
+  |DDEF VAlfa0; |QBF VAlfa0;
+  Comodin = VAlfa0 + "camoline.mas";
+  |CARGA_DEF Comodin, camolin@;
+  |SI FSalida ! 0;
+      |MENAV "    Error cargando def camoline";
+      |ACABA;
+  |FINSI;
+
+  Comodin = VAlfa0 + "camogrup.mas";
+  |CARGA_DEF Comodin, camogru@;
+  |SI FSalida ! 0;
+      |MENAV "    Error cargando def camoline";
+      |DESCARGA_DEF #camolin@;
+      |ACABA;
+  |FINSI;
+
+  alfa1 = "Z" + Usuario;
+  |NOME_DAT #4 alfa1;
+  |DELINDEX #4;
+
+|| .............. Variables
+  |DFICE fich_copi;         || Directorio Actual
+  eaPath2008 = fich_copi;
+  eSwC2008   = 0;
+  |SI nEjerActual ] 2008; |Y nEjerAnterior < 2008;
+      eSwC2008 = 1;
+  |FINSI;
+
+  |DBASE dir_fich;
+  dir_fich = dir_fich + "fich/";
+  alfa1 = #0#5; alfa1 = ("000000" + alfa1) % -105;
+  alfa2 = #0#6; alfa2 =      ("0" + alfa2) % -101;
+  fich_alta = dir_fich + alfa1 + alfa2 + "/";    || Directorio Empresa Origen
+
+  || .......... Proceso para Auxiliar
+  |D_CUADRO 2120, 2360;
+  |PINTA 2221, "                                       ";
+
+  eaMoneda = aMonedaA;
+  |HAZ MoCierre;      ||Carga Variables Moneda
+
+  |PATH_DAT #2 fich_alta;    || Lee las fichas de la Empresa Origen
+
+  |ABRE #4;
+  |ATRI I; |PINTA 2221, "              <TEMPORAL>               "; |ATRI 0;
+  |BUCLE crea_aux;
+  |CIERRA #4;
+|| ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  |PATH_DAT #2 fich_copi;  || Cabeceras de la Empresa Destino
+  |PATH_DAT #3 fich_alta;  || Lee #3 de Empresa Origen.
+  |PATH_DAT #7 fich_alta;  || Lee #3 de Empresa Origen.
+
+  |SI #0#10 = "N";
+      |ABRE #5;
+      |LEE 001#5u;
+      |SI FSalida = 0;
+          congrupo = #5#0;
+      |FINSI;
+      |CIERRA #5;
+  |SINO;
+      congrupo = 0;
+      |DELINDEX #5;
+      |ABRE #5;
+      |BUCLE PasoGrupos;
+      |CIERRA #5;
+  |FINSI;
+
+  |PATH_DAT #6 fich_copi;  || Lee #3 de Empresa Destino
+
+  |ABRE #2;
+  |ABRE #5;
+  |ABRE #7;
+  |ATRI I;|PINTA 2221, " PASANDO AMORTIZACION ->               "; |ATRI 0;
+  |BUCLE pasar_a;
+  |CIERRA #7;
+  |CIERRA #5;
+  |CIERRA #2;
+
+  |DESCARGA_DEF #camogru@;
+  |DESCARGA_DEF #camolin@;
+
+  |DELINDEX #4;
+  |SI swlinea = 1; |HAZ recupera; |FINSI;
+|FPRC;
+|| **********************************************************************
+
+|| Proceso para recalcular los datos de Cabecera
+|PROCESO lineas;
+  |SI #3#4 = "C";
+      importe = importe + #3#5;
+      |SI sw = 0;
+          cfecha = #3#7;
+          sw = 1;
+      |FINSI;
+  |FINSI;
+  |SI #3#4 = "A";
+      afiscal = afiscal + #3#5;
+      acontab = acontab + #3#9;
+  |FINSI;
+  |SI #3#4 = "V";
+      vfecha = #3#7;
+  |FINSI;
+|FPRC;
+
+|PROCESO grabacab;
+ cfecha = "00.00.0000";
+ importe = 0;
+ afiscal = 0;
+ acontab = 0;
+ vfecha = "00.00.0000";
+ sw = 0;
+
+ |PINTA 2250, #2#0;
+ |BUCLELIN 0lineas#2;
+ |SI sw = 1;
+     #2#6 = cfecha;
+     #2#23 = vfecha;
+     #2#7 = importe;
+     #2#12 = afiscal;
+     #2#13 = importe - afiscal;
+     #2#18 = acontab;
+     #2#19 = importe - acontab;
+     |GRABA 020#2a;
+ |FINSI;
+ |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE calamo0;
+ #2#1;
+ ;
+ #0#0, 00;
+ #0#1, 99;
+ e;
+ NULL, grabacab;
+|FIN;
+
+|PROCESO recupera;  || Recalcular Cabeceras
+  |PATH_DAT #2 fich_copi;  || Trabaja sobre los ficheros de ESTA empresa
+  |PATH_DAT #3 fich_copi;
+  |ATRI I;|PINTA 2221," RECUPERANDO AMORTIZACION ->           "; |ATRI 0;
+  |BUCLE calamo0;
+|FPRC;
+
+|| **********************************************************************
+|| Proceso para crear los grupos de Amortizacion Correctamente.
+
+|PROCESO sigrupo;
+ sw_grupo = 1;
+ |ERROR10;
+|FPRC;
+
+|DEFBUCLE vergrup;
+ #5#1;
+ 1,3;
+ 0000, cta68, cta28;
+ 9999, cta68, cta28;
+ e;
+ NULL, sigrupo;
+|FIN;
+
+|PROCESO vergrupo;
+ |DDEFECTO #7;
+ #7#0 = grupoact;
+ |LEE 001#7=;
+ desgrupo = #7#9;
+ cta68 = #7#1; dig68 = #7#2;
+ cta28 = #7#3; dig28 = #7#4;
+ |SI eSwC2008 = 1;
+     eaCuenta = cta68; enNivel = dig68; eaCta2008 = eaCuenta;
+     |HAZ CambioCta08; cta68 = eaCta2008;
+
+     eaCuenta = cta28; enNivel = dig28; eaCta2008 = eaCuenta;
+     |HAZ CambioCta08; cta28 = eaCta2008;
+ |FINSI;
+
+ #5#0 = grupoact;
+ |LEE 001#5=;
+ |SI FSalida = 0;    || Existe Grupo.
+     |SI cta68 ! #5#1; |O cta28 ! #5#3;
+         sw_grupo = 0;
+         |CIERRA #5;
+         |BUCLE vergrup;
+         |ABRE #5;
+         |SI sw_grupo = 0;  || No ha encontrado grupo
+             congrupo = congrupo + 1;
+             grupoact = congrupo;
+             |HAZ altagrupo;
+         |FINSI;
+     |SINO;
+         alfa1 = #5#9; |QBF alfa1;
+         |SI alfa1 = "";
+             #5#9 = desgrupo;
+             |GRABA 020#5a;
+         |FINSI;
+     |FINSI;
+ |SINO;
+     |HAZ altagrupo;
+ |FINSI;
+ grupoact = #5#0;
+|FPRC;
+
+|PROCESO altagrupo;
+ |DDEFECTO #5;
+ #5#0 = grupoact;
+ #5#1 = cta68;
+ #5#2 = dig68;
+ #5#3 = cta28;
+ #5#4 = dig28;
+ #5#9 = desgrupo;
+ |GRABA 020#5n;
+|FPRC;

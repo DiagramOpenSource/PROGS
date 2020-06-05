@@ -1,0 +1,270 @@
+|FICHEROS;
+     dscam042@ #642;     || Control C
+     dscam043@ #643;     || Control L
+
+     dscam014@ #614;     || Bancos
+
+     caivaasi  #200;
+|FIN;
+
+|VARIABLES;
+
+     aAlfa1         = "";
+     aPath          = "";
+     aPathFic       = "";
+     &aPathFicE      = "";
+     aPathDef       = "";
+     nErr           = 0;
+
+     aMensa         = "";
+     aDef42         = "";
+     aDef43         = "";
+     aDef14         = "";
+
+     aEmpre         = "";
+     aDTipo         = "";
+     aHTipo         = "";
+
+     Comodin        = "";
+     aNumEmp        = "";
+     nNumEmp        = 0;
+
+     &eaEntidad     = "";
+     &eaSucursal    = "";
+     &eaCtaCte      = "";
+     &eaDC          = "";
+     Digito1        = 0;
+     Digito2        = 0;
+     Comodin1       = "";
+     Comodin2       = "";
+     Cont           = 0;
+     Calc           = 0;
+     aCaracter      = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *************************************************************************
+
+|PROCESO DesDefBan;
+     |SI aDef14 ! ""; |DESCARGA_DEF #dscam014@; |FINSI;
+     |SI aDef43 ! ""; |DESCARGA_DEF #dscam043@; |FINSI;
+     |SI aDef42 ! ""; |DESCARGA_DEF #dscam042@; |FINSI;
+|FPRC;
+
+|PROCESO CargaDefBanco;
+     nErr = 1;
+
+     aPathDef = aPath + "def/";
+     aPathFic = aPath + "fich/";
+
+     aDef42 = aPathDef + "dscam042";
+     |CARGA_DEF aDef42, dscam042@;
+     |SI FSalida ! 0;
+||
+||        ***SIN ERRORES*** (la cartera puede que no este instalada=
+||
+||          aMensa = "0000Error al cargar:" + aDef42;
+||          |MENAV aMensa;
+
+          aDef42 = ""; |HAZ DesDefBan;
+          |ACABA;
+     |FINSI;
+
+     aDef43 = aPathDef + "dscam043";
+     |CARGA_DEF aDef43, dscam043@;
+     |SI FSalida ! 0;
+          aMensa = "0000Error al cargar:" + aDef43;
+          |MENAV aMensa;
+          aDef43 = ""; |HAZ DesDefBan;
+          |ACABA;
+     |FINSI;
+
+     aDef14 = aPathDef + "dscam014";
+     |CARGA_DEF aDef14, dscam014@;
+     |SI FSalida ! 0;
+          aMensa = "0000Error al cargar:" + aDef14;
+          |MENAV aMensa;
+          aDef14 = ""; |HAZ DesDefBan;
+          |ACABA;
+     |FINSI;
+
+     |PATH_DAT #642 aPathFic;
+     |PATH_DAT #643 aPathFic;
+
+     nErr = 0;
+|FPRC;
+
+|| *************************************************************************
+
+|PROCESO dscam043_B;
+
+   enElBanco = 0;
+   aEmpre    = ("00000" + #dscam043@#9) % -105;
+   aPathFicE = aPathFic + aEmpre + "/";
+
+  |MKDIR aPathFicE;
+  |SI FSalida = 0;
+       enElBanco = 1;
+       |RMDIR aPathFicE;
+  |SINO;
+       |PATH_DAT #614 aPathFicE;
+       |ERROR10;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE dscam043_B;
+     #dscam043@#1003;
+     3;
+     enEmpresa, enPeriodo, 001, aDTipo;
+     enEmpresa, enPeriodo, 999, aHTipo;
+     ;
+     NULL, dscam043_B;
+|FIN;
+
+|| ************************************************************************
+|PROCESO LeeBanco;
+
+   enElBanco  = 1;
+
+   |ABRE #200;
+   |LEE 000#200p;
+   |SI FSalida ! 0;
+      |DDEFECTO #200;
+      |GRABA 020#200b;
+   |FINSI;
+   aPath = #200#56; |QBF aPath;
+   |CIERRA #200;
+   |SI aPath = "";
+       |ACABA;    || No existe Cartera, seguir proceso
+  |FINSI;
+
+  |HAZ CargaDefBanco;
+  |SI nErr ! 0; |ACABA; |FINSI;     || Error al Cargar cartera.
+
+  aDTipo = " ";
+  aHTipo = "z";
+  |SI eaVC ! "";
+      |SI eaVC = "R"; eaVC = "V"; |FINSI;
+      |SI eaVC = "S"; eaVC = "C"; |FINSI;
+      aDTipo = eaVC; aHTipo = eaVC;
+  |FINSI;
+
+  |BUCLE dscam043_B;
+  |SI enElBanco = 0;
+      |SI enSwLoLeo = 1;
+          |HAZ TrabajoBanco;
+      |FINSI;
+  |FINSI;
+  |HAZ DesDefBan;
+|FPRC;
+
+
+|| ***********************************************************************
+|RUTINA inf614;
+ #dscam014@#0 = 001;
+|FRUT;
+
+|RUTINA sup614;
+ #dscam014@#0 = 999;
+|FRUT;
+
+|PROCESO TrabajoBanco;
+   eaCCC1      = "";
+   eaCCC2      = "";
+   eaCCC3      = "";
+   eaCCC4      = "";
+   eaCtaBanco  = "";
+   eaNomBanco  = "";
+   eswLect     = 0;
+   |SI enBanco = 0; |ACABA; |FINSI;
+
+   |ABRE #dscam014@;
+
+   |SI eOpBan = 1;
+       |CONSULTA_F_CLAVE #1#dscam014@,inf614,sup614;
+       enBanco = #dscam014@#0;
+   |FINSI;
+
+   #dscam014@#0 = enBanco;
+   |LEE 001#dscam014@.=;
+   |SI FSalida ! 0;
+       eswLect = 1;
+   |FINSI;
+   enBanco    = #dscam014@#0;
+   eaNomBanco = #dscam014@#1;
+   eaCCC1     = #dscam014@#34;
+   eaCCC2     = #dscam014@#35;
+   eaCCC3     = #dscam014@#36;
+   eaCCC4     = #dscam014@#37;
+   eaCtaBanco = #dscam014@#10;
+
+   |CIERRA #dscam014@;
+|FPRC;
+
+
+|PROCESO eCalculoDC;
+   Digito1  = 0;
+   Digito2  = 0;
+   Comodin1 = "";
+   Comodin2 = "";
+
+   |PARA Cont = 1; |SI Cont [ 4; |HACIENDO Cont = Cont + 1;
+      Calc = 0 - ((100 * Cont) + 1);
+      aCaracter = eaSucursal % Calc;
+      |SI aCaracter = ""; aCaracter = "0"; |FINSI;
+      Comodin1 = Comodin1 + aCaracter;
+   |SIGUE;
+   |PARA Cont = 1; |SI Cont [ 4; |HACIENDO Cont = Cont + 1;
+      Calc = 0 - ((100 * Cont) + 1);
+      aCaracter = eaEntidad % Calc;
+      |SI aCaracter = ""; aCaracter = "0"; |FINSI;
+      Comodin1 = Comodin1 + aCaracter;
+   |SIGUE;
+
+   |PARA Cont = 1; |SI Cont [ 8; |HACIENDO Cont = Cont + 1;
+      Calc = (100 * Cont) + 1;
+      aCaracter = Comodin1 % Calc; Calc = aCaracter;
+      |SI Cont = 1; Digito1 = Digito1 + (Calc * 6);  |FINSI;
+      |SI Cont = 2; Digito1 = Digito1 + (Calc * 3);  |FINSI;
+      |SI Cont = 3; Digito1 = Digito1 + (Calc * 7);  |FINSI;
+      |SI Cont = 4; Digito1 = Digito1 + (Calc * 9);  |FINSI;
+      |SI Cont = 5; Digito1 = Digito1 + (Calc * 10); |FINSI;
+      |SI Cont = 6; Digito1 = Digito1 + (Calc * 5);  |FINSI;
+      |SI Cont = 7; Digito1 = Digito1 + (Calc * 8);  |FINSI;
+      |SI Cont = 8; Digito1 = Digito1 + (Calc * 4);  |FINSI;
+   |SIGUE;
+
+   Digito1 = 11 - (Digito1 $ 11);
+   |SI Digito1 = 10; Digito1 = 1; |FINSI;
+   |SI Digito1 = 11; Digito1 = 0; |FINSI;
+
+   |PARA Cont = 1; |SI Cont [ 10; |HACIENDO Cont = Cont + 1;
+      Calc = 0 - ((100 * Cont) + 1);
+      aCaracter = eaCtaCte % Calc;
+      |SI aCaracter = ""; aCaracter = "0"; |FINSI;
+      Comodin2 = Comodin2 + aCaracter;
+   |SIGUE;
+
+   |PARA Cont = 1; |SI Cont [ 10; |HACIENDO Cont = Cont + 1;
+      Calc = (100 * Cont) + 1;
+      aCaracter = Comodin2 % Calc; Calc = aCaracter;
+      |SI Cont = 1;  Digito2 = Digito2 + (Calc * 6);  |FINSI;
+      |SI Cont = 2;  Digito2 = Digito2 + (Calc * 3);  |FINSI;
+      |SI Cont = 3;  Digito2 = Digito2 + (Calc * 7);  |FINSI;
+      |SI Cont = 4;  Digito2 = Digito2 + (Calc * 9);  |FINSI;
+      |SI Cont = 5;  Digito2 = Digito2 + (Calc * 10); |FINSI;
+      |SI Cont = 6;  Digito2 = Digito2 + (Calc * 5);  |FINSI;
+      |SI Cont = 7;  Digito2 = Digito2 + (Calc * 8);  |FINSI;
+      |SI Cont = 8;  Digito2 = Digito2 + (Calc * 4);  |FINSI;
+      |SI Cont = 9;  Digito2 = Digito2 + (Calc * 2);  |FINSI;
+      |SI Cont = 10; Digito2 = Digito2 + (Calc * 1);  |FINSI;
+   |SIGUE;
+
+   Digito2 = 11 - (Digito2 $ 11);
+   |SI Digito2 = 10; Digito2 = 1; |FINSI;
+   |SI Digito2 = 11; Digito2 = 0; |FINSI;
+
+   eaDC = Digito1 + Digito2;
+
+|FPRC;

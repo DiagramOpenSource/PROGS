@@ -1,0 +1,921 @@
+|FICHEROS;
+   caz00005 #0;
+   camaasil #1;
+   cacuenta #10;
+
+   caw00009 #9,MANTE;
+   caw0009s #19,MANTE;
+   caw0009n #29,MANTE;
+
+   canempre #30;
+   caselem1 #998;
+|FIN;
+
+|VARIABLES;
+    &entrada  = 1;
+    &ext1   = "";
+    &ext2   = "";
+    &ext4   = "";
+    &ext5   = "";
+    &asien1 = 0;
+    &asien2 = 0;
+    &fecha  = @;
+    &docum  = 0;
+
+  aMas       = "";
+  aDirInicio = "";
+  nSalgo    = 0;
+  aFichero  = "";
+  fDFecha   = @;
+  fHFecha   = @;
+  nDDiario  = 0;
+  nHDiario  = 0;
+  nDDocum   = 0;
+  nHDocum   = 0;
+  aDMarca   = "";
+  aHMarca   = "";
+
+  fLFecha   = @;
+  nEDiario  = 0;
+  nEDocum   = 0;
+  aLMarca   = "";
+  nAcCont   = 0;
+  nEstado   = 0;
+
+  TotDebe   = 0;
+  TotHaber  = 0;
+  nSwHay    = 0;
+  nContador = 0;
+  aAlfa1    = "";
+
+  nBoton2 = 0;
+  nBoton3 = 0;
+  nBoton4 = 0;
+  nBoton5 = 0;
+  nBoton6 = 0;
+  nBoton12 = 0;
+  nTecla  = 0;
+  sw      = 0;
+
+  nSiPunteo = 0;
+  nNoPunteo = 0;
+  nPara1    = 0;
+
+  &eSwMul   = 0;
+  &espe15   = "";
+  &espe16   = 0;
+  nSwOpera  = 0;
+  nSw       = 0;
+  CodigoEmpresa  = 0;
+  PeriodoEmpresa = 0;
+  dirfichOri     = "";
+  nSitua         = 0;
+  nPerAct        = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dsco08_i;
+
+|| **************************************************************************
+|CALCULO cuenta; |TIPO 6;
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta;
+     |PINTA #0Campo;
+|FCAL;
+
+|CALCULO cuefin; |TIPO 0;
+     emCta    = 1;
+     eaCuenta = #0Campo;
+     |HAZ SacaNivel;
+     |SI eswCta ! 0;  |ACABA; |FINSI;  ||Cuenta erronea
+     |HAZ LeeCuenta;
+     |SI eswCta = 0;
+         |PDEFECTO #0,1, 11;
+         #0#1 = #10#2;    ||Nombre
+         #0#2 = #10#51;   ||Debe
+         #0#3 = #10#52;   ||Haber
+         #0#4 = #10#53;   ||Saldo
+
+         |PINTA #0#1; |PINTA #0#2;
+         |PINTA #0#3; |PINTA #0#4;
+    |FINSI;
+|FCAL;
+
+|CALCULO defectos; |TIPO 0;
+  |SI #0#18 = "N";
+      #0#19  = fec1;
+  |SINO;
+      #0#19 = "01.01.2000";
+  |FINSI;
+  |PINTA #0#19;
+  #0#20 = fec2; |PINTA #0#20;
+|FCAL;
+
+|CALCULO fechas; |TIPO 0;
+  |SI #0#18 = "N";
+      |SI #0Campo > fec2;|O #0Campo < fec1;
+          |MENAV "    Fecha fuera de Periodo ...";
+          |ERROR;
+      |FINSI;
+  |FINSI;
+|FCAL;
+|| *************************************************************************
+
+|PROCESO GrabaAuxi;
+     nContador = nContador + 1;
+     #9#0  = nContador;
+     #9#1  = #1#0;       || Diario
+     #9#2  = #1#1;       || Fecha
+     #9#3  = #1#2;       || Documento
+     #9#4  = #1#3;       || Apunte
+     #9#5  = #1#6;       || Concepto
+     #9#6  = #1#7;       || Descripcion
+     |SI #1#8 = "D";
+         #9#7 = #1#9;
+         #9#8 = 0;
+     |SINO;
+         #9#7 = 0;
+         #9#8 = #1#9;
+     |FINSI;
+     TotDebe  = TotDebe  + #9#7;
+     TotHaber = TotHaber + #9#8;
+     #9#9 = TotDebe - TotHaber;
+
+     aAlfa1 = #9#2;
+     aAlfa1 = (aAlfa1 % 102) + (aAlfa1 % 402);
+     #9#11  = aAlfa1;        ||Fecha Formato dd.mm para pantalla
+     #9#12  = #1#21;         ||Departamento
+     #9#13  = #1#28;         ||Subdepartamento
+
+     || ...  Calcula acumulados
+     |SI #1#18 ! " ";
+         #9#10 = "*";
+         #0#5  = #0#5 + #9#7;
+         #0#6  = #0#6 + #9#8;
+         #0#7  = #0#5 - #0#6;
+         nSiPunteo = nSiPunteo + 1;
+     |SINO;
+         #9#10 = " ";
+         #0#8  = #0#8 + #9#7;
+         #0#9  = #0#9 + #9#8;
+         #0#10 = #0#8 - #0#9;
+         nNoPunteo = nNoPunteo + 1;
+     |FINSI;
+
+     #9#14 = enPeriodo;
+     #9#15 = dirfich0;
+     #9#16 = enEjercicio;
+     |GRABA 040#9n;
+     nSwHay = 1;
+
+     |SI #9#10 = "*";
+         |DDEFECTO #19;
+         |PARA nPara1 = 0; |SI nPara1 [ 16; |HACIENDO nPara1 = nPara1 + 1;
+               #19nPara1 = #9nPara1;
+         |SIGUE;
+         |GRABA 040#19n;
+     |SINO;
+         |DDEFECTO #29;
+         |PARA nPara1 = 0; |SI nPara1 [ 16; |HACIENDO nPara1 = nPara1 + 1;
+               #29nPara1 = #9nPara1;
+         |SIGUE;
+         |GRABA 040#29n;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE camaasil0;
+     #1#3;
+     0;
+     aCtaSe, fDFecha, 000000, 0001, nDDiario;
+     aCtaSe, fHFecha, 999999, 9999, nHDiario;
+     e;
+     NULL, GrabaAuxi;
+|FIN;
+
+|| ********************************************************
+|PROCESO zconcili0;
+  |SI nPerAct = -1; |O nPerAct ! #9#14;
+      |SI nPerAct ! -1;
+          |CIERRA #1;
+      |FINSI;
+      dirfich0 = #9#15; |QBF dirfich0;
+      nPerAct = #9#14;
+      |PATH_DAT #1 dirfich0;
+      |ABRE #1;
+  |FINSI;
+
+  #1#0 = #9#1;
+  #1#1 = #9#2;
+  #1#2 = #9#3;
+  #1#3 = #9#4;
+  |LEE 101#1=;
+  |SI FSalida = 0;
+      |SI #9#10 = "*";
+          #1#18 = "û";
+      |SINO;
+          #1#18 = " ";
+      |FINSI;
+      |GRABA 020#1a;
+  |FINSI;
+  |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE zconcili;
+     #9#1;
+     ;
+     000001;
+     999999;
+     e;
+     NULL, zconcili0;
+|FIN;
+
+|| ********************************************************
+|| ---------------------------------------------------/
+|PROCESO Actual;
+     |SI #9#10 = " ";
+         #9#10 = "*";
+         #0#5  = #0#5 + #9#7;
+         #0#6  = #0#6 + #9#8;
+         #0#7  = #0#5 - #0#6;
+
+         #0#8  = #0#8 - #9#7;
+         #0#9  = #0#9 - #9#8;
+         #0#10 = #0#8 - #0#9;
+         nSiPunteo = nSiPunteo + 1;
+         nNoPunteo = nNoPunteo - 1;
+
+         |PARA nPara1 = 0; |SI nPara1 [ 16; |HACIENDO nPara1 = nPara1 + 1;
+               #19nPara1 = #9nPara1;
+         |SIGUE;
+
+         |GRABA 020#19n;
+
+         |BORRA 020#29a;
+     |SINO;
+         #9#10 = " ";
+         #0#5  = #0#5 - #9#7;
+         #0#6  = #0#6 - #9#8;
+         #0#7  = #0#5 - #0#6;
+
+         #0#8  = #0#8 + #9#7;
+         #0#9  = #0#9 + #9#8;
+         #0#10 = #0#8 - #0#9;
+         nSiPunteo = nSiPunteo - 1;
+         nNoPunteo = nNoPunteo + 1;
+
+         |PARA nPara1 = 0; |SI nPara1 [ 16; |HACIENDO nPara1 = nPara1 + 1;
+               #29nPara1 = #9nPara1;
+         |SIGUE;
+
+         |GRABA 020#29n;
+
+         |BORRA 020#19a;
+     |FINSI;
+
+     |PINTA #0#5; |PINTA #0#6; |PINTA #0#7;
+     |PINTA #0#8; |PINTA #0#9; |PINTA #0#10;
+     |GRABA 020#9a;
+     |LIBERA #9;
+|FPRC;
+
+|PROCESO Todos0;
+ |SI #9#10 ! aDMarca;
+
+      #19#0 = #9#0;
+      |LEE 001#19=;
+
+      #29#0 = #9#0;
+      |LEE 001#29=;
+
+      |HAZ Actual;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE Todos;
+     #9#1;
+     ;
+     000001;
+     999999;
+     e;
+     NULL, Todos0;
+|FIN;
+|| ---------------------------------------------------/
+
+|RUTINA inf29;
+   #29#0  = 1;
+   #29#10 = " ";
+   |SI FSalida = "POSICION";
+       #29#0  = nAcCont;
+       #29#10 = aLMarca;
+   |FINSI;
+|FRUT;
+
+|RUTINA sup29;
+   #29#0  = 999999;
+   #29#10 = "*";
+|FRUT;
+
+|RUTINA inf19;
+   #19#0  = 1;
+   #19#10 = " ";
+   |SI FSalida = "POSICION";
+       #19#0 = nAcCont;
+       #19#10 = aLMarca;
+   |FINSI;
+|FRUT;
+
+|RUTINA sup19;
+   #19#0  = 999999;
+   #19#10 = "*";
+|FRUT;
+
+|RUTINA inf;
+   #9#0  = 1;
+   #9#10 = " ";
+
+   |SI FSalida = "POSICION";
+       #9#0 = nAcCont;
+       #9#10 = aLMarca;
+   |FINSI;
+|FRUT;
+
+|RUTINA sup;
+   #9#0  = 999999;
+   #9#10 = "*";
+|FRUT;
+
+|PROCESO Busco19;
+  |ABRE #19;
+  |DDEFECTO #19;
+  #19#0  = nAcCont;
+  #19#10 = aLMarca;
+  |LEE 040#19];
+  |SI FSalida ! 0;
+      |LEE 040#19u;
+  |FINSI;
+  nAcCont = #19#0;
+  aLMarca = #19#10;
+  |CIERRA #19;
+|FPRC;
+
+|PROCESO Busco29;
+  |ABRE #29;
+  |DDEFECTO #29;
+  #29#0  = nAcCont;
+  #29#10 = aLMarca;
+  |LEE 040#29];
+  |SI FSalida ! 0;
+      |LEE 040#29u;
+  |FINSI;
+  nAcCont = #29#0;
+  aLMarca = #29#10;
+  |CIERRA #29;
+|FPRC;
+
+|PROCESO HazTodo;
+   aCtaSe = #0#0;
+   |SI #0#18 = "S";
+       aCtaSe = eaCta08;
+       |SI enEjercicio < 2008;
+           aCtaSe = eaCta90;
+       |FINSI;
+   |FINSI;
+
+   |ABRE #9;
+   |ABRE #19;
+   |ABRE #29;
+   |BUCLE camaasil0;
+   |CIERRA #29;
+   |CIERRA #19;
+   |CIERRA #9;
+|FPRC;
+
+|PROCESO MultiEmp1;
+   nSitua = 1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+   |SI #0#19 > #caselem1#5; |O #0#20 < #caselem1#4;
+       |ACABA;  || Fuera de la seleccion
+   |FINSI;
+
+   |PATH_DAT #1  dirfich0;
+   |PATH_DAT #10 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmpEjer;
+   #caselem1#2;
+   ;
+   enEmpresa, "01.01.0000";
+   enEmpresa, "31.12.2999";
+   ;
+   NULL, MultiEmp1;
+|FIN;
+
+|PROCESO MultiEjercicio;
+   espe15 = "S";
+
+   |SUB_EJECUTA "caselemp";
+   |NOME_DAT #998 eaFichsel;
+
+   |BUCLE MultiEmpEjer;
+
+   |DELINDEX #998;
+|FPRC;
+
+|CALCULO puntear; |TIPO 3;
+
+   |PDEFECTO #0, 5, 18;
+   |MENSA "2400 Procesando ......";
+
+   nDDiario = 00;           nHDiario = 98;
+   |SI #0#18 = "S"; nDDiario = 01; |FINSI;
+   fDFecha  = #0#19;        fHFecha  = #0#20;
+   nDDocum  = 0;            nHDocum  = 999999;
+   aDMarca  = " ";          aHMarca  = "*";
+   nAcCont  = 1;
+   aLMarca  = " ";
+
+   TotDebe   = 0;
+   TotHaber  = 0;
+   nSwHay    = 0;
+   nContador = 0;
+   nSiPunteo = 0;
+   nNoPunteo = 0;
+
+   eaCuenta = #0#0;
+   eaCta08  = #0#0;
+   eaCta90  = #0#0;
+   enBEjer  = enEjercicio;
+   |SI #0#18 = "S";
+       |HAZ eCam_Segundo;
+   |FINSI;
+
+   nSitua = 0;
+   eSwMul = 0;
+   |SI #0#18 = "N";
+       dirfich0 = dirfichOri;
+       |HAZ HazTodo;
+   |SINO;
+       eSwMul = 1;
+       |HAZ MultiEjercicio;
+   |FINSI;
+
+   |PINTA 1103, "ÄÄÄÄÂÄÄÂÄÄÄÄÂ";
+   |C_V #09#16, 1, "N";
+   |C_V #19#16, 1, "N";
+   |C_V #29#16, 1, "N";
+   |SI #0#18 = "S";
+       |ATRI S; |PINTA 1103, "Ejerc.:"; |ATRI 0;
+       |C_V #09#16, 1, "S";
+       |C_V #19#16, 1, "S";
+       |C_V #29#16, 1, "S";
+   |FINSI;
+
+   |SI nSwHay = 0;
+       |MENAV "      Seleccion vacia";
+       |VETE ElAcaba;
+   |FINSI;
+
+   |PINTA #0#5; |PINTA #0#6; |PINTA #0#7;
+   |PINTA #0#8; |PINTA #0#9; |PINTA #0#10;
+
+   #0#12 = #0#5; #0#13 = #0#6; #0#14 = #0#7;
+   #0#15 = #0#8; #0#16 = #0#9; #0#17 = #0#10;
+
+   |BLIN 24;
+
+   nEstado = 0;  || Todos
+   nSalgo  = 0;
+
+
+   #0#2 = TotDebe  ! EURODB;  |PINTA #0#2;
+   #0#3 = TotHaber ! EURODB;  |PINTA #0#3;
+   #0#4 = #0#2 - #0#3;        |PINTA #0#4;
+
+   |PINTA 0522, "Desde:             Hasta:           ";
+   |PINTA 0529, #0#19; |PINTA 0548, #0#20;
+
+   |PINTA 0662, "                   ";
+   |PINTA 0762, "                   ";
+   |PINTA 0862, "                   ";
+   |PINTA 0962, "                   ";
+   |PINTA 1062, "                   ";
+
+
+   |PARA; |SI nSalgo = 0; |HACIENDO;
+
+          sw = 0;
+          aAlfa1 = " TODOS LOS ASIENTOS    ";
+          |SI nEstado = 1; aAlfa1 = " ASIENTOS PUNTEADOS    "; aDMarca = "*"; |FINSI;
+          |SI nEstado = 2; aAlfa1 = " ASIENTOS NO PUNTEADOS "; aHMarca = " "; |FINSI;
+          |ATRI S; |PINTA 1121, aAlfa1; |ATRI 0;
+
+          |SI nEstado = 0;
+              |ABRE #19; |ABRE #29;
+              |ENTLINEAL #2#9,  -2, 4, 22, 0, inf, sup;
+              |CIERRA #19; |CIERRA #29;
+          |SINO;
+              |SI nEstado = 1;
+                  |SI nAcCont ! 1; |HAZ Busco19; |FINSI;
+                  |ABRE #9; |ABRE #29;
+                  |ENTLINEAL #2#19, -2, 4, 22, 0, inf19, sup19;
+                  |CIERRA #9; |CIERRA #29;
+              |SINO;
+                  |SI nAcCont ! 1; |HAZ Busco29; |FINSI;
+                  |ABRE #9; |ABRE #19;
+                  |ENTLINEAL #2#29, -2, 4, 22, 0, inf29, sup29;
+                  |CIERRA #9; |CIERRA #19;
+              |FINSI;
+          |FINSI;
+
+          |SI nSalgo = 1; |SAL; |FINSI;
+          |SI sw = 2;
+              |ABRE #19; |ABRE #29;
+              |BUCLE Todos;
+              |CIERRA #29; |CIERRA #19;
+              nEstado = 0;
+          |FINSI;
+
+   |SIGUE;
+
+   |CONFI "2400SActualizar Punteo : ";
+   |SI FSalida = 0;
+       nPerAct = -1;
+       |SI #0#18 = "N";
+           |ABRE #1;
+           nPerAct = PeriodoEmpresa;
+       |FINSI;
+       |BUCLE zconcili;
+       |CIERRA #1;
+   |SINO;
+       #0#5 = #0#12; #0#6 = #0#13; #0#7 = #0#14;
+       #0#8 = #0#15; #0#9 = #0#16; #0#10 = #0#17;
+   |FINSI;
+
+|ET ElAcaba;
+   |DELINDEX #9;
+   |DELINDEX #19;
+   |DELINDEX #29;
+
+   |SI nSitua = 1;
+      cod1 = CodigoEmpresa;
+      cod2 = PeriodoEmpresa;
+      emEmp = 1;  || Sin mensaje
+      |HAZ leelo;
+      |PATH_DAT #1  dirfichOri;
+      |PATH_DAT #10 dirfichOri;
+   |FINSI;
+|FCAL;
+
+|| -------------------------------------------------------------------------
+|| -------------------------------------------------------------------------
+|PROCESO MTipo5;  |TIPO 5;
+       |LEE 040#9p;
+       #9#10 = " ";
+       |LINEAS_BI_ATRI #9#10, D, S, -1;
+|FPRC;
+
+|| ... Proceso del Lineal.  (9)
+
+|PROCESO MTipo11; |TIPO 11;
+  |HAZ QuitaBoton;
+  |SI sw = 0;
+      |SI FSalida = 1; |O FSalida = 7;
+          nSalgo = 1;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO MTipo7; |TIPO 7;
+
+   |SI nEstado = 0;
+       |CONTROL_SIMPLE 0, "LBOTON,F2 Asientos Punteados ", 0563, 0580, Boton2;
+       nBoton2 = FSalida;
+       |CONTROL_SIMPLE 0, "LBOTON,F3 Asientos No Punteados ", 0663, 0680, Boton3;
+       nBoton3 = FSalida;
+   |SINO;
+       |SI nEstado = 1;
+          |CONTROL_SIMPLE 0, "LBOTON,F2 Asientos No Punteados ", 0563, 0580, Boton2;
+          nBoton2 = FSalida;
+       |SINO;
+          |CONTROL_SIMPLE 0, "LBOTON,F2 Asientos Punteados ", 0563, 0580, Boton2;
+          nBoton2 = FSalida;
+       |FINSI;
+       |CONTROL_SIMPLE 0, "LBOTON,F3 Todos los Asientos ", 0663, 0680, Boton3;
+       nBoton3 = FSalida;
+   |FINSI;
+
+   |CONTROL_SIMPLE 0, "LBOTON,F4 Puntear Todos ", 0763, 0780, Boton4;
+   nBoton4 = FSalida;
+   |CONTROL_SIMPLE 0, "LBOTON,F5 Quitar punteo Todos ", 0863, 0880, Boton5;
+   nBoton5 = FSalida;
+   |CONTROL_SIMPLE 0, "LBOTON,F6 Consulta Asiento ", 0963, 0980, Boton6;
+   nBoton6 = FSalida;
+
+   |CONTROL_SIMPLE 0, "LBOTON,F12 Puntear/Quitar punteo ", 1063, 1080, Boton12;
+   nBoton12 = FSalida;
+|FPRC;
+
+|PROCESO QuitaBoton;
+ |FIN_CONTROL_WINDOWS nBoton2;
+ |FIN_CONTROL_WINDOWS nBoton3;
+ |FIN_CONTROL_WINDOWS nBoton4;
+ |FIN_CONTROL_WINDOWS nBoton5;
+ |FIN_CONTROL_WINDOWS nBoton6;
+ |FIN_CONTROL_WINDOWS nBoton12;
+|FPRC;
+
+|PROCESO Boton2;
+  |PTEC 824;
+|FPRC;
+
+|PROCESO Boton3;
+  |PTEC 825;
+|FPRC;
+
+|PROCESO Boton4;
+  |PTEC 826;
+|FPRC;
+
+|PROCESO Boton5;
+  |PTEC 827;
+|FPRC;
+
+|PROCESO Boton6;
+  |PTEC 828;
+|FPRC;
+
+|PROCESO Boton12;
+  |PTEC 823;
+|FPRC;
+
+|| -----------------------------------------------------------
+|PROCESO STipo0;  |TIPO 0;
+
+  nEstado = 1;
+  nTecla = FSalida;
+  |SI nTecla = 0; |ERROR; |ACABA; |FINSI;
+
+  nAcCont     = #19#0;
+  nEDiario    = #19#1;
+  fLFecha     = #19#2;
+  nEDocum     = #19#3;
+  aLMarca     = #19#10;
+  enPeriodo   = #19#14;
+  dirfich0    = #19#15; |QBF dirfich0;
+  enEjercicio = #19#16;
+  |HAZ QuitaBoton;
+  |PULSATECLA;
+
+  sw = 0;
+
+  |SI nTecla = 9;
+      #9#0 = #19#0;
+      |LEE 110#9=;
+      |HAZ Actual;
+      |SI nSiPunteo = 0;   ||Ya no hay para marcar.
+          |MENAV "    Ya no hay Asientos Punteados ";
+          nEstado = 0;
+     |FINSI;
+     |PTEC 806; sw = 1;
+     |ACABA;
+  |FINSI;
+
+ |SI nTecla = 10;
+     |SI nNoPunteo = 0;
+         |MENAV "    Todos los Asientos estan Punteados";
+         |ERROR;
+     |SINO;
+         nEstado = 2;
+         |PTEC 806; sw = 1;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+ |SI nTecla = 11;
+     nEstado = 0;
+     |PTEC 806; sw = 1;
+     |ACABA;
+ |FINSI;
+
+ |HAZ RestoFun;
+|FPRC;
+
+|PROCESO NTipo0;  |TIPO 0;
+
+  nEstado = 2;
+  nTecla = FSalida;
+  |SI nTecla = 0; |ERROR; |ACABA; |FINSI;
+
+  nAcCont     = #29#0;
+  nEDiario    = #29#1;
+  fLFecha     = #29#2;
+  nEDocum     = #29#3;
+  aLMarca     = #29#10;
+  enPeriodo   = #29#14;
+  dirfich0    = #29#15; |QBF dirfich0;
+  enEjercicio = #29#16;
+  |HAZ QuitaBoton;
+  |PULSATECLA;
+
+  sw = 0;
+
+ |SI nTecla = 9;
+      #9#0 = #29#0;
+      |LEE 110#9=;
+      |HAZ Actual;
+
+      |SI nNoPunteo = 0;   ||Ya no hay para marcar.
+          |MENAV "    Ya estan todos los Asientos Punteados ";
+           nEstado = 0;
+      |FINSI;
+      |PTEC 806; sw = 1;
+      |ACABA;
+ |FINSI;
+
+ |SI nTecla = 10;
+     |SI nSiPunteo = 0;
+         |MENAV "    No hay Asientos Punteados";
+         |ERROR;
+     |SINO;
+         nEstado = 1;
+         |PTEC 806; sw = 1;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+ |SI nTecla = 11;
+     nEstado = 0;
+     |PTEC 806; sw = 1;
+     |ACABA;
+ |FINSI;
+
+ |HAZ RestoFun;
+|FPRC;
+
+|PROCESO MTipo0;  |TIPO 0;
+
+  nTecla = FSalida;
+  |SI nTecla = 0; |ERROR; |ACABA; |FINSI;
+
+  nAcCont     = #9#0;
+  nEDiario    = #9#1;
+  fLFecha     = #9#2;
+  nEDocum     = #9#3;
+  aLMarca     = #9#10;
+  enPeriodo   = #9#14;
+  dirfich0    = #9#15; |QBF dirfich0;
+  enEjercicio = #9#16;
+  |HAZ QuitaBoton;
+  |PULSATECLA;
+
+  sw = 0;
+
+ |SI nTecla = 9;
+     |LIBERA #9;
+     |LEE 110#9=;
+
+      #19#0 = #9#0;
+      |LEE 001#19=;
+
+      #29#0 = #9#0;
+      |LEE 001#29=;
+
+      |HAZ Actual;
+      |ERROR;
+      |PTEC 809;
+      |PTEC 809;
+      |ACABA;
+ |FINSI;
+
+ |SI nTecla = 10;
+     |SI nSiPunteo = 0;
+         |MENAV "    No hay Asientos Punteados";
+         |ERROR;
+         |HAZ MTipo7;
+     |SINO;
+         nEstado = 1;
+         |PTEC 806; sw = 1;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+ |SI nTecla = 11;
+     |SI nNoPunteo = 0;
+         |MENAV "    Todos los Asientos estan Punteados";
+         |ERROR;
+         |HAZ MTipo7;
+     |SINO;
+         nEstado = 2;
+         |PTEC 806; sw = 1;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+ |HAZ RestoFun;
+|FPRC;
+
+|PROCESO RestoFun;
+ ext4 = enEmpresa;
+ ext5 = enPeriodo;
+
+ |SI nTecla = 12;
+     |SI  nNoPunteo ! 0;
+          sw = 2;
+          aDMarca = "*";
+          |PTEC 806;
+     |SINO;
+          |ERROR;
+          |HAZ MTipo7;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+ |SI nTecla = 13;
+     |SI  nSiPunteo ! 0;
+          sw = 2;
+          aDMarca = " ";
+          |PTEC 806;
+     |SINO;
+          |ERROR;
+          |HAZ MTipo7;
+     |FINSI;
+     |ACABA;
+ |FINSI;
+
+ |SI nTecla = 14;
+     ext1   = nEDiario;
+     ext2   = nEDiario;
+     asien1 = 0;
+     asien2 = 999999;
+     fecha  = fLFecha;
+     docum  = nEDocum;
+     |SUB_EJECUTA_NP "caditrac";
+     |ERROR;
+     |PTEC 809;
+     |ACABA;
+ |FINSI;
+
+ |SI nTecla = 15;
+     aCtaSe = #0#0;
+     |SI #0#18 = "S";
+         aCtaSe = eaCta08;
+         |SI enEjercicio < 2008;
+             aCtaSe = eaCta90;
+         |FINSI;
+     |FINSI;
+     ext1 = aCtaSe;
+     ext2 = enNivel;
+     |SUB_EJECUTA_NP "caextrai";
+     |ERROR;
+     |PTEC 809;
+ |FINSI;
+|FPRC;
+
+|| **************************************************************************
+
+|| ------------------- Programa
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Puntear Cuentas";
+   |HAZ inicio;
+   |HAZ DirAplicSt;
+
+   aFichero = ("9w" + Usuario) % 108;
+   |NOME_DAT #9 aFichero;
+   |ABRE #9;  |CIERRA #9;  |DELINDEX #9;
+
+   aFichero = ("9sw" + Usuario) % 108;
+   |NOME_DAT #19 aFichero;
+   |ABRE #19;  |CIERRA #19;  |DELINDEX #19;
+
+   aFichero = ("9nw" + Usuario) % 108;
+   |NOME_DAT #29 aFichero;
+   |ABRE #29;  |CIERRA #29;  |DELINDEX #29;
+
+   CodigoEmpresa    = enEmpresa;
+   PeriodoEmpresa   = enPeriodo;
+   |DFICE dirfichOri;
+   dirfich0 = dirfichOri;
+   |HAZ eCam_Primero;
+
+   |DDEFECTO #0;
+   #0#19 = fec1;
+   #0#20 = fec2;
+
+   FSalida = 0;
+   |PARA;|SI FSalida = 0; |HACIENDO;
+         |PINPA #0#0;
+         |PINDA #0#0;                    || Pinta los datos por defecto
+         |ENDATOS #1#0;                  || Seleccion informe
+   |SIGUE;
+|FPRO;

@@ -1,0 +1,464 @@
+|FICHEROS;
+   careccon #0;
+   camaasic #1;
+   camaasil #2;
+   calicont #31;
+   caexistc #22;
+
+   espejo@  #902;
+|FIN;
+
+|VARIABLES;
+   aConDebe  = "";
+   aConHaber = "";
+   CtrpDebe  = 0;
+   CtrpHaber = 0;
+   Comodin   = "";
+   Comodin1  = "";
+   mensa1    = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+
+   aAlfa1    = "";
+   aAlfa2    = "";
+   nPara1    = 0;
+   aSigno    = "";
+   nLinea    = 0;
+   nDDiario  = 0;
+   nHDiario  = 0;
+   nDDocum   = 0;
+   nHDocum   = 0;
+   fDFecha   = @;
+   fHFecha   = @;
+
+   aDirInicio = "";
+   aMas       = "";
+   nEstado    = 0;
+   nDebe      = 0;
+   nHaber     = 0;
+   nSwCab     = 0;
+   aElDep     = "";
+   aCtaPer    = "";
+   nCtaPer    = 0;
+   nTipAsto   = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| *************************************************************************
+||                          DESDE CAMPOS DE PANTALLA
+|| *************************************************************************
+
+|CALCULO defectos; |TIPO 7;
+   #0#3 = fec1; |PINTA #0#3;
+   #0#4 = fec2; |PINTA #0#4;
+|FCAL;
+
+|CALCULO todos; |TIPO 0;
+
+   aAlfa1 = "N";
+   |SI #0#7 = "N"; aAlfa1 = "S"; |FINSI;
+   |C_M #0#1, 1, aAlfa1;
+   |C_M #0#2, 1, aAlfa1;
+   |C_M #0#3, 1, aAlfa1;
+   |C_M #0#4, 1, aAlfa1;
+   |C_M #0#5, 1, aAlfa1;
+   |C_M #0#6, 1, aAlfa1;
+|FCAL;
+
+|CALCULO fecha; | TIPO 0;   || Desde/hasta fecha
+   |SI #0Campo < fec1; |O #0Campo > fec2;
+       |MENAV mensa1;
+       |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO diarh; | TIPO 0;   ||  hasta diario
+   |SI #0#2 < #0#1;  |ERROR;  |FINSI;
+|FCAL;
+
+|CALCULO fechah; | TIPO 0;   ||  hasta fecha
+   |SI #0#4 < #0#3;  |ERROR;  |FINSI;
+|FCAL;
+
+|CALCULO documh; | TIPO 0;   ||  hasta documento
+   |SI #0#6 < #0#5;  |ERROR;  |FINSI;
+|FCAL;
+
+||----------------------------------------------------------------------------
+||----------------------------------------------------------------------------
+|PROCESO RepasoContra0;
+
+ |SI #2#8 = "D"; eaCuenta = #1#10;   |FINSI;
+ |SI #2#8 = "H"; eaCuenta = #1#8;    |FINSI;
+
+ |DDEFECTO #31;
+ #31#0 = #2#0;
+ #31#1 = #2#1;
+ #31#2 = #2#2;
+ #31#3 = #2#3;
+ |LEE 001#31=;
+ |SI FSalida = 0;
+     |SI eaCuenta = #31#4; |O #31#4 = "            ";
+         |BORRA 020#31a;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE RepasoContra;
+ #2#1;
+ ;
+ #1#0,#1#1,#1#2,0001;
+ #1#0,#1#1,#1#2,9999;
+ e;
+ NULL, RepasoContra0;
+|FIN;
+
+|PROCESO LeeDescarga;
+  |ABRE #22;
+  #22#0 = aElDep;
+  |LEE 041#22=;
+  aCtaPer = #22#2;
+  nCtaPer = #22#3;
+  |CIERRA #22;
+|FPRC;
+
+|PROCESO AperCierre;
+ |SI nSwCab = 0;
+     aElDep = #2#21;
+     |HAZ LeeDescarga;
+     #1#8  = aCtaPer; #1#9  = nCtaPer;
+     #1#10 = aCtaPer; #1#11 = nCtaPer;
+     nSwCab = 1;
+ |FINSI;
+ |SI aElDep ! #2#21;
+     aElDep = #2#21;
+     |HAZ LeeDescarga;
+ |FINSI;
+
+ |SI #902#8 = "D"; |Y #1#10 ! aCtaPer;
+     aConDebe  = aCtaPer;
+     |PARA nPara1 = 0; |SI nPara1 [ 24; |HACIENDO nPara1 = nPara1 + 1;
+           #902nPara1 = #2nPara1;
+     |SIGUE;
+     |HAZ AltaContra;
+ |FINSI;
+ |SI #902#8 = "H"; |Y #1#8  ! aCtaPer;
+     aConHaber = aCtaPer;
+     |PARA nPara1 = 0; |SI nPara1 [ 24; |HACIENDO nPara1 = nPara1 + 1;
+           #902nPara1 = #2nPara1;
+     |SIGUE;
+     |HAZ AltaContra;
+ |FINSI;
+|FPRC;
+
+|PROCESO AltaContra;
+ |DDEFECTO #31;
+ #31#0 = #902#0;
+ #31#1 = #902#1;
+ #31#2 = #902#2;
+ #31#3 = #902#3;
+ |LEE 001#31=;
+ nEstado = FSalida;
+ |SI nEstado = 0;
+     eaCuenta = #31#4; |QBF eaCuenta;
+     |SI eaCuenta ! ""; |ACABA; |FINSI;
+ |FINSI;
+
+ |SI #902#8 = "H";
+     #31#4 = aConDebe;
+ |SINO;
+     #31#4 = aConHaber;
+ |FINSI;
+ eaCuenta = #31#4; |HAZ SacaNivel;
+ #31#5 = enNivel;
+ #31#6 = #902#24;
+ |SI nEstado ! 0; |GRABA 020#31n; |FINSI;
+ |SI nEstado = 0; |GRABA 020#31a; |FINSI;
+|FPRC;
+
+|DEFBUCLE ElEspejo;
+ #902#1004;
+ 8;
+ #2#0, #2#1, #2#2, 0001,   aSigno;
+ #2#0, #2#1, #2#2, nLinea, aSigno;
+ ;
+ NULL, AltaContra;
+|FIN;
+
+
+|PROCESO camaasil0;
+
+   |SI #1#0 = 0; |O #1#0 = 99;
+       |HAZ AperCierre;        || especial Apertura y Cierre
+       |ACABA;
+   |FINSI;
+
+   aAlfa1 = #2#19; aAlfa1 = aAlfa1 > " ";  || Parametro de Factura
+   |SI #2#8 = "D";
+       |SI aConDebe = "";
+           |SI nTipAsto = 0;
+               aConDebe = #2#4;
+           |SINO;
+               |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                   aConDebe = #2#4;
+               |FINSI;
+           |FINSI;
+       |SINO;
+           |SI aConDebe ! #2#4;
+               |SI nTipAsto = 0;
+                   aConDebe = #2#4;
+               |SINO;
+                   |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                       aConDebe = #2#4;
+                   |FINSI;
+               |FINSI;
+          |FINSI;
+       |FINSI;
+       |SI CtrpDebe = 0; |Y aConDebe ! "";
+           #1#8     = aConDebe;
+           CtrpDebe = 1;
+       |FINSI;
+       nDebe = (nDebe + #2#9) ! EURODB;
+   |FINSI;
+
+   |SI #2#8 = "H";
+       |SI aConHaber = "";
+           |SI nTipAsto = 0;
+               aConHaber = #2#4;
+           |SINO;
+               |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                   aConHaber = #2#4;
+               |FINSI;
+           |FINSI;
+       |SINO;
+           |SI aConHaber ! #2#4;
+               |SI nTipAsto = 0;
+                   aConHaber = #2#4;
+               |SINO;
+                   |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                       aConHaber = #2#4;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+       |SI CtrpHaber = 0; |Y aConHaber ! "";
+           #1#10     = aConHaber;
+           CtrpHaber = 1;
+       |FINSI;
+       nHaber = (nHaber + #2#9) ! EURODB;
+   |FINSI;
+
+   |PARA nPara1 = 0; |SI nPara1 [ 24; |HACIENDO nPara1 = nPara1 + 1;
+         #902nPara1 = #2nPara1;
+   |SIGUE;
+
+   |HAZ AltaContra;
+
+   nLinea = #2#3 - 1;
+   |SI nLinea > 0;
+       aSigno = "D"; |SI #2#8 = "D"; aSigno = "H"; |FINSI;
+       |BUCLE ElEspejo;
+   |FINSI;
+
+   |SI nDebe = nHaber;
+       aConDebe  = "";
+       aConHaber = "";
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE camaasil0;
+ #2#1;
+ ;
+ #1#0,#1#1,#1#2,0001;
+ #1#0,#1#1,#1#2,9999;
+ e;
+ NULL, camaasil0;
+|FIN;
+|| /////////////////////////////////////
+
+|PROCESO camaasic;
+
+   Comodin = "Procesando Diario ";
+   Comodin1 = #1#0; |QBF Comodin1; Comodin1 = ("00" + Comodin1) % -102;
+   Comodin = Comodin + Comodin1 + ", Fecha " + #1#1 + ", Asiento ";
+   Comodin1 = #1#2; |QBF Comodin1; Comodin1 = ("000000" + Comodin1) % -106;
+   Comodin = Comodin + Comodin1;
+   |ATRI R; |PINTA 2310, Comodin; |ATRI 0;
+
+   nSwCab    = 0;
+   aElDep    = "";
+
+   aConDebe  = "";
+   CtrpDebe  = 0;
+   aConHaber = "";
+   CtrpHaber = 0;
+
+   nDebe     = 0;
+   nHaber    = 0;
+   nTipAsto  = #1#13;
+   #1#8      = "";
+   #1#10     = "";
+
+   |ABRE #31;
+   |BUCLE camaasil0;
+
+   |GRABA 020#1a;
+   |LIBERA #1;
+
+   |SI #1#0 ! 0; |Y #1#0 ! 99;
+       |BUCLE RepasoContra; || borrar duplicados, no sirve.
+   |FINSI;
+   |CIERRA #31;
+|FPRC;
+
+|DEFBUCLE camaasic1;
+ #1#1;
+ ;
+ nDDiario, fDFecha, nDDocum;
+ nHDiario, fHFecha, nHDocum;
+ be;
+ NULL, camaasic;
+|FIN;
+
+|| ..............................................
+|PROCESO borra_calicont;
+ |BORRA 020#31a;
+ |LIBERA #31;
+|FPRC;
+
+|DEFBUCLE calicont;
+ #31#1;
+ ;
+ nDDiario,fDFecha, nDDocum, 0001;
+ nHDiario,fHFecha, nHDocum, 9999;
+ be;
+ NULL, borra_calicont;
+|FIN;
+
+||********************************************************************
+||********************************************************************
+
+|CALCULO elproceso; |TIPO 3;
+
+  |SI #0#0 = "N"; |ACABA; |FINSI;
+
+
+  |DBASS aDirInicio;
+  aMas  = aDirInicio + "contagen/def/camaasil";
+  |CARGA_DEF aMas, espejo@;
+  |SI FSalida ! 0;
+      |MENAV "    Error Cargado Fichero de Apuntes. Proceso Interrumpido";
+      |ACABA;
+  |FINSI;
+
+  nDDiario = 0;    nHDiario = 99;
+  fDFecha  = fec1; fHFecha  = fec2;
+  nDDocum  = 0;    nHDocum  = 999999;
+
+  |SI #0#7 = "N";
+      nDDiario = #0#1;  nHDiario = #0#2;
+      fDFecha  = #0#3;  fHFecha  = #0#4;
+      nDDocum  = #0#5;  nHDocum  = #0#6;
+  |FINSI;
+
+  |SI #0#8 = "N";
+      |SI #0#7 = "N";
+          |BUCLE calicont;
+      |SINO;
+          |DELINDEX #31;
+      |FINSI;
+  |FINSI;
+
+  |BUCLE camaasic1;
+|FCAL;
+
+/*
+|PROCESO camaasil0;
+
+   |SI #1#0 = 0; |O #1#0 = 99;
+       |HAZ AperCierre;
+       |ACABA;
+   |FINSI;
+
+   aAlfa1 = #2#19; aAlfa1 = aAlfa1 > " ";
+   |SI #2#8 = "D";
+       |SI aConDebe = "";
+               |SI nTipAsto = 0;
+                   aConDebe = #2#4;
+                   |SI CtrpDebe = 0;
+                       #1#10    = aConDebe;
+                       CtrpDebe = 1;
+                   |FINSI;
+               |SINO;
+                   |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                       aConDebe = #2#4;
+                       |SI CtrpDebe = 0;
+                           #1#10 = aConDebe;
+                           CtrpDebe = 1;
+                       |FINSI;
+                   |FINSI;
+               |FINSI;
+       |SINO;
+           |SI aConDebe ! #2#4;
+               |SI nTipAsto = 0;
+                   aConDebe = #2#4;
+                   CtrpDebe = 1;
+               |SINO;
+                   |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                       aConDebe = #2#4;
+                       CtrpDebe = 1;
+                   |FINSI;
+               |FINSI;
+          |FINSI;
+       |FINSI;
+       nDebe = (nDebe + #2#9) ! EURODB;
+   |FINSI;
+
+   |SI #2#8 = "H";
+       |SI aConHaber = "";
+           |SI CtrpHaber = 0;
+               |SI nTipAsto = 0;
+                   aConHaber = #2#4;
+                   #1#8 = #2#4;
+                   CtrpHaber = 1;
+               |SINO;
+                   |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                       aConHaber = #2#4;
+                       #1#8 = #2#4;
+                       CtrpHaber = 1;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+       |SINO;
+           |SI aConHaber ! #2#4;
+               |SI nTipAsto = 0;
+                   aConHaber = #2#4;
+                   CtrpHaber = 1;
+               |SINO;
+                   |SI aAlfa1 = "F"; |O aAlfa1 = "B"; |O aAlfa1 = "X";
+                       aConHaber = #2#4;
+                       CtrpHaber = 1;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+       nHaber = (nHaber + #2#9) ! EURODB;
+   |FINSI;
+
+   |PARA nPara1 = 0; |SI nPara1 [ 24; |HACIENDO nPara1 = nPara1 + 1;
+         #902nPara1 = #2nPara1;
+   |SIGUE;
+
+   |HAZ AltaContra;
+
+   nLinea = #2#3 - 1;
+   |SI nLinea > 0;
+       aSigno = "D"; |SI #2#8 = "D"; aSigno = "H"; |FINSI;
+       |BUCLE ElEspejo;
+   |FINSI;
+
+   |SI nDebe = nHaber;
+       aConDebe  = "";
+       aConHaber = "";
+   |FINSI;
+|FPRC;
+*/

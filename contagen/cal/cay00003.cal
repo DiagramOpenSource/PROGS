@@ -1,0 +1,600 @@
+|FICHEROS;
+   cay00003 #0;
+
+   camaniva #1;
+   caivalin #2;
+   calibros #3;
+   caconimp #8;
+
+   camacc01 #501;
+   camacc02 #502;
+   camacc03 #503;
+
+   canempre #30;
+   cawdatos #900;
+   caselem1 #998;
+   caivaasi #200;
+
+   camaniv@ #101;
+|FIN;
+
+|VARIABLES;
+   &TotalBases   = 0;
+   &TotalCuotas  = 0;
+   &TotalFactura = 0;
+   swAlgun = 0;
+   ||&nLibro  = 0;
+   ||&aDesLib = "";
+   &NumPag  = 0;
+
+   &nT1 = 0;
+   &nT2 = 0;
+   &nT3 = 0;
+   nPLiq  = 0;
+   nDPLiq = 0;
+   nHPLiq = 99;
+
+   nPara1  = 0;
+   nPara2  = 0;
+   nDLibro = 0;
+   nHLibro = 0;
+   nSiInf  = 0;
+   aAlfa1  = "";
+   nM1     = 0;
+   nM2     = 0;
+
+   aMulDep = "";
+   nOpMdep = 0;
+   nAlSi   = 0;
+  nReser2  = 0;
+   fDFecha    = @;
+
+   nHayCaja   = 0
+   nBaseCaja  = 0;
+   nCuotaCaja = 0;
+   nBaseCajD  = 0;
+   nCuotaCajD = 0;
+   nEjerCobro = 0;
+   aMas       = "";
+   aPath      = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE caliva_i;
+|INCLUYE dscoiv_i;
+
+|| ====================================================================
+|CALCULO defectos; |TIPO 7;
+ |HAZ eParaModelos;
+ fDFecha = fec1;
+ |SI enSwSelFc = 1; fDFecha = "01.01.2000"; |FINSI;
+ #0#11 = fDFecha; |PINTA #0#11;
+ #0#12 = fec2;    |PINTA #0#12;
+ |HAZ DatosEmp;
+|FCAL;
+
+|PROCESO DatosEmp; |TIPO 7;
+ |ABRE #8;
+ |DDEFECTO #8;
+ #8#0 = 1;
+ |LEE 011#8=;
+ |CIERRA #8;
+ #0#14 = #8#7; |PINTA #0#14;
+ aAlfa1 = #8#8; |C_M #0#14,1,aAlfa1;
+|FPRC;
+
+|CALCULO PerLiq; |TIPO 0;
+ |SI #0#2 = 0;
+     |C_M #0#11,1,"S";
+     |C_M #0#12,1,"S";
+     |C_M #0#13,1,"N";
+     #0#8 = "RELACION DE FACTURAS PENDIENTES DE LIQUIDAR";
+ |SINO;
+     |SI #0#2 = 99;
+         |C_M #0#11,1,"S";
+         |C_M #0#12,1,"S";
+         |C_M #0#13,1,"S";
+         #0#8 = "RELACION DE FACTURAS ";
+     |SINO;
+         |C_M #0#11,1,"N";
+         |C_M #0#12,1,"N";
+         |C_M #0#13,1,"N";
+         #0#8 = "FACTURAS LIQUIDADAS EN EL TRIMESTRE ";
+         |SI #0#2 > 12; |ERROR; |FINSI;
+     |FINSI;
+ |FINSI;
+ |PINTA #0#8;
+|FCAL;
+
+|CALCULO fecha;  |TIPO 0;
+  fDFecha = fec1;
+  |SI enSwSelFc = 1; fDFecha = "01.01.2000"; |FINSI;
+  |SI #0Campo < fDFecha; |O #0Campo > fec2;
+      |MENAV "    ERROR, Fecha incorrecta";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI Campo = 12; |Y #0#12 < #0#11;
+      |MENAV "    ERROR, Fecha incorrecta";
+      |ERROR;
+  |FINSI;
+|FCAL;
+
+|CALCULO no_dep; |TIPO 7;
+    |CAMPO_MODIFICA #0#3, 1, eaDepar;
+    |CAMPO_MODIFICA #0#4, 1, eaDepar;
+|FCAL;
+
+|CALCULO nosubde; |TIPO 7;
+    |CAMPO_MODIFICA #0#5, 1, eaSubde;
+    |CAMPO_MODIFICA #0#6, 1, eaSubde;
+|FCAL;
+
+|| *********************************************************************
+|PROCESO EsDeCaja;
+      enSwCaja = 0;
+      |SI enEjercicio ] 2014;
+         |SI #camaniva#42 = "Z"; |O #camaniva#42 = "1"; |O #camaniva#42 = "2";
+             |O #camaniva#42 = "3"; |O #camaniva#42 = "4"; |O #camaniva#42 = "5";
+             |O #camaniva#42 = "6"; |O #camaniva#42 = "7"; |O #camaniva#42 = "8";
+                enSwCaja = 1;
+         |FINSI;
+
+         |SI enSwCaja = 1;
+             |ABRE #501;
+             |DDEFECTO #501;
+             #501#17 = nEjerCobro;
+             #501#0 = #camaniva#0;
+             #501#1 = #camaniva#1;
+             |LEE 040#501=;
+             |SI FSalida ! 0;  enSwCaja = 0;  |FINSI;
+             |CIERRA #501;
+         |FINSI;
+    |FINSI;
+|FPRC;
+|| *********************************************************************
+||************************************************************************
+|PROCESO LosCobros;
+     nHayCaja = 1;
+
+     |SI nEjerCobro ! 0;
+         |SI #502#9 ! 0; |Y #502#9 ! enEjercicio;
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     |DDEFECTO #503;
+     |LIBERA #503;
+     #503#7 = #502#17;
+     #503#0 = #502#0;
+     #503#1 = #502#1;
+     #503#2 = #502#2;
+     #503#3 = #caivalin#2;
+     |LEE 041#503=;
+     |SI FSalida = 0;
+         nBaseCaja  = (nBaseCaja  + #503#5) ! EURODB;
+         nCuotaCaja = (nCuotaCaja + #503#6) ! EURODB;
+
+         |SI #0#2 = 0; |Y #502#8 = 0;
+             nBaseCajD  = (nBaseCajD  + #503#5) ! EURODB;
+             nCuotaCajD = (nCuotaCajD + #503#6) ! EURODB;
+         |FINSI;
+     |FINSI;
+     |LIBERA #502;
+|FPRC;
+
+|DEFBUCLE LosCobros;
+     #502#1;
+     8;
+     nEjerCobro, #camaniva#0, #camaniva#1, 01, nDPLiq;
+     nEjerCobro, #camaniva#0, #camaniva#1, 99, nHPLiq;
+     e;
+     NULL, LosCobros;
+|FIN;
+||************************************************************************
+
+|PROCESO LineasFacturas;
+  aAlfa1 = #caivalin#30; |QBF aAlfa1;
+  |SI aAlfa1 = "";
+      #caivalin#30 = #camaniva#10;
+      aAlfa1 = #caivalin#31; |QBF aAlfa1; |SI aAlfa1 = ""; #caivalin#31 = #camaniva#11; |FINSI;
+  |FINSI;
+  |SI aMulDep = "S";
+      |SI Haybasica = 0
+           |SI #caivalin#30 < #0#3; |O #caivalin#30 > #0#4;
+               |ACABA;
+           |FINSI;
+      |SINO;
+           nDepar = #caivalin#30; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+           |SI nDepar < #0#3; |O nDepar > #0#4;  ||desde/hasta actividad
+               |ACABA;
+           |FINSI;
+       |FINSI;
+       |SI #caivalin#31 < #0#5; |O #caivalin#31 > #0#6; |ACABA; |FINSI;
+ |FINSI;
+ nAlSi = 1;
+
+ |SI nOpMdep = 0;
+     nBaseCaja  = 0; nBaseCajD  = 0;
+     nCuotaCaja = 0; nCuotaCajD = 0;
+     |SI enSwCaja = 1;    || suma el importe de lo cobrado
+         |ABRE #503;
+         |BUCLE LosCobros;
+         |CIERRA #503;
+     |FINSI;
+
+     |SI enSwCaja = 1;
+         || nCuotaCajD = #caivalin#8 - nCuotaCaja; || cuota pendiente
+         |SI #0#2 = 00;
+             #caivalin#6 = nBaseCajD;
+             #caivalin#8 = nCuotaCajD;
+         |SINO;
+             |SI #0#2 ! 99; |O #0#13 = "S";
+                 #caivalin#6 = nBaseCaja;
+                 #caivalin#8 = nCuotaCaja;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+
+     nT1 = nT1 + #caivalin#6;
+     nT2 = nT2 + #caivalin#8 + #caivalin#10;
+     nT3 = nT3 + (#caivalin#6 + #caivalin#8 + #caivalin#10 - #caivalin#22);
+     |SI #0#10 = "S";
+         |HAZ sumaLiqIVA;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE LineasFacturas;
+ #caivalin#1;
+ 5;
+ #camaniva#0,#camaniva#1,01,"S";
+ #camaniva#0,#camaniva#1,99,"S";
+ ;
+ NULL,LineasFacturas;
+|FIN;
+
+|| ......................................
+|PROCESO CargaLibro;
+ |INFOR "cay00003";
+ |SI FSalida < 0; |ACABA; |FINSI;
+
+ nLibro = #camaniva#0;
+ nSiInf = 1;
+ |ABRE #3;
+ #3#0 = nLibro;
+ |LEE 001#3=;
+ aDesLib = #3#1;
+ |CIERRA #3;
+|FPRC;
+
+|PROCESO Lee501_14;
+  ePerioCaja = #501#18; |HAZ ePathCaja;
+  |PATH_DAT #101 ePathCaja;
+  |PATH_DAT #2   ePathCaja;
+
+  |ABRE #101;
+  #101#0 = #501#0;
+  #101#1 = #501#1;
+  |LEE 041#101=;
+  |SI FSalida ! 0;
+      |CIERRA #101;
+      |ACABA;
+  |FINSI;
+
+  enSwCaja   = 1;
+  nEjerCobro = #501#17;
+
+  |PARA nPara2 = 0; |SI nPara2 [ 47; |HACIENDO nPara2 = nPara2 + 1;
+        #1nPara2 = #101nPara2;
+  |SIGUE;
+
+  |HAZ Facturas;
+|FPRC;
+
+|DEFBUCLE Lee501_14;
+    #501#1;
+    ;
+    nEjerCobro, nLibro, 0000000001;
+    nEjerCobro, nLibro, 9999999999;
+    e;
+    NULL, Lee501_14;
+|FIN;
+
+|PROCESO totalParcial;
+ |SI enEjercicio ] 2015; || carga las de Caja anteriores;
+
+      |SALVA_FICHA #camaniva;
+      |CIERRA #camaniv@;
+
+      nEjerCobro = enEjercicio - 1;
+      |BUCLE Lee501_14;
+
+      |REPON_FICHA #camaniva;
+      nEjerCobro = 0;
+ |FINSI;
+
+ |SI swAlgun = 1;
+     |PIEINF;
+ |FINSI;
+
+ |SI nSiInf = 1; |FININF; nSiInf = 0; |FINSI;
+ |SI #0#10 = "S"; |Y swAlgun = 1; |HAZ imprimeLiqIVA; |FINSI;
+  TotalBases   = 0;
+  TotalCuotas  = 0;
+  TotalFactura = 0;
+  swAlgun      = 0;
+  |HAZ BorraAcum;
+|FPRC;
+
+|PROCESO Facturas;
+   |SI #camaniva#36 ! "S"; |Y #camaniva#36 ! "R";
+       |ACABA;
+   |FINSI;
+
+   |SI aMulDep ! "S";
+       |SI Haybasica = 0
+           |SI #camaniva#10 < #0#3; |O #camaniva#10 > #0#4;
+               |ACABA;
+           |FINSI;
+      |SINO;
+           nDepar = #camaniva#10; |SI nDepar = 0;  nDepar = 1;   |FINSI;
+           |SI nDepar < #0#3; |O nDepar > #0#4;  ||desde/hasta actividad
+               |ACABA;
+           |FINSI;
+       |FINSI;
+       |SI #camaniva#11 < #0#5; |O #camaniva#11 > #0#6; |ACABA; |FINSI;
+   |SINO;
+       nOpMdep = 1;
+       nAlSi   = 0;
+       |BUCLE LineasFacturas;
+       |SI nAlSi = 0; |ACABA; |FINSI;
+   |FINSI;
+
+|SI nEjerCobro = 0;
+   enSwCaja = 0;
+   |SI enEjercicio ] 2014;
+       |HAZ EsDeCaja;
+       |SI enSwCaja = 0;   || No es de caja
+           |SI #0#2 ! 0;  |Y #0#2 ! 99;   |Y #camaniva#40 < nDPLiq; |ACABA; |FINSI;
+           |SI #0#2 = 0;                  |Y #camaniva#40 ! 0;      |ACABA; |FINSI;
+           |SI #0#2 = 99; |Y #0#13 = "S"; |Y #camaniva#40 = 0;      |ACABA; |FINSI;
+       |FINSI;
+   |FINSI;
+|FINSI;
+
+   |SI swAlgun = 0;
+       |HAZ CargaLibro;
+   |FINSI;
+
+   |SI nLibro ! #camaniva#0;
+       |HAZ totalParcial;
+       |HAZ CargaLibro;
+   |FINSI;
+
+   nT1 = 0;
+   nT2 = 0;
+   nT3 = 0;
+   nOpMdep = 0;
+
+   |BUCLE LineasFacturas;
+
+ |SI nT1 ! 0; |O nT2 ! 0; |O nT3 ! 0;
+   |PRINT;
+   swAlgun = 1;
+   TotalBases   = TotalBases   + nT1;  ||... #camaniva#19;
+   TotalCuotas  = TotalCuotas  + nT2;  ||... #camaniva#23;
+   TotalFactura = TotalFactura + nT3;  ||... #camaniva#21;
+ |FINSI;
+
+|FPRC;
+
+|| ................................ Orden N§ Factura
+|DEFBUCLE Facturas;
+ #camaniva#3;
+ 40,4; || 11
+ #0#0,"     ", 0000001, nPLiq,  #0#11; || #0#5
+ #0#1,"zzzzz", 9999999, nHPLiq, #0#12; || #0#6
+ ;
+ NULL,Facturas,NULL,NULL,totalParcial;
+|FIN;
+
+|| ................................ Orden Fecha Contable
+|DEFBUCLE Facturas2;
+ #camaniva#2;
+ 0,40;
+ 00, #0#11, 000001, nDLibro, nPLiq;
+ 99, #0#12, 999999, nHLibro, nHPLiq;
+ ;
+ NULL,Facturas,NULL,NULL,totalParcial;
+|FIN;
+
+|| ................................ Orden Fecha Factura
+|DEFBUCLE Facturas1;
+ #camaniva#5;
+ 40;
+ #0#11, nDLibro, 0000000001, nPLiq;
+ #0#12, nHLibro, 9999999999, nHPLiq;
+ ;
+ NULL,Facturas,NULL,NULL,totalParcial;
+|FIN;
+||-----------------------------------------------------------
+
+|PROCESO HazTodo;
+   |ABRE #200;
+   |DDEFECTO #200;
+   |LEE 000#200p;
+   |CIERRA #200;
+   aMulDep = #200#132;
+
+   |SI Haybasica = 0;  || si selecciona todos los departamentos no es necesario ver lineas
+       |SI #0#4 = "  "; |Y #0#5 = "zz"; aMulDep = "N"; |FINSI;
+   |SINO;
+       |SI #0#4 [ 1;    |Y #0#5 = 99;   aMulDep = "N"; |FINSI;
+   |FINSI;
+
+   nReser2 = #0#2;
+   |SI #0#2 ! 0; |Y #0#2 ! 99;
+       #0#11 = "01.01.0000";
+       #0#12 = "31.12.2090";
+       |SI #200#46 = "T";
+           |SI enEjercicio [ 2009;
+               |SI #0#2 = 1; nM1 = 1;  nM2 = 3;  |FINSI;
+               |SI #0#2 = 2; nM1 = 4;  nM2 = 6;  |FINSI;
+               |SI #0#2 = 3; nM1 = 7;  nM2 = 9;  |FINSI;
+               |SI #0#2 = 4; nM1 = 10; nM2 = 12; |FINSI;
+           |SINO;
+               |SI #0#2 = 1;  |O #0#2 = 2;  |O #0#2 = 3;  #0#2 = 3;  nM1 = 1;  nM2 = 3;  |FINSI;
+               |SI #0#2 = 4;  |O #0#2 = 5;  |O #0#2 = 6;  #0#2 = 6;  nM1 = 4;  nM2 = 6;  |FINSI;
+               |SI #0#2 = 7;  |O #0#2 = 8;  |O #0#2 = 9;  #0#2 = 9;  nM1 = 7;  nM2 = 9;  |FINSI;
+               |SI #0#2 = 10; |O #0#2 = 11; |O #0#2 = 12; #0#2 = 12; nM1 = 10; nM2 = 12; |FINSI;
+           |FINSI;
+       |SINO;
+           nM1 = #0#2; nM2 = #0#2;   || Mensual
+       |FINSI;
+   |FINSI;
+
+    eaIa = #30#21;
+    |SI #0#2 ! 0; |Y #0#2 ! 99;
+        enM1 = nM1;
+        enM2 = nM2;
+    |SINO;
+        aAlfa1 = #0#11; aAlfa1 = aAlfa1 % 0402; enM1 = aAlfa1;
+        aAlfa1 = #0#12; aAlfa1 = aAlfa1 % 0402; enM2 = aAlfa1;
+    |FINSI;
+    |HAZ LeeDatosEmpresa;
+    |SI #0#2 = 0; |O #0#2 = 99;
+        #900#13 = #0#11; #900#14 = #0#12;
+    |FINSI;
+
+    |HAZ BorraAcum;
+    NumPag       = 0;
+    nLibro       = 0;
+    swAlgun      = 0;
+    TotalBases   = 0;
+    TotalCuotas  = 0;
+    TotalFactura = 0;
+    nSiInf       = 0;
+
+    |SI enEjercicio < 2014;
+        |SI #0#2 ! 99;
+            nDPLiq = #0#2; nHPLiq = #0#2;
+        |SINO;
+            |SI #0#13 = "T"; nDPLiq = 0; nHPLiq = 99; |FINSI;
+            |SI #0#13 = "S"; nDPLiq = 1; nHPLiq = 99; |FINSI;
+        |FINSI;
+        nPLiq = nDPLiq;
+    |SINO;
+        nPLiq  = 0;
+        |SI #0#2 ! 0; |Y #0#2 ! 99;
+            nDPLiq = #0#2; nHPLiq = #0#2;
+        |FINSI;
+        |SI #0#2 = 0;
+            nDPLiq = 0; nHPLiq = 99;
+        |FINSI;
+        |SI #0#2 = 99;
+            |SI #0#13 = "T"; nDPLiq = 0; nHPLiq = 99; |FINSI;
+            |SI #0#13 = "S"; nDPLiq = 1; nHPLiq = 99; |FINSI;
+        |FINSI;
+    |FINSI;
+
+    nEjerCobro = 0;
+    |SI #0#9 = 3;
+        nEjerCobro = 0;
+        nDLibro    = #0#0;
+        nHLibro    = #0#1;
+        |BUCLE Facturas;
+    |SINO;
+        |PARA nPara1 = #0#0; |SI nPara1 [ #0#1; |HACIENDO nPara1 = nPara1 + 1;
+             |HAZ BorraAcum;
+             NumPag       = 0;
+             nLibro       = 0;
+             swAlgun      = 0;
+             TotalBases   = 0;
+             TotalCuotas  = 0;
+             TotalFactura = 0;
+             nEjerCobro   = 0;
+
+             nDLibro = nPara1; nHLibro = nPara1;
+             |SI #0#9 = 1; |BUCLE Facturas1; |FINSI;
+             |SI #0#9 = 2; |BUCLE Facturas2; |FINSI;
+        |SIGUE;
+   |FINSI;
+
+   #0#2 = nReser2;
+|FPRC;
+
+|| *********************************************************************
+|CALCULO impre; |TIPO 3;
+
+   |HAZ DirAplicSt;
+   |SI Haybasica = 1;
+       |SI #0#4 = "zz"; #0#4 = "99"; |FINSI;
+   |FINSI;
+   |SI #0#2 ! 0; |Y #0#2 ! 99;
+       #0#11 = "01.01.0000";
+       #0#12 = "31.12.2090";
+       |SI enEjercicio [ 2009;
+           |SI #0#2 = 1; nM1 = 1;  nM2 = 3;  |FINSI;
+           |SI #0#2 = 2; nM1 = 4;  nM2 = 6;  |FINSI;
+           |SI #0#2 = 3; nM1 = 7;  nM2 = 9;  |FINSI;
+           |SI #0#2 = 4; nM1 = 10; nM2 = 12; |FINSI;
+       |FINSI;
+   |FINSI;
+
+   enDatos = 0; |SI #0#14 = "S"; enDatos = 1; |FINSI;
+   |IMPRE 0;
+   |SI FSalida < 0; |ACABA; |FINSI;
+
+   |DBASE aPath;
+   aMas  = aPath + "def/camaniva";
+   |CARGA_DEF aMas, camaniv@;
+   |SI FSalida ! 0;
+       |MENAV "    Error Cargado Fichero de Contabilidad. Proceso Interrumpido";
+       |ACABA;
+   |FINSI;
+
+   |SI #48#27 = "S";
+       |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+   |FINIMP;
+
+   |DESCARGA_DEF #camaniv@;
+|FCAL;
+
+|| ////////////////////////////////////
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #200 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

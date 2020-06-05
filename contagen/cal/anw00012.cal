@@ -1,0 +1,320 @@
+|FICHEROS;
+ anm00003 #0;
+ anm00002 #1;
+
+ anw00012 #12;
+ anw00013 #13;
+|FIN;
+
+|VARIABLES;
+ nOp     = 0;
+ nUlt    = 0;
+ nInkey  = 0;
+ nEstado = 0;
+ nModoEntrada = 0;
+ aAlfa1 = "";
+ &enDiAna = 0;
+ &efFeAna = @;
+ &enDoAna = 0;
+ &enApAna = 0;
+ &eaGrAna = "";
+ &enImAna = 0;
+ &enQueAna = 0;
+
+ nImporte = 0;
+ &nSwGrupo = 0;
+ nSwCta   = 0;
+
+ &eaFitnW12 = "";
+ &eaFitnW13 = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoan_i;
+
+|| *********************************************************************
+|CALCULO grupo0; |TIPO 0;
+  aAlfa1 = #12Campo % 103;
+  |SI aAlfa1 ! "GRU";
+      |MENAV "    Error. Codigo de Grupo Erroneo ";
+      |ERROR;
+  |FINSI;
+|FCAL;
+
+|CALCULO antes8; |TIPO 7;
+ nImporte = #12#8;
+|FCAL;
+
+|RUTINA ClaveAlta3;
+ #13#0 = #12#0;
+ #13#1 = #12#1;
+ #13#2 = #12#2;
+ #13#3 = #12#3;
+ #13#4 = #12#4;
+ #13#5 = 001;
+|FRUT;
+
+|RUTINA ClaveBaja3;
+ #13#0 = #12#0;
+ #13#1 = #12#1;
+ #13#2 = #12#2;
+ #13#3 = #12#3;
+ #13#4 = #12#4;
+ #13#5 = 999;
+|FRUT;
+
+|CALCULO despues8; |TIPO 0;
+  nInkey = FSalida;
+  #12#8 = nImporte;
+  |SI nInkey = 10;
+      |CONFI "    SRepartir automaticamente S/N ?";
+      |SI FSalida = 0;
+          |HAZ VuelvoARep;
+          |PINPA #0#13;
+          |ENTLINEAL #1#13, -5, 7, 22, 0, ClaveAlta3, ClaveBaja3;
+      |FINSI;
+  |FINSI;
+  |PINTA #12#8;
+|FCAL;
+
+|CALCULO grupo3; |TIPO 3;
+  nSwGrupo = 0;
+  |SI #12#8 ! #12#7;
+      |CONFI "    NATENCION! Importe del Reparto incorrecto. Continuar ? ";
+      |SI FSalida ! 0;
+          nSwGrupo = 1;
+      |FINSI;
+ |FINSI;
+|FCAL;
+
+|| **************************************************************************
+|CALCULO anacta; |TIPO 6;
+  salidas = FSalida;
+  |HAZ FPuntosAna;
+|FCAL;
+
+|CALCULO sumar; |TIPO 2;
+  #12#8 = #12#8 +. #13#9; |PINTA #12#8;
+|FCAL;
+
+|CALCULO Eltanto; |TIPO 0;
+  #13#9 = (#12#7 % #13#8) ! EURODB; |PINTA #13#9;
+|FCAL;
+
+|PROCESO buscolinea1;
+ nSwCta   = 1;
+ |ERROR10;
+|FPRC;
+
+|DEFBUCLE buscolinea0;
+ #0#1;
+ 2;
+ #13#4, 001, #13#6;
+ #13#4, 999, #13#6;
+ e;
+ NULL, buscolinea1;
+|FIN;
+
+
+|CALCULO buscolinea; |TIPO 0;
+
+ nModoEntrada = (FEntrada / 100) ! 0;
+
+ nSwCta = 0;
+ |BUCLE buscolinea0;
+ |SI nSwCta = 1;
+     |SI nModoEntrada = 1;
+         #13#8 = #0#4; |PINTA #13#8;
+     |FINSI;
+ |SINO;
+     |CONFI "    SLa Cuenta Analitica no esta en el Grupo Original. Continuar ";
+     |SI FSalida ! 0;
+         |ERROR;
+     |FINSI;
+ |FINSI;
+|FCAL;
+
+|| ******************************************************
+|PROCESO LosBorro0;
+ |BORRA 020#13a;
+ |LIBERA #13;
+|FPRC;
+
+|DEFBUCLE LosBorro;
+ #13#1;
+ ;
+ #12#0, #12#2, #12#3, #12#4, 001;
+ #12#0, #12#2, #12#3, #12#4, 999;
+ be;
+ NULL, LosBorro0;
+|FIN;
+
+|| ******************************************************
+
+|PROCESO PrimComp0;
+ |SI #12#4 ! eaGrAna;
+     |BUCLE LosBorro;
+     |BORRA 020#12a;
+ |FINSI;
+ |LIBERA #12;
+|FPRC;
+
+|DEFBUCLE PrimComp;
+ #12#1;
+ ;
+ enDiAna, enDoAna, enApAna, "       ";
+ enDiAna, enDoAna, enApAna, "zzzzzzz";
+ be;
+ NULL, PrimComp0;
+|FIN;
+|| ******************************************************
+
+|PROGRAMA;
+   |HAZ inicio;
+   |HAZ Analitica; |SI enSwAna = 0; |ACABA; |FINSI;
+
+   |NOME_DAT #12 eaFitnW12;
+   |NOME_DAT #13 eaFitnW13;
+
+   || ... Proceso para borrar los grupos que no eran buenos del mismo apunte
+   |BUCLE PrimComp;
+   |SI enQueAna = 4; |ACABA; |FINSI;
+
+   |ABRE #12;
+
+   |DDEFECTO #12;
+   #12#0 = enDiAna;
+   #12#1 = efFeAna;
+   #12#2 = enDoAna;
+   #12#3 = enApAna;
+   #12#4 = eaGrAna;
+   |LEE 101#12=;
+   nEstado = FSalida;
+   |HAZ BuscaGrupo;
+   |SI nSwGrupo = 1;
+       |CIERRA #12;
+       |ACABA;
+   |FINSI;
+
+   |SI nEstado = 0;                  || Cuando ya exista el grupo
+      |SI #12#7 ! enImAna;           || si el importe a cambiado
+          enQueAna = 1;              || modificaremos
+      |SINO;
+          |SI enQueAna = 5;          || si es el mismo importe
+              |CIERRA #12;           || y la misma cuenta, saldra
+              |ACABA;
+          |FINSI;
+      |FINSI;
+   |FINSI;
+
+   |PINPA #0#12;
+   #12#7 = enImAna;
+   |PINDA #0#12;
+
+   |SI enQueAna = 1;
+      |ET PideDatos;
+      |ENDATOS #2#12;
+      |SI FSalida = 0;
+          |SI nSwGrupo = 0;
+              |SI nEstado = 0; |GRABA 020#12a; |FINSI;
+              |SI nEstado ! 0; |GRABA 020#12n; |FINSI;
+          |SINO;
+              nSwGrupo = 0;
+              |VETE PideDatos;
+          |FINSI;
+      |SINO;
+          |SI nEstado ! 0;
+              |BUCLE LosBorro;
+              nSwGrupo = 1;
+          |FINSI;
+      |FINSI;
+   |SINO;
+      |PAUSA;
+   |FINSI;
+
+   |LIBERA #12;
+   |CIERRA #12;
+
+|FPRO;
+|| *************************************************
+
+|PROCESO Reparto0;
+ |SI nOp = 1;
+     nUlt = #0#1;
+     |ACABA;
+ |FINSI;
+
+ #13#0 = #12#0;
+ #13#1 = #12#1;
+ #13#2 = #12#2;
+ #13#3 = #12#3;
+ #13#4 = #12#4;
+ #13#5 = #0#1;
+ #13#6 = #0#2;
+ #13#7 = #0#3;
+ #13#8 = #0#4;
+ |SI nUlt ! #0#1;
+     #13#9 = (enImAna % #0#4) ! EURODB;
+ |SINO;
+     #13#9 = enImAna - nImporte;
+ |FINSI;
+
+ |GRABA 020#13n;
+ nImporte = nImporte + #13#9;
+|FPRC;
+
+|DEFBUCLE Reparto;
+ #0#1;
+ ;
+ #1#0, 001;
+ #1#0, 999;
+ e;
+ NULL, Reparto0;
+|FIN;
+
+
+|PROCESO BuscaGrupo;
+ nSwGrupo = 0;
+
+ |ABRE #1;
+ #1#0 = #12#4;
+ |LEE 001#1=;
+ |SI FSalida ! 0;
+     |MENAV "    ERROR. NO EXISTE GRUPO DE ANALITICA ";
+     nSwGrupo = 1;
+     |CIERRA #1;
+     |ACABA;
+ |FINSI;
+ |CIERRA #1;
+ #12#5 = #1#1;
+
+ nImporte = #12#8;
+
+ |SI nEstado ! 0; |O enQueAna = 2;
+
+     |SI enQueAna = 2; |BUCLE LosBorro; |FINSI;
+
+     nImporte = 0;
+     |ABRE #13;
+     nOp = 1; |BUCLE Reparto;
+     nOp = 0; |BUCLE Reparto;
+     |CIERRA #13;
+     enQueAna = 1;
+     #12#8 = nImporte;
+ |FINSI;
+
+ |SI  #12#8 ! nImporte; |O #12#8 ! #12#7;
+      enQueAna = 1;
+ |FINSI;
+|FPRC;
+
+|CALCULO VuelvoARep;
+ #12#7 = enImAna;
+ |BUCLE LosBorro;
+ nImporte = 0;
+ |ABRE #13;
+ nOp = 1; |BUCLE Reparto;
+ nOp = 0; |BUCLE Reparto;
+ |CIERRA #13;
+ #12#8 = nImporte;
+|FCAL;

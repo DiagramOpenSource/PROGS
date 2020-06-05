@@ -1,0 +1,592 @@
+|FICHEROS;
+     agifa518 #0;   || Cierre
+     agifa509 #1;   || Fichero diario
+     agifa505 #4;   || Fichero de caja (configuracion)
+     tpv00003 #10;  || Tiquets Impresos
+     agifa501 #12;  || TIQUETS (CAB)
+     agifa502 #13;  || TIQUETS (lin)
+     agifa517 #17;  || Parametros TPV
+     agifa027 #27;  || Contadores
+     agifa324 #324;
+     agifa321 #321;
+|FIN;
+
+|VARIABLES;
+     &enHayVacios = 0;
+     &enSwModi = 0;
+     &eCaja    = 0;
+     &eTienda  = 0;
+     &eFecha   = "";
+     nBoton1   = 0;
+     nBoton2   = 0;
+     nBoton3   = 0;
+     nBoton4   = 0;
+     nBoton5   = 0;
+
+     jDia   = "";
+     aDia   = @;
+     nError = 0;
+     aAlfa = "";
+     claveconta="vtiquet";
+     fecha=@;
+     seriemala="";
+     numantiguo="";
+     linantigua=1;
+     nconta=0;
+     ccontx="";
+     cnumticket="";
+     ntickborrados=0;
+     campo = 0;
+    alfa = "";
+    &hora ="";
+    informe = "cierre";
+    mensaje1 = "0000ATENCION El fichero diario no existe";
+    mensaje2 = "0000ATENCION Esta caja no existe";
+    mensaje3 = "0000ATENCION Esta caja ya ha sido cerrada";
+    valor = 0;
+    modo = 0;
+    puente          = "";
+    empresa = 0;
+    &impr_tpv = "";
+    cser="--";
+    i=0;
+    l=0;
+    gser = "";
+    gcod = "";
+    numcontador=0;
+|FIN;
+
+
+|CAMPOS;
+    #0#15 recuento;
+    #0#16 diferencia;
+    #0#17 cambio;
+    #0#18 efectivo;
+    #0#19 cheques;
+    #0#20 tarjeta;
+    #0#22 restos;
+    #0#23 totcaja;
+    #0#24 credito;
+|FIN;
+
+|PROCESO Boton1;
+     |HAZ Desactiva;
+     eCaja = #0#0;
+     eFecha = #0#1;
+     |HAZ InfVenta;
+     |HAZ Activa;
+|FPRC;
+
+|PROCESO Boton2;
+     |HAZ Desactiva;
+     eCaja = #0#0;
+     eFecha = #0#1;
+     |HAZ InfPago;
+     |HAZ Activa;
+|FPRC;
+
+|PROCESO Boton3;
+     |HAZ Desactiva;
+     eCaja = #0#0;
+     eFecha = #0#1;
+     |SUB_EJECUTA_NP "tpv00018";
+     |HAZ Activa;
+|FPRC;
+
+|PROCESO Boton4;
+     |HAZ Hide;
+     eCaja = #0#0;
+     eFecha = #0#1;
+     enSwModi = 0;
+     |SUB_EJECUTA_NP "dsz00046";
+     |SI enSwModi ! 0;
+          |HAZ Recalcula;
+     |FINSI;
+     |HAZ Presenta;
+     |HAZ Show;
+|FPRC;
+
+|PROCESO Boton5;
+     |HAZ Desactiva;
+     eCaja = #0#0;
+     eFecha = #0#1;
+     |SUB_EJECUTA_NP "dsy00008";
+     |HAZ Activa;
+|FPRC;
+
+|PROCESO Show;
+     |ESTADO_CONTROL nBoton1, "SHOW";
+     |ESTADO_CONTROL nBoton2, "SHOW";
+     |ESTADO_CONTROL nBoton3, "SHOW";
+     |ESTADO_CONTROL nBoton4, "SHOW";
+     |ESTADO_CONTROL nBoton5, "SHOW";
+|FPRC;
+
+|PROCESO Hide;
+     |ESTADO_CONTROL nBoton1, "HIDE";
+     |ESTADO_CONTROL nBoton2, "HIDE";
+     |ESTADO_CONTROL nBoton3, "HIDE";
+     |ESTADO_CONTROL nBoton4, "HIDE";
+     |ESTADO_CONTROL nBoton5, "HIDE";
+|FPRC;
+
+|PROCESO Desactiva;
+     |ESTADO_CONTROL nBoton1, "DISABLE";
+     |ESTADO_CONTROL nBoton2, "DISABLE";
+     |ESTADO_CONTROL nBoton3, "DISABLE";
+     |ESTADO_CONTROL nBoton4, "DISABLE";
+     |ESTADO_CONTROL nBoton5, "DISABLE";
+|FPRC;
+
+|PROCESO Activa;
+     |ESTADO_CONTROL nBoton1, "ENABLE";
+     |ESTADO_CONTROL nBoton2, "ENABLE";
+     |ESTADO_CONTROL nBoton3, "ENABLE";
+     |ESTADO_CONTROL nBoton4, "ENABLE";
+     |ESTADO_CONTROL nBoton5, "ENABLE";
+|FPRC;
+
+|PROCESO NoSube; |TIPO 0;
+     |SI FSalida = 2;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Salir; |TIPO 9;
+     |FIN_CONTROL_WINDOWS nBoton1;
+     |FIN_CONTROL_WINDOWS nBoton2;
+     |FIN_CONTROL_WINDOWS nBoton3;
+     |FIN_CONTROL_WINDOWS nBoton4;
+     |FIN_CONTROL_WINDOWS nBoton5;
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO entrar; |TIPO 8;
+     |DFICE puente; |QBF puente;
+     puente = puente % -205;
+     empresa = puente;
+
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 000#agifa321.p;
+     #agifa324#0 = #agifa321#9;
+     |LEE 000#agifa324.=;
+     |CIERRA #agifa324;
+     |CIERRA #agifa321;
+
+     |CONTROL_SIMPLE 0, "BOTON, Informe Ventas", 0767, 0879, Boton1;
+     nBoton1 = FSalida;
+     |CONTROL_SIMPLE 0, "BOTON, Informe Pagos",  0967, 1079, Boton2;
+     nBoton2 = FSalida;
+     |CONTROL_SIMPLE 0, "BOTON, Informe Horario", 1167, 1279, Boton3;
+     nBoton3 = FSalida;
+     |CONTROL_SIMPLE 0, "BOTON, Cambio FP venta", 1367, 1479, Boton4;
+     nBoton4 = FSalida;
+     |CONTROL_SIMPLE 0, "BOTON, Informe Cobros ", 1567, 1679, Boton5;
+     nBoton5 = FSalida;
+     |HAZ Desactiva;
+|FPRC;
+
+|PROCESO recoger;
+     |ABRE #1;        || Fichero diario
+     #1#63 = empresa;
+     #1#0 = #0#0;     || Numero caja fichero cobro
+     #1#1 = #0#1;     || Fecha de cobro
+     |LEE 000#1=;
+     |SI FSalida ! 0;
+         |MENAV mensaje1;
+         |ERROR; |ACABA;
+     |FINSI;
+     |CIERRA #1;
+
+     |HAZ Recalcula;
+     |HAZ Activa;
+     |HAZ Presenta;
+
+     aAlfa = "agifa520;" + #0#1 + (("00000" + #0#0) % -105);
+     |SUB_EJECUTA_NP aAlfa;
+     |SI enHayVacios ! 0;
+          |PTEC 807;
+     |FINSI;
+|FPRC;
+
+|PROCESO Presenta;
+     |ABRE #1;        || Fichero diario
+     #1#63 = empresa;
+     #1#0 = #0#0;     || Numero caja fichero cobro
+     #1#1 = #0#1;     || Fecha de cobro
+     |LEE 000#1=;
+
+     cambio   =  #1#2;
+     efectivo =  #1#52;
+     cheques  =  #1#54;
+     tarjeta  =  #1#53;
+     restos   =  #1#57;
+     credito = #1#58;
+     totcaja = cambio + efectivo - #1#108;
+     #0#16 = totcaja;
+     #0#41 = #1#5;
+     #0#42 = #1#108;
+     #0#43 = totcaja + #0#19 + #0#20;
+     |PINDA #0#0;
+
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO imprecierre;|TIPO 3;
+     |HORA hora;
+     hora = hora % 105;   || Recorto los segundos
+
+/*  JUAN Tue Mar 18 19:01:24 CET 2008
+     |HAZ negro;
+*/
+
+
+     |HAZ cierra;
+
+     |SI nError ! 0; |ACABA; |FINSI;
+
+     |SI #0#21 = "N";
+          |CONFI "2400NImprimir cierre S/N.: ";
+          |SI FSalida ! 0; |ACABA; |FINSI;
+     |FINSI;
+
+     |HAZ EsSematel;
+     |SI FSalida = 0;
+          eCaja = #0#0;
+          eFecha = #0#1;
+          |SUB_EJECUTA_NP "tlfz0001";
+     |SINO;
+          ||... la estandar
+
+          Impresora = impr_tpv;
+          |IMPRE -1;
+          |SI 0 = FSalida;      || Si no hay problemas
+            |INFOR informe;
+               |SI 0 = FSalida;
+                    |PRINT;
+                    |PIEINF;
+                    |FININF;
+               |FINSI;
+            |FINIMP;
+          |FINSI;
+     |FINSI;
+
+     |SI #0#21 = "S"; |Y #4#134 = "S";
+          |SUB_EJECUTA_NP "agift552;agifa518";
+     |FINSI;
+|FPRC;
+
+
+|PROCESO acumula;|TIPO 0;
+     valor = 0;
+     |SI Campo = 26; valor = .01;  |FINSI;
+     |SI Campo = 27; valor = .02;  |FINSI;
+     |SI Campo = 28; valor = .05;  |FINSI;
+     |SI Campo = 29; valor = .10;  |FINSI;
+     |SI Campo = 30; valor = .20;  |FINSI;
+     |SI Campo = 31; valor = .50;  |FINSI;
+     |SI Campo = 32; valor = 1  ;  |FINSI;
+     |SI Campo = 33; valor = 2  ;  |FINSI;
+     |SI Campo = 34; valor = 5  ;  |FINSI;
+     |SI Campo = 35; valor = 10 ;  |FINSI;
+     |SI Campo = 36; valor = 20 ;  |FINSI;
+     |SI Campo = 37; valor = 50 ;  |FINSI;
+     |SI Campo = 38; valor = 100;  |FINSI;
+     |SI Campo = 39; valor = 200;  |FINSI;
+     |SI Campo = 40; valor = 500;  |FINSI;
+
+     |SI #0Campo ! Contenido;
+          recuento = recuento - (Contenido * valor);    || Primero le quito lo que tenia
+          recuento = recuento + (#0Campo * valor);      || Despues le añado lo que pongo
+          diferencia = (cambio + efectivo ) - recuento; || Calculo la diferencia entre el liquido y el informado
+          |PINTA recuento;
+          |PINTA diferencia;
+     |FINSI;
+|FPRC;
+
+|| Este proceso actualiza los campos del fichero de caja y de diario
+|| Marcandolos como cerrados
+|PROCESO cierra;
+     |ABRE #12;
+     |SELECT #2#12;
+     |DDEFECTO #12;
+     #12#35 = "N";
+     |LEE 000#12];
+     alfa = "";
+     |PARA; |SI FSalida = 0; |Y #12#35 = "N"; |HACIENDO;
+          |SI #12#12 = #0#0;
+               alfa = (("000000") + #12#0) % -106;
+               alfa = "0000TIQUET " + #12#36 + "/" + alfa + " APARCADO...";
+               |MENAV alfa;
+          |FINSI;
+          |LEE 000#12s;
+     |SIGUE;
+     |CIERRA #12;
+     |SI alfa ! "";
+          |SI #0#21 = "S";
+               nError = 1;
+               |MENAV "0000­­­ CIERRE CANCELADO... !!!";
+          |FINSI;
+          #0#21 = "N"; |PINTA #0#21;
+     |FINSI;
+
+     |ABRE #10;
+     |LEE 000#10p;
+     alfa = "";
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          alfa = (("000000") + #10#1) % -106;
+          alfa = "0000­­­ TIQUET " + #10#0 + "\" + alfa + " IMPRESO Y NO COBRADO... !!!";
+          |MENAV alfa;
+          |LEE 000#10s;
+     |SIGUE;
+     |SI alfa ! "";|Y #0#21 = "S";
+          nError = 1;
+          |MENAV "0000­­­ CIERRE CANCELADO... !!!";
+          #0#21 = "N"; |PINTA #0#21;
+     |FINSI;
+     |CIERRA #10;
+
+     |SI  #0#21 ! "S"; |ERROR; |ACABA; |FINSI;
+
+   || Primero el diario
+     |ABRE #1;      || Fichero diario
+     #1#63 = empresa;
+     #1#0=#0#0;     || Numero caja fichero cobro
+     #1#1=#0#1;     || Fecha de cobro
+     |LEE 101#1=;
+
+     #1#56 = "N";  || Marco el diario como cerrado
+     #1#59 = #0#16;
+
+     |PARA i = 2; |SI i [ 15; |HACIENDO i = i + 1;
+          campo = i + 68;
+          #1campo = #0i;
+     |SIGUE;
+     |PARA i = 26; |SI i [ 40; |HACIENDO i = i + 1;
+          campo = i - 26 + 93;
+          #1campo = #0i;
+     |SIGUE;
+
+     ||----Grabarle el dia de la semana...........
+       aDia = #0#1 % 1;
+       jDia = aDia % 1102;
+       jDia = jDia > jDia;
+       |SI jDia = "MI";
+            jDia = "X";
+       |SINO;
+            jDia = jDia % 1101;
+       |FINSI;
+       #1#92 = jDia;
+     ||-------
+
+      |GRABA 101#1a;
+      |LIBERA #1;
+      |CIERRA #1;
+
+   || Despues el de configuracion
+     |ABRE #4;      || Fichero caja (configuracion)
+     #4#0=#0#0;     || Numero caja (cierre)
+     |LEE 101#4=;
+
+      #4#23 = "N";  || Marco como cerrada
+      #4#24 = #0#1; || Fecha del cierre
+
+      |GRABA 101#4a;
+      |LIBERA #4;
+      |CIERRA #4;
+
+|FPRC;
+
+
+||Proceso que comprueba que la caja no este cerrada
+|PROCESO cerrada;
+     |ABRE #4;      || Fichero configuracion
+     #4#0=#0#0;     || Numero caja (CIERRE)
+     |LEE 101#4=;
+     |SI FSalida ! 0;         || Si no existe aviso y no dejo pasar
+          |MENAV mensaje2;
+          |ERROR; |ACABA;
+     |SINO;                   || Si existe miro si esta cerrada o no
+          |SI #4#23 = "N"
+               |MENAV mensaje3;
+               |ERROR; |ACABA;
+          |FINSI;
+     |FINSI;
+     #0#1 = #4#24;     || Cargo la fecha
+
+   || Abro el cajon para que se pueda hacer el cierre
+
+     |HAZ Secuencias;
+     |HAZ AbreCajon;
+
+     |CIERRA #4;
+
+     aAlfa = #4#132;
+     |C_V #0#19, 1, aAlfa;
+     |C_V #0#20, 1, aAlfa;
+     |C_V #0#17, 1, aAlfa;
+     |C_V #0#18, 1, aAlfa;
+     |C_V #0#22, 1, aAlfa;
+     |C_V #0#24, 1, aAlfa;
+     |C_V #0#23, 1, aAlfa;
+     |C_V #0#16, 1, aAlfa;
+     |C_V #0#41, 1, aAlfa;
+     |PINPA #0#0;
+     |PINDA #0#0;
+|FPRC;
+
+||************ PROCESOS NUEVOS PARA EL TRATO DE LOS *************************
+||************ TICKETS EN NEGRO *********************************************
+||TONI COVERIN 20/07/99
+|| Proceso que lee el numero de tickets que hay que borrar de la
+|| serie de transicion
+
+|PROCESO LeeParam;
+     |ABRE #agifa517;
+     |LEE 020#agifa517.p;
+     |CIERRA #agifa517;
+     ntickborrados=#agifa517#21;
+     seriemala=#agifa517#22;
+|FPRC;
+
+|| Proceso que borra los tickets de la serie de transicion;
+
+
+|PROCESO borralin;
+          |SI i=ntickborrados;
+               |BORRA 020#agifa502.a;
+               i=1;
+          |SINO;
+               i=i+1;
+          |FINSI;
+|FPRC;
+
+|DEFBUCLE borralin;
+     #agifa502#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, borralin;
+|FIN;
+
+|PROCESO borracab;
+          |SI l=ntickborrados;
+               |BORRA 020#agifa501.a;
+               l=1;
+          |SINO;
+               l=l+1;
+          |FINSI;
+     |BUCLE borralin;
+|FPRC;
+
+|DEFBUCLE borra;
+     #agifa501#3;
+     ;
+     #0#1, "      ", " ", seriemala, 0;
+     #0#1, "zzzzzz", "z", seriemala, 999999;
+     be;
+     NULL, borracab;
+|FIN;
+
+|PROCESO borratickets;
+     i=1;
+     l=1;
+     |BUCLE borra;
+|FPRC;
+
+||Proceso contador para averiguar el ultimo numero de tiquet
+|PROCESO conta;
+     |HAZ leeserbu;
+     |ABRE #27;
+     #27#0=claveconta;
+     #27#2=seriemala;
+     |LEE 101#27=;
+          |SI FSalida=0;
+                cnumticket=#27#1;
+                #27#1= #27#1 + 1;
+                |GRABA 021#27a;
+          |SINO;
+                #27#0=claveconta;
+                #27#1=1;
+                #27#2=seriemala;
+                |GRABA 021#27b;
+          |FINSI;
+     |CIERRA #27;
+|FPRC;
+
+|| Procesos que eliminan la serie de transicion y la
+|| pasan a la serie de parametros de caja
+
+|PROCESO leeserbu; ||Leo la serie
+     |ABRET #agifa505;
+     #agifa505#0=#0#0;
+     |LEE 020#agifa505.=;
+     cser=#agifa505#89;
+     |LIBERA #agifa505;
+     |CIERRAT #agifa505;
+|FPRC;
+
+
+|PROCESO borracabecera; ||Grabo la serie de transicion en la serie buena
+     |HAZ conta;
+
+     #agifa501#58 = cnumticket;
+
+     |GRABA 020#agifa501.a;
+     |LIBERA #agifa501;
+|FPRC;
+/*
+|DEFBUCLE BTC;
+     #agifa501#3;
+     ;
+     #0#1, "      ", " ", seriemala, 0;
+     #0#1, "zzzzzz", "z", seriemala, 999999;
+     be;
+     NULL, borracabecera;
+|FIN;
+*/
+
+|DEFBUCLE BTC;
+     #agifa501#1;
+     14, 57;
+     "     ",       0, #0#1, seriemala;
+     "zzzzz",  999999, #0#1, seriemala;
+     be;
+     NULL, borracabecera;
+|FIN;
+
+|PROCESO Renumera;
+     |BUCLE BTC;
+|FPRC;
+
+|PROCESO negro;
+     fecha=~;
+     |HAZ LeeParam;
+     |QBF seriemala;
+     |SI seriemala ! "";
+          |HAZ borratickets;
+          |HAZ Renumera;
+     |FINSI;
+|FPRC;
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+|PROCESO Recalcula;
+     |AVISO;
+     |PUSHV 0501 2380;
+     |BLANCO 0915 1663;
+     |CUADRO 0915 1663;
+     |CUADRO 1016 1562;
+     |COLOR 7,4; |ATRI 0; |BLANCO 1017 1461; |ATRI 0;
+     |COLOR 4,7; |ATRI 0; |PINTA 1226,  " Chequeando integridad..."; |ATRI 0;
+     |COLOR 15,4; |ATRI 0; |PINTA 1443, "Espere un momento."; |ATRI 0;
+
+     |DFICE aAlfa;
+     aAlfa = aAlfa % -205;
+
+     eTienda = aAlfa;;
+     eCaja = #0#0;
+     eFecha = #0#1;
+     |SUB_EJECUTA_NP "agifa565;algo";
+     |POPV;
+|FPRC;

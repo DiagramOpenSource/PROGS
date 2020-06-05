@@ -1,0 +1,13 @@
+SeparaImporte,zdatoplb
+Tipo88,zdatoadi
+LeeLocalidad,zdatoadi
+LeePoblacion,zdatoadi
+LeeHacienda,zdatoadi
+LeePersona,zdatoadi
+PreparaInformes,zdatoadi
+SinBarra,zdatoadi
+SacaPantaEpi,zdatoadi
+ExisteEpi,zdatoadi
+BusquedaApli,zdatoadi
+CreaFicheroMoneda,zdatoadi
+CalculoDNI,dsaw9999

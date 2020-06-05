@@ -1,0 +1,586 @@
+|FICHEROS;
+     labere01;
+     labere02;
+     labempre;
+     labcentr;
+     labtraba;
+     nomhicca;
+
+     &regisnif@;
+|FIN;
+
+|VARIABLES;
+     nHandle              = 0;
+     nPausa               = 0;
+     nVeces               = 0;
+     nVentTrab            = 0;
+     nConta               = 0;
+     nDocumento           = 0;
+     nDocuAnterior        = 0;
+     nHoja                = 0;
+     nFila                = 0;
+     nCampo               = 0;
+     nNomMes              = 0;
+     nNomDia              = 0;
+     nMes                 = 0;
+     nAnyo                = 0;
+
+     aAlfa                = "";
+     aAbre                = "";
+     aIPRemoto            = "";
+     aBasePla             = "";
+     aDocServidor         = "";
+     aDocRemoto           = "";
+     aFicheroLCK          = "";
+     aFicheroIMA          = "";
+     aLetra               = "";
+     aNomMes              = "";
+     aNomDia              = "";
+
+     {-1}aVent            = "";
+         aVent1           = 0;
+         aVent2           = 0;
+         aVent3           = 0;
+         aVent4           = 0;
+         aVent5           = "";
+
+     {1}aContiene         = "";
+
+     &enHandleTxt         = 0;
+     &eaOrigen            = "";
+     &eaDestino           = "";
+     &eaParametro1        = "";
+     &eaParametro2        = "";
+     &eaParametro3        = "";
+     &eaParametro4        = "";
+     &eaParametro5        = "";
+     &eaDirSerPlan        = "";
+     &eaDirTrabajo        = "";
+     &eaFicheroTxt        = "";
+     &eaFicheroPla1       = "";
+     &eaFicheroPla2       = "";
+     &eaFicheroTra        = "";
+     &eaDirTrabServi      = "";
+     &eaUnidadBasico      = "";
+     &eaAlfa              = "";
+     &eaAsigna            = "";
+     &eaTipo              = "";
+     &eaCodNif            = "";
+|FIN;
+
+|PROCESO EnviaFicheroSinMD5;
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+     |SI aIPRemoto ! "";
+         |ENVIA_FICHERO eaOrigen, eaDestino;
+     |SINO;
+         |COPIA_FICHERO eaOrigen, eaDestino;
+     |FINSI;
+|FPRC;
+
+|PROCESO EnviaFicheroConMD5;
+     aContiene1 = eaDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = eaOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     |PULSATECLA;
+
+     |SI aDocRemoto ! aDocServidor;
+         |HAZ EnviaFicheroSinMD5;
+     |FINSI;
+|FPRC;
+
+|PROCESO EjecutaDSXML;
+     || eaParametro1 = Path y fichero exe
+     || eaParametro2 = Path y fichero txt
+     || eaParametro3 = Origen  del dsxml
+     || eaParametro4 = Destino 1 del dsxml
+     || eaParametro5 = Destino 2 del dsxml
+
+     |XABRE "EC", eaParametro2, nHandle;
+     |SI FSalida < 0;  |ACABA;  |FINSI;
+
+     aFicheroLCK  = eaParametro2 < "";
+     aFicheroLCK  = aFicheroLCK - ".txt" + ".lck";
+     aFicheroIMA  = eaParametro5 < "";
+     aFicheroIMA  = aFicheroIMA + "~$" + (eaFicheroTra % 315);  |QBF aFicheroIMA;
+
+     |SI eaParametro3 ! "";
+         eaOrigen       = eaParametro3 + "dsxml.exe";
+         eaDestino      = eaParametro4 + "dsxml.exe";
+         |HAZ EnviaFicheroConMD5;
+     |FINSI;
+
+     |RFBORRA aFicheroLCK;
+
+     aAlfa  = "cmd " + &34 + "/c START /WAIT " + eaParametro1 + " " + eaParametro2 + &34;
+     |RSYSTEM aAlfa;
+
+     |PARA;  |SI;  |HACIENDO;
+             |PARA nPausa = 1; |SI nPausa [ 10000; |HACIENDO nPausa = nPausa + 1;
+             |SIGUE;
+
+             |XABRE "EC", aFicheroLCK, nHandle;
+             |SI FSalida ] 0;
+                 |SAL;
+             |FINSI;
+
+             |PULSATECLA;
+     |SIGUE;
+
+     |PARA nVeces = 0;  |SI nVeces [ 20;  |HACIENDO nVeces = nVeces + 1;
+             |XABRE "EC", aFicheroIMA, nHandle;
+             |SI FSalida < 0;  |SAL;  |FINSI;
+
+             |MENSA "0000 Esperando cierre del documento.";
+             |SLEEP 1;
+             |PULSATECLA;
+     |SIGUE;
+
+     |RFBORRA eaParametro2;
+     |RFBORRA aFicheroLCK;
+
+     |PULSATECLA;
+     |MENSA "0000  ";
+|FPRC;
+
+|PROCESO AbreWordExterno;
+     eaParametro1 = eaDirTrabajo + "dsxml";
+     eaParametro2 = eaDirTrabajo + eaFicheroTxt;
+     eaParametro3 = aBasePla + "ejecutables/";
+     eaParametro4 = eaDirTrabajo;
+     eaParametro5 = eaDirTrabajo;
+
+     |HAZ EjecutaDSXML;
+|FPRC;
+
+|PROCESO AsignaWord;
+     aAlfa = eaAsigna % 101;
+     |SI aAlfa ! "V";  |Y aAlfa ! "M";
+      |Y aAlfa ! "I";  |Y aAlfa ! "T";
+      |Y aAlfa ! "X";  |Y aAlfa ! "Y";
+         |ACABA;
+     |FINSI;
+
+     |QBF eaAlfa;
+
+     aAlfa = (eaAsigna % 101) + &13 + &10;  |XGRABA enHandleTxt, aAlfa;
+     aAlfa = (eaAsigna % 290) + &13 + &10;  |XGRABA enHandleTxt, aAlfa;
+     aAlfa = eaAlfa + &13 + &10;            |XGRABA enHandleTxt, aAlfa;
+|FPRC;
+
+|PROCESO CierraYAbreWord;
+     |XCIERRA enHandleTxt;
+
+     eaOrigen       = eaDirTrabServi + eaFicheroTxt;
+     eaDestino      = eaDirTrabajo   + eaFicheroTxt;
+     |HAZ EnviaFicheroSinMD5;
+     |FBORRA eaOrigen;
+
+     eaParametro1 = eaDirTrabajo + "dsxml";
+     eaParametro2 = eaDirTrabajo + eaFicheroTxt;
+     eaParametro3 = aBasePla + "ejecutables/";
+     eaParametro4 = eaDirTrabajo;
+     eaParametro5 = eaDirTrabajo;
+
+     |HAZ EjecutaDSXML;
+
+     aAbre = eaDirTrabServi + eaFicheroTxt;
+     |XABRE "WB", aAbre, enHandleTxt;
+
+     aAlfa = "[FICHERO]#" + eaDirTrabajo + eaFicheroTra + &13 + &10;
+     |XGRABA enHandleTxt, aAlfa;
+|FPRC;
+
+|PROCESO labere02I;
+     #labtraba#0 = #labere02#0;
+     #labtraba#1 = #labere02#2;
+     |LEE 000#labtraba.=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     aAlfa = #labere01#1 % 402;  nMes  = aAlfa;
+     aAlfa = #labere01#1 % 902;  nAnyo = aAlfa;
+
+     nNomDia = 0;
+     nNomMes = 0;
+
+     #nomhicca#0  = #labere02#0;
+     #nomhicca#1  = #labere02#2;
+     #nomhicca#66 = nAnyo;
+     #nomhicca#2  = nMes;
+     #nomhicca#3  = 0;
+     |LEE 000#nomhicca.];
+     |SI FSalida = 0;
+         |PARA;  |SI FSalida = 0;  |HACIENDO;
+             |SI #nomhicca#0  = #labere02#0;  |Y #nomhicca#1  = #labere02#2;
+              |Y #nomhicca#3  = 0;
+                 nNomMes = #nomhicca#38 + #nomhicca#39;
+                 nNomDia = (nNomMes / #nomhicca#8) ! 2;
+
+                 |SAL;
+             |FINSI;
+
+             |SI #nomhicca#0 ! #labere02#0;  |SAL;  |FINSI;
+
+             |LEE 000#nomhicca.a;
+         |SIGUE;
+     |FINSI;
+
+     aNomDia = "";
+     aNomMes = "";
+
+     |SI #labtraba#42 = "D";  |O #labtraba#42 = "T";
+         aNomDia = nNomDia;
+     |SINO;
+         aNomMes = nNomMes;
+     |FINSI;
+
+     eaCodNif = #labere02#3;
+     |HAZ LeeNifs;
+
+     nConta = nConta + 1;
+     nFila  = nFila + 1;
+
+     |SI nConta = 3;
+         nDocumento = nDocumento + 1;
+     |FINSI;
+
+     |SI nFila = 5;
+         nDocumento = nDocumento + 1;
+     |FINSI;
+
+     |SI nDocuAnterior ! nDocumento;
+         |HAZ CierraYAbreWord;
+
+         eaOrigen       = eaDirSerPlan + eaFicheroPla2;
+         eaDestino      = eaDirTrabajo + eaFicheroPla2;
+         |HAZ EnviaFicheroConMD5;
+
+         aAlfa = "M" + &13 + &10;                          |XGRABA enHandleTxt, aAlfa;
+         aAlfa = "<<PEGAR>>" + &13 + &10;                  |XGRABA enHandleTxt, aAlfa;
+         aAlfa = eaDirTrabajo + eaFicheroPla2 + &13 + &10; |XGRABA enHandleTxt, aAlfa;
+
+         nHoja    = nDocumento + 1;
+         eaAsigna = "V#D#";  eaAlfa   = nHoja;  |HAZ AsignaWord;
+
+         |HAZ CierraYAbreWord;
+
+         nFila      = 1;
+     |FINSI;
+
+     nDocuAnterior = nDocumento;
+
+     |SI nFila = 1;  aLetra = "C";  |FINSI;
+     |SI nFila = 2;  aLetra = "D";  |FINSI;
+     |SI nFila = 3;  aLetra = "E";  |FINSI;
+     |SI nFila = 4;  aLetra = "F";  |FINSI;
+
+     eaAsigna = "V#" + aLetra + "1#";  eaAlfa   = #labtraba#7;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "2#";  eaAlfa   = #labtraba#2;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "3#";  eaAlfa   = #labtraba#11;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "4#";  eaAlfa   = #labtraba#75;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "5#";  eaAlfa   = #labtraba#34;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "6#";  eaAlfa   = #labtraba#238; |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "7#";  eaAlfa   = #labtraba#19;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "8#";  eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "9#";  eaAlfa   = #labtraba#18;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "10#"; eaAlfa   = aNomDia;                         |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "11#"; eaAlfa   = aNomMes;                         |HAZ AsignaWord;
+     eaAsigna = "V#" + aLetra + "12#"; eaAlfa   = "";                              |HAZ AsignaWord;
+
+     aAlfa = #regisnif@#9 + #regisnif@#10;  |QBF aAlfa;
+     |SI aAlfa = "";
+         eaAsigna = "V#" + aLetra + "13#"; eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "16#"; eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "17#"; eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "19#"; eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "21#"; eaAlfa   = "";                              |HAZ AsignaWord;
+
+         eaAsigna = "V#" + aLetra + "14#";  eaAlfa   = #labtraba#3;   |HAZ QuitaRaros; |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "15#";  eaAlfa   = #labtraba#4;   |HAZ QuitaRaros; |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "18#";  eaAlfa   = #labtraba#5;   |HAZ QuitaRaros; |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "20#";  eaAlfa   = #labtraba#244; |HAZ QuitaRaros; |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "22#";  eaAlfa   = #labtraba#6;   |HAZ QuitaRaros; |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "23#";  eaAlfa   = #labtraba#10;  |HAZ QuitaRaros; |HAZ AsignaWord;
+
+         eaAlfa   = (("00" + #labtraba#8) % -102) + (("000" + #labtraba#9) % -103);
+         eaAsigna = "V#" + aLetra + "24#";                                             |HAZ AsignaWord;
+     |SINO;
+         eaAsigna = "V#" + aLetra + "13#"; eaAlfa = #regisnif@#9;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "14#"; eaAlfa = #regisnif@#2;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "15#"; eaAlfa = #regisnif@#3;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "16#"; eaAlfa   = "";                            |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "17#"; eaAlfa = #regisnif@#16; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "18#"; eaAlfa = #regisnif@#10; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "19#"; eaAlfa = #regisnif@#11; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "20#"; eaAlfa = #regisnif@#8;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "21#"; eaAlfa = #regisnif@#17; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "22#"; eaAlfa = #regisnif@#6;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#" + aLetra + "23#"; eaAlfa = #regisnif@#7;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+
+         eaAlfa   = (("00" + #regisnif@#4) % -102) + (("000" + #regisnif@#5) % -103);
+         eaAsigna = "V#" + aLetra + "24#";                                             |HAZ AsignaWord;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE labere02I;
+     #labere02#2;
+     ;
+     #labere01#0, #labere01#1, eaTipo, 00001;
+     #labere01#0, #labere01#1, eaTipo, 99999;
+     ;
+     NULL, labere02I;
+|FIN;
+
+|PROCESO CargaDatosTrabajadores;
+     nConta        = 0;
+     nDocumento    = 0;
+     nDocuAnterior = 0;
+     nFila         = 0;
+
+     |ABRE #labtraba;
+     |ABRE #nomhicca;
+     |BUCLE labere02I;
+     |CIERRA #labtraba;
+     |CIERRA #nomhicca;
+
+     nFila = nFila + 1;
+
+                     aLetra = "";
+     |SI nFila = 1;  aLetra = "C";  |FINSI;
+     |SI nFila = 2;  aLetra = "D";  |FINSI;
+     |SI nFila = 3;  aLetra = "E";  |FINSI;
+     |SI nFila = 4;  aLetra = "F";  |FINSI;
+
+     |SI aLetra ! "";
+         |PARA;  |SI nFila [ 4;  |HACIENDO nFila = nFila + 1;
+              |SI nFila = 2;  aLetra = "D";  |FINSI;
+              |SI nFila = 3;  aLetra = "E";  |FINSI;
+              |SI nFila = 4;  aLetra = "F";  |FINSI;
+
+              eaAlfa = "";
+              |PARA nCampo = 1;  |SI nCampo [ 24;  |HACIENDO nCampo = nCampo + 1;
+                    eaAsigna = "V#" + aLetra + nCampo + "#";  |HAZ AsignaWord;
+              |SIGUE;
+         |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO CargaDatosEmpresa;
+     |ABRE #labempre;
+     #labempre#0 = #labere01#0;
+     |LEE 000#labempre.=;
+     |SI FSalida ! 0;  |DDEFECTO #labempre;  |FINSI;
+     |CIERRA #labempre;
+
+     eaCodNif = #labempre#10;
+     |HAZ LeeNifs;
+
+     eaAsigna = "V#A1#";  eaAlfa   = #labempre#10;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#A2#";  eaAlfa   = #labempre#2;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#A3#";  eaAlfa   = #labempre#12;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#A4#";  eaAlfa   = #labempre#13;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#A5#";  eaAlfa   = "";                              |HAZ AsignaWord;
+
+     aAlfa = #regisnif@#9 + #regisnif@#10;  |QBF aAlfa;
+     |SI aAlfa = "";
+         eaAsigna = "V#A6#";  eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#A7#";  eaAlfa   = #labempre#3;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A8#";  eaAlfa   = #labempre#4;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A9#";  eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#A10#"; eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#A11#"; eaAlfa   = #labempre#5;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A12#"; eaAlfa   = "";                              |HAZ AsignaWord;
+         eaAsigna = "V#A13#"; eaAlfa   = #labempre#111; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A14#"; eaAlfa   = #labempre#112; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A15#"; eaAlfa   = #labempre#6;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A16#"; eaAlfa   = #labempre#9;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+
+         eaAlfa   = (("00" + #labempre#7) % -102) + (("000" + #labempre#8) % -103);
+         eaAsigna = "V#A17#";                                             |HAZ AsignaWord;
+     |SINO;
+         eaAsigna = "V#A6#";  eaAlfa = #regisnif@#9;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A7#";  eaAlfa = #regisnif@#2;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A8#";  eaAlfa = #regisnif@#3;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A9#";  eaAlfa = "";                             |HAZ AsignaWord;
+         eaAsigna = "V#A10#"; eaAlfa = #regisnif@#16; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A11#"; eaAlfa = #regisnif@#10; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A12#"; eaAlfa = #regisnif@#11; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A13#"; eaAlfa = #regisnif@#8;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A14#"; eaAlfa = #regisnif@#17; |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A15#"; eaAlfa = #regisnif@#6;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+         eaAsigna = "V#A16#"; eaAlfa = #regisnif@#7;  |HAZ QuitaRaros;  |HAZ AsignaWord;
+
+         eaAlfa   = (("00" + #regisnif@#4) % -102) + (("000" + #regisnif@#5) % -103);
+         eaAsigna = "V#A17#";                                             |HAZ AsignaWord;
+     |FINSI;
+|FPRC;
+
+|PROCESO CargaDatosCentro;
+     |ABRE #labcentr;
+     #labcentr#0 = #labere01#0;
+     #labcentr#1 = 1;
+     |LEE 000#labcentr.=;
+     |SI FSalida ! 0;  |DDEFECTO #labcentr;  |FINSI;
+     |CIERRA #labcentr;
+
+     eaAsigna = "V#B1#";  eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#B2#";  eaAlfa   = #labcentr#2;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#B3#";  eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#B4#";  eaAlfa   = #labcentr#3;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#B5#";  eaAlfa   = #labcentr#4;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#B6#";  eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#B7#";  eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#B8#";  eaAlfa   = #labcentr#5;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#B9#";  eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#B10#"; eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#B11#"; eaAlfa   = "";                              |HAZ AsignaWord;
+     eaAsigna = "V#B12#"; eaAlfa   = #labcentr#6;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+     eaAsigna = "V#B13#"; eaAlfa   = #labcentr#9;   |HAZ QuitaRaros;  |HAZ AsignaWord;
+
+     eaAlfa   = (("00" + #labcentr#7) % -102) + (("000" + #labcentr#8) % -103);
+     eaAsigna = "V#B14#";                                             |HAZ AsignaWord;
+|FPRC;
+
+|PROCESO BtnEmitir;
+     |DBASE aBasePla;  |QBF aBasePla;
+
+     |SI eaUnidadBasico = "";  |HAZ LeeUnidadBasico;  |FINSI;
+
+     aAlfa          = eaUnidadBasico  + "\DOCUMENTOS";       |RMKDIR aAlfa;
+     aAlfa          = aAlfa + "\LABORAL";                    |RMKDIR aAlfa;
+     aAlfa          = aAlfa + "\" + Usuario; |QBF aAlfa;     |RMKDIR aAlfa;
+     aAlfa          = aAlfa + "\";
+
+     eaDirSerPlan   = aBasePla + "documentos/";
+     eaDirTrabajo   = aAlfa;
+     eaFicheroTxt   = "emite.txt";
+     eaFicheroPla1  = "ere00001.xml";
+     eaFicheroPla2  = "ere00002.xml";
+     eaFicheroTra   = "anexo1.xml";
+
+     eaDirTrabServi = aBasePla  + "tmp";             |MKDIR eaDirTrabServi;
+     eaDirTrabServi = aBasePla  + "tmp/" + Usuario;  |QBF eaDirTrabServi;
+     |MKDIR eaDirTrabServi;
+
+     eaDirTrabServi = eaDirTrabServi + "/";
+
+     eaOrigen       = eaDirSerPlan + eaFicheroPla1;
+     eaDestino      = eaDirTrabajo + eaFicheroPla1;
+
+     |HAZ EnviaFicheroSinMD5;
+
+     aAlfa = eaDirTrabajo + eaFicheroPla1;
+     |XABRE "EC", aAlfa, nHandle;
+     |SI FSalida < 0;
+         |ACABA;
+     |FINSI;
+
+     |VENTANA 1610, 1780, -1, 16, "Creando documento";
+     nVentTrab = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentTrab;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PTEC 802; |PAUSA;
+
+     |MENAV "0000Se va a emitir el ejemplar para la ADMINISTRACION.";
+
+     aAbre = eaDirTrabServi + eaFicheroTxt;
+     |XABRE "WB", aAbre, enHandleTxt;
+
+     aAlfa = "[FICHERO]#" + eaDirTrabajo + eaFicheroPla1 + "#" + eaDirTrabajo + eaFicheroTra + &13 + &10;
+     |XGRABA enHandleTxt, aAlfa;
+
+     |HAZ CargaDatosEmpresa;
+     |HAZ CargaDatosCentro;
+     |HAZ CargaDatosTrabajadores;
+
+     |SI eaTipo = "1";
+         eaAlfa   = "AFECTATS";
+         eaAsigna = "V#TIPOV#";  |HAZ AsignaWord;
+
+         eaAlfa   = "AFECTADOS";
+         eaAsigna = "V#TIPOC#";  |HAZ AsignaWord;
+     |FINSI;
+
+     |SI eaTipo = "2";
+         eaAlfa   = "NO AFECTATS";
+         eaAsigna = "V#TIPOV#";  |HAZ AsignaWord;
+
+         eaAlfa   = "NO AFECTADOS";
+         eaAsigna = "V#TIPOC#";  |HAZ AsignaWord;
+     |FINSI;
+
+     eaAlfa   = "";
+     eaAsigna = "V<<PEGAR>>";  |HAZ AsignaWord;
+
+     aAlfa = "[LIMPIA FINAL]" + &13 + &10;
+     |XGRABA enHandleTxt, aAlfa;
+
+     aAlfa = "[IMPRESORA]#P" + &13 + &10;
+     |XGRABA enHandleTxt, aAlfa;
+
+     |XCIERRA enHandleTxt;
+
+     eaOrigen       = eaDirTrabServi + eaFicheroTxt;
+     eaDestino      = eaDirTrabajo   + eaFicheroTxt;
+     |HAZ EnviaFicheroSinMD5;
+
+     |FBORRA eaOrigen;
+
+     |HAZ AbreWordExterno;
+
+     |MENAV "0000Se va a emitir el ejemplar para el PRESENTADOR";
+
+     aAbre = eaDirTrabServi + eaFicheroTxt;
+     |XABRE "WB", aAbre, enHandleTxt;
+
+     aAlfa = "[FICHERO]#" + eaDirTrabajo + eaFicheroTra + &13 + &10;
+     |XGRABA enHandleTxt, aAlfa;
+
+     eaAsigna = "XEXEMPLAR PER A L'ADMINISTRACIO / EJEMPLAR PARA LA ADMINISTRACION";
+     eaAlfa   = "EXEMPLAR PER AL PRESENTADOR / EJEMPLAR PARA EL PRESENTADOR";
+     |HAZ AsignaWord;
+
+     aAlfa = "[IMPRESORA]#P" + &13 + &10;
+     |XGRABA enHandleTxt, aAlfa;
+
+     |XCIERRA enHandleTxt;
+
+     eaOrigen       = eaDirTrabServi + eaFicheroTxt;
+     eaDestino      = eaDirTrabajo   + eaFicheroTxt;
+     |HAZ EnviaFicheroSinMD5;
+
+     |FBORRA eaOrigen;
+
+     |HAZ AbreWordExterno;
+
+     eaDestino = eaDirTrabajo + eaFicheroTra;
+     |RFBORRA eaDestino;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentTrab;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |FINVENTANA nVentTrab;
+
+     |SELECT #2#labere02;
+     #labere02#0 = #labere01#0;
+     #labere02#1 = #labere01#1;
+     #labere02#5 = eaTipo;
+     #labere02#6 = 1;
+     |LEE 000#labere02.];
+
+     |PULSATECLA;
+|FPRC;

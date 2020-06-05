@@ -1,0 +1,312 @@
+|FICHEROS;
+    calincob #0;
+    caconcyp #1;
+    caclipro #2;
+    caforpag #3;
+    caforopc #4;    || pantalla vencimiento opcional
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    cod_emp1 = "";
+    cod_emp2 = "";
+    clave1 = "";
+    clave2 = "";
+    cod1 = 0;
+    cod2 = 0;
+    empresa = "";
+    dir_fich = "";
+    dig4 = 0;
+    dig5 = 0;
+    dig6 = 0;
+    dig7 = 0;
+    dig8 = 0;
+    dig9 = 0;
+
+    long = 0;
+    sw = 0;
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    alfa1 = "";
+    alfa2 = "";
+
+    nUltim = 0;
+    nTotal = 0;
+    &enSwPase = 0;
+    &pesetas = 0;
+    &cuenta = "";
+    &digito = 0;
+    &libro = 0;
+    &orden = 0;
+    &serie = "";
+    &emision = "";
+    &repres = "";
+    recibo = 0;
+    fectra1 = @;
+    fectra2 = @;
+    fectra3 = @;
+    fectra4 = @;
+    sw_alguno = 0;
+    ptasrec1 = 0;
+    ptasrec2 = 0;
+    xx = 0;
+
+ &EURO = 1;
+ &EURODB = 0;
+ &EURODV = 0;
+ &EUROTEXTO = "Cambio de Moneda";
+ &swOperacion = 0;  || 0 = Lectura / 1 = Alta
+ &enEmpresa = 0;
+ &enPeriodo = 0;
+ &eaMoneda  = "";
+|FIN;
+
+|PROCESO comprueba;
+   sw_alguno = 1;
+   |HAZ carga_cli;
+   |GRABA 020#0a;
+   |LIBERA #0;
+   nTotal = (nTotal + #0#8)  ! EURODB;
+   nUltim = #0#3;
+|FPRC;
+
+|DEFBUCLE calincob0;
+   #0#1;
+   ;
+   libro, serie, orden,   1;
+   libro, serie, orden, 999;
+   be;
+   NULL, comprueba;
+|FIN;
+
+|PROGRAMA;
+
+ nTotal = 0;
+ nUltim = 0;
+ |HAZ cliente;
+ sw_alguno = 0;
+ |BUCLE calincob0;
+ |SI sw_alguno = 0;
+     |HAZ pide_pago;
+     |HAZ f_pago;
+     |SI #1#1 = "S";
+         |HAZ carga;
+         |SI enSwPase = 0;
+             |ENTLINEAL #1#0, -4, 2, 21, 1, min, max;
+         |FINSI;
+     |FINSI;
+ |SINO;
+     |SI enSwPase = 0;
+         |SI nTotal ! pesetas;
+             |CONFI "    SAtencion!. Importe Recibos diferente al Total Factura, Modificar Cobros ?";
+             |SI FSalida = 0;
+                 |HAZ ModificoCobro;
+             |FINSI;
+         |FINSI;
+         |ENTLINEAL #1#0, -4, 2, 21, 1, min, max;
+     |FINSI;
+ |FINSI;
+|FPRO;
+
+|PROCESO ModificoCobro;
+  |ABRE #0;
+  #0#0 = libro;
+  #0#2 = serie;
+  #0#1 = orden;
+  #0#3 = nUltim;
+  |LEE 101#0=;
+  |SI FSalida = 0;
+      #0#8 = #0#8 + (pesetas - nTotal);
+      |SI #0#24 = 0;
+          #0#26 = #0#8;
+      |FINSI;
+      |GRABA 020#0a;
+  |FINSI;
+  |LIBERA #0;
+  |CIERRA #0;
+|FPRC;
+
+|PROCESO min;
+    #0#0 = libro;
+    #0#1 = orden;
+    #0#2 = serie;
+    #0#3 = 1;
+|FPRC;
+
+|PROCESO max;
+    #0#0 = libro;
+    #0#1 = orden;
+    #0#2 = serie;
+    #0#3 = 999;
+|FPRC;
+
+|PROCESO carga;
+  |ABRE #0;
+  recibo = 0;
+  |SI EURODB = 2; pesetas = (pesetas * 100) ! 0; |FINSI;
+  |HAZ importe;
+  |SI EURODB = 2; ptasrec1 = ptasrec1 / 100; ptasrec2 = ptasrec2 / 100; |FINSI;
+  |SI #1#2 ! 0;            || numero de vencimientos
+        fectra1 = emision;
+
+        fectra1 = fectra1 + #1#3;       || primer vencimiento
+        recibo = recibo + 1;
+        |HAZ graba;
+
+        recibo = recibo + 1;
+        |PARA nume1 = recibo; |SI nume1 [ #1#2; |HACIENDO nume1 = nume1 + 1;
+              fectra1 = fectra1 + #1#4;
+              recibo = nume1;
+             |HAZ graba;                     || incremento vencimientos
+        |SIGUE;
+   |FINSI;
+   |CIERRA #0;
+|FPRC;
+
+|PROCESO importe;
+    |SI #1#2 = 1;
+        ptasrec1 = 0;
+        ptasrec2 = pesetas;
+    |SINO;
+        ptasrec1 = ((pesetas / #1#2) - .5) ! 0;   || todos vto.menos ultimo
+        nume2 = ptasrec1 * (#1#2 - 1);
+        ptasrec2 = pesetas - nume2;               || ultimo vto.
+    |FINSI;
+|FPRC;
+
+|PROCESO graba;
+    #0#0 = libro;
+    #0#1 = orden;
+    #0#2 = serie;
+    #0#3 = recibo;
+    #0#4 = cuenta;
+    #0#5 = digito;
+    #0#6 = emision; || emision
+    #0#7 = fectra1; || vto.
+|SI recibo ! #1#2;
+        #0#8 = ptasrec1;  || anteriores al ultimo
+|SINO;
+        #0#8 = ptasrec2;  || utlimo recibo
+|FINSI;
+    #0#9 = 0;       || gastos negociacion
+    #0#10 = 0;      || gastos impagados
+    #0#11 = #1#5;   || tipo recibo
+    #0#12 = 0;      || nro. remesa
+    #0#13 = "N";    || emision documento
+    #0#14 = #0#7;   || vto. original
+    #0#15 = #2#13;  || banco
+    #0#16 = #2#14;  || direccion
+    #0#17 = #2#15;  || cod.postal 1
+    #0#18 = #2#16;  || cod.postal 2
+    #0#19 = #2#17;  || cta.cte.
+    #0#20 = #2#18;  || ccc
+    #0#21 = #2#19;  || poblacion
+    #0#22 = "";     || observaciones
+    #0#23 = "N";    || liquidado NO
+    #0#24 = 0;      || ptas. liquidadas
+    #0#25 = "N";    || exportado NO
+    #0#26 = #0#8;   || importe original
+    #0#27 = 0;      || nro. impagados
+    #0#28 = repres;
+|SI #0#8 ! 0;
+    |GRABA 020#0n;
+|FINSI;
+|FPRC;
+
+|PROCESO ayudita; |TIPO 0;
+    xx = (FEntrada / 100) ! 0;
+|SI xx = 1;
+        #0#6 = emision;            || emision
+        fectra1 = fectra1 + #1#4;  || cuenta un vencimiento mas
+        #0#7 = fectra1;            || vto.
+    |PINTA #0#6;
+    |PINTA #0#7;
+|FINSI;
+|FPRC;
+
+|PROCESO manuales; |TIPO 2;
+   |SI #calincob#24 ! 0;
+      |MENAV "    Vencimiento con cobros realizados. No se puede modificar";
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   xx = (FEntrada / 100) ! 0;
+   |SI xx = 1;
+       |HAZ carga_cli;
+   |FINSI;
+|FPRC;
+
+|PROCESO carga_cli;
+    #0#4 = cuenta;
+    #0#5 = digito;
+||    #0#11 = #1#5;   || tipo recibo
+||    #0#12 = 0;      || nro. remesa
+||    #0#13 = "N";    || emision documento
+    #0#14 = #0#7;   || vto. original
+    #0#15 = #2#13;  || banco
+    #0#16 = #2#14;  || direccion
+    #0#17 = #2#15;  || cod.postal 1
+    #0#18 = #2#16;  || cod.postal 2
+    #0#19 = #2#17;  || cta.cte.
+    #0#20 = #2#18;  || ccc
+    #0#21 = #2#19;  || poblacion
+    fectra1 = #0#7; || guarda ultima fecha de vto.
+|FPRC;
+
+____________________________________/ LECTURAS
+|PROCESO cliente;
+  |DDEFECTO #2;
+  |ABRE #2;
+  #2#23 = "C";
+  #2#10 = cuenta;      || cuenta
+  #2#11 = digito;      || digito
+  |LEE 001#2=;
+  |CIERRA #2;
+|FPRC;
+
+|PROCESO f_pago;
+  |DDEFECTO #3;
+  |ABRE #3;
+  #3#0 = #4#0;
+  |LEE 001#3=;
+  |SI FSalida ! 0;|O #3#0 = 0;
+       |SI #3#0 ! 0;
+           |MENAV "    ATENCION!!! Codigo de Vencimiento inexistente ...";
+       |FINSI;
+       |HAZ defecto;
+  |SINO;
+        #1#1 = "S";
+        #1#2 = #3#2;
+        #1#3 = #3#3;          || carga los campos de la ficha vencimientos
+        #1#4 = #3#4;
+        #1#5 = #3#5;
+  |FINSI;
+  |CIERRA #3;
+|FPRC;
+
+|PROCESO defecto;
+|DDEFECTO #1;
+|ABRE #1;
+|LEE 000#1p;  || lee el control
+|SI FSalida ! 0;
+    |MENAV "    ATENCION!!! Vencimientos por defecto sin definir ...";
+|FINSI;
+|CIERRA #1;
+|FPRC;
+
+|PROCESO pide_pago;
+    #4#0 = #2#20;
+|SI #4#0 ! 0;
+    |PUSHV 05012380;
+    ||DDEFECTO #4;
+    |PINPA #0#4;
+    |PINDA #0#4;
+    |ENDATOS #1#4;
+    |SI FSalida ! 0;
+            #4#0 = 0;
+    |FINSI;
+    |POPV;
+|FINSI;
+|FPRC;

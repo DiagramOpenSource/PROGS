@@ -1,0 +1,340 @@
+|FICHEROS;
+     reoz0002 #0;
+     eosm0023 #1;
+     eosm0024 #2;
+     reow0001 #99;
+|FIN;
+
+|VARIABLES;
+     nCampos       = 0;
+     nSwCalc       = 0;
+     nSwError      = 0;
+     nSwPinta      = 0;
+     fFecha        = @;
+     aAlfa         = "";
+     aFichero      = "";
+     nMaximo       = 0;
+
+     &EURODB       = 0;
+     &nAmort       = 0;
+     &nVAnyo       = 0;
+     &nCAnyo       = 0;
+     &nPendiente   = 0;
+     &nTCompra     = 0;
+     &nPorceA      = 0;
+     &nPorceD      = 0;
+     &nImport      = 0;
+     &nTipoMod     = 0;
+
+     &fFechaUso    = @;
+     &fFechaCompra = @;
+     &fFechaVenta  = @;
+     &fPriCompra   = @;
+     &fFinCompra   = @;
+     &fPriVenta    = @;
+     &fFinVenta    = @;
+
+     &enSwLin      = 0;
+|FIN;
+
+|INCLUYE i_consul;
+
+|PROCESO Mayus;
+     #0Campo = #0Campo > #0Campo;
+     |PINTA #0Campo;
+|FPRC;
+
+|PROCESO Parrilla;
+     |SI #0#0 = "N";
+         |PARA nCampos = 3; |SI nCampos [ 26; |HACIENDO nCampos = nCampos + 1;
+               |C_M #0nCampos, 1, "N";
+               #0nCampos = 0;
+               |PINTA #0nCampos;
+         |SIGUE;
+         |C_M #0#1, 1, "S";
+         |C_M #0#2, 1, "S";
+     |SINO;
+         #0#1  = 00001; |PINTA #0#1;  |C_M #0#1, 1, "N";
+         #0#2  = 99999; |PINTA #0#2;  |C_M #0#2, 1, "N";
+
+         |PARA nCampos = 3; |SI nCampos [ 26; |HACIENDO nCampos = nCampos + 1;
+               |C_M #0nCampos, 1, "S";
+         |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO AnyoAmortiza;  |TIPO 7;
+     fFecha = ~;
+     aAlfa  = fFecha % -104;
+     #0#31  = aAlfa;
+     |PINTA #0#31;
+|FPRC;
+
+|PROCESO Graba99;
+     #99#0 = #1#0;
+     #99#1 = #1#1;
+     #99#2 = #1#4;
+     |LEE 101#99=;
+     |SI FSalida ! 0;
+         |DDEFECTO #99;
+         #99#0 = #1#0;
+         #99#1 = #1#1;
+         #99#2 = #1#4;
+         |GRABA 040#99b;
+     |FINSI;
+
+     #99#3 = #99#3 + #2#5;
+     |GRABA 020#99a;
+     |LIBERA #99;
+     nSwCalc = 1;
+|FPRC;
+
+|PROCESO GrabaLinea;
+     |SI nImport = 0;  |ACABA;  |FINSI;
+
+     #2#0 = #1#0;
+     #2#1 = #1#1;
+     #2#2 = #1#2;
+     #2#3 = #0#31;
+     |LIBERA #2;
+     |LEE 140#2=;
+     |SI FSalida = 0;
+         #1#22 = #1#22 + #2#5;
+         #1#21 = #1#21 - #2#5;
+
+         #2#5  = nImport;
+         #2#6  = "N";
+
+         |SI nAmort = nVAnyo;
+             #1#22 = 0;
+         |SINO;
+             #1#22 = #1#22 - #2#5;
+         |FINSI;
+
+         #1#21 = #1#21 + #2#5;
+         #1#23 = #2#3;
+
+         |GRABA 120#2a;
+         |HAZ Graba99;
+    |SINO;
+         #2#4 = "A¥O : " + #2#3;
+         #2#5 = nImport;
+         #2#6  = "N";
+
+         |SI nAmort = nVAnyo;
+             #1#22 = 0;
+         |SINO;
+             #1#22 = #1#22 - #2#5;
+         |FINSI;
+
+         #1#21 = #1#21 + #2#5;
+         #1#23 = #2#3;
+
+         |GRABA 120#2n;
+         |HAZ Graba99;
+     |FINSI;
+     |GRABA 120#1a;
+|FPRC;
+
+|| ///////////////////////////////////
+|PROCESO VuelvoACal;
+     #1#22 = #1#22 - #2#5;
+     #1#21 = #1#21 + #2#5;
+     #1#23 = #2#3;
+|FPRC;
+
+|DEFBUCLE VuelvoACal;
+     #2#1;
+     ;
+     #1#0, #1#1, #1#2, 0000;
+     #1#0, #1#1, #1#2, 9999;
+     ;
+     NULL, VuelvoACal;
+|FIN;
+|| ******************************
+
+|PROCESO Calculo;
+
+     nImport     = 0;
+     fFechaUso   = #1#13;
+     fFechaVenta = #1#17;
+     nTCompra    = #1#16;
+     |SI #1#6 = "B";  nTCompra = #1#14;  |FINSI;
+     nPorceA     = #1#25;
+     nPorceD     = #1#8;
+     nTipoMod    = #1#4;
+
+     #1#21 = 0;
+     #1#22 = nTCompra;
+     |BUCLE VuelvoACal;
+
+     aAlfa  = "31.12." + (fFechaUso % -104);     fFinCompra = aAlfa;
+     aAlfa  = "01.01." + (fFechaUso % -104);     fPriCompra = aAlfa;
+
+     aAlfa  = fFechaUso   % -104;                nCAnyo    = aAlfa;
+     aAlfa  = fFechaVenta % -104;                nVAnyo    = aAlfa;
+     aAlfa  = "01.01." + (fFechaVenta % -104);   fPriVenta = aAlfa;
+     aAlfa  = "31.12." + (fFechaVenta % -104);   fFinVenta = aAlfa;
+     |SI fPriVenta < fFechaUso;                  fPriVenta = fFechaUso;  |FINSI;
+
+     nAmort  = #0#31;
+
+     |SI nCAnyo > nAmort;                  |ACABA;  |FINSI;
+     |SI nAmort > nVAnyo;  |Y nVAnyo ! 0;  |ACABA;  |FINSI;
+     |SI #1#22 = 0; |Y #1#23 ! nAmort;     |ACABA;  |FINSI;
+
+     #2#0 = #1#0;
+     #2#1 = #1#1;
+     #2#2 = #1#2;
+     #2#3 = #0#31;
+     |LIBERA #2;
+     |LEE 040#2=;
+     |SI FSalida ! 0;
+         |DDEFECTO #2;
+         #2#0 = #1#0;
+         #2#1 = #1#1;
+         #2#2 = #1#2;
+         #2#3 = #0#31;
+     |FINSI;
+
+     nPendiente = #1#22;
+     |SI #1#23 = #2#3;
+         nPendiente = #1#22 + #2#5;
+     |FINSI;
+
+     |HAZ Amortizamelo;
+
+     |HAZ GrabaLinea;
+|FPRC;
+
+|DEFBUCLE eosm0023;
+     #1#1;
+     ;
+     #0#1, #0#27, 00000;
+     #0#2, #0#28, 99999;
+     be;
+     NULL, Calculo;
+|FIN;
+
+|PROCESO Print;
+     enSwLin = 0;
+     #2#0 = #1#0;
+     #2#1 = #1#1;
+     #2#2 = #1#2;
+     #2#3 = #0#31;
+     |LIBERA #2;
+     |LEE 140#2=;
+     |SI FSalida = 0;
+         |SI nSwError = 1;  || no hay nswerror = 1
+             #1#22 = #1#14;
+             #1#21 = 0;
+             |GRABA 140#1a;
+
+             #2#5  = 0;
+             |GRABA 140#2a;
+
+             |DDEFECTO #2;
+             |SI EURODB = 0;
+                 #1#3 = "  NO CALCULADO SE EXCEDE DE 100.000 PTAS.";
+             |SINO;
+                 #1#3 = "  NO CALCULADO SE EXCEDE DE 601.01 EUROS";
+             |FINSI;
+         |FINSI;
+         #99#3 = #99#3 + #2#5;
+         |PRINT;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE eosm0023P;
+     #1#1;
+     4;
+     #99#0, #99#1, 00000, #99#2;
+     #99#0, #99#1, 99999, #99#2;
+     be;
+     NULL, Print;
+|FIN;
+
+|PROCESO Imprime;
+     nSwError = 0;
+     nMaximo = 601.01;
+     |SI EURODB = 0;
+         nMaximo = 100000;
+     |FINSI;
+/*                                           .... Calcula igual
+     |SI #99#2 = 0;  |Y #99#3 > nMaximo;
+         nSwError = 1;
+         |SI nSwPinta = 0;
+             nSwPinta = 1;
+             |BLANCO 0816 1762;
+             |ATRI P;
+             |PINTA 0920, "   D E T E C T A D O   E R R O R E S   ";
+             |PINTA 1020, "----------------------------------------";
+             |ATRI 0;
+
+             |ATRI R;
+             |PINTA 1216, " Hay amortizaciones tipo 0 que exceden en su   ";
+             |SI EURODB = 0;
+                 |PINTA 1316, " total de 100.000 ptas.                        ";
+             |SINO;
+                 |PINTA 1316, " total de 601,01 Euros.                        ";
+             |FINSI;
+             |PINTA 1416, " Esas amortizaciones no se han calculado.      ";
+             |PINTA 1516, " Revise el informe y corrijalas.               ";
+             |PINTA 1616, "                                               ";
+             |PINTA 1716, "                                               ";
+             |ATRI 0;
+             |PAUSA;
+         |FINSI;
+     |FINSI;
+*/
+     #99#3 = 0;
+     |BUCLE eosm0023P;
+     enSwLin = 1;  |PRINT;
+|FPRC;
+
+|DEFBUCLE reow0001;
+     #99#1;
+     ;
+     00000, 1, 0;
+     99999, 9, 9;
+     ;
+     NULL, Imprime;
+|FIN;
+
+|PROCESO Tipo3;  |TIPO 3;
+     aFichero = ("C1" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #99 aFichero;
+     |ABRE #99;  |CIERRA #99;  |DELINDEX #99;
+
+     |ABRE #2;
+     |ABRE #99;
+     |SI #0#0 = "N";
+         |BUCLE eosm0023;
+     |SINO;
+         |PARA nCampos = 3; |SI nCampos [ 26; |HACIENDO nCampos = nCampos + 1;
+               |SI #0nCampos ! 0;
+                   #0#1 = #0nCampos;
+                   #0#2 = #0nCampos;
+                   |BUCLE eosm0023;
+               |FINSI;
+         |SIGUE;
+     |FINSI;
+     |CIERRA #99;
+
+     |SI nSwCalc = 0;  |ACABA;  |FINSI;
+
+     |IMPRE 0;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |INFOR "reoz0002";
+     |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+     |BUCLE reow0001;
+
+     |PIEINF;
+     |FININF;
+     |FINIMP;
+
+     |CIERRA #2;
+     |ABRE #99;  |CIERRA #99;  |DELINDEX #99;
+|FPRC;

@@ -1,0 +1,417 @@
+|| Este PLB se usa para enviar los documentos al DSArchi
+|| usa los procesos lo que hizo Carlos que estan en el zplbarc1
+|| Esta pillado del Laboral de Migue
+
+|FICHEROS;
+     Ref0001@ #1000;
+     dsarm004@ #40;
+     dsarm005@;
+|FIN;
+
+|VARIABLES;
+     aUbicacion          = "";
+     aDocumento          = "";
+     aOrigen             = "";
+     aDestino            = "";
+     aPathDatos          = "";
+     aPathDestino        = "";
+     aBass               = "";
+     aDef                = "";
+     aAlfa               = "";
+     aAlfa1              = "";
+     aAlfa2              = "";
+     aAlfa3              = "";
+     nNume               = 0;
+     nHandle             = 0;
+     aOrig               = "";
+     aDest               = "";
+     aImpresora          = "";
+     informe             = "";
+     fFecha              = @;
+     aFecha              = "";
+     aHora               = "";
+     aMensaje            = "";
+     aIPRemoto           = "";
+     nCampo              = 0;
+     nCampoFecha         = 0;
+     aDescCampoFecha     = "";
+     nDesdeCampo         = 0;
+     nHastaCampo         = 0;
+
+     {1}aContiene        = "";
+     {1}aPuntero         = "";
+
+     &enSwDesde9         = 0;  ||Sirve para indicar si lanzamos el proceso desde 9 o desde X.
+     &enGrupoTres        = 0;
+     &enSubGTres         = 0;
+     &enTipoTres         = 0;
+     &enSwMeteGrupoSubTipo = 0;
+     &nArchi             = 0;
+     &eaInforme          = "";
+     &nTipo              = 0;
+     &mesalf             = "";
+     &enSwCDefOk         = 0;      ||Nos indica si el CARGA_DEF ha sido Correcto
+     &eaDocumentoArchi   = "";     ||Ubicacion completa del documento
+     &eaNomDocArchi      = "";     ||Nombre del documento (con extension)
+     &enSwExisteDoc      = 0;      ||Indica si existe fisicamente el documento
+                                   ||y si tengo permisos de lectura.
+     &enNumCampoArchi    = 0;      ||Numero de campo del Registro
+     &eaValorArchi       = "";     ||Valor a guardar en el Registro.
+     &enNumeroRegistro   = 0;      ||Numero de registro en el temporal (AUTO)
+     &enSwUbicacionDoc   = "";     ||Indica si los documentos esta en el
+                                   ||"C"liente o en el "S"ervidor.
+                                   ||Se carga en el Inicio del Proceso
+     &eaSwEnvioCorreo    = "";
+     &eaVengoDe          = "";
+     &eaOrig             = "";
+     &eaObservaciones    = "";
+
+     &enEmp              = 0;
+     &enMes              = 0;
+     &enAny              = 0;
+     &enDesdeMes         = 0;
+     &enHastaMes         = 0;
+     &nEnvio             = 1;   || = 1 por empresa, = 2 por centros, = 3 por trabajador
+     &nMes               = 0;
+     &aMes               = "";
+     &mesnum             = 0;
+     &swErrorDSArchi     = 0;
+     &nDesdeMes          = 0;
+     &nHastaMes          = 0;
+     &swNoArchives       = 0;
+     &enSwErrorRecDoc    = 0;    ||No la devuelve el DSARCHI indicado si todo correcto o ERROR
+     &enEmpGAD           = 0;
+     &enTipGAD           = 0;
+     &enMesGAD           = 0;
+     &enAnyGAD           = 0;
+     &enModGAD           = 0;
+     &enImpGAD           = 0;
+     &enExiGAD           = 0;
+     &eaFicGAD           = "";
+
+     &enSwContab         = 0;
+     &enEmpresa          = 0;
+     &enEjercicio        = 0;
+     &eaNombreEmp        = "";
+     &eaNifEmp           = "";
+     &enM1               = 0;
+     &enM2               = 0;
+     &eaCodNif           = "";
+     &eaNomNif           = "";
+|FIN;
+
+|PROCESO MiraSiArchiva;
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+     |SI aIPRemoto ! "";
+          enSwUbicacionDoc = "S";  || lo guardo en el servidor
+     |SINO;
+          enSwUbicacionDoc = "C";  || lo guardo en local
+     |FINSI;
+     nArchi = 0;
+     |DBASS aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + "dsarchi/def/dsarm001.mas";
+
+     |SI enSwUbicacionDoc = "S";
+          |XABRE "E", aAlfa, nHandle;
+     |SINO;
+          |XABRE "CE", aAlfa, nHandle;
+     |FINSI;
+     |SI FSalida ] 0;
+          |CARGA_DEF aAlfa, Ref0001@;
+          |SI FSalida = 0;
+               |DBASS aAlfa; |QBF aAlfa;
+               aAlfa = aAlfa + "dsarchi/fich/"; |PATH_DAT #1000 aAlfa;
+               |ABRE #Ref0001@;
+               |DDEFECTO #Ref0001@;
+               |LEE 000#Ref0001@.p;
+               |SI FSalida ! 0; |DDEFECTO #Ref0001@; |FINSI;
+
+               || compruebo si tengo activada la emision de contabilidad
+               || al DSArchi
+
+               |SI #Ref0001@#225 = "S";
+                    nArchi = 1;
+               |SINO;
+                    nArchi = 2;
+               |FINSI;
+
+               |SI eaVengoDe ! "";
+                    |HAZ TipoModelo;
+                    |HAZ CompruebaModelo;
+               |FINSI;
+
+               |SI swNoArchives = 1;
+                    nArchi = 2;
+               |FINSI;
+
+               enSwContab = 1;
+               |CIERRA #Ref0001@; |DESCARGA_DEF #Ref0001@;
+          |FINSI;
+     |FINSI;
+     |XCIERRA nHandle
+
+|| ... poner para sacar aplicacion - nArchi = 0
+|FPRC;
+
+|PROCESO MesLetraP;
+     |SI nMes = 01; aMes = "ENERO";           |FINSI;
+     |SI nMes = 02; aMes = "FEBRERO";         |FINSI;
+     |SI nMes = 03; aMes = "MARZO";           |FINSI;
+     |SI nMes = 04; aMes = "ABRIL";           |FINSI;
+     |SI nMes = 05; aMes = "MAYO";            |FINSI;
+     |SI nMes = 06; aMes = "JUNIO";           |FINSI;
+     |SI nMes = 07; aMes = "JULIO";           |FINSI;
+     |SI nMes = 08; aMes = "AGOSTO";          |FINSI;
+     |SI nMes = 09; aMes = "SEPTIEMBRE";      |FINSI;
+     |SI nMes = 10; aMes = "OCTUBRE";         |FINSI;
+     |SI nMes = 11; aMes = "NOVIEMBRE";       |FINSI;
+     |SI nMes = 12; aMes = "DICIEMBRE";       |FINSI;
+|FPRC;
+
+|PROCESO MeteGrupoSubTipo;
+     enNumCampoArchi = 1;          ||Grupo
+     eaValorArchi = enGrupoTres;
+     |HAZ MeteCampoDSArchi;
+
+     enNumCampoArchi = 2;          ||SubGrupo
+     eaValorArchi = enSubGTres;
+     |HAZ MeteCampoDSArchi;
+
+     enNumCampoArchi = 3;          ||Tipo
+     eaValorArchi = enTipoTres;
+     |HAZ MeteCampoDSArchi;
+|FPRC;
+
+|PROCESO ElIMPREArchi;
+     |SI swErrorDSArchi = 1;
+          || con que la primera vez no encuentre el cuadre ya tenemos
+          || bastante para no continuar con esto
+
+          |ACABA;
+     |FINSI;
+
+     informe = eaInforme;
+
+     swErrorDSArchi = 0;
+     |DDEF aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + informe + ".rpt";
+     |XABRE "E", aAlfa, nHandle;
+     |SI FSalida ] 0;
+          |ESPECIFICA "RBASS", aPuntero;
+          aOrig = aPuntero; |QBF aOrig;
+          aOrig = aOrig + "crystal/";
+          aOrig = aOrig + "aa" + Usuario + ".pdf";
+          |RFBORRA aOrig;
+
+          aImpresora = "CrystalReport;" + aOrig;
+          Impresora = aImpresora;
+          |IMPRE -1;
+          |SI FSalida = 0;
+               |INFOR informe;
+          |SINO;
+               aAlfa = "    No se encuentra el cuadre " + aAlfa + ". El documento no se archivará";
+               |MENAV aAlfa;
+               swErrorDSArchi = 1;
+          |FINSI;
+     |SINO;
+          aAlfa = "    No se encuentra el cuadre " + aAlfa + ". El documento no se archivará";
+          swErrorDSArchi = 1;
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO Archivando;
+     || archivo
+
+     || primero ya ha tenido que haber creado el rpt y el PDF claro, a partir
+     || del rpt
+
+     || despues lo mando al dsarchi
+
+     enSwDesde9           = 1;
+     enSwMeteGrupoSubTipo = 0;
+     |HAZ CtrlPedirGrupoDsArchi;
+
+     |SI swNoArchives = 1;
+          |ACABA;
+     |FINSI;
+
+     |DFICE aDest; |QBF aDest;
+     aDest = aDest + "tm" + Usuario + ".pdf";
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+     |SI aIPRemoto ! "";
+          |FBORRA aDest;
+          |RECIBE_FICHERO aOrig, aDest;
+     |SINO;
+          |RFBORRA aDest;
+          |COPIA_FICHERO aOrig, aDest;
+     |FINSI;
+
+     |SI FSalida ! 0;
+          || no ha sido capaz de traerse el fichero del servidor
+          aAlfa = "    ATENCION: no se ha podido grabar el fichero ";
+          aAlfa = aAlfa + aOrig;
+          aAlfa = aAlfa + " en el servidor para su archivado.";
+          |MENAV aAlfa;
+          aAlfa = "    El proceso se interrumpirá.";
+          |MENAV aAlfa;
+
+          swErrorDSArchi = 2;
+
+          |RFBORRA aOrig;          || que no sean nominas
+          |XCIERRA nHandle;
+          |ACABA;
+     |FINSI;
+
+     |RFBORRA aOrig;          || que no sean nominas
+
+     |XCIERRA nHandle;
+
+     |HAZ EnviaDocs;
+|FPRC;
+
+|PROCESO EnviaDocs;
+     enSwCDefOk = 0;
+     enNumeroRegistro = 0;
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+     |SI aIPRemoto ! "";
+          enSwUbicacionDoc = "S";  || lo guardo en el servidor
+     |SINO;
+          enSwUbicacionDoc = "C";  || lo guardo en local
+     |FINSI;
+
+     |HAZ IniEnvioDocDSArchi;
+
+     |SI enSwCDefOk = 0;
+          |ACABA;
+     |FINSI;
+
+     ||****************ESTO PARA CADA DOCUMENTO *****************************
+
+     ||Enviamos el Documento que queremos Archivar
+
+     eaDocumentoArchi = aDest;
+     enSwExisteDoc = 0;
+     |HAZ ExisteDocFisico;
+     |SI enSwExisteDoc = 0;
+          aMensaje = "0000Error: No encuentro o no puedo leer el documento: " + eaDocumentoArchi;
+          |MENAV aMensaje;
+     |SINO;
+          eaNomDocArchi = "tm" + Usuario + ".pdf";
+          |HAZ DocFisicoDSArchi;
+
+          |SI enSwMeteGrupoSubTipo = 1;
+               |HAZ MeteGrupoSubTipo;
+          |FINSI;
+
+          ||Enviamos el valor del registro a guardar.  (TODOS LOS CAMPOS QUE QUERAMOS)
+          fFecha = ~;
+          aFecha = fFecha;
+
+          eaSwEnvioCorreo = "N";
+
+          enNumCampoArchi = 4;          || Fecha Creacion
+          eaValorArchi = aFecha;
+          |HAZ MeteCampoDSArchi;
+
+          |HORA aHora;
+          |QBF aHora;
+          aHora = aHora % 105;
+
+          enNumCampoArchi = 5;          ||Hora Creacion
+          eaValorArchi = aHora;
+          |HAZ MeteCampoDSArchi;
+
+          aAlfa = Usuario % 810;
+          |QBF aAlfa;
+          enNumCampoArchi = 6;          ||Usuario
+          eaValorArchi = aAlfa;
+          |HAZ MeteCampoDSArchi;
+
+          aAlfa = eaObservaciones; |QBF aAlfa;
+          enNumCampoArchi = 11;          ||Observaciones 1
+          eaValorArchi = aAlfa;
+          |HAZ MeteCampoDSArchi;
+
+          ||Rellenamos el resto de campos del Registro de Documentos
+          ||(dsarm005) del dsarchi.
+
+          eaValorArchi = enEmpresa;  || Codigo Cliente
+          enNumCampoArchi = 8;
+          |HAZ MeteCampoDSArchi;
+
+          eaValorArchi = eaNombreEmp;  || Nombre Cliente
+          enNumCampoArchi = 14;
+          |HAZ MeteCampoDSArchi;
+
+          eaValorArchi = eaNifEmp;    || Cif
+          enNumCampoArchi = 10;
+          |HAZ MeteCampoDSArchi;
+
+          eaCodNif = eaNifEmp;
+          |HAZ LeeNifs;
+          eaValorArchi = eaNomNif;
+          enNumCampoArchi = 38;
+          |HAZ MeteCampoDSArchi;
+
+          nNume = enEjercicio;             || ejercicio
+          eaValorArchi = nNume;
+          enNumCampoArchi = 17;
+          |HAZ MeteCampoDSArchi;
+
+          eaValorArchi = enM2;           || mes
+          enNumCampoArchi = 18;
+          |HAZ MeteCampoDSArchi;
+
+          aAlfa = eaVengoDe % 104;
+          |SI aAlfa = "ca8y";
+              aAlfa1 = "909";
+              |SI eaVengoDe = "ca8ys001";  aAlfa2 = "01"; aAlfa3 = "BALANCE DE SITUACION";  |FINSI;
+              |SI eaVengoDe = "ca8ye001";  aAlfa2 = "02"; aAlfa3 = "CUENTA DE PERDIDAS Y GANANCIAS";  |FINSI;
+              |SI eaVengoDe = "ca8yp001";  aAlfa2 = "03"; aAlfa3 = "ESTADO DE INGRESOS Y GASTOS RECONOCIDOS";  |FINSI;
+              |SI eaVengoDe = "ca8yc001";  aAlfa2 = "04"; aAlfa3 = "ESTADO DE CAMBIOS EN EL PATRIMONIO NETO";  |FINSI;
+              |SI eaVengoDe = "ca8yf001";  aAlfa2 = "05"; aAlfa3 = "ESTADO DE FLUJOS DE EFECTIVO";  |FINSI;
+          |FINSI;
+          |SI aAlfa = "cayc";
+              aAlfa1 = "909"; aAlfa2 = "06"; aAlfa3 = "BALANCE DE SUMAS Y SALDOS";
+          |FINSI;
+          |SI eaVengoDe = "cadiario";
+              aAlfa1 = "908"; aAlfa2 = "01"; aAlfa3 = "DIARIO OFICIAL";
+          |FINSI;
+          |SI aAlfa = "caex";
+              aAlfa1 = "950";
+              |SI eaVengoDe = "caextrim";  aAlfa2 = "01"; aAlfa3 = "MAYORES / EXTRACTOS";  |FINSI;
+              |SI eaVengoDe = "caextinf";  aAlfa2 = "02"; aAlfa3 = "ANOTACIONES DE REVISION CONTABLE";  |FINSI;
+          |FINSI;
+
+          eaValorArchi = aAlfa1;
+          enNumCampoArchi = 19;
+          |HAZ MeteCampoDSArchi;
+
+          eaValorArchi = aAlfa2;
+          enNumCampoArchi = 20;
+          |HAZ MeteCampoDSArchi;
+
+          eaValorArchi = aAlfa3;
+          enNumCampoArchi = 21;
+          |HAZ MeteCampoDSArchi;
+
+          nMes = enM2;
+          |HAZ MesLetraP;
+          eaValorArchi = aMes;         || descripcion periodo (mes)
+          enNumCampoArchi = 22;
+          |HAZ MeteCampoDSArchi;
+     |FINSI;
+
+
+||Fin valores del registro a guardar.         (TODOS LOS CAMPOS QUE QUERAMOS)
+
+||****************FIN DE ESTO PARA CADA DOCUMENTO *****************************
+
+     |HAZ FinEnvioDocDSArchi;
+|FPRC;

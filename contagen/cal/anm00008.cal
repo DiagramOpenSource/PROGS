@@ -1,0 +1,197 @@
+|FICHEROS;
+  anm00008 #00;   || Empresas Analitica
+  anm00009 #01;   || Lineas
+  caagrupr #02;   || Agrypacion presupuestaria
+  canempre #30;
+
+  anm00016 #616;
+|FIN;
+
+|VARIABLES;
+  aAlfa1 = "";
+  aAlfa2 = "";
+  aAlfa3 = "";
+  nModoEntrada = 0;
+  nNume1 = 0;
+  nNume2 = 0;
+  swalta = 0;
+  &r_emp = 0;
+  &r_per = 0;
+   nswError = 0;
+  nEjerActual = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoan_i;
+|INCLUYE copian_i;
+
+|| ********** Calculos Cabecera
+|PROCESO tipo8; |TIPO 8;
+ |HAZ InicioAna;
+ |SI  enSwAna = 0; |ACABA;  |FINSI;
+
+ aMonedaC = eaMoneda;
+ |DBASE dir_fich;
+ dir_fich = dir_fich + "fich/";
+ aAlfa3 = ("000000" + #30#0) % -106;
+ fich_copi = dir_fich + aAlfa3 + "/";
+|FPRC;
+
+|PROCESO consulta;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+  |SUB_EJECUTA "caconemp";
+  |SI r_emp ! 0;
+      |ERROR;
+      #0#0 = r_emp; |PINTA #0#0;
+      #0#1 = r_per; |PINTA #0#1;
+      |PTEC 802;
+  |SINO;
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO AnaEmpresa; |TIPO 0;
+
+ |SI eaAnNiv ! "E"; |ACABA; |FINSI;
+
+ nswError = 0;
+ |SALVA_DATOS #30;
+ |ABRE #30;
+ |DDEFECTO #30;
+ #30#2 = #0#0;
+ #30#3 = 0;
+ |LEE 001#30];
+ |SI FSalida = 0; |Y #30#2 = #0#0;
+     |ABRE #616;
+     #616#0 = #0#0;
+     |LEE 001#616=;
+     |SI FSalida ! 0; nswError = 1; |FINSI;
+     |CIERRA #616;
+ |FINSI;
+ |CIERRA #30;
+ |SI nswError = 1;
+    |MENAV "    Error Empresa No Analitica";
+    |ERROR;
+ |FINSI;
+|FPRC;
+
+|PROCESO si_esta; |TIPO 0;
+ |C_M #0#2,1,"N";
+ |C_M #0#3,1,"N";
+ swalta = 0;
+
+ nModoEntrada = (FEntrada / 100) ! 0;
+ |SI nModoEntrada ! 1; |ACABA; |FINSI;
+
+ || ................ Solo en alta
+ |SALVA_DATOS #30;
+ |ABRE #30;
+ |DDEFECTO #30;
+ #30#2 = #0#0;
+ #30#3 = #0#1;
+ |LEE 001#30=;
+ |SI FSalida = 0;
+     #0#2 = #30#26; |PINTA #0#2; |C_M #0#2,1,"N";
+     #0#3 = #30#1;  |PINTA #0#3; |C_M #0#3,1,"N";
+ |SINO;
+     |C_M #0#2,1,"S";
+     |C_M #0#3,1,"S";
+     swalta = 1;
+ |FINSI;
+ |CIERRA #30;
+ |REPON_DATOS #30;
+ |SI swalta = 1;
+     #0#2 = #30#26; |PINTA #0#2;
+     #0#3 = #30#1;  |PINTA #0#3;
+ |FINSI;
+ #0#5 = "01.01.0000"; |PINTA #0#5;
+|FPRC;
+
+
+|PROCESO altaempr; |TIPO 30;
+ |SI swalta = 0; |ACABA; |FINSI;
+ |CONFI "2400SCrear Empresa Analitica ? ";
+ |SI FSalida ! 0; |ACABA; |FINSI;
+
+ |SALVA_DATOS #30;
+ |ABRE #30;
+ #30#1  = #0#3;
+ #30#2  = #0#0;
+ #30#3  = #0#1;
+ #30#26 = #0#2;
+ nEjerActual = #30#26;
+ || .................. clave
+ nNume1 = ((#30#2*10) + #30#3);
+ aAlfa1 = nNume1;
+ aAlfa1 = ( "0000000" + aAlfa1 ) % -106;
+ #30#0 = aAlfa1;
+
+ |HAZ CambiaNombre;
+
+ |PUSHV 0501 2380;
+ |PINPA #0#30;
+ |PINDA #0#30;
+ |CONFI "2400SConforme S/N ";
+ |SI FSalida = 0;
+     |GRABA 020#30n;
+     enEmpresa = #30#2;
+     enPeriodo = #30#3;
+     swOperacion = 3;
+     eaMoneda = aMonedaC;
+     |SUB_EJECUTA "camoneda";
+     |HAZ mkdirector;
+ |FINSI;
+ |POPV;
+ |CIERRA #30;
+ |HAZ AnaAltaEmp;
+ |REPON_DATOS #30;
+|FPRC;
+
+|CALCULO LeePresupuesto; |TIPO 0;
+ |SI #0#7 = 0;
+     #2#1 = "SIN PRESUPUESTO ";
+ |SINO;
+     |ABRE #2;
+     #2#0 = #0#7;
+     |LEE 001#2=;
+     |SI FSalida ! 0;
+         #2#1 = "NO EXISTE PRESUPUESTO";
+         |ERROR;
+     |FINSI;
+     |CIERRA #2;
+ |FINSI;
+ |PINTA 1020, #2#1;
+|FCAL;
+
+
+|| ********** Calculos Lineas
+|PROCESO lalongi; |TIPO 0;
+ |CAMPO_MODIFICA #1Campo,0,aAlfa1;
+ |SI aAlfa1 = "N"; |ACABA; |FINSI;
+ nNume1 = Campo - 1;
+ nNume2 = #1nNume1 + #1Campo - 1;
+ |SI nNume2 > 7;
+     |MENAV "    Longitud Erronea, sobrepasa la Cuenta Analitica";
+     |ERROR;
+ |FINSI;
+ |SI #1nNume1 ! 0; |Y #1Campo = 0; |ERROR; |FINSI;
+|FPRC;
+
+|| ***********************************************************************
+
+|PROCESO mkdirector;
+  |DBASE dir_fich;
+  dir_fich = dir_fich + "fich/";
+  aAlfa1 = ("000000" + #30#0) % -106;
+  aAlfa3 = dir_fich + aAlfa1;
+  |MKDIR aAlfa3;
+  fich_alta = aAlfa3 + "/";
+  dirfich0 = fich_alta;
+
+  eaCopiar = "M";
+  |HAZ copia_maes;
+  |HAZ acerar4;
+  |HAZ pone0_maes;
+  |HAZ ActDefecto;
+  |HAZ NoTesteo;
+|FPRC;

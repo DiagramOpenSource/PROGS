@@ -1,0 +1,220 @@
+|FICHEROS;
+     infoz003 #0;
+     agifa010 #10;
+     infom005 #5;
+     infom006 #6;
+     infom000 #100;
+     tmp00000 #300;
+|FIN;
+
+|VARIABLES;
+     &eaMensaje = "";
+     &enSwInfoz003 = 0;
+     &eaImpresora = "";
+     &eaMenuImpre = "";
+     &ser_alb = "";
+     &num_alb = 0;
+     &abono = "";
+     {1}aBaseLocal = "";
+     aAlfa = "";
+     aCar = "";
+     aIP = "";
+     aFic = "";
+     aBase = "";
+     nSwTmp = 0;
+     nHay = 0;
+     aSer = "";
+     fHoy = @;
+     nNum = 0;
+     aParam = "";
+|FIN;
+
+|PROCESO Subcarpeta;
+     |SI #100#21 = "S";
+          nNum = #10#0 - (#10#0 $ #100#22);
+          aAlfa = aAlfa + nNum + "/";
+     |FINSI;
+|FPRC;
+
+|PROCESO Albaranes;
+     |SI #0#8 = "N";
+          #5#0 = "A";
+          #5#1 = #10#52;
+          #5#2 = #10#0;
+          |LEE 000#5=;
+          |SI FSalida = 0; |ACABA; |FINSI;
+     |FINSI;
+
+     aAlfa = #0#6; |QBF aAlfa;
+     aCar = aAlfa % -101;
+     |SI aCar ! "/"; |Y aCar ! "\"; aAlfa = aAlfa + "/"; |FINSI;
+     |HAZ Subcarpeta;
+     |MKDIR aAlfa;
+     aSer = #10#52; |QBT aSer;
+
+     enSwInfoz003 = 1;
+     aIP = ""; |IP_REMOTO aIP;
+     |SI aIP = "";
+          aFic = aAlfa + aSer + (("000000" + #10#0)%-106)+ ".pdf";
+          |QBT aFic;
+          eaImpresora = "CrystalReport;" + aFic;
+          ser_alb = #10#52;
+          num_alb = #10#0;
+          abono = #10#43;
+          eaMenuImpre = "N";
+          |SUB_EJECUTA_NP "guiz0001;NOGRABA";
+     |SINO;
+          aFic = aAlfa + aSer + (("000000" + #10#0)%-106)+ ".pdf";
+          |QBT aFic;
+          |ESPECIFICA "RBASS", aBaseLocal;
+          aAlfa = aBaseLocal1 + aSer + (("000000" + #10#0)%-106)+ ".pdf";
+          |QBT aAlfa;
+          eaImpresora = "CrystalReport;" + aAlfa;
+          ser_alb = #10#52;
+          num_alb = #10#0;
+          abono = #10#43;
+          eaMenuImpre = "N";
+          |SUB_EJECUTA_NP "guiz0001;NOGRABA";
+          |RECIBE_FICHERO aAlfa, aFic;
+          |RFBORRA aAlfa;
+     |FINSI;
+     nHay = 1;
+|FPRC;
+
+|PROCESO Albaranes0;
+     aAlfa = "0000[1]Envia albaran:" + #10#52 + "/" + #10#0;
+     ||MENAV aAlfa;
+
+     |LEE 140#10=;          ||bloqueando sin errores ni reintentos
+     |SI FSalida = 0;
+          |LIBERA #10;
+          |HAZ Albaranes;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Albaranes;
+     #10#7;
+     ;
+     #0#4, #0#0, #0#2;
+     #0#5, #0#1, #0#3;
+     ;
+     NULL, Albaranes0;
+|FIN;
+
+|PROCESO Sync;
+     |SI nHay = 1;
+          |MENSA "0000Sincronizando con servidor web...";
+          |DBASS aBase;
+          aAlfa = "/bin/chmod 775 " + aBase + "dscomer9/001980/sync_inforpor.sh"
+          |SYSTEM aAlfa;
+          aAlfa = aBase + "dscomer9/001980/sync_inforpor.sh " + aBase + "dscomer9/001980/";
+          |SYSTEM aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |ABRE #5;
+     |BUCLE Albaranes;
+     |CIERRA #5;
+|FPRC;
+
+|PROCESO NoEmitidos;
+     #10#52 = #6#1;
+     #10#0 = #6#2;
+     |LEE 000#10=;
+     |SI FSalida = 0;
+          aAlfa = "0000[2]Envia albaran:" + #10#52 + "/" + #10#0;
+          ||MENAV aAlfa;
+
+          |HAZ Albaranes;
+     |FINSI;
+     |BORRA 020#6a;
+     |LIBERA #6;
+|FPRC;
+
+|DEFBUCLE NoEmitidos;
+     #6#1;
+     ;
+     "A", "     ", 000001;
+     "A", "zzzzz", 999999;
+     be;
+     NULL, NoEmitidos;
+|FIN;
+
+|PROCESO Tmp300;
+     |SI #300#2 = "N";
+          #10#52 = #300#0;
+          #10#0 = #300#1;
+          |LEE 020#10=;
+          |SI #10#1 ! fHoy;
+               aAlfa = "0000[3]Envia albaran:" + #10#52 + "/" + #10#0;
+               ||MENAV aAlfa;
+
+               |HAZ Albaranes;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Tmp300;
+     #300#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp300;
+|FIN;
+
+|PROGRAMA;
+     aParam = PARAMETRO; aParam = aParam > "";
+     |ABRE #100; |LEE 000#100p; |CIERRA #100;
+
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+
+     |SI aParam = "MENU";
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0;
+               |HAZ Sync;
+               |GRABA 020#0a;
+          |FINSI;
+     |SINO;
+          |LIBERA #0;
+          |SI aParam = "PROG"; |O aParam = "PROGREIMP";
+               eaMensaje = "Comienzo envio albaranes";
+               ||HAZ EnviaMail;
+
+               #0#0 = "";
+               #0#1 = "zzzzz";
+               #0#2 = 1;
+               #0#3 = 999999;
+               #0#4 = ~;
+               #0#5 = ~;
+               #0#8 = "N";
+               |SI aParam = "PROGREIMP"; #0#8 = "S"; |FINSI;
+               |ABRE #10;
+               |ABRE #5;
+               |BUCLE NoEmitidos;
+               |CIERRA #5;
+               |CIERRA #10;
+               |HAZ Tipo3;
+               |HAZ Sync;
+
+               eaMensaje = "Fin proceso albaranes";
+               ||HAZ EnviaMail;
+          |SINO;
+               #0#8 = "N";
+               fHoy = ~;
+               |NOME_DAT #300 aParam;
+               |ABRE #10;
+               |ABRE #5;
+               |BUCLE Tmp300;
+               |CIERRA #5;
+               |CIERRA #10;
+               |HAZ Sync;
+          |FINSI;
+     |FINSI;
+     |CIERRA #0;
+|FPRO;

@@ -1,0 +1,229 @@
+|FICHEROS;
+     refer00@ #0;
+     :/basica/def/zmonedas #500;
+     :/contagen/def/camoneda;
+     :/contagen/def/canempre;
+|FIN;
+
+|VARIABLES;
+     aPrograma    = "";
+     aDef         = "";
+     aQueQuiero   = "";
+     aNombreCampo = "";
+     aFichero     = "";
+     aDecima      = "";
+     aEntero      = "";
+     aLong        = "";
+     aCaracter    = "";
+     aImpor1      = "";
+     aImpor2      = "";
+     aImpor3      = "";
+     aImpor4      = "";
+
+     nCampo       = 0;
+     nTCampo      = 0;
+     nSwHay       = 0;
+     nLong        = 0;
+     nDecimal     = 0;
+     nCaracter    = 0;
+     nPos         = 0;
+
+     &eaMoneda     = "";
+     &enNume       = 0;
+     &enSwTrata    = 0;
+     &eaImporte    = "";
+     &eaPrograma   = "";
+
+     {-1}aMoneda   = "";
+         aMoneda1  = "LEER";
+         aMoneda2  = "";
+|FIN;
+
+|INCLUYE i_variar;
+
+|PROCESO LeeEURODBMOD;
+     |ABRE #500;
+     |LEE 040#500p;
+     |SI FSalida ! 0;  |DDEFECTO #500;  |FINSI;
+     |CIERRA #500;
+
+     |SI #500#9 = "E";
+         EURODBMOD = 2;
+     |SINO;
+         EURODBMOD = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO PintaMoneda;  |TIPO 7;
+     aPrograma = Control;  |QBF aPrograma;
+     |SI eaPrograma ! "";
+         aPrograma = eaPrograma;
+     |FINSI;
+
+     |DBASE aDef;  |QBF aDef;
+     aDef   = aDef + "def/" + aPrograma + ".mas";
+     |CARGA_DEF aDef, refer00@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     aQueQuiero = "|NC";
+     aFichero   = #0#aQueQuiero#;
+     nTCampo    = aFichero;
+     nTCampo    = nTCampo - 1;
+     nSwHay     = 0;
+     |PARA nCampo = 0;  |SI nCampo [ nTCampo;  |HACIENDO nCampo = nCampo + 1;
+           aQueQuiero   = "|C" + (("000" + nCampo) % -103) + "NOMBRE";
+           aNombreCampo = (#0#aQueQuiero# + (" " * 20)) % 120;
+           |QBF aNombreCampo;
+           |SI aNombreCampo = "***MONEDA***";
+               nSwHay = 1;
+               |SAL;
+           |FINSI;
+     |SIGUE;
+
+     |SI nSwHay = 0;
+         |DESCARGA_DEF #refer00@;
+         |ACABA;
+     |FINSI;
+
+     IaMoneda = aMoneda1<-;
+     |ESPECIFICA "MODO_VER_EURO", aMoneda;
+
+     |HAZ LeeEURODBMOD;
+     |SI EURODBMOD ! 0;
+         |SI aMoneda2 = "0";
+             #0nCampo = "EUROS";
+         |SINO;
+             #0nCampo = "PESETAS";
+         |FINSI;
+     |SINO;
+         |SI aMoneda2 = "0";
+             #0nCampo = "PESETAS";
+         |SINO;
+             #0nCampo = "EUROS";
+         |FINSI;
+     |FINSI;
+
+     |PINTA #0nCampo;
+     eaMoneda = #0nCampo;
+
+     |DESCARGA_DEF #refer00@;
+|FPRC;
+
+|PROCESO ConverMoneda;
+     |HAZ LeeEURODBMOD;
+     enNume = enNume ! EURODBMOD;
+     |SI EURODBMOD ! 0;
+         |SI eaMoneda = "PESETAS";
+             enNume = ((enNume * 166.386) ! 0);
+         |SINO;
+             |SI enSwTrata = 0;  enNume = (enNume * 100) ! 0;  |FINSI;
+         |FINSI;
+     |SINO;
+         |SI eaMoneda = "EUROS  ";
+             enNume = (((enNume / 166.386) ! 2) * 100) ! 0;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO SeparaImporte;    || Calculo para poner las puntos y comas
+                           || en el importe
+     eaImporte = enNume;
+
+     aDecima   = "";
+     aEntero   = "";
+     aLong     = eaImporte % 0;
+     nLong     = aLong;
+     nDecimal  = 0;
+     |PARA nCaracter = 1;  |SI nCaracter [ nLong;  |HACIENDO nCaracter = nCaracter + 1;
+           nPos      = (100 * nCaracter) + 1;
+           aCaracter = eaImporte % nPos;
+           |SI aCaracter = ".";
+               nDecimal = 1;
+           |SINO;
+               |SI nDecimal = 0;
+                   aEntero = aEntero + aCaracter;
+               |SINO;
+                   aDecima = aDecima + aCaracter;
+               |FINSI;
+           |FINSI;
+     |SIGUE;
+
+     aDecima = (aDecima + "00") % 102;
+     eaImporte = aEntero;
+
+     aLong = eaImporte % 0;
+     nLong = aLong;
+     eaImporte = "             " + eaImporte;
+     eaImporte = eaImporte % -113;
+     aImpor1   = eaImporte % -103;
+     aImpor2   = eaImporte % -403;
+     aImpor3   = eaImporte % -703;
+     aImpor4   = eaImporte % -1004;
+     |SI nLong ] 10;
+         |SI aImpor4 ! "  -";
+             eaImporte = aImpor4 + "." + aImpor3  + "." + aImpor2 + "." + aImpor1;
+         |SINO;
+             eaImporte = aImpor4 + aImpor3  + "." + aImpor2 + "." + aImpor1;
+      |FINSI;
+    |SINO;
+        |SI nLong ] 7;
+            |SI aImpor3 ! "  -";
+                eaImporte = aImpor3  + "." + aImpor2 + "." + aImpor1;
+            |SINO;
+                eaImporte = aImpor3 + aImpor2 + "." + aImpor1;
+            |FINSI;
+        |SINO;
+            |SI nLong ] 4;
+                |SI aImpor2 ! "  -";
+                    eaImporte = aImpor2 + "." + aImpor1;
+                |SINO;
+                    eaImporte = aImpor2 + aImpor1;
+                |FINSI;
+            |SINO;
+                eaImporte = aImpor1;
+            |FINSI;
+        |FINSI;
+     |FINSI;
+
+     eaImporte = ("             " + eaImporte + "," + aDecima) % -113;
+
+     |SI eaImporte = "            0";  eaImporte = "             ";  |FINSI;
+     |SI eaImporte = "         0,00";  eaImporte = "             ";  |FINSI;
+|FPRC;
+
+|PROCESO EnConversor;
+     |SI enLeerCamoneda = 0;
+         |ABRE #camoneda;
+         #camoneda#0 = enEmpresa;
+         #camoneda#1 = enPerConta;
+         |LEE 040#camoneda.=;
+         |SI FSalida ! 0;
+             |DDEFECTO #camoneda;
+             |SI eaLaMonEmp ! "";
+                 #camoneda#0 = enEmpresa;
+                 #camoneda#1 = enPerConta;
+                 #camoneda#2 = eaLaMonEmp;
+                 |GRABA 020#camoneda.n;
+             |FINSI;
+         |FINSI;
+         |CIERRA #camoneda;
+
+         eaMonedaOtra = #camoneda#2;
+     |FINSI;
+
+     |HAZ LeeEURODBMOD;
+
+     enConversor = 1;
+     enRedonPaYa = EURODBMOD;
+     |SI EURODBMOD ! 0;
+         |SI eaMonedaOtra = "P";
+             enConversor = 166.386;
+             enRedonPaYa = 0;
+         |FINSI;
+     |SINO;
+         |SI eaMonedaOtra = "E";
+             enConversor = 0.00601012;
+             enRedonPaYa = 2;
+         |FINSI;
+     |FINSI;
+|FPRC;

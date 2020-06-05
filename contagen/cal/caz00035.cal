@@ -1,0 +1,265 @@
+|FICHEROS;
+   caz00035 #0;
+
+   camaniva #1;    || iva
+   camaasil #2;
+   cacuenta #5;    || Cuentas
+   caclipro #18;   || Clientes y Proveedores
+   caivaasi #200;
+
+   canempre #30;
+   caselem1 #998;
+|FIN;
+
+|VARIABLES;
+   &entrada  = 1;
+   mensa1    = "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+   enQSerie  = 0;
+   DesdeTipo = "";
+   HastaTipo = "";
+   nSwPr     = 0;
+
+   aNomFra   = "";
+   aNifFra   = "";
+   aCtaFra   = "";
+
+   aCtaApte  = "";
+   swdefe    = 0;
+   nSwLee    = 0;
+   aNombre   = "";
+   aNif      = "";
+
+   aAlfa1   = "";
+   aAlfa2   = "";
+   nNume1   = 0;
+   nSwError  = 0;
+   fDFecha   = @;
+|FIN;
+
+|INCLUYE dscont_i;
+
+____________________________________/ CALCULOS DESDE PANTALLA
+
+|CALCULO eInic8; |TIPO 8;
+ |HAZ inicio;
+ |ABRE #200;
+ |DDEFECTO #200;
+ |LEE 010#200p;
+ enQSerie = 0;
+ |SI #200#44 = "S"; enQSerie = 1;|FINSI;
+ |CIERRA #200;
+ |HAZ eParaModelos;
+|FCAL;
+
+|CALCULO def_fec; |TIPO 7;
+   #0#5 = fec1;    |PINTA #0#5;
+   #0#6 = fec2;    |PINTA #0#6;
+|FCAL;
+
+|PROCESO libroh; | TIPO 0;   ||  hasta diario
+   |SI #0#2 < #0#1;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO facturah; | TIPO 0;   ||  hasta documento
+   |SI #0#4 < #0#3;  |ERROR;  |FINSI;
+|FPRC;
+
+|PROCESO fecha; | TIPO 0;   || Desde/hasta fecha
+  fDFecha = fec1;
+  |SI enSwSelFc = 1; fDFecha = "01.01.0000"; |FINSI;
+   |SI #0Campo < fDFecha; |O #0Campo > fec2;
+      |MENAV mensa1;
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO fechah; | TIPO 0;   ||  hasta fecha
+   |SI #0#6 < #0#5;  |ERROR;  |FINSI;
+|FPRC;
+
+|CALCULO hque; |TIPO 7;
+ |SI enQSerie = 0;
+     |C_M #0#12,1,"N"; #0#12 = "";      |PINTA #0#12;
+     |C_M #0#13,1,"N"; #0#13 = "zzzzz"; |PINTA #0#13;
+ |SINO;
+     |C_M #0#12,1,"S";
+     |C_M #0#13,1,"S";
+ |FINSI;
+|FCAL;
+
+|CALCULO cuenta;|TIPO 6;
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta; |PINTA #0Campo;
+|FCAL;
+
+|| **************************************************************************
+|PROCESO leyendo;
+   nSwError = 0;
+   |HAZ SacaNivel;
+   aNombre   = "";
+   aNif      = aNifFra;
+   || ................................................
+
+    #18#23 = "C";
+    #18#10 = eaCuenta;
+    #18#11 = enNivel;
+    |LEE 001#18=;
+    |SI FSalida = 0;
+        aNombre = #18#1;        || nombre del cliente
+        aNif    = #18#9;
+    |SINO;
+        #18#23 = "P";
+        #18#10 = eaCuenta;
+        #18#11 = enNivel;
+        |LEE 001#18=;
+        |SI FSalida ! 0;
+            |DDEFECTO #18;
+            |HAZ lee_cuent;
+            aNombre = #5#2;         || nombre de la cuenta
+        |SINO;
+            aNombre = #18#1;        || nombre del proveedor
+            aNif    = #18#9;
+        |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO lee_cuent;
+   |ABRE #5;
+   #5#0 = eaCuenta;
+   #5#1 = enNivel;
+   |LEE 001#5=;
+   |SI FSalida ! 0;
+       |DDEFECTO #5;
+   |FINSI;
+   |CIERRA #5;
+|FPRC;
+
+|| **************************************************************************
+|PROCESO LeoApuntes;
+  |SI #2#19 = "F"; |O #2#19 = " ";
+      aCtaApte = #2#4;
+      swdefe   = 1;
+      |SI #2#19 = "F";
+          |ERROR10;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE LeoApuntes;
+   #2#1;
+   ;
+   #1#7, #1#8, #1#9,    1;
+   #1#7, #1#8, #1#9, 9999;
+   e;
+   NULL, LeoApuntes;
+|FIN;
+
+|PROCESO lee_iva1;
+   |ATRI I;
+   aAlfa1 = #1#0;   aAlfa1 = ("00" + aAlfa1) % -102;     |PINTA 1822, aAlfa1;
+   aAlfa1 = #1#3;   aAlfa1 = ("000000" + aAlfa1) % -106; |PINTA 1825, aAlfa1;
+   aAlfa1 = #1#2;                                        |PINTA 1832, aAlfa1;
+   |ATRI 0;
+
+   aNomFra = #1#13; |QBF aNomFra;
+   aNifFra = #1#14; |QBF aNifFra;
+   aCtaFra = #1#12;
+
+   aCtaApte = "";
+   swdefe   = 0;
+   nSwLee   = 0;
+   |BUCLE LeoApuntes;
+   |SI swdefe = 1;
+       |SI aCtaFra ! aCtaApte;
+           #1#12 = aCtaApte;
+           nSwLee = 1;
+       |FINSI;
+       |SI aNifFra = ""; |O aNomFra = "";
+           nSwLee = 1;
+       |FINSI;
+  |FINSI;
+  |SI nSwLee = 1;
+      eaCuenta = #1#12;
+      |HAZ leyendo;
+      #1#13 = aNombre;
+      #1#14 = aNif;
+      |GRABA 020#1a;
+  |FINSI;
+  |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE lee_iva;
+   #1#3;
+   4,12,36;
+   #0#1, #0#12, #0#3, #0#5, #0#8, DesdeTipo;
+   #0#2, #0#13, #0#4, #0#6, #0#9, HastaTipo;
+   be;
+   NULL, lee_iva1;
+|FIN;
+|| **************************************************************************
+
+|PROCESO HazTodo;
+     nSwPr = 0;
+     |ABRE #18;
+     |BUCLE lee_iva;
+     |CIERRA #18;
+|FPRC;
+
+|CALCULO tipo3; |TIPO 3;
+
+   |SI #0#7 ! "SI"; |ACABA; |FINSI;
+
+   DesdeTipo = #0#0; HastaTipo = #0#0;
+   |SI #0#0 = "A"; DesdeTipo = "R"; HastaTipo = "S"; |FINSI;
+
+   |SI #48#27 = "S";
+       |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+|FCAL;
+
+|| **************************************************************************
+
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #5 dirfich0;
+   |PATH_DAT #18 dirfich0;
+
+   |ATRI N; |CUADRO 1508 1850;
+   |ATRI R; |PINTA 1609, "Empresa: ";      |ATRI 0;
+   |PINTA 1618, #30#2; |PINTA 1709, #30#1; |ATRI 0;
+   |PINTA 1910, "                                                      ";
+   |PINTA 2010, "                                                      ";
+
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

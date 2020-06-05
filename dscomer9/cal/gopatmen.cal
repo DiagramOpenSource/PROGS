@@ -1,0 +1,1186 @@
+|FICHEROS;
+     gopatmen #0;
+     agifa321 #1;
+     agifa324 #2;
+     gomedive #4,MANTE;                           ||Unidades de medida de las partidas.
+     gosecive #5;                                 ||Secciones de las partidas.
+     gofamive #6;                                 ||Familias de las partidas.
+     gosubive #7;                                 ||Subfamilias de las partidas.
+     goapaive #8;                                 ||Apartados de las partidas.
+     goartdes #9,MANTE;                           ||Descomposicion de partidas.
+     goartive #10;                          ||Fichero de partidas.
+     agi00063 #12,MANTE;                          ||Tipos de componentes IVE.
+     goprecio #14;
+     godeivec #20;                                ||Descripcion ampliada de partidas IVE Cabs.
+     godeivel #21;                                ||Descripcion ampliada de partidas IVE Lins.
+     goimpau1;
+     goparame;
+|FIN;
+-----------------------------------------------------------------------------
+|VARIABLES;
+     aFic           = "";
+     &nHandleIve    = 0;
+     &aNomTempIve = "";
+     aAlfa          = "";
+
+     &cPart         = "";
+
+     &cCodMonBase   = "";
+     &cCodMonTrab   = "";
+     &cCodMonDe     = "";
+     &cCodMonA      = "";
+     &cCodMonConv   = "";
+     &cCodMonActu   = "";
+     &cDesMonBase   = "";
+     &cDesMonTrab   = "";
+     &nDeci_PBase   = 0;
+     &nDeci_TBase   = 0;
+     &nDeci_PTrab   = 0;
+     &nDeci_TTrab   = 0;
+     &nDeci_TotVis  = 0;
+     &nEurComTrab   = 0;
+     &nEurComBase   = 0;
+     &nEurVenTrab   = 0;
+     &nEurVenBase   = 0;
+     &nPreComTrab   = 0;
+     &nPreComBase   = 0;
+     &nPreVenTrab   = 0;
+     &nPreVenBase   = 0;
+     &nPrecioComp   = 0;
+     &nPrecioVent   = 0;
+
+     cMonBase       = "";
+     cPath          = "";
+     cCadena        = "";
+     cCodigo        = "";
+     cDescri        = "";
+     cPrecio        = "";
+     cProvAc        = "";
+     cProvFi        = "";
+     cTexto         = "";
+     cCodAnt        = "";
+     cOrigen        = "";
+     cLong          = "";
+     cParam         = "";
+     cSeccion       = "";
+     cFamilia       = "";
+     cSubFami       = "";
+     cCapitul       = "";
+     cDesSec        = "";
+     cDesFam        = "";
+     cDesSub        = "";
+     cDesCap        = "";
+
+     nPrecio        = 0;
+     nImporte       = 0;
+     nLinea         = 0;
+     r              = 0;
+     j              = 0;
+     k              = 0;
+     nValor         = 0;
+     nEuros         = 0;
+     nBotPath       = 0;
+
+     nLaProvincia   = 0;
+     aPrincipal = "";
+     aSeccion = "";
+     aFamilia = "";
+     aSubFamilia = "";
+     aCapitulo = "";
+     aPartida = "";
+     aAmpliada = "";
+
+     aUMed = "";
+     aTipo = "";
+
+     {500}fiebdc    = "";
+|FIN;
+-----------------------------------------------------------------------------
+|PROGRAMA;
+     |CONTROL_SIMPLE 0, "BOTON,F2 - Path FIEBDC.", 2425, 2455, PathFie;
+     nBotPath = FSalida;
+     |ESTADO_CONTROL nBotPath, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |CLS;
+     |CABEZA "IMPORTACION DE DATOS FICHEROS FIBDC";
+     |ABRE #0;
+     |DDEFECTO #0;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #2#0;
+
+     |SI FSalida = 0;
+        aNomTempIve = "goau1fie";
+        |NOME_DAT #goimpau1#aNomTempIve#;
+        |ABRE #goparame;
+        |LEE 040#goparame.p;
+        cOrigen = #goparame#24;
+        |QBF cOrigen;
+        |CIERRA #goparame;
+        aFic = #0#14;
+        |QBF aFic;
+        |SI aFic ! "";
+            |RCOPIA_FICHERO aFic,cOrigen;
+            |DELINDEX #goimpau1;
+        |FINSI;
+        |ABRE #goimpau1; || El unico problema es si se que a medias ....
+        |LEE 040#goimpau1.p;
+        |SI FSalida ! 0;
+                |CIERRA #goimpau1;
+             || Primer paso: rellenar nuestro 'manejable' auxiliar
+             |XABRE "B", cOrigen, nHandleIve; || Lo trataremos binario ya que tenemos longitudes de string muy largas
+             |SI FSalida ] 0;
+                 |SUB_EJECUTA_NP "gocreivi.tab";
+                 |XCIERRA nHandleIve;
+             |SINO;
+                 |MENAV "0000No se puede el fichero fiebdc ...";
+                 |ACABA;
+             |FINSI;
+         |FINSI;
+          |HAZ CargaIve;
+          |ABRE #goimpau1;
+          |HAZ MonBas;
+          |HAZ Pase;
+          |CIERRA #goimpau1;
+          |HAZ LiberaIve;
+     |FINSI;
+
+     |CIERRA #0;
+     |PULSATECLA;
+     |FIN_CONTROL_WINDOWS nBotPath;
+     |PULSATECLA;
+
+|FPRO;
+-----------------------------------------------------------------------------
+|PROCESO Entrada; |TIPO 7;
+     #0#1 = 1;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Muestra; |TIPO 7;
+     |ESTADO_CONTROL nBotPath, "SHOW"; ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Path; |TIPO 0;
+     cPath = #0#14;
+     |QBF cPath;
+
+     |SI FSalida = 10;
+          cPath = " ";
+          |BROWSE cPath;
+          cPath = cPath % 280;
+          |QBT cPath;
+
+          |SI cPath = "";
+               |ERROR;
+               |ACABA;
+          |SINO;
+               #0#14 = cPath;
+               |PINTA #0#14;
+          |FINSI;
+
+     |FINSI;
+
+     |ESTADO_CONTROL nBotPath, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Pase;
+
+     || Determinar provincia
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "V";
+     #goimpau1#1 = "";
+     #goimpau1#2 = 2;
+     #goimpau1#3 = 1;
+     #goimpau1#4 = 0;
+     |LEE 040#goimpau1.=;
+     nLaProvincia = 0;|| para el precio
+
+     cProvAc = #0#2;
+     |QBF cProvAc;
+     cProvAc = cProvAc > " ";
+
+     nLaProvincia = -1;
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "V  ";|Y #goimpau1#2 = 2;|HACIENDO;
+         cProvFi = #goimpau1#5;
+         |QBF cProvFi;
+         cProvFi = cProvFi > " ";
+         |SI cProvFi = cProvAc;
+             nLaProvincia = #goimpau1#3 - 1;
+             |SAL;
+         |FINSI;
+         |LEE 040#goimpau1.s;
+     |SIGUE;
+
+     |SI nLaProvincia = -1;
+         |MENAV "0000No se encuentra la provincia";
+         |ACABA;
+     |FINSI;
+     |ABRE #4;
+     |ABRE #9;
+     |ABRE #12;
+     cPath = #0#14;
+     |QBF cPath;
+
+     |ABRE #5;
+     |ABRE #6;
+     |ABRE #7;
+     |ABRE #8;
+     |ABRE #10;
+     |ABRE #20;
+     |ABRE #21;
+     |SI #0#7 = "S";
+          |CIERRA #14;
+          |DELINDEX #14;
+          |ABRE #14;
+          |HAZ Precios;
+          |CIERRA #14;
+     |FINSI;
+     |ABRE #14;
+     |HAZ Secciones; || Baja el arbol hasta la descomposicion final
+     |SI #0#6 = "S";
+          |HAZ Ampliadas;
+     |FINSI;
+     |CIERRA #14;
+     |CIERRA #5;
+     |CIERRA #6;
+     |CIERRA #7;
+     |CIERRA #8;
+     |CIERRA #10;
+     |CIERRA #20;
+     |CIERRA #21;
+     |CIERRA #4;
+     |CIERRA #12;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO ConverMon;
+     cCodMonDe = #0#3;
+     cCodMonA  = cCodMonBase;
+     nPrecioComp = nPrecio;
+     |HAZ DemonAmon;
+     nPrecio = nPrecioComp;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Precios;
+     |HAZ MonBas;
+
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "C";
+     |LEE 040#goimpau1.];
+     |PARA; |SI FSalida = 0;|Y #goimpau1#0 = "C  ";|HACIENDO;
+            |SALVA_DATOS #goimpau1;
+
+               cCodigo = #goimpau1#1;
+               #goimpau1#2 = 2;
+               #goimpau1#3 = nLaProvincia;
+               |LEE 040#goimpau1.=;
+               |SI FSalida ! 0;
+                   cPrecio = ""; || Si no hay el precio de mi provincia el ultimo es el bueno
+                   #goimpau1#5 = "";
+                   |PARA;|SI FSalida ! 0;|Y #goimpau1#3 ] 0;|Y #goimpau1#1 = cCodigo;
+                         |Y #goimpau1#0 = "C  ";|HACIENDO;
+                         cPrecio = #goimpau1#5;
+                         #goimpau1#3 = #goimpau1#3 - 1;
+                         |LEE 040#goimpau1.=;
+                   |SIGUE;
+               |SINO;
+                   cPrecio = #goimpau1#5;
+               |FINSI;
+               nPrecio = cPrecio;
+               |QBF cCodigo;
+               #14#0 = cCodigo;
+               #14#1 = #0#2;
+               |HAZ ConverMon;
+               #14#2 = nPrecioComp;
+               |GRABA 020#14c;
+               cTexto = "Procesando Precios: " + cCodigo + "          ";
+               |PINTA 0640, cTexto;
+
+          |REPON_DATOS #goimpau1;
+          #goimpau1#2 = 9999;
+          #goimpau1#3 = 9999;
+          #goimpau1#4 = 9999;
+          |LEE 040#goimpau1.>;
+     |SIGUE;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Secciones;
+     |HAZ MonBas;
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "C##";
+     |LEE 040#goimpau1.];
+     |SI FSalida ! 0;|O #goimpau1#0 ! "C##";
+         |MENAV "0000No es fichero fiebdc";
+         |ACABA;
+     |FINSI;
+     #goimpau1#0 = "D";
+     aPrincipal = #goimpau1#1;
+     #goimpau1#2 = 0;
+     #goimpau1#3 = 0;
+     #goimpau1#4 = 0;
+     |LEE 040#goimpau1.=;
+     |SI FSalida ! 0;
+         |MENAV "0000No hay secciones!!";
+         |ACABA;
+     |FINSI;
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y aPrincipal = #goimpau1#1;|HACIENDO;
+               cCodigo = #goimpau1#5;
+               |SALVA_DATOS #goimpau1;
+               #goimpau1#1 = #goimpau1#5;
+               aSeccion = #goimpau1#1;
+             #goimpau1#0 = "C#";
+              #goimpau1#1 = cCodigo;
+            #goimpau1#2 = 1;
+              #goimpau1#3 = 0;
+            #goimpau1#4 = 0;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                  |SI #0#15 = "S";
+                      |OEM_ANSI cDescri,#goimpau1#5;
+                  |SINO;
+                      cDescri = #goimpau1#5;
+                  |FINSI;
+               |SINO;
+                  cDescri = "";
+               |FINSI;
+               |REPON_DATOS #goimpau1;
+               cCodigo = cCodigo - "#";
+               |QBF cCodigo;
+               |QBF cDescri;
+
+               #5#0 = cCodigo;
+               |LEE 000#5=;
+
+               |SI FSalida = 0;
+                    |SI #0#5 = "S";               ||Graba la Descripcion Nueva.
+                         #5#1 = cDescri;
+                             |SI #0#8 = "S";
+                            |GRABA 020#5a;
+                             |FINSI;
+                    |FINSI;
+               |SINO;
+                    #5#1 = cDescri;
+                        |SI #0#8 = "S";
+                       |GRABA 020#5c;                ||Graba una nueva seccion.
+                        |FINSI;
+               |FINSI;
+
+               cTexto = "Procesando Sección: " + cCodigo + "          ";
+               |PINTA 0640, cTexto;
+
+               |SALVA_DATOS #goimpau1;
+               |HAZ Familias;
+               |REPON_DATOS #goimpau1;
+
+         #goimpau1#3 = #goimpau1#3 + 3;
+         |LEE 040#goimpau1.=;
+     |SIGUE;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Familias;
+
+     #goimpau1#0 = "D";
+     #goimpau1#1 = aSeccion;
+     #goimpau1#2 = 0;
+     #goimpau1#3 = 0;
+     #goimpau1#4 = 0;
+     |LEE 040#goimpau1.=;
+     |SI FSalida ! 0;
+         |ACABA;
+     |FINSI;
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y aSeccion = #goimpau1#1;|HACIENDO;
+               cCodigo = #goimpau1#5;
+               |SALVA_DATOS #goimpau1;
+               #goimpau1#1 = #goimpau1#5;
+               aFamilia = #goimpau1#1;
+            #goimpau1#0 = "C#";
+              #goimpau1#1 = cCodigo;
+            #goimpau1#2 = 1;
+              #goimpau1#3 = 0;
+            #goimpau1#4 = 0;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                  |SI #0#15 = "S";
+                      |OEM_ANSI cDescri,#goimpau1#5;
+                  |SINO;
+                      cDescri = #goimpau1#5;
+                  |FINSI;
+               |SINO;
+                  cDescri = "";
+               |FINSI;
+               |REPON_DATOS #goimpau1;
+               cCodigo = cCodigo - "#";
+               |QBF cCodigo;
+               |QBF cDescri;
+               #6#0 = cCodigo;
+               |LEE 000#6=;
+
+               |SI FSalida = 0;
+
+                    |SI #0#5 = "S";               ||Graba la Descripcion Nueva.
+                         #6#1 = cDescri;
+                         #6#2 = #5#0;          ||Codigo Seccion.
+                         #6#3 = #5#1;          ||Descripcion Seccion.
+                         |SI #0#9 = "S";
+                            |GRABA 020#6a;
+                         |FINSI;
+                    |FINSI;
+
+               |SINO;
+                    #6#1 = cDescri;
+                    #6#2 = #5#0;               ||Codigo Seccion.
+                    #6#3 = #5#1;               ||Descripcion Seccion.
+                    |SI #0#9 = "S";
+                       |GRABA 020#6c;                ||Graba una nueva Familia.
+                    |FINSI;
+               |FINSI;
+               cTexto = "Procesando Familia: " + cCodigo + "          ";
+               |PINTA 0640, cTexto;
+
+               |SALVA_DATOS #goimpau1;
+               |HAZ SubFamilias;
+               |REPON_DATOS #goimpau1;
+
+
+         #goimpau1#3 = #goimpau1#3 + 3;
+         |LEE 040#goimpau1.=;
+     |SIGUE;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO SubFamilias;
+
+     #goimpau1#0 = "D";
+     #goimpau1#1 = aFamilia;
+     #goimpau1#2 = 0;
+     #goimpau1#3 = 0;
+     #goimpau1#4 = 0;
+     |LEE 040#goimpau1.=;
+     |SI FSalida ! 0;
+         |ACABA;
+     |FINSI;
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y aFamilia = #goimpau1#1;|HACIENDO;
+               cCodigo = #goimpau1#5;
+               |SALVA_DATOS #goimpau1;
+               #goimpau1#1 = #goimpau1#5;
+               aSubFamilia = #goimpau1#1;
+            #goimpau1#0 = "C#";
+              #goimpau1#1 = cCodigo;
+            #goimpau1#2 = 1;
+              #goimpau1#3 = 0;
+            #goimpau1#4 = 0;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                  |SI #0#15 = "S";
+                      |OEM_ANSI cDescri,#goimpau1#5;
+                  |SINO;
+                      cDescri = #goimpau1#5;
+                  |FINSI;
+               |SINO;
+                  cDescri = "";
+               |FINSI;
+               |REPON_DATOS #goimpau1;
+               cCodigo = cCodigo - "#";
+               |QBF cCodigo;
+               |QBF cDescri;
+
+               #7#0 = cCodigo;
+               |LEE 000#7=;
+
+               |SI FSalida = 0;
+
+                    |SI #0#5 = "S";               ||Graba la Descripcion Nueva.
+                         #7#1 = cDescri;
+                         #7#2 = #6#0;          ||Codigo Familia.
+                         #7#3 = #6#1;          ||Descripcion Familia.
+                         |SI #0#10 = "S";
+                            |GRABA 020#7a;
+                         |FINSI;
+                    |FINSI;
+
+               |SINO;
+                    #7#1 = cDescri;
+                    #7#2 = #6#0;               ||Codigo Familia.
+                    #7#3 = #6#1;               ||Descripcion Familia.
+                    |SI #0#10 = "S";
+                       |GRABA 020#7c;                ||Graba una nueva seccion.
+                    |FINSI;
+               |FINSI;
+
+               cTexto = "Procesando Subfamilia: " + cCodigo + "          ";
+               |PINTA 0640, cTexto;
+
+               |SALVA_DATOS #goimpau1;
+               |HAZ Capitulos;
+               |REPON_DATOS #goimpau1;
+
+
+         #goimpau1#3 = #goimpau1#3 + 3;
+         |LEE 040#goimpau1.=;
+     |SIGUE;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Capitulos;
+
+
+     #goimpau1#0 = "D";
+     #goimpau1#1 = aSubFamilia;
+     #goimpau1#2 = 0;
+     #goimpau1#3 = 0;
+     #goimpau1#4 = 0;
+     |LEE 040#goimpau1.=;
+     |SI FSalida ! 0;
+         |ACABA;
+     |FINSI;
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y aSubFamilia = #goimpau1#1;|HACIENDO;
+               cCodigo = #goimpau1#5;
+               |SALVA_DATOS #goimpau1;
+               #goimpau1#1 = #goimpau1#5;
+               aCapitulo = #goimpau1#1;
+            #goimpau1#0 = "C#";
+              #goimpau1#1 = cCodigo;
+            #goimpau1#2 = 1;
+              #goimpau1#3 = 0;
+            #goimpau1#4 = 0;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                  |SI #0#15 = "S";
+                      |OEM_ANSI cDescri,#goimpau1#5;
+                  |SINO;
+                      cDescri = #goimpau1#5;
+                  |FINSI;
+               |SINO;
+                  cDescri = "";
+               |FINSI;
+               |REPON_DATOS #goimpau1;
+               cCodigo = cCodigo - "#";
+               |QBF cCodigo;
+               |QBF cDescri;
+
+               #8#0 = cCodigo;
+               |LEE 000#8=;
+
+               |SI FSalida = 0;
+
+                    |SI #0#5 = "S";               ||Graba la Descripcion Nueva.
+                         #8#1 = cDescri;
+                         #8#2 = #7#0;          ||Codigo SubFamilia.
+                         #8#3 = #7#1;          ||Descripcion SubFamilia.
+                         |SI #0#11 = "S";
+                            |GRABA 020#8a;
+                         |FINSI;
+                    |FINSI;
+
+               |SINO;
+                    #8#1 = cDescri;
+                    #8#2 = #7#0;               ||Codigo SubFamilia.
+                    #8#3 = #7#0;               ||Descripcion SubFamilia.
+                    |SI #0#11 = "S";
+                        |GRABA 020#8c;                ||Graba una nueva seccion.
+                    |FINSI;
+               |FINSI;
+
+               cTexto = "Procesando Capitulo: " + cCodigo + "          ";
+               |PINTA 0640, cTexto;
+
+               |SALVA_DATOS #goimpau1;
+               |HAZ Partidas;
+               |REPON_DATOS #goimpau1;
+
+
+         #goimpau1#3 = #goimpau1#3 + 3;
+         |LEE 040#goimpau1.=;
+     |SIGUE;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO Partidas;
+
+     #goimpau1#0 = "D";
+     #goimpau1#1 = aCapitulo;
+     #goimpau1#2 = 0;
+     #goimpau1#3 = 0;
+     #goimpau1#4 = 0;
+     |LEE 040#goimpau1.=;
+     |SI FSalida ! 0;
+         |ACABA;
+     |FINSI;
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y aCapitulo = #goimpau1#1;|HACIENDO;
+               cCodigo = #goimpau1#5;
+               |SALVA_DATOS #goimpau1;
+               #goimpau1#1 = #goimpau1#5;
+               aPartida = #goimpau1#1;
+               #goimpau1#0 = "C";
+               #goimpau1#1 = cCodigo;
+               #goimpau1#2 = 1;
+               #goimpau1#3 = 0;
+               #goimpau1#4 = 0;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                  |SI #0#15 = "S";
+                      |OEM_ANSI cDescri,#goimpau1#5;
+                  |SINO;
+                      cDescri = #goimpau1#5;
+                  |FINSI;
+               |SINO;
+                  cDescri = "";
+               |FINSI;
+               #goimpau1#2 = 0;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                  aUMed = #goimpau1#5;
+               |SINO;
+                  aUMed = "";
+               |FINSI;
+               #goimpau1#2 = 4;
+               |LEE 040#goimpau1.=;
+               |SI FSalida = 0;
+                  aTipo = #goimpau1#5;
+               |SINO;
+                  aTipo = "";
+               |FINSI;
+               |QBF aTipo;
+               |SI aTipo = "";
+                   aTipo = "0";
+               |FINSI;
+               |REPON_DATOS #goimpau1;
+               cCodigo = cCodigo - "#";
+               |QBF cCodigo;
+               |QBF cDescri;
+
+               cTexto = "Procesando Partida: " + cCodigo + "          ";
+               |PINTA 0640, cTexto;
+
+               |DDEFECTO #10;
+               #10#0 = cCodigo;
+               |LEE 000#10=;
+
+               |SI FSalida = 0;
+                  |SI #0#12 = "S";
+
+                    |SI #0#5 = "S";               ||Graba la Descripcion Nueva.
+                         #10#1 = cDescri;
+
+                         #10#2 = aUMed;         ||Unidad medida.
+
+                         #10#6 = aTipo;         ||Tipo.
+
+                         #10#13 = #8#0;        ||Capitulo.
+                         #10#14 = #8#1;        ||D. Capitulo.
+
+                         #10#11 = #7#0;        ||Subfamilia.
+                         #10#12 = #7#1;        ||D. Subfamilia.
+
+                         #10#9 = #6#0;         ||
+                         #10#10 = #6#1;        ||
+
+                         #10#7 = #5#0;         ||
+                         #10#8 = #5#1;         ||
+
+                         #10#5 = cCodMonBase;     ||Moneda;
+                         #4#0 = #10#2;
+                         |LEE 000#4=;
+
+                         |SI FSalida = 0;
+                              #10#3 = #4#1;            ||D. Medida.
+                         |SINO;
+                              |PUSHV 01012380;
+                              |CLS;
+                              |PINPA #0#4;
+                              |PINDA #0#4;
+                              |ENDATOS #1#4;
+
+                              |SI FSalida = 0;
+                                   #10#3 = #4#1;
+                                   |GRABA 020#4c;
+                              |FINSI;
+
+                              |POPV;
+                         |FINSI;
+
+                         #12#0 = #10#6;
+                         |LEE 000#12=;
+
+                         |SI FSalida = 0;
+                              #10#16 = #12#1;          ||D.Tipo.
+                         |SINO;
+                              |PUSHV 01012380;
+                              |CLS;
+                              |PINPA #0#12;
+                              |PINDA #0#12;
+                              |ENDATOS #1#12;
+
+                              |SI FSalida = 0;
+                                   #10#16 = #12#1;
+                                   |GRABA 020#12c;
+                              |FINSI;
+
+                              |POPV;
+                         |FINSI;
+
+                    |FINSI;
+
+                    |SI #0#7 = "S";
+                         cProvAc = #0#2;
+                         cProvAc = cProvAc > " ";
+                         |QBF cProvAc;
+                         #14#0  = #10#0;           ||Partida;
+                         #14#1  = cProvAc;         ||Provincia.
+                         |LEE 000#14=;
+
+                         |SI FSalida = 0;
+                              #10#15 = #14#2;
+                         |FINSI;
+
+                    |FINSI;
+
+                    |GRABA 020#10a;
+
+                 |FINSI;
+               |SINO;
+                    #10#1   = cDescri;
+
+                         #10#2 = aUMed;         ||Unidad medida.
+
+                         #10#6 = aTipo;         ||Tipo.
+
+                         #10#13 = #8#0;        ||Capitulo.
+                         #10#14 = #8#1;        ||D. Capitulo.
+
+                         #10#11 = #7#0;        ||Subfamilia.
+                         #10#12 = #7#1;        ||D. Subfamilia.
+
+                         #10#9 = #6#0;         ||
+                         #10#10 = #6#1;        ||
+
+                         #10#7 = #5#0;         ||
+                         #10#8 = #5#1;         ||
+
+                    #10#5   = cCodMonBase;        ||Moneda;
+
+                 |SI #0#12 = "S";
+                    |DDEFECTO #4;
+                    #4#0    = #10#2;
+                    |LEE 000#4=;
+
+                    |SI FSalida = 0;
+                         #10#3 = #4#1;            ||D. Medida.
+                    |SINO;
+                         |PUSHV 01012380;
+                         |CLS;
+                         |PINPA #0#4;
+                         |PINDA #0#4;
+                         |ENDATOS #1#4;
+
+                         |SI FSalida = 0;
+                              #10#3 = #4#1;
+                              |GRABA 020#4c;
+                         |FINSI;
+
+                         |POPV;
+                    |FINSI;
+
+                    |DDEFECTO #12;
+                    #12#0 = #10#6;
+                    |LEE 000#12=;
+
+                    |SI FSalida = 0;
+                         #10#16 = #12#1;          ||D.Tipo.
+                    |SINO;
+                         |PUSHV 01012380;
+                         |CLS;
+                         |PINPA #0#12;
+                         |PINDA #0#12;
+                         |ENDATOS #1#12;
+
+                         |SI FSalida = 0;
+                              #10#16 = #12#1;
+                              |GRABA 020#12c;
+                         |FINSI;
+
+                         |POPV;
+                    |FINSI;
+
+                    |SI #0#7 = "S";
+                         cProvAc = #0#2;
+                         cProvAc = cProvAc > " ";
+                         |QBF cProvAc;
+                         #14#0  = #10#0;          ||Partida;
+                         #14#1  = cProvAc;        ||Provincia.
+                         |LEE 000#14=;
+
+                         |SI FSalida = 0;
+                              #10#15 = #14#2;     ||Precio Partida.
+                         |FINSI;
+
+                    |FINSI;
+
+                    |GRABA 020#10c;
+                  |FINSI;
+               |FINSI;
+
+               |SI #0#13 = "S";
+                 |SALVA_DATOS #goimpau1;
+                 |HAZ Descom;
+                 |REPON_DATOS #goimpau1;
+               |FINSI;
+
+
+         #goimpau1#3 = #goimpau1#3 + 3;
+         |LEE 040#goimpau1.=;
+     |SIGUE;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO BorraDes;
+     |BORRA 020#9a;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE BorraDes;
+     #9#1;
+     ;                                          ||Campos Extras.
+     cCodigo, 1;
+     cCodigo, 999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, BorraDes;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO Descom;
+     #goimpau1#0 = "D";
+     #goimpau1#1 = aPartida;
+     #goimpau1#2 = 0;
+     #goimpau1#3 = 0;
+     #goimpau1#4 = 0;
+     |LEE 040#goimpau1.=;
+     |SI FSalida ! 0;
+         |ACABA;
+     |FINSI;
+     |PARA;|SI FSalida = 0;|Y #goimpau1#0 = "D  ";|Y #goimpau1#1 = aPartida;|HACIENDO;
+           |SI #goimpau1#3 = 0;
+              nLinea = 1;
+              nImporte = 0;
+              cTexto = "Procesando Descomposición: " + aPartida + "          ";
+              |PINTA 0640, cTexto;
+           |FINSI;
+           |DDEFECTO #9;
+           #9#0 = aPartida;
+           cCodigo = #9#0;
+           #9#1 = nLinea;
+           |LEE 000#9=;
+           |SI FSalida = 0;
+                |SI #0#5 = "S";
+                     |BUCLE BorraDes;         ||Graba la Descripcion Nueva.
+                |SINO;
+                     |ACABA;
+                |FINSI;
+           |FINSI;
+
+           #9#0 = cCodigo;
+           #9#1 = nLinea;
+           #9#2 = #goimpau1#5;                    ||Graba el Cod. Articulo.
+
+           |SALVA_DATOS #goimpau1;
+           #goimpau1#3 = #goimpau1#3 + 2;
+           #goimpau1#5 = "";
+           |LEE 040#goimpau1.=;
+           #9#5 = #goimpau1#5; || Cantidad
+
+           #goimpau1#0 = "C";
+           #goimpau1#1 = #9#2;
+           #goimpau1#2 = 0;
+           #goimpau1#3 = 0;
+           #goimpau1#4 = 0;
+           #goimpau1#5 = "";
+           |LEE 040#goimpau1.=;
+           |SI FSalida ! 0;
+                |HAZ TomaPara;
+           |SINO;
+             #9#4 = #goimpau1#5;
+             #goimpau1#2 = 1;
+             #goimpau1#5 = "";
+             |LEE 040#goimpau1.=;
+                  |SI #0#15 = "S";
+                      |OEM_ANSI #9#3,#goimpau1#5;
+                  |SINO;
+                      #9#3 = #goimpau1#5;
+                  |FINSI;
+
+                cCodigo = #goimpau1#1;
+             #goimpau1#2 = 2;
+                #goimpau1#3 = 0
+             #goimpau1#5 = "";
+             |LEE 040#goimpau1.=;
+                |SI FSalida ! 0;
+                   nPrecio = ""; || Si no hay el precio de mi provincia el ultimo es el bueno
+                   #goimpau1#5 = "";
+                   |PARA;|SI FSalida ! 0;|Y #goimpau1#3 ] 0;|Y #goimpau1#1 = cCodigo;
+                         |Y #goimpau1#0 = "C  ";|HACIENDO;
+                         nPrecio = #goimpau1#5;
+                         #goimpau1#3 = #goimpau1#3 - 1;
+                         |LEE 040#goimpau1.=;
+                   |SIGUE;
+                |SINO;
+                   nPrecio = #goimpau1#5;
+                |FINSI;
+                |HAZ ConverMon;
+                #9#6 = nPrecio;               ||Precio.
+
+                #9#7 = #9#6 * #9#5;           ||Importe
+                #goimpau1#0 = "C";
+                #goimpau1#1 = cCodigo;
+             #goimpau1#2 = 4;
+                #goimpau1#3 = 0;
+                #goimpau1#4 = 0;
+             #goimpau1#5 = "";
+             |LEE 040#goimpau1.=;
+
+               aTipo = #goimpau1#5;           ||Tipo.
+               |QBF aTipo;
+               |SI aTipo = "";
+                   aTipo = "0";
+               |FINSI;
+
+                #9#8 = aTipo;           ||Tipo.
+           |FINSI;
+           |REPON_DATOS #goimpau1;
+
+           cCodigo = #9#2;
+           |QBF cCodigo;
+
+           nImporte = nImporte + #9#7;
+
+           |SI cCodigo = "%";
+                #9#6 = nImporte;
+                #9#7 = #9#5 * #9#6;
+                nImporte = nImporte + #9#7;
+           |FINSI;
+
+           |DDEFECTO #12;
+           #12#0 = #9#8;                      ||Busca la desc. del Tipo.
+           |LEE 000#12=;
+
+           |SI FSalida = 0;
+                #9#9 = #12#1;                 ||D.Tipo.
+           |SINO;
+                |PUSHV 01012380;
+                |CLS;
+                |PINPA #0#12;
+                |PINDA #0#12;
+                |ENDATOS #1#12;
+
+                |SI FSalida = 0;
+                     #9#9 = #12#1;            ||D.Tipo.
+                     |GRABA 020#12c;
+                |FINSI;
+
+                |POPV;
+           |FINSI;
+
+           |GRABA 020#9c;
+
+
+               #10#0 = #9#0;
+               |LEE 000#10=;
+
+               |SI FSalida = 0;
+                    #10#4 = "S";
+                    #10#15 = nImporte;
+                    |GRABA 020#10a;
+               |FINSI;
+
+               /* COMPROBAMOS SI EXISTEN LAS PARTIDAS DEL DESCOMPUESTO.*/
+
+               #10#0 = #9#2;
+               |LEE 000#10=;
+
+               |SI FSalida ! 0;
+                    |GRABA 020#10c;
+               |FINSI;
+
+               #10#1 = #9#3;                 ||Descripcion Art.
+               #10#2 = #9#4;                 ||Unidad de Medida.
+
+               #4#0 = #9#4;
+               |LEE 000#4=;
+
+               |SI FSalida = 0;
+                    #10#3 = #4#1;            ||Descripcion Medida;
+               |FINSI;
+
+               #10#4  = "N";                 ||Descomposicion.
+               #10#5  = cCodMonBase;         ||Moneda.
+               #10#6  = #9#8;                ||Tipo de Componente.
+               #10#7  = #5#0;
+               #10#8  = #5#1;
+               #10#9  = #6#0;
+               #10#10 = #6#1;
+               #10#11 = #7#0;
+               #10#12 = #7#1;
+               #10#13 = #8#0;
+               #10#14 = #8#1;
+               #10#15 = #9#6;                ||Precio.
+               #10#16 = #9#9;                ||Des. Tipo.
+               |GRABA 020#10a;
+
+           nLinea = nLinea + 1;
+           #goimpau1#3 = #goimpau1#3 + 3;
+           |LEE 040#goimpau1.=;
+     |SIGUE;
+
+|FPRC;
+
+-------------------------------------------------------------------------------
+
+|PROCESO TomaPara;
+     cCodigo = #9#2;
+     |QBF cCodigo;
+     Ifiebdc = fiebdc1<-;
+     fiebdc1 = "PARAMETRICO";
+     fiebdc2 = 400;
+     fiebdc3 = cCodigo;
+     |ESPECIFICA "FIEBDC",fiebdc;
+
+     |SI FSalida ] 0;
+          cDescri = fiebdc27;                     ||Descripcion.
+          cPrecio = fiebdc28;                     ||Precio Compra.
+          nPrecio = cPrecio
+          #9#3 = fiebdc27;                        ||Descripcion.
+          |HAZ ConverMon;
+          #9#6 = nPrecio;                         ||Precio.
+          #9#7 = #9#5*#9#6;                       ||Importe.
+          |HAZ BuscaMadre;
+     |FINSI;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO BuscaMadre;
+     r = 0;
+     |PARA j = 101; |SI j < 601; |HACIENDO j = j + 100;
+          k = -j
+          r = r + 1;
+          cPart = cCodigo;
+          |QBF cPart;
+          cPart = cPart % k;
+
+          |SI cPart ] "0"; |Y cPart [ "9";
+               cLong = cCodigo;
+               |QBF cLong;
+               cLong = cLong % 0;
+               k = cLong;
+               k = (k - r) + 1;
+               k = k + 100;
+               cPart = cCodigo % k;
+               cPart = cPart + "$";
+               |SAL;
+          |FINSI;
+
+     |SIGUE;
+
+     cParam = cCodigo;
+     |QBF cParam;
+     |QBF cPart;
+     #10#0 = cPart;
+     |LEE 000#10=;
+
+     |SI FSalida = 0;
+          #9#4 = #10#2;                           ||Unidad Medida.
+          #9#8 = #10#6;                           ||Tipo de Componente.
+     |SINO;
+
+     |FINSI;
+
+     #20#0 = fiebdc3;
+     #20#1 = fiebdc27;
+     |LEE 000#20=;
+
+     |SI FSalida ! 0;
+          nLinea = 0;
+          Ifiebdc = fiebdc6<-;
+
+          |PARA r = 1; |SI r [ 20; |HACIENDO r = r + 1;
+               |DDEFECTO #21;
+               cCadena = fiebdc;
+               |QBF cCadena;
+
+               |SI cCadena = "";
+                    |SAL;
+               |FINSI;
+
+               nLinea = nLinea + 1;
+               #21#0 = #20#0;
+               #21#1 = nLinea;
+               #21#2 = cCadena;
+               |GRABA 020#21c;
+               Ifiebdc = Ifiebdc + 1;
+          |SIGUE;
+
+          |GRABA 020#20c;
+     |FINSI;
+
+     |GRABA 020#20a;
+|FPRC;
+
+--------------------------------------------------------------------------------
+|PROCESO Ampliadas;
+
+     |DDEFECTO #goimpau1;
+     #goimpau1#0 = "T";
+     |LEE 040#goimpau1.];
+     |PARA; |SI FSalida = 0;|Y #goimpau1#0 = "T  ";|HACIENDO;
+
+               |DDEFECTO #21;
+               #21#0 = #goimpau1#1;
+               #21#1 = #goimpau1#4 + 1;
+               |LEE 000#21=;
+
+               |SI FSalida = 0;
+
+                    |SI #0#5 = "S";                         ||Graba la Descripcion Nueva.
+                         |BORRA 020#21a;
+                    |SINO;
+                         |ACABA;
+                    |FINSI;
+
+               |FINSI;
+               |SI #goimpau1#4 = 0;
+                    cTexto = "Procesando Des. Ampliada: " + #goimpau1#1 + "    ";
+                    |PINTA 0640, cTexto;
+                    #10#0 = cCodigo;
+                    |LEE 000#10=;
+
+                    |SI FSalida = 0;
+                         #20#0 = #goimpau1#1;
+                         |LEE 000#20=;
+
+                         |SI FSalida ! 0;
+                              #20#1 = #10#1;
+                              #20#2 = #10#13;
+                              |GRABA 020#20c;
+                         |SINO;
+                              |SI #0#5 = "S";
+                                   #20#1 = #10#1;
+                                   #20#2 = #10#13;
+                                   |GRABA 020#20a;
+                              |FINSI;
+                         |FINSI;
+
+                    |FINSI;
+               |FINSI;
+
+               #21#0 = #goimpau1#1;
+               #21#1 = #goimpau1#4 + 1;
+                  |SI #0#15 = "S";
+                      |OEM_ANSI #21#2,#goimpau1#5;
+                  |SINO;
+                      #21#2 = #goimpau1#5;
+                  |FINSI;
+               |GRABA 020#21c;
+
+          |LEE 040#goimpau1.s;
+     |SIGUE;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO PathFie;
+     |PTEC 824;
+|FPRC;
+-------------------------------------------------------------------------------

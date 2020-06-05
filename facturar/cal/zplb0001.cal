@@ -1,0 +1,402 @@
+|FICHEROS;
+  ascontrt;
+  ascontro;
+  asempcon;
+  asclient;
+  asconcep;
+  asenlcon;
+
+  ashisrec;
+  ascabmin;
+  aslinmin;
+  aslinrem;
+
+  asparcia;
+  asw00001 #99;
+
+  &bancosp@ #706;
+  asbancos #707;
+  :/integral/def/dsam0117 #708;
+|FIN;
+
+|VARIABLES;
+  linea      = 0;
+  nEstado    = 0;
+  nFecha1    = 0;
+  nImporte   = 0;
+
+  &efFechaL    = @;
+  &enImporte   = 0;
+  &enDesRemesa = 0;
+  &efFechaO    = @;
+
+  aCampo14   = "";
+  nNume1     = 0;
+  aAlfa      = "";
+  sw_existe  = 0;
+  iva        = 0;
+  c_clie     = "";
+  fijo       = "";
+  varalf     = "";
+  conver     = "";
+  conver1    = "";
+  conver2    = "";
+  c_fecha    = "";
+  cuenta_cob = "";
+  nIntegral  = 0;
+  nCanal     = 0;
+  nLin       = 0;
+  aSigno     = "";
+  &enImpagado = 0;
+
+  aConcep1   = "";
+  aConcep2   = "";
+  nEsteSigno = 0;
+|FIN;
+
+|PROCESO BajaAuxConta;
+   |ABRE #99;
+   #99#0 = #aslinmin#0;
+   #99#1 = #aslinmin#1;
+   #99#2 = #aslinmin#2;
+   |LEE 141#99=;
+   |SI FSalida = 0;
+       |BORRA 020#99a;
+   |FINSI;
+   |LIBERA #99;
+   |CIERRA #99;
+|FPRC;
+
+|PROCESO buscalinea;
+   |SI enDesRemesa = 1; |O enDesRemesa = 3;
+       |SI #aslinmin#4 = aConcep1; |Y  #aslinmin#5 = aConcep2;
+          |Y #aslinmin#15 = efFechaO;
+          sw_existe = 1;
+
+          |SI enDesRemesa = 3;
+              |BORRA 040#aslinmin.a;
+              |LIBERA #aslinmin;
+              |HAZ BajaAuxConta;
+          |FINSI;
+          |ERROR10;
+       |FINSI;
+   |FINSI;
+   linea = #aslinmin#2;
+|FPRC;
+
+|PROCESO ActCabMin;
+      |ABRE #ascontrt;
+      #ascontrt#0 = #ascabmin#0;
+      |LEE 000#ascontrt.=;
+      |SI FSalida ! 0; |DDEFECTO #ascontrt; |FINSI;
+      |CIERRA #ascontrt;
+
+      iva = #ascontrt#3;
+
+      |SI #aslinmin#10 = "H"; #ascabmin#17 = #ascabmin#17 + nNume1 * #aslinmin#13; |FINSI;
+      |SI #aslinmin#10 = "S"; #ascabmin#18 = #ascabmin#18 + nNume1 * #aslinmin#13; |FINSI;
+      |SI #aslinmin#10 = "A"; #ascabmin#19 = #ascabmin#19 + nNume1 * #aslinmin#13; |FINSI;
+
+      #ascabmin#21 = #ascabmin#17 % #ascabmin#20;
+      #ascabmin#22 = #ascabmin#17 - #ascabmin#21;
+      #ascabmin#23 = #ascabmin#22 % iva;
+      #ascabmin#24 = #ascabmin#22 + #ascabmin#23 + #ascabmin#18;
+      |SI #ascabmin#12 = "S";
+          #ascabmin#25 = #ascabmin#22 % #ascontro#31;
+      |SINO;
+          #ascabmin#25 = 0;
+      |FINSI;
+      #ascabmin#26 = #ascabmin#24 - #ascabmin#19 - #ascabmin#25;
+|FPRC;
+
+|PROCESO GrabaLinMin;
+
+        |ABRE #aslinmin;
+        #aslinmin#0  = #ascabmin#0;
+        #aslinmin#1  = #ascabmin#1;
+        #aslinmin#2  = linea;
+        |LEE 141#aslinmin.=;
+        |SI FSalida ! 0;
+            |DDEFECTO #aslinmin;
+            #aslinmin#0  = #ascabmin#0;
+            #aslinmin#1  = #ascabmin#1;
+            #aslinmin#2  = linea;
+            |GRABA 020#aslinmin.b;
+        |FINSI;
+        #aslinmin#3  = nFecha1;
+        #aslinmin#4  = #asconcep#0;
+        #aslinmin#5  = #asconcep#1;
+        #aslinmin#6  = #asconcep#2;
+        #aslinmin#7  = #asconcep#16;
+        #aslinmin#8  = #asconcep#17;
+        #aslinmin#9  = #asconcep#18;
+        #aslinmin#10 = #asconcep#3;
+        #aslinmin#11 = 1;
+        #aslinmin#12 = nImporte;
+        #aslinmin#13 = nImporte;
+        #aslinmin#14 = aCampo14;
+        |SI nFecha1 = 0;
+            #aslinmin#15 = "00.00.0000";
+        |SINO;
+            #aslinmin#15 = efFechaL;
+        |FINSI;
+        |GRABA 020#aslinmin.a;
+        |LIBERA #aslinmin;
+        |CIERRA #aslinmin;
+        |HAZ eGraba_Con;
+|FPRC;
+
+|PROCESO eGraba_Min;
+
+     |ABRE #ascontro;
+     |LEE 040#ascontro.p;
+     |SI FSalida ! 0;
+         |CIERRA #ascontro;
+         |ACABA;
+     |FINSI;
+     |CIERRA #ascontro;
+
+     |ABRE #asempcon;
+     |LEE 040#asempcon.p;
+     |SI FSalida ! 0;
+         |CIERRA #asempcon;
+         |ACABA;
+     |FINSI;
+     |CIERRA #asempcon;
+
+     |SI #ascontro#32 ! "S"; |ACABA; |FINSI;
+
+     |SI #asclient#24 = 0; |Y enDesRemesa < 2;  |ACABA; |FINSI;
+
+     nEsteSigno = 0;
+     aConcep1 = #asempcon#4;
+     aConcep2 = #asempcon#5;
+     |SI enImpagado = 1;
+         |SI #asempcon#6 ! "    "; |O #asempcon#7 ! "  ";
+             aConcep1 = #asempcon#6;
+             aConcep2 = #asempcon#7;
+             nEsteSigno = 1;
+         |FINSI;
+     |FINSI;
+
+     |ABRE #asconcep;
+
+     varalf = (efFechaL % 102) + (efFechaL % 402);
+     linea  = 0;
+
+     |ABRE #ascabmin;
+     #ascabmin#0 = #ashisrec#4;
+     #ascabmin#1 = #ashisrec#3;
+     |LEE 141#ascabmin.=;
+     |SI FSalida ! 0;
+
+ |SI enDesRemesa ! 3;
+
+         |DDEFECTO #ascabmin;
+         #ascabmin#0 = #ashisrec#4;
+         #ascabmin#1 = #ashisrec#3;
+         #ascabmin#2 = #asclient#1;
+         #ascabmin#3 = #asclient#2;
+         #ascabmin#4 = #asclient#3;
+         #ascabmin#5 = #asclient#4;
+         #ascabmin#6 = #asclient#5;
+         #ascabmin#7 = #asclient#6;
+         #ascabmin#8 = #asclient#7;
+         #ascabmin#9 = #asclient#8;
+         #ascabmin#10 = #asclient#15;
+         #ascabmin#11 = #asclient#16;
+         #ascabmin#12 = #asclient#17;
+         #ascabmin#13 = #asclient#11;
+         #ascabmin#14 = #asclient#12;
+         #ascabmin#15 = #asclient#13;
+         #ascabmin#16 = #asclient#14;
+         #ascabmin#20 = #asclient#23;
+
+         #asconcep#0 = #ascontro#33;
+         #asconcep#1 = #ascontro#34;
+         |LEE 040#asconcep.=;
+         |SI FSalida = 0; |Y #asconcep#3 = "A";
+             linea   = linea + 5;
+             nFecha1  = 0;
+             nImporte = -#asclient#24;
+             aCampo14 = "G";
+             |HAZ GrabaLinMin;
+
+             #ascabmin#19 = #ascabmin#19 + #aslinmin#13;
+             #ascabmin#26 = #ascabmin#24 - #ascabmin#19 - #ascabmin#25;
+        |FINSI;
+
+        |GRABA 040#ascabmin.b;
+
+        linea = linea + 5;
+ |FINSI;
+
+     |SINO;
+        sw_existe = 0;
+        |BUCLELIN 0buscalinea#ascabmin;
+        |SI sw_existe = 0;
+            linea = linea + 5;
+        |SINO;
+            nNume1 = -1;
+            |HAZ ActCabMin;
+        |FINSI;
+     |FINSI;
+
+     |SI enDesRemesa = 3;
+         |CIERRA #ascabmin;
+         |CIERRA #asconcep;
+         |ACABA;
+     |FINSI;
+
+     #asconcep#0 = aConcep1;
+     #asconcep#1 = aConcep2;
+     |LEE 040#asconcep.=;
+     |SI FSalida = 0;
+         nNume1   = 1;
+         nFecha1  = varalf;
+         |SI enDesRemesa = 0;  nImporte = #ashisrec#15; |FINSI;
+         |SI enDesRemesa = 1;  nImporte = #aslinrem#7;  |FINSI;
+         |SI enDesRemesa ] 2;  nImporte = enImporte;    |FINSI;
+
+         |SI #asclient#22 = 1; aCampo14 = #asconcep#5;  |FINSI;
+         |SI #asclient#22 = 2; aCampo14 = #asconcep#9;  |FINSI;
+         |SI #asclient#22 = 3; aCampo14 = #asconcep#11; |FINSI;
+         |SI #asclient#22 = 4; aCampo14 = #asconcep#13; |FINSI;
+         |SI #asclient#22 = 5; aCampo14 = #asconcep#15; |FINSI;
+         |HAZ GrabaLinMin;
+
+         |HAZ ActCabMin;
+      |FINSI;
+      |GRABA 140#ascabmin.a;
+
+      |CIERRA #ascabmin;
+      |CIERRA #asconcep;
+|FPRC;
+
+|PROCESO eGraba_Con;
+
+   |ABRE #asenlcon;
+   #asenlcon#0 = #aslinmin#4;
+   #asenlcon#1 = #aslinmin#5;
+   |LEE 040#asenlcon.=;
+   |SI FSalida ! 0;
+       |CIERRA #asenlcon;
+       |ACABA;
+   |FINSI;
+   |CIERRA #asenlcon;
+
+   |ABRE #asempcon;
+   |LEE 040#asempcon.p;
+   |SI FSalida ! 0;  |DDEFECTO #asempcon;  |FINSI;
+   |CIERRA #asempcon;
+
+   c_clie  = #aslinmin#1;
+   c_clie  = ("00000" + c_clie) % -105;
+   fijo    = #asempcon#3; |QBF fijo;
+   fijo    = fijo + c_clie;
+
+   conver1 = #aslinmin#15 % 0102;
+   conver2 = #aslinmin#15 % 0402;
+   conver  = conver1 + conver2;
+   c_fecha = conver;
+   c_fecha = ("0000" + c_fecha) % -104;
+
+   |ABRE #99;
+   #99#0 = #aslinmin#0;
+   #99#1 = #aslinmin#1;
+   #99#2 = #aslinmin#2;
+   |LIBERA #99;
+   |LEE 140#99=;
+   #99#3  = #asempcon#1;
+   #99#4  = #asempcon#2;
+   #99#5  = c_fecha;
+   #99#6  = fijo;
+   #99#7  = #asenlcon#2;
+   aSigno = #asenlcon#6;
+   |SI enDesRemesa = 2; |Y nEsteSigno = 0;
+       |SI aSigno = "D";
+           aSigno = "H";
+       |SINO;
+           aSigno = "D";
+       |FINSI;
+   |FINSI;
+   #99#8  = aSigno;
+   #99#9  = #asenlcon#3;
+   #99#10 = #asenlcon#4;
+   #99#11 = #aslinmin#13;
+   |SI nEsteSigno = 1; |Y #aslinmin#13 < 0;
+       #99#11 = -#aslinmin#13;
+   |FINSI;
+   #99#12 = #asenlcon#5;
+   #99#13 = 0;
+   #99#14 = "";
+   |SI FSalida = 0;
+       |GRABA 140#99a;
+   |SINO;
+       #99#0  = #aslinmin#0;
+       #99#1  = #aslinmin#1;
+       #99#2  = #aslinmin#2;
+       |GRABA 140#99n;
+   |FINSI;
+   |CIERRA #99;
+|FPRC;
+
+|PROCESO eGrCobroParcial;
+
+     |DBASS aAlfa; |QBF aAlfa;
+     aAlfa = aAlfa + "integral/def/dsam0000.mas";
+     |XABRE "E", aAlfa, nCanal;
+     |HAZ IntegralActiva; nIntegral = FSalida;
+     |SI FSalida ] 0;
+        |REFERENCIA_DEF bancosp@,  #708;
+     |SINO;
+        |REFERENCIA_DEF bancosp@,  #707;
+     |FINSI;
+
+     cuenta_cob = "";
+     |ABRE #706;
+     #706#0 = #ashisrec#7;
+     |LEE 140#706=;
+     |SI FSalida = 0;
+        |SI nIntegral ] 0;
+           cuenta_cob = #706#11;
+        |SINO;
+           cuenta_cob = #706#23;
+        |FINSI;
+     |FINSI;
+     |CIERRA #706;
+
+     nLin = 0;
+     |ABRE #asparcia;
+     |DDEFECTO #asparcia;
+     #asparcia#0  = #ashisrec#0;
+     #asparcia#1  = #ashisrec#1;
+     #asparcia#2  = 99;
+     |LEE 041#asparcia.];
+     |SI FSalida = 0;
+         |LEE 041#asparcia.a;
+     |SINO;
+         |LEE 041#asparcia.u;
+     |FINSI;
+     |SI FSalida = 0; |Y #asparcia#0 = #ashisrec#0; |Y #asparcia#1 = #ashisrec#1;
+         nLin = #asparcia#2;
+     |FINSI;
+     nLin = nLin + 1;
+
+     |DDEFECTO #asparcia;
+     #asparcia#0  = #ashisrec#0;
+     #asparcia#1  = #ashisrec#1;
+     #asparcia#2  = nLin;
+     #asparcia#3  = efFechaL;
+     #asparcia#4  = #ashisrec#5;
+     #asparcia#5  = #ashisrec#6;
+     #asparcia#6  = #ashisrec#9;
+     #asparcia#7  = #ashisrec#6 - #ashisrec#9;
+     #asparcia#8  = enImporte;
+     #asparcia#9  = #ashisrec#3;
+     #asparcia#13 = cuenta_cob;
+     #asparcia#14 = 0;
+     #asparcia#15 = 0;
+     |GRABA 020#asparcia.n;
+     |CIERRA #asparcia;
+|FPRC;

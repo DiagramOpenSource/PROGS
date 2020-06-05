@@ -1,0 +1,562 @@
+|FICHEROS;
+  impgest5 #0;    ||Pantalla importacion
+  impfich  #1;    ||Fichero de control path
+  encoemp5 #2;    ||fichero de apuntes enlace gestion
+  caivarep #5;    ||iva Repercutido, Ventas
+  caivasop #6;    ||Iva soportado compras
+  calibros #8;    ||libros de iva
+  encorec  #12;   ||Fichero de Cobros Enlace Gesion
+  imptmp1  #18;   ||temporal nuevos numeros de IVA
+  contabi0 #50;   || formato importacion indexado
+|FIN;
+
+|VARIABLES;
+  &directo = "";
+  &fichero = "";
+  &alfa1   = "";
+  &alfa2   = "";
+  &handle  = "";
+  &canal   = "";
+  &canal1  = "";
+  &dir_fich1 = "";
+  &sw_sop = 0;
+  &sw_rep = 0;
+  &fra_sop = 0;
+  &fra_rep = 0;
+  &anter = 0;
+  &mas = 0;
+  &antnum = 0;
+  &nume1 = 0;
+  &feini = @;
+  &fefin = @;
+|FIN;
+
+|PROCESO grasidx;
+  |ABRE #50;
+  #50#56 = #2#0;  || diario
+  #50#57 = #2#1;  || fecha
+  #50#59 = #2#2;  || documento
+  #50#60 = #2#4;  || apunte
+  |LEE 101#50=;
+  |SI FSalida = 0;
+      #50#0 = #2#0;         || diario
+      #50#1 = #2#1;         || fecha
+      #50#2 = #2#47;        || documento
+      #50#3 = #50#2;        || asiento
+      #50#4 = #2#4;         || apunte
+      |GRABA 020#50a;
+  |FINSI;
+  |LIBERA #50;
+  |CIERRA #50;
+|FPRC;
+
+|PROCESO sep_recibo;
+  |DDEFECTO #12;
+  alfa2 = canal %  102;
+  #12#00 = alfa2;           || libro
+  alfa2 = canal %  306;
+  #12#01 = alfa2;           || factura
+  alfa2 = canal %  902;
+  #12#02 = alfa2;           || serie
+  alfa2 = canal % 1103;
+  #12#03 = alfa2;           || nro.cobro
+  alfa2 = canal % 1412;
+  #12#04 = alfa2;           || cuenta
+  alfa2 = canal % 2601;
+  #12#05 = alfa2;           || nivel
+  alfa2 = canal % 2710;
+  #12#06 = alfa2;           || fecha emision
+  alfa2 = canal % 3710;
+  #12#07 = alfa2;           || fecha vencimiento
+  alfa2 = canal % 4711;
+  #12#08 = alfa2;           || importe
+  alfa2 = canal % 5811;
+  #12#09 = alfa2;           || gtos. negociacion
+  alfa2 = canal % 6911;
+  #12#10 = alfa2;           || gtos. impagados
+  alfa2 = canal % 8002;
+  #12#11 = alfa2;           || tipo de recibo
+  alfa2 = canal % 8205;
+  #12#12 = alfa2;           || remesa
+  alfa2 = canal % 8701;
+  #12#13 = alfa2;           || emitido
+  alfa2 = canal % 8810;
+  #12#14 = alfa2;           || fecha vto. original
+  alfa2 = canal % 9803;
+  #12#15 = alfa2;           || banco
+  alfa2 = canal % 10112;
+  #12#16 = alfa2;           || ccc
+  alfa2 = canal % 11316;
+  #12#17 = alfa2;           || cta.cte.
+  alfa2 = canal % 12901;
+  #12#18 = alfa2;           || cobro/pago
+  alfa2 = canal % 13030;
+  #12#19 = alfa2;           || nombre banco
+  alfa2 = canal % 16030;
+  #12#20 = alfa2;           || direccion banco
+  alfa2 = canal % 19025;
+  #12#21 = alfa2;           || poblacion banco
+  alfa2 = canal % 21502;
+  #12#22 = alfa2;           || cod.postal 1
+  alfa2 = canal % 21703;
+  #12#23 = alfa2;           || cod.postal 2
+  alfa2 = canal % 22001;
+  #12#24 = alfa2;           || cobrado/impagado
+  alfa2 = canal % 22111;
+  #12#25 = alfa2;           || ptas. cobradas/impagadas
+  alfa2 = canal % 23211;
+  #12#26 = alfa2;           || ptas. gastos negociacion
+
+  |SI #12#18 = "C";  #18#0 = "R";  |FINSI;          || tipo iva
+  |SI #12#18 = "P";  #18#0 = "S";  |FINSI;
+  #18#1 = #12#0;       || libro
+  #18#2 = #12#1;       || fra./orden
+  #18#3 = #12#2;       || serie
+  |LEE 001#18=;
+  |SI FSalida = 0;
+      #12#1 = #18#4;   || fra./orden segun historico
+  |FINSI;
+  |GRABA 020#12n;
+|FPRC;
+
+____________________________________/ FICHERO RECIBOS
+|PROCESO recibo;
+  alfa1 = directo + "enre" + fichero + ".seq";
+  |FABRE alfa1;
+  |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+  handle = FSalida;
+  alfa1 = "enre" + fichero;
+  alfa1 = alfa1 % -108;
+  |PATH_DAT #12 dir_fich1;
+  |NOME_DAT #12 alfa1;
+  |ABRE #12;
+  |CIERRA #12;
+  |DELINDEX #12;
+  |ABRE #12;
+  |ABRE #18;
+  |PARA; |SI; |HACIENDO;
+         canal  = handle + " 242";
+         |FLEE canal;
+         |SI FSalida ! 242;  |SAL;  |FINSI;
+         |HAZ sep_recibo;
+  |SIGUE;
+  |FCIERRA handle;
+  |CIERRA #12;
+  |CIERRA #18;
+  Pos = -1;
+|FPRC;
+
+_________________________________/ RENUMERA APUNTES SEGUN TEMPORAL
+|PROCESO lee_apuntes1;
+  #2#16 = #18#4;
+  |GRABA 020#2a;
+  |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE lee_apuntes;
+ #2#1;
+ 13, 14, 16, 17;
+ 00, feini,      0,     0, #18#0, #18#1, #18#2, #18#3;
+ 99, fefin, 999999, 99999, #18#0, #18#1, #18#2, #18#3;
+ be;
+ NULL, lee_apuntes1;
+|FIN;
+
+|PROCESO lee_tempo1;
+  feini = "01.01.0001";
+  fefin = "31.12.8999";
+  |BUCLE lee_apuntes;
+|FPRC;
+
+|DEFBUCLE lee_tempo;
+ #18#1;
+ ;
+ "R",  0,      0, "  ";
+ "S", 99, 999999, "zz";
+ e;
+ NULL, lee_tempo1;
+|FIN;
+
+_________________________________/RENUMERA APUNTES SEGUN HISTORICO IVAS
+|PROCESO ren_rep;
+  |SI sw_rep ! 0;
+      fra_rep = fra_rep + 1;
+      #2#16 = fra_rep;
+      |ACABA;
+  |FINSI;
+  sw_rep = 1;
+  #5#0 = #2#14;        || libro
+  |ABRE #5;
+  mas = 1;
+  anter = #5#0;
+  #5#2 = 999999;
+  |LEE 001#5];
+  |SI FSalida = 0;
+     |LEE 001#5a;
+     |SI FSalida ! 0; |O anter ! #5#0;
+         mas = 0;
+         |DDEFECTO #5;
+     |FINSI;
+     antnum = #5#2;
+  |SINO;
+     |LEE 001#5u;
+     |SI FSalida ! 0; |O anter ! #5#0;
+         mas = 0;
+         |DDEFECTO #5;
+     |FINSI;
+     antnum = #5#2;
+  |FINSI;
+  |DDEFECTO #5;
+  #5#0 = anter;
+  #5#2 = antnum + mas;
+  |CIERRA #5;
+  fra_rep = #5#2;
+  #2#16 = fra_rep;
+|FPRC;
+
+|PROCESO ren_sop;
+  |SI sw_sop ! 0;
+      fra_sop = fra_sop + #8#3;
+      #2#16 = fra_sop;
+      |ACABA;
+  |FINSI;
+  sw_sop = 1;
+  #6#0 = #2#14;        || libro
+  |ABRE #6;
+  anter = #6#0;
+  #6#2 = 999999;
+  |LEE 040#6>;
+  |SI FSalida = 0;
+      |LEE 040#6a;
+      antnum = #6#2;
+  |SINO;
+      |LEE 040#6u;
+      |SI FSalida ! 0;
+          |DDEFECTO #6;
+          #6#2 = 0;
+      |FINSI;
+      antnum = #6#2;
+  |FINSI;
+  |DDEFECTO #6;
+  #6#0 = anter;
+  #6#2 = antnum + #8#3;
+|ET sientrada;
+  nume1 = #6#2 $ #8#3;
+  |SI nume1 ! 0;
+      #6#2 = #6#2 - 1;
+      |VETE sientrada;
+  |FINSI;
+  |CIERRA #6;
+  fra_sop = #6#2;
+  #2#16 = fra_sop;
+|FPRC;
+
+|PROCESO sep_apunte;
+  |DDEFECTO #2;
+  alfa2 = canal % 102;
+  #2#0 = alfa2;             || diario
+  alfa2 = canal % 310;
+  #2#1 = alfa2;             || fecha
+  alfa2 = canal % 1306;
+  #2#2 = alfa2;             || documento
+  alfa2 = canal % 1906;
+  #2#3 = alfa2;             || asiento
+  alfa2 = canal % 2504;
+  #2#4 = alfa2;             || apunte
+  alfa2 = canal % 2912;
+  #2#5 = alfa2;             || cuenta debe
+  alfa2 = canal % 4112;
+  #2#6 = alfa2;             || cuenta haber
+  alfa2 = canal % 5301;
+  #2#7 = alfa2;             || nivel debe
+  alfa2 = canal % 5401;
+  #2#8 = alfa2;             || nivel haber
+  alfa2 = canal % 5503;
+  #2#9 = alfa2;             || concepto
+  alfa2 = canal % 5830;
+  #2#10 = alfa2;            || descripcion
+  alfa2 = canal % 8801;
+  #2#11 = alfa2;            || signo
+  alfa2 = canal % 8911;
+  #2#12 = alfa2;            || importe
+  alfa2 = canal % 10001;
+  #2#13 = alfa2;            || iva sop./rep.
+  alfa2 = canal % 10102;
+  #2#14 = alfa2;            || libro  (el campo #2#15 no hace falta)
+  alfa2 = canal % 10306;
+  #2#16 = alfa2;            || factura/orden
+  alfa2 = canal % 10902;
+  #2#17 = alfa2;            || serie
+  alfa2 = canal % 11103;
+  #2#18 = alfa2;            || concepto iva
+  alfa2 = canal % 11430;
+  #2#19 = alfa2;            || descripcion iva
+  alfa2 = canal % 14412;
+  #2#20 = alfa2;            || cuenta cliente/proveedor
+  alfa2 = canal % 15601;
+  #2#21 = alfa2;            || nivel cuenta
+  alfa2 = canal % 15710;
+  #2#22 = alfa2;            || base imp. 1
+  alfa2 = canal % 16710;
+  #2#23 = alfa2;            || base imp. 2
+  alfa2 = canal % 17710;
+  #2#24 = alfa2;            || base imp. 3
+  alfa2 = canal % 18705;
+  #2#25 = alfa2;            || (%) iva 1
+  alfa2 = canal % 19205;
+  #2#26 = alfa2;            || (%) iva 2
+  alfa2 = canal % 19705;
+  #2#27 = alfa2;            || (%) iva 3
+  alfa2 = canal1 % 110;
+  #2#28 = alfa2;            || cuota iva 1
+  alfa2 = canal1 % 1110;
+  #2#29 = alfa2;            || cuota iva 2
+  alfa2 = canal1 % 2110;
+  #2#30 = alfa2;            || cuota iva 3
+  alfa2 = canal1 % 3105;
+  #2#31 = alfa2;            || (%) rec 1
+  alfa2 = canal1 % 3605;
+  #2#32 = alfa2;            || (%) rec 2
+  alfa2 = canal1 % 4105;
+  #2#33 = alfa2;            || (%) rec 3
+  alfa2 = canal1 % 4610;
+  #2#34 = alfa2;            || cuota rec 1
+  alfa2 = canal1 % 5610;
+  #2#35 = alfa2;            || cuota rec 2
+  alfa2 = canal1 % 6610;
+  #2#36 = alfa2;            || cuota rec 3
+  alfa2 = canal1 % 7610;
+  #2#37 = alfa2;            || total factura
+  alfa2 = canal1 % 8601;
+  #2#38 = alfa2;            || inversion
+  alfa2 = canal1 % 8701;
+  #2#39 = alfa2;            || deducible
+  alfa2 = canal1 % 8802;
+  #2#40 = alfa2;            || departamento
+  alfa2 = canal1 % 9010;
+  #2#41 = alfa2;            || fecha iva
+  alfa2 = canal1 % 10001;
+  #2#42 = alfa2;            || tipo acumulador iva
+  alfa2 = canal1 % 10101;
+  #2#43 = alfa2;            || nro. acumulador iva
+  alfa2 = canal1 % 10202;
+  #2#44 = alfa2;            || periodo
+  alfa2 = canal1 % 10403;
+  #2#45 = alfa2;            || empresa contable
+  alfa2 = canal1 % 10701;
+  #2#46 = alfa2;            || periodo     (el campo #2#47 no hace falta)
+
+     ||A partir de aqui cargo las 2 bases restantes
+
+  alfa2 = canal1 % 10810;  ||base -4-
+  #2#48 = alfa2;
+  alfa2 = canal1 % 11810;  ||base -5-
+  #2#49 = alfa2;
+  alfa2 = canal1 % 12805;  ||Iva -4-
+  #2#50 = alfa2;
+  alfa2 = canal1 % 13305;  ||Iva -5-
+  #2#51 = alfa2;
+  alfa2 = canal1 % 13810;  ||cuota -4-
+  #2#52 = alfa2;
+  alfa2 = canal1 % 14810;  ||cuota -5-
+  #2#53 = alfa2;
+  alfa2 = canal1 % 15805;  ||Rec -4-
+  #2#54 = alfa2;
+  alfa2 = canal1 % 16305;  ||Rec -5-
+  #2#55 = alfa2;
+  alfa2 = canal1 % 16810;  ||Cuota rec -4-
+  #2#56 = alfa2;
+  alfa2 = canal1 % 17810;  ||Cuota rec -5-
+  #2#57 = alfa2;
+  alfa2 = canal1 % 18815;  ||Cuota rec -5-
+  #2#58 = alfa2;
+  |SI #2#22 ! 0; |O #2#23 ! 0; |O #2#24 ! 0;
+                 |O #2#48 ! 0; |O #2#49 ! 0;        || si es asiento de iva
+      |ABRE #18;
+      #18#0 = #2#13;        || tipo de iva
+      #18#1 = #2#14;        || libro
+      #18#2 = #2#16;        || fra./orden
+      #18#3 = #2#17;        || serie
+      |SI #2#13 = "R";  |HAZ ren_rep;  |FINSI;      ||/lo renumera
+      |SI #2#13 = "S";  |HAZ ren_sop;  |FINSI;
+      #18#4 = #2#16;        || fra./orden segun historico
+      |GRABA 000#18n;
+      |SI FSalida ! 0;
+          |MENAV "    ATENCION!!! Registro de IVA duplicado en Secuencial ...";
+      |FINSI;
+      |CIERRA #18;
+  |FINSI;
+  |GRABA 020#2n;
+|FPRC;
+
+____________________________________/ FICHERO APUNTES
+|PROCESO apunte;
+  alfa1 = directo + "enco" + fichero + ".seq";
+  |FABRE alfa1;
+  |SI FSalida < 0;  Pos = -1;  |ACABA;  |FINSI;
+  handle = FSalida;
+  alfa1 = "enco" + fichero;
+  alfa1 = alfa1 % -108;
+  |PATH_DAT #2 dir_fich1;
+  |NOME_DAT #2 alfa1;
+  |ABRE #2;
+  |CIERRA #2;
+  |DELINDEX #2;
+  |ABRE #2;
+  |PARA; |SI; |HACIENDO;
+         canal  = handle + " 201";
+         |FLEE canal;
+         |SI FSalida ! 201;   |SAL;   |FINSI;       ||era 107
+         canal1 = handle + " 187";    ||era 107
+         |FLEE canal1;
+         |SI FSalida ! 187;   |SAL    |FINSI;       ||era 107
+         |HAZ sep_apunte;
+  |SIGUE;
+  |FCIERRA handle;
+  |CIERRA #2;
+  Pos = -1;
+|FPRC;
+_________________________________________________________________________
+____________________________________/ CALCULOS DE LECTURA DE SECUENCIALES
+|PROCESO secuencial;
+  directo = #1#2;
+  |QBF directo;
+  directo = "rb  " + directo;
+  fichero = #0#3;
+  fichero = "0000" + fichero;
+  fichero = fichero % -104;
+  |DELINDEX #18;
+  |SI #0#8 = "S";
+      |MENSA "    Preparando Fichero de Apuntes ...";
+      |HAZ apunte;
+      |BUCLE lee_tempo;
+      |BLIN 4;
+  |FINSI;
+  |MENSA "    Preparando Fichero de Cobros/Pagos ...";
+  |HAZ recibo;
+  |BLIN 4;
+  |DELINDEX #18;
+|FPRC;
+
+____________________________________/ FICHERO APUNTES
+|PROCESO lee_indexado1;
+  |DDEFECTO #2;
+  #2#0 = #50#56;            || diario
+  #2#1 = #50#57;            || fecha
+  #2#2 = #50#59;            || documento
+  #2#3 = #2#2;              || asiento
+  #2#4 = #50#60;            || apunte
+  #2#5 = #50#5;             || cuenta debe
+  #2#6 = #50#6;             || cuenta haber
+  #2#7 = #50#7;             || nivel debe
+  #2#8 = #50#8;             || nivel haber
+  #2#9 = #50#9;             || concepto
+  #2#10 = #50#10;           || descripcion
+  #2#11 = #50#11;           || signo
+  #2#12 = #50#12;           || importe
+  #2#13 = #50#13;           || iva sop./rep.
+  #2#14 = #50#14;           || libro
+  #2#16 = #50#15;           || factura/orden
+  #2#17 = #50#16;           || serie
+  #2#18 = #50#17;           || concepto iva
+  #2#19 = #50#18;           || descripcion iva
+  #2#20 = #50#19;           || cuenta cliente/proveedor
+  #2#21 = #50#20;           || nivel cuenta
+  #2#22 = #50#21;           || base imp. 1
+  #2#23 = #50#26;           || base imp. 2
+  #2#24 = #50#31;           || base imp. 3
+  #2#25 = #50#22;           || (%) iva 1
+  #2#26 = #50#27;           || (%) iva 2
+  #2#27 = #50#32;           || (%) iva 3
+  #2#28 = #50#23;           || cuota iva 1
+  #2#29 = #50#28;           || cuota iva 2
+  #2#30 = #50#33;           || cuota iva 3
+  #2#31 = #50#24;           || (%) rec 1
+  #2#32 = #50#29;           || (%) rec 2
+  #2#33 = #50#34;           || (%) rec 3
+  #2#34 = #50#25;           || cuota rec 1
+  #2#35 = #50#30;           || cuota rec 2
+  #2#36 = #50#35;           || cuota rec 3
+  #2#37 = #50#46;           || total factura
+  #2#38 = #50#47;           || inversion
+  #2#39 = #50#48;           || deducible
+  #2#40 = #50#49;           || departamento
+  #2#41 = #50#50;           || fecha iva
+  #2#42 = #50#51;           || tipo acumulador iva
+  #2#43 = #50#52;           || nro. acumulador iva
+  #2#44 = #50#53;           || periodo
+  #2#45 = #50#54;           || empresa contable
+  #2#46 = #50#55;           || periodo     (el campo #2#47 no hace falta)
+
+||A partir de aqui cargo las 2 bases restantes
+
+  #2#48 = #50#36;           || base -4-
+  #2#49 = #50#41;           || base -5-
+  #2#50 = #50#37;           || iva -4-
+  #2#51 = #50#42;           || iva -5-
+  #2#52 = #50#38;           || cuota -4-
+  #2#53 = #50#43;           || cuota -5-
+  #2#54 = #50#39;           || rec. -4-
+  #2#55 = #50#44;           || rec. -5-
+  #2#56 = #50#40;           || cuota rec. -4-
+  #2#57 = #50#45;           || cuota rec. -5-
+
+  |SI #2#22 ! 0; |O #2#23 ! 0; |O #2#24 ! 0;
+                 |O #2#48 ! 0; |O #2#49 ! 0;        || si es asiento de iva
+      |ABRE #18;
+      #18#0 = #2#13;        || tipo de iva
+      #18#1 = #2#14;        || libro
+      #18#2 = #2#16;        || fra./orden
+      #18#3 = #2#17;        || serie
+      |SI #2#13 = "R";  |HAZ ren_rep;  |FINSI;
+      |SI #2#13 = "S";  |HAZ ren_sop;  |FINSI;
+      #18#4 = #2#16;        || fra./orden segun historico
+      |GRABA 000#18n;
+      |SI FSalida ! 0;
+          |MENAV "    ATENCION!!! Registro de IVA duplicado en Secuencial ...";
+      |FINSI;
+      |CIERRA #18;
+  |FINSI;
+  |GRABA 020#2n;
+|FPRC;
+  |HAZ sep_apunte_idx;
+|FPRC;
+
+|DEFBUCLE lee_indexado;
+ #50#1;
+ 0, 2, 4;
+  0, feini, 1,      0,    0, 0, 0, 0;
+ 99, fefin, 3, 999999, 9999, 0, 0, 0;
+ e;
+ NULL, lee_indexado1;
+|FIN;
+
+|PROCESO apunte_idx;
+  |PATH_DAT #50 dir_fich1;
+  fichero = #0#3;
+  fichero = "0000" + fichero;
+  fichero = fichero % -104;
+  alfa1 = "enco" + fichero;
+  alfa1 = alfa1 % -108;
+  |PATH_DAT #2 dir_fich1;
+  |NOME_DAT #2 alfa1;
+  |ABRE #2;
+  |CIERRA #2;
+  |DELINDEX #2;
+  |ABRE #2;
+  feini = "01.01.0001";
+  fefin = "31.12.8999";
+  |BUCLE lee_indexado;
+  |CIERRA #2;
+|FPRC;
+
+_________________________________________________________________________
+____________________________________/ CALCULOS DE LECTURA DE INDEXADO
+|PROCESO indexado;
+  |DELINDEX #18;
+  |MENSA "    Preparando Fichero de Apuntes ...";
+  |HAZ apunte_idx;
+  |BUCLE lee_tempo;
+  |BLIN 4;
+  |DELINDEX #18;
+|FPRC;

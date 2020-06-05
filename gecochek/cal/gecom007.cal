@@ -1,0 +1,159 @@
+|FICHEROS;
+   gecom007 #0;
+   gecom008 #1;
+
+   Referen@ #100;
+   agif142@ #101;
+|FIN;
+
+|VARIABLES;
+   aAlfa  = "";
+   aAlfa1 = "";
+   aAlfa2 = "";
+
+   nCalc  = 0;
+   nCalc1 = 0;
+   nCalc2 = 0;
+   nEmpresa = 0;
+   nSw = 0;
+|FIN;
+
+|PROCESO CopiaEmpresa;
+   #gecom008#0 = #gecom007#0;
+   |GRABA 020#gecom008.n;
+|FPRC;
+
+|DEFBUCLE CopiaEmpresa;
+#gecom008#1;
+;
+nEmpresa,001;
+nEmpresa,999;
+;
+NULL,CopiaEmpresa;
+|FIN;
+
+|PROCESO Consulta; |TIPO 6;
+   |SI FSalida = 10;
+      #Referen@#0 = #gecom007#0;
+      |LEE 000#Referen@.];
+      |CONSULTA_CLAVE #1#Referen@;
+      |SI FSalida = 0;
+         #gecom007#0 = #Referen@#0;
+         |PINTA 0815, #Referen@#0; |PINTA 0821, #Referen@#1;
+      |FINSI;
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO CopiaPlanilla; |TIPO 11;
+   |SI FSalida = 13;
+      |PUSHV 0501 2380;
+      |BLANCO 1014 1266;
+      |CUADRO 1015 1265;
+      |ATRI R; |PINTA 1016, " Codigo empresa origen "; |ATRI N;
+      |DDEFECTO #Referen@;
+      |PINTA 1117, #Referen@#0; |PINTA 1124, #Referen@#1;
+      |MENSA "    <F2> Consulta de empresas ";
+
+|ET OtraEmpresa;
+      E_sup = 99999; E_inf = "";
+      nEmpresa = 1117 ? 1;
+      |SI FSalida = 0;
+         #Referen@#0 = nEmpresa;
+         |LEE 000#Referen@.=;
+         |SI FSalida = 0;
+            |PINTA 1124, #Referen@#1;
+            |CONFI "    NEs Correcto ? ";
+            |SI FSalida ! 0; |VETE OtraEmpresa; |FINSI;
+         |SINO;
+            |MENAV "    Empresa inexistente ";
+            |VETE OtraEmpresa;
+         |FINSI;
+      |SINO;
+         |SI FSalida = 10;
+            #Referen@#0 = nEmpresa;
+            |LEE 000#Referen@.];
+            |CONSULTA_CLAVE #1#Referen@;
+            |SI FSalida = 0;
+               nEmpresa = #Referen@#0;
+               |PINTA 1117, #Referen@#0; |PINTA 1124, #Referen@#1;
+            |FINSI;
+            |VETE OtraEmpresa;
+         |FINSI;
+      |FINSI;
+
+      |SALVA_FICHA #gecom008;
+      |BUCLE CopiaEmpresa;
+      |REPON_FICHA #gecom008;
+
+      |POPV; |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO PintaNombre;
+   |DDEFECTO #Referen@;
+   |PINTA 0821, #Referen@#1;
+   #Referen@#0 = #gecom007#0;
+   |LEE 000#Referen@.=;
+   |SI FSalida = 0;
+      |PINTA 0821, #Referen@#1;
+   |SINO;
+      |SI nSw = 0;
+         |MENAV "    Empresa inexistente";
+         |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Pinta13; |TIPO 13;
+   nSw = 1; |HAZ PintaNombre; nSw = 0;
+|FPRC;
+
+|PROCESO Carga_Def; |TIPO 80;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscomer9/def/agifa041.mas";
+   |CARGA_DEF aAlfa, Referen@;
+   |SI FSalida = 0;
+      |DBASS aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "dscomer9/fich/";
+      |PATH_DAT #100 aAlfa; |ABRE #Referen@;
+   |SINO;
+      |MENAV "    Problemas para encontrar el fichero de empresas de gestion";
+      |PTEC 807;
+   |FINSI;
+|FPRC;
+
+|PROCESO Descarga_Def; |TIPO 90;
+   |CIERRA #Referen@; |DESCARGA_DEF #Referen@;
+|FPRC;
+
+|PROCESO Cuenta;
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscomer9/def/agifa142.mas";
+   |CARGA_DEF aAlfa, agif142@;
+   |SI FSalida ! 0;
+      |MENAV "    Problemas al cargar el def de parametros generales de gestion comercial ";
+      |ACABA;
+   |FINSI;
+
+   |DBASS aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscomer9/fich/" + (("00000" + #gecom007#0) % -105) + "/";
+   |PATH_DAT #101 aAlfa; |ABRE #agif142@;
+   |LEE 000#agif142@.p;
+   |SI FSalida ! 0; |DDEFECTO #agif142@; |FINSI;
+
+   |PARA; |SI; |HACIENDO;
+      aAlfa = #gecom008#Campo#; |QBF aAlfa;
+      aAlfa = aAlfa - ".";
+      |SI FSalida = 0; |SAL; |FINSI;
+      nCalc = FSalida;
+      nCalc1 = ((nCalc / 100) ! 0) + 99; aAlfa1 = aAlfa % nCalc1; |QBF aAlfa1;
+      nCalc2 = nCalc + 98;               aAlfa2 = aAlfa % nCalc2; |QBF aAlfa2;
+      aAlfa = aAlfa1 + aAlfa2; aAlfa = aAlfa % 0; nCalc = aAlfa;
+      nCalc = #agif142@#11 - nCalc;
+      aAlfa = aAlfa1 + ("0" * nCalc) + aAlfa2;
+      #gecom008#Campo# = aAlfa; |PINTA #gecom008#Campo#;
+   |SIGUE;
+
+   |CIERRA #agif142@; |DESCARGA_DEF #agif142@;
+|FPRC;

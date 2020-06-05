@@ -1,0 +1,306 @@
+|| ... PROCESO PARA RECOGER DATOS DE CONTABILIDAD
+|FICHEROS;
+   :/contagen/def/canempre #330;  || Empresas
+   :/contagen/def/ca8ctrle #400;  || Ver Tipo Plan
+   :/contagen/def/ca8accaa #409;  || Ejercicios CCAA
+   :/modelos/def/dsmom100 #1100;
+|FIN;
+
+|VARIABLES;
+    aPath  = "";
+    nume1  = 0;
+    any    = 0;
+    anyMas = 0;
+    period = 0;
+    i1 = 0;
+    {-1}punt1 = 0;
+
+    nEjer   = 0;
+    nResPer = 0;
+
+    aAlfa1 = "";
+    aAlfa2 = "";
+    aAlfa3 = "";
+    nNume1 = 0;
+    nNume2 = 0;
+    nAny   = 0;
+
+    &enEjercicio = 0;
+    &enAnyo      = 0;
+|FIN;
+
+|INCLUYE varcon_i;
+|INCLUYE varbal_i;
+
+|PROCESO EjerCCAA;
+    enEjerBal = #409#0;
+|FPRC;
+
+|DEFBUCLE EjerCCAA;
+    #409#1;
+    ;
+    2008;
+    enAnyo;
+    e;
+    NULL, EjerCCAA;
+|FIN;
+
+|PROCESO eHazEjerCCAA;
+   enEjerBal = 2008;
+   |BUCLE EjerCCAA;
+|FPRC;
+
+|PROCESO LeeEmpConta;
+   fec3     = "01.01.0000";
+   swerror  = 0;
+   cod_emp1 = enEmpresa;  cod_emp1 = "00000" + cod_emp1;
+   cod_emp2 = enPerConta; cod_emp2 = "0" + cod_emp2;
+   clave1   = cod_emp1 % -105;
+   clave2   = cod_emp2 % -101;
+
+   |DBASS aPath; |QBT aPath;
+   aPathConta    = aPath + "contagen/fich/" + clave1 + clave2 + "/";
+   aPathPanConta = aPath + "contagen/pan/";
+
+   cod1 = clave1;   empre = cod1;
+   cod2 = clave2;   ejerc = cod2;
+
+   |ABRE #canempre;
+   #canempre#2 = cod1;
+   #canempre#3 = cod2;
+   |LEE 000#canempre.=;
+   |SI FSalida ! 0;
+       swerror = 1;
+       |SI enSwSinMen = 0; |MENAV "    NO EXISTE EMPRESA CONTABLE "; |FINSI;
+       |CIERRA #canempre;
+       |ACABA;
+   |FINSI;
+   dig1 = #canempre#11;       || desde mes
+   dig3 = #canempre#13;       || nro. niveles
+   dig4 = #canempre#14;       || 1 nivel
+   dig5 = #canempre#15;       || 2 nivel
+   dig6 = #canempre#16;       || 3 nivel
+   dig7 = #canempre#17;       || 4 nivel
+   dig8 = #canempre#18;       || 5 nivel
+   dig9 = #canempre#19;       || 6 nivel
+   eaMonedaCon = #canempre#28; ||Moneda
+   eaNombreEmp = #canempre#1;  ||Nombre Empresa
+   eaEstadoEmp = "S";
+   |SI #canempre#21 = "I"; eaEstadoEmp = "N"; |FINSI;
+   |CIERRA #canempre;
+
+   cod2 = #canempre#26;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   tra1 = 100 + #canempre#11;
+   mes1 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = "01." + mes1 + ".20" + clave2;
+      enEjer = 2000 + cod2;
+   |SINO;
+      work1 = "01." + mes1 + ".19" + clave2;
+      enEjer = 1900 + cod2;
+   |FINSI;
+   fec1 = work1;
+   tra1 = 100 + #canempre#12;
+   mes1 = tra1 % -102;
+   |SI #canempre#11 > #canempre#12;
+      cod2 = cod2 + 1;
+      |SI cod2 > 99; cod2 = cod2 - 100;    |FINSI;
+   |FINSI;
+   dia1 = "31";
+   |SI #canempre#12 = 4; |O #canempre#12 = 6; |O #canempre#12 = 9; |O #canempre#12 = 11;
+      dia1 = "30";
+   |FINSI;
+   |SI #canempre#12 = 2;
+      dia1 = "28";
+      |SI cod2 = 88; |O cod2 = 92; |O cod2 = 96; |O cod2 = 0; |O cod2 = 4;
+         dia1 = "29";
+      |FINSI;
+   |FINSI;
+   tra1 = 100 + cod2;
+   clave2 = tra1 % -102;
+   |SI cod2 < 80;
+      work1 = dia1 + "." + mes1 + ".20" + clave2;
+   |SINO;
+      work1 = dia1 + "." + mes1 + ".19" + clave2;
+   |FINSI;
+   fec2 = work1;
+   fec3 = #canempre#34;
+
+   eaDepar  = #canempre#24;
+   eaSubde  = #canempre#22;
+   eaDfDepC = #canempre#30;
+   eaDfSubC = #canempre#31;
+   eaDfDepN = #canempre#32;
+   eaDfSubN = #canempre#33;
+
+  || Recoger informacion sobre los niveles ...
+  Ipunt1 = dig3<-;
+  Ipunt1 = Ipunt1 + dig3;
+  MaximoDigitos = punt1;
+  DigitosPaseDirecto = dig3;
+
+  |SI enEjer ] 2008;
+      |ABRE #ca8ctrle;
+      |DDEFECTO #ca8ctrle;
+      #ca8ctrle#0 = #canempre#2;
+      #ca8ctrle#1 = #canempre#3;
+      |LEE 001#ca8ctrle.=;
+      |SI FSalida = 0;
+          eNum2008 = #ca8ctrle#2;
+      |FINSI;
+      |CIERRA #ca8ctrle;
+
+      enAnyo = enEjer;
+      |HAZ eHazEjerCCAA;
+  |FINSI;
+|FPRC;
+
+|PROCESO SituaMaestra;
+
+  fec3 = "01.01.0000";
+
+  |SI eaPathDsmodelo ! "";
+
+      |ABRE #1100;
+      |LEE 040#1100p;
+      |SI FSalida ! 0;  |DDEFECTO #1100;  |FINSI;
+      |CIERRA #1100;
+
+      swerror = 0;
+      aAlfa1 = #1100#1; aAlfa1 = ("00000" + aAlfa1) % -105;
+      aAlfa2 = #1100#2; aAlfa2 = ("0"     + aAlfa2) % -101;
+
+      |DBASS aPath; |QBT aPath;
+      aPathConta    = aPath + "contagen/fich/" + aAlfa1 + aAlfa2 + "/";
+      aPathPanConta = aPath + "contagen/pan/";
+
+      |ABRE #canempre;
+      #canempre#2 = #1100#1;
+      #canempre#3 = #1100#2;
+      |LEE 000#canempre.=;
+      |SI FSalida ! 0;
+          swerror = 1;
+          |SI enSwSinMen = 0; |MENAV "    NO EXISTE LA EMPRESA MAESTRA DE CONTABILIDAD"; |FINSI;
+          |CIERRA #canempre;
+          |ACABA;
+      |FINSI;
+
+      dig1 = #canempre#11;       || desde mes
+      dig3 = #canempre#13;       || nro. niveles
+      dig4 = #canempre#14;       || 1 nivel
+      dig5 = #canempre#15;       || 2 nivel
+      dig6 = #canempre#16;       || 3 nivel
+      dig7 = #canempre#17;       || 4 nivel
+      dig8 = #canempre#18;       || 5 nivel
+      dig9 = #canempre#19;       || 6 nivel
+      eaMonedaCon = #canempre#28; ||Moneda
+      |CIERRA #canempre;
+   |SINO;
+      dig1 = 1;  #canempre#11 = dig1;
+      dig3 = 5;  #canempre#13 = dig3;
+      dig4 = 1;  #canempre#14 = dig4;
+      dig5 = 2;  #canempre#15 = dig5;
+      dig6 = 3;  #canempre#16 = dig6;
+      dig7 = 4;  #canempre#17 = dig7;
+      dig8 = 12; #canempre#18 = dig8;
+      dig9 = 0;  #canempre#19 = dig9;
+      eaMonedaCon = "E";
+   |FINSI;
+   || Recoger informacion sobre los niveles ...
+   Ipunt1 = dig3<-;
+   Ipunt1 = Ipunt1 + dig3;
+   MaximoDigitos = punt1;
+   DigitosPaseDirecto = dig3;
+|FPRC;
+
+|PROCESO SituaEmpresa;
+
+     swerror     = 0;
+     enSwPartido = 0;
+
+     aAlfa1 = enEjer;
+     aAlfa1 = aAlfa1 % -102;
+     nEjer = aAlfa1;
+
+     |ABRE #canempre;
+     |SELECT #4#canempre;
+     #canempre#2  = enEmpresa;
+     #canempre#26 = nEjer;
+     |LEE 040#canempre.=;
+     |SI FSalida = 0;
+         |SI #canempre#11 ! 1;
+             enPeriodoPar = #canempre#3;
+             enSwPartido = 1;
+         |FINSI;
+     |SINO;
+         swerror = 1;
+         #canempre#2  = enEmpresa;
+         #canempre#26 = nEjer - 1; |SI #canempre#26 < 0; #canempre#26 = 99; |FINSI;
+         |LEE 040#canempre.=;
+         |SI FSalida = 0;
+             |SI #canempre#11 ! 1;
+                 enPeriodoPar = #canempre#3;
+                 enSwPartido = 1;
+                 swerror     = 0;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+     |CIERRA #canempre;
+     |SI swerror = 1; |ACABA; |FINSI;
+
+     enPerConta = #330#3;
+     |HAZ LeeEmpConta;
+
+     |DBASS aPathConta;   |QBT aPathConta;
+     |SI enSwPartido = 0;
+         aPathConta = aPathConta + "contagen/fich/" + (("00000" + #canempre#2) % -105) + #canempre#3 + "/";
+     |SINO;
+         enSwOpPar   = 0;
+         enEjercicio = enEjer;
+         |SUB_EJECUTA_NP ":contagen/caz00024";
+     |FINSI;
+|FPRC;
+
+|PROCESO FinalPartido;
+         enEjercicio = enEjer;
+         |SUB_EJECUTA_NP ":contagen/caz00024";
+|FPRC;
+
+
+|PROCESO LaFecha;
+  |SI #canempre#26 < 80;
+      nAny = 2000 + #canempre#26;
+  |SINO;
+      nAny = 1900 + #canempre#26;
+  |FINSI;
+
+  aAlfa1 = nAny;
+  aAlfa2 = #canempre#11; |QBF aAlfa2;
+  aAlfa2 = ("00" + aAlfa2) % -102;
+  aAlfa2 = "01." + aAlfa2 + "." + aAlfa1;
+  fec1  = aAlfa2;
+
+  |SI #canempre#11 ! 1;
+      nAny = nAny + 1;
+      aAlfa1 = nAny;
+  |FINSI;
+  aAlfa2 = #canempre#12; |QBF aAlfa2;
+  aAlfa2 = ("00" + aAlfa2) % -102;
+
+  aAlfa3 = "31.";
+  |SI #canempre#12 = 4; |O #canempre#12 = 6; |O #canempre#12 = 9; |O #canempre#12 = 11;
+      aAlfa3 = "30.";
+  |SINO;
+      |SI #canempre#12 = 2;
+          aAlfa3 = "28.";
+          nNume1 = nAny / 4; nNume2 = (nAny / 4) ! 0;
+          |SI nNume1 = nNume2;
+              aAlfa3 = "29.";
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  aAlfa2 = aAlfa3 + aAlfa2 + "." + aAlfa1;
+  fec2 = aAlfa2;
+|FPRC;

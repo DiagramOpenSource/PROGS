@@ -1,0 +1,203 @@
+|FICHEROS;
+     tranz003 #0;
+     tranm026 #26;        ||Parametro
+     tranm025 #25;        ||Histo
+|FIN;
+
+|VARIABLES;
+     aParam = "";
+     aIP = "";
+     aOrigen = "";
+     aDestino = "";
+     aBat = "";
+     aTxt = "";
+     aAlfa = "";
+     nHandle = 0;
+     aPath = "";
+     aServidor = "";
+     aUsu = "";
+     aPwd = "";
+     aPuerto = "";
+{100}Valor = "";
+     aTab = "";
+     aAscii10 = "";
+     aAscii13 = "";
+     aCampo = "";
+     aCar = "";
+     aTmp = "";
+     nCampo = 0;
+     nConta = 0;
+     aFecha = "";
+|FIN;
+
+|PROCESO Registro;
+     |SI Valor10 = "NULL";
+          aFecha = "01.01.0000";
+     |SINO;
+          aFecha = (Valor10 % 902) + "." + (Valor10 % 602) + "." + (Valor10 % 104);
+          Valor10 = aFecha;
+     |FINSI;
+
+     |DDEFECTO #25;
+     #25#0 = Valor1;
+
+     |SI #25#0 = 0; |ACABA; |FINSI;
+
+     |LEE 000#25=;
+     |SI FSalida ! 0;
+          #25#1 = Valor2;
+          #25#2 = Valor3;
+          #25#3 = Valor4;
+          #25#4 = Valor5;
+          #25#5 = Valor6;
+          #25#6 = Valor7;
+          #25#7 = Valor8;
+          #25#8 = Valor9;
+          #25#9 = Valor10;
+          #25#10 = Valor11;
+          #25#11 = Valor12;
+          #25#12 = Valor13;
+          #25#13 = Valor14;
+          #25#18 = Valor16;
+          |GRABA 020#25n;
+          |SI FSalida = 0;
+               nConta = nConta + 1;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Caracter;
+     |SI aCar = aTab;
+          Valor = aCampo;
+          aCampo = "";
+          IValor = IValor + 1;
+          nCampo = nCampo + 1;
+          |SI nCampo > 90; |ACABA; |FINSI; || Por si.... :)
+     |SINO;
+          |SI aCar = aAscii10; |O aCar = aAscii13;
+               Valor = aCampo;
+               |SI nCampo > 0; |HAZ Registro; |FINSI;
+               IValor = Valor1<-;
+               nCampo = 0;
+               aCampo = "";
+          |SINO;
+               aCampo = aCampo + aCar;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ProcesaTxt;
+     IValor = Valor1<-;
+
+     |XABRE "B", aDestino, nHandle;
+     |SI FSalida ] 0;
+          |XLEE nHandle, 250, aTmp;
+          |PARA; |SI FSalida > 0; |HACIENDO;
+               |PARA; |SI aTmp ! ""; |HACIENDO;
+                    aCar = aTmp % 101;
+                    |SI aTmp = aCar;
+                         aTmp = ""; ||con un caracter falla: "aTmp = aTmp % 2"
+                    |SINO;
+                         aTmp = aTmp % 2;
+                    |FINSI;
+                    |HAZ Caracter;
+               |SIGUE;
+               |XLEE nHandle, 250, aTmp;
+          |SIGUE;
+          |XCIERRA nHandle;
+     |FINSI;
+|FPRC;
+
+|PROCESO CopiaAlServidor;
+     aIP = "";
+     |IP_REMOTO aIP;
+     |SI aIP = "";
+          |COPIA_FICHERO aOrigen, aDestino;
+     |SINO;
+          |RECIBE_FICHERO aOrigen, aDestino;
+     |FINSI;
+|FPRC;
+
+|PROCESO Inicio;
+     |ABRE #25;
+     |LEE 000#25u;
+
+     aBat = "C:\DOCUMENTOS\";
+     aTxt = aBat + "resultado.txt";
+
+     |RMKDIR aBat;
+     aBat = aBat + "mysql.bat";
+     |XABRE "CWB", aBat, nHandle;
+     |SI FSalida < 0;
+          aAlfa = "0000Error al crear el fichero de lotes (.bat)" + aBat;
+          |SI aParam = ""; |MENAV aAlfa; |FINSI;
+          |ACABA;
+     |FINSI;
+
+     aPath = #26#4; |QBF aPath;
+     aServidor = #26#1; |QBF aServidor;
+     aPuerto = #26#5;
+     aUsu = #26#2; |QBF aUsu;
+     aPwd = #26#3; |QBF aPwd;
+
+     || Select de la base de datos 'ds' de la tabla 'rpliquidacion'
+
+     aAlfa = aPath + "mysql.exe -h" + aServidor + " -P" + aPuerto;
+     |XGRABA nHandle, aAlfa;
+
+     aAlfa = " -u" + aUsu + " -p" + aPwd + " ds --execute "
+     |XGRABA nHandle, aAlfa;
+
+     aAlfa = &34 + "select * from rpliquidacion where id > " + #25#0 + &34;
+     |XGRABA nHandle, aAlfa;
+
+     aAlfa = "> " + aTxt;
+     |XGRABA nHandle, aAlfa;
+
+     |XCIERRA nHandle;
+
+     |RSYSTEM aBat;
+     ||RFBORRA aBat;
+
+     |XABRE "CE", aTxt, 0;
+     |SI FSalida ] 0;
+          |DFICE aDestino;
+          aDestino = aDestino + "resultado.txt";
+          aOrigen = aTxt;
+
+          |HAZ CopiaAlServidor;
+          |HAZ ProcesaTxt;
+
+          |FBORRA aDestino;
+          |RFBORRA aTxt;
+
+          aAlfa = "0000Registros importados:" + nConta;
+          |SI aParam = ""; |MENAV aAlfa; |FINSI;
+     |SINO;
+          aAlfa = "0000ERROR. No se encuentra el 'resultado.txt' a procesar.";
+          |SI aParam = ""; |MENAV aAlfa; |FINSI;
+     |FINSI;
+
+     |CIERRA #25;
+|FPRC;
+
+|PROGRAMA;
+     aTab = &9;
+     aAscii10 = &10;
+     aAscii13 = &13;
+
+     |ABRE #26; |LEE 000#26p; |CIERRA #26;
+
+     aParam = PARAMETRO;
+     |SI aParam = "";
+          |CLS;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0; |Y #0#0 = "SI";
+               |HAZ Inicio;
+          |FINSI;
+     |SINO;
+          |HAZ Inicio;
+     |FINSI;
+|FPRO;

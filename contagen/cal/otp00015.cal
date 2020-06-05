@@ -1,0 +1,371 @@
+|FICHEROS;
+  otp00015 #0;
+  otp00006 #1;
+
+  caconasi #20;
+  canempre #30;
+
+  camaasic #31;
+  camaasil #32;
+  camandia #33;
+  cacuenta #34;
+|FIN;
+
+|VARIABLES;
+   nSwSi  = 0;
+   traba1 = "";
+   traba2 = "";
+   trame = "";
+   trames = 0;
+   tranyo = 0;
+   tranyos = "";
+   aTitulo = "";
+   aAlfa  = "";
+   aAlfa1 = "";
+   aAlfa2 = "";
+   aAlfa3 = "";
+   aMes   = "";
+   nmes   = 0;
+
+   &enEmpOrig    = 0;
+   &nMaxDes      = 0;
+   &eaDirDestino = "";
+   &eaDirOrigen  = "";
+
+   nPara1   = 0;
+   nPara2   = 0;
+   nNume1   = 0;
+   x        = 0;
+   xD       = 0;
+   xH       = 0;
+   xL       = 0;
+   xC       = 0;
+   nImporte   = 0;
+   aSigno     = "";
+   nDiario    = 0;
+   fFecha     = @;
+   nDocumento = 0;
+   nLinea     = 0;
+
+   aAseActual = "";
+   aBaseAse   = "";
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoan_i;
+
+|| /////////////////////// PROCESOS DE TRABAJO \\\\\\\\\\\\\\\\\\\\
+|PROCESO Asiento;
+
+  nDiario = 01;
+  |SI nNume1 = 0;  nDiario = 00; |FINSI;
+  |SI nNume1 = 13; nDiario = 99; |FINSI;
+
+  x = nNume1 + 53;
+  fFecha = #0x;
+
+  nDocumento = nNume1 + 1;
+
+  xL = nNume1 + 11;
+  nLinea = #0xL;
+
+  xD = nNume1 + 25;  ||acumulado debe
+  xH = nNume1 + 39;  ||acumulado haber
+
+  xC = nNume1 + 67;
+
+  |DDEFECTO #32;
+  #32#0  = nDiario;
+  #32#1  = fFecha;
+  #32#2  = nDocumento;
+  #32#3  = nLinea;
+  #32#4  = #34#0;  || Cuenta
+  #32#5  = #34#1;  || Nivel
+  #32#6  = #1#8;
+  #32#7  = #0xC;
+  #32#8  = aSigno;
+  #32#9  = nImporte;
+
+  |PINTA 2262, "Fecha ";
+  |PINTA 2268,  #32#1;
+
+  |SI #32#8 = "D";
+      #0xD   = #0xD + nImporte;
+       #32#16 = #32#4;
+       #32#17 = #32#5;
+       #32#10 = "";
+       #32#11 = 0;
+  |SINO;
+       #0xH   = #0xH + nImporte;
+       #32#16 = "";
+       #32#17 = 0;
+       #32#10 = #32#4;
+       #32#11 = #32#5;
+  |FINSI;
+  |GRABA 040#32n;
+  |SI FSalida = 0;
+      |HAZ Cabecera;
+      |HAZ Actualiza;
+      #0xL = #0xL + 3;
+  |FINSI;
+|FPRC;
+
+|PROCESO LeePlanContable;
+
+  |PINTA 2202, "Cuenta: ";
+  |PINTA 2210, #34#0;
+  |PINTA 2224, #34#2;
+  nNume1 = 0;
+  nSwSi  = 0;
+
+  |PARA nPara1 = 9; |SI nPara1 [ 48; |HACIENDO nPara1 = nPara1 + 3;
+
+        aSigno   = "D";
+        nImporte = #34nPara1;
+        |SI nImporte ! 0;
+            |HAZ Asiento;
+        |FINSI;
+
+        nPara2 = nPara1 + 1;
+        aSigno   = "H";
+        nImporte = #34nPara2;
+        |SI nImporte ! 0;
+            |HAZ Asiento;
+        |FINSI;
+
+        nNume1 = nNume1 + 1;
+  |SIGUE;
+|FPRC;
+
+
+|DEFBUCLE LeePlanContable;
+ #34#1;
+ 3;
+ "            ", "S";
+ "zzzzzzzzzzzz", "S";
+ ;
+ NULL, LeePlanContable;
+|FIN;
+
+
+|PROCESO BorroDiario;
+  #33#2 = 0;
+  #33#3 = 0;
+  |GRABA 020#33a;
+  |LIBERA #33;
+|FPRC;
+
+|DEFBUCLE BorroDiario;
+ #33#1;
+ ;
+ 00;
+ 99;
+ be;
+ NULL, BorroDiario;
+|FIN;
+
+|PROGRAMA;
+ |DBASS aAlfa; |QBF aAlfa;
+ aAlfa = aAlfa % -299; aAlfa2 = ""; aAlfa1 = "";
+ |PARA; |SI aAlfa1 ! "\"; |Y aAlfa1 ! "/"; |HACIENDO;
+    aAlfa2 = aAlfa1 + aAlfa2;
+    aAlfa1 = aAlfa % -101; aAlfa = aAlfa % -299;
+ |SIGUE;
+ aAseActual = aAlfa2 - "ase";
+ aBaseAse  = aAlfa + "/";
+
+ |PATH_DAT #otp00006#aBaseAse#;
+
+ |ABRE #1;
+ #1#0  = enEmpresa;
+ #1#10 = aAseActual;
+ |LEE 101#1=;
+ |SI FSalida ! 0;
+     |MENAV "    ERROR EN LA CONSOLIDACION ";
+     |CIERRA #1;
+     |ACABA;
+ |FINSI;
+ |CIERRA #1;
+
+ |DDEFECTO #0;
+ #0#0  = #1#0;
+ #0#1  = enPeriodo;
+ #0#2  = #1#1;
+ #0#3  = enEjercicio;
+ #0#4  = eaMoneda;
+ #0#10 = #30#26;
+ aMonedaA = #0#4;
+
+ #0#53 = fec1;
+ trame   = fec1 % 402;
+ trames  = trame;
+ tranyos = fec1 % -104;
+ tranyo  = tranyos;
+ |HAZ calfecha;
+ tra1 = 10000 + tranyo;
+ traba1 = tra1 % -104;
+ traba1 = dia1 + "." + trame + "." + traba1;
+ |PARA x = 54;  |SI x [ 65;  |HACIENDO x = x + 1;
+      #0x = traba1;
+      |SI x [ 64; |HAZ cosas; |FINSI;
+ |SIGUE;
+ #0#66 = fec2;
+
+ aAlfa1 = #1#9; |QBF aAlfa1;
+ #0#67 = aAlfa1 + " APERTURA";
+ #0#80 = aAlfa1 + " CIERRE";
+ |PARA x = 68; |SI x [ 79; |HACIENDO x = x + 1;
+       nNume1 = x - 14;
+       fFecha = #0nNume1;
+       trame   = fFecha % 402;
+       trames  = trame;
+       |HAZ Litmes;
+       #0x = aAlfa1 + aMes;
+ |SIGUE;
+
+ aTitulo = "Creando Asientos Resumen";
+ |HAZ CuadroProc;
+
+ |BUCLE BorroDiario;
+
+ |DELINDEX #31;
+ |DELINDEX #32;
+
+ |ABRE #32;
+ |BUCLE LeePlanContable;
+
+ aTitulo = "Cuadre asientos ";
+ |HAZ CuadroProc;
+ nSwSi = 1;
+ |PARA nNume1 = 0; |SI nNume1 [ 13; |HACIENDO nNume1 = nNume1 + 1;
+
+       |PINTA 2202, "Cuenta: ";
+       |PINTA 2210, #1#6;
+
+       xD = nNume1 + 25;  ||acumulado debe
+       xH = nNume1 + 39;  ||acumulado haber
+
+       nImporte = (#0xH - #0xD) ! EURODB;
+       |SI nImporte ! 0;
+
+           #34#0 = #1#6; eaCuenta = #1#6; |HAZ SacaNivel;
+           #34#1 = enNivel;
+
+           aSigno = #1#7;
+           |SI aSigno = "S";
+               |SI nImporte > 0;
+                   aSigno = "D";
+               |SINO;
+                   aSigno = "H";
+                   nImporte = - nImporte;
+               |FINSI;
+           |FINSI;
+           |HAZ Asiento;
+       |FINSI;
+ |SIGUE;
+ |CIERRA #32;
+
+|FPRO;
+
+|PROCESO Litmes;
+   |SI trames =  1; aMes = " ENERO"; |FINSI;
+   |SI trames =  2; aMes = " FEBRERO"; |FINSI;
+   |SI trames =  3; aMes = " MARZO"; |FINSI;
+   |SI trames =  4; aMes = " ABRIL"; |FINSI;
+   |SI trames =  5; aMes = " MAYO"; |FINSI;
+   |SI trames =  6; aMes = " JUNIO"; |FINSI;
+   |SI trames =  7; aMes = " JULIO"; |FINSI;
+   |SI trames =  8; aMes = " AGOSTO"; |FINSI;
+   |SI trames =  9; aMes = " SEPTIEMBRE"; |FINSI;
+   |SI trames = 10; aMes = " OCTUBRE"; |FINSI;
+   |SI trames = 11; aMes = " NOVIEMBRE"; |FINSI;
+   |SI trames = 12; aMes = " DICIEMBRE"; |FINSI;
+|FPRC;
+
+|PROCESO calfecha;
+   dia1 = "31";
+   |SI trames = 4; |O trames = 6; |O trames = 9; |O trames = 11;
+      dia1 = "30";
+   |FINSI;
+   |SI trames = 2;
+      dia1 = "28";
+      |SI tranyo = 1988; |O tranyo = 1992; |O tranyo = 1996; |O tranyo = 2000; |O tranyo = 2004;
+         dia1 = "29" ;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO cosas;
+   trames = trames + 1;
+   |SI trames > 12;
+      trames = 1;
+      tranyo = tranyo + 1;
+   |FINSI;
+   |HAZ calfecha;
+   tra1 = 10000 + tranyo;
+   traba2 = tra1 % -104;
+   tra1 = 100 + trames;
+   traba1 = tra1 % -102;
+   traba1 = dia1 + "." + traba1 + "." + traba2;
+|FPRC;
+
+
+|PROCESO Cabecera; || lee la cabecera.
+   |ABRE #31;
+   |DDEFECTO #31;
+   #31#0 = #32#0;
+   #31#1 = #32#1;
+   #31#2 = #32#2;
+   |LEE 141#31=;
+   |SI FSalida ! 0;
+       #31#0 = #32#0;
+       #31#1 = #32#1;
+       #31#2 = #32#2;
+       #31#3 = #31#2;
+       |HAZ NuevoRegistro;
+       #31#12 = nREGISTRO;
+       |GRABA 020#31b;
+   |FINSI;
+
+   |SI #32#8 = "D";
+       #31#4 = #31#4 + #32#9;
+   |SINO;
+       #31#5 = #31#5 + #32#9;
+   |FINSI;
+   #31#6 = #31#4 - #31#5;        || saldo
+   |SI #31#9 = 0; |Y #32#8 = "D";
+           #31#8 = #32#4;
+           #31#9 = #32#5;
+   |FINSI;
+   |SI #31#11 = 0; |Y #32#8 = "H";
+           #31#10 = #32#4;
+           #31#11 = #32#5;
+   |FINSI;
+
+   |GRABA 020#31a;
+   |LIBERA #31;
+   |CIERRA #31;
+|FPRC;
+
+|PROCESO Actualiza;
+   MasMenos     = #32#9;
+   DebeHaber    = #32#8;
+   aCUENTA      = #32#4;
+   nREGISTRO    = #31#12;
+   nDIARIO      = #32#0;
+   aFECHA       = #32#1;
+   nDOCUMENTO   = #32#2;
+   nNIVELCUENTA = #32#5;
+
+   |HAZ ActDiario;          || diario
+   |SI nSwSi = 1;
+       |HAZ ActCuenta;          || cuenta
+   |FINSI;
+|FPRC;
+
+|PROCESO CuadroProc;
+   aAlfa3 = " " * 78;
+   |PINTA 2102, aAlfa3;
+   |PINTA 2202, aAlfa3;
+   |ATRI I;  |PINTA 2102, aTitulo; |ATRI N;
+|FPRC;

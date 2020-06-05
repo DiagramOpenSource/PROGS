@@ -1,0 +1,281 @@
+|FICHEROS;
+     cretam53 #0;
+
+     labempre;
+     labcentr;
+     nomcenes;
+
+     cretat53;
+|FIN;
+
+|VARIABLES;
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aIPF = "";
+
+     aValor = "";
+     swLabcentr = 0;
+     swNomcenes = 0;
+
+     &enEmp = 0;
+     &enCen = 0;
+     &enMes = 0;
+     &enAny = 0;
+     aCCC = "";
+     &eaRegimen = "";
+     enSwAlta = 0;
+     aCentro = "";
+
+     aAlfa = "";
+     nModo = 0;
+     nPos1 = 0;
+     nPos2 = 0;
+     nCampo = 0;
+     fFecha = @;
+     aFecha = "";
+     aMes = "";
+     aAny = "";
+     aLon = "";
+     nLon = 0;
+|FIN;
+
+|PROCESO ipf;
+     aAlfa1 = #0#6;
+     aAlfa1 = aAlfa1 % 101;
+     |SI aAlfa1 ] "0";|Y aAlfa1 [ "9";
+          aIPF = "1";            || tipo identificacion DNI
+     |SINO;
+          |SI aAlfa1 ! "X"; |Y aAlfa1 ! "Y"; |Y aAlfa1 ! "Z";
+               aIPF = "9";        || tipo identificacion CIF
+          |SINO;
+               aIPF = "6";        || tipo identificacion NIE
+          |FINSI;
+     |FINSI;
+     #0#5 = aIPF;
+     |PINTA #0#5;
+|FPRC;
+
+/****************************************************************************/
+/***************** TRASPASO DE CUENTAS BANCARIAS AL CRETAT53 ****************/
+/****************************************************************************/
+
+|PROCESO ipf_m53;
+     aAlfa1 = aValor;
+     aAlfa1 = aAlfa1 % 101;
+     |SI aAlfa1 ] "0";|Y aAlfa1 [ "9";
+          aIPF = "1";            || tipo identificacion DNI
+     |SINO;
+          |SI aAlfa1 ! "X"; |Y aAlfa1 ! "Y"; |Y aAlfa1 ! "Z";
+               aIPF = "9";        || tipo identificacion CIF
+          |SINO;
+               aIPF = "6";        || tipo identificacion NIE
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO centros_cuentas_m53;
+     |SI swLabcentr = 1;
+          enEmp = #labcentr#0;
+          enCen = #labcentr#1;
+          aAlfa = #labcentr#10;
+     |FINSI;
+     |SI swNomcenes = 1;
+          enEmp = #nomcenes#0;
+          enCen = #nomcenes#13;
+          aAlfa = #nomcenes#10;
+     |FINSI;
+
+     |QBT aAlfa;
+
+     |SI aAlfa = "";
+          aAlfa = #labempre#13;
+          |QBT aAlfa;
+     |FINSI;
+     aAlfa = aAlfa % -111;
+
+     fFecha = ~;
+     aFecha = fFecha;
+     aMes = aFecha % 402;
+     enMes = aMes;
+     aAny = aFecha % -104;
+     enAny = aAny;
+
+     |HAZ RegimenCCC_plb;
+     aCCC = eaRegimen + aAlfa;
+
+     enSwAlta = 1;
+
+     |SI enSwAlta = 1;
+          aCentro = enCen;
+          |QBF aCentro;
+          aCentro = ("00" + aCentro) % -102;
+          |SI swNomcenes = 1;
+               aCentro = aCentro + "F";
+          |FINSI;
+
+          #cretat53#0 = enEmp;
+          #cretat53#1 = aCCC;
+          |LEE 101#cretat53.=;
+          |SI FSalida = 0;
+               aAlfa = #cretat53#3;
+               |QBF aAlfa;
+               aAlfa1 = aAlfa - aCentro;
+               |SI aAlfa1 = aAlfa;
+                    || quiere decir que el centro no estaba en la lista
+                    #cretat53#3 = aAlfa + " " + aCentro;
+               |SINO;
+                    || ya tengo a este centro en la lista, salte
+                    |LIBERA #cretat53;
+                    |ACABA;
+               |FINSI;
+               #cretat53#4 = "Varios Centros";
+               |GRABA 020#cretat53.a;
+          |SINO;
+               #cretat53#2 = #labempre#2;
+               #cretat53#3 = aCentro;
+               #cretat53#4 = #labempre#2;
+
+               |SI swLabcentr = 1;
+                    aAlfa = #labcentr#2;
+                    |QBF aAlfa;
+                    |SI aAlfa ! "";
+                         #cretat53#4 = aAlfa;
+                    |FINSI;
+               |FINSI;
+               |SI swNomcenes = 1;
+                    aAlfa = #nomcenes#2;
+                    |QBF aAlfa;
+                    |SI aAlfa ! "";
+                         #cretat53#4 = aAlfa;
+                    |FINSI;
+               |FINSI;
+
+               |GRABA 020#cretat53.n;
+          |FINSI;
+
+          |LEE 101#cretat53.=;     || leo otra vez (no quiero GRABA.c)
+
+          aValor = #labempre#10;
+          |HAZ ipf_m53;
+          #cretat53#5 = aIPF;
+          #cretat53#6 = #labempre#10;
+          #cretat53#7 = #labempre#2;
+          #cretat53#8 = #labempre#135;
+
+          |SI swLabcentr = 1;
+               aAlfa = #labcentr#28;
+               |QBF aAlfa;
+               |SI aAlfa ! "";
+                    #cretat53#8 = aAlfa;
+               |FINSI;
+          |FINSI;
+
+          |GRABA 020#cretat53.a;
+          |LIBERA #cretat53;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Carga_nomcenes_m53;
+     #nomcenes#1;
+     ;
+     #labempre#0, 001, "87";
+     #labempre#0, 999, "87";
+     ;
+     NULL, centros_cuentas_m53;
+|FIN;
+
+|DEFBUCLE Carga_labcentr_m53;
+     #labcentr#1;
+     ;
+     #labempre#0, 001;
+     #labempre#0, 999;
+     ;
+     NULL, centros_cuentas_m53;
+|FIN;
+
+|PROCESO Borrado; |TIPO 6;
+     |SI FSalida ! 14;
+          |ACABA;
+     |FINSI;
+
+     |CONFI "    N¿Está seguro de que desea inicializar el fichero?";
+     |SI FSalida = 0;
+          |DELINDEX #cretam53;
+          |PTEC 806;
+     |FINSI;
+|FPRC;
+
+|PROCESO BuscaCCCs; |TIPO 7;
+|ACABA;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 1;
+          |ACABA;
+     |FINSI;
+
+     aAlfa = Usuario; |QBT aAlfa; aAlfa = "tm_cretat53_" + aAlfa;
+     |NOME_DAT #cretat53#aAlfa#;
+     |DELINDEX #cretat53;
+     |ABRE #cretat53;
+
+     swLabcentr = 1; swNomcenes = 0;
+     |BUCLE Carga_labcentr_m53;
+     swLabcentr = 0; swNomcenes = 1;
+     |BUCLE Carga_nomcenes_m53;
+
+     nModo = 2 + 4 + 8 + 16;
+     nPos1 = 1312; nPos2 = 1868;
+     |LINEAL_SIMPLE #1#cretat53, nModo, nPos1, nPos2, NULL, NULL, NULL;
+     |SI FSalida = 0;
+          |PARA nCampo = 1; |SI nCampo [ 8; |HACIENDO nCampo = nCampo + 1;
+               #cretam53#nCampo# = #cretat53#nCampo#;
+               |PINTA #cretam53#nCampo#;
+          |SIGUE;
+     |FINSI;
+
+     |CIERRA #cretat53;
+|FPRC;
+
+|PROCESO cretam53;
+     aAlfa = #cretam53#1;
+     |QBF aAlfa
+     aLon = aAlfa % 0;
+     nLon = aLon;
+     |SI nLon = 15;
+          |BORRA 020#cretam53.a;
+          |LIBERA #cretam53;
+
+          aAlfa = #cretam53#1;
+          aAlfa = aAlfa % 104;
+          #cretam53#10 = aAlfa;
+
+          aAlfa = #cretam53#1;
+          aAlfa = aAlfa % -111;
+          #cretam53#1 = aAlfa;
+
+          |GRABA 020#cretam53.n;
+          |LIBERA #cretam53;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE cretam53;
+     #cretam53#1;
+     ;
+     00001, "               ";
+     99999, "zzzzzzzzzzzzzzz";
+     be;
+     NULL, cretam53;
+|FIN;
+
+|PROCESO Desactiva; |TIPO 7;
+     |BUCLE cretam53;
+     #cretam53#0 = 00001;
+     |PINTA #cretam53#0;
+
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 2; |Y nModo ! 4;
+          aAlfa = "    Operación no permitida. ";
+          aAlfa = aAlfa + "Sólo es posible el acceso en modo Consulta o Modificación.";
+          |MENAV aAlfa;
+          |PTEC 807;
+     |FINSI;
+|FPRC;

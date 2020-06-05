@@ -1,0 +1,148 @@
+|FICHEROS;
+   visaz005 #0;
+
+   asparcia #10;
+   ashisrec #11;
+   asw00023 #12;
+   visam017 #13;
+   ashismic #14;
+|FIN;
+
+|VARIABLES;
+   nLinea   = 0;
+   nSw      = 0;
+   nFactura = 0;
+   nCobro   = 0;
+
+   aSerie   = "";
+   aAlfa    = "";
+|FIN;
+
+|PROCESO AnulaAsiento;
+   nLinea = 1;
+   aSerie = #asparcia#0; nFactura = #asparcia#1; nCobro = #asparcia#2;
+   |DELINDEX #asw00023; |ABRE #asw00023;
+
+   |DDEFECTO #asw00023;
+   #asw00023#0  = nLinea; nLinea = nLinea + 1;
+   #asw00023#3  = #asparcia#0;    #asw00023#4  = #asparcia#0;
+   #asw00023#11 = "A";            #asw00023#12 = 5;
+   #asw00023#13 = "asparcia";     #asw00023#14 = 0;
+   #asw00023#15 = #asparcia#22;
+   |GRABA 020#asw00023.n;
+
+   |DDEFECTO #asw00023;
+   #asw00023#0  = nLinea; nLinea = nLinea + 1;
+   #asw00023#5  = #asparcia#1;    #asw00023#6  = #asparcia#1;
+   #asw00023#11 = "N";            #asw00023#12 = 6;
+   #asw00023#13 = "asparcia";     #asw00023#14 = 1;
+   #asw00023#15 = #asparcia#22;
+   |GRABA 020#asw00023.n;
+
+   |DDEFECTO #asw00023;
+   #asw00023#0  = nLinea; nLinea = nLinea + 1;
+   #asw00023#5  = #asparcia#2;    #asw00023#6  = #asparcia#2;
+   #asw00023#11 = "N";            #asw00023#12 = 3;
+   #asw00023#13 = "asparcia";     #asw00023#14 = 2;
+   #asw00023#15 = #asparcia#22;
+   |GRABA 020#asw00023.n;
+
+   aAlfa = #asparcia#22;
+   aAlfa = "asm00010.tab;" + aAlfa + ",B";
+   |CIERRAT #asparcia;
+
+   |SUB_EJECUTA aAlfa;
+
+   |ABRET #asparcia;
+   #asparcia#0 = aSerie;
+   #asparcia#1 = nFactura;
+   #asparcia#2 = nCobro;
+   |LEE 000#asparcia.=;
+   |CIERRA #asw00023; |DELINDEX #asw00023;
+|FPRC;
+
+|PROCESO AnulaCobros;
+   |SI #asparcia#22 ! "    "; |HAZ AnulaAsiento; |FINSI;
+   |BORRA 020#asparcia.a;
+
+   #ashismic#0 = #asparcia#0;
+   #ashismic#1 = #asparcia#1;
+   |LEE 101#ashismic.=;
+   |SI FSalida = 0;
+      #ashismic#32 = "N"; #ashismic#33 = "N";
+      |GRABA 020#ashismic.a;
+      |LIBERA #ashismic;
+   |FINSI;
+
+   #visam017#0 = #asparcia#0;
+   #visam017#1 = #asparcia#1;
+   |LEE 101#visam017.=;
+   |SI FSalida = 0;
+      |BORRA 020#visam017.a; |LIBERA #visam017;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE AnulaCobros;
+#asparcia#1;
+;
+#visaz005#0, #visaz005#1, 000;
+#visaz005#0, #visaz005#1, 999;
+;
+NULL, AnulaCobros;
+|FIN;
+
+|PROCESO MiraSiRemesa;
+   |SI #asparcia#14 ! 0; nSw = -1; |ERROR10; |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraSiRemesa;
+#asparcia#1;
+;
+#visaz005#0, #visaz005#1, 000;
+#visaz005#0, #visaz005#1, 999;
+;
+NULL, MiraSiRemesa;
+|FIN;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Baja cobros recibos";
+   |PINPA #0#0; |PINDA #0#0;
+
+   E_sup = 10;
+   E_inf = "";
+   aAlfa = " ";
+   |MENSA "2405 Entre clave :           ";
+   aAlfa = 2420 ? -1;
+   |MENSA "2405                         ";
+
+   |SI aAlfa ! "<MYPASWD> ";
+      |MENAV "    Clave incorrecta"; |ACABA;
+   |FINSI;
+
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      nSw = 0; |BUCLE MiraSiRemesa;
+      |SI nSw = 0;
+         |ABRE #ashisrec;
+         #ashisrec#0 = #visaz005#0;
+         #ashisrec#1 = #visaz005#1;
+         |LEE 101#ashisrec.=;
+         |SI FSalida = 0;
+            #ashisrec#8  = "01.01.0000";
+            #ashisrec#9  = 0;
+            #ashisrec#10 = "N";
+            #ashisrec#12 = "N";
+            #ashisrec#14 = 0;
+            |GRABA 020#ashisrec.a; |LIBERA #ashisrec;
+         |FINSI;
+         |CIERRA #ashisrec;
+
+         |ABRE #visam017; |ABRE #ashismic;
+         |BUCLE AnulaCobros;
+         |CIERRA #visam017; |CIERRA #ashismic;
+      |SINO;
+         |MENAV "    Factura con cobros remesados. No se efectuara el borrado";
+      |FINSI;
+   |FINSI;
+|FPRO;

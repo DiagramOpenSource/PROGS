@@ -1,0 +1,318 @@
+|FICHEROS;
+   camodest #0;
+   cacuenta #1;         || plan contable
+   caagrupa #2;         || agrupaciones
+   caepigra #3;         || epigrafes
+   caparbal #4;         || partidas balance
+   caparexp #5;         || partidas resultados
+   camodetm #10,MANTE;  || tmp.edicion
+   canempre #30;
+|FIN;
+
+|VARIABLES;
+   aAlfa1 = "";
+   aAlfa2 = "";
+   aAlfa3 = "";
+   aAlfa4 = "";
+   nNume1 = 0;
+   nNume2 = 0;
+   nNume3 = 0;
+   nNume4 = 0;
+   nSwDefNivel = 0;
+   nLinea = 0;
+   nBloq = -1;
+   aTipo = "";
+   aAgru = "";
+   aEpig = "";
+   aPart = "";
+   aCuenta = "";
+   aTitulo = "";
+   nInkey = 0;
+   cta = 0;
+   digito = 0;
+   long = "";
+   swdig = 0;
+   men2 = "     Longitud de Cuenta Fuera de Nivel !";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|CALCULO cuenta; |TIPO 6;
+     eaCuenta = #camodest#Campo#;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #camodest#Campo# = eaCuenta;
+     |PINTA #camodest#Campo#;
+
+   eaCuenta = #0Campo; |HAZ SacaNivel;
+|FCAL;
+
+|CALCULO DefNivel; |TIPO 7;
+  |SI nSwDefNivel = 0;
+      #0#0 = dig3;
+      |PINTA #0#0;
+      nSwDefNivel = 1;
+  |FINSI;
+|FCAL;
+
+|| ***************************************************************
+
+|PROCESO GrabaTempo;
+   |QBF aTitulo;
+   |SI aTitulo ! "";
+      |DDEFECTO #10;
+      nLinea = nLinea + 50;
+      #camodetm#0 = nLinea;          || linea
+      #camodetm#1 = #cacuenta#4;            || tipo
+      #camodetm#2 = #cacuenta#5;            || bloque
+      #camodetm#3 = #cacuenta#6;            || agrupacion
+      #camodetm#4 = #cacuenta#7;            || epigrafe
+      #camodetm#5 = #cacuenta#8;            || partida
+      #camodetm#6 = aCuenta;         || cuenta
+      #camodetm#7 = aTitulo;         || descripcion
+      |GRABA 020#10n;
+   |FINSI;
+|FPRC;
+
+|PROCESO RupPart;
+   aPart = #cacuenta#8;
+
+   |SI nBloq = 0;
+      #caparbal#0 = aTipo;
+      #caparbal#1 = aAgru;
+      #caparbal#3 = aEpig;
+      #caparbal#5 = aPart;
+      |LEE 000#4=;
+      |SI FSalida = 0;
+         aTitulo = #caparbal#6;
+      |FINSI;
+   |SINO;
+      #caparexp#0 = nBloq;
+      #caparexp#1 = aTipo;
+      #caparexp#2 = aAgru;
+      #caparexp#4 = aEpig;
+      #caparexp#6 = aPart;
+      |LEE 000#5=;
+      |SI FSalida = 0;
+         aTitulo = #caparexp#7;
+      |FINSI;
+   |FINSI;
+
+   aCuenta = "";
+   aTitulo = "            " + aTitulo;
+   |HAZ GrabaTempo;
+|FPRC;
+
+|PROCESO RupEpig;
+   aEpig = #cacuenta#7;
+
+   #caepigra#0 = aTipo;
+   #caepigra#1 = aAgru;
+   #caepigra#3 = aEpig;
+   |LEE 000#3=;
+   |SI FSalida = 0;
+      aTitulo = #caepigra#4;
+   |FINSI;
+
+   aCuenta = "";
+   aTitulo = "         " + aTitulo;
+   |HAZ GrabaTempo;
+|FPRC;
+
+|PROCESO RupAgru;
+   aAgru = #cacuenta#6;
+
+   #caagrupa#0 = aTipo;
+   #caagrupa#1 = aAgru;
+   |LEE 000#2=;
+   |SI FSalida = 0;
+      aTitulo = #caagrupa#2;
+   |FINSI;
+
+   aCuenta = "";
+   aTitulo = "      " + aTitulo;
+   |HAZ GrabaTempo;
+|FPRC;
+
+|PROCESO RupBloq;
+   nBloq = #cacuenta#4;
+
+   aCuenta = "";
+   aTitulo = "";
+   |HAZ GrabaTempo;
+|FPRC;
+
+|PROCESO RupTipo;
+   aTipo = #cacuenta#5;
+
+   |SI aTipo = "A";    aTitulo = "<ACTIVO>";    |FINSI;
+   |SI aTipo = "P";    aTitulo = "<PASIVO>";    |FINSI;
+   |SI aTipo = "D";    aTitulo = "<DEBE>";      |FINSI;
+   |SI aTipo = "H";    aTitulo = "<HABER>";     |FINSI;
+
+   aCuenta = "";
+   aTitulo = "   " + aTitulo;
+   |HAZ GrabaTempo;
+|FPRC;
+
+|PROCESO cacuenta_1;
+
+   |SI #cacuenta#4 ! 0;|Y #0#5 = "B";   |ACABA;   |FINSI;
+   |SI #cacuenta#4 = 0;|Y #0#5 = "R";   |ACABA;   |FINSI;
+
+   |SI aTipo ! #cacuenta#5;
+      |HAZ RupTipo;
+      |HAZ RupBloq;
+      |HAZ RupAgru;
+      |HAZ RupEpig;
+      |HAZ RupPart;
+   |SINO;
+      |SI nBloq ! #cacuenta#4;
+          |HAZ RupBloq;
+          |HAZ RupAgru;
+          |HAZ RupEpig;
+          |HAZ RupPart;
+      |SINO;
+          |SI aAgru ! #cacuenta#6;
+             |HAZ RupAgru;
+             |HAZ RupEpig;
+             |HAZ RupPart;
+          |SINO;
+             |SI aEpig ! #cacuenta#7;
+                |HAZ RupEpig;
+                |HAZ RupPart;
+             |SINO;
+               |SI aPart ! #cacuenta#8;
+                  |HAZ RupPart;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+
+   aCuenta = #cacuenta#0;
+   aTitulo = #cacuenta#2;
+   |QBF aTitulo;
+   aTitulo = "               *" + aTitulo;
+   aAlfa1 = "." * 58;
+   aTitulo = (aTitulo + aAlfa1) % 158;
+   |HAZ GrabaTempo;
+|FPRC;
+
+|DEFBUCLE cacuenta;
+   #1#4;
+   0, 1;
+   " ", 0,  0,  0,  0, #0#1, #0#0;
+   "z", 4, 99, 99, 99, #0#3, #0#0;
+   ;
+   NULL, cacuenta_1;
+|FIN;
+
+|PROCESO Min10;
+   #camodetm#0 = 1;
+|FPRC;
+
+|PROCESO Max10;
+   #camodetm#0 = 999999;
+|FPRC;
+
+
+|CALCULO Tipo3; |TIPO 3;
+
+   aAlfa1 = Usuario;   |QBF aAlfa1;
+   |NOME_DAT #camodetm #aAlfa1#;
+   |DELINDEX #10;
+
+   |ABRE #2;
+   |ABRE #3;
+   |ABRE #4;
+   |ABRE #5;
+   |ABRE #10;
+   |BUCLE cacuenta;
+   |CIERRA #2;
+   |CIERRA #3;
+   |CIERRA #4;
+   |CIERRA #5;
+   |CIERRA #10;
+
+   |SI nLinea ! 0;
+      nLinea = 0;
+      |ENTLINEAL #1#10, -1, 4, 19, 1, Min10, Max10;
+   |SINO;
+      |MENAV "    Seleccion vacia ...";
+   |FINSI;
+
+   |DELINDEX #10;
+|FCAL;
+
+____________________________________/ DESDE LA EDICION
+|PROCESO CortaCuenta;
+   #camodetm#0 = nLinea;
+   |LEE 121#10=;
+   |SI FSalida = 0;
+      |BORRA 020#10a;
+   |FINSI;
+   |LIBERA #10;
+|FPRC;
+
+|PROCESO PegaCuenta;
+   nNume1 = #camodetm#0;
+   |PARA; |SI FSalida = 0; |HACIENDO;
+      nNume1 = nNume1 + 1;
+      #camodetm#0 = nNume1;
+      |LEE 000#10=;
+   |SIGUE;
+   #camodetm#0 = nNume1;
+   #camodetm#1 = #cacuenta#4;       || bloque
+   #camodetm#2 = #cacuenta#5;       || tipo
+   #camodetm#3 = #cacuenta#6;       || agrupacion
+   #camodetm#4 = #cacuenta#7;       || epigrafe
+   #camodetm#5 = #cacuenta#8;       || partida
+   #camodetm#6 = aCuenta;    || cuenta
+   #camodetm#7 = aTitulo;    || descripcion
+   |GRABA 020#10n;
+|FPRC;
+
+|PROCESO ActualizaCuenta;
+   |ABRE #1;
+   #cacuenta#0 = aCuenta;
+   #cacuenta#1 = #0#0;
+   |LEE 101#1=;
+   |SI FSalida = 0;
+      #cacuenta#4 = #camodetm#1;       || bloque
+      #cacuenta#5 = #camodetm#2;       || tipo
+      #cacuenta#6 = #camodetm#3;       || agrupacion
+      #cacuenta#7 = #camodetm#4;       || epigrafe
+      #cacuenta#8 = #camodetm#5;       || partida
+      |GRABA 020#1a;
+   |FINSI;
+   |LIBERA #1;
+   |CIERRA #1;
+|FPRC;
+
+|PROCESO Pulsa; |TIPO 11;
+   nInkey = FSalida;
+
+   |SI nInkey = 13;    || cortar (F5)
+      aCuenta = #camodetm#6;
+      aTitulo = #camodetm#7;
+      |QBF aCuenta;
+      |SI aCuenta = "";
+         |MENAV "    Titulo de Balance ...";
+         nLinea = 0;
+      |SINO;
+         nLinea = #camodetm#0;
+      |FINSI;
+   |FINSI;
+
+   |SI nInkey = 14;    || pegar (F6)
+      |SI nLinea = 0;
+         |MENAV "    Pulse <Cortar> antes de <Pegar> ...";
+      |SINO;
+         |HAZ ActualizaCuenta;
+         |HAZ PegaCuenta;
+         |HAZ CortaCuenta;
+         nLinea = 0;
+      |FINSI;
+   |FINSI;
+|FPRC;

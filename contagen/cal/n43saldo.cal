@@ -1,0 +1,305 @@
+|FICHEROS;
+   n43saldo #0;
+   cacuenta #5;
+   canempre #30;
+   caivaasi #200;
+|FIN;
+
+|VARIABLES;
+   &entrada   = 0;
+   entrad1    = 0;
+   nModo      = 0;
+   aAlfa      = "";
+   nSwCartera = 0;
+   aPCartera  = "";
+   men2       = "     Longitud de Cuenta Fuera de Nivel !";
+   nInkey     = 0;
+   swraf      = 0;
+   alfa1      = "";
+   alfa2      = "";
+
+  {20}aPopup        = "";
+     nID            = 0;
+     aID            = "";
+     aTexto         = "";
+
+  &eaEntidad  = "";
+  &eaSucursal = "";
+  &eaCtaCte   = "";
+  &eaDC       = "";
+  &nBanco     = 0;
+  nEntrada    = 0;
+  nDesdeAlta  = 0;
+
+  &raf_cue    = "";
+  &raf_dig    = 0;
+  &raf_des    = "";
+  &raf_sw     = 0;
+  codcli      = 0;
+  mens12 = "     Clave ya Existente !!!";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|PROCESO Tipo8_Banco; |TIPO 8;
+   |SI nBanco = 0;
+       |HAZ inicio;
+   |FINSI;
+
+   nSwCartera = 0;
+   |ABRE #200;
+   |DDEFECTO #200;
+   |LEE 000#200p;
+   |CIERRA #200;
+
+   eaPaCTA1 = #200#135;  ||permitir alta no estructuras 2008
+   eaPaCTA2 = #200#136;  ||Aviso 1990
+   eaABanco = #200#161;
+   eaObClPr = #200#186;
+
+   aPCartera = #200#56; |QBF aPCartera;
+   |SI aPCartera ! "";
+       nSwCartera = 1;
+       |C_M #0#1, 1, "N";
+       |C_M #0#2, 1, "N";
+       |C_M #0#3, 1, "N";
+       |C_M #0#4, 1, "N";
+       |C_M #0#5, 1, "N";
+       |C_M #0#6, 1, "N";
+   |FINSI;
+|FPRC;
+
+|PROCESO cuenta; |TIPO 6;
+   |C_M #0Campo, 0, aAlfa;
+
+   entrada  = 1;
+   eaCuenta = #0Campo;
+   salidas  = FSalida;
+   |HAZ FiltraPuntos;
+   #0Campo = eaCuenta;
+   |PINTA #0Campo;
+
+   |HAZ SacaNivel; #0#7 = enNivel;
+   |SI eswCta = 1;
+       |MENAV men2;
+       |ERROR;
+       |SI aAlfa = "N";
+           |C_M #0Campo,1,"S";
+       |FINSI;
+   |SINO;
+       |SI nDesdeAlta = 0;
+           |HAZ LeeCuenta;
+           |SI eswCta = 0;
+               |SI nSwCartera = 0;  #0#1 = eaNomCta; |PINTA #0#1; |FINSI;
+           |FINSI;
+       |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO Tipo66C8;  |TIPO 66;
+     aAlfa = "|C008WID";
+     aID   = #n43saldo#aAlfa#;
+     nID   = aID;
+
+     aPopup1  = nID;  || Si fuera -1 en la posicion
+     aPopup2  = 5;
+     aPopup3  = "0 Sin Tipo";
+     aPopup4  = "1 Prestamos";
+     aPopup5  = "2 Cuentas Corrientes";
+     aPopup6  = "3 Cuentas Ahorro";
+     aPopup7  = "4 Inversiones";
+
+     IaPopup  = aPopup1  <-;
+     |ESPECIFICA "TRACKPOPUP", aPopup;
+     |SI FSalida ! 0;
+         IaPopup  = aPopup3  <-;
+         IaPopup  = IaPopup + (FSalida - 1);
+
+         aAlfa = aPopup % 101;  #0#8 = aAlfa;
+     |FINSI;
+
+     |PINTA #0#8;
+|FPRC;
+
+|CALCULO TCta0; |TIPO 0;
+
+     aTexto = "";
+     |SI #0#8 = "0"; aTexto = "Sin Tipo          "; |FINSI;
+     |SI #0#8 = "1"; aTexto = "Prestamos         "; |FINSI;
+     |SI #0#8 = "2"; aTexto = "Cuentas Corrientes"; |FINSI;
+     |SI #0#8 = "3"; aTexto = "Cuentas Ahorro    "; |FINSI;
+     |SI #0#8 = "4"; aTexto = "Inversiones       "; |FINSI;
+
+     |SI aTexto = "";
+         |MENAV "0000 Tipo incorrecto";
+         |ERROR;
+     |SINO;
+         #0#9 = aTexto;
+         |PINTA #0#9;
+     |FINSI;
+|FCAL;
+
+|PROCESO MiraDC;
+   nInkey = FSalida;
+   |C_M #0Campo,0,aAlfa;
+   |SI aAlfa = "N"; |ACABA; |FINSI;
+
+   |SI nInkey = 2; |ACABA; |FINSI;
+
+   eaEntidad  = #0#2;
+   eaSucursal = #0#3;
+   eaCtaCte   = #0#5;
+   |HAZ eCalculoDC;
+   #0#4 = eaDC; |PINTA #0#4;
+|FPRC;
+
+|CALCULO Banco7; |TIPO 7;
+   aAlfa = " ";
+   |SI nSwCartera = 1;
+       aAlfa = "    Pulsa <F2> para Consultar Bancos de Cartera";
+   |FINSI;
+   |MENSA aAlfa;
+|FCAL;
+
+|CALCULO Banco1; |TIPO 1;
+   nModo = (FEntrada / 100) ! 0;
+
+   |SI nModo = 3; |Y nSwCartera = 1;
+       |CONFI "    NExiste la Cartera. Desea continuar con la Baja de este Banco ?";
+       |SI FSalida ! 0;
+           |ERROR;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|CALCULO Banco0; |TIPO 0;
+   nInkey = FSalida;
+
+   |BLIN 4;
+
+   nModo = (FEntrada / 100) ! 0;
+   |SI nSwCartera = 1;
+       eOpBan = 0; || 1 = Consulta pantalla
+       |SI nInkey = 10; eOpBan = 1;  |FINSI;
+       eaVC      = "";
+       enSwLoLeo = 1;
+       enBanco   = #0Campo;
+       |HAZ LeeBanco;
+       |SI eswLect = 0;
+           #0#0 = enBanco;
+           #0#1 = eaNomBanco;  |PINTA #0#1;
+           #0#2 = eaCCC1;      |PINTA #0#2;
+           #0#3 = eaCCC2;      |PINTA #0#3;
+           #0#4 = eaCCC3;      |PINTA #0#4;
+           #0#5 = eaCCC4;      |PINTA #0#5;
+           #0#6 = eaCtaBanco;  |PINTA #0#6;
+       |SINO;
+           |MENAV "    Error. No existe Banco en Cartera";
+           |SI nModo = 1;
+               |ERROR;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|PROCESO BuscaElBanco;
+  |SELECT #2#0;
+  #0#6 = raf_cue;
+  #0#7 = raf_dig;
+  |LEE 101#0=;
+  |SI FSalida = 0;
+      nBanco = #0#0;
+      |SELECT #1#0;
+  |SINO;
+      |SELECT #1#0;
+      |CONFI "    SClave inexistente Confirmar Alta: ";
+      |SI FSalida ! 0;  |ACABA;  |FINSI;
+      #0#0 = 999;
+      |LEE 001#0];
+      |SI FSalida = 0;
+          |LEE 001#0a;
+      |SINO;
+          |LEE 001#0u;
+      |FINSI;
+      |SI FSalida = 0;  codcli = #0#0 + 1;  |FINSI;
+
+      |ET ElCodigo;
+      |MENSA "2425 Codigo de Banco:   ";
+      E_inf  = 1;
+      E_sup  = 999;
+      codcli = 2442 ? 0;
+      #0#0 = codcli;
+      |LEE 040#0=;
+      |SI FSalida = 0;
+          |CONFI "    SClave ya Existente. Desea introducir otro";
+          |SI FSalida = 0;
+              |VETE ElCodigo
+          |FINSI;
+          nBanco = -1;
+          |ACABA;
+      |SINO;
+          nBanco = #0#0;
+      |FINSI;
+  |FINSI;
+  |SELECT #1#0;
+|FPRC;
+
+|PROGRAMA;
+
+  entrad1 = entrada;
+  entrada = 1;
+  raf_sw  = 0;
+
+  |SI nBanco = 0;
+      |MANTE #0;
+  |SINO;
+
+      aPCartera  = "";
+      nSwCartera = 0;
+      nDesdeAlta = 1;
+      |SI nBanco ! -1;
+          |HAZ Tipo8_Banco;
+          nDesdeAlta = 0;
+      |FINSI;
+
+      |CLS;
+      |ABRE #0;
+      |PINPA #0#0;
+      |SI nDesdeAlta = 1;
+           |HAZ BuscaElBanco;
+           |SI nBanco = -1;
+               entrada = entrad1;
+               |CIERRA #0;
+               |ACABA;
+           |FINSI;
+      |FINSI;
+
+      |DDEFECTO #0;
+      #0#0 = nBanco;
+      |LEE 101#0=;
+      nEntrada = FSalida;
+      |SI nDesdeAlta = 1;
+          |SI nEntrada ! 0;
+              #0#6 = raf_cue;
+              #0#7 = raf_dig;
+              #0#1 = raf_des
+          |FINSI;
+          |C_M #0#6,1,"N";
+      |FINSI;
+      |PINDA #0#0;
+      |ENDATOS #2#0;
+      |SI FSalida = 0;
+          |SI nEntrada = 0; |GRABA 020#0a; |FINSI;
+          |SI nEntrada ! 0; |GRABA 020#0n; |FINSI;
+          raf_sw  = 1;
+          raf_des = #0#1;
+      |SINO;
+          |SI nDesdeAlta = 0;
+              |SI nEntrada = 0; |BORRA 041#0a; |FINSI;
+          |FINSI;
+      |FINSI;
+      |LIBERA #0;
+      |CIERRA #0;
+  |FINSI;
+  entrada = entrad1;
+|FPRO;

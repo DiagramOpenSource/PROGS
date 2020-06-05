@@ -1,0 +1,242 @@
+|FICHEROS;
+     berm0013 #0;
+
+     berm0100 #100;
+|FIN;
+
+|VARIABLES;
+     nPanta = 0;
+     nModo = 0;
+
+     aFoto = "";         ||Sirve para distinguir el boton
+
+     nFoto1 = -1;
+     nFoto2 = -1;
+     nLbl = -1;
+
+     aLogo = "";
+     aOrg = "";
+     aDes = "";
+     aIP = "";
+
+     ||DSSELECT
+     aPathDif = "";
+     aRuta = "";
+     &enError = 0;
+     {1}aLocal = "";
+     aDirLocal = "";
+     aPathDSSelect = "";
+     aAux = "";
+     aBorra = "";
+     aParaIni = "";
+     aCarpetaCaptura = "";
+     &eaUnidadBasico = "";
+     aTextoIni = "";
+     nHandle = 0;
+     aEjecuta = "";
+     aPrograma = "";
+     aAbre = "";
+     aPath = "";
+     nError = 0;
+     aAlfa = "";
+     aFichero = "";
+     aLong = "";
+     nLong = 0;
+     nCarac = 0;
+     nPos = 0;
+     aCarac = "";
+     aProg = "";
+     &eaDestino = "";
+     &eaCarpetaOrigen = "";
+     {1}aContiene = "";
+     &eaUnidad = "";
+|FIN;
+
+|PROCESO Tipo7; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1; |O nModo = 2;
+          |ESTADO_CONTROL nFoto1, "ENABLE";
+          |ESTADO_CONTROL nFoto2, "ENABLE";
+     |SINO;
+          |ESTADO_CONTROL nFoto1, "DISABLE";
+          |ESTADO_CONTROL nFoto2, "DISABLE";
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo12; |TIPO 12;
+     |ESTADO_CONTROL nFoto1, "DISABLE";
+     |ESTADO_CONTROL nFoto2, "DISABLE";
+|FPRC;
+
+|PROCESO Foto1;
+     aFoto = "1";
+     |HAZ ControlImagen;
+|FPRC;
+
+|PROCESO Foto2;
+     aFoto = "2";
+     |HAZ ControlImagen;
+|FPRC;
+
+|PROCESO ControlImagen;
+     aRuta = "";
+     |HAZ Traete_dsselect;
+     |SI enError = 1;
+         |MENAV "0000No puedo instala el dsselect.exe, consulte con su administrador";
+     |FINSI;
+
+     |ESPECIFICA "RBASS", aLocal;
+     aDirLocal = aLocal;
+
+     |HAZ DimeUnidad;
+     aAux      = eaUnidad + ":\DOCUMENTOS\DSCOMER9\";
+     aPrograma = aAux + "dsselect.exe";
+
+     ||ARA. Donde ejecuto el dsselect.exe
+     aPathDSSelect = aAux;
+     aBorra = aPathDSSelect + "dsselect.txt";
+     |RFBORRA aBorra;
+
+     aParaIni = aAux + "dsselect.ini";
+     |RFBORRA aParaIni;
+
+     |ABRE #100;
+     #100#0 = Usuario % 810;
+     |LEE 000#100=;
+     |SI FSalida ! 0;
+          |DDEFECTO #100;
+     |FINSI;
+     aCarpetaCaptura = #100#3;
+     |QBF aCarpetaCaptura;
+     |SI aCarpetaCaptura = "";
+          aCarpetaCaptura = eaUnidadBasico;
+     |FINSI;
+
+     aTextoIni = &34 + aCarpetaCaptura + &34 + " " + &34 + aBorra + &34;
+     |XABRE "CW", aParaIni, nHandle;
+     |SI FSalida ] 0;
+          |XGRABA nHandle, aTextoIni;
+     |FINSI;
+     |XCIERRA nHandle;
+
+     aEjecuta = aPrograma;
+     |RSYSTEM aEjecuta;
+
+     aAbre = aPathDSSelect + "dsselect.txt";
+     |XABRE "CU", aAbre, nHandle;
+     |SI FSalida < 0;
+        aPath = "";
+        nError = 1;
+        |ACABA;
+     |FINSI;
+
+     |XLEE nHandle, 250, aPath;
+     |SI FSalida < 0
+         aPath = "";
+         nError = 1;
+         |ACABA;
+     |FINSI;
+
+     |QBF aPath;
+     |SI aPath ! "";
+         aAlfa    = aPath;
+         aFichero = "";
+         aLong    = aAlfa % 0;
+         nLong    = aLong;
+         aRuta    = "";
+         |PARA nCarac = 1;  |SI nCarac [ nLong;  |HACIENDO nCarac = nCarac + 1;
+               nPos   = (nCarac * 100) + 1;
+               aCarac =  aAlfa % nPos;
+               |SI aCarac = "/";  |O aCarac = "\";
+                   aProg = "";
+               |SINO;
+                   aProg = aProg + aCarac;
+               |FINSI;
+
+               aRuta = aRuta + aCarac;
+         |SIGUE;
+     |FINSI;
+     |XCIERRA nHandle;
+
+     aBorra = aPathDSSelect + "dsselect.txt";
+     |RFBORRA aBorra;
+
+     |SI aRuta ! ""; |Y aProg ! "";
+          ||Tengo que regrabar el #100 con el nuevo path
+          |SI aFoto = "1";
+               #0#12 = aProg;
+               |PINTA #0#12;
+          |FINSI;
+          |SI aFoto = "2";
+               #0#13 = aProg;
+               |PINTA #0#13;
+          |FINSI;
+
+          aLogo = aRuta;
+          |HAZ CopiaLogo;
+
+          aPathDif = aRuta - aProg;
+          |QBF aPathDif;
+
+          |DDEFECTO #100;
+          #100#0 = Usuario % 810;
+          |LEE 101#100=;
+          |SI FSalida ! 0; |GRABA 020#100.b; |FINSI;
+          #100#3 = aPathDif;
+          |GRABA 020#100.a;
+          |LIBERA #100;
+     |SINO;
+         nError = 1;
+         |CIERRA #100;
+         |ACABA;
+     |FINSI;
+     |CIERRA #100;
+|FPRC;
+
+|PROCESO CopiaLogo;
+     |QBF aLogo;
+     |SI aLogo = ""; |ACABA; |FINSI;
+
+     |DBASE aAlfa;
+     aAlfa = aAlfa + "logos/cweb/";
+     |MKDIR aAlfa;
+     aOrg = aLogo;
+     aDes = aAlfa + aProg;
+     |IP_REMOTO aIP;
+     |SI aIP = "";
+          |COPIA_FICHERO aOrg, aDes;
+     |SINO;
+          |RECIBE_FICHERO aOrg, aDes;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo13; |TIPO 13;
+     ||Poner los botones;
+     |SI nFoto1 = -1;
+          |PINPA #0#0; nPanta = FSalida;
+
+          |CONTROL_SIMPLE nPanta, "BOTON,...", 2454, 2457, Foto1;
+          nFoto1 = FSalida;
+          |CONTROL_SIMPLE nPanta, "BOTON,...", 2554, 2557, Foto2;
+          nFoto2 = FSalida;
+
+          |ESTADO_CONTROL nFoto1, "DISABLE";
+          |ESTADO_CONTROL nFoto2, "DISABLE";
+     |FINSI;
+     |HAZ Idioma;
+|FPRC;
+
+|PROCESO Idioma;
+     |SI nLbl ! -1;
+          |FIN_CONTROL_WINDOWS nLbl;
+     |FINSI;
+     |SI #0#1 = 1; aAlfa = "Castellano"; |FINSI;
+     |SI #0#1 = 2; aAlfa = "Ingles"; |FINSI;
+     |SI #0#1 = 3; aAlfa = "Italiano"; |FINSI;
+     |SI #0#1 = 4; aAlfa = "Alem n"; |FINSI;
+     |SI #0#1 = 5; aAlfa = "Frances"; |FINSI;
+     |SI #0#1 = 6; aAlfa = "Otro"; |FINSI;
+     aAlfa = "LABEL,{{003}}" + aAlfa;
+     |CONTROL_SIMPLE nPanta, aAlfa, 1121, 1140, Foto1;
+     nLbl = FSalida;
+|FPRC;

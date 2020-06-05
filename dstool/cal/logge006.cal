@@ -1,0 +1,262 @@
+|FICHEROS;
+     logger06 #0;
+     logger05 #5;
+     logger03 #3;
+     logger03@ #30;
+|FIN;
+
+|VARIABLES;
+     aPathLogIni = "";
+     aExt = "";
+     i = 0;
+     nConta = 0;
+     nHandle = 0;
+     nLongi = 0;
+     nPara1 = 0;
+     nPosic = 0;
+     nPrime = 0;
+     nOk = 0;
+     aHora = "";
+     aOrg = "";
+     aPathOrg = "";
+     aPath = "";
+     aFic = "";
+     aBase = "";
+     aDes = "";
+     aNom = "";
+     aChar = "";
+     aAscii = "";
+     nCodAsc = 0;
+     nActi = 0;
+     aLongi = "";
+     aAlfa = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aDsini1 = "";
+     aDsini2 = "";
+     aRestauraIni = "";
+|FIN;
+
+|PROCESO Tipo7; |TIPO 7;
+     |ABRE #5;
+     |SELECT #2#5;
+     |LEE 000#5u;
+     |SI FSalida = 0;
+          #0#0 = #5#1; |PINTA #0#0;
+          #0#1 = #5#2; |PINTA #0#1;
+     |FINSI;
+     |CIERRA #5;
+|FPRC;
+
+|PROCESO PonFecha;
+     #5#1 = ~;
+     #5#2 = aHora;
+     |GRABA 020#5a;
+     |LIBERA #5;
+|FPRC;
+
+|DEFBUCLE PonFecha;
+     #5#2;
+     ;
+     "01.01.0000", "     ";
+     "01.01.0000", "     ";
+     be;
+     NULL, PonFecha;
+|FIN;
+
+|PROCESO A¤adeLog;
+     aAlfa = aBase + "spool/";
+     |PATH_DAT #logger03@#aAlfa#;
+     aAlfa = "ficlog.dat";
+     |NOME_DAT #logger03@#aAlfa#;
+
+     nConta = 0;
+     |ABRE #3;
+     |ABRE #logger03@;
+     |LEE 000#logger03@.p;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+    ||      |PARA i = 0; |SI i [ 12; |HACIENDO i = i + 1;
+    ||           #3#i# = #logger03@#i#;
+    ||      |SIGUE;
+          |SALVA_DATOS #logger03@;
+          |REPON_DATOS #3;
+          |GRABA 040#3n;
+          |LEE 000#logger03@.s;
+          nConta = nConta + 1;
+          aAlfa = "Registro:" + nConta;
+          |PINTA 2402, aAlfa;
+     |SIGUE;
+     |CIERRA #logger03@;
+     |CIERRA #3;
+
+     |DELINDEX #logger03@;
+|FPRC;
+
+|PROCESO Descomprime;
+     aDes = aBase + "spool/ficlog.gz";
+     |COPIA_FICHERO aFic, aDes;
+     |DESCOMPRIME aDes;
+     |FBORRA aDes;
+     aFic = aDes - ".gz";
+     aDes = aBase + "spool/ficlog.dat";
+     |RENOMBRA_FICHERO aFic, aDes;
+|FPRC;
+
+|PROCESO Copia;
+     aDes = aBase + "spool/ficlog";
+     |COPIA_FICHERO aFic, aDes;
+     aFic = aDes;
+     aDes = aBase + "spool/ficlog.dat";
+     |RENOMBRA_FICHERO aFic, aDes;
+|FPRC;
+
+|PROCESO Concatena;
+     nPrime = 0;
+     |DBASS aBase;
+     aPath = #0#3; |QBF aPath;
+     aPathOrg = aPath;
+     |_PDIR aPath;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          nOk = 0;
+          aFic = aPath; |QBF aFic;
+          aNom = aFic - aPathOrg;
+
+          |DDEFECTO #5;
+          #5#0 = aNom;
+          |LEE 000#5=;
+          |SI FSalida ! 0;
+               nOk = 1;
+               aExt = aNom % -103;
+               aAlfa = aNom % 114;
+               |SI aAlfa = "logger.spo.dat"; |O aAlfa = "logger_spo_dat";
+                    |BLIN 24; |PINTA 2302, aFic;
+                    |SI aExt = ".gz";
+                         |HAZ Descomprime;
+                    |SINO;
+                         |HAZ Copia;
+                    |FINSI;
+
+                    |HAZ A¤adeLog;
+
+                    |SI aNom ! "logger.spo.dat";
+                         |GRABA 020#5n;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |_SDIR aPath;
+     |SIGUE;
+|FPRC;
+
+|PROCESO LeeIni;
+     |DBASS aNom;
+     aNom = aNom + "ds.ini";
+     |XABRE "AB",aNom, nHandle;
+     |SI FSalida ] 0;
+          |PARA; |SI FSalida ] 0; |HACIENDO;
+          |XLEE nHandle, 1, aChar;
+          |SI FSalida [ 0; |SAL; |FINSI;
+               aAscii = aAscii + aChar;
+               nCodAsc = &aChar;
+               |SI nCodAsc = 10;
+                    aAlfa = aAscii % 107;
+
+                    |SI aAlfa = "LOGGER=";
+                         ||Esta activado
+                         nActi = 1;
+
+                         aLongi = aAscii % 0;
+                         nLongi = aLongi;
+
+                         aAlfa2 = aAscii - "LOGGER=";
+                         |PARA nPara1 = nLongi; |SI nPara1 ] 1; |HACIENDO nPara1 = nPara1 - 1;
+                              nPosic = (nPara1 * 100) + 1;
+                              aAlfa = aAscii % nPosic;
+                              |SI aAlfa = "/";|O aAlfa = "\";
+                                   aAlfa1 = aAlfa1 - &13 - &10;
+                                   ||#0#4 = aAlfa1; nombre fichero
+                                   |SAL;
+                              |SINO;
+                                   aAlfa1 = aAlfa + aAlfa1;
+                              |FINSI;
+                         |SIGUE;
+                         aAlfa2 = aAlfa2 - aAlfa1 - &13 - &10;
+                         aPathLogIni = aAlfa2;
+                    |FINSI;
+                    aAscii = "";
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO DesactivaLogger;
+     |SI nActi = 1;
+          aDsini1 = "LOGGER";
+          |VALOR_INI aDsini1,aDsini2;
+          aRestauraIni = aDsini2;
+
+          aDsini2 = aPathLogIni; |QBF aDsini2;
+          aDsini2 = aDsini2 + "logger2.spo";
+          aDsini1 = aDsini1 + "=" + aDsini2;
+          |VALOR_INI aDsini1,aDsini2;
+     |FINSI;
+|FPRC;
+
+|PROCESO ActivaLogger;
+     |SI nActi = 1;
+          aDsini2 = aRestauraIni;
+          aDsini1 = "LOGGER="+ aDsini2;
+          |VALOR_INI aDsini1,aDsini2;
+
+          aDsini2 = aPathLogIni; |QBF aDsini2;
+          aDsini2 = aDsini2 + "logger2.spo";
+          |FBORRA aDsini2;
+          aDsini2 = aDsini2 + ".dat";
+          |FBORRA aDsini2;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#2 ! "SI"; |ACABA; |FINSI;
+
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "logger03";
+     |CARGA_DEF aAlfa, logger03@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'logger03'";
+          |ACABA;
+     |FINSI;
+
+     |HAZ DesactivaLogger;
+
+     aAlfa = #0#3; |QBF aAlfa;
+     aAlfa = aAlfa % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\";
+          aAlfa = #0#3; |QBF aAlfa;
+          aAlfa = aAlfa + "/";
+          #0#3 = aAlfa;
+     |FINSI;
+
+     |ABRE #5;
+     |HAZ Concatena;
+     |CIERRA #5;
+
+     |HORA aHora;
+     |BUCLE PonFecha;
+
+     |DESCARGA_DEF #logger03@;
+
+     |HAZ ActivaLogger;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ LeeIni;
+
+#0#3="/u/dsasesor/dstool/logger/";
+|DELINDEX #5;
+|DELINDEX #3;
+
+     |CLS;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+|FPRO;

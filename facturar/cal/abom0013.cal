@@ -1,0 +1,332 @@
+|FICHEROS;
+     abom0001 #1;
+     abom0013 #13;
+     abow0016 #916;
+     abom0514 #514;
+     abom0518 #518;
+     abow0020 #920,MANTE;
+|FIN;
+
+|VARIABLES;
+     &enExped = 0;
+
+     aFicheroActu     = "";
+     aDSCorreo        = "";
+     aProxy           = "";
+     aUsu             = "";
+     aPwd             = "";
+     aNombre          = "";
+     aAlfa            = "";
+     aAlfa1           = "";
+     aCaracter        = "";
+     aCadena          = "";
+     aDirOri          = "";
+     aDirDes          = "";
+     aTitulo          = "";
+     aTexto           = "";
+     aFic             = "";
+     aAbre            = "";
+     aMenLog          = "";
+     aBase            = "";
+
+     nTecla           = 0;
+     nPosi            = 0;
+     nCaracter        = 0;
+     nSwPon           = 0;
+     nHandle          = 0;
+     nError           = 0;
+     nLinea           = 0;
+     nBoton2          = 0;
+     nBoton3          = 0;
+     nBoton4          = 0;
+     nBoton5          = 0;
+
+     &efFechaDocu      = @;
+     &enCodUbica       = 0;
+     &eaRutaDocumento  = "";
+     &eaFicheroEdita   = "";
+     &eaFichAdjunto    = "";
+     &enCuenta         = 0;
+|FIN;
+
+|PROCESO EnviaEco;
+     |MENSA "0000 Enviando ECO";
+
+     |SUB_EJECUTA "abom0518;PIDECUENTA";
+
+     |ABRE #518;
+     #518#0 = enCuenta;
+     |LEE 040#518=;
+     |SI FSalida ! 0;
+         |MENAV "       No existe la Cuenta de Correo.";
+         |ACABA;
+     |FINSI;
+     |CIERRA #518;
+
+     aBase  = "";
+     |DBASE aBase;  |QBF aBase;
+     aBase  = aBase + "correos/";  |MKDIR aBase;
+     aAbre = aBase + "ECO.TXT";
+     |XABRE "BW", aAbre, nHandle;
+     aAlfa = "Fichero de respuesta" + &13 + &10; |XGRABA nHandle, aAlfa;
+     |XCIERRA nHandle;
+
+     aDirDes = "";
+     aAlfa1  = #13#4;
+     nSwPon  = 0;
+     |PARA nCaracter = 1;  |SI;  |HACIENDO nCaracter = nCaracter + 1;
+          nPosi     = (100 * nCaracter) + 1;
+          aCaracter = aAlfa1 % nPosi;
+
+          |SI aCaracter = ">";  |SAL;        |FINSI;
+
+          |SI nSwPon = 1;  aDirDes = aDirDes + aCaracter;  |FINSI;
+
+          |SI aCaracter = "<";  nSwPon = 1;  |FINSI;
+     |SIGUE;
+
+     aDSCorreo = #518#2;           |QBF aDSCorreo;   || Direccion IP
+     aUsu      = #518#6;           |QBF aUsu;        || usuario
+     aPwd      = #518#7;           |QBF aPwd;        || password
+     aProxy    = #518#4;           |QBF aProxy;      || servidor proxy
+
+     aTitulo   = #13#2;            |QBF aTitulo;     || Asunto
+     aDirOri   = #518#5;           |QBF aDirOri;     || Direccion Origen
+     aTexto    = "Comprobacion de lectura realizada";|| Cuerpo
+     aFic      = aAbre;
+
+     aNombre   = "";
+
+     aAlfa1 = "0000Enviando Eco [" + aDSCorreo + "] ...";
+     |MENSA aAlfa1;
+
+     |DSCORREO_ENVIA aDSCorreo, aProxy, aDirOri, aDirDes, aTitulo, aTexto, aFic;
+     nError = FSalida;
+     |BLIN 4;
+
+     |SI nError < 0;
+          aMenLog = "    Problemas al enviar correo ..." + nError;
+          |MENAV aMenLog;
+     |FINSI;
+
+     |FBORRA aAbre;
+|FPRC;
+
+|PROCESO ReenviaCorreo;
+     efFechaDocu    = #13#6;
+     enCodUbica     = #514#9;  |HAZ LeeUbicaciones;
+     eaFicheroEdita = (("00000000" + #13#0) % -108) + (("0000" + #13#1) % -104) + ".eml";
+     eaFichAdjunto  = eaRutaDocumento + "/" + eaFicheroEdita;
+     enExped        = #13#0;
+
+     |ABRE #1;
+
+     |PUSHV 0501 2380;
+     |DDEFECTO #920;
+     #920#4 = eaFichAdjunto;
+     |C_M #920#4, 1, "N";
+     |PINPA #0#920;
+     |PINDA #0#920;
+     |ENDATOS #1#920;
+     |POPV;
+
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO NuevoCorreo;
+     efFechaDocu    = ~;
+     eaFichAdjunto  = "";
+     enExped        = #13#0;
+
+     |ABRE #1;
+     |PUSHV 0501 2380;
+     |DDEFECTO #920;
+     #920#4 = "";
+     |C_M #920#4, 1, "S";
+     |PINPA #0#920;
+     |PINDA #0#920;
+     |ENDATOS #1#920;
+     |POPV;
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO EditaDocumento;  |TIPO 11;
+     nTecla = FSalida;
+
+     |ABRE #514;
+     |LEE 040#514p;
+     |SI FSalida ! 0;  |DDEFECTO #514;  |FINSI;
+     |CIERRA #514;
+
+     |SI #514#1 = "N";  |ACABA;  |FINSI;
+
+     |SI nTecla = 10;
+         efFechaDocu    = #13#6;
+         enCodUbica     = #514#9;  |HAZ LeeUbicaciones;
+         eaFicheroEdita = (("00000000" + #13#0) % -108) + (("0000" + #13#1) % -104) + ".eml";
+         |QBF eaFicheroEdita;
+         aFicheroActu   = eaRutaDocumento + "/" + eaFicheroEdita;
+         |HAZ AbreDocumento;
+
+         |SI #13#5 = "N";  |Y #514#10 = "S";
+             |HAZ EnviaEco;
+
+             |SI nError ] 0;
+                 |LEE 101#13=;
+                 |SI FSalida = 0;
+                     #13#5 = "S";
+                     |GRABA 020#13a;
+                     |LIBERA #13;
+                     |PONCONTROL 23, "SI";
+                 |FINSI;
+             |SINO;
+                 |ERROR;
+                 |ACABA;
+             |FINSI;
+         |FINSI;
+         |ERROR;
+     |FINSI;
+
+     |SI nTecla = 11;
+         |CONFI "0000NEsta seguro de Borrar el Correo";
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+         |LEE 101#13=;
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+         efFechaDocu  = #13#6;
+         enCodUbica   = #514#9;  |HAZ LeeUbicaciones;
+         aFicheroActu = eaRutaDocumento + "/" + (("00000000" + #13#0) % -108) + (("0000" + #13#1) % -104) + ".eml";
+
+         |SI #514#21 ! "C";
+             |RFBORRA aFicheroActu;
+         |SINO;
+             |FBORRA aFicheroActu;
+         |FINSI;
+
+         |BORRA 020#13a;
+         |LIBERA #13;
+
+         |PONCONTROL 23, "SI";
+     |FINSI;
+
+     |SI nTecla = 12;
+         |ESTADO_CONTROL nBoton2, "HIDE";
+         |ESTADO_CONTROL nBoton3, "HIDE";
+         |ESTADO_CONTROL nBoton4, "HIDE";
+         |ESTADO_CONTROL nBoton5, "HIDE";
+
+         |HAZ ReenviaCorreo;
+
+         |ESTADO_CONTROL nBoton2, "SHOW";
+         |ESTADO_CONTROL nBoton3, "SHOW";
+         |ESTADO_CONTROL nBoton4, "SHOW";
+         |ESTADO_CONTROL nBoton5, "SHOW";
+     |FINSI;
+
+     |SI nTecla = 13;
+         |ESTADO_CONTROL nBoton2, "HIDE";
+         |ESTADO_CONTROL nBoton3, "HIDE";
+         |ESTADO_CONTROL nBoton4, "HIDE";
+         |ESTADO_CONTROL nBoton5, "HIDE";
+
+         |HAZ NuevoCorreo;
+
+         |ESTADO_CONTROL nBoton2, "SHOW";
+         |ESTADO_CONTROL nBoton3, "SHOW";
+         |ESTADO_CONTROL nBoton4, "SHOW";
+         |ESTADO_CONTROL nBoton5, "SHOW";
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo5;  |TIPO 5;
+     #13#0 = enExped;
+     #13#0 = 1;
+     |LEE 040#13];
+     |SI FSalida = 0;
+         |SI #13#5 = "S";
+             |LINEAS_BI_ATRI #13#5, S, I, 179;
+         |SINO;
+             |LINEAS_BI_ATRI #13#5, I, S, 179;
+         |FINSI;
+     |SINO;
+         |LINEAS_BI_ATRI #13#5, I, S, 179;
+     |FINSI;
+|FPRC;
+
+|RUTINA ClaveBaja13;
+     #13#0  = enExped;
+     #13#1  = 1;
+|FRUT;
+
+|RUTINA ClaveAlta13;
+     #13#0  = enExped;
+     #13#1  = 9999;
+|FRUT;
+
+|PROCESO Boton2;
+     |PTEC 824;
+|FPRC;
+
+|PROCESO Boton3;
+     |PTEC 825;
+|FPRC;
+
+|PROCESO Boton4;
+     |PTEC 826;
+|FPRC;
+
+|PROCESO Boton5;
+     |PTEC 827;
+|FPRC;
+
+|PROCESO PonBoton;
+     |CONTROL_SIMPLE 0, "BOTON,F2 Visualizar ", 2315, 2330, Boton2;
+     nBoton2 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,F3 Borrar Correo ", 2333, 2350, Boton3;
+     nBoton3 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,F4 Reenviar ", 2353, 2367, Boton4;
+     nBoton4 = FSalida;
+
+     |CONTROL_SIMPLE 0, "BOTON,F5 Nuevo ", 2370, 2379, Boton5;
+     nBoton5 = FSalida;
+|FPRC;
+
+|PROCESO FinBoton;
+     |FIN_CONTROL_WINDOWS nBoton2;
+     |FIN_CONTROL_WINDOWS nBoton3;
+     |FIN_CONTROL_WINDOWS nBoton4;
+     |FIN_CONTROL_WINDOWS nBoton5;
+
+     |PULSATECLA;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #1;
+     #1#0 = enExped;
+     |LIBERA #1;
+     |LEE 000#1=;
+     |SI FSalida ! 0; |DDEFECTO #1;  |FINSI;
+
+     #916#0 = #1#0;
+     #916#1 = #1#1;
+     #916#2 = #1#2;
+     #916#3 = #1#27;
+     #916#4 = #1#3;
+     #916#5 = #1#4;
+     #916#6 = #1#26;
+     #916#7 = #1#7;
+     #916#8 = #1#8;
+     #916#9 = #1#9;
+
+     |PINPA #0#916;
+     |PINDA #0#916;
+
+     |HAZ PonBoton;
+     |ENTLINEAL #1#13, -2, 4, 22, 1, ClaveBaja13, ClaveAlta13;
+     |HAZ FinBoton;
+
+     |CIERRA #1;
+|FPRO;

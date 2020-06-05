@@ -1,0 +1,239 @@
+|| Procesos comunes a Definicion Impresoras, Etiquetas y Mailings.
+|| Devuelve al programa que lo ha invocado el modo en el que se debera entrar
+|| segun la convencion de Agisys en "nmodo"
+||
+|| 1...Alta
+|| 2...Modificacion
+|| 3...Baja
+|FICHEROS;
+  pantmenu #22;
+|FIN;
+
+|VARIABLES;
+     afich       = "";    || Vendra dado por impresora, etiqueta y mailing
+     nmodo       = 0;
+     nsalir      =  0;
+     amodi_nom  = "";
+     amodi_tit  = "";
+     nmenug_modo = 0;
+     acabeza       = "";
+     anom_fich      = "";
+     afich_imp      = "";
+     nborrar        = 0;
+
+     afich1       = "";
+     adirbase     = "";
+     nnumbuf      =  0;
+     nnumlin      =  0;
+     nantes       =  0;
+     ndespues     =  2;    || Reservo 2 para incluir la opcion NUEVA
+                           || y depositar sobre ellas un posible nueva
+     nbuftmp      = 0;
+     amensaje     =  "";
+     nposbuf      =  0;
+     nposbuf_penult =  0;
+     nposbuf_ult    =  0;
+     nposbuf_sig    = 0;
+
+     nalta        =  0;
+
+     {-1}menu  = "";
+     menu1     = "2400";
+     menu2     = "1";
+     menu3     = "Elija -> ";
+     menu4     = "MB";
+     menu5     = "Modificacion";
+     menu6     = "Baja";
+
+     nop_defec  = 0;
+     nsalmenu   = 0;
+     nsalmenug  = 0;
+     i              = 0;
+     j              = 0;
+     atmp           = "";
+|FIN;
+
+|| ************************* RUTINAS COMUNES *****************************
+|| Compone el nombre del fichero
+|PROCESO compon_fich;
+      adirbase = "";
+      |DIRECTORIO adirbase;
+      |QBF adirbase;
+      |QBF anom_fich;
+
+      afich_imp = adirbase + "dev/imp/";
+
+      || Pongo prefijo al nombre
+      |SI afich = "dev/imp/etiqueta.d";
+          anom_fich = "et"+anom_fich;
+      |FINSI;
+      |SI afich = "dev/imp/mailing.d";
+          anom_fich = "ma"+anom_fich;
+      |FINSI;
+
+      afich_imp = afich_imp + anom_fich;   || Nombre
+
+      || Extension
+      |SI afich = "dev/imp/imp.d";
+          afich_imp = afich_imp + ".prn";   || Impresoras
+      |SINO;
+          afich_imp = afich_imp + ".inf";   || Etiquetas o mailings
+      |FINSI;
+|FPRC;
+
+
+|| ************************ PRESENTACION DE MENUS *************************
+
+|| Presenta que desea hacer
+|PROCESO modibaja;
+     |MENU menu;
+     nsalmenu= FSalida;
+     |SI nsalmenu > 0;
+          || Me llevo el nombre del que voy a modificar
+          nposbuf = nsalmenug*2-2;
+          |DEL_BUF nnumbuf,nposbuf,amodi_nom;   || Nombre
+          |QBF amodi_nom;
+          nposbuf = nposbuf+1;
+          |DEL_BUF nnumbuf,nposbuf,amodi_tit;   || Titulo en menu
+          nposbuf = nposbuf-1;  || Lo dejo como estaba para no afectar al resto
+
+
+          |SI nsalmenu = 1;         || Modificacion
+               nmodo = 2;
+          |SINO;                    || Baja
+               nmodo = 3;
+          |FINSI;
+     |SINO;                         || <Esc> <Ctrl><C>
+         nsalir = 1;
+     |FINSI;
+|FPRC;
+
+
+|| Presenta Menug para elegir lo que deseamos hacer
+|PROCESO presenta_menu;
+
+     || Cargo en el buffer la opcion "NUEVA"
+     nposbuf_penult = nnumlin;              || Posicion en el buffer, no numero de linea.
+     |AL_BUF nnumbuf,nposbuf_penult,"";
+     nposbuf_ult    = nnumlin+1;
+     |AL_BUF nnumbuf,nposbuf_ult,"NUEVA";
+
+     nnumlin = nnumlin+2;            || Numero de lineas
+
+     |PINPA #0#22;
+     |BMENUG nnumbuf,1,2,nnumlin,0,nop_defec;
+     nsalmenug= FSalida;
+
+     |SI nsalmenug [ 0;
+          nsalir = 1;      || Ha decidido salir del bmenug
+     |SINO;
+          nalta = nnumlin /2;
+          |SI nsalmenug = nalta;
+              || Creacion de una nueva;
+              nmodo = 1;
+          |SINO;
+              || Modificacion o baja
+              |HAZ modibaja;
+          |FINSI;
+
+          || Dejo como opcion por defecto para el bucle principal
+          nop_defec = nsalmenug;
+     |FINSI;
+|FPRC;
+
+
+
+|PROCESO menus;
+      |CLS;
+      |CABEZA acabeza;
+
+      adirbase="";                 || DIRECTORIO a¤ade, no machaca en la variable
+      |DIRECTORIO adirbase;
+      afich1 = adirbase + afich;
+
+
+    |LEESECUENCIAL  afich1, nnumbuf,nnumlin,nantes,ndespues;
+     |SI FSalida ] 0;
+            |HAZ presenta_menu;
+      |SINO;
+            amensaje = "0000No se puede abrir el fichero " + afich1;
+            |MENAV amensaje;
+            nsalir = 1;   || Si ha habido problemas me salgo
+      |FINSI;
+|FPRC;
+
+
+|| Inserta o borra una impresora en el secuencial del menug
+|| liberando espacios libres.
+|PROCESO actualiza_sec;
+    |SI nmenug_modo = 1;   || Alta
+        || Grabo la nueva etiqueta.
+        |AL_BUF nnumbuf,nposbuf_penult,amodi_nom;
+        |AL_BUF nnumbuf,nposbuf_ult,amodi_tit;
+    |FINSI;
+
+    |SI nmenug_modo = 2;   || Modificacion
+        || Para modificar, basicamente el titulo en menu
+        nposbuf_sig = nposbuf +1;
+        |AL_BUF nnumbuf,nposbuf_sig,amodi_tit;
+    |FINSI;
+
+    |SI nmenug_modo = 3;   || Baja
+        || Para borrar una etiqueta del bmenug. Dejo sus dos posiciones
+        || en blanco
+        |AL_BUF nnumbuf,nposbuf,"";
+        nposbuf_sig = nposbuf +1;
+        |AL_BUF nnumbuf,nposbuf_sig,"";
+    |FINSI;
+
+
+    || Creo otro arrai alfanumerico donde copiar solo lo bueno
+    |DIMENSIONA nnumlin,nbuftmp,0;
+    j = 0;
+    |PARA i = 0;|SI i [ nnumlin;|HACIENDO i= i+1;
+         |DEL_BUF nnumbuf,i,atmp;
+         |QBF atmp;
+         |SI atmp ! "";|Y atmp ! "NUEVA";
+               |AL_BUF nbuftmp,j,atmp;
+               j = j +1;                || Numero de lineas grabadas buenas
+         |FINSI;
+    |SIGUE;
+
+
+    |GRABASECUENCIAL afich1,nbuftmp,0,j;
+    |SI FSalida < 0;
+          amensaje = "0000Se ha producido un error al grabar " + afich1;
+          |MENAV amensaje;
+    |FINSI;
+
+    || Ya no necesito los buffers
+    |SI nnumbuf ] 0;
+         |FINDIM nnumbuf;
+    |FINSI;
+
+    |SI nbuftmp ] 0;
+         |FINDIM nbuftmp;
+    |FINSI;
+|FPRC;
+
+|| *********************** BAJAS **********************
+|| Borra el fichero *.prn,*.inf
+|PROCESO borra;
+      anom_fich = amodi_nom;
+      |HAZ compon_fich;
+      |FBORRA afich_imp;
+      |SI FSalida ! 0;
+            amensaje = "0000No se ha podido borrar " + afich_imp;
+            |MENAV amensaje;
+      |FINSI;
+|FPRC;
+
+|PROCESO baja;
+     nborrar = 0;
+     |CONFI "2400NConfirmar Baja ";
+     |SI FSalida = 0;
+           |HAZ borra;
+           || Dar de baja el fichero *.prn
+           nborrar = 1;
+     |FINSI;
+|FPRC;

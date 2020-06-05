@@ -1,0 +1,263 @@
+|FICHEROS;
+    cacheapu #0;
+    camaasil #1;    || apuntes lins.
+    camaasic #2;    || apuntes cabs.
+
+    caivarep #3;    || iva soportado
+    caivasop #4;    || iva soportado
+    cacuenta #5;    || Plan Contable
+|FIN;
+
+|VARIABLES;
+  informe = "cacheapu";
+  fech1   = @;
+  fech2   = @;
+  sw      = 0;
+
+  &antdia  = 0;
+  &antfec  = @;
+  &antdoc  = 0;
+  &antapu  = 0;
+  &lerror  = 0;
+  &men     = "";
+  debe_p   = 0;
+  haber_p  = 0;
+  swmalo   = 0;
+
+  alfa1   = "";
+  alfa2   = "";
+  alfa3   = "";
+  alfa4   = "";
+
+  nume1   = 0;
+  nivel   = 0;
+  cta     = "";
+  long    = "";
+
+  atip = "";
+  alib = 0;
+  afac = 0;
+  aser = "";
+|FIN;
+
+|INCLUYE acceso_i;
+
+|| ************************** CALCULOS DESDE PANTALLA
+|PROCESO mayus; |TIPO 0;
+ #0Campo = #0Campo > #0Campo;
+ |PINTA #0Campo;
+|FPRC;
+
+|| ****************************************************************
+|PROCESO haycambio;
+  #2#0 = antdia;
+  #2#1 = antfec;
+  #2#2 = antdoc;
+  |LEE 011#2=;
+
+  |SI FSalida = 0;
+      debe_p = debe_p ! EURODB;
+      haber_p = haber_p ! EURODB;
+      |SI #2#4 ! debe_p; |O #2#5 ! haber_p;
+          swmalo = 1;
+          antapu = 9999;
+          men = "SALDOS ASIENTO Y APUNTES DISTINTOS.";
+          |PRINT;
+      |SINO;
+          |SI debe_p ! haber_p;
+              swmalo = 1;
+              antapu = 9999;
+              men = "ASIENTO DESCUADRADO.";
+              |PRINT;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+
+  antdia  = #1#0;
+  antfec  = #1#1;
+  antdoc  = #1#2;
+  antapu  = #1#3;
+  debe_p  = 0;
+  haber_p = 0;
+|FPRC;
+
+|PROCESO informa;
+  swmalo = 0;
+  |SI sw = 0;
+      sw = 1;
+      antdia  = #1#0;
+      antfec  = #1#1;
+      antdoc  = #1#2;
+      debe_p  = 0;
+      haber_p = 0;
+  |FINSI;
+
+  |SI #1#0 ! antdia;  |O #1#1 ! antfec;  |O #1#2 ! antdoc;
+      |HAZ haycambio;
+  |FINSI;
+
+  antapu = #1#3;
+|| ......... Testeo
+  #2#0 = #1#0;
+  #2#1 = #1#1;
+  #2#2 = #1#2;
+  |LEE 001#2=;                    || Lectura Cabecera
+  |SI FSalida ! 0;
+      swmalo = 1;
+      men = "NO EXISTE CABECERA";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#1 < fec1;                              || Fecha
+      swmalo = 1;
+      men = "FECHA ASIENTO INFERIOR AL EJERCICIO CONTABLE";
+      |PRINT;
+  |FINSI;
+  |SI #1#1 > fec2;
+      swmalo = 1;
+      men = "FECHA ASIENTO SUPERIOR AL EJERCICIO CONTABLE";
+      |PRINT;
+  |FINSI;
+
+  cta = #1#4; |QBF cta;           || Cuenta Contable
+  |SI cta = "";
+      swmalo = 1;
+      men = "CUENTA CONTABLE EN BLANCO";
+      |PRINT;
+  |SINO;
+      nivel = 0;
+      long  = cta % 0;
+      nume1 = long;
+      |SI nume1 = dig4; nivel = 1; |FINSI;
+      |SI nume1 = dig5; nivel = 2; |FINSI;
+      |SI nume1 = dig6; nivel = 3; |FINSI;
+      |SI nume1 = dig7; nivel = 4; |FINSI;
+      |SI nume1 = dig8; nivel = 5; |FINSI;
+      |SI nume1 = dig9; nivel = 6; |FINSI;
+      |SI nivel = 0;
+          swmalo = 1;
+          men = "CUENTA CONTABLE FUERA DE NIVEL";
+          |PRINT;
+      |SINO;
+          |SI nivel ! #1#5;
+              swmalo = 1;
+              men = "CUENTA CONTABLE CON NIVEL ERRONEO";
+              |PRINT;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  #5#0 = #1#4;
+  #5#1 = #1#5;
+  |LEE 001#5=;
+  |SI FSalida ! 0;
+      swmalo = 1;
+      men = "NO EXISTE CUENTA CONTABLE";
+      |PRINT;
+  |SINO;
+      |SI #5#3 = "N";
+          swmalo = 1;
+          men = "CUENTA CONTABLE SIN ASIENTO DIRECTO";
+          |PRINT;
+      |FINSI;
+  |FINSI;
+
+  |SI #1#9 = 0;                   || Importe Cero
+      swmalo = 1;
+      men = "IMPORTE IGUAL A CERO";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#6 = 0;                   || Concepto
+      swmalo = 1;
+      men = "CONCEPTO AUTOMATICO IGUAL A CERO";
+      |PRINT;
+  |FINSI;
+
+  |SI #1#12 = "S"; |O #1#12 = "R";
+      |SI atip ! #1#12; |O alib ! #1#13; |O afac ! #1#14; |O aser ! #1#15;
+          |SI #1#12 = "S";  || SOPORTADO
+              |ABRE #4;
+              #4#0  = #1#13;
+              #4#2  = #1#14;
+              #4#27 = #1#15;
+              |LEE 001#4=;
+              |SI FSalida ! 0;
+                  swmalo = 1;
+                  alfa1 = #1#13; |QBF alfa1; alfa1 = ("00" + alfa1) % -102;
+                  alfa2 = #1#14; |QBF alfa2; alfa2 = ("000000" + alfa2) % -106;
+                  alfa3 = #1#15;
+                  alfa4 = alfa1 + "/" + alfa2 + "/" + alfa3;
+                  men = "ASTO FRA. SOPORTADO " + alfa4 + " INEXISTENTE";
+                  |PRINT;
+              |FINSI;
+              |CIERRA #4;
+          |SINO;                || REPERCUTIDO
+              |ABRE #3;
+              #3#0  = #1#13;
+              #3#2  = #1#14;
+              #3#27 = #1#15;
+              |LEE 001#3=;
+              |SI FSalida ! 0;
+                  swmalo = 1;
+                  alfa1 = #1#13; |QBF alfa1; alfa1 = ("00" + alfa1) % -102;
+                  alfa2 = #1#14; |QBF alfa2; alfa2 = ("000000" + alfa2) % -106;
+                  alfa3 = #1#15;
+                  alfa4 = alfa1 + "/" + alfa2 + "/" + alfa3;
+                  men = "ASTO FRA. REPERCUTIDO " + alfa4 + " INEXISTENTE";
+                  |PRINT;
+              |FINSI;
+              |CIERRA #3;
+          |FINSI;
+      |FINSI;
+      atip = #1#12; alib = #1#13; afac = #1#14; aser = #1#15;
+   |FINSI;
+
+  |SI #1#8 = "D";
+      debe_p = debe_p + #1#9;
+  |SINO;
+      haber_p = haber_p + #1#9;
+  |FINSI;
+  |SI swmalo = 1;
+      lerror = lerror + 1;
+  |FINSI;
+|FPRC;
+
+
+|DEFBUCLE lee_asientos;
+ #1#1;
+ ;
+ 00, fech1, 000000, 0000;
+ 99, fech2, 999999, 9999;
+ e;
+ NULL, informa;
+|FIN;
+
+
+|PROCESO chequeo; |TIPO 3;
+
+  |SI #0#0 = "N";  |ACABA;  |FINSI;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+  |INFOR informe;
+  |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+  fech1 = "01.01.1900";
+  fech2 = "31.12.2090";
+  sw    = 0;
+  |ABRE #2;
+  |ABRE #5;
+  |BUCLE lee_asientos;
+  |HAZ haycambio; |SI swmalo = 1; lerror = lerror + 1; |FINSI;
+  |CIERRA #2;
+  |CIERRA #5;
+
+  |SI lerror ! 0;
+     |PIEINF;
+  |SINO;
+     |MENAV "    DIARIO CORRECTO, NO HAY ERRORES ...";
+  |FINSI;
+
+  |FININF;
+  |FINIMP;
+|FPRC;

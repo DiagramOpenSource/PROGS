@@ -1,0 +1,679 @@
+|FICHEROS;
+    dsmoz054 #0;
+    dsmom041 #41;
+    dsmom042 #42;
+    dsmom107 #107;
+
+    dsmom044 #44,MANTE;
+    dsmom44@ #944;
+
+    :/basica/def/agicen14 #114;
+    :/basica/def/agifigen #1000;
+
+    :/contagen/def/camaasic #301;
+    :/contagen/def/camaasil #302;
+    :/contagen/def/camandia #310;   || Diario
+    :/contagen/def/cacuenta #311;   || Cuentas
+    :/contagen/def/caconasi #320;
+|FIN;
+
+|VARIABLES;
+  &aParam    = "";
+  nUltima    = 0;
+  nSwGraba   = 0;
+  nPara1     = 0;
+  alfa1      = "";
+  alfa2      = "";
+
+  diario = 0;
+  fecha  = @;
+  docume = 0;
+  nSwPrim = 0;
+  nPerAnt = 0;
+  fFecAnt = @;
+  &enDesdeOtra = 0;
+  aPath   = "";
+  aLong   = "";
+  nLong   = 0;
+
+  nEstado     = 0;
+  &enAny      = 0;
+  fecalf      = "";
+  nDEmpresa   = 0;
+  nHEmpresa   = 0;
+  nDActividad = 0;
+  nHActividad = 0;
+  nCampo      = 0;
+  nLaEmpresa  = 0;
+  swBueno     = 0;
+  enGraba     = 0;
+  aFichero    = "";
+  aAlfa       = "";
+  aAlfa1      = "";
+  aAlfa2      = "";
+  aAlfa3      = "";
+  nInkey      = 0;
+  &x_alfa1    ="";
+
+  aPathModelo = "";
+  aDef        = "";
+  &eaTit1     = "   MODIFICADO";
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+|| //////////////////// Calculos de Pantalla \\\\\\\\\\\\\\\\\\\\\\\\\\
+|CALCULO  VerEmpresa; |TIPO 0;  ||Desde Numero Empresa
+                      ||Busco la empresa
+   efFechaSit = "01.01.0000";
+   enEmpresa  = #0#7;
+   enPerConta = -1;
+   enEjer     = 0;
+   swerror    = 0;
+   |HAZ SituaContagen;
+   |SI swerror = 1;   || No existe ninguna empresa
+       |MENAV "    Error. No existe Empresa Contable. ";
+       |ERROR;
+   |SINO;
+       #0#8 = eaNombreEmp; |PINTA #0#8;
+   |FINSI;
+
+   |SI #107#28 = "S"; |Y eaSubde = "S";
+       |C_V #0#14, 1, "S"; |C_M #0#14, 1, "S"; |PINTA #0#14;
+       |C_V #0#15, 1, "S"; |C_M #0#15, 1, "S"; |PINTA #0#15;
+       |PINTA 1304, "Activ./Subdepar. ";
+   |SINO;
+       |C_V #0#14, 1, "N"; |C_M #0#14, 1, "N";
+       |C_V #0#15, 1, "N"; |C_M #0#15, 1, "N";
+       #0#14 = "   "; #0#15 = "zzz";
+       |PINTA 1304, "Actividad .......";
+       |PINTA 1326, "   ";
+       |PINTA 1341, "   ";
+   |FINSI;
+|FCAL;
+
+|CALCULO numamo; |TIPO 0;
+    x_alfa1 = #0Campo;
+    |HAZ x_punto;
+    #0Campo = x_alfa1;
+    |PINTA #0Campo;
+|FCAL;
+
+|CALCULO ElPtec; |TIPO 7;
+ |C_M #0Campo,0,aAlfa1;
+ |SI aAlfa1 = "S";
+     |PTEC 816;
+ |FINSI;
+|FCAL;
+
+|CALCULO LFecz54; |TIPO 0;
+  |C_M #0Campo,0,aAlfa1;
+  |SI aAlfa1 = "S";
+      |SI #0Campo [ fec3;
+          |MENAV "    ERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS";
+          |ERROR;
+      |FINSI;
+ |FINSI;
+|FCAL;
+
+|| /////////////////////////// Procesos \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+|PROCESO GrabaTempo;
+
+    |SI #41#26 > "01.01.1900"; |ACABA; |FINSI; ||esta vendido
+
+    |SI #41#15 ! 0; |O #41#21 ! 0; |ACABA; |FINSI; || se esta amortizando.
+
+    |SI #107#28 = "S"; |Y eaSubde = "S";
+        |SI #41#54 < #0#14; |O #41#54 > #0#15;
+            |ACABA;
+        |FINSI;
+    |FINSI;
+
+    |DDEFECTO #944;
+    #944#0 = #41#0;
+    #944#2 = #41#2;
+    #944#3 = #41#3;
+    |LEE 141#944=;
+    nEstado = FSalida;   ||lee si existe el historico
+
+    |DDEFECTO #44;
+    #44#0 = #41#0;
+    #44#1 = #41#1;
+    #44#2 = #41#2;
+    #44#3 = #41#3;
+    #44#4 = #41#4;
+
+    #44#7  = #41#27;  ||Fecha de Compra
+    #44#8  = #41#10;  ||Importe de Compra
+    #44#11 = #41#35;
+    #44#17 = #41#54;
+
+    |SI aParam = "S";
+        #44#5  = #41#5;   ||cuenta actual de la ficha
+        #44#6  = #41#6;
+        #44#9  = #944#9;  ||si ya existe anteriormente
+        #44#10 = #0#6;    ||fecha puesta en marcha
+        #44#12 = #0#3;    || Diario
+        #44#13 = #0#6;    || fecha asiento
+        #44#14 = #944#14; || documento
+    |SINO;
+        #44#5  = #944#5;
+        #44#6  = #944#6;
+        #44#9  = #41#5;
+        #44#10 = #41#9;
+        #44#12 = #944#12;
+        #44#13 = #944#13;
+        #44#14 = #944#14;
+        #44#15 = #944#15;
+    |FINSI;
+
+    |GRABA 020#44n;
+    enGraba = 1;
+|FPRC;
+
+|DEFBUCLE dsmom041;
+     #41#1;
+     1,35;
+     #0#7, #0#0, #0#11, #0#9, aParam;
+     #0#7, #0#1, #0#12, #0#10, aParam;
+     ;
+     NULL, GrabaTempo;
+|FIN;
+
+|| **********************************************************************
+|RUTINA ClaveBaja44;
+     #44#0 = enEmpresa;
+     #44#2 = #0#0;
+     #44#3 = #0#11;
+     #44#11 = aParam;
+|FRUT;
+
+|RUTINA ClaveAlta44;
+     #44#0  = enEmpresa;
+     #44#2  = #0#1;
+     #44#3  = #0#12;
+     #44#11 = aParam;
+|FRUT;
+
+|PROCESO Trabajo;
+
+  |PINPA #0#44;
+  aAlfa1 = "Activar Amortizaciones en Curso";
+  aAlfa2 = "Si Nueva Cuenta o Fecha Inicio estan en Blanco NO realiza Proceso en Elemento";
+  aAlfa3 = "Ä"; aAlfa3 = aAlfa3 * 5;
+  |SI aParam = "N";
+      aAlfa1 = "Volver a Poner en Curso Elementos Amortizables";
+      aAlfa2 = "Si Cuenta 231* esta en Blanco NO realiza Proceso en Elemento Amortizable"+aAlfa3;
+  |FINSI;
+  |ATRI R; |PINTA 0702, aAlfa1; |ATRI 0;
+           |PINTA 2202, aAlfa2;
+  |SI aParam = "S";
+      |ATRI I; |PINTA 2205, "Nueva Cuenta";
+               |PINTA 2220, "Fecha Inicio";
+               |PINTA 2242, "Blanco";
+      |ATRI P; |PINTA 2249, "NO"; |ATRI 0;
+  |SINO;
+      |ATRI I; |PINTA 2205, "Cuenta 231*";
+               |PINTA 2225, "Blanco";
+      |ATRI P; |PINTA 2232, "NO"; |ATRI 0;
+  |FINSI;
+  |PINTA 0511, #0#7;
+  |PINTA 0517, #0#8;
+  |ATRI 0;
+  enEmpresa  = #0#7;
+  |SI aParam = "S";
+      |C_V #44#14,1,"N";
+  |FINSI;
+
+  |SI #107#28 = "S"; |Y eaSubde = "S";
+      |C_V #44#17, 1, "S";
+      |ATRI I; |PINTA 0849, "A/S:  /    I.Comp: "; |ATRI 0;
+  |FINSI;
+  |ENTLINEAL #1#44, -2, 4, 20, 0, ClaveBaja44, ClaveAlta44;
+  |CONFI "    SConforme con el Proceso ?"
+  |SI FSalida = 0;
+      |HAZ HazTodo;
+  |FINSI;
+|FPRC;
+
+|| **********************************************************************
+
+|PROCESO ElProceso;
+
+    aAlfa1 = #0#6;
+    aAlfa1 = aAlfa1 % -104;
+    enAny = aAlfa1;
+
+    |DBASE aPathModelo;  |QBT aPathModelo;
+    aDef = aPathModelo + "def/dsmom044.mas";
+    |CARGA_DEF aDef, dsmom44@;
+    |SI FSalida ! 0;
+        aAlfa = "     Error en cargar el Def dsmom044. Proceso Interrumpido";
+        |MENAV aAlfa;
+        |ACABA;
+    |FINSI;
+
+    aFichero = ("44m" + Usuario) % 108;
+    |NOME_DAT #44 aFichero;
+    |ABRE #44;  |CIERRA #44;  |DELINDEX #44;
+
+     enGraba = 0;
+
+     nDActividad = #0#9;
+     nHActividad = #0#10
+     |ABRE #944;
+     |ABRE #44;
+     |BUCLE dsmom041;
+     |CIERRA #44;
+     |CIERRA #944;
+
+     |SI enGraba = 1;
+         |HAZ Trabajo;
+     |SINO;
+         |MENAV "    Seleccion Vacia ";
+     |FINSI;
+     |DESCARGA_DEF #944;
+     |DELINDEX #44;
+|FPRC;
+
+|| ***********************************************************************
+|PROGRAMA;
+ aParam = PARAMETRO; |QBF aParam;
+ |SI aParam = ""; aParam = "N"; |FINSI;
+ aParam = aParam > " ";
+
+ |ABRE #0;
+ |LEE 041#0p;
+ |SI FSalida ! 0;
+     |DDEFECTO #0;
+     |GRABA 020#0n;
+ |FINSI;
+ |CIERRA #0;
+
+ |CLS;
+ |PINPA #0#0;
+ |SI aParam = "N";
+     |ATRI R;
+     |PINTA 0503, "Volver a Poner en Curso Elementos Amortizables";
+     |ATRI 0;
+     aAlfa1 = " " * 50;
+     |PINTA 1503, aAlfa1; |C_M #0#3,1,"N"; |C_V #0#3,1,"N";
+     |PINTA 1603, aAlfa1; |C_M #0#4,1,"N"; |C_V #0#4,1,"N";
+     |PINTA 1703, aAlfa1; |C_M #0#5,1,"N"; |C_V #0#5,1,"N";
+     |PINTA 1803, aAlfa1; |C_M #0#6,1,"N"; |C_V #0#6,1,"N";
+     |PINTA 1903, aAlfa1;
+     |PINTA 2003, aAlfa1;
+     |PINTA 2103, aAlfa1;
+     |PINTA 2203, aAlfa1;
+ |FINSI;
+
+ |ABRE #107;
+ |DDEFECTO #107;
+ |LEE 041#107p;
+ |CIERRA #107;
+ |SI #107#28 = "S";
+     |C_V #0#14, 1, "S"; |C_M #0#14, 1, "S";
+     |C_V #0#15, 1, "S"; |C_M #0#15, 1, "S";
+     |PINTA 1304, "Activ./Subdepar. ";
+ |SINO;
+     #0#14 = "   "; #0#15 = "zzz";
+ |FINSI;
+
+ |PINDA #0#0;
+ |ENDATOS #1#0;
+ |SI FSalida = 0;
+     |HAZ ElProceso;
+ |FINSI;
+
+ |SALVA_DATOS #0;
+ |ABRE #0;
+ |LEE 141#0p;
+ |SI FSalida ! 0;
+     |DDEFECTO #0;
+     |GRABA 020#0b;
+ |FINSI;
+ |REPON_DATOS #0;
+ |GRABA 020#0a;
+ |LIBERA #0;
+ |CIERRA #0;
+|FPRO;
+|| ***********************************************************************
+
+|| ********************************* Proceso HazTODO
+|PROCESO cabecera; || lee la cabecera.
+
+   docume  = 1;
+   |SELECT #3#301;
+   |LEE 010#301u;
+   |SI FSalida = 0;
+       docume = #301#2 + 1;
+   |FINSI;
+   |SELECT #1#301;
+
+   |DDEFECTO #301;
+   #301#0 = diario;
+   #301#1 = fecha;
+   #301#2 = docume;
+   #301#3 = docume;
+
+   |HAZ NuevoRegistro;
+   #301#12 = nREGISTRO;
+   |GRABA 020#301b;
+|FPRC;
+
+
+|PROCESO PonerCursoN;
+
+ aAlfa1 = #44#9; |QBF aAlfa1;
+ |SI aAlfa1 = "";           |ACABA; |FINSI;  || No hay cuenta
+ |SI #44#10 [ "01.01.0000"; |ACABA; |FINSI;  || No hay fecha inicio
+
+ aAlfa1     = #44#10;
+ aAlfa1     = aAlfa1 % -104;
+ enAny      = aAlfa1;
+ efFechaSit = #44#10;
+
+  |SI nSwPrim = 0; |O efFechaSit ! fFecAnt;
+                                || |O enAny ! nPerAnt;
+      fFecAnt = efFechaSit;
+      nPerAnt = enAny;
+      |HAZ BuscaLaEmpresa;
+  |FINSI;
+  |SI swerror = 1; |ACABA; |FINSI;  || No existe contabilidad
+
+ nSwPrim = 1;
+ || ... Asiento
+ |ABRE #301;
+ |ABRE #302;
+
+ diario = #44#12;
+ fecha  = #44#13; |SI fecha [ fec3; |ACABA; |FINSI;
+ |HAZ cabecera;
+
+ |DDEFECTO #302;       || apunte cuenta 231 al debe
+  #302#0  = diario;
+  #302#1  = fecha;
+  #302#2  = docume;
+  #302#3  = 1;
+
+  #302#4  = #44#5;   || Cuenta Contable
+  #302#5  = #44#6;   || digito control
+  #302#6  = #0#5;    || concepto
+  #302#7  = #0#4;    || Descripcion
+  #302#8  = "D";     || Signo
+  #302#9  = (#44#8 * enConversor) ! enRedonPaYa;  || Importe
+  |HAZ adapta;
+
+  |GRABA 020#302n;
+  |HAZ Actualizar;
+
+   #302#3  = 11;     || apunte cuenta nueva al Haber
+
+   #302#4  = #44#9;   || Cuenta Contable
+   eaCuenta = #44#9; |HAZ SacaNivel1;
+   #302#5 = enNivel;
+   #302#8  = "H";     || Signo
+   |HAZ adapta;
+
+   |GRABA 020#302n;
+   |HAZ Actualizar;
+
+   |CIERRA #302;
+
+   #301#4  = #302#9;
+   #301#5  = #302#9;
+   #301#6  = 0;
+   #301#8  = #44#5;
+   #301#9  = #44#6;
+   #301#10 = #44#9;
+   #301#11 = enNivel;
+
+   |GRABA 020#301a;
+   |LIBERA #301;
+   |CIERRA #301;
+
+   nDOCUMENTO = docume;
+   |HAZ ActContador;
+
+ || ..............................................................
+ |PARA nPara1 = 0; |SI nPara1 [ 10; |HACIENDO nPara1 = nPara1 + 1;
+       #944nPara1= #44nPara1;
+ |SIGUE;
+
+ #944#11 = "N";
+ #944#12 = #44#12;
+ #944#13 = #44#13;
+ #944#14 = docume;
+ #944#15 = enPerConta;
+
+ #41#35 = "N";
+ #41#5  = #44#9; eaCuenta = #41#5; |HAZ SacaNivel1; #41#6 = enNivel;
+ #41#9  = #44#10;
+
+ nSwGraba = 1;
+|FPRC;
+|| .......................
+|PROCESO BLineas;
+   #302#9 = - #302#9;
+   |HAZ Actualizar;
+   |BORRA 020#302a;
+   |LIBERA #302;
+|FPRC;
+
+|DEFBUCLE BLineas;
+ #302#1;
+ ;
+ #301#0, #301#1, #301#2, 0001;
+ #301#0, #301#1, #301#2, 9999;
+ be;
+ NULL, BLineas;
+|FIN;
+
+|PROCESO PonerCursoS;
+
+ aAlfa1 = #44#5; |QBF aAlfa1;
+ |SI aAlfa1 = "";           |ACABA; |FINSI;  || No hay cuenta
+
+ |SI #44#15 ! -1;
+     enPerConta = #44#15;
+     enEmpresa  = #44#0;
+     |HAZ LaLeo1;
+     |SI swerror = 0;   ||baja asiento.
+
+         |SI #44#13 [ fec3; |ACABA; |FINSI;
+
+         |ABRE #301;
+         #301#0 = #44#12;
+         #301#1 = #44#13;
+         #301#2 = #44#14;
+         |LEE 001#301=;
+         |SI FSalida = 0;
+             |BORRA 020#301a;
+             |BUCLE BLineas;
+         |FINSI;
+         |CIERRA #301;
+     |FINSI;
+  |FINSI;
+
+  || ..............................................................
+
+  |PARA nPara1 = 0; |SI nPara1 [ 9; |HACIENDO nPara1 = nPara1 + 1;
+        #944nPara1= #44nPara1;
+  |SIGUE;
+
+   #944#10 = "01.01.0000";
+   #944#11 = "S";
+   #944#12 = 1;
+   #944#13 = "01.01.0000";
+   #944#14 = 1;
+   #944#15 = -1;
+
+   #41#35 = "S";
+   #41#5  = #44#5; eaCuenta = #41#5; |HAZ SacaNivel1; #41#6 = enNivel;
+   #41#9  = "01.01.0000";
+
+   nSwGraba = 1;
+|FPRC;
+
+|PROCESO LeeAux44;
+
+ #41#0 = #44#0;
+ #41#2 = #44#2;
+ #41#3 = #44#3;
+ |LEE 101#41=;
+ |SI FSalida ! 0;
+     |LIBERA #41;
+     |ACABA;
+ |FINSI;
+
+ nSwGraba = 0;
+ #944#0 = #44#0;
+ #944#2 = #44#2;
+ #944#3 = #44#3;
+ |LEE 040#944=;
+ nEstado = FSalida;
+
+ |SI aParam = "S";
+     |HAZ PonerCursoN;
+ |SINO;
+     |HAZ PonerCursoS;
+ |FINSI;
+
+ |SI nSwGraba = 1;
+     |SI nEstado = 0; |GRABA 020#944a; |FINSI;
+     |SI nEstado ! 0; |GRABA 020#944n; |FINSI;
+
+     |GRABA 020#41a;
+ |FINSI;
+
+ |LIBERA #41;
+|FPRC;
+
+|DEFBUCLE LeeAux44;
+ #44#2004;
+ ;
+ enEmpresa, "01.01.0000", "        ",  00;
+ enEmpresa, "01.01.9999", "zzzzzzzz",  99;
+ ;
+ NULL, LeeAux44;
+|FIN;
+
+|PROCESO HazTodo;
+
+ enEmpresa = #0#7;
+ nSwPrim = 0;
+ nPerAnt = -1;
+
+ |ABRE #41;
+ |ABRE #944;
+
+ |BUCLE LeeAux44;
+
+ |CIERRA #944;
+ |CIERRA #41;
+
+|FPRC;
+
+|| ***************************************************
+|| ***** Procesos especiales para contabilizar
+|| ***************************************************
+|| ....................... Situa la Empresa Contable
+|PROCESO BuscaLaEmpresa;
+
+  enEjer     = nPerAnt;
+  enPerConta = -1;
+
+  swerror = 0;
+  enSwSinMen = 1;
+  |HAZ SituaContagen;
+  enSwSinMen = 0;
+  |SI swerror = 1;    |ACABA;      |FINSI;
+  |HAZ LaLeo;
+|FPRC;
+
+|PROCESO LaLeo1;
+     |HAZ LeeEmpConta;
+     |SI swerror = 1; |ACABA; |FINSI;
+     |HAZ LaLeo;
+|FPRC;
+
+|PROCESO LaLeo;
+  || Recoger informacion sobre los niveles ...
+  |SI dig3 = 1; MaximoDigitos = dig4; |FINSI;
+  |SI dig3 = 2; MaximoDigitos = dig5; |FINSI;
+  |SI dig3 = 3; MaximoDigitos = dig6; |FINSI;
+  |SI dig3 = 4; MaximoDigitos = dig7; |FINSI;
+  |SI dig3 = 5; MaximoDigitos = dig8; |FINSI;
+  |SI dig3 = 6; MaximoDigitos = dig9; |FINSI;
+  DigitosPaseDirecto = dig3;
+
+  eaLaMonEmp = eaMonedaCon;
+  |HAZ EnConversor;
+  |SI enDesdeOtra = 1;
+      enConversor = 1;
+  |FINSI;
+  |QBT aPathConta;
+  |SI aPathConta = "";
+      alfa1 = enEmpresa;  alfa1 = ("00000" + alfa1) % -105;
+      alfa2 = enPerConta; alfa2 = ("0" + alfa2) % -101;
+      |DBASS aPath; |QBT aPath;
+      aPathConta = aPath + "contagen/fich/" + alfa1 + alfa2 + "/";
+  |FINSI;
+
+  |PATH_DAT #301 aPathConta;
+  |PATH_DAT #302 aPathConta;
+  |PATH_DAT #310 aPathConta;
+  |PATH_DAT #311 aPathConta;
+  |PATH_DAT #320 aPathConta;
+|FPRC;
+
+|PROCESO SacaNivel1;
+   aLong = eaCuenta;
+   |QBF aLong;
+   aLong = aLong % 0;
+   nLong = aLong;
+   enNivel = 0;
+   |SI nLong = dig4; |Y dig4 ! 0; enNivel = 1; |FINSI;
+   |SI nLong = dig5; |Y dig5 ! 0; enNivel = 2; |FINSI;
+   |SI nLong = dig6; |Y dig6 ! 0; enNivel = 3; |FINSI;
+   |SI nLong = dig7; |Y dig7 ! 0; enNivel = 4; |FINSI;
+   |SI nLong = dig8; |Y dig8 ! 0; enNivel = 5; |FINSI;
+   |SI nLong = dig9; |Y dig9 ! 0; enNivel = 6; |FINSI;
+|FPRC;
+
+|| ............ Subrutina de Asientos
+|PROCESO adapta;
+  |SI #302#8 = "D";
+      #302#16 = #302#4;
+      #302#17 = #302#5;
+      #302#10 = "";
+      #302#11 = 0;
+  |SINO;
+      #302#16 = "";
+      #302#17 = 0;
+      #302#10 = #302#4;
+      #302#11 = #302#5;
+  |FINSI;
+  aAlfa1 = #44#1; |QBF aAlfa1;
+  aAlfa1 = ("00" + aAlfa1) % -102;
+  #302#21 = aAlfa1;
+  #302#24 = #301#12;
+  #302#30 = #301#1;
+|FPRC;
+
+|PROCESO Actualizar;
+   MasMenos     = #302#9;
+   DebeHaber    = #302#8;
+   aCUENTA      = #302#4;
+   nREGISTRO    = #302#24;
+   nDIARIO      = #302#0;
+   aFECHA       = #302#1;
+   nDOCUMENTO   = #302#2;
+   nNIVELCUENTA = #302#5;
+
+   |HAZ ActDiario;          || diario
+   eswCuenta = 0;
+   |HAZ ActCuenta;          || cuenta
+|FPRC;

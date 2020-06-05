@@ -1,0 +1,165 @@
+|FICHEROS;
+   dsmom035 #0;
+   dsmom036 #1,MANTE;
+   :/modelos/def/dsmom030 #30;
+|FIN;
+
+|VARIABLES;
+   ultim    = 0;
+   esalta   = 0;
+   registro = 0;
+   nume1    = 0;
+   informe = "dsmoy035";
+   &swLinea = 0;
+   swprimer = 0;
+   ngrupo   = 0;
+   agrupo   = "";
+   nInkey = 0;
+   enModo = 7;
+|FIN;
+
+|| *************************************************
+|RUTINA ClaveBaja0;
+ #dsmom035#0 = 1;
+|FRUT;
+
+|RUTINA ClaveAlta0;
+ #dsmom035#0 = 99;
+|FRUT;
+
+|PROGRAMA;
+  |CLS;
+  |CABEZA "Grupos Conceptos Contables";
+  |DDEFECTO #0;
+  |PINPA #0#0;
+  |ENTLINEAL #1#0, -1, 2, 22, 1, ClaveBaja0, ClaveAlta0;
+|FPRO;
+
+|| **********************************************************************
+|RUTINA ClaveBaja1;
+     #dsmom036#0 = #dsmom035#0;
+     #dsmom036#1 = 001;
+|FRUT;
+
+|RUTINA ClaveAlta1;
+     #dsmom036#0 = #dsmom035#0;
+     #dsmom036#1 = 999;
+|FRUT;
+
+|PROCESO Tipo7;  |TIPO 7;
+     ultim = #dsmom035#0;
+     enModo = 7;
+     |ENTLINEAL #1#1, -2, 7, 22, 0, ClaveBaja1, ClaveAlta1;
+|FPRC;
+
+|PROCESO Tipo11;  |TIPO 11;
+   nInkey = FSalida;
+   |SI nInkey =  10;
+       enModo = 2;
+       |ENTLINEAL #1#1, -2, 2, 22, 0, ClaveBaja1, ClaveAlta1;
+       |HAZ ComprueboLinea;
+   |SINO;
+       #dsmom035#0 = ultim;
+   |FINSI;
+|FPRC;
+|| **********************************************************************
+|CALCULO laDescripcion; |TIPO 0;
+  FSalida = 10;
+  |HAZ Tipo11;
+|FCAL;
+
+|PROCESO BorraGrupo;
+ |BORRA 020#dsmom036.a;
+ |LIBERA #dsmom036;
+|FPRC;
+
+|DEFBUCLE borrarGrupos;
+ #dsmom036#1;
+ ;
+ #dsmom035#0,000;
+ #dsmom035#0,999;
+ be;
+ NULL, BorraGrupo;
+|FIN;
+
+|PROCESO Tipo1; |TIPO 1;
+ esalta = (FEntrada / 100) ! 0;
+ |SI esalta = 3;
+     |CONFI "    SEsta Seguro de Borrar este Grupo";
+     |SI FSalida ! 0;
+         |ERROR;
+     |SINO;
+         |BUCLE borrarGrupos;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO leeGrupo;
+ nume1 = 1;
+ |ERROR10;
+|FPRC;
+
+|DEFBUCLE LeeGrupos;
+ #dsmom036#1;
+ ;
+ #dsmom035#0,000;
+ #dsmom035#0,999;
+ ;
+ NULL, leeGrupo;
+|FIN;
+
+|PROCESO ComprueboLinea;
+ nume1 = 0;
+ |BUCLE LeeGrupos;
+ |SI nume1 = 0;
+     |BORRA 040#dsmom035.a;
+ |FINSI;
+ |LIBERA #dsmom035;
+|FPRC;
+
+|| ---- Calculo para imprimir
+|PROCESO ImprimeGrupo;
+ #dsmom035#0 = ngrupo;
+ |LEE 001#dsmom035.=;
+ agrupo = #dsmom035#1;
+ swLinea = 0;
+ |PRINT;
+|FPRC;
+
+|PROCESO impre;
+   |SI swprimer = 0;
+       swprimer = 1;
+       ngrupo = #dsmom036#0;
+       |HAZ ImprimeGrupo;
+   |FINSI;
+   |SI ngrupo ! #dsmom036#0;
+       ngrupo = #dsmom036#0;
+       |HAZ ImprimeGrupo;
+   |FINSI;
+   swLinea = 1;
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE dsmom0360;
+   #1#1;
+   ;
+   01, 001;
+   99, 999;
+   e;
+   NULL, impre;
+|FIN;
+
+|PROCESO imprimir;
+   registro = #dsmom035#0;
+   |IMPRE 0;
+   |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+   |INFOR informe;
+   |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+   swprimer = 0;
+   |BUCLE dsmom0360;
+   |PIEINF;
+   |FININF;
+   |FINIMP;
+|FPRC;

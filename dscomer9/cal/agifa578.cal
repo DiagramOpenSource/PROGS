@@ -1,0 +1,379 @@
+|FICHEROS;
+     agifa578 #0;
+     agifa501 #1;        ||Entrada tiquets (C)
+     agifa502 #2;        ||Entrada tiquets (L)
+     agifa505 #3;        ||Parametros caja
+     agifa007 #4;        ||Series
+     tmp00000 #10;       || Tmp tiquets a imprimir
+|FIN;
+
+|VARIABLES;
+     aImp = "";
+     aParam = "";
+     fGuarda      = @;
+     aAlfa        = "";
+     &eaCli       = "";
+     &enTiva      = 0;
+     &enIva       = 0;
+     &enRec       = 0;
+     &efFiva = @;
+
+     iva            = 0;
+     puente_s       = 0;
+     puente_n       = 0;
+     i              = 0;
+
+     &tipo                    = "";
+     &aser                    = "";
+     &aregis                  = -1;
+     &reimp                   = "N";
+     &afecha                  = "";
+     dtipo                    = "";
+     htipo                    = "";
+     ult_serie                = "xd";
+     inf                      = "a";
+     informc                  = "";
+     informl                  = "";
+     informp                  = "";
+     &xSer                    = "";
+     &xAlb                    = 0;
+|FIN;
+
+||INC-LUYE llena_c4;
+
+|PROCESO mayus; |TIPO 0;
+     #0Campo = #0Campo > "";
+     |PINTA #0Campo;
+|FPRC;
+
+|PROCESO filtro; |TIPO 0;
+     |SI #0#9 = 1;
+          |C_M #0#0, 1, "S";
+          |C_M #0#1, 1, "S";
+          |C_M #0#2, 1, "S";
+          |C_M #0#3, 1, "S";
+          |C_M #0#7, 1, "N";
+          |C_M #0#8, 1, "N";
+     |SINO;
+          |C_M #0#0, 1, "N";
+          |C_M #0#1, 1, "N";
+          |C_M #0#2, 1, "N";
+          |C_M #0#3, 1, "N";
+          |C_M #0#7, 1, "S";
+          |C_M #0#8, 1, "S";
+     |FINSI;
+|FPRC;
+
+|PROCESO lee_serie;
+     #agifa007#26 = #agifa501#57;
+     |LEE 001#agifa007.=;
+     |SI FSalida ! 0;
+          |DDEFECTO #agifa007;
+     |FINSI;
+|FPRC;
+
+|PROCESO acum_iva;
+     iva = 0;
+     |SI #2#13 = 0;
+          #1#30 = #1#30 +. puente_n;||Exenta
+     |FINSI;
+     |SI #2#13 = 1;
+           #1#20 = #1#20 +. puente_n;
+           #1#21 = #1#21 +. ((puente_n % enIva)!0);
+           iva = puente_n % enIva;
+           |SI #1#29 = "S";            ||Tiene recargo
+                #1#22 = #1#22 +. ((puente_n % enIva)!0);
+                iva = iva + ((puente_n % enIva)!0);
+           |FINSI;
+     |FINSI;
+     |SI #2#13 = 2;
+          #1#23 = #1#23 +. puente_n;    || Base imponible s/decimales
+          #1#24 = #1#24 +. ((puente_n % enIva)!0);
+          iva = puente_n % enIva;
+          |SI #1#29 = "S";            ||Tiene recargo
+               #1#25 = #1#25 +. ((puente_s % enIva)!0);
+               iva = iva + ((puente_n % enIva)!0);
+          |FINSI;
+     |FINSI;
+     |SI #2#13 = 3;
+          #1#26 = #1#26 +. puente_n;
+          #1#27 = #1#27 +. ((puente_n % enIva)!0);
+          iva = puente_n % enIva;
+          |SI #1#29 = "S";            ||Tiene recargo
+               #1#47 = #1#47 +. ((puente_n % enIva)!0);
+               iva = iva + ((puente_n % enIva)!0);
+          |FINSI;
+     |FINSI;
+     |SI #2#13 = 4;
+          #1#48 = #1#48 +. puente_n;
+          #1#49 = #1#49 +. ((puente_s % enIva)!0);
+          iva = puente_s % enIva;
+          |SI #1#29 = "S";            ||Tiene recargo
+               #1#50 = #1#50 +. ((puente_s % enIva)!0);
+               iva = iva + ((puente_s % enIva)!0);
+          |FINSI;
+     |FINSI;
+     |SI #2#13 = 5;
+          #1#51 = #1#51 +. puente_n;
+          #1#52 = #1#52 +. ((puente_s % enIva)!0);
+          iva = puente_s % enIva;
+          |SI #1#29 = "S";            ||Tiene recargo
+               #1#53 = #1#53 +. ((puente_s % enIva)!0);
+               iva = iva + ((puente_s % enIva)!0);
+          |FINSI;
+     |FINSI;
+     #1#4=#1#21+#1#22+#1#24+#1#25+#1#27+#1#47+#1#49+#1#50+#1#52+#1#53;
+|FPRC;
+
+|PROCESO CabDesglose;
+     #1#3 = #1#3 +. #2#21;        ||Total bruto
+     puente_n = ((#2#21 < #1#17) < #1#19) < #1#18;
+     puente_s = (((#2#10 * #2#5) < #1#17) < #1#19) < #1#18;
+
+     puente_s = puente_s ! 2;
+     puente_n = puente_n ! 2;
+
+     #1#28 = #1#28 +. (#2#21 - puente_n);   ||Total descuentos
+
+     eaCli = #1#1;
+     enTiva = #2#13;
+     efFiva = #1#14;
+     |HAZ IVACli;
+
+     |HAZ acum_iva;
+
+     #1#9 = #1#9 +. (puente_n + iva);
+|FPRC;
+
+|PROCESO AceraCab;
+     #1#3 = 0;
+     #1#4 = 0;
+     #1#9 = 0;
+     |PARA i = 20; |SI i [ 28; |HACIENDO i = i + 1;
+          #1i = 0;
+     |SIGUE;
+     #1#30 = 0;
+     |PARA i = 47; |SI i [ 53; |HACIENDO i = i + 1;
+          #1i = 0;
+     |SIGUE;
+|FPRC;
+
+|DEFBUCLE Desglose;
+     #2#1;
+     ;
+     #1#5, #1#0, 001;
+     #1#5, #1#0, 999;
+     ;
+     NULL, CabDesglose;
+|FIN;
+
+|PROCESO imprelin;
+     aAlfa = (#1#34 % 102) + (#1#34 % 402);
+     fGuarda = #1#14;
+     |SI  aAlfa ] #3#155; |Y aAlfa [ #3#156;
+          #1#14 = #1#14 + 1;
+     |FINSI;
+     |PRINT;
+     #1#14 = fGuarda;
+|FPRC;
+
+|DEFBUCLE imprelin;
+     #agifa502#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, imprelin;
+|FIN;
+
+|DEFBUCLE CabDesglose;
+     #agifa502#1;
+     ;
+     #agifa501#36, #agifa501#0, 001;
+     #agifa501#36, #agifa501#0, 999;
+     ;
+     NULL, CabDesglose;
+|FIN;
+
+|PROCESO imprecab;
+     |ABRE #3;
+     #3#0 = #1#12;
+     |LEE 000#3=;
+     |SI FSalida ! 0; |DDEFECTO #3; |FINSI;
+     |CIERRA #3;
+
+     Impresora = #3#121; |QBF Impresora;
+
+     |SI #0#10 = "S";
+          |SI aImp = ""; |O Impresora ! aImp;
+               |SI aImp ! "";
+                    |FINIMP;
+               |FINSI;
+
+               |IMPRE -1;
+               |SI FSalida ! 0; |ACABA; |FINSI;
+
+               aImp = Impresora;
+          |FINSI;
+     |SINO;
+          |IMPRE -1;
+          |SI FSalida ! 0; |ACABA; |FINSI;
+     |FINSI;
+
+     |HAZ lee_serie;
+     informc = #agifa007#21;
+     informl = #agifa007#32;
+     informp = #agifa007#33;
+
+     |LEE 121#1=;
+     #1#13 = "S";
+     #1#16 = #1#16 + 1;
+     |GRABA 021#1a;
+
+     |SI #1#5 ! "     ";           || Tiquet de Desglose
+          |SALVA_DATOS #1;
+          |HAZ AceraCab;
+          |BUCLE CabDesglose;
+          |BUCLE Desglose;
+          |GRABA 020#1a;           ||Grabo la cabecera
+     |FINSI;
+
+     aAlfa = (#1#34 % 102) + (#1#34 % 402);
+     fGuarda = #1#14;
+     |SI  aAlfa ] #3#155; |Y aAlfa [ #3#156;
+          #1#14 = #1#14 + 1;
+     |FINSI;
+     |INFOR informc;
+     |PRINT;
+     |PIEINF;
+     |FININF;
+     #1#14 = fGuarda;
+
+     |INFOR informl;
+     |BUCLE imprelin;
+     |SI #1#5 ! "     ";           || Tiquet de Desglose
+          |REPON_DATOS #1;
+          |GRABA 020#1a;      || Restaura cabecera
+
+          |SALVA_FICHA #1;
+          |SELECT #1#1;
+          #1#36 = #1#5;
+          |LEE 000#1=;
+          |BUCLE imprelin;
+          |SI #0#9 = 1;   || Por Serie
+               |SELECT #1#2;
+          |SINO;         || Por Conta
+               |SELECT #1#1;
+          |FINSI;
+          |REPON_FICHA #1;
+     |FINSI;
+
+     |PIEINF;
+     |FININF;
+
+
+     |INFOR informp;
+     |PRINT;
+     |PIEINF;
+     |FININF;
+
+     |SI #0#10 ! "S";
+          |FINIMP;
+     |FINSI;
+
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE PorSerie;
+     #1#2;
+     14, 13;
+     dtipo, #0#0, #0#2, #0#5, #0#4;
+     htipo, #0#1, #0#3, #0#6, #0#4;
+     be;
+     NULL, NULL, NULL, NULL, NULL, imprecab;
+     #1#12;
+|FIN;
+
+|DEFBUCLE PorConta;
+     #1#1;
+     35, 14, 13;
+     "     ", #0#7, dtipo, #0#5, #0#4;
+     "zzzzz", #0#8, htipo, #0#6, #0#4;
+     be;
+     NULL, NULL, NULL, NULL, NULL, imprecab;
+     #1#12;
+|FIN;
+
+|PROCESO Tmp;
+     #1#36 = #10#0;
+     #1#0 = #10#1;
+     |LEE 121#1=;
+     |SI FSalida = 0;
+          |HAZ imprecab;
+          |LIBERA #1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Tmp;
+     #10#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp;
+|FIN;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     |SI aParam ! "";
+          |NOME_DAT #10 aParam;
+          |ABRE #agifa505;
+          |ABRE #agifa007;
+          |ABRE #1;
+          |BUCLE Tmp;
+          |CIERRA #1;
+          |CIERRA #agifa505;
+          |CIERRA #agifa007;
+     |SINO;
+          |DDEFECTO #0;
+          |SI aregis = -1;
+               |CLS;
+               |CABEZA "Imp.Tiquets";
+               |PINPA #0#agifa578;
+               |PINDA #0#agifa578;
+               |ENDATOS #1#agifa578;
+               |SI FSalida ! 0; |ACABA; |FINSI;
+               htipo = "T";
+               dtipo = "T";
+          |SINO;
+               #agifa578#0 = aser;
+               #agifa578#1 = aser;
+               #agifa578#2 = aregis;
+               #agifa578#3 = aregis;
+               #agifa578#3 = aregis;
+               #0#4 = reimp;
+               #0#9 = 1;
+               #0#5 = "01.01.0000";
+               #0#6 = "31.12.9999";
+               htipo = "T";
+               dtipo = "T";
+               FSalida = 0;
+          |FINSI;
+
+          |ABRE #agifa505;
+          |ABRE #agifa007;
+
+          |SI #0#9 = 1;
+               |BUCLE PorSerie;
+          |SINO;
+               |BUCLE PorConta;
+          |FINSI;
+
+          |SI #0#10 = "S"; |Y aImp ! "";
+               |FINIMP;
+          |FINSI;
+
+          |CIERRA #agifa505;
+          |CIERRA #agifa007;
+     |FINSI;
+|FPRO;

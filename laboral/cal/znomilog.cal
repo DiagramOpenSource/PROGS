@@ -1,0 +1,145 @@
+|FICHEROS;
+     nomlogca;          || log incidencias calculo de la nomina Cabs.
+     nomlogli;          || log incidencias calculo de la nomina Lins.
+     nomincid;          || fichero de incidencias
+     labempre;
+     labtraba;
+     nomcalcu;
+     nomconst;
+|FIN;
+
+|VARIABLES;
+     &nContLog = 0;
+     &nNroErrores = 0;
+     &nIncid = 0;
+     &swIniLog = 0;
+     &runnom = "";
+     nNume = 0;
+     aAlfa = "";
+     &aCError = "";
+     &nCCons = 0;
+     &fCFecha = @;
+|FIN;
+
+||****************************************************************************
+||       GRABACION DE LOG DE INCIDENCIAS PRODUCIDAS DURANTE EL CALCULO
+||****************************************************************************
+
+|PROCESO ini_log;
+     |SI swIniLog = 1; |O runnom = "nomcalir";
+          |ACABA;
+     |FINSI;
+     |ABRE #nomlogca;
+     |ABRE #nomlogli;
+     |ABRE #nomincid;
+
+     |LEE 000#nomlogca.u;
+     |SI FSalida = 0;
+          nContLog = #nomlogca#0;
+          nContLog = nContLog + 1;
+          #nomlogca#0 = nContLog;                 || contador
+     |SINO;
+          #nomlogca#0 = 1;
+          nContLog = #nomlogca#0;
+     |FINSI;
+     #nomlogca#1 = Usuario % 0810;      || usuario
+     #nomlogca#2 = ~;                   || fecha emision
+     |HORA aAlfa;
+     aAlfa = aAlfa % 105;
+     #nomlogca#3 = aAlfa;                || hora emision
+     #nomlogca#4 = #nomcalcu#8;                || mes
+     nNume = #nomcalcu#9;
+     #nomlogca#5 = nNume;               || a¤o
+     #nomlogca#6 = 0;                   || nro. errores
+     |GRABA 020#nomlogca.n;
+     nNroErrores = #nomlogca#6;
+     swIniLog = 1;
+|FPRC;
+
+|PROCESO lee_inc;
+     #nomincid#0 = nIncid;
+     |LEE 000#nomincid.=;
+|FPRC;
+
+|PROCESO graba_inc;
+     |SI runnom = "nomcalir";
+          |ACABA;
+     |FINSI;
+     |HAZ lee_inc;
+     |SI nIncid ! 999;
+          nNroErrores = nNroErrores + 1;
+     |FINSI;
+     #nomlogli#0 = nContLog;
+     #nomlogli#1 = #labempre#0;                || Empresa
+     #nomlogli#2 = #labtraba#1;                || Trabajador
+     #nomlogli#3 = nIncid;              || Nro. incidencia
+     #nomlogli#4 = #nomincid#1;
+     |GRABA 020#nomlogli.n;
+|FPRC;
+
+|PROCESO fin_log;
+     |SI runnom = "nomcalir";
+          |ACABA;
+     |FINSI;
+     #nomlogca#0 = nContLog;
+     |LEE 101#nomlogca.=;
+     |SI FSalida = 0;
+          #nomlogca#6 = nNroErrores;
+          |GRABA 020#nomlogca.a;
+     |FINSI;
+     |CIERRA #nomlogca;
+     |CIERRA #nomlogli;
+     |CIERRA #nomincid;
+|FPRC;
+
+|PROCESO Imprime;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE InformeLog;
+     #nomlogli#1;
+     ;
+     #nomlogca#0, 00001, 00001, 001;
+     #nomlogca#0, 99999, 99999, 999;
+     ;
+     NULL, Imprime;
+|FIN;
+
+|PROCESO InformeLog;
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR "nomcalog";
+          |BUCLE InformeLog;
+          |PIEINF;
+          |FININF;
+          |FINIMP;
+     |FINSI;
+|FPRC;
+
+|PROCESO CargaLog;
+     |SUB_EJECUTA "nomlogca;calculo";
+|FPRC;
+
+||****************************************************************************
+||                  PROCESO PARA LA CARGA DE LA CONSTANTE
+||****************************************************************************
+
+|PROCESO LeeCons;
+     |ABRE #nomconst;
+     #nomconst#0 = nCCons;
+     #nomconst#1 = "30.09.2003";
+     |LEE 000#nomconst.];
+     |SI FSalida = 0;
+          |LEE 000#nomconst.a;
+     |SINO;
+          |LEE 000#nomconst.u;
+     |FINSI;
+     |SI FSalida = 0;|Y #nomconst#0 = nCCons;
+          aErrorC = "";       || todo correcto: constante encontrada
+     |SINO;
+          aErrorC = "    ATENCION: No existe Constante definida para el periodo";
+          aErrorC = aErrorC + " que se esta calculando";
+          || constante no encontrada
+     |FINSI;
+     |CIERRA #nomconst;
+|FPRC;

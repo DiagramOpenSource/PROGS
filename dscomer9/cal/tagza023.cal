@@ -1,0 +1,111 @@
+          Convierte pdf a tif
+|FICHEROS;
+     agifa010 #10;
+|FIN;
+
+|VARIABLES;
+     &eaPath = "";
+     &eaNomFic = "";
+     &enSinMenuImpAV = 0;
+     &eaImpresora = "";
+     &ser_alb = "";
+     &num_alb = 0;
+     &abono = "";
+     &enError = 0;
+     &eaDirBaseLocal = "";
+     {1}aContiene = "";
+     nHandle = 0;
+     aIPRemoto = "";
+     aOrigen = "";
+     aDestino = "";
+     aUnidad = "";
+     aAlfa = "";
+     aBase = "";
+     aDocRemoto = "";
+     aDocServidor = "";
+     aAbreBat = "";
+     aNom = "";
+     aPath = "";
+|FIN;
+
+|PROCESO Traete_imagemagick;
+     enError = 0;
+     |DBASE aBase;   |QBF aBase;
+
+     aContiene = "";
+     |ESPECIFICA "RBASS", aContiene;
+     aUnidad = (aContiene1 % 101) > "";
+
+     eaDirBaseLocal = aUnidad + ":\DOCUMENTOS\DSCOMER9\";
+     |RMKDIR eaDirBaseLocal;
+
+     aAlfa = eaDirBaseLocal + "imagemagick/convert.exe";
+     |XABRE "EC", aAlfa, nHandle;
+     |SI FSalida < 0;
+         aAlfa = eaDirBaseLocal + "imagemagick.tgz";  |RFBORRA aAlfa;
+     |FINSI;
+
+     aOrigen = aBase + "plugins/imagemagick.tgz";
+     |XABRE "E", aOrigen, nHandle;
+     |SI FSalida < 0;  enError = 1;  |ACABA;  |FINSI;
+
+     aDestino = eaDirBaseLocal + "imagemagick.tgz";
+
+     aContiene1 = aDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     |SI aDocRemoto ! aDocServidor;  |O aDocRemoto = "";
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+
+         |SI aIPRemoto ! "";
+             |ENVIA_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+
+         |RDESCOMPRIME aDestino;
+         |RDETAR aDestino, eaDirBaseLocal;
+
+         aAlfa = eaDirBaseLocal + "imagemagick.tar";  |RFBORRA aAlfa;
+     |FINSI;
+
+     aAlfa = eaDirBaseLocal + "imagemagick/convert.exe";
+     |XABRE "EC", aAlfa, nHandle;
+     |SI FSalida < 0;
+         |MENAV "0000 No puedo instalar imagemagick. (conversor JPEG/PDF/TIFF)";
+         enError = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO Pdf2Tif;
+     aPath = eaPath;
+     aNom = eaNomFic;
+
+     aAbreBat = eaDirBaseLocal + "convierte.bat";
+     |RFBORRA aAbreBat;
+
+     |XABRE "WC", aAbreBat, nHandle;
+     aAlfa = "@ECHO OFF";
+     |XGRABA nHandle, aAlfa;
+     aAlfa = eaDirBaseLocal % 101;
+     aAlfa = aAlfa + ":";
+     |XGRABA nHandle, aAlfa;
+     aAlfa = "CD " + eaDirBaseLocal + "imagemagick";
+     |XGRABA nHandle, aAlfa;
+     aAlfa = "convert.exe" + " -density 300x300 -type bilevel -compress lzw";
+     aAlfa = aAlfa + " " + aPath + aNom + ".pdf" + " " + aPath + aNom + ".tif";
+     |XGRABA nHandle, aAlfa;
+     aAlfa = "del /F /Q " + aPath + aNom + ".pdf";
+     |XGRABA nHandle, aAlfa;
+     |XGRABA nHandle, "exit";
+     |XCIERRA nHandle;
+
+     aAlfa  = "cmd " + &34 + "/c START /MIN /WAIT " + aAbreBat + &34;
+     |RSYSTEM aAlfa;
+|FPRC;

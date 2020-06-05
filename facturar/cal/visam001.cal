@@ -1,0 +1,2009 @@
+||Al factura. Tengo que pedir la fecha de las facturas
+||Ademas tb. pido serie y numero de Factura
+
+|FICHEROS;
+   visam001 #0;
+   asclient #1;
+   asexcont #2;
+   ascnsexp #3,MANTE;
+
+   visam004 #4,MANTE;               ||Delegaciones Cliente
+   visam003 #803,MANTE;             ||Doc.AsociadosExpedi.
+   visaw001 #101,MANTE;             ||Aux. Fecha Factura
+   visam002 #502;
+   visam005 #5;
+   asconcep #90;                    ||Servicios/Conceptos
+   asconcli #91;                    ||Clientes/Conceptos
+   visam008 #8;                     ||Bandeja de Salida
+   visam014 #514;                   ||Control de clientes CAB
+   visam015 #515;                   ||Control de clientes LIN
+   ascontrt #10;                    ||Tipos de facturacion
+   visam016 #516;                   ||Contadores de expedientes
+
+   visaw008 #108,MANTE;             ||Entrada datos copia expedientes
+   ashismic #300;                   ||Historico Minutas C
+   visam100 #100;                   ||Parametros Modulos Visados
+   ashisrec #400;                   ||Historico Recibos
+   ashisfac #401;                   ||Historico Facturas
+   ashiscon #402;                   ||Historico Conceptos
+|FIN;
+
+|VARIABLES;
+/*
+     &enSwCliVarios = 0;
+     &enCodCliVarios = 0;
+*/
+
+     nClienteVirtual = 0;
+     nSalida = 0;
+     nCliVarios = 0;
+     nIniRangoVarios = 0;
+     nLibre = 0;
+     &enLibre = 0;
+
+     aBorra       = "";
+     aLaSerie     = "";
+     nNumeroFac   = 0;
+     nModoEntrada = 0;
+
+     aNomFic = "";
+     aExiste = "";
+     nConta = 0;
+     aSerie = "";
+     &d_serie = "";
+     &h_serie = "";
+     &d_factu = 0;
+     &h_factu = 0;
+     &d_fecha = @;
+     &h_fecha = @;
+     &d_clien = 0;
+     &h_clien = 0;
+     &enDReme = 0;
+     &enHReme = 0;
+     &enDFPag = 0;
+     &enHFPag = 0;
+     &empresa = 0;
+     &d_viene = 2;
+     &cuotas  = "";
+
+     &eaSwNotasIFac = "";     ||Indica si imprimimos notas internas en Facturas
+     &enModVisados = 0;       ||Indica que se llama desde Modulo VISADOS
+     &enModVis     = 0;       ||Modo impresion modulo Visados:1-Normal, 2-Borrador
+     &enSwPDFVisados = 0;     ||Si el pdf de la factura se ha creado correctamente
+     &enModDtos      = 0;     ||Desactiva en la facturacion automatica (visam010) el descuento de cliente
+
+     fFecha = @;
+     aFecha = "";
+     aHora = "";
+     aHoraSeg = "";
+     aTipoDocumento = "";
+     aDesDocumento = "";
+     aEmailCli = "";
+     aEmailDelega = "";
+     aEmail = "";
+     aAsunto = "";
+     aTexto = "";
+     aDirDestino = "";
+     aNombre = "";
+     aAdjunto = "";
+     aCorreos = "";
+     aDirPDF = "";
+     nSerieAnt = 0;
+     nFactuAnt = 0;
+
+     nAnyoE      = 0;
+     nExpte      = 0;
+     nAbono      = 0;
+     nSwCopiaDoc = 0;
+     aSwNotasInt = "";        ||Notas internas SI/NO. En Expedientes/Facturas
+
+     &enSwLinea = 0;
+
+     nSerie   = 0;
+     nExped   = 0;
+     nLinea   = 0;
+
+     nAntCli  = 0;
+     nAntDel  = 0;
+
+     nFlag    = 0;
+     nAntClie = 0;
+     nAntTFac = 0;
+     nSwPDFOK = 0;
+     aEjecuta = "";
+
+     aInforme = "";
+     nSwPie = 0;
+     &enNumFac = 0;
+     &eaSerFac = "";
+
+     {-1}aDato   = "";
+         aDato1  = "2400";
+         aDato2  = "1";
+         aDato3  = "Seleccione :";
+         aDato4  = "CEDFIO";
+         aDato5  = "Cerrar/Abrir";
+         aDato6  = "Entre./Recog.";
+         aDato7  = "Documentos";
+         aDato8  = "Factura";
+         aDato9  = "Imprimir";
+         aDato10 = "Copiar";
+
+     {-1}aImp  = "";
+         aImp1 = "2400";
+         aImp2 = "1";
+         aImp3 = "Expedientes --> ";
+         aImp4 = "IE";
+         aImp5 = "Imprimir";
+         ||aImp6 = "Enviar";
+         aImp6 = "Borrador";
+         aImp7 = "Visualizar";
+
+     {-1}aFac  = "";
+         aFac1 = "2400";
+         aFac2 = "1";
+         aFac3 = "Facturas --> ";
+         aFac4 = "IEV";
+         aFac5 = "Imprimir";
+         aFac6 = "Enviar";
+         aFac7 = "Visualizar";
+
+    aPrograma = "";
+
+    qMod = 0;
+
+    aMensaje = "";
+
+    fSistema = @;
+    aSistema = "";
+    aAnyo = "";
+    nAnyo = 0;
+    nSw   = 0;
+
+    entrada = 0;
+    cont    = 0;
+    Linea   = 0;
+    Cliente = 0;
+    &enSw     = 0;
+    &enAnyo   = 0;
+    &enNumExp = 0;
+
+    Comodin = "";
+    aAlfa  = "";
+    aAlfa1 = "";
+
+    aRuta          = "";
+    aExtension     = "";
+    aBase          = "";
+    aDirDocumentos = "";
+    aOrigen        = "";
+    aDestino       = "";
+    aPunto         = "";
+    aAbre          = "";
+    aDocumentos    = "";
+
+    nHandle        = 0;
+    nTecla         = 0;
+    nForma         = 0;
+    nModo          = 0;
+    aAux = "";
+
+     &enDesdeCli = 0;
+     &enHastaCli = 0;
+     &enDesdeExp = 0;
+     &enHastaExp = 0;
+     &efDesdeFec = @;
+     &efHastaFec = @;
+     &enDesdeAny = 0;
+     &enHastaAny = 0;
+     &efFechaFac = @;
+     &enTipoFac = 0;
+     &eaUnidadBasico = "";
+|FIN;
+
+|PROCESO anyo; |TIPO 7;
+     fSistema = ~;
+     aSistema = fSistema;
+     aAnyo = aSistema % -102;
+     nAnyo = aAnyo;
+     #0#0 = nAnyo;
+     |PINTA #0#0;
+
+     entrada = (FEntrada / 100) ! 0;
+     |SI entrada = 4;
+        |MENSA "    Introduzca el a¤o; <F2> Consulta de expedientes";
+     |SINO;
+        |MENSA "    Introduzca el a¤o";
+     |FINSI;
+     |SI entrada ! 1; |ACABA; |FINSI;
+
+|FPRC;
+
+|PROCESO lee_conta; |TIPO 7;
+|SI entrada ! 1; |ACABA; |FINSI;
+
+|ABRE #2;
+#2#0 = #0#0;
+|LEE 040#2=;
+|SI FSalida ! 0;
+    #0#14 = 1; |PINTA #0#14;
+
+    #2#0 = #0#0;
+    #2#1 = 0;
+    |GRABA 020#2b;
+|SINO;
+    #0#14 = #2#1 + 1; |PINTA #0#14;
+|FINSI;
+|CIERRA #2;
+|FPRC;
+
+|PROCESO contador; |TIPO 0;
+|SI entrada ! 1; |ACABA; |FINSI;
+
+aAlfa = ("00" + #0#0) % -102;
+|ABRE #10;
+|SELECT #2#10;
+#10#1 = aAlfa;
+|LEE 000#10=;
+|SI FSalida ! 0;
+   |MENAV "    Serie inexistente";
+   |SELECT #1#10; |CIERRA #10;
+   |ERROR; |PTEC 807;
+|FINSI;
+|SELECT #1#10;
+|CIERRA #10;
+
+|ABRE #2;
+#2#0 = #0#0;
+|LIBERA #2;
+|LEE 140#2=;
+|SI FSalida = 0;
+    #2#1  = #0#14;
+    |GRABA 140#2a;
+|FINSI;
+|CIERRA #2;
+|FPRC;
+
+|PROCESO RecalcLins;
+
+#asconcli#0 = #visam002#1;
+#asconcli#1 = #visam002#4;
+#asconcli#2 = #visam002#5;
+|LEE 000#asconcli.=;
+|SI FSalida = 0;
+    #visam002#1 = #visam001#1;
+    #visam002#10 = #1#3;
+
+    |SI #visam001#5 = 4;
+       #visam002#12 = (#asconcli#10 < #asclient#23) ! 2;
+    |SINO;
+       |SI #asconcli#3 = "H"; |Y #visam002#4 ! "MENS";
+          #visam002#12 = (#asconcli#10 < #asclient#23) ! 2;
+       |SINO;
+          #visam002#12 = #asconcli#10;
+       |FINSI;
+    |FINSI;
+
+    #visam002#14 = #asconcli#5;
+    |SI #visam002#14 = "U"; #visam002#13 = #visam002#12; |FINSI;
+    #visam002#13 = #visam002#12 * #visam002#11;
+    |GRABA 020#visam002.a;
+|SINO;
+    #visam002#1 = #visam001#1;
+    #asconcep#0 = #502#4;
+    #asconcep#1 = #502#5;
+    |LEE 040#asconcep.=;
+    |SI FSalida = 0;
+        |SI #asconcep#3 = "N";
+            #502#15   = "S";
+        |FINSI;
+
+        |ABRE #asclient;
+        #asclient#0 = #0#1;
+        |LEE 040#asclient.=;
+        |SI FSalida = 0;
+            |SI #asclient#22 = 1; #502#12 = #asconcep#4;  #502#14 = #asconcep#5;  |FINSI;
+            |SI #asclient#22 = 2; #502#12 = #asconcep#8;  #502#14 = #asconcep#9;  |FINSI;
+            |SI #asclient#22 = 3; #502#12 = #asconcep#10; #502#14 = #asconcep#11; |FINSI;
+            |SI #asclient#22 = 4; #502#12 = #asconcep#12; #502#14 = #asconcep#13; |FINSI;
+            |SI #asclient#22 = 5; #502#12 = #asconcep#14; #502#14 = #asconcep#15; |FINSI;
+        |FINSI;
+        |CIERRA #4;
+
+        |SI #visam001#5 = 4;
+           #visam002#12 = (#visam002#12 < #asclient#23) ! 2;
+        |SINO;
+           |SI #asconcep#3 = "H"; |Y #visam002#4 ! "MENS";
+              #visam002#12 = (#visam002#12 < #asclient#23) ! 2;
+           |SINO;
+              #visam002#12 = #visam002#12;
+           |FINSI;
+        |FINSI;
+
+        #502#10 = #asconcep#3;
+
+        |SI #502#14 = "U"; #502#13 = #502#12; |FINSI;
+        #502#13 = #502#12 * #502#11;
+    |FINSI;
+    |GRABA 020#502a;
+|FINSI;
+
+|SI #502#10 = "H";
+   #visam001#6 = #visam001#6 + #502#13;
+   |SI #502#15 = "N"; #visam001#9 = #visam001#9 + #502#13; |FINSI;
+|FINSI;
+|SI #502#10 = "S";
+   #visam001#7 = #visam001#7 + #502#13;
+   |SI #502#15 = "N"; #visam001#10 = #visam001#10 + #502#13; |FINSI;
+|FINSI;
+|SI #502#10 = "A";
+   #visam001#8 = #visam001#8 + #502#13;
+   |SI #502#15 = "N"; #visam001#11 = #visam001#11 + #502#13; |FINSI;
+|FINSI;
+
+|FPRC;
+
+|DEFBUCLE RecalcLins;
+#visam002#1;
+;
+#visam001#0, #visam001#14, 001;
+#visam001#0, #visam001#14, 999;
+;
+NULL, RecalcLins;
+|FIN;
+
+|PROCESO TipoFact;|TIPO 0;
+   |SI nSw = 1; |ACABA; |FINSI;
+
+   cont = (FEntrada / 100) ! 0; nModoEntrada = cont;
+   |SI cont = 2;
+      |SI nAntTFac = #0#5;
+         |ACABA;
+      |SINO;
+         nSw = 1;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO DameLibre;
+     |ABRE #1;
+     |DDEFECTO #1;
+     #1#0 = nLibre;
+     |LEE 000#1.=;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          nLibre = nLibre + 1;
+          #1#0 = nLibre;
+          |LEE 000#1.=;
+     |SIGUE;
+     nLibre = #1#0;
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO cliente;|TIPO 0;
+     nSalida = FSalida;
+
+     |SI nSalida = 10;
+          |ABRE #visam100;
+          |DDEFECTO #visam100;
+          |LEE 000#visam100.p;
+          |SI FSalida ! 0;
+               |DDEFECTO #visam100;
+          |FINSI;
+          |CIERRA #visam100;
+
+          nCliVarios = #visam100#3;
+          nIniRangoVarios = #visam100#4;
+
+          |SI nIniRangoVarios = 0; |O nCliVarios = 0;
+               aMensaje = "0000Error Cliente Varios NO definido en Parametros";
+               |MENAV aMensaje;
+          |SINO;
+               nLibre = nIniRangoVarios;
+               |HAZ DameLibre;
+
+               |PUSHV 0501 2380;
+               |CLS;
+
+               enLibre = nLibre;
+               aEjecuta = "asclient;ALTA";
+               |SUB_EJECUTA_NP aEjecuta;
+
+               |SI nLibre = enLibre;
+                    #0#1 = nLibre;
+                    |ERROR;
+               |SINO;
+                    |ERROR;
+               |FINSI;
+
+/*
+
+               |ABRE #1;
+               |DDEFECTO #1;
+               #1#0 = nLibre;
+               |PINPA #0#1;
+               |PINDA #0#1;
+               |ENDATOS #1#1;
+               |SI FSalida = 0;
+                    #0#1 = nLibre;
+               |SINO;
+
+               |FINSI;
+
+               |CIERRA #1;
+*/
+
+               |POPV;
+          |FINSI;
+     |FINSI;
+
+
+     |PINTA #0#1;
+     nSw = 0;
+     cont = (FEntrada / 100) ! 0; nModoEntrada = cont;
+     |SI cont = 2;
+        |SI nAntClie = #0#1;
+           |ACABA;
+        |SINO;
+           nSw = 1;
+        |FINSI;
+     |FINSI;
+     |SI cont = 1; nSw = 1; |FINSI;
+
+     |SI nSw = 0; |ACABA; |FINSI;
+
+     |ABRE #1;
+     #1#0 = #0#1;
+     |LEE 000#1=;
+     |SI FSalida = 0;
+        #0#2 = #1#1;
+        |SI #0#2 = "                                        ";
+           #0#2 = #1#2;
+        |FINSI;
+        |PINTA #0#2;
+        #0#5 = #1#68; |PINTA #0#5;
+     |FINSI;
+     |CIERRA #1;
+
+     aAux = #1#70;
+     |QBF aAux;
+     |SI aAux ! "";
+          aMensaje = "0000" + aAux;
+          |MENAV aMensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO cerrado; |TIPO 7;
+     cont = (FEntrada / 100) ! 0;
+     |SI cont ! 2; |ACABA; |FINSI;
+
+     |SI #0#12 = "S";
+         |MENAV "    El expediente ya esta cerrado. No se puede modificar.";
+         |PTEC 807;
+     |FINSI;
+|FPRC;
+
+|RUTINA inf;
+   #ascnsexp#1  = Cliente;
+   #ascnsexp#0  = 00;
+   #ascnsexp#14 = 000001;
+|FRUT;
+
+|RUTINA sup;
+   #ascnsexp#1  = Cliente;
+   #ascnsexp#0  = 99;
+   #ascnsexp#14 = 999999;
+|FRUT;
+
+|PROCESO Consulta;
+   |PINTA 0420, "                                              ";
+   |ABRE #visam016;
+   aAlfa = Usuario % 0810;
+   #visam016#0 = aAlfa;
+   |LEE 000#visam016.=;
+   |SI FSalida = 0;
+      #visam001#26 = #visam016#1; |PINTA #visam001#26;
+      #visam001#15 = #visam016#2; |PINTA #visam001#15;
+   |FINSI;
+   |CIERRA #visam016;
+
+   entrada = (FEntrada / 100) ! 0;
+
+   |SI entrada = 1;
+      |C_M #visam001#14, 1, "N";
+   |SINO;
+      |C_M #visam001#14, 1, "S";
+   |FINSI;
+
+   |SI FSalida = 10; |Y entrada = 4;
+      |ENCAMPO #1#visam001;
+      |SI FSalida = 0;
+         |PUSHV 0501 2380;
+         enSw = -1; Cliente = #visam001#1;
+         |ENTLINEAL #3#ascnsexp,-3,4,19,1,inf,sup;
+         |SI enSw = 0;
+            #visam001#0  = enAnyo;
+            #visam001#14 = enNumExp;
+            |CIERRA #ascnsexp;
+            |ERROR; |PTEC 801; |PTEC 801;
+         |SINO;
+            |CIERRA #ascnsexp;
+            |ERROR;
+         |FINSI;
+         |POPV;
+      |SINO;
+         |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO visam005_imp;
+     enSwLinea = 2;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE visam005_imp;
+ #visam005#1;
+ ;
+ #visam002#0, #visam002#16, #visam002#2, 001;
+ #visam002#0, #visam002#16, #visam002#2, 999;
+ ;
+ NULL, visam005_imp;
+|FIN;
+
+|PROCESO visam002_imp;
+     |SI aSwNotasInt = "N"; |O #visam002#4 = "ENVI";
+          |ABRE #asconcep;
+          |DDEFECTO #asconcep;
+          #asconcep#0 = #visam002#4;
+          #asconcep#1 = #visam002#5;
+          |LEE 000#asconcep.=;
+          |SI FSalida ! 0;
+               |CIERRA #asconcep;
+               |ACABA;
+          |SINO;
+               |SI #asconcep#3 = "N";
+                    |CIERRA #asconcep;
+                    |ACABA;
+               |FINSI;
+          |FINSI;
+          |CIERRA #asconcep;
+     |FINSI;
+
+     enSwLinea = 1;
+     |PRINT;
+     |BUCLE visam005_imp;
+     nSwPie = 1;
+|FPRC;
+
+|DEFBUCLE visam002_imp;
+ #visam002#1;
+ ;
+ #visam001#0, #visam001#14, 001;
+ #visam001#0, #visam001#14, 999;
+ ;
+ NULL, visam002_imp;
+|FIN;
+
+|PROCESO ImpreExp;
+     aBorra = eaUnidadBasico + "\ds\impfor\expediente\exp.pdf";
+     |RFBORRA aBorra;
+/*
+     aMensaje = "0000N¿Incluir Notas Internas?";
+     |CONFI aMensaje;
+     |SI FSalida = 0;
+          aSwNotasInt = "S";
+     |SINO;
+          aSwNotasInt = "N";
+     |FINSI;
+*/
+     aSwNotasInt = "S";
+
+     |HAZ MkdirPDF;
+     nSwPDFOK = 0;
+     |HAZ CreaPDF;
+     |SI nSwPDFOK = 0;
+          aMensaje = "0000Problemas al crear el PDF";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aExiste = eaUnidadBasico + "\ds\impfor\expediente\exp.pdf";
+     |HAZ PausaExiste;
+
+     |SI nSwPDFOK = 1;
+          aOrigen = eaUnidadBasico + "\ds\impfor\expediente\exp.pdf";
+          aDestino = aDirPDF + "exp" + (("00" + #visam001#0) % -102) + (("000000" + #visam001#14) % -106) + ".pdf";
+          |RCOPIA_FICHERO aOrigen, aDestino;
+
+          |RFBORRA aOrigen;
+
+          aEjecuta = aDirPDF + "exp" + (("00" + #visam001#0) % -102) + (("000000" + #visam001#14) % -106) + ".pdf";
+          |RSYSTEM aEjecuta;
+     |FINSI;
+|FPRC;
+
+|PROCESO PausaExiste;
+     nConta = 1;
+     |PARA;  |SI;  |HACIENDO;
+          aAbre = aExiste;
+          |XABRE "EC", aAbre, nHandle;
+          |SI FSalida ] 0;   |SAL;  |FINSI;
+          |SI nConta  > 15;
+               nSwPDFOK = 0;
+               |SAL;
+          |FINSI;
+          |XCIERRA nHandle;
+          |SLEEP 2;
+
+          nConta = nConta + 1;
+     |SIGUE;
+     |XCIERRA nHandle;
+|FPRC;
+
+|PROCESO MkdirCorreos;
+     aCorreos = eaUnidadBasico + "\DOCUMENTOS\";
+     |RMKDIR aCorreos;
+     aCorreos = aCorreos + "FACTURAR\";
+     |RMKDIR aCorreos;
+     aCorreos = aCorreos + "CORREOS\";
+     |RMKDIR aCorreos;
+|FPRC;
+
+|PROCESO MkdirPDF;
+     aDirPDF = eaUnidadBasico + "\DOCUMENTOS\";
+     |RMKDIR aDirPDF;
+     aDirPDF = aDirPDF + "FACTURAR\";
+     |RMKDIR aDirPDF;
+     aDirPDF = aDirPDF + "PDF\";
+     |RMKDIR aDirPDF;
+|FPRC;
+
+|PROCESO CreaPDF;
+
+     |HAZ InstalaDsPDF;
+     Impresora = "visexpe";
+     |IMPRE -1;
+     |SI FSalida = 0;
+          aInforme = "visam001";
+          |INFOR aInforme;
+          |SI FSalida = 0;
+               nSwPDFOK = 1;
+               |BUCLE visam002_imp;
+               |SI nSwPie = 1;
+                    |PIEINF;
+               |FINSI;
+               |FININF;
+          |SINO;
+               nSwPDFOK = 0;
+               aMensaje = "0000Informe " + aInforme + " inaccesible.";
+               |MENAV aMensaje;
+          |FINSI;
+          |FINIMP;
+     |SINO;
+          nSwPDFOK = 0;
+          |MENAV "0000Proceso cancelado.";
+     |FINSI;
+|FPRC;
+
+|PROCESO CreaPDFFac;
+     |HAZ InstalaDsPDF;
+
+     |HAZ ImprimirFactura;
+|FPRC;
+
+|PROCESO ImprimirFactura;
+     d_serie = #visam001#24;
+     h_serie = #visam001#24;
+     d_factu = #visam001#25;
+     h_factu = #visam001#25;
+     d_fecha = "01.01.0000";
+     h_fecha = "31.12.2999";
+     d_clien = #visam001#1;
+     h_clien = #visam001#1;
+     enDReme = 00;
+     enHReme = 99;
+     enDFPag = 00;
+     enHFPag = 99;
+     empresa = 01;
+     cuotas  = "N";
+     d_viene = 2;
+     eaSwNotasIFac = aSwNotasInt;
+     enModVisados = 1;
+     enSwPDFVisados = 0;
+
+     |SUB_EJECUTA_NP "asfacges";
+
+     nSwPDFOK = enSwPDFVisados;
+|FPRC;
+
+|PROCESO Baja004;
+ #visam004#0 = #visam001#1;
+ #visam004#1 = 0001;
+|FPRC;
+
+|PROCESO Alta004;
+ #visam004#0 = #visam001#1;
+ #visam004#1 = 9999;
+|FPRC;
+
+|PROCESO TeclaF11; |TIPO 66;
+     |ABRE #visam004;
+     |CONSULTA_F_CLAVE #1#visam004, Baja004, Alta004;
+     |SI FSalida = 0;
+          #visam001#19 = #visam004#1;
+          |PINTA #visam001#19;
+     |FINSI;
+     |CIERRA #visam004;
+|FPRC;
+
+|PROCESO Tipo20;  |TIPO 20;
+     aAlfa1 = FSalida;
+     |SI aAlfa1 = "OPCION";
+         FSalida = "Opciones";
+         |ACABA;
+     |FINSI;
+
+     |SELECT #1#0;
+
+     |LEE 101#0=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     qMod = (FEntrada / 100) ! 0;
+
+     |PARA;  |SI;  |HACIENDO;
+          |MENU aDato;
+          aDato2 = FSalida;
+          |SI aDato2 = "1";  |HAZ CerrarAbrir;  |FINSI;
+          |SI aDato2 = "2";  |HAZ EnvEntrega;  |FINSI;
+          |SI aDato2 = "3";  |HAZ FicAsociados;  |FINSI;
+          |SI aDato2 = "4";  |HAZ MenuFactura;  |FINSI;
+          |SI aDato2 = "5";  |HAZ MenuImpre;  |FINSI;
+          |SI aDato2 = "6";  |HAZ CopiaExpe;  |FINSI;
+          |SI aDato2 < "1"; |O aDato2 > "6";  |SAL;  |FINSI;
+     |SIGUE;
+     |LIBERA #0;
+|FPRC;
+
+|PROCESO Tipo30m1;  |TIPO 30;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 1;  |ACABA;  |FINSI;
+
+     FSalida = 0;
+     |HAZ Tipo20;
+|FPRC;
+
+|PROCESO visam002_cli;
+    #visam002#1 = #visam001#1;
+    |GRABA 020#visam002.a;
+|FPRC;
+
+|DEFBUCLE visam002_cli;
+#visam002#1;
+;
+#visam001#0, #visam001#14, 001;
+#visam001#0, #visam001#14, 999;
+be;
+NULL, visam002_cli;
+|FIN;
+
+|PROCESO ashiscon;
+     #ashiscon#4 = #visam100#3;
+     |GRABA 020#ashiscon.a;
+|FPRC;
+
+|DEFBUCLE ashiscon;
+ #ashiscon#1;
+ ;
+ eaSerFac, enNumFac, 000;
+ eaSerFac, enNumFac, 999;
+ be;
+ NULL, ashiscon;
+|FIN;
+
+|PROCESO Facturacion;
+     ||CCC. Realiza la facturacion AUTOMATICAMENTE. Son por lo menos 3 pasos
+
+     enDesdeCli = #visam001#1;
+     enHastaCli = #visam001#1;
+     enDesdeExp = #visam001#14;
+     enHastaExp = #visam001#14;
+     efDesdeFec = "01.01.0000";
+     efHastaFec = "31.12.2999";
+     enDesdeAny = #visam001#0;
+     enHastaAny = #visam001#0;
+
+     ||Pedir la fecha de la Factura
+     efFechaFac = #101#0;
+     enTipoFac = #visam001#5;
+
+     |SI #visam001#5 = 4;
+        #0#12 = (#0#12 < #asclient#23) ! 2;
+     |SINO;
+        |SI #3#3 = "H"; |Y #0#4 ! "MENS";
+           #0#12 = (#0#12 < #asclient#23) ! 2;
+        |FINSI;
+     |FINSI;
+
+     enModDtos = 1;     ||Desactiva en la facturacion automatica (visam010) el descuento de cliente
+     eaSerFac = #101#1;
+     || enNumFac = #101#2;
+     aPrograma = "visam010;AUTO";
+     |SUB_EJECUTA_NP aPrograma;
+
+     |SI enNumFac ! 0;
+          |ABRE #visam100;
+          |DDEFECTO #visam100;
+          |LEE 000#visam100.p;
+          |SI FSalida ! 0;
+               |DDEFECTO #visam100;
+          |FINSI;
+          |CIERRA #visam100;
+
+          |SI #visam001#1 ] #visam100#4; |Y #visam100#3 ! 0;
+               nClienteVirtual = #visam001#1;
+               #visam001#1 = #visam100#3;
+               |PINTA #visam001#1;
+               |GRABA 000#visam001.a;
+               |BUCLE visam002_cli;
+
+               |ABRE #ashismic;
+               |DDEFECTO #ashismic;
+               #ashismic#0 = eaSerFac;
+               #ashismic#1 = enNumFac;
+               |LEE 101#ashismic.=;
+               |SI FSalida = 0;
+                    #ashismic#3 = #visam100#3;
+                    |GRABA 020#ashismic.a;
+                    |LIBERA #ashismic;
+               |FINSI;
+               |CIERRA #ashismic;
+
+               |ABRE #ashisrec;
+               |DDEFECTO #ashisrec;
+               #ashisrec#0 = eaSerFac;
+               #ashisrec#1 = enNumFac;
+               |LEE 101#ashisrec.=;
+               |SI FSalida = 0;
+                    #ashisrec#3 = #visam100#3;
+                    |GRABA 020#ashisrec.a;
+                    |LIBERA #ashisrec;
+               |FINSI;
+               |CIERRA #ashisrec;
+
+               |ABRE #ashisfac;
+               |DDEFECTO #ashisfac;
+               #ashismic#0 = eaSerFac;
+               #ashismic#1 = enNumFac;
+               |LEE 101#ashisfac.=;
+               |SI FSalida = 0;
+                    #ashisfac#3 = #visam100#3;
+                    |GRABA 020#ashisfac.a;
+                    |LIBERA #ashisfac;
+               |FINSI;
+               |CIERRA #ashisfac;
+
+               |BUCLE ashiscon;
+               ||TODO CCC
+               ||ARA66
+
+               ||Solo falta borra el asclient de este cliente
+               |ABRE #asclient;
+               #asclient#0 = nClienteVirtual;
+               |LEE 101#asclient.=;
+               |SI FSalida = 0;
+                    |BORRA 020#asclient.a;
+                    |LIBERA #asclient;
+               |FINSI;
+               |CIERRA #asclient;
+
+          |FINSI;
+
+          #visam001#22 = "S";
+          |PINTA #visam001#22;
+          #visam001#24 = eaSerFac;
+          |PINTA #visam001#24;
+          #visam001#25 = enNumFac;
+          |PINTA #visam001#25;
+
+          |SI #visam001#12 = "N";
+             #visam001#12 = "S";
+             |PINTA #visam001#12;
+             |C_M #visam001#4, 1, "S";
+             #visam001#4 = efFechaFac; |PINTA #visam001#4;
+             ||ENCAMPO #4#visam001;
+             ||SI FSalida = 0;
+                |GRABA 020#visam001.a;
+                |LIBERA #visam001;
+                aMensaje = "0000Proceso de Cerrar Expediente realizado";
+                |MENAV aMensaje;
+             ||SINO;
+             ||   #visam001#12 = "N";
+             ||   #visam001#4 = "01.01.0000";
+             ||   |PINTA #visam001#4;
+             ||   |PINTA #visam001#12;
+             ||FINSI;
+          |FINSI;
+          |GRABA 020#visam001.a;
+          |LIBERA #visam001;
+     |FINSI;
+/*
+     enSwCliVarios = 0;
+     enCodCliVarios = 0;
+*/
+|FPRC;
+
+|PROCESO MenuFactura;
+     |SI #visam001#22 = "N";
+          ||ARA5
+          |PUSHV 0501 2380;
+          |DDEFECTO #101;
+          |PINPA #0#101;
+
+          || #101#1 = ("00" + #visam001#0) % -102;
+
+          |ABRE #ascontrt;
+          #ascontrt#0 = #visam001#5;
+          |LEE 000#ascontrt.=;
+          |SI FSalida = 0;
+             #101#1 = #ascontrt#1;
+          |SINO;
+             #101#1 = ("00" + #visam001#0) % -102;
+          |FINSI;
+          |CIERRA #ascontrt;
+
+          |PINDA #0#101;
+          |ENDATOS #1#101;
+          |SI FSalida ! 0;    |POPV;  |ACABA;  |FINSI;
+          |SI #101#3 ! "SI";  |POPV;  |ACABA;  |FINSI;
+
+          |POPV;
+
+          |HAZ Facturacion;
+          |HAZ SubMenuFac;
+     |SINO;
+          |HAZ SubMenuFac;
+     |FINSI;
+|FPRC;
+
+|PROCESO SubMenuFac;
+     |PARA;  |SI;  |HACIENDO;
+          |MENU aFac;
+          aFac2 = FSalida;
+          |SI aFac2 = "1";  |HAZ ImpreFac;         |FINSI;
+          |SI aFac2 = "2";  |HAZ EnvioFac;         |FINSI;
+          |SI aFac2 = "3";  |HAZ VisFactura;       |FINSI;
+          |SI aFac2 < "1"; |O aFac2 > "3";  |SAL;  |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO VisFactura;
+     enModVis = 2;
+     nSwPDFOK = 0; |HAZ CreaPDFFac;
+     ||CCC
+|FPRC;
+
+|PROCESO ImpreFac;
+     enModVis = 1;
+     aBorra = eaUnidadBasico + "\ds\impfor\factura\fac.pdf";
+     |RFBORRA aBorra;
+
+     aSwNotasInt = "N";
+     |HAZ MkdirPDF;
+
+     nSwPDFOK = 0;
+     |HAZ CreaPDFFac;
+     |SI nSwPDFOK = 0;
+          aMensaje = "0000Problemas al crear el PDF";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aExiste = eaUnidadBasico + "\ds\impfor\factura\fac.pdf";
+     |HAZ PausaExiste;
+
+     |SI nSwPDFOK = 1;
+          aOrigen = eaUnidadBasico + "\ds\impfor\factura\fac.pdf";
+          aSerie = #visam001#24;
+          |QBF aSerie;
+          aDestino = aDirPDF + "fac" + aSerie + (("00000" + #visam001#25) % -105) + ".pdf";
+          |RCOPIA_FICHERO aOrigen, aDestino;
+
+          |RFBORRA aOrigen;
+
+          aEjecuta = aDirPDF + "fac" + aSerie + (("00000" + #visam001#25) % -105) + ".pdf";
+          |RSYSTEM aEjecuta;
+     |FINSI;
+|FPRC;
+
+|PROCESO EnvioFac;
+     aBorra = eaUnidadBasico + "\ds\impfor\factura\fac.pdf";
+     |RFBORRA aBorra;
+     aSwNotasInt = "N";
+
+     |HAZ MkdirCorreos;
+
+     nSwPDFOK = 0;
+     |HAZ CreaPDFFac;
+     |SI nSwPDFOK = 0;
+          aMensaje = "0000Problemas al crear el PDF";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aExiste = eaUnidadBasico + "\ds\impfor\factura\fac.pdf";
+     |HAZ PausaExiste;
+
+     |SI nSwPDFOK = 1;
+          aOrigen = eaUnidadBasico + "\ds\impfor\factura\fac.pdf";
+          aSerie = #visam001#24;
+          |QBF aSerie;
+          aDestino = aCorreos + "fac" + aSerie + (("00000" + #visam001#25) % -105) + ".pdf";
+          |RCOPIA_FICHERO aOrigen, aDestino;
+
+          |RFBORRA aOrigen;
+
+          aTipoDocumento = "F";
+          |HAZ Envialo;
+     |FINSI;
+|FPRC;
+
+|PROCESO MenuImpre;
+     |PARA;  |SI;  |HACIENDO;
+          |MENU aImp;
+          aImp2 = FSalida;
+          |SI aImp2 = "1";  |HAZ ImpreExp;     |FINSI;
+          |SI aImp2 = "2";  |HAZ BorradorExp;  |FINSI;
+          ||SI aImp2 = "2";  |HAZ EnvioExp;  |FINSI;
+          ||SI aImp2 = "3";  |HAZ VisExp;  |FINSI;
+          |SI aImp2 < "1"; |O aImp2 > "3";  |SAL;  |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO VisExp;
+     ||CCC. Por ahora DESACTIVADO.
+|FPRC;
+
+|PROCESO BorradorExp;
+   |IMPRE 0;
+   |SI FSalida = 0;
+      aInforme = "visam001";
+      |INFOR aInforme;
+      |SI FSalida = 0;
+         |BUCLE visam002_imp;
+         |SI nSwPie = 1;
+            |PIEINF;
+         |FINSI;
+         |FININF;
+      |FINSI;
+      |FINIMP;
+   |FINSI;
+|FPRC;
+
+|PROCESO EnvioExp;
+     aBorra = eaUnidadBasico + "\ds\impfor\expediente\exp.pdf";
+     |RFBORRA aBorra;
+
+     aSwNotasInt = "S";   || Puesto por Manolo Tiquet 002253 / 136
+
+     |HAZ MkdirCorreos;
+     nSwPDFOK = 0;
+     |HAZ CreaPDF;
+     |SI nSwPDFOK = 0;
+          aMensaje = "0000Problemas al crear el PDF";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aExiste = eaUnidadBasico + "\ds\impfor\expediente\exp.pdf";
+     |HAZ PausaExiste;
+
+     |SI nSwPDFOK = 1;
+          aOrigen = eaUnidadBasico + "\ds\impfor\expediente\exp.pdf";
+          aDestino = aCorreos + "exp" + (("00" + #visam001#0) % -102) + (("000000" + #visam001#14) % -106) + ".pdf";
+          |RCOPIA_FICHERO aOrigen, aDestino;
+
+          |RFBORRA aOrigen;
+          aTipoDocumento = "E";
+          |HAZ Envialo;
+     |FINSI;
+|FPRC;
+
+|PROCESO CerrarAbrir;
+     ||Cerrado y Facturado.
+     |SI #visam001#12 = "S"; |Y #visam001#22 = "S";
+          aMensaje = "0000No se puede re-abrir el expediente, porque esta Facturado";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+     |SI #visam001#12 = "N";
+          #visam001#12 = "S";
+          |PINTA #visam001#12;
+          |C_M #visam001#4, 1, "S";
+          #visam001#4 = ~;
+          |ENCAMPO #4#visam001;
+          |SI FSalida = 0;
+               |GRABA 020#visam001.a;
+               |LIBERA #visam001;
+               aMensaje = "0000Proceso de Cerrar Expediente realizado";
+               |MENAV aMensaje;
+          |SINO;
+               #visam001#12 = "N";
+               #visam001#4 = "01.01.0000";
+               |PINTA #visam001#4;
+               |PINTA #visam001#12;
+          |FINSI;;
+          |C_M #visam001#4, 1, "N";
+     |SINO;
+          #visam001#12 = "N";
+          #visam001#4 = "01.01.0000";
+          |PINTA #visam001#12;
+          |PINTA #visam001#4;
+          |GRABA 020#visam001.a;
+          |LIBERA #visam001;
+          aMensaje = "0000Proceso de Abrir Expediente realizado";
+          |MENAV aMensaje;
+     |FINSI;
+|FPRC;
+
+|PROCESO EnvEntrega;
+     aAux = #visam001#20;
+     |QBF aAux;
+     |SI aAux = "01.01.0000"; |O aAux = "00.00.0000";
+          #visam001#20 = ~;
+          |PINTA #visam001#20;
+     |FINSI;
+
+     |C_M #visam001#20, 1, "S";
+     |C_M #visam001#21, 1, "S";
+     |ENCAMPO #20#visam001;
+     |ENCAMPO #21#visam001;
+     |SI FSalida = 0;
+          |GRABA 020#visam001.a;
+          |LIBERA #visam001;
+     |SINO;
+          |PINTA #visam001#20;
+          |PINTA #visam001#21;
+     |FINSI;
+     |C_M #visam001#20, 1, "N";
+     |C_M #visam001#21, 1, "N";
+|FPRC;
+
+|PROCESO TipoEnvRec;  |TIPO 0;
+     aAux = #visam001#21;
+     |QBF aAux;
+     |SI aAux = "";
+          aAux = #visam001#20;
+          |QBF aAux;
+          |SI aAux ! "01.01.0000"; |Y aAux ! "00.00.0000";
+               aMensaje = "0000Por favor indique si es " + &10 + "(R) Recogida o (E) Envio";
+               |MENAV aMensaje;
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Factura;
+|FPRC;
+
+|PROCESO Inferior_803;
+     #803#0 = #0#0;
+     #803#1 = #0#14;
+     #803#2 = 001;
+|FPRC;
+
+|PROCESO Superior_803;
+     #803#0 = #0#0;
+     #803#1 = #0#14;
+     #803#2 = 999;
+|FPRC;
+
+|PROCESO FicAsociados;
+     |ABRE #visam003;
+     |PUSHV 0501 2380;
+     |ENTLINEAL #1#803, -3, 2, 22, 1, Inferior_803, Superior_803;
+     |POPV;
+     |CIERRA #visam003;
+|FPRC;
+
+
+||******************************************************************
+
+
+|PROCESO CogeFichero;
+     aRuta = "F";
+     |BROWSE aRuta;  |QBF aRuta;
+     |SI aRuta = "F";  |ACABA;  |FINSI;
+
+     aRuta = aRuta % 0299;
+     aExtension = (aRuta % -103) > "";
+     aPunto     = aRuta % -401;
+     |SI aPunto ! ".";
+         |MENAV "0000 Documento sin Extension. Formato exigido extension de 3 caracteres.";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |DBASE aBase;  |QBF aBase;
+     aDirDocumentos = aBase + "documentos";
+     |MKDIR aDirDocumentos;
+
+     aOrigen  = aRuta;
+     aDestino = aDirDocumentos + "/" + (("00" + #803#0) % -102) + (("000000" + #803#1) % -106) + (("000" + #803#2) % -103) + "." + aExtension;
+     |RECIBE_FICHERO aOrigen, aDestino;
+
+     #803#3 = (("00" + #803#0) % -102) + (("000000" + #803#1) % -106) + (("000" + #803#2) % -103) + "." + aExtension;
+     #803#4 = Usuario % 0810;
+
+     |PONCONTROL 23, "SI";
+|FPRC;
+
+|PROCESO EditaFichero;
+     |DBASE aBase;  |QBF aBase;
+     aDirDocumentos = aBase + "documentos";
+     |MKDIR aDirDocumentos;
+
+     aOrigen  = eaUnidadBasico + "\DOCUMENTOS";
+     |RMKDIR aOrigen;
+
+     aAbre = aOrigen + "\wait.exe";
+     |XABRE "EC", aAbre, nHandle;
+     |SI FSalida < 0;
+         aDestino = aBase + "plantillas/wait.exe";  |QBF aDestino;
+         aOrigen  = eaUnidadBasico + "\DOCUMENTOS\wait.exe";
+         |ENVIA_FICHERO aDestino, aOrigen;
+         |SI FSalida ! 0;
+             |MENAV "      No existe el wait en el directorio de Documentos.";
+             |ACABA;
+         |FINSI;
+     |FINSI;
+
+     aDestino = aDirDocumentos + "/" + #803#3;  |QBF aDestino;
+     aOrigen  = eaUnidadBasico + "\DOCUMENTOS\" + #803#3;      |QBF aOrigen;
+     |ENVIA_FICHERO aDestino, aOrigen;
+     |SI FSalida = 0;
+         |AVISO;
+         |CONFI "0000NEditar una copia en su maquina?";
+         |SI FSalida = 0;
+              aAlfa1 = #803#3;  |QBF aAlfa1;
+              aAlfa1 = "0000Queda ubicado en " + eaUnidadBasico + "\DOCUMENTOS como [" + aAlfa1 + "]";
+              |MENAV aAlfa1;
+              |MENAV "0000Si, una vez editado, desea incluirlo en el expediente, tendra que volver a adjuntarlo.";
+         |SINO;
+              |RSYSTEM aOrigen;
+              |RECIBE_FICHERO aOrigen, aDestino;
+              #803#4 = Usuario % 0810;
+              |RFBORRA aOrigen;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO BorraFichero;
+     |DBASE aDocumentos;  |QBF aDocumentos;
+     aDocumentos = aDocumentos + "documentos";
+     aDocumentos = aDocumentos + "/" + #803#3;  |QBF aDocumentos;
+     |FBORRA aDocumentos;
+|FPRC;
+
+|PROCESO Tipo2_003;  |TIPO 2;
+     nForma = 0 +. 1;
+     |SI nForma = 1;
+         aAux = #803#3;
+         |QBF aAux;
+         |SI aAux ! "";
+             |HAZ EditaFichero;
+         |SINO;
+             |HAZ CogeFichero;
+             aAux = #803#3;
+             |QBF aAux;
+             |SI aAux ! "";
+                 |CONFI "0000NDesea Editar el Fichero?";
+                 |SI FSalida = 0;
+                     |HAZ EditaFichero;
+                 |FINSI;
+             |FINSI;
+         |FINSI;
+     |SINO;
+         nModo = (FEntrada / 100) ! 0;
+         |SI nModo = 3;
+             |HAZ BorraFichero;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO visam003_borra;
+     |BORRA 020#visam003.a;
+|FPRC;
+
+|DEFBUCLE visam003_borra;
+ #visam003#1;
+ ;
+ #visam001#0, #visam001#14, 001;
+ #visam001#0, #visam001#14, 999;
+ be;
+ NULL, visam003_borra;
+|FIN;
+
+|PROCESO Tipo2_m001; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     nFlag = 0 +. 1;
+     |SI nModo = 2; |Y nFlag < 0;
+        nAntClie = #0#1; nAntTFac = #0#5;
+     |FINSI;
+     |SI nModo = 3;
+          |SI #visam001#22 = "S";
+               aMensaje = "0000Expediente Facturado.";
+               |MENAV aMensaje;
+               |ERROR;
+          |SINO;
+               |BUCLE visam003_borra;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Envialo;
+     |HAZ DameEmails;
+
+     |SI aTipoDocumento = "E";
+          aEmail = aEmailDelega;
+          |SI aEmail = "";
+               aEmail = aEmailCli;
+          |FINSI;
+          aDesDocumento = "Expediente";
+          aAdjunto = aCorreos + "exp" + (("00" + #visam001#0) % -102) + (("000000" + #visam001#14) % -106) + ".pdf";
+          aAsunto = "Envio Expediente ";
+          aTexto      = aAsunto + (("00" + #visam001#0) % -102) + "/" + (("000000" + #visam001#14) % -106);
+          aNomFic = "exp" + (("00" + #visam001#0) % -102) + (("000000" + #visam001#14) % -106) + ".pdf";
+     |FINSI;
+     |SI aTipoDocumento = "F";
+          ||El nombre ... es la serie + Numero de Factura, NO DE ALBARAN
+
+          aEmail = aEmailDelega;
+          |SI aEmail = "";
+               aEmail = aEmailCli;
+          |FINSI;
+          aDesDocumento = "Factura";
+
+          aSerie = #visam001#24;
+          |QBF aSerie;
+          aAdjunto = aCorreos + "fac" + aSerie + (("00000" + #visam001#25) % -105) + ".pdf";
+          aAsunto = "Envio Factura ";
+          aTexto      = aAsunto + aSerie + "/" + (("00000" + #visam001#25) % -105);
+          aNomFic = "fac" + aSerie + (("00000" + #visam001#25) % -105) + ".pdf";
+     |FINSI;
+
+     |QBF aEmail;
+     |SI aEmail = "";
+          aMensaje = "0000Cliente SIN direccion de Email";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     fFecha = ~;
+     aFecha = fFecha;
+     |HORA aHora;
+     aHoraSeg = aHora;
+     aHora = aHora % 105;
+
+     |ABRE #8;
+
+     aDirDestino = aEmail;
+     |QBF aDirDestino;
+
+     aNombre = aAdjunto;
+
+     #8#0 = aFecha;
+     #8#1 = aHoraSeg;
+     #8#2 = aDirDestino;
+     #8#3 = aAsunto;
+     #8#4 = aTexto;
+     #8#5 = aNombre;
+     #8#6 = "N";
+     #8#7 = aTipoDocumento;
+     #8#8 = aDesDocumento;
+     #8#9 = aNomFic;
+
+     |GRABA 020#8n;
+     |LIBERA #8;
+     |CIERRA #8;
+
+     |SLEEP 1;
+
+     ||Ahora lo dejo en correos/ y lo actualizo la Bandeja de Salida
+     ||Y luego le digo que mande lo pendiente de la bandeja de Salida
+
+     aEjecuta = "visam008;AUTO";
+     |SUB_EJECUTA_NP aEjecuta;
+|FPRC;
+
+|PROCESO DameEmails;
+     aEmailCli = "";
+     aEmailDelega = "";
+
+     |ABRE #asclient;
+     |DDEFECTO #asclient;
+     #asclient#0 = #visam001#1;
+     |LEE 000#asclient.=;
+     |SI FSalida = 0;
+          aEmailCli = #asclient#57;
+          |QBF aEmailCli;
+     |FINSI;
+     |CIERRA #asclient;
+
+     |SI #visam001#19 ! 0;
+          |ABRE #visam004;
+          |DDEFECTO #visam004;
+          #visam004#0 = #visam001#1;
+          #visam004#1 = #visam001#19;
+          |LEE 000#visam004.=;
+          |SI FSalida = 0;
+               aEmailDelega = #visam004#11;
+               |QBF aEmailDelega;
+          |FINSI;
+          |CIERRA #visam004;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo7C19_001; |TIPO 7;
+   nAntCli = #visam001#1;
+   nAntDel = #visam001#19;
+|FPRC;
+
+|PROCESO Tipo0C19_001; |TIPO 0;
+     |SI FSalida = 2; |ACABA; |FINSI;
+     |SI #visam001#19 ! 0;
+        |SI #visam001#1 ! nAntCli; |O #visam001#19 ! nAntDel;
+           |ABRE #visam004;
+           #visam004#0 = #visam001#1;
+           #visam004#1 = #visam001#19;
+           |LEE 000#visam004.=;
+           |SI FSalida ! 0;
+               aMensaje = "0000Atención: No existe Delegación";
+               |MENAV aMensaje;
+               |ERROR;
+           |SINO;
+               #visam001#29 = #visam004#13; |PINTA #visam001#29;
+           |FINSI;
+           |CIERRA #visam004;
+        |FINSI;
+     |FINSI;
+
+     |ABRE #visam014;
+     #visam014#0 = #visam001#1;
+     |LEE 000#visam014.=;
+     |SI FSalida = 0;
+        #0#28 = #visam014#2;
+
+        |ABRE #visam015;
+        #visam015#0 = #visam001#1;
+        #visam015#1 = #visam001#19;
+        |LEE 000#visam015.=;
+        |SI FSalida = 0;
+           #0#28 = #visam015#3;
+        |SINO;
+           |ABRE #visam004;
+           #visam004#0 = #visam001#1;
+           #visam004#1 = #visam001#19;
+           |LEE 000#visam004.=;
+           |SI FSalida = 0;
+              #0#28 = #visam004#14;
+           |FINSI;
+           |CIERRA #visam004;
+        |FINSI;
+
+        |CIERRA #visam015;
+     |SINO;
+        #0#28 = "N";
+        |ABRE #visam004;
+        #visam004#0 = #visam001#1;
+        #visam004#1 = #visam001#19;
+        |LEE 000#visam004.=;
+        |SI FSalida = 0;
+           #0#28 = #visam004#14;
+        |FINSI;
+        |CIERRA #visam004;
+     |FINSI;
+     |PINTA #0#28;
+
+     |CIERRA #visam014;
+|FPRC;
+
+|PROCESO Tipo7C2_004; |TIPO 7;
+     ||NADA
+|FPRC;
+
+|PROCESO PonPoblacionCli; |TIPO 0;
+     ||NADA
+|FPRC;
+
+|PROCESO Tipo0C2w001; |TIPO 0;
+     |SI #101#2 = 0;
+          aMensaje = "0000Atención: Introduzca el Número de Factura.";
+          |MENAV aMensaje;
+          |ERROR;
+     |SINO;
+          |ABRE #ashismic;
+          |DDEFECTO #ashismic;
+          #ashismic#0 = #101#1;
+          #ashismic#1 = #101#2;
+          |LEE 000#ashismic.=;
+          |SI FSalida = 0;
+               aMensaje = "0000Atención: Esta Factura ya existe.";
+               |MENAV aMensaje;
+               |ERROR;
+          |FINSI;
+          |CIERRA #ashismic;
+     |FINSI;
+|FPRC;
+
+|PROCESO CambioCliente; |TIPO 5;
+  || Si es modificacion, recalculo las lineas
+  |SI nModoEntrada = 2; |Y nSw = 1;
+     #visam001#6 = 0; #visam001#7  = 0; #visam001#8  = 0;
+     #visam001#9 = 0; #visam001#10 = 0; #visam001#11 = 0;
+     |ABRE #asconcep; |ABRE #asconcli;
+     |BUCLE RecalcLins;
+     |CIERRA #asconcep; |CIERRA #asconcli;
+     |PINDA #0#visam001;
+     |PONCONTROL 23, "si";
+     nSw = 0;
+  |FINSI;
+  FSalida = "SINBARRA";
+|FPRC;
+
+|PROCESO CopiaDescAmpl;
+   |SALVA_FICHA #visam005;
+
+   #visam005#0 = #visam002#0;
+   #visam005#1 = #visam002#16;
+   #visam005#2 = #visam002#2;
+   |GRABA 020#visam005.n;
+
+   |REPON_FICHA #visam005;
+|FPRC;
+
+|DEFBUCLE CopiaDescAmpl;
+#visam005#1;
+;
+nSerie, nExped, nLinea, 001;
+nSerie, nExped, nLinea, 999;
+be;
+NULL, CopiaDescAmpl;
+|FIN;
+
+|PROCESO CopiaLineas;
+   nSerie = #visam002#0; nExped = #visam002#16; nLinea = #visam002#2;
+   |SALVA_FICHA #visam002;
+
+   #visam002#0  = #visam001#0;
+   #visam002#3  = ~;
+   #visam002#16 = #visam001#14;
+   |GRABA 020#visam002.b;
+
+   #visam002#11 = #visam002#11 * nAbono;
+   #visam002#13 = #visam002#13 * nAbono;
+   #visam002#15 = "N";
+   #visam002#17 = ~;
+
+   |SI nAbono = 1;
+     #asconcep#0 = #visam002#4;
+     #asconcep#1 = #visam002#5;
+     |LEE 040#asconcep.=;
+     |SI FSalida = 0;
+        |SI #asconcep#3 = "N";
+            #visam002#15   = "S";
+        |FINSI;
+
+        |ABRE #asclient;
+        #asclient#0 = #0#1;
+        |LEE 040#asclient.=;
+        |SI FSalida = 0;
+            |SI #asclient#22 = 1; #visam002#12 = #asconcep#4;  #visam002#14 = #asconcep#5;  |FINSI;
+            |SI #asclient#22 = 2; #visam002#12 = #asconcep#8;  #visam002#14 = #asconcep#9;  |FINSI;
+            |SI #asclient#22 = 3; #visam002#12 = #asconcep#10; #visam002#14 = #asconcep#11; |FINSI;
+            |SI #asclient#22 = 4; #visam002#12 = #asconcep#12; #visam002#14 = #asconcep#13; |FINSI;
+            |SI #asclient#22 = 5; #visam002#12 = #asconcep#14; #visam002#14 = #asconcep#15; |FINSI;
+        |FINSI;
+        |CIERRA #4;
+
+        #visam002#10 = #asconcep#3;
+
+        |SI #visam002#14 = "U"; #visam002#13 = #visam002#12; |FINSI;
+        #visam002#13 = #visam002#12 * #visam002#11;
+        |GRABA 020#visam002.a;
+
+        |SI #visam002#10 = "H";
+           #visam001#6 = #visam001#6 + #visam002#13;
+           |SI #visam002#15 = "N"; #visam001#9 = #visam001#9 + #visam002#13; |FINSI;
+        |FINSI;
+        |SI #visam002#10 = "S";
+           #visam001#7 = #visam001#7 + #visam002#13;
+           |SI #visam002#15 = "N"; #visam001#10 = #visam001#10 + #visam002#13; |FINSI;
+        |FINSI;
+        |SI #visam002#10 = "A";
+           #visam001#8 = #visam001#8 + #visam002#13;
+           |SI #visam002#15 = "N"; #visam001#11 = #visam001#11 + #visam002#13; |FINSI;
+        |FINSI;
+     |FINSI;
+   |FINSI;
+
+   |GRABA 020#visam002.a; |LIBERA #visam002;
+   |BUCLE CopiaDescAmpl;
+
+   |SI #visam002#10 = "H";
+      #visam001#6 = #visam001#6 + #visam002#13;
+      |SI #visam002#15 = "N"; #visam001#9 = #visam001#9 + #visam002#13; |FINSI;
+   |FINSI;
+   |SI #visam002#10 = "S";
+      #visam001#7 = #visam001#7 + #visam002#13;
+      |SI #visam002#15 = "N"; #visam001#10 = #visam001#10 + #visam002#13; |FINSI;
+   |FINSI;
+   |SI #visam002#10 = "A";
+      #visam001#8 = #visam001#8 + #visam002#13;
+      |SI #visam002#15 = "N"; #visam001#11 = #visam001#11 + #visam002#13; |FINSI;
+   |FINSI;
+
+   |REPON_FICHA #visam002;
+|FPRC;
+
+|DEFBUCLE CopiaLineas;
+  #visam002#1;
+  ;
+  nAnyoE, nExpte, 001;
+  nAnyoE, nExpte, 999;
+  ;
+  NULL, CopiaLineas;
+|FIN;
+
+|PROCESO CopiaDocs;
+  |SALVA_FICHA #803;
+
+  aOrigen  = aDirDocumentos + "/" + #803#3; |QBF aOrigen;
+  aExtension = #803#3; |QBF aExtension;
+  aExtension = aExtension % -103;
+
+  #803#0 = #visam001#0;
+  #803#1 = #visam001#14;
+  #803#3 = (("00" + #visam001#0) % -102) + (("000000" + #visam001#14) % -106) + (("000" + #803#2) % -103) + "." + aExtension;
+  aAlfa = Usuario % 0810;
+  #803#4 = aAlfa;
+  |GRABA 020#803.n;
+
+  aDestino = aDirDocumentos + "/" + #803#3; |QBF aDestino;
+  |COPIA_FICHERO aOrigen, aDestino;
+
+  |REPON_FICHA #803;
+|FPRC;
+
+|DEFBUCLE CopiaDocs;
+#803#1;
+;
+nAnyo, nExpte, 001;
+nAnyo, nExpte, 999;
+;
+NULL, CopiaDocs;
+|FIN;
+
+|PROCESO CopiaExpe;
+   |ABRE #asconcep;
+   aAlfa = "    N" + &191 + " La copia sera un expediente de abono ? ";
+   |CONFI aAlfa;
+   |SI FSalida = 0;
+      nSerieAnt = #visam001#24; nFactuAnt = #visam001#25;
+      nAbono = -1;
+      |SI #visam001#22 = "N";
+         |MENAV "    Para hacer una copia de abono el expediente debe estar facturado. Proceso cancelado";
+         |ACABA;
+      |SINO;
+         nAnyoE = #visam001#0;
+         nExpte = #visam001#14;
+
+         fFecha = ~;
+         aAlfa = fFecha; |QBF aAlfa; aAlfa = aAlfa % -102;
+         #visam001#0 = aAlfa;
+
+         |ABRE #asexcont;
+         #asexcont#0 = #visam001#0;
+         |LEE 101#asexcont.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #asexcont;
+            #asexcont#0 = #visam001#0;
+            #asexcont#1 = 1;
+            |GRABA 020#asexcont.b;
+         |FINSI;
+         #asexcont#1 = #asexcont#1 + 1;
+         |SALVA_FICHA #visam001;
+         #visam001#14 = #asexcont#1;
+         |LEE 000#visam001.=;
+         |SI FSalida = 0;
+            |MENAV "     La factura que indica el contador ya existe. Revise el contador. Proceso cancelado.";
+            |CIERRA #asexcont;
+            |CIERRA #asconcep;
+            |REPON_FICHA #visam001;
+            |PINPA #0#0; |PINDA #0#0;
+            |PINDA #0#502;
+            |ERROR; |ACABA;
+         |SINO;
+            |REPON_FICHA #visam001;
+            #visam001#14 = #asexcont#1;
+         |FINSI;
+         |GRABA 020#asexcont.a; |LIBERA #asexcont;
+         |CIERRA #asexcont;
+
+         #visam001#3  = ~;   #visam001#20 = ~;
+         #visam001#4 = "01.01.0000"; #visam001#12 = "N";
+         #visam001#22 = "N"; #visam001#23 = "N";
+         #visam001#24 = "";  #visam001#25 = 0;
+
+         |SI #visam001#5 = 0; #visam001#5 = 1; |FINSI;
+         |SI #visam001#5 = 2; #visam001#5 = 3; |FINSI;
+         |SI #visam001#5 = 4; #visam001#5 = 1; |FINSI;
+
+         |GRABA 020#visam001.b;
+         #visam001#6  = 0; #visam001#7  = 0; #visam001#8  = 0;
+         #visam001#9  = 0; #visam001#10 = 0; #visam001#11 = 0;
+
+         |BUCLE CopiaLineas;
+
+         |ABRE #visam002;
+         |DDEFECTO #visam002;
+         #visam002#0  = #visam001#0;
+         #visam002#16 = #visam001#14;
+         #visam002#1  = #visam001#1;
+         #visam002#2  = 999;
+         #visam002#4  = "FACT";
+         aAlfa = "Anulacion, por error, de nuestra factura " + (("00" + nSerieAnt) % -102) + "/" + (("000000" + nFactuAnt) % -106);
+         #visam002#6  = aAlfa;
+         aAlfa = "Anulacion, por error, de nuestra";
+         #visam002#7  = aAlfa;
+         aAlfa = "factura " + (("00" + nSerieAnt) % -102) + "/" + (("000000" + nFactuAnt) % -106);
+         #visam002#8  = aAlfa;
+         |GRABA 020#visam002.n;
+         |CIERRA #visam002;
+
+         |ABRE #visam005;
+         #visam005#0 = #visam002#0;
+         #visam005#1 = #visam002#16;
+         #visam005#2 = #visam002#2;
+         #visam005#3 = 1;
+         #visam005#4 = "Anulacion, por error, de nuestra";
+         |GRABA 020#visam005.n;
+
+         #visam005#0 = #visam002#0;
+         #visam005#1 = #visam002#16;
+         #visam005#2 = #visam002#2;
+         #visam005#3 = 2;
+         aAlfa = "factura " + (("00" + nSerieAnt) % -102) + "/" + (("000000" + nFactuAnt) % -106);
+         #visam005#4 = aAlfa;
+         |GRABA 020#visam005.n;
+         |CIERRA #visam005;
+/*
+         #visam001#6 = 0; #visam001#7  = 0; #visam001#8  = 0;
+         #visam001#9 = 0; #visam001#10 = 0; #visam001#11 = 0;
+         |ABRE #asconcep; |ABRE #asconcli;
+         |BUCLE RecalcLins;
+         |CIERRA #asconcep; |CIERRA #asconcli;
+         #visam001#6 = #visam001#6 * nAbono;
+         #visam001#7 = #visam001#7 * nAbono;
+         #visam001#8 = #visam001#8 * nAbono;
+         #visam001#9 = #visam001#9 * nAbono;
+         #visam001#10 = #visam001#10 * nAbono;
+         #visam001#11 = #visam001#11 * nAbono;
+*/
+
+         |PINDA #0#visam001;
+
+         #visam001#22 = "N";
+         #visam001#24 = "  ";
+         #visam001#25 = 0;
+         |GRABA 020#visam001.a;
+      |FINSI;
+   |SINO;
+      nAbono = 1;
+      aAlfa = "    N" + &191 + " Copiar los documentos adjuntos al expediente ?";
+      |CONFI aAlfa;
+      |SI FSalida = 0;
+         nSwCopiaDoc = 1;
+      |SINO;
+         nSwCopiaDoc = 0;
+      |FINSI;
+
+      |PUSHV 0501 2380;
+      |ABRE #visam004;
+      #visam004#0 = #visam001#1;
+      #visam004#1 = #visam001#19;
+      |LEE 000#visam004.=;
+      |SI FSalida ! 0;
+         |DDEFECTO #visam004;
+      |FINSI;
+      |CIERRA #visam004;
+
+      #visaw008#0 = #visam001#1;
+      #visaw008#1 = #visam001#2;
+      #visaw008#2 = #visam001#19;
+      #visaw008#3 = #visam004#2;
+      #visaw008#4 = #visam004#13;
+
+      |PINPA #0#visaw008; |PINDA #0#visaw008;
+      |ENDATOS #1#visaw008;
+      |SI FSalida = 0;
+         nAnyoE = #visam001#0;
+         nExpte = #visam001#14;
+
+         fFecha = ~;
+         aAlfa = fFecha; |QBF aAlfa; aAlfa = aAlfa % -102;
+         #visam001#0 = aAlfa;
+
+         |ABRE #asexcont;
+         #asexcont#0 = #visam001#0;
+         |LEE 101#asexcont.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #asexcont;
+            #asexcont#0 = #visam001#0;
+            #asexcont#1 = 1;
+            |GRABA 020#asexcont.b;
+         |FINSI;
+         #asexcont#1 = #asexcont#1 + 1;
+         |SALVA_FICHA #visam001;
+
+         #visam001#14 = #asexcont#1;
+         |LEE 000#visam001.=;
+         |SI FSalida = 0;
+            |MENAV "     La factura que indica el contador ya existe. Revise el contador. Proceso cancelado.";
+            |CIERRA #asexcont;
+            |CIERRA #asconcep;
+            |REPON_FICHA #visam001;
+            |PINPA #0#0; |PINDA #0#0;
+            |PINDA #0#502;
+            |ERROR; |ACABA;
+         |SINO;
+            |REPON_FICHA #visam001;
+            #visam001#14 = #asexcont#1;
+         |FINSI;
+         |GRABA 020#asexcont.a; |LIBERA #asexcont;
+         |CIERRA #asexcont;
+
+         #visam001#1  = #visaw008#0;
+         #visam001#2  = #visaw008#1;
+         #visam001#19 = #visaw008#2;
+         #visam001#29 = #visaw008#4;
+         #visam001#3  = ~; #visam001#4  = "01.01.0000"; #visam001#20 = ~;
+         #visam001#12 = "N";
+         #visam001#22 = "N"; #visam001#23 = "N";
+         #visam001#24 = "";  #visam001#25 = 0;
+         |GRABA 020#visam001.b;
+         #visam001#6  = 0; #visam001#7  = 0; #visam001#8  = 0;
+         #visam001#9  = 0; #visam001#10 = 0; #visam001#11 = 0;
+
+         |BUCLE CopiaLineas;
+
+         |SI nSwCopiaDoc = 1;
+            |DBASE aBase;  |QBF aBase;
+            aDirDocumentos = aBase + "documentos";
+
+            |BUCLE CopiaDocs;
+         |FINSI;
+
+         #visam001#6 = 0; #visam001#7  = 0; #visam001#8  = 0;
+         #visam001#9 = 0; #visam001#10 = 0; #visam001#11 = 0;
+         |ABRE #asconcep; |ABRE #asconcli;
+         |BUCLE RecalcLins;
+         |CIERRA #asconcep; |CIERRA #asconcli;
+         |PINDA #0#visam001;
+         |PONCONTROL 23, "si";
+
+         |GRABA 020#visam001.a;
+      |FINSI;
+      |POPV;
+   |FINSI;
+   |CIERRA #asconcep;
+
+   |PINPA #0#0; |PINDA #0#0;
+   |PINDA #0#502;
+|FPRC;
+
+|PROCESO Tipo00w008;
+
+|FPRC;
+
+|PROCESO Baja004a;
+ #visam004#0 = #visaw008#0;
+ #visam004#1 = 0001;
+|FPRC;
+
+|PROCESO Alta004a;
+ #visam004#0 = #visaw008#0;
+ #visam004#1 = 9999;
+|FPRC;
+
+|PROCESO Tipo66w008; |TIPO 66;
+     |ABRE #visam004;
+     |CONSULTA_F_CLAVE #1#visam004, Baja004a, Alta004a;
+     |SI FSalida = 0;
+          #visaw008#2 = #visam004#1; |PINTA #visaw008#2;
+          #visaw008#3 = #visam004#2; |PINTA #visaw008#3;
+          #visaw008#4 = #visam004#13;
+     |FINSI;
+     |CIERRA #visam004;
+
+     |ERROR;
+|FPRC;
+
+|PROCESO MiraDeleg;
+   |SI FSalida = 2; |O #visaw008#2 = 0; |ACABA; |FINSI;
+
+   |ABRE #visam004;
+   #visam004#0 = #visaw008#0;
+   #visam004#1 = #visaw008#2;
+   |LEE 000#visam004.=;
+   |SI FSalida ! 0;
+        aMensaje = "0000Atención: No existe Delegación";
+        |MENAV aMensaje;
+        |ERROR;
+   |SINO;
+        #visaw008#3 = #visam004#2;  |PINTA #visaw008#3;
+        #visaw008#4 = #visam004#13;
+   |FINSI;
+   |CIERRA #visam004;
+|FPRC;
+
+|PROCESO Tipo80;  |TIPO 80;
+     |HAZ LeeUnidadBasico;
+|FPRC;
+
+|PROCESO Tipo0C0w008; |TIPO 0;
+     nSalida = FSalida;
+
+     |SI nSalida = 10;
+          |ABRE #visam100;
+          |DDEFECTO #visam100;
+          |LEE 000#visam100.p;
+          |SI FSalida ! 0;
+               |DDEFECTO #visam100;
+          |FINSI;
+          |CIERRA #visam100;
+
+          nCliVarios = #visam100#3;
+          nIniRangoVarios = #visam100#4;
+
+          |SI nIniRangoVarios = 0; |O nCliVarios = 0;
+               aMensaje = "0000Error Cliente Varios NO definido en Parametros";
+               |MENAV aMensaje;
+          |SINO;
+               nLibre = nIniRangoVarios;
+               |HAZ DameLibre;
+
+               |PUSHV 0501 2380;
+               |CLS;
+
+               enLibre = nLibre;
+               aEjecuta = "asclient;ALTA";
+               |SUB_EJECUTA_NP aEjecuta;
+
+               |SI nLibre = enLibre;
+                    #visaw008#0 = nLibre;
+                    |ERROR;
+               |SINO;
+                    |ERROR;
+               |FINSI;
+               |POPV;
+               |PINTA #visaw008#0;
+          |FINSI;
+     |SINO;
+          |ABRE #visam100;
+          |DDEFECTO #visam100;
+          |LEE 000#visam100.p;
+          |SI FSalida ! 0;
+               |DDEFECTO #visam100;
+          |FINSI;
+          |CIERRA #visam100;
+
+          |SI #visaw008#0 = #visam100#3; |O #visaw008#0 ] #visam100#4;
+               |SI #visaw008#0 = #visam001#1;
+                    aMensaje = "0000Debe introducir un cliente diferente al de origen (Cliente Varios).";
+                    |MENAV aMensaje;
+                    |ERROR;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+|FPRC;

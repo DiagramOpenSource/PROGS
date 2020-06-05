@@ -1,0 +1,6 @@
+VerifCons,znomivar
+VerifBonif,znomivar
+VerifCNAE,znomivar
+topemes_plb,zvariosp
+PaseAutorizacion,znomivar
+sustituye_plb,zvariosp

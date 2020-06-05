@@ -1,0 +1,160 @@
+|FICHEROS;
+     diaz0007 #0;
+     diam0003 #3;
+     agifa104 #104;
+     dsparm01@ #100;
+     dsparm05@ #500;
+|FIN;
+
+|VARIABLES;
+     fFecha    = @;
+     fFecha2   = @;
+     aDef1     = "";
+     aBase     = "";
+     aDat      = "";
+     aParam    = "";
+     nHay      = 0;
+     nNume     = 0;
+     aAlfa     = "";
+     aIP       = "";
+     aServidor = "";
+     aFrom     = "";
+     aTo       = "";
+     aSubject  = "";
+     aMensaje  = "";
+     aDjunto   = "Sin_asunto";
+     aNume     = "";
+     aFichero  = "";
+|FIN;
+
+|PROCESO CorreoLista;
+     aSubject = fFecha + ": Relacion Pedidos sin visar de hace 2 o mas dias.";
+     aMensaje = "$$$$" + aFichero;
+     aDjunto  = aFichero;
+     aServidor = #100#7;
+     aIP = #100#8;
+     |QBF aIP;
+     |QBF aServidor;
+
+     |DSCORREO_ENVIA aIP, aServidor, aFrom, aTo, aSubject, aMensaje, aDjunto;
+|FPRC;
+
+|PROCESO diam0003;
+     #500#0 = #3#2;
+     |LEE 000#500=;
+     |SI FSalida ! 0;    |ACABA;   |FINSI;
+
+     #104#25 = #3#0;
+     #104#0 = #3#1;
+     |LEE 000#104=;
+     |SI FSalida ! 0;    |ACABA;   |FINSI;
+
+     |SI fFecha2 ] #104#1;
+          #3#3 = #500#1;      || para 'refrescar'
+          |PRINT;
+          nHay = 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE diam0003;
+     #3#2;
+     ;
+     0001, "N";
+     9999, "N";
+     ;
+     NULL, diam0003;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#0 ! "SI"; |ACABA; |FINSI;
+
+     |PATH_DAT #100 aDat;
+     |PATH_DAT #500 aDat;
+
+     |ABRE #100;
+     |LEE 000#100p;      || para no concurrir en "/tmp/fichero.txt"
+     |SI FSalida = 0;
+          |ABRE #500;
+          #500#0 = #100#12;
+          |LEE 000#500=;
+
+          aFrom = #500#3; |QBF aFrom;
+
+          aTo = #500#3; |QBF aTo;
+          |SI aTo = "";
+               aTo = #500#4;
+          |SINO;
+               aAlfa = #500#4; |QBF aAlfa;
+               |SI aAlfa ! "";
+                    aTo = aTo + ";" + #500#4;
+               |FINSI;
+          |FINSI;
+          |QBF aTo;
+
+          |CIERRA #500;
+
+          |DBASS aBase;  |QBF aBase;
+          aFichero  = aBase + "dspartes/correos";  |MKDIR aFichero;
+          aFichero  = aFichero + "/" + Usuario + ".txt";
+          |FBORRA aFichero;
+
+          Impresora = aFichero;
+          |IMPRE -77;
+          |SI FSalida = 0;
+               |INFOR "diaz0007";
+               |SI FSalida ! 0;
+                    |FINIMP;
+                    |MENAV "0000No existe informe diaz0007";
+               |SINO;
+                    |ABRE #104;
+                    |ABRE #500;
+                    |BUCLE diam0003;
+                    |CIERRA #104;
+                    |CIERRA #500;
+                    |PIEINF;
+                    |FININF;
+               |FINSI;
+               |FINIMP;
+          |FINSI;
+          |SI nHay ! 0; |HAZ CorreoLista; |FINSI;
+
+          |FBORRA aFichero;
+     |FINSI;
+     |CIERRA #100;
+|FPRC;
+
+|PROGRAMA;
+     fFecha = ~;
+     nNume = fFecha;
+     nNume = nNume - 2;
+     fFecha2 = nNume;
+
+     aParam = PARAMETRO; |QBF aParam;
+
+     |DBASS aBase; |QBF aBase;
+
+     aDat  = aBase + "dspartes/fich/";
+
+     aDef1 = aBase + "dspartes/def/dsparm01";
+     |CARGA_DEF aDef1, dsparm01@;
+     |SI FSalida = 0;
+          aDef1 = aBase + "dspartes/def/dsparm05";
+          |CARGA_DEF aDef1, dsparm05@;
+          |SI FSalida = 0;
+               |SI aParam = "";
+                    |MANTE #0;
+               |SINO;
+                    #0#0 = "SI";
+                    |HAZ Tipo3;
+               |FINSI;
+               |DESCARGA_DEF #dsparm05@;
+          |SINO;
+               aDef1 = "0000Error al cargar:" + aDef1;
+               |MENAV aDef1;
+          |FINSI;
+          |DESCARGA_DEF #dsparm01@;
+     |SINO;
+          aDef1 = "0000Error al cargar:" + aDef1;
+          |MENAV aDef1;
+     |FINSI;
+|FPRO;

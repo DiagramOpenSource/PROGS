@@ -1,0 +1,575 @@
+|FICHEROS;
+     vallcz01 #0;
+     dsl00001 #1;
+     vallcz02 #2;
+     vallcm01 #3,MANTE;
+     agifa010 #10;
+     agifa019 #19;
+     agifa024 #24;
+     agifa073 #73;
+     agifa071 #71;
+     agifa104 #104;
+     agifa142 #142;
+     vallc0a1@;
+     vallc0b1@;
+|FIN;
+
+|VARIABLES;
+     &enBultos = 0;
+     &eaTag = "";
+     &Tempo = "";
+     &enMenuVallc = 0;
+     nPrime = 0;
+     aTmp = "";
+     nError = 0;
+     nPendientes = 0;
+     aAlfa = "";
+     nModo = 0;
+     nForma = 0;
+     nUni = 0;
+ {-1}aMenu = "";
+     aMenu1 = "2400";
+     aMenu2 = "1";
+     aMenu3 = "";
+     aMenu4 = "RAGC";
+     aMenu5 = " Repasar ";
+     aMenu6 = " Aceptar ";
+     aMenu7 = " Aceptar y Agrupar ";
+     aMenu8 = " Cancelar ";
+     nImpo = 0;
+     fmes = "";
+     mes = 0;
+     aLon = "";
+|FIN;
+
+|INCLUYE i_varart;
+
+|PROCESO ActUniPedido;
+     |SI nForma = 1;
+          nPendientes =  #73#5 - #73#43;
+          |SI nUni > nPendientes;
+               #73#43 = #73#43 + nPendientes;
+               nUni = nUni - nPendientes;
+               enUnidPend = nPendientes;
+          |SINO;
+               #73#43 = #73#43 + nUni;
+               enUnidPend = nUni;
+               |ERROR10;
+          |FINSI;
+     |SINO;
+          |SI nUni > #73#43;
+               enUnidPend = #73#43;
+               nUni = nUni - #73#43;
+               #73#43 = 0;
+          |SINO;
+               enUnidPend = nUni;
+               #73#43 = #73#43 - nUni;
+               |ERROR10;
+          |FINSI;
+     |FINSI;
+     |GRABA 020#73a;
+     |LIBERA #73;
+|FPRC;
+
+|DEFBUCLE ActUniPedido;
+     #73#3;
+     ;
+     #3#9, #0#0, #0#1, "      ";
+     #3#9, #0#0, #0#1, "zzzzzz";
+     be;
+     NULL, ActUniPedido;
+|FIN;
+
+|PROCESO ActualizaUni;
+     nUni = #3#2;
+     |BUCLE ActUniPedido;
+|FPRC;
+
+|PROCESO Tipo2; |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+     nForma = 0 +. 1;
+     |HAZ ActualizaUni;
+|FPRC;
+
+|PROCESO UniPdte;
+     nPendientes = nPendientes + #73#5 - #73#43;
+|FPRC;
+
+|DEFBUCLE UniPdte;
+     #73#3;
+     ;
+     #3#9, #0#0, #0#1, "      ";
+     #3#9, #0#0, #0#1, "zzzzzz";
+     ;
+     NULL, UniPdte;
+|FIN;
+
+|PROCESO Pendientes; |TIPO 0;
+     nError = 0;
+     nPendientes = 0;
+     |BUCLE UniPdte;
+     |SI #3#2 > nPendientes;
+          aAlfa = "0000Se superan las unidades pendientes:" + nPendientes;
+          |AVISO;
+          |MENAV aAlfa;
+          nError = 1;
+          |ERROR;
+     |SINO;
+/*
+          |SI #3#2 ! nPendientes;
+               aAlfa = "0000Se adjudican menos unidades de las pendientes:" + nPendientes;
+               |AVISO;
+               |MENAV aAlfa;
+          |FINSI;
+*/
+     |FINSI;
+|FPRC;
+
+|PROCESO CB0; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+
+     aAlfa = #3#1; |QBF aAlfa;
+     |SI nModo = 2; |Y aAlfa = ""; |ACABA; |FINSI;
+
+     aLon = aAlfa % A0;
+     |SI aLon < 13;
+          |SI aLon > 0;
+               #3#2 = aAlfa; |PINTA #3#2;    || Unidades
+          |FINSI;
+          |ERROR; |ACABA;
+     |FINSI;
+
+     |ABRE #19; |SELECT #4#19;
+     #19#128 = aAlfa;
+     |LEE 000#19=;
+     |SI FSalida = 0;
+          #3#9 = #19#0;
+     |SINO;
+          |ABRE #1; |SELECT #2#1;
+          #1#3 = aAlfa;
+          |LEE 000#1=;
+          |SI FSalida ! 0;
+               |AVISO;
+               |MENAV "0000No existe codigo de barras...";
+               |ERROR; |ACABA;
+          |SINO;
+               #3#9 = #1#1;
+          |FINSI;
+          |CIERRA #1;
+     |FINSI;
+     |CIERRA #19;
+
+     #3#7 = #0#0;
+     #3#8 = #0#1;
+
+     |ABRE #73;
+     |SELECT #3#73;
+     |DDEFECTO #73;
+     #73#2 = #3#9;
+     #73#28 = #0#0;
+     #73#0 = #0#1;
+     |LEE 000#73];
+     |SI #73#2 ! #3#9; |O #73#28 ! #0#0; |O #73#0 ! #0#1; |O FSalida ! 0;
+          |AVISO;
+          |MENAV "0000No existe artículo en el pedido...";
+          |ERROR;
+     |SINO;
+          |DDEFECTO #19;
+          |ABRE #19;
+          #19#0 = #3#9;
+          |LEE 000#19=;
+          |CIERRA #19;
+          #3#3 = #19#1; |PINTA #3#3;
+          #3#4 = #73#3;
+          #3#12 = #73#6;
+          #3#13 = #73#8;
+          #3#14 = #73#10;
+          #3#15 = #73#14;
+          #3#16 = #73#18;
+          #3#17 = #73#17;
+          #3#18 = #73#19;
+          #3#19 = #73#27;
+          #3#20 = #73#29;
+          #3#21 = #73#35;
+          #3#22 = #73#36;
+          #3#23 = #73#38;
+          #3#24 = #73#1;
+          ||HAZ Pendientes;
+          |SI nModo = 1; |Y nError = 0;
+               |PTEC 802;
+               |PTEC 806;
+          |FINSI;
+     |FINSI;
+     |CIERRA #73;
+|FPRC;
+
+|PROCESO CB6; |TIPO 6;
+     |SI FSalida = 1;
+          |PTEC 807;
+          |PTEC 807;
+          |ERROR;
+          |ACABA;
+     |FINSI;
+/*
+     |ABRE #vallc0a1@;
+     |SELECT #2#vallc0a1@;
+     #vallc0a1@#10 = eaSerie;
+     #vallc0a1@#11 = enCodigo;
+     #vallc0a1@#1 = #3#1;
+     |LEE 000#vallc0a1@.=;
+     |SI FSalida = 0; |Y #vallc0a1@#0 ! #3#0;
+          aAlfa = "0000Codigo existente en la linea:" + #vallc0a1@#0;
+          |AVISO;
+          |MENAV aAlfa;
+          |ERROR;
+     |FINSI;
+     |CIERRA #vallc0a1@;
+*/
+|FPRC;
+
+|PROCESO Pedido; |TIPO 0;
+     |SI FSalida = 2; |ACABA; |FINSI;
+
+     |ABRE #104;
+     #104#24 = #0#0;
+     #104#0 = #0#1;
+     |LEE 000#104=;
+     |SI FSalida ! 0;
+          |AVISO;
+          |MENAV "0000No existe el pedido...";
+          |ERROR;
+     |SINO;
+          |SI #104#4 ! eaCliente;
+               aAlfa = "0000Pedido del cliente: " + #104#4;
+               |AVISO;
+               |MENAV aAlfa;
+               |ERROR;
+          |FINSI;
+     |FINSI;
+     |CIERRA #104;
+|FPRC;
+
+|PROCESO Min104;
+     #104#4 = eaCliente;
+     #104#24 = "     ";
+     #104#0 = 1;
+|FPRC;
+
+|PROCESO Max104;
+     #104#4 = eaCliente;
+     #104#24 = "zzzzz";
+     #104#0 = 999999;
+|FPRC;
+
+|PROCESO Pedido66; |TIPO 66;
+     |ABRE #104;
+     #104#25 = #0#0;
+     #104#0 = #0#1;
+     |LEE 000#104];
+     |CONSULTA_F_CLAVE #2#104, Min104, Max104;
+     |SI FSalida = 0;
+          #0#0 = #104#25; |PINTA #0#0;
+          #0#1 = #104#0; |PINTA #0#1;
+          |SI Campo = 0; |PTEC 802; |FINSI;
+     |SINO;
+          |ERROR;
+     |FINSI;
+     |CIERRA #104;
+|FPRC;
+
+|PROCESO Min;
+     #3#0 = 1;
+     #3#10 = eaSerie;
+     #3#11 = enCodigo;
+|FPRC;
+
+|PROCESO Max;
+     #3#0 = 999;
+     #3#10 = eaSerie;
+     #3#11 = enCodigo;
+|FPRC;
+
+|PROCESO Tipo12; |TIPO 12;
+|FPRC;
+
+|PROCESO ActualizaCliente;
+     |ABRE #19;
+     #19#0 = #71#2;
+     |LEE 020#19=;
+     |CIERRA #19;
+
+     |ABRE #24;
+     #24#0 = #71#15;
+     |LEE 121#24=;
+     |SI 0 = FSalida;
+          |SI #19#194 = 2;
+               nImpo = (((((#71#48 * #71#6) < #71#8) < #71#33) < #10#5) < #10#32);
+          |SINO;
+               nImpo = (((((#71#5 * #71#6) < #71#8) < #71#33) < #10#5) < #10#32);
+          |FINSI;
+          |SI #142#115 = "S";
+               nImpo = nImpo < #10#7;
+          |FINSI;
+          nImpo = nImpo * nForma;
+          fmes = #10#1 % A402;
+          mes = fmes - 1;
+          mes = mes * 3;
+          mes = mes + 114;
+          |SI #10#43 = "S";
+               #24mes  = #24mes   - nImpo;     || ABONO.
+               #24#150 = #24#150  - nImpo;
+          |SINO;
+               #24mes  = #24mes   + nImpo;     || VENTA.
+               #24#150 = #24#150  + nImpo;
+          |FINSI;
+          |GRABA 020#24a;
+
+
+          |SI #10#43 = "S"; nImpo = -nImpo; |FINSI;
+          eaCliente = #agifa104#4;
+          efFecha = #agifa104#1;
+          enImpCliPed = nImpo;
+          |HAZ AcumulaCli;
+     |FINSI;
+     |CIERRA #24;
+|FPRC;
+
+|PROCESO actpf;
+     |ABRE #24;
+     #24#0 = #10#3;
+     |LEE 020#24=;
+     |CIERRA #24;
+
+      eaTag = "AV";  |HAZ Riesgos;
+|FPRC;
+
+|PROCESO Borra71;
+     nForma = -1;
+     enForma = -1;
+
+     #10#52 = #71#29;
+     #10#0 = #71#0;
+     |LEE 121#10=;
+     |SI FSalida = 0; |Y nPrime = 0;
+          |HAZ actpf;
+     |FINSI;
+     nPrime = 1;
+
+     #73#28 = #71#31;
+     #73#0 = #71#12;
+     #73#1 = #71#21;
+     |LEE 121#73=;
+
+     enUnidPend = #71#5;
+     enForma = nForma;
+     eaReservado = #73#22;
+     eaDesprecia = "N";
+     eaProgVta = "agifa210";
+     |HAZ AcumulaAV;
+     |HAZ ActualizaCliente;
+
+     |BORRA 020#71a;
+
+     |LIBERA #73;
+     |LIBERA #71;
+     |LIBERA #10;
+|FPRC;
+
+|DEFBUCLE Borra71;
+     #71#1;
+     ;
+     eaSerie, enCodigo, 001;
+     eaSerie, enCodigo, 999;
+     be;
+     NULL, Borra71;
+|FIN;
+
+|PROCESO BorraAnte;
+     |BORRA 020#vallc0b1@.a;
+     |LIBERA #vallc0b1@;
+|FPRC;
+
+|DEFBUCLE BorraAnte;
+     #vallc0b1@#1003;
+     ;
+     eaSerie, enCodigo, 001;
+     eaSerie, enCodigo, 999;
+     be;
+     NULL, BorraAnte;
+|FINS;
+
+|PROCESO DescargaLineal;
+     |SALVA_DATOS #3;
+     |REPON_DATOS #vallc0b1@;
+     |GRABA 020#vallc0b1@.n;
+|FPRC;
+
+|DEFBUCLE DescargaLineal;
+     #3#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, DescargaLineal;
+|FIN;
+
+|PROCESO CargaLineal;
+     |SALVA_DATOS #vallc0b1@;
+     |REPON_DATOS #3;
+     |GRABA 020#3n;
+|FPRC;
+
+|DEFBUCLE CargaLineal;
+     #vallc0b1@#1003;
+     ;
+     eaSerie, enCodigo, 001;
+     eaSerie, enCodigo, 999;
+     ;
+     NULL, CargaLineal;
+|FIN;
+
+|PROCESO Borralo;
+     |BORRA 020#3a;
+     |LIBERA #3;
+|FPRC;
+
+|DEFBUCLE Borralo;
+     #3#1;
+     ;
+     eaSerie, enCodigo, 001;
+     eaSerie, enCodigo, 999;
+     be;
+     NULL, Borralo;
+|FINS;
+
+|PROCESO DesAdjudica;
+     #73#28 = #3#7;
+     #73#0 = #3#8;
+     #73#1 = #3#24;
+     |LEE 121#73=;
+     |SI FSalida = 0;
+          #73#43 = #73#43 - #3#2;
+          |GRABA 020#73a;
+          |LIBERA #3;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE DesAdjudica
+     #3#1;
+     ;
+     eaSerie, enCodigo, 001;
+     eaSerie, enCodigo, 999;
+     be;
+     NULL, DesAdjudica;
+|FINS;
+
+|PROCESO PideBulto;
+     |PUSHV 0501 2380;
+     |BLANCO 1630 2055;
+     #2#0 = enBultos;
+     |PINPA #0#2;
+     |PINDA #0#2;
+     |ENCAMPO #0#2;
+     enBultos = #2#0;
+     |POPV;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     |SI enModo = 3;
+          |BUCLE  Borralo;
+          |ACABA;
+     |FINSI;
+
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "vallcm01";
+     |CARGA_DEF aAlfa, vallc0a1@;
+     |SI FSalida ! 0;
+          |AVISO;
+          |MENAV "0000Error al cargar 'vallcm01'";
+          |ACABA;
+     |FINSI;
+
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "vallcm01";
+     |CARGA_DEF aAlfa, vallc0b1@;
+     |SI FSalida ! 0;
+          |AVISO;
+          |MENAV "0000Error al cargar 'vallcm01'";
+          |ACABA;
+     |FINSI;
+
+     |HAZ CreaTempo; aTmp = Tempo; |NOME_DAT #3 Tempo; |DELINDEX #3;
+     |NOME_DAT #vallc0a1@#Tempo#;
+     |ABRE #3;
+     |BUCLE CargaLineal;
+     |CIERRA #3;
+
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENTLINEAL #1#3, 3, 7, 22, 0, Min, Max;
+     |SI enModo = 1;
+         |ENDATOS #3#0;
+     |SINO;
+          |ABRE #3;
+          #3#10 = eaSerie;
+          #3#11 = enCodigo;
+          #3#0 = 1;
+          |LEE 000#3];
+          |SI FSalida = 0; |Y #3#10 = eaSerie; |Y #3#11 = enCodigo;
+               #0#0 = #3#7; |PINTA #0#0;
+               #0#1 = #3#8; |PINTA #0#1;
+          |FINSI;
+          |CIERRA #3;
+          FSalida = 0;
+     |FINSI;
+     |SI FSalida = 0;
+          |SI enModo = 4;
+               |ENTLINEAL #1#3, 3, 4, 22, 0, Min, Max;
+          |SINO;
+               |SI enModo = 1; |PTEC 802; |FINSI;
+               |PARA; |SI; |HACIENDO;
+                    |ENTLINEAL #1#3, 3, 1, 22, 0, Min, Max;
+                    |MENU aMenu;
+                    aMenu2 = FSalida;
+                    |SI aMenu2 ! 1; |SAL; |FINSI;
+               |SIGUE;
+          |FINSI;
+     |FINSI;
+     enMenuVallc = aMenu2;
+
+     |SI enMenuVallc = 4;
+          |ABRE #73;
+          |BUCLE DesAdjudica;
+          |CIERRA #73;
+     |FINSI;
+
+     |SI enMenuVallc = 2; |O enMenuVallc = 3;
+          |BUCLE BorraAnte;
+          |ABRE #73;
+          |ABRE #10;
+          |BUCLE Borra71;
+          |CIERRA #10;
+          |CIERRA #73;
+          |ABRE #vallc0b1@;
+          |BUCLE DescargaLineal;
+          |CIERRA #vallc0b1@;
+
+          |ABRE #104;
+          #104#25 = #0#0;
+          #104#0 = #0#1;
+          |LEE 101#104=;
+          |SI FSalida = 0;
+               |HAZ CalCabAgifa104;
+               |GRABA 020#104a;
+          |FINSI;
+          |CIERRA #104;
+
+          |HAZ PideBulto;
+     |FINSI;
+
+     Tempo = aTmp; |HAZ BoraTempo; |DELINDEX #3;
+
+     |DESCARGA_DEF #vallc0b1@;
+     |DESCARGA_DEF #vallc0a1@;
+|FPRO;

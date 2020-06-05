@@ -1,0 +1,172 @@
+|FICHEROS;
+  cmvemp01 #0;
+  cmvemp02 #1;
+  canempre #30;
+|FIN;
+
+|VARIABLES;
+  alfa1  = "";
+  alfa2  = "";
+  nume1  = 0;
+  nume2  = 0;
+
+  x       = 0;
+  xx      = 0;
+  &r_emp  = 0;
+  &r_per  = 0;
+
+  sw   = 0;
+  &guia = 0;
+|FIN;
+
+|| *************************************************************************
+||                        CALCULOS DE PANTALLA
+|| *************************************************************************
+
+|PROCESO mayor; |TIPO 0;
+  alfa1 = #0Campo > " ";
+  #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO mayor1; |TIPO 0;
+  |HAZ mayor;
+  |SI #0Campo = "N";
+      |PARA x = 3;  |SI x [ 22;  |HACIENDO x = x + 1;
+            |CAMPO_MODIFICA #0x,1,"S";
+      |SIGUE;
+      |CAMPO_MODIFICA #0#1,1,"N";
+      |CAMPO_MODIFICA #0#2,1,"N";
+      #0#1  = 0; |PINTA #0#1;
+      #0#2  = 0; |PINTA #0#2;
+  |SINO;
+      |PARA x = 3;  |SI x [ 22;  |HACIENDO x = x + 1;
+            #0x = 0;
+            |CAMPO_MODIFICA #0x,1,"N";
+      |SIGUE;
+      |CAMPO_MODIFICA #0#1,1,"S";
+      |CAMPO_MODIFICA #0#2,1,"S";
+  |FINSI;
+|FPRC;
+
+|PROCESO consulta; |TIPO 0;
+  |SI FSalida ! 9; |ACABA; |FINSI;
+  |SUB_EJECUTA "caconemp.run";
+  |ERROR;
+  #0Campo = r_emp;
+  |PTEC 802;
+|FPRC;
+
+|PROCESO deshas; |TIPO 0;
+  |SI #0#2 < #0#1;
+      |MENAV "      Error en Introduccion";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|| ------------------------------------------------------------------------
+|PROCESO nomodi;
+  |PARA x = Campo + 1;  |SI x [ 22;  |HACIENDO x = x + 1;
+        #0x = 0; |CAMPO_MODIFICA #0x,1,"N";
+  |SIGUE;
+|FPRC;
+
+|PROCESO nomodi1;
+  |PARA x = Campo + 1;  |SI x [ 22;  |HACIENDO x = x + 1;
+        #0x = 0; |CAMPO_MODIFICA #0x,1,"S";
+  |SIGUE;
+|FPRC;
+
+|PROCESO esbuena; || desde campo de empresas seleccion
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |HAZ nomodi1;
+  |SI #0Campo = 0; |HAZ nomodi;  |ACABA;  |FINSI;
+  |ABRE #30;
+  #30#2 = #0Campo;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #0Campo;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+|| **********************************************************************
+||                       CALCULOS DEL PROCESO
+|| **********************************************************************
+|PROCESO c_emp02;
+  |SELECT #2#1;
+  #1#1 = #30#2;
+  |LEE 001#1=;
+  |SI FSalida = 0;
+      |SELECT #1#1;
+      |ACABA;
+  |FINSI;
+  |SELECT #1#1;
+  guia = guia + 1;
+  #1#0 = guia;
+  #1#1 = #30#2;          || Numero Empresas
+  #1#2 = #30#1;          || Nombre
+  #1#3 = #30#2 + #0#23;  || Numero NUEVO segun defecto Pantalla
+  #1#4 = #0#24;          || Cambiar S/N
+  |SI #1#3 > 99999;
+      #1#3 = 00000; #1#4 = "N";
+  |FINSI;
+  |SI #1#3 < 1;
+      #1#3 = 00000; #1#4 = "N";
+  |FINSI;
+
+  |GRABA 020#1n;
+|FPRC;
+
+|| ---------- Seleccion DESDE / HASTA Empresa.
+|DEFBUCLE esdesde;
+ #30#1;
+ ;
+ #0#1,0;
+ #0#2,9;
+ e;
+ NULL, c_emp02;
+|FIN;
+
+|| ---------- Seleccion en parrilla.
+|PROCESO esunaauna;
+  |PARA xx = 3;  |SI xx [ 22;  |HACIENDO xx = xx + 1;
+        |SI #0xx = 0;  |SAL;  |FINSI;
+        #30#2 = #0xx;
+        #30#3 = 0;
+        |LEE 011#30];
+        |SI FSalida = 0; |Y #30#2 = #0xx;
+            |HAZ c_emp02;
+        |FINSI;
+  |SIGUE;
+|FPRC;
+
+|| *********************************************************************
+||                              PROGRAMA
+|| *********************************************************************
+|PROCESO tipo3; |TIPO 3;
+
+  |ABRE #1;
+  |CIERRA #1;
+  |DELINDEX #1;
+
+  guia = 0;
+  |ABRE #1;
+  |SI #0#0 = "S";
+      |BUCLE esdesde;
+  |SINO;
+      |ABRE #30;
+      |HAZ esunaauna;
+      |CIERRA #30;
+  |FINSI;
+  |CIERRA #1;
+
+  |SI guia = 0;
+      |MENAV "    No se encontraron Empresas! ";
+      |ACABA;
+  |FINSI;
+
+  |SUB_EJECUTA "cmvemp02";
+|FPRC;

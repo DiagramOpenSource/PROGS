@@ -1,0 +1,205 @@
+|FICHEROS;
+     pdfdatos #0;
+     pdfdocca;
+     pdfdocli;
+     pdfcopia@ #100;
+|FIN;
+
+|VARIABLES;
+     aPath = "";
+     aFichero = "";
+     aFicheroLista = "documentos.txt";
+     nCanal = 0;
+     nCanal2 = 0;
+     nCaracter = 0;
+     aCaracter = "";
+     nCampo = 0;
+     aCampo = "";
+     nBusca = 0;
+     aLinea = "";
+     nLinea = 0;
+     aContrato = "";
+
+     {-1}menu = "";
+     menu1 = "2400";
+     menu2 = "2";
+     menu3 = "Elegir Opcion:";
+     menu4 = "AC";
+     menu5 = "Editar";
+     menu6 = "Actualizar";
+     aAlfa1 = "";
+     nOpcion = 0;
+     aRutaDef = "";
+     aRutaFich = "";
+     swRepetido = 0;
+
+     aBase = "";
+     aDirPDF = "";
+     aDirPatron = "";
+     E_inf = "";
+     E_sup = "";
+     aPassword = "";
+     swNoSigas = 0;
+|FIN;
+
+|PROCESO Repetidos;
+     swRepetido = 1;
+|FPRC;
+
+|DEFBUCLE Repetidos;
+     #100#1002;
+     2;
+     #pdfdocca#0, 001, aCampo;
+     #pdfdocca#0, 999, aCampo;
+     ;
+     NULL, Repetidos;
+|FIN;
+
+|PROCESO BuscaCampo;
+     aCampo = "";
+     |PARA nCaracter = 1; |SI nCaracter [ 50; |HACIENDO nCaracter = nCaracter + 1;
+          nBusca = (nCaracter * 100) + 1;
+          aCaracter = aLinea % nBusca;
+          |QBF aCaracter;
+          |SI aCaracter = "";
+               |SAL;
+          |SINO;
+               aCampo = aCampo + aCaracter;
+          |FINSI;
+     |SIGUE;
+     |QBF aCampo;
+     #pdfdocli#0 = #pdfdocca#0;
+     #pdfdocli#1 = nCampo;
+     #pdfdocli#2 = aCampo;
+     swRepetido = 0;
+     aCampo = aCampo + "                                        ";
+     aCampo = aCampo % 140;
+     |BUCLE Repetidos;
+     |SI swRepetido = 0;
+          |GRABA 020#pdfdocli.n;
+     |FINSI;
+|FPRC;
+
+|PROCESO Actualiza;
+     #pdfdocca#0 = aContrato;
+     |SI FSalida ! 0;
+          |GRABA 020#pdfdocca.n;
+     |FINSI;
+
+     |DBASS aPath;
+     |QBF aPath;
+     aPath = aPath + "basica/pdf/" + aContrato;
+     aPath = aPath - ".pdf";
+     aPath = aPath + "campos.txt";
+
+     |XABRE "U", aPath, nCanal2;
+     |SI FSalida ] 0;
+          |PARA nCampo = 1; |SI FSalida ] 0; |HACIENDO nCampo = nCampo + 1;
+               |XLEE nCanal2, 50, aLinea;
+               |QBF aLinea;
+               |SI aLinea = ""; |SAL;   |FINSI;
+               |HAZ BuscaCampo;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO BorraLineas;
+     |BORRA 020#pdfdocli.a;
+|FPRC;
+
+|DEFBUCLE BorraLineas;
+     #pdfdocli#1;
+     ;
+     #pdfdocca#0,   1;
+     #pdfdocca#0, 999;
+     ;
+     NULL, BorraLineas;
+|FINSI;
+
+|PROCESO BorraAntiguos;
+     #pdfdocca#0 = aContrato;
+     |BUCLE BorraLineas;
+     |LEE 101#pdfdocca.=
+     ||SI FSalida = 0;
+          ||BORRA 020#pdfdocca.a;
+     ||FINSI;
+|FPRC;
+
+|PROCESO BuscaContratos;
+     |DBASS aPath;
+     |QBF aPath;
+     aPath = aPath + "basica/pdf/" + aFicheroLista;
+
+     |XABRE "U", aPath, nCanal;
+     |SI FSalida ] 0;
+          |PARA nLinea = 1; |SI; |HACIENDO nLinea = nLinea + 1;
+               |XLEE nCanal, 50, aContrato;
+               |QBF aContrato;
+               |SI aContrato = ""; |SAL;   |FINSI;
+               |HAZ BorraAntiguos;
+               |HAZ Actualiza;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO CargaCopia;
+     |DBASE aRutaDef;
+     |DBASE aRutaFich;
+     |QBF aRutaDef;
+     |QBF aRutaFich;
+     aRutaDef = aRutaDef + "def/pdfdocli.mas";
+     |CARGA_DEF aRutaDef, pdfcopia@;
+     |SI FSalida ! 0;
+          |MENAV "    Error en CARGADEF: pdfdocli";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |SI PARAMETRO ! "";
+          |DBASS aBase;
+          |QBF aBase;
+          aDirPDF = aBase + "basica/pdf/";
+          |MKDIR aDirPDF;
+          aDirPatron = aBase + "basica/patrones/";
+          aFichero   = aDirPatron + "zdocspdf.tgz";
+          |DESCOMPRIME aFichero;
+
+          aFichero   = aDirPatron + "zdocspdf.tar";
+          |DETAR aFichero, aDirPDF;
+
+          |FBORRA aFichero;
+     |SINO;
+          |MANTE #0;
+     |FINSI;
+|FPRO;
+
+
+|CALCULO CargaDatos; |TIPO 3;
+     |SI #0#0 = "N"; |ACABA; |FINSI;
+     |HAZ Password;
+     |SI swNoSigas = 1; |ACABA; |FINSI;
+     |ABRE #pdfdocca;
+     |ABRE #pdfdocli;
+     |HAZ CargaCopia;
+     |HAZ BuscaContratos;
+     |DESCARGA_DEF #pdfcopia@;
+     |CIERRA #pdfdocca;
+     |CIERRA #pdfdocli;
+|FCAL;
+
+|CALCULO Nopregunta; |TIPO 12;
+|FCAL;
+
+|PROCESO Password;
+     swNoSigas = 0;
+     |CUADRO 0501 2380;
+     |BLANCO 0602 2279;
+     |PINTA 1320, "Introduzca Password : ";
+     E_inf = "";
+     E_sup = "20";
+     aPassword = 1342 ? -1;
+     |SI aPassword ! "<MYPASWD>     ";
+          |MENAV "     Permiso denegado.";
+          swNoSigas = 1;
+     |FINSI;
+|FPRC;

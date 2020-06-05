@@ -1,0 +1,479 @@
+|FICHEROS;
+   carecnif #0;
+   caclipro #1;
+   camaniva #2;
+
+   caw00025 #25,MANTE;
+
+   canempre #30;
+   caselem1 #998;
+|FIN;
+
+|VARIABLES;
+   aParam     = "";
+   aPath      = "";
+   aAlfa      = "";
+   aAlfa1     = "";
+   aAlfa2     = "";
+   c          = 0;
+   swnif      = 0;
+   &trabajo    = "";
+   &eaVarDni  = "";
+   &enCalcCif = 0;
+   &enMNif    = 0;
+   &eErrorNif = 0;
+   &eaError   = "";
+   informe    = "";
+   inform1    = "carecnif";
+   inform2    = "carecni1";
+   &enSwLinea   = 0;
+   aFichero     = "";
+   aMas         = "";
+   aFic         = "";
+   nSwHay       = 0;
+
+   nSw          = 0;
+   nOpera       = 0;
+   aNIF         = "";
+   aNombre      = "";
+   nHandle      = 0;
+   nTecla       = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|CALCULO QueOpcion; |TIPO 0;
+  |SI #0#1 = "S";
+      |C_M #0#2, 1, "S";
+  |SINO;
+      |C_M #0#2, 1, "N";
+  |FINSI;
+|FCAL;
+
+|PROCESO letranif;
+     eErrorNif = 0;
+     enMNif    = 1;
+     enCalcCif = 1;
+     eaVarDni  = trabajo;
+     |HAZ CalculoDNI;
+     trabajo = eaVarDni; |QBF trabajo;
+     enCalcCif = 0;
+     |SI eErrorNif = 1; swnif = 1; |FINSI;
+|FPRC;
+
+|| *************************************************************************
+|PROCESO GrabaAuxiliar;
+ |SI aNIF = ""; |ACABA; |FINSI;
+
+ #25#0 = aNIF;
+ |LEE 001#25=;
+ |SI FSalida ! 0;
+     #25#0 = aNIF;
+     #25#1 = trabajo;
+     #25#2 = aNombre;
+     |SI #0#2 = "R"; #25#3 = "RESPETA"; |FINSI;
+     |SI #0#2 = "C"; #25#3 = "CAMBIAR"; |FINSI;
+     #25#4 = "N";
+     |SI aNIF = trabajo; #25#1 = ""; |FINSI;
+     |GRABA 020#25n;
+ |FINSI;
+ nSwHay = 1;
+|FPRC;
+
+|PROCESO LeeAuxiliar;
+ swnif = 1;
+ #25#0 = aNIF;
+ |LEE 001#25=;
+ |SI FSalida = 0;
+     |SI #25#3 = "CAMBIAR";
+         swnif   = 0;
+         trabajo = #25#1;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+|| ------------ MIro si tiene facturas este Clientes / Proveedores
+|PROCESO LeoLasFacturas;
+   nSw = 1;
+   |ERROR10;
+|FPRC;
+
+|DEFBUCLE LeoLasFacturas;
+   #2#4;
+   ;
+   #1#10, "01.01.0000", 01, 0000000001;
+   #1#10, "31.12.2999", 99, 9999999999;
+   e;
+   NULL, LeoLasFacturas;
+|FIN;
+
+|| ------------ Clientes / Proveedores
+|PROCESO clipro;
+
+   swnif      = 0;
+   |SI #0#1 = "S";
+       |SI nOpera = 0;
+
+           |SI #0#3 = "F";
+               nSw = 0; |BUCLE LeoLasFacturas;
+               |SI nSw = 0; |LIBERA #1; |ACABA; |FINSI;
+           |FINSI;
+
+           aNIF    = #1#9; |QBF aNIF;
+           aNombre = #1#1;
+           trabajo = #1#9; |QBF trabajo;
+           |HAZ letranif;
+           |SI swnif = 0;
+               |SI aNIF ! trabajo; swnif = 2; |FINSI;
+           |FINSI;
+
+           |SI swnif ! 0;
+               |HAZ GrabaAuxiliar;
+           |FINSI;
+       |FINSI;
+
+       |SI nOpera = 1;
+           aAlfa1  = #1#9; |QBF aAlfa1;
+           trabajo = #1#9;
+           aNIF    = #1#9;
+           |HAZ LeeAuxiliar;
+           |SI swnif = 0;
+               #1#9 = trabajo;
+               |GRABA 020#1a;
+               |HAZ pinta;
+           |FINSI;
+           aAlfa2 = trabajo; |QBF aAlfa2;
+           |SI aParam = "";
+               |SI aAlfa2 ! aAlfa1; |O eErrorNif = 1;
+                   |SI aAlfa2 ! aAlfa1; eaError = "Nif anterior: " + aAlfa1; |FINSI;
+                   |SI eErrorNif = 1;   eaError = "ERROR NIF/CIF INCORRECTO"; |FINSI;
+                   enSwLinea = 1; |PRINT;
+               |FINSI;
+           |FINSI;
+       |FINSI;
+
+   |SINO;
+
+       |SI #0#3 = "F";
+           nSw = 0; |BUCLE LeoLasFacturas;
+           |SI nSw = 0; |LIBERA #1; |ACABA; |FINSI;
+       |FINSI;
+
+       aAlfa1  = #1#9; |QBF aAlfa1;
+       trabajo = #1#9;
+       |HAZ letranif;
+       |SI swnif = 0;
+           |SI #0#1 = "R";
+               #1#9 = trabajo;
+               |GRABA 020#1a;
+           |FINSI;
+           |HAZ pinta;
+       |FINSI;
+
+       aAlfa2 = trabajo; |QBF aAlfa2;
+       |SI aParam = "";
+           |SI aAlfa2 ! aAlfa1; |O eErrorNif = 1;
+               |SI aAlfa2 ! aAlfa1; eaError = "Nif anterior: " + aAlfa1; |FINSI;
+               |SI eErrorNif = 1;   eaError = "ERROR NIF/CIF INCORRECTO"; |FINSI;
+               enSwLinea = 1; |PRINT;
+               nSwHay = 1;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE caclipro;
+   #1#1;
+   ;
+   " ", "            ";
+   "z", "zzzzzzzzzzzz";
+   be;
+   NULL, clipro;
+|FIN;
+|| ******************************************************************
+|| ------------ IVA/IRPF
+
+|PROCESO iva;
+   swnif = 0;
+   |SI #0#1 = "S";
+       |SI nOpera = 0;
+           aNIF    = #2#14; |QBF aNIF;
+           aNombre = #2#13;
+           trabajo = #2#14; |QBF trabajo;
+           |HAZ letranif;
+           |SI swnif = 0;
+               |SI aNIF ! trabajo; swnif = 2; |FINSI;
+           |FINSI;
+           |SI swnif ! 0;
+               |HAZ GrabaAuxiliar;
+           |FINSI;
+       |FINSI;
+
+       |SI nOpera = 1;
+           aNIF    = #2#14;
+           aAlfa1  = #2#14; |QBF aAlfa1;
+           trabajo = #2#14;
+           |HAZ LeeAuxiliar;
+           |SI swnif = 0;
+               #2#14 = trabajo;
+               |GRABA 020#2a;
+               |HAZ pinta;
+           |FINSI;
+           aAlfa2 = trabajo; |QBF aAlfa2;
+           |SI aParam = "";
+               |SI aAlfa2 ! aAlfa1; |O eErrorNif = 1;
+                   |SI aAlfa2 ! aAlfa1; eaError = "Nif anterior: " + aAlfa1; |FINSI;
+                   |SI eErrorNif = 1;   eaError = "ERROR NIF/CIF INCORRECTO"; |FINSI;
+                   enSwLinea = 2; |PRINT;
+               |FINSI;
+           |FINSI;
+      |FINSI;
+
+   |SINO;
+
+       aAlfa1  = #2#14; |QBF aAlfa1;
+       trabajo = #2#14;
+       |HAZ letranif;
+       |SI eErrorNif = 0;
+           |SI #0#1 = "R";
+               #2#14 = trabajo;
+               |GRABA 020#2a;
+           |FINSI;
+           |HAZ pinta;
+       |FINSI;
+
+       aAlfa2 = trabajo; |QBF aAlfa2;
+       |SI aParam = "";
+           |SI aAlfa2 ! aAlfa1; |O eErrorNif = 1;
+               |SI aAlfa2 ! aAlfa1; eaError = "Nif anterior: " + aAlfa1; |FINSI;
+               |SI eErrorNif = 1;   eaError = "ERROR NIF/CIF INCORRECTO"; |FINSI;
+               enSwLinea = 2; |PRINT;
+           |FINSI;
+       |FINSI;
+
+   |FINSI;
+   |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE camaniva;
+   #2#1;
+   ;
+   00, 0000000001;
+   99, 9999999999;
+   be;
+   NULL, iva;
+|FIN;
+
+|| ******************************************************************
+|PROCESO pinta;
+   c = c + 1;
+   |PINTA 2216, c;
+|FPRC;
+
+|| ******************************************************************
+|PROCESO Recalculo;
+       informe = inform1;
+       enSwLinea = 0;
+       |IMPRE 0;
+       |SI FSalida ! 0; |ACABA; |FINSI;
+       |INFOR informe;
+       |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+       nOpera = 1;
+       |ABRE #25;
+       |PINTA 2216, "         ";
+       |PINTA 2116, "Clientes y Proveedores             ";  c = 0; |BUCLE caclipro;
+
+       |PINTA 2216, "         ";
+       |PINTA 2116, "Registro de IVA e IRPF             ";  c = 0; |BUCLE camaniva;
+       |CIERRA #25;
+
+       |SI enSwLinea ! 0; |Y aParam = "";
+           |PIEINF;
+      |FINSI;
+      |FININF;
+      |FINIMP;
+|FPRC;
+
+|PROCESO Tipo11;  |TIPO 11;
+     nTecla = FSalida;
+     |LEE 101#25=;
+     |SI FSalida ! 0;  |LIBERA #25; |ACABA;  |FINSI;
+
+     |SI nTecla = 10;
+         #25#3 = "RESPETA";
+         #25#4 = "N";
+         |PINTA #25#3;
+     |FINSI;
+
+     |SI nTecla = 11;
+         #25#3 = "CAMBIAR";  |PINTA #25#3;
+
+         |ET Campo1;
+             |ENCAMPO #1#25;
+             |SI FSalida = 2;  |VETE Campo1;  |FINSI;
+
+         |ET Campo4;
+             |ENCAMPO #4#25;
+             |SI FSalida = 2;  |VETE Campo1;  |FINSI;
+
+     |FINSI;
+
+     |GRABA 020#25a;
+     |LIBERA #25;
+|FPRC;
+
+|PROCESO Baja0;
+     #25#0 = "";
+|FPRC;
+
+|PROCESO Alta0;
+     #25#0 = "zzzzzzzzzzzz";
+|FPRC;
+
+|PROCESO HazTodo;
+
+   |DELINDEX #25;
+
+   enSwLinea = 0;
+   || |SI #0#1 ! "S";
+       |ATRI N; |CUADRO 1804 2356;
+       |ATRI R; |PINTA 1906, "Empresa: ";      |ATRI 0;
+       |PINTA 1915, #30#2; |PINTA 2006, #30#1; |ATRI 0;
+   || |FINSI;
+
+   || ... Busca Nif erroneos
+
+   nOpera = 0;
+   nSwHay = 0;
+
+   |ABRE #25;
+   |PINTA 2216, "         ";
+   |PINTA 2116, "Clientes y Proveedores             ";  c = 0; |BUCLE caclipro;
+
+   |PINTA 2216, "         ";
+   |PINTA 2116, "Registro de IVA e IRPF             ";  c = 0; |BUCLE camaniva;
+   |CIERRA #25;
+
+   |SI #0#1 = "S";
+       |PUSHV 0501 2380;
+       |CLS;
+       |PINPA #0#25;
+       |ATRI R; |PINTA 0502, "Empresa: ";      |ATRI 0;
+       |PINTA 0511, #30#2; |PINTA 0517, #30#1; |ATRI 0;
+   |FINSI;
+
+   |SI nSwHay = 1;
+       |SI #0#1 = "S";
+           |ENTLINEAL #1#25, -1, 4, 22, 0, Baja0, Alta0;
+           |CONFI "0000SRealizar el Cambio de NIF";
+           |SI FSalida = 0;
+               |POPV;
+               |HAZ Recalculo;
+           |SINO;
+               |POPV;
+           |FINSI;
+       |SINO;
+           |PIEINF;
+       |FINSI;
+   |SINO;
+       |SI aParam = "";
+           |MENAV "0000 No hay registros Erroneos.";
+       |FINSI;
+       |SI #0#1 = "S"; |POPV; |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO tipo_3; |TIPO 3;
+
+   |SI #0#0 ! "SI"; |ACABA; |FINSI;
+
+   |SI aParam = ""; |Y #0#1 ! "S";
+       |IMPRE 0;
+       |SI FSalida ! 0; |ACABA; |FINSI;
+       informe = inform1;
+       |SI #0#1 = "L"; informe = inform2; |FINSI;
+       |INFOR informe;
+       |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+   |FINSI;
+
+   |SI #48#27 = "S";
+       |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+
+   |SI aParam = ""; |Y #0#1 ! "S";
+       |FININF;
+       |FINIMP;
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+
+     aParam = PARAMETRO; |QBF aParam;
+     aFichero = ("ni" + Usuario + "zzzzzzzz") % 108;
+     |NOME_DAT #25 aFichero;
+     |ABRE #25;  |CIERRA #25;
+
+     |SI aParam ! "";
+         |PINPA #0#0;
+         #0#0 = "SI";
+         |PINDA #0#0;
+         aAlfa1 = aParam % 105;
+         aAlfa2 = aParam % 601;
+         cod1 = aAlfa1;
+         cod2 = aAlfa2;
+         emEmp = 1;  || Sin mensaje
+         |HAZ leelo;
+         |SI swerror ! 0;  |ACABA;   |FINSI;
+
+         |DFICB aPath; |QBF aPath
+         dirfich0 = aPath + aParam + "/";
+
+         |PATH_DAT #1 dirfich0;
+         |PATH_DAT #2 dirfich0;
+         |PATH_DAT #25 dirfich0;
+
+         |HAZ HazTodo;
+     |SINO;
+         |MANTE #0;
+     |FINSI;
+
+     |ABRE #25;  |CIERRA #25;  |DELINDEX #25;
+|FPRO;
+
+
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #25 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

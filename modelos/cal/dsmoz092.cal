@@ -1,0 +1,222 @@
+|FICHEROS;
+     dsmoz092 #0;
+     dsmom100 #100;
+
+     sodacue@ #220;   || Lineas Contables
+     :/contagen/def/cacuenta #303;
+     :/contagen/def/canempre #330;
+|FIN;
+
+|VARIABLES;
+     nEjer         = 0;
+     aPath         = "";
+     aPathImpuesto = "";
+     nInkey        = 0;
+     aBase         = "";
+     aLosDefs      = "";
+     aElProgr      = "";
+
+     nDEmpresa     = 0;
+     nHEmpresa     = 0;
+     aEmpresa      = "";
+     aAlfa1        = "";
+     aAlfa2        = "";
+     nCanal        = 0;
+     aMas          = "";
+     aQueQuiero    = "";
+     aNumCampos    = "";
+     nNumCampos    = 0;
+     nMiro220      = 0;
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+|| /////////////////////// PROCESOS ENTRADA POR PANTALLA \\\\\\\\\\\\\\\\\\\\
+|| ****************************************************************
+|RUTINA infA2;
+   #330#2 = nDEmpresa;
+   #330#3 = 0;
+|FRUT;
+
+|RUTINA supA2;
+   #330#2 = nHEmpresa;
+   #330#3 = 9;
+|FRUT;
+
+|CALCULO LeeEmpresa; |TIPO 0;
+  nInkey = FSalida;
+
+  |SI nInkey = 10;
+     nDEmpresa = 0;
+     nHEmpresa = 99999;
+     |ABRE #330;
+     |CONSULTA_F_CLAVE #1#330,infA2,supA2;
+     #0#1 = #330#2; |PINTA #0#1;
+     #0#2 = #330#3; |PINTA #0#2;
+     |CIERRA #330;
+     |PTEC 802;
+     |ACABA;
+  |FINSI;
+
+  |ABRE #330;
+  #330#2 = #0#1;
+  #330#3 = 0;
+  |LEE 011#330];
+  |SI FSalida ! 0;  |O #330#2 ! #0#1;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |SINO;
+      #0#3 = #330#1; |PINTA #0#3;
+  |FINSI;
+  |CIERRA #330;
+  enPlan = 2008;
+  |SI #330#26 < 80;
+      nEjer = #330#26 + 2000;
+  |SINO;
+      nEjer = #330#26 + 1900;
+  |FINSI;
+  |SI nEjer < 2008; enPlan = 1990; |FINSI;
+|FCAL;
+
+|CALCULO LeeEmpresaP; |TIPO 0;
+  nInkey = FSalida;
+  |SI nInkey = 2; |ACABA; |FINSI;
+
+  |SI nInkey = 10;
+     nDEmpresa = #0#1;
+     nHEmpresa = #0#1;
+     |ABRE #330;
+     |CONSULTA_F_CLAVE #1#330,infA2,supA2;
+     #0#2 = #330#3; |PINTA #0#2;
+     |CIERRA #330;
+  |FINSI;
+
+  |ABRE #330;
+  #330#2 = #0#1;
+  #330#3 = #0#2;
+  |LEE 011#330=;
+  |SI FSalida ! 0;
+      |MENAV "     NO Existe Periodo en la Empresa Contable";
+      |ERROR;
+  |SINO;
+      #0#3 = #330#1; |PINTA #0#3;
+  |FINSI;
+  |CIERRA #330;
+|FCAL;
+
+|PROCESO Actsodacuen;
+ #220#0 = #303#0;
+ |SI nMiro220 = 1; #sodacue@#2 = enPlan; |FINSI;
+ |LEE 001#220=;
+ |SI FSalida = 0;
+     #220#1 = #303#2;
+     |GRABA 020#220a;
+ |SINO;
+     |SI nMiro220 = 1; #sodacue@#2 = enPlan; |FINSI;
+     #220#0 = #303#0;
+     #220#1 = #303#2;
+     |GRABA 020#220n;
+ |FINSI;
+
+ |PINTA 2009, "Cuenta: ";
+ |PINTA 2017, #220#0;
+ |PINTA 2030, #220#1;
+|FPRC;
+
+|DEFBUCLE Actsodacuen;
+ #303#1;
+ 1;
+ "            ", #0#4;
+ "zzzzzzzzzzzz", #0#5;
+ ;
+ NULL, Actsodacuen;
+|FIN;
+
+|| .................................... Imprimir
+|PROCESO Tipo3;  |TIPO 3;
+
+     |CUADRO 1907 2170;
+
+     |PATH_DAT #220 aPathImpuesto;
+
+     enEmpresa = #0#1;
+     enPeriodo = #0#2;
+     |HAZ CreaPath;
+     |PATH_DAT #303 aPath;
+
+     |ABRE #220;
+     |BUCLE Actsodacuen;
+     |CIERRA #220;
+|FPRC;
+
+|PROCESO CreaPath;
+  aAlfa1 = enEmpresa; |QBF aAlfa1; aAlfa1 = ("00000" + aAlfa1) % -105;
+  aAlfa2 = enPeriodo; |QBF aAlfa2; aAlfa2 = ("0"     + aAlfa2) % -101;
+  aEmpresa = aAlfa1 + aAlfa2;
+  aPath = aPathConta + aEmpresa + "/";
+|FPRC;
+
+|PROGRAMA;
+
+  |HAZ BuscaAplicacion;
+  |SI aPathImpuesto = "";
+      |MENAV "    No instalado el Impuesto";
+      |ACABA;
+  |FINSI;
+  |SI aPathConta = "";
+      |MENAV "    No instalada la Contabilidad";
+      |ACABA;
+  |FINSI;
+
+  |CLS;
+  |CABEZA "Actualizar Titulo de Cuentas en Impuesto";
+
+  |ABRE #100;
+  |LEE 040#100p;
+  |CIERRA #100;
+
+  |DBASS aMas;
+  aMas = aMas + "contasoc/def/sodacuen";
+  |CARGA_DEF aMas, sodacue@
+  |SI FSalida ! 0;
+      |MENAV "    Error al cargar sodacuen.";
+      |ACABA;
+  |FINSI;
+  aQueQuiero = "|NC";
+  aNumCampos = #sodacue@#aQueQuiero#;
+  nNumCampos = aNumCampos;
+  nNumCampos = nNumCampos - 1;
+  |SI nNumCampos = 2; nMiro220 = 1; |FINSI;
+
+  #0#1  = #100#1;
+  #0#2  = #100#2;
+  #0#3  = #100#3;
+  |PINPA #0#0;
+  |PINDA #0#0;
+  |ENDATOS #1#0;
+
+  |DESCARGA_DEF #sodacue@;
+|FPRO;
+
+|PROCESO BuscaAplicacion;
+ aPathImpuesto = "";
+ aPathConta    = "";
+
+ |DBASS aBase; |QBT aBase;
+ aLosDefs = aBase + "contasoc/def/";
+ aElProgr = aLosDefs + "isacceso.mas";
+ |XABRE "E", aElProgr, nCanal;
+ |SI FSalida ] 0;
+     aPathImpuesto = aBase + "contasoc/fich/";
+ |FINSI;
+ |XCIERRA nCanal;
+
+ aLosDefs = aBase + "contagen/def/";
+ aElProgr = aLosDefs + "canempre.mas";
+ |XABRE "E", aElProgr, nCanal;
+ |SI FSalida ] 0;
+     aPathConta = aBase + "contagen/fich/";
+ |FINSI;
+ |XCIERRA nCanal;
+|FPRC;

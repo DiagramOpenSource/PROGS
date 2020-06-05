@@ -1,0 +1,292 @@
+|FICHEROS;
+     labparma #0;
+     labparhi;
+     silcon18;
+     || temporal@ #100;
+|FIN;
+
+|VARIABLES;
+     aParam = "";
+     aLimiteInf = "";
+     aLimiteSup = "";
+
+     {-1}menu = "";
+     menu1 = "2400";
+     menu2 = "1";
+     menu3 = "Elegir Opcion:";
+     menu4 = "CA";
+     menu5 = "Continuar";
+     menu6 = "Cancelar";
+     aAlfa = "";
+     aAlfa0 = "";
+     aAlfa1 = "";
+     aAlfa2 = "";
+     nMensaje = 0;
+     nOpcion = 0;
+     swHayAlgo = 0;
+     swHanTocado = 0;
+     &eaVengoDe = "";
+     &nEmpExt = 0;
+     &nTraExt = 0;
+     &fFecExt = @;
+|FIN;
+
+|PROCESO Graba;
+     |SI nOpcion = 1;
+          #labparma#6 = "-";
+     |SINO;
+          #labparma#6 = "*";
+     |FINSI;
+     |SI #labparma#6 = "-";
+          #labparma#7 = "";
+          #labparma#9 = "";
+     |FINSI;
+     #labparma#8 = " ";
+     |GRABA 020#labparma.a;
+     |LIBERA #labparma;
+
+     #labparhi#1 = #labparma#1;    || empresa
+     #labparhi#2 = #labparma#2;    || trabajador
+     #labparhi#15 = #labparma#3;    || fecha baja
+     |LEE 020#labparhi.=;
+     |SI FSalida = 0;
+          #labparhi#0 = #labparma#6;
+          |GRABA 020#labparhi.a;
+     |FINSI;
+     |LIBERA #labparhi;
+|FPRC;
+
+|DEFBUCLE Graba;
+     #labparma#2;
+     8;
+     "*", 000001, "*";
+     "*", 999999, "*";
+     be;
+     NULL, Graba;
+|FIN;
+
+|PROCESO Actualiza;
+     ||MENU menu;
+     |CONFI "     Desea dejar los movimientos seleccionados como PENDIENTES?";
+     |SI FSalida = 0;
+          nOpcion = 1;
+     |FINSI;
+     |BUCLE Graba;
+|FPRC;
+
+|PROCESO Borra;
+     |SI nOpcion = 0;
+          #labparhi#1 = #labparma#1;    || empresa
+          #labparhi#2 = #labparma#2;    || trabajador
+          #labparhi#15 = #labparma#3;    || fecha baja
+          |LEE 020#labparhi.=;
+          |SI FSalida = 0;
+               |SELECT #2#silcon18;
+               #silcon18#0 = #labparma#1;    || empresa
+               #silcon18#1 = #labparma#2;    || trabajador
+               #silcon18#7 = #labparma#3;    || fecha baja
+               #silcon18#3 = "B";            || accion: baja
+               |LEE 101#silcon18.=;
+               |SI FSalida = 0;
+                    |SI #silcon18#20 = "*";
+                         nMensaje = 4;
+                         |HAZ mensajes;
+                         nMensaje = 1;
+                         |HAZ mensajes;
+                         nMensaje = 2;
+                         |HAZ mensajes;
+                    |FINSI;
+                    |SI #silcon18#20 = "-";
+                         nMensaje = 4;
+                         |HAZ mensajes;
+                         nMensaje = 3;
+                         |HAZ mensajes;
+                         |BORRA 101#silcon18.a;
+                         |BORRA 101#labparhi.a;
+                         |BORRA 101#labparma.a;
+                    |FINSI;
+               |SINO;
+                    || no existia FDI, borro Delta
+                    |BORRA 101#labparhi.a;
+                    |BORRA 101#labparma.a;
+               |FINSI;
+          |SINO;
+               nMensaje = 4;
+               |HAZ mensajes;
+               |MENAV "    Error: no se ha encontrado el parte asociado, se borrara la linea";
+               |BORRA 101#labparma.a;
+          |FINSI;
+          |LIBERA #labparhi;
+          |LIBERA #silcon18;
+     |SINO;
+          #labparma#8 = " ";
+          |GRABA 020#labparma.a;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Borra;
+     #labparma#2;
+     8;
+     "-", 000001, "*";
+     "-", 999999, "*";
+     be;
+     NULL, Borra;
+|FIN;
+
+|PROCESO ElBorrador;
+     |SI swHanTocado > 0;
+          aAlfa = "     Esta seguro que desea eliminar los registros pendientes ";
+          aAlfa = aAlfa + "seleccionados?"
+          |CONFI aAlfa;
+          nOpcion = FSalida;
+          |BUCLE Borra;
+     |FINSI;
+|FPRC;
+
+|PROCESO mensajes;
+     |SI nMensaje = 1;
+          aAlfa = "    ATENCION: Existe un movimiento FDI ENVIADO asociado ";
+          aAlfa = aAlfa + "a este parte. Para continuar debera dejarlo PENDIENTE";
+          |MENAV aAlfa;
+     |FINSI;
+     |SI nMensaje = 2;
+          aAlfa = "    Consulte Movimientos FDI Pendientes de envio. ";
+          aAlfa0 = #silcon18#2; aAlfa0 = "000000" + aAlfa0; aAlfa0 = aAlfa0 % -106;
+          aAlfa1 = #silcon18#0; aAlfa1 = "00000" + aAlfa1; aAlfa1 = aAlfa1 % -105;
+          aAlfa2 = #silcon18#1; aAlfa2 = "00000" + aAlfa2; aAlfa2 = aAlfa2 % -105;
+          aAlfa1 = " Linea " + aAlfa0  + ". Trabajador "+ aAlfa1 + "." + aAlfa2;
+          aAlfa = aAlfa + aAlfa1;
+          |MENAV aAlfa;
+     |FINSI;
+     |SI nMensaje = 3;
+          aAlfa = "    ATENCION: Existe un movimiento FDI PENDIENTE asociado ";
+          aAlfa = aAlfa + "a este parte que sera tambien eliminado.";
+          |MENAV aAlfa;
+     |FINSI;
+     |SI nMensaje = 4;
+          aAlfa0 = #labparma#0; aAlfa0 = "000000" + aAlfa0; aAlfa0 = aAlfa0 % -106;
+          aAlfa1 = #labparma#1; aAlfa1 = "00000" + aAlfa1; aAlfa1 = aAlfa1 % -105;
+          aAlfa2 = #labparma#2; aAlfa2 = "00000" + aAlfa2; aAlfa2 = aAlfa2 % -105;
+          aAlfa = "    Parte " + aAlfa0  + ". Trabajador "+ aAlfa1 + "." + aAlfa2;
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO marca; |TIPO 0;
+     |SI FSalida = 13; |Y eaVengoDe = ""; |Y aParam = "PEN";
+          nEmpExt = #labparma#1;
+          nTraExt = #labparma#2;
+          fFecExt = #labparma#3;
+          |SUB_EJECUTA "labparac;MODIF";
+     |FINSI;
+     |SI FSalida = 14; |Y eaVengoDe = ""; |Y aParam = "PEN";
+          |SI #labparma#8 = "*";
+               #labparma#8 = " ";
+               swHanTocado = swHanTocado - 1;
+          |SINO;
+               #labparma#8 = "*";
+               swHanTocado = swHanTocado + 1;
+          |FINSI;
+          |GRABA 020#labparma.a;
+     |FINSI;
+     |SI FSalida = 13; |O FSalida = 0;
+          |SI eaVengoDe = "labparem"; |O aParam ! "PEN";
+               swHanTocado = 1;
+               |SI #labparma#8 = "*";
+                    #labparma#8 = " ";
+               |SINO;
+                    #labparma#8 = "*";
+               |FINSI;
+               |GRABA 020#labparma.a;
+               |PINTA #labparma#8;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO superior;
+     #labparma#0 = 999999;
+     #labparma#6 = aLimiteSup;
+|FPRC;
+
+|PROCESO inferior;
+     #labparma#0 = 000001;
+     #labparma#6 = aLimiteInf;
+|FPRC;
+
+|PROCESO Busca;
+     swHayAlgo = 1;
+|FPRC;
+
+|DEFBUCLE Busca;
+     #labparma#2;
+     ;
+     aLimiteInf, 000001;
+     aLimiteSup, 999999;
+     be;
+     NULL, Busca;
+|FIN;
+
+|PROCESO Pantalla;
+     |SI aParam = "PEN";
+          aAlfa = "PARTES DE ACCIDENTE:REMESAS PENDIENTES";
+     |FINSI;
+     |SI aParam = "ENV";
+          aAlfa = " PARTES DE ACCIDENTE: REMESAS CREADAS ";
+     |FINSI;
+     |ATRI R;
+     |PINTA 0523, aAlfa;
+     |ATRI 0;
+     |SI eaVengoDe = ""; |Y aParam = "PEN";
+          |MENSA "     <F5> Consultar/Modificar este parte; <F6> Borrar el Parte";
+     |FINSI;
+     |SI eaVengoDe = ""; |Y aParam = "ENV";
+          |MENSA "     <F5> o <ENTER> selecciona movimientos para pasar a PENDIENTE";
+     |FINSI;
+     |SI eaVengoDe = "labparem";
+          |MENSA "     <F5> o <ENTER> para seleccionar movimientos";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aParam = PARAMETRO;
+     |QBF aParam;
+
+     aLimiteInf = " ";
+     aLimiteSup = "*";
+     swHanTocado = 0;
+
+     |SI aParam = "PEN";
+          aLimiteInf = "-";
+          aLimiteSup = "-";
+     |FINSI;
+     |SI aParam = "ENV";
+          aLimiteInf = "*";
+          aLimiteSup = "*";
+     |FINSI;
+
+     |CLS;
+     swHayAlgo = 0;
+     |BUCLE Busca;
+     |SI swHayAlgo ! 0;
+          |ABRE #silcon18;
+          |ABRE #labparhi;
+          |HAZ Pantalla;
+
+          |ENTLINEAL #2#labparma, -1, 4, 19, 1, inferior, superior;
+
+          |SI swHanTocado ! 0;
+               |SI eaVengoDe = ""; |Y aParam = "PEN";
+                    |HAZ ElBorrador;
+               |SINO;
+                    |SI eaVengoDe = "";
+                         |HAZ Actualiza;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+
+          |CIERRA #labparhi;
+          |CIERRA #silcon18;
+     |SINO;
+          |MENAV "    No se ha encontrado ningun parte";
+     |FINSI;
+|FPRO;

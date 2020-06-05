@@ -1,0 +1,1238 @@
+|FICHEROS;
+     lubrz001 #0;   ||Pantalla importacion
+     lubrm001 #1;   ||Fichero de control path
+     encoemp5 #2;   ||fichero de apuntes enlace gestion
+     camaasic #3;   ||Cabeceras Apuntes
+     camaasil #4;   ||lineas de Apuntes
+     caivarep #5;   ||iva Repercutido, Ventas
+
+     camandia #7;   ||diarios
+     calibros #8;   ||libros de iva
+     caconcep #9;   ||Conceptos
+     cacuenta #11;  ||Fichero de cuentas
+
+     caclipro #16;  ||clientes/proveedores GENERAL
+     imptmp1  #18;  ||temporal nuevos numeros de IVA
+     catradia #19;  ||temporal niveles superiores
+     impcafac #33;  ||Cambio N§ Factura en Cobros....
+     caivases #34;  ||contador de series
+
+     caivaasi #200; ||Control de asientos - iva
+
+     encoiva  #40;  || Temporal Ivas
+     lubrw001 #60;
+|FIN;
+
+|VARIABLES;
+
+  empresa1 = "";      ||de las cuentas, si es uno, solo las dare de alta
+  empresao = "";
+  periodoo = "";
+  empresa2 = "";
+
+  desdedi = 0;
+  hastadi = 99;
+  desdenum = 0;
+  hastanum = 999999999;
+  &librodesc = "";
+  librodescc = "";
+
+  &fichero    = "";
+  &dir_fich1  = "";
+  nNume1      = 0;
+  aAlfa1      = "";
+  alfa1       = "";
+  alfa2       = "";
+
+  asiento   = 0;
+  asient1   = 0;
+  fecha     = @;
+  fecha1    = @;
+  diario    = 0;
+  &feini   = @;
+  &fefin   = @;
+  nLibroR = 0;
+  nLibro  = 0;
+  aLibro  = "";
+  nNumFra = 0;
+  nNuevo  = 0;
+  &enDiario   = 0;
+  &enContador = 0;
+
+  nPeriodo    = 0;
+  nSal        = 0;
+  aFactuan    = "";
+  fichero1    = "";
+
+  aAlfa = "";
+
+  nDebe     = 0;
+  nHaber    = 0;
+
+  control   = 0;
+  control1  = 0;
+  asiehaber = 0;
+  asiedebe  = 0;
+  c_conh    = "";
+  d_conh    = 0;
+  c_cond    = "";
+  d_cond    = 0;
+
+
+  emprevi   = "";
+  c = 0;
+  i_factu = 0;
+  conta   = 0;
+  mensaje = "";
+  contab  = "";
+  nivel = 0;
+  mes = ""; ||0
+  fmes = "";
+  lon = "";
+  niv = 0;
+  lon1 = "";
+  ok = 0;
+  p1 = "";
+  cta = "";
+  mess = 0;
+  cuentaz = "";
+  i = 0;
+  pasar = 0;
+  total = 0;          ||si la variable total = 0 actualizare los importes
+  dia = 0;
+  docu = 0;
+  fech = @;
+  ini = 0;
+  mesac = 0;
+  fecalf = "";
+  mesfec = 0;
+  a = 0;
+  b = 0;
+  c1 = 0;
+  cuencli = "";
+  nivcli = 0;
+  nombre = "";
+  cif = "";
+  nombre1 = "";
+  opera = "";
+  importe = 0;
+  ren_fra = 0;
+  EsIva = 0;
+  Comod1 = "";
+  Comod2 = "";
+
+  &libro    = 0;
+  &orden    = 0;
+  &serie    = "";
+  &pesetas  = 0;
+  &cuenta   = "";
+  &digito   = 0;
+  &emision  = "";
+  &enSwPase = 0;
+  &nConcep  = 0;
+  &aDesc    = "";
+  nEstaLinea  = 0;
+  nNumLinea   = 0;
+  nEstadoCab  = 0;
+  nDiario = 0;
+  fFecha  = 0;
+  nDocum  = 0;
+  swPrimero   = 0;
+  &enBuscaDoc = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+
+|| ***************************************************************
+|CALCULO mira;|TIPO 0;        ||miro que exista el registro en el control
+     |ABRE #1;                ||de importacines
+     #1#0=#0#1;
+     |LEE 001#1=;
+     |SI FSalida = 0;
+          #0#2 = #1#1; |PINTA #0#2;
+          #0#4 = #1#2; |PINTA #0#4;
+          #0#5 = #1#3; |PINTA #0#5;
+          #0#11 = #1#16; |PINTA #0#11;
+          #0#12 = #1#17; |PINTA #0#12;
+     |SINO;
+          |MENAV "0000No Existe el Control Path Importaciones";
+          |ERROR;
+     |FINSI;
+     |CIERRA #1;
+|FCAL;
+
+
+|| ***************************************************************************
+|PROCESO cuentas;
+|ABRE #11;
+|QBF cuenta;
+#11#0 = cuenta;
+#11#1 = nivel;
+|LEE 001#11=;
+|SI FSalida = 0;
+     |LEE 101#11c;       ||Si la cuenta ya existe
+     nombre1 = #11#2;    ||nombre de la cuenta
+     |SI total = 0; ||si viene de un apunte
+          ini = dig1;
+          fecalf = fecha;          ||la actualizo
+          mes = fecalf % 402;
+          mesfec = mes;
+          |SI ini = 1;
+               mesac = mesfec;
+          |SINO;
+               mesac = (mesfec - ini) + 1;
+               |SI mesac [ 0;
+                    mesac = (13 - ini) + mesfec;
+               |FINSI;
+          |FINSI;
+          a = (mesac * 3) + 9;
+          b = a + 1;
+          c1 = a + 2;
+          |SI #4#8 = "D";
+               #11a = #11a + #4#9;
+               #11#51 = #11#51 + #4#9;
+          |SINO;
+               #11b = #11b + #4#9;
+               #11#52 = #11#52 + #4#9;
+          |FINSI;
+          #11c1 = #11a - #11b;
+          #11#53 = #11#51 - #11#52;
+          |GRABA 011#11a;
+          |LIBERA #11;
+     |FINSI;
+|SINO;         ||Si la cuenta no existe, busco la anterior para saber a que
+     ok =0;    ||Epigrafe ...... pertenece
+     lon = cuenta % 0;
+     |SI dig4 = lon; ok = 1; niv = 1; lon1 = dig4; |FINSI;
+     |SI dig5 = lon; ok = 1; niv = 2; lon1 = dig4; |FINSI;
+     |SI dig6 = lon; ok = 1; niv = 3; lon1 = dig5; |FINSI;
+     |SI dig7 = lon; ok = 1; niv = 4; lon1 = dig6; |FINSI;
+     |SI dig8 = lon; ok = 1; niv = 5; lon1 = dig7; |FINSI;
+     |SI dig9 = lon; ok = 1; niv = 6; lon1 = dig8; |FINSI;
+     |SI ok = 1;
+          |PARA ; |SI FSalida !0; |Y niv > 0; |HACIENDO ;
+               niv = niv - 1;||Le quito un nivel,para mirar la cuenta anterior
+               |SI niv = 1; lon1 = dig4; |FINSI;
+               |SI niv = 2; lon1 = dig5; |FINSI;
+               |SI niv = 3; lon1 = dig6; |FINSI;
+               |SI niv = 4; lon1 = dig7; |FINSI;
+               |SI niv = 5; lon1 = dig8; |FINSI;
+                    lon1 = "0000" + lon1;
+                    lon1 = lon1 % -102;
+                    lon1 = "1"+lon1;
+                    cta = cuenta % lon1;
+                    |QBF cta;
+               #11#0 = cta;
+               #11#1 = niv;
+               |LEE 001#11=;
+          |SIGUE;
+               |PARA i = 9; |SI i [ 53; |HACIENDO i = i + 1;
+                    #11i = 0;
+               |SIGUE;
+               |SI total = 0;
+                    |SI FSalida =0; |O niv = 1;
+                         ini = dig1;         ||Actualizo la cuenta
+                         fecalf = fecha;
+                         mes = fecalf % 402;
+                         mesfec = mes;
+                         |SI ini = 1;
+                              mesac = mesfec;
+                         |SINO;
+                              mesac = (mesfec - ini) + 1;
+                              |SI mesac [ 0;
+                                   mesac = (13 - ini) + mesfec;
+                              |FINSI;
+                         |FINSI;
+                         a = (mesac * 3) + 9;
+                         b = a + 1;
+                         c1 = a + 2;
+                         |SI #4#8 = "D";
+                              #11a = #11a + #4#9;
+                              #11#51 = #11#51 + #4#9;
+                         |SINO;
+                              #11b = #11b + #4#9;
+                              #11#52 = #11#52 + #4#9;
+                         |FINSI;
+                         #11c1 = #11a - #11b;
+                         #11#53 = #11#51 - #11#52;
+
+                    |FINSI;
+               |FINSI;
+
+               #11#0 = cuenta;
+               #11#1 = nivel;
+               #11#3 = "S";
+               cuentaz = cuenta + "zzzzzzzzzzzzzzzzzzzz";
+               cuentaz = cuentaz % 112;
+               #11#54 = cuentaz;
+               #11#55 = nivel;
+
+               |PUSHV 0501 2380;
+               |PINPA #0#11;
+               |PINDA #0#11;
+               |CONFI "0000SConfirma el alta : ";
+               |SI FSalida = 0;
+                    |ENDATOS #1#11;
+                    |SI FSalida = 0;
+                         nombre1 = #11#2;
+                         |GRABA 011#11n;          ||Si acepta el darla de alta
+                         |LIBERA #11;             ||la grabo
+                         #11#0 = cta;
+                         #11#1 = niv;
+                         |LEE 101#11=;
+                         #11#3 = "N";        ||Quito el pase directo de la cuenta
+                         |GRABA 011#11a;     ||en donde he mirado a donde pertenecia
+                         |LIBERA #11;        ||puesto que ya no es de pase directo
+                    |FINSI;
+               |FINSI;
+     |FINSI;
+     |POPV;
+|FINSI;
+|CIERRA #11;
+|FPRC;
+
+|PROCESO clientes;
+     nombre = "";
+     cif = "";
+     |ABRE #16;
+     || .... SELECT #2#16; ahora es la primera clave
+
+     #16#23 = "C";
+     #16#10 = cuencli;
+     #16#11 = nivcli;
+     |LEE 001#16=;
+     |SI FSalida = 0;
+          nombre = #16#1;     ||nombre
+          cif = #16#9;        ||cif del cliente
+     |SINO;
+          #16#23 = "P";
+          #16#10 = cuencli;
+          #16#11 = nivcli;
+          |LEE 001#16=;
+          |SI FSalida = 0;
+               nombre = #16#1;     ||nombre
+               cif = #16#9;        ||cif del cliente
+          |SINO;
+               nombre = nombre1;   ||nombre de la cuenta
+               cif = #2#58;
+               #lubrw001#0 = #encoemp5#0;
+               #lubrw001#1 = #encoemp5#1;
+               #lubrw001#2 = #encoemp5#2;
+               |LEE 000#lubrw001.=;
+               |SI FSalida = 0;
+                  nombre = #lubrw001#3;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #16;
+
+     #lubrw001#0 = #encoemp5#0;
+     #lubrw001#1 = #encoemp5#1;
+     #lubrw001#2 = #encoemp5#2;
+     |LEE 000#lubrw001.=;
+     |SI FSalida = 0;
+        nombre = #lubrw001#3;
+     |FINSI;
+     aAlfa = #2#58; |QBF aAlfa; |SI aAlfa ! ""; cif = #2#58; |FINSI;
+|FPRC;
+
+
+|PROCESO repercutido;
+     pasar = 0;
+     |DDEFECTO #5;
+     #5#0 = #2#14;       || libro
+     #5#27 = #2#17;      || serie
+     #5#2 = #2#16;   || factura original
+     |HAZ guardaf;
+     aFactuan = #5#2;
+    ||  |HAZ guafa;
+     ren_fra = #5#2;     || lo guarda para rectificar la relacion con apuntes
+     |LEE 001#5=;
+     |SI FSalida ! 0;
+          #5#1 = librodesc;  ||descripcion libro
+          #5#3 = #2#41;  ||Fecha factura
+          #5#4 = #2#20;  ||Cuenta iva
+          #5#5 = #2#21;  ||digito cuenta
+          cuenta = #5#4;
+          nivel = #5#5;
+          total = 1;
+          |HAZ cuentas;
+          #5#6 = #2#18;  ||concepto iva
+          ||#5#7 = librodescc;  ||DEscripcion concepto
+          #5#7 = #2#19;  ||DEscripcion concepto LA MISMA QUE EL APUNTE!!!
+          #5#8 = #2#22;  ||Base 1 COns
+          #5#9 = #2#23;  ||Base 2 red
+          #5#10 = #2#24; ||Base 3 lujo
+          #5#52 = #2#48; ||Base 4
+          #5#53 = #2#49; ||Base 5
+          #5#11 = #2#25; ||% Iva 1
+          #5#12 = #2#26; ||% Iva 2
+          #5#13 = #2#27; ||% Iva 3
+          #5#54 = #2#50; ||% Iva 4
+          #5#55 = #2#51; ||% Iva 5
+          #5#14 = #2#28; ||Cuota iva 1
+          #5#15 = #2#29; ||Cuota iva 2
+          #5#16 = #2#30; ||Cuota iva 3
+          #5#56 = #2#52; ||Cuota iva 4
+          #5#57 = #2#53; ||Cuota iva 5
+          #5#17 = #2#31; ||% Rec 1
+          #5#18 = #2#32; ||% Rec 2
+          #5#19 = #2#33; ||% Rec 3
+          #5#58 = #2#54; ||% Rec 4
+          #5#59 = #2#55; ||% Rec 5
+          #5#20 = #2#34; ||Cuota Rec 1
+          #5#21 = #2#35; ||Cuota Rec 2
+          #5#22 = #2#36; ||Cuota Rec 3
+          #5#60 = #2#56; ||Cuota Rec 4
+          #5#61 = #2#57; ||Cuota Rec 5
+          #5#23 = #2#39; ||deducible
+          #5#26 = #2#37; ||Total factura
+          #5#44 = #2#44; ||Periodo
+          #5#45 = #2#0;  ||diario asiento
+          #5#46 = #2#1;  ||Fecha asiento
+          #5#47 = #2#47; ||documento asiento
+          #5#48 = #2#38; ||inversion
+          #5#49 = #2#40; ||departamento
+          cuencli = #5#4;
+          nivcli = #5#5;
+          |HAZ clientes;
+          #5#50 = nombre;
+          #5#51 = cif;
+          |GRABA 001#5n;
+          |LIBERA #5;
+     |SINO;
+          mensaje = "0000Factura No: " + #5#2 + " Existente";
+          |MENAV mensaje;
+          pasar = 1;     ||Si la factura existe, pasar vale 1,
+          dia = #2#0;    ||con lo que en las lineas de apuntes
+          docu = #2#2;   ||no se grabaran los datos del IVA
+          fech = #2#1;
+          #2#4 = 1;
+          |LEE 101#2];
+          |PARA ; |SI FSalida = 0;
+                  |Y #2#0 = dia;
+                  |Y #2#1 = fech;
+                  |Y #2#2 = docu;
+                  |Y #2#4 >0;
+                       |HACIENDO;
+               #2#42 = "";    ||Tipo Acumulador
+               #2#43 = 0;     ||Acumulador
+               |GRABA 001#2a;
+               |LIBERA #2;    ||Elimino parte de los datos del IVA
+               |LEE 101#2s;
+          |SIGUE;
+          dia = #2#0;    ||con lo que en las lineas de apuntes
+          docu = #2#2;   ||no se grabaran los datos del IVA
+          fech = #2#1;
+          #2#4 = nEstaLinea;
+          |LEE 101#2=;
+     |FINSI;
+|FPRC;
+
+|PROCESO grabadiario;
+          |ABRE #7;
+          #7#0 = #3#0;
+          |LEE 101#7=;        ||Grabo en el diario
+          |SI FSalida = 0;
+               #7#2 = #7#2 + #3#4; ||total debe
+               #7#3 = #7#3 + #3#5; ||total haber
+               |GRABA 001#7a;
+               |LIBERA #7;
+          |SINO;
+               #7#1 = "INEXISTENTE";
+               #7#2 = #3#4;
+               #7#3 = #3#5;        ||Si el diario no existe lo doy de alta
+               |GRABA 001#7n;
+               |LIBERA #7;
+          |FINSI;
+          |CIERRA #7;
+|FPRC;
+
+|PROCESO guardaf;
+   |SI #caivaasi#44 = "N";
+      |ABRE #calibros;
+      #calibros#0 = #caivarep#0;
+      |LEE 101#calibros.=;
+      |SI FSalida = 0;
+         i_factu = #calibros#4;
+         #calibros#4 = #calibros#4 + 1;
+         |GRABA 020#calibros.a;
+      |SINO;
+         |DDEFECTO #calibros;
+         #calibros#0 = #caivarep#0;
+         #calibros#1 = "LIBRO " + (("00" + #caivarep#0) % -102) + " REPERCUTIDO";
+         #calibros#2 = "R";
+         i_factu = #calibros#4;
+         #calibros#4 = #calibros#4 + 1;
+         |GRABA 020#calibros.n;
+      |FINSI;
+      |LIBERA #calibros;
+      |CIERRA #calibros;
+   |SINO;
+      |ABRE #caivases;
+      #caivases#0 = #caivarep#27;
+      #caivases#1 = "R";
+      |LEE 101#caivases.=;
+      |SI FSalida = 0;
+           |SI #caivases#3 [ #caivarep#2;
+                #caivases#3 = #caivarep#2 + 1;
+                |GRABA 020#caivases.a;
+           |FINSI;
+      |SINO;
+         |DDEFECTO #caivases;
+         #caivases#0 = #caivarep#27;
+         #caivases#1 = "R";
+         |SI #caivases#3 [ #caivarep#2;
+            #caivases#3 = #caivarep#2 + 1;
+         |FINSI;
+         |GRABA 020#caivases.n;
+      |FINSI;
+      |LIBERA #caivases;
+      |CIERRA #caivases;
+   |FINSI;
+|FPRC;
+
+
+|PROCESO ultimaf;
+   |SI #caivaasi#44 = "N";
+      |ABRE #calibros;
+      #calibros#0 = #caivarep#0;
+      |LEE 101#calibros.=;
+      |SI FSalida = 0;
+         i_factu = #calibros#4;
+         #calibros#4 = #calibros#4 + 1;
+         |GRABA 020#calibros.a;
+      |SINO;
+         |DDEFECTO #calibros;
+         #calibros#0 = #caivarep#0;
+         #calibros#1 = "LIBRO " + (("00" + #caivarep#0) % -102) + " REPERCUTIDO";
+         #calibros#2 = "R";
+         i_factu = #calibros#4;
+         #calibros#4 = #calibros#4 + 1;
+         |GRABA 020#calibros.n;
+      |FINSI;
+      |LIBERA #calibros;
+      |CIERRA #calibros;
+   |SINO;
+      |ABRE #caivases;
+      #caivases#0 = #caivarep#27;
+      #caivases#1 = "R";
+      |LEE 101#caivases.=;
+      |SI FSalida = 0;
+         i_factu = #caivases#3;
+         #caivases#3 = #caivases#3 + #caivases#4;
+         |GRABA 020#caivases.a;
+      |SINO;
+         |DDEFECTO #caivases;
+         #caivases#0 = #caivarep#27;
+         #caivases#1 = "R";
+         i_factu = #caivases#3;
+         #caivases#3 = #caivases#3 + #caivases#4;
+         |GRABA 020#caivases.n;
+      |FINSI;
+      |LIBERA #caivases;
+      |CIERRA #caivases;
+   |FINSI;
+|FPRC;
+
+
+|PROCESO altatra;
+    |ABRE #19;
+    #19#0 = codcon;
+    #19#1 = #4#4;        || cuenta
+    #19#2 = #4#5;        || digito
+    #19#3 = #4#1;        || fecha
+    #19#4 = #4#8;        || signo
+    #19#6 = #4#0;        || diario
+    |LEE 101#19=;
+    |SI FSalida ! 0;
+        |DDEFECTO #19;
+        #19#0 = codcon;
+        #19#1 = #4#4;
+        #19#2 = #4#5;
+        #19#3 = #4#1;
+        #19#4 = #4#8;
+        #19#6 = #4#0;
+        |GRABA 020#19b;
+    |FINSI;
+    importe = #4#9;
+    |SI opera = "B";
+        importe = -importe;
+    |FINSI;
+    #19#5 = #19#5 + importe;
+    |GRABA 020#19a;
+    |LIBERA #19;
+    |CIERRA #19;
+|FPRC;
+
+
+||**********************************************************************
+|PROCESO GrabaNuevo;
+   nNumLinea = nNumLinea + 1;
+   #4#0 = #2#0;   ||diario
+   #4#1 = #2#1;   ||fecha
+   #4#2 = #2#47;  ||documento
+   || ... #4#3 = #2#4;   ||linea
+   #4#3 = nNumLinea;
+   #4#8 = #2#11;  ||Signo
+   |SI #4#8 = "D";     ||Es cuenta de debe
+       #4#4 = #2#5;    ||Cuenta
+       #4#5 = #2#7;    ||Digito
+       #4#16 = #2#5;   ||Cuenta DEBE
+       #4#17 = #2#7;  ||Digito DEBE
+       #4#10 = "";
+       #4#11 = 0;
+       asiedebe = asiedebe + #2#12;
+       cuenta = #4#16;
+       nivel = #4#17;
+       |SI d_conh=0; c_conh=#4#4; d_conh=#4#5; |FINSI;
+   |SINO;              ||Es cuenta de haber
+       #4#4 = #2#6;   ||Cuenta
+       #4#5 = #2#8;   ||Digito
+       #4#10 = #2#6;  ||cuenta HABER
+       #4#11 = #2#8;  ||Digito HABER
+       #4#16 = "";
+       #4#17 = 0;
+       asiehaber = asiehaber + #2#12;
+       cuenta = #4#10;
+       nivel = #4#11;
+       |SI d_cond=0; c_cond=#4#4; d_cond=#4#5; |FINSI;
+   |FINSI;
+   total = 0;
+
+|SI #4#5 = 0;
+    alfa1 = "    Error en la Cuenta " + #4#4 + " Asiento: ";
+    alfa2 = ("00" + #4#0) % -102;
+    alfa1 = alfa1 + alfa2 + "-"+ #4#1 + "-";
+    alfa2 = ("0000000" + #4#2) % -106;
+    alfa1 = alfa1 + alfa2 + "-";
+    alfa2 = ("0000" + #4#3) % -104;
+    alfa1 = alfa1 + alfa2;
+    |MENAV alfa1;
+|FINSI;
+   #4#6 = #2#9;   ||concepto
+   #9#0 = #2#9;        ||Miro si existe el concepto
+   |LEE 001#9=;
+   |SI FSalida ! 0;
+       #9#1 = "INEXISTENTE";
+       |GRABA 001#9n;
+       |LIBERA #9;
+   |FINSI;
+   #4#7  = #2#10;  ||descripcion concepto
+   #4#24 = #9#1;   ||descripcion concepto
+   #4#9 = #2#12;  ||Importe
+
+   ||Si la factura a pasar ya existe, no se graban
+   ||los datos de la factura en el asiento
+
+   |SI pasar = 0;
+        #4#12 = #2#13;   || soportado/repercutido
+        #4#13 = #2#14;   || libro
+        ||#4#14 = #2#16; || factura
+        #4#14 = ren_fra; || por si se ha renumerado
+        |SI ren_fra = 0;
+            #4#14 = #2#16; || factura
+        |FINSI;
+        #4#15 = #2#17;   || serie
+        #4#19 = #2#42;   || acumulador
+        #4#20 = #2#43;   || nro.acumulador
+        |SI #4#19 = " ";
+            |SI #4#4 = #2#20; |Y #4#5 = #2#21;
+                |SI #2#13 = "R"; |Y #4#8 = "D"; #4#19 = "F"; |FINSI;
+                |SI #2#13 = "S"; |Y #4#8 = "H"; #4#19 = "F"; |FINSI;
+            |FINSI;
+        |FINSI;
+   |FINSI;
+   #4#21 = #2#40; ||departamento
+
+/*
+   ABDON 13/09/2005   TIQUET 1901/120
+
+   Para que no incorpore asientos con lineas de importe cero
+   Antes simplemente era un graba
+
+   |GRABA 011#4n;
+*/
+|| INICIO
+
+   |SI #4#9 ! 0; |GRABA 011#4n; |FINSI;
+
+|| FIN
+
+       opera = "A";
+   |HAZ altatra;       || fichero de movimientos
+   asiento = #2#47;
+   asient1 = #2#3;
+   fecha = #2#1;
+   fecha1 = #2#1;
+   diario = #2#0;
+   ren_fra = #2#16;
+   |HAZ cuentas;       ||En el proceso cuentas, averiguo si la
+                       ||cuenta existe, si no la doy de alta
+                       ||Acumulo los importes
+
+|FPRC;
+||**********************************************************************
+
+|PROCESO BuscaLinea0;
+ nNumLinea  = #4#3;
+|FPRC;
+
+|DEFBUCLE BuscaLinea;
+ #4#1;
+ ;
+ #3#0,#3#1,#3#2,0001;
+ #3#0,#3#1,#3#2,9999;
+ ;
+ NULL, BuscaLinea0;
+|FIN;
+
+|PROCESO miraasie;
+ nEstaLinea = #2#4;
+ control    = #2#2;
+ c = c + 1;
+ |SI control ! control1;
+     |SI c ! 1;
+          |DDEFECTO #3;  ||Grabo la cabecera del asiento
+          #3#0 = diario;
+          #3#1 = fecha1;
+          #3#2 = asiento;
+          #3#3 = asiento; || Modificador por JOSE ( era campo asient1 = #2#3)
+          #3#4 = asiedebe;
+          #3#5 = asiehaber;
+          #3#6 = #3#4 - #3#5; ||Saldo
+          #3#7 = 0;
+          #3#8 = c_conh;
+          #3#9 = d_conh;
+          #3#10 = c_cond;
+          #3#11 = d_cond;
+          |SI nEstadoCab ! 0; |GRABA 001#3n; |FINSI;
+          |SI nEstadoCab = 0; |GRABA 001#3a; |FINSI;
+          |LIBERA #3;
+          swPrimero = 0;
+          nNumLinea = 0;
+          |HAZ grabadiario;   ||grabo en el fichero de diario
+          asiehaber = 0;
+          asiedebe = 0;
+          c_conh = "";  d_conh = 0;
+          c_cond = "";  d_cond = 0;
+    |FINSI;
+ |FINSI;
+
+ EsIva = 0;
+ |SI #2#22 ! 0;|O #2#23 ! 0;|O #2#24 ! 0;|O #2#48 ! 0;|O #2#49 ! 0;
+      EsIva = 1;          || comprueba bases imponibles
+ |SINO;
+     |SI #2#25 ! 0;|O #2#26 ! 0;|O #2#27 ! 0;|O #2#50 ! 0;|O #2#51 ! 0;
+          EsIva = 1;      || comprueba porcentajes
+     |FINSI;              || las facturas con importe cero son validas tambien!
+ |FINSI;                  || R.PRIEGO (23.02.99)
+
+
+ |SI EsIva = 0; |Y #2#4 = 0; |Y #2#37 = 0;
+    EsIva = 1;
+ |FINSI;
+
+ |SI EsIva = 1;                || es asiento de iva
+     |SI #2#13 = "R";
+         |HAZ repercutido;   ||Si es Ventas Repercutido
+     |FINSI;
+ |SINO;
+                   || ... No es un asiento de iva
+          Comod1 = #2#5; |QBF Comod1;
+          Comod2 = #2#6; |QBF Comod2;
+          |SI Comod1 = ""; |Y Comod2 = "";
+              mensaje = "0000Factura [" + #2#16 + "] con apunte [" + #2#4 + "] erroneo. Sin cuentas.";
+              |MENAV mensaje;
+          |FINSI;
+
+          |SI swPrimero = 1;
+              |HAZ GrabaNuevo;
+          |SINO;
+              |DDEFECTO #3;
+              #3#0 = #2#0;        ||diario
+              #3#1 = #2#1;        ||fecha
+              #3#2 = #2#47;       ||documento
+              |LEE 101#3=;
+              |SI FSalida ! 0;
+                  nNumLinea  = 0;
+                  nEstadoCab = 1;
+                  |HAZ GrabaNuevo;
+              |SINO;                   ||Si el numero de asiento ya existe
+                  asiedebe = #3#4;
+                  asiehaber = #3#5;
+                  nEstadoCab = 0;
+                  |BUCLE BuscaLinea;
+                  |HAZ GrabaNuevo;
+              |FINSI;
+              swPrimero = 1;
+         |FINSI;
+ |FINSI;
+ control1 = control;
+|FPRC;
+
+|PROCESO finasie;
+          |DDEFECTO #3;       ||Grabo la cabecera del ultimo asiento leido
+          #3#0 = diario;
+          #3#1 = fecha1;
+          #3#2 = asiento;
+          #3#3 = asiento; ||Modificado por JOSE (Campo asient1 = #2#3)
+          #3#4 = asiedebe;
+          #3#5 = asiehaber;
+          #3#6 = #3#4 - #3#5;
+          #3#7 = 0;
+          #3#8 = c_conh;
+          #3#9 = d_conh;
+          #3#10 = c_cond;
+          #3#11 = d_cond;
+          |GRABA 001#3n;
+          |LIBERA #3;
+          |HAZ grabadiario;
+|FPRC;
+
+
+|DEFBUCLE asiento;
+ #2#1;
+ ;
+ desdedi,feini,desdenum,desdenum;
+ hastadi,fefin,hastanum,hastanum;
+ e;
+ NULL,miraasie,NULL,NULL,finasie;
+|FIN;
+
+|PROCESO guafa2;
+     #33#0 = #40#16;
+     #33#4 = #40#17;
+     |LEE 101#33=;
+     nSal = FSalida;
+     #33#0 = #40#16;
+     #33#4 = #40#17;
+     #33#1 = aFactuan;
+     #33#2 = #40#18;  ||concepto iva
+     #33#3 = #40#19;  ||Descripcion concepto LA MISMA QUE EL APUNTE!!!
+     |SI nSal = 0; |GRABA 020#33a; |FINSI;
+     |SI nSal ! 0; |GRABA 020#33n; |FINSI;
+     |LIBERA #33;
+|FPRC;
+
+|PROCESO clientes2;
+     nombre = "";
+     cif = "";
+     |ABRE #16;
+     || .... SELECT #2#16; ahora es la primera clave
+
+     #16#23 = "C";
+     #16#10 = cuencli;
+     #16#11 = nivcli;
+     |LEE 001#16=;
+     |SI FSalida = 0;
+          nombre = #16#1;     ||nombre
+          cif = #16#9;        ||cif del cliente
+     |SINO;
+          #16#23 = "P";
+          #16#10 = cuencli;
+          #16#11 = nivcli;
+          |LEE 001#16=;
+          |SI FSalida = 0;
+               nombre = #16#1;     ||nombre
+               cif = #16#9;        ||cif del cliente
+          |SINO;
+               nombre = nombre1;   ||nombre de la cuenta
+               cif = #40#58;
+          |FINSI;
+     |FINSI;
+     |CIERRA #16;
+|FPRC;
+
+|PROCESO camaasil;
+    nDocum  = #4#2;
+    fFecha  = #4#1;
+    nDiario = #4#0;
+    #40#47  = #4#2;
+    |ERROR10;
+|FPRC;
+
+|DEFBUCLE camaasil;
+#4#4;
+;
+#5#0,#5#27,#5#2;
+#5#0,#5#27,#5#2;
+;
+NULL, camaasil;
+|FIN;
+
+|PROCESO repercutido2;
+     pasar = 0;
+     |DDEFECTO #5;
+     #5#0 = #40#14;       || libro
+     #5#27 = #40#17;      || serie
+     |SI #0#10 = "S";
+         |HAZ ultimaf;
+         #5#2 = i_factu; || factura renumerada
+     |SINO;
+         #5#2 = #40#16;   || factura original
+         |HAZ guardaf;
+     |FINSI;
+     aFactuan = #5#2;
+     |HAZ guafa2;
+     ren_fra = #5#2;     || lo guarda para rectificar la relacion con apuntes
+     |LEE 001#5=;
+     |SI FSalida ! 0;
+          #5#1 = librodesc;  ||descripcion libro
+          #5#3 = #40#41;  ||Fecha factura
+          #5#4 = #40#20;  ||Cuenta iva
+          #5#5 = #40#21;  ||digito cuenta
+          cuenta = #5#4;
+          nivel = #5#5;
+          total = 1;
+          |HAZ cuentas;
+          #5#6 = #40#18;  ||concepto iva
+          ||#5#7 = librodescc;  ||DEscripcion concepto
+          #5#7 = #40#19;  ||DEscripcion concepto LA MISMA QUE EL APUNTE!!!
+          #5#8 = #40#22;  ||Base 1 COns
+          #5#9 = #40#23;  ||Base 2 red
+          #5#10 = #40#24; ||Base 3 lujo
+          #5#52 = #40#48; ||Base 4
+          #5#53 = #40#49; ||Base 5
+          #5#11 = #40#25; ||% Iva 1
+          #5#12 = #40#26; ||% Iva 2
+          #5#13 = #40#27; ||% Iva 3
+          #5#54 = #40#50; ||% Iva 4
+          #5#55 = #40#51; ||% Iva 5
+          #5#14 = #40#28; ||Cuota iva 1
+          #5#15 = #40#29; ||Cuota iva 2
+          #5#16 = #40#30; ||Cuota iva 3
+          #5#56 = #40#52; ||Cuota iva 4
+          #5#57 = #40#53; ||Cuota iva 5
+          #5#17 = #40#31; ||% Rec 1
+          #5#18 = #40#32; ||% Rec 2
+          #5#19 = #40#33; ||% Rec 3
+          #5#58 = #40#54; ||% Rec 4
+          #5#59 = #40#55; ||% Rec 5
+          #5#20 = #40#34; ||Cuota Rec 1
+          #5#21 = #40#35; ||Cuota Rec 2
+          #5#22 = #40#36; ||Cuota Rec 3
+          #5#60 = #40#56; ||Cuota Rec 4
+          #5#61 = #40#57; ||Cuota Rec 5
+          #5#23 = #40#39; ||deducible
+          #5#26 = #40#37; ||Total factura
+          #5#44 = #40#44; ||Periodo
+          |SI #5#26 ! 0;
+             nDiario = #40#0;
+             fFecha  = #40#1;
+             nDocum  = #40#47;
+             |BUCLE camaasil;||Busca en que documento esta la factura
+             #5#45 = nDiario;  ||diario asiento
+             #5#46 = fFecha;  ||Fecha asiento
+             #5#47 = nDocum; ||documento asiento
+          |FINSI;
+          #5#48 = #40#38; ||inversion
+          #5#49 = #40#40; ||departamento
+          cuencli = #5#4;
+          nivcli = #5#5;
+          |HAZ clientes2;
+          #5#50 = nombre;
+          #5#51 = cif;
+          |GRABA 001#5n;
+          |LIBERA #5;
+     |SINO;
+          mensaje = "0000Factura No: " + #5#2 + " Existente";
+          |MENAV mensaje;
+          pasar = 1;     ||Si la factura existe, pasar vale 1,
+          dia = #40#0;    ||con lo que en las lineas de apuntes
+          docu = #40#2;   ||no se grabaran los datos del IVA
+          fech = #40#1;
+          #40#4 = 1;
+          |LEE 101#40];
+          |PARA ; |SI FSalida = 0;
+                  |Y #40#0 = dia;
+                  |Y #40#1 = fech;
+                  |Y #40#2 = docu;
+                  |Y #40#4 >0;
+                       |HACIENDO;
+               #40#42 = "";    ||Tipo Acumulador
+               #40#43 = 0;     ||Acumulador
+               |GRABA 001#40a;
+               |LIBERA #40;    ||Elimino parte de los datos del IVA
+               |LEE 101#40s;
+          |SIGUE;
+     |FINSI;
+|FPRC;
+
+|PROCESO encoiva;
+     |HAZ repercutido2;
+|FPRC;
+
+|DEFBUCLE encoiva;
+#40#1;
+;
+INICIO;
+FINAL;
+;
+NULL,encoiva;
+|FIN;
+
+||***************************************************************************
+/*
+|PROCESO SerieSop;
+   #caivases#0 = #caivasop#27;
+   #caivases#1 = "S";
+   |LEE 101#caivases.=;
+   |SI FSalida = 0;
+      |SI #caivasop#2 ] #caivases#3;
+         #caivases#3 = #caivasop#2 + 1;
+         |GRABA 020#caivases.a;
+      |FINSI;
+      |LIBERA #caivases;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE SerieSop;
+#caivasop#1;
+;
+INICIO;
+FINAL;
+;
+NULL,SerieSop;
+|FIN;
+*/
+
+|PROCESO SerieRep;
+   #caivases#0 = #caivarep#27;
+   #caivases#1 = "R";
+   |LEE 101#caivases.=;
+   |SI FSalida = 0;
+      |SI #caivarep#2 ] #caivases#3;
+         #caivases#3 = #caivarep#2 + 1;
+         |GRABA 020#caivases.a;
+      |FINSI;
+      |LIBERA #caivases;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE SerieRep;
+#caivarep#1;
+;
+INICIO;
+FINAL;
+;
+NULL,SerieRep;
+|FIN;
+
+
+|PROCESO ContaLibros;
+      #caivarep#0 = #calibros#0;
+      #caivarep#27 = "  ";
+      #caivarep#2 = 1;
+      |LEE 000#caivarep.];
+      |SI FSalida = 0; |Y #caivarep#0 = #calibros#0;
+         |PARA; |SI FSalida = 0; |Y #caivarep#0 = #calibros#0; |HACIENDO;
+            #calibros#4 = #caivarep#2 + 1;
+            |LEE 000#caivarep.s;
+         |SIGUE;
+         |GRABA 020#calibros.a;
+      |FINSI;
+|FPRC;
+
+|DEFBUCLE ContaLibros;
+#calibros#1;
+;
+INICIO;
+FINAL;
+;
+NULL,ContaLibros;
+|FIN;
+
+|PROCESO RecalcContad;
+   |ABRE #caivarep;
+   |BUCLE ContaLibros;
+   |BUCLE SerieRep;
+   |CIERRA #caivarep;
+|FPRC;
+
+||***************************************************************************
+||***********************+HASTA AQUI EL ENLACE DE ASIENTOS*******************
+||***************************************************************************
+||***************************************************************************
+
+|PROCESO miraiva;
+
+|SI #2#47 = 0; ||No este grabado
+    enDiario = #2#0;
+    |SI enBuscaDoc = 0;
+        |HAZ contador;
+        conta = enContador;
+        || #2#3  = enContador;
+    |SINO;
+        conta = #2#2;   || Documento;
+    |FINSI;
+
+ |ET otravez;
+    #3#0 = #2#0;
+    #3#1 = #2#1;
+    #3#2 = conta;
+    |LEE 001#3=;
+    |SI FSalida = 0; |Y enBuscaDoc = 0;
+        enDiario = #2#0;
+        |HAZ contador;
+        conta = enContador;
+        ||  #2#3 = enContador;
+        |VETE otravez;
+    |SINO;
+        #2#47 = conta;
+        |GRABA 001#2a;
+        |LIBERA #2;
+    |FINSI;
+
+    dia  = #2#0;
+    docu = #2#2;
+    fech = #2#1;
+    #2#4 = 1;
+    |LEE 101#2];
+    |PARA ; |SI FSalida = 0;
+            |Y #2#0 = dia;
+            |Y #2#1 = fech;
+            |Y #2#2 = docu;
+            |Y #2#4 ] 0;
+                             |HACIENDO;
+            #2#47 = conta;
+            |GRABA 021#2a;
+            |LIBERA #2;
+            |LEE 101#2s;
+    |SIGUE;
+    #2#0 = dia;
+    #2#1 = fech;
+    #2#2 = docu;
+    #2#4 = 0;
+    |LEE 001#2];
+|FINSI;
+|FPRC;
+
+|DEFBUCLE asiento1;
+ #2#1;
+ ;
+ desdedi,feini,desdenum,desdenum;
+ hastadi,fefin,hastanum,hastanum;
+ be;
+ NULL, miraiva;
+|FIN;
+||///////////////////////////////////////////////////////////
+
+|PROCESO b_apuntes;
+
+     || Empiezo a pasar el fichero de apuntes
+     fichero = #0#3;     ||empresa origen
+     fichero = "000000" + fichero;
+     fichero = fichero % -104;
+
+     fichero1 = "enco" + fichero; |QBF fichero1; |NOME_DAT #2 fichero1;
+     fichero1 = "ennm" + fichero; |QBF fichero1; |NOME_DAT #60 fichero1;
+     fichero1 = "eniv" + fichero; |QBF fichero1; |NOME_DAT #40 fichero1;
+
+     |ABRE #2; |ABRE #60;
+     |LEE 001#2p;
+     |SI FSalida!0;
+          |MENAV "0000No hay registros"
+          |CIERRA #2;
+          |ACABA;
+     |FINSI;
+     |CIERRA #2;
+
+     nLibroR = #0#11;
+     |ABRE #8;
+     #8#0 = nLibroR;
+     |LEE 001#8=;
+     |SI FSalida = 0;
+          librodesc = #8#1;
+     |SINO;
+          #8#1 = "LIBRO INEXISTENTE";
+          librodesc = #8#1;
+          |GRABA 001#8n;
+          |LIBERA #8;
+     |FINSI;
+     |CIERRA #8;
+
+     diario = #0#12;
+     |ABRE #3;      ||asientos cab
+     |ABRE #4;      || lineas astos.
+     |ABRE #5;      || iva rep
+
+     control1 = 999;
+     c     = 0;
+     feini = "00.00.0000";
+     fefin = "31.12.9999";
+     |BUCLE asiento1;    ||Grabo los numeros de asiento en fichero de enlace
+
+     control1 = 999;
+     feini = fec1;
+     fefin = fec2;
+     |BUCLE asiento;     ||Grabo los asientos e ivas
+
+     |BUCLE encoiva;
+
+     |LIBERA #5;
+     |LIBERA #4;
+     |LIBERA #3;
+
+     |CIERRA #5;
+     |CIERRA #4;
+     |CIERRA #3;
+     |CIERRA #60;
+
+|FPRC;
+
+|| ***************************************************************
+
+|PROGRAMA;
+
+     |HAZ inicio;
+     |CLS;
+     |CABEZA "Importacion Facturas";
+     |DDEFECTO #0;
+
+     #0#7  = 2;    || Secuencial
+     #0#8  = "S";
+     #0#9  = "N";  || no hay cobros
+     #0#10 = "N";  || No renumera facturas
+
+     |PINPA #0#0;
+
+     |ABRE #19;
+     |LEE 101#19u;
+     |SI FSalida ! 0;
+          |DDEFECTO #19;
+          #19#0 = 1;
+     |SINO;
+          #19#0 = #19#0 + 1;
+     |FINSI;
+     |GRABA 101#19n;
+     codcon = #19#0;
+     |LIBERA #19;
+     |CIERRA #19;
+
+     |ABRE #200;
+     |DDEFECTO #200;
+     |LEE 000#200p;
+     |CIERRA #200;    || Control de Asientos y Fras
+
+     |DFICE emprevi; |QBF emprevi;
+     emprevi = emprevi % -204;
+     #0#3    = emprevi;
+
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+     |SI #0#0 ! "SI";  |ACABA;  |FINSI;
+
+     dir_fich1 = #0#4; |QBF dir_fich1;
+     fichero   = #0#5; |QBF fichero;
+     |DELINDEX #2;
+
+     |HAZ secuencial;
+
+     |HAZ b_apuntes;
+     |SUB_EJECUTA "camaapua";        || solo en importacion completa
+     |HAZ RecalcContad;
+
+     |DELINDEX #2; |DELINDEX #60;
+|FPRO;

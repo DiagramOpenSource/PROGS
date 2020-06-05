@@ -1,0 +1,546 @@
+|FICHEROS;
+  lubrz001 #0;    || Pantalla importacion
+  lubrm001 #1;    || Fichero de control path
+  encoemp5 #2;    ||fichero de apuntes enlace gestion
+  caivarep #5;    ||iva Repercutido, Ventas
+  caivasop #6;    ||Iva soportado compras
+  calibros #8;    ||libros de iva
+  cacuenta #11;
+  caclipro #16;
+  lubrw001 #60;
+  imptmp1  #18;   ||temporal nuevos numeros de IVA
+  caivaasi #200;  || Control de Iva y Asientos.
+|FIN;
+
+|VARIABLES;
+    aPath   = "";
+    aValor  = "";
+    nCampo  = 0;
+    nCalc   = 0;
+    nCalc1  = 0;
+    nCalc2  = 0;
+    nCont   = 0;
+
+    &librodesc = "";
+    nNume  = 0;
+    nNume1 = 0;
+    nPara1 = 0;
+    aAlfa1 = "";
+    aSigno = "";
+    nDebe  = 0;
+    nHaber = 0;
+    nImporte = 0;
+
+    nPeriodo = 0;
+    aTAcum   = "";
+    nAcum    = 0;
+    aFactura = "";
+    aCtaCli  = "";
+    nBPro    = 0;
+    nIVME    = 0;
+    nIVMA    = 0;
+    nBase    = 0;
+    nTPIVA   = 0;
+    nIVA     = 0;
+    nTotal   = 0;
+    aDesc    = "";
+    aSerie   = "";
+    aNombre  = "";
+    aNomEnco = "";
+    aCif     = "";
+
+     aDocu = "";
+{30}C = "";
+     nDocumento = 0;
+     nLinea = 0;
+     nDiario = 0;
+     fFecha = @;
+     aAlfa = "";
+     aReg1 = "";
+     aReg2 = "";
+     aFic = "";
+     nHandle = 0;
+     &EURODB = 0;
+
+    &fichero = "";
+    &fichero1 = "";
+
+  &sw_sop = 0;
+  &sw_rep = 0;
+  &fra_sop = 0;
+  &fra_rep = 0;
+  &anter = 0;
+  &mas = 0;
+  &antnum = 0;
+  &feini = @;
+  &fefin = @;
+
+   aLong    = "";
+   eaCuenta = "";
+   nLong    = 0;
+   enNivel  = 0;
+
+   &dig3 = 0;
+   &dig4 = 0;
+   &dig5 = 0;
+   &dig6 = 0;
+   &dig7 = 0;
+   &dig8 = 0;
+   &dig9 = 0;
+|FIN;
+
+_________________________________/ RENUMERA APUNTES SEGUN TEMPORAL
+
+|PROCESO lee_apuntes1;
+  #2#16 = #18#4;
+  |GRABA 020#2a;
+  |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE lee_apuntes;
+ #2#1;
+ 13, 14, 16, 17;
+ 00, feini,      0,     0, #18#0, #18#1, #18#2, #18#3;
+ 99, fefin, 999999, 99999, #18#0, #18#1, #18#2, #18#3;
+ be;
+ NULL, lee_apuntes1;
+|FIN;
+
+|PROCESO lee_tempo1;
+  feini = "01.01.0001";
+  fefin = "31.12.8999";
+  |BUCLE lee_apuntes;
+|FPRC;
+
+|DEFBUCLE lee_tempo;
+ #18#1;
+ ;
+ "R",  0,      0, "  ";
+ "S", 99, 999999, "zz";
+ e;
+ NULL, lee_tempo1;
+|FIN;
+
+_________________________________/RENUMERA APUNTES SEGUN HISTORICO IVAS
+|PROCESO ren_rep;
+  |SI sw_rep ! 0;
+      fra_rep = fra_rep + 1;
+      #2#16 = fra_rep;
+      |ACABA;
+  |FINSI;
+  sw_rep = 1;
+  #5#0 = #2#14;        || libro
+  |ABRE #5;
+  mas = 1;
+  anter = #5#0;
+  #5#2 = 999999;
+  |LEE 001#5];
+  |SI FSalida = 0;
+     |LEE 001#5a;
+     |SI FSalida ! 0; |O anter ! #5#0;
+         mas = 0;
+         |DDEFECTO #5;
+     |FINSI;
+     antnum = #5#2;
+  |SINO;
+     |LEE 001#5u;
+     |SI FSalida ! 0; |O anter ! #5#0;
+         mas = 0;
+         |DDEFECTO #5;
+     |FINSI;
+     antnum = #5#2;
+  |FINSI;
+  |DDEFECTO #5;
+  #5#0 = anter;
+  #5#2 = antnum + mas;
+  |CIERRA #5;
+  fra_rep = #5#2;
+  #2#16 = fra_rep;
+|FPRC;
+
+|PROCESO ren_sop;
+  |SI sw_sop ! 0;
+      fra_sop = fra_sop + #8#3;
+      #2#16 = fra_sop;
+      |ACABA;
+  |FINSI;
+  sw_sop = 1;
+  #6#0 = #2#14;        || libro
+  |ABRE #6;
+  anter = #6#0;
+  #6#2 = 999999;
+  |LEE 040#6>;
+  |SI FSalida = 0;
+      |LEE 040#6a;
+      antnum = #6#2;
+  |SINO;
+      |LEE 040#6u;
+      |SI FSalida ! 0;
+          |DDEFECTO #6;
+          #6#2 = 0;
+      |FINSI;
+      antnum = #6#2;
+  |FINSI;
+  |DDEFECTO #6;
+  #6#0 = anter;
+  #6#2 = antnum + #8#3;
+|ET sientrada;
+  nNume1 = #6#2 $ #8#3;
+  |SI nNume1 ! 0;
+      #6#2 = #6#2 - 1;
+      |VETE sientrada;
+  |FINSI;
+  |CIERRA #6;
+  fra_sop = #6#2;
+  #2#16 = fra_sop;
+|FPRC;
+
+
+|PROCESO BuscaCliente;
+    eaCuenta = aCtaCli;
+    |HAZ SacaNivel;
+
+    aNombre = "";
+    aCif    = "";
+    |ABRE #16;
+    #16#23 = "C";
+    #16#10 = eaCuenta;
+    #16#11 = enNivel;
+    |LEE 001#16=;
+    |SI FSalida = 0;
+        aNombre = #16#1;     ||nombre
+        aCif    = #16#9;        ||cif del cliente
+    |SINO;
+        #16#23 = "P";
+        #16#10 = eaCuenta;
+        #16#11 = enNivel;
+        |LEE 001#16=;
+        |SI FSalida = 0;
+            aNombre = #16#1;     ||nombre
+            aCif    = #16#9;        ||cif del cliente
+        |SINO;
+            |ABRE #11;
+            #11#0 = eaCuenta;
+            #11#1 = enNivel;
+            |LEE 001#11=;
+            |SI FSalida = 0;
+                aNombre = #11#2;
+            |FINSI;
+            |CIERRA #11;
+        |FINSI;
+    |FINSI;
+    |CIERRA #16;
+|FPRC;
+
+|PROCESO Periodo;
+ aAlfa1 = #2#1;
+ aAlfa1 = aAlfa1 % 402;
+ nNume1 = aAlfa1;
+ nPeriodo = nNume1;
+ |SI #200#46 = "T";
+     |SI nNume1 [ 3;                 nPeriodo = 1; |FINSI;
+     |SI nNume1 > 3; |Y nNume1 [ 6;  nPeriodo = 2; |FINSI;
+     |SI nNume1 > 6; |Y nNume1 [ 9;  nPeriodo = 3; |FINSI;
+     |SI nNume1 > 9;                 nPeriodo = 4; |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO GrabaAuxiliar;
+     |DDEFECTO #2;
+     #2#0   = nDiario;              || diario
+     #2#1   = fFecha;               || fecha
+     #2#2   = nDocumento;           || documento
+     #2#3   = #2#2;                 || asiento
+     #2#4   = nLinea;               || apunte
+     |SI aSigno = "D";
+         #2#5 = eaCuenta;
+         #2#7 = enNivel;
+     |SINO;
+         #2#6 = eaCuenta;
+         #2#8 = enNivel;
+     |FINSI;
+     #2#9  = #1#11;
+     #2#10 = aDesc;
+     #2#11 = aSigno;
+     #2#12 = nImporte;
+     #2#13 = "R";
+     #2#14 = #0#11;
+     #2#15 = librodesc;
+     #2#16 = aFactura;
+     #2#17 = aSerie;
+
+     |SI aTAcum = " ";
+         #2#18 = #2#9;
+         #2#19 = #2#10;
+         #2#20 = eaCuenta;
+         #2#21 = enNivel;
+         #2#26 = nTPIVA;
+         #2#29 = nIVA;
+         #2#37 = nTotal;
+         #2#23 = nBase;
+         #2#58 = aCif;
+
+         |DDEFECTO #lubrw001;
+         #lubrw001#0 = #2#0;
+         #lubrw001#1 = #2#1;
+         #lubrw001#2 = #2#2;
+         |LEE 000#lubrw001.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #lubrw001;
+            #lubrw001#0 = #2#0;
+            #lubrw001#1 = #2#1;
+            #lubrw001#2 = #2#2;
+            #lubrw001#3 = aNomEnco;
+            |GRABA 020#lubrw001.n;
+         |FINSI;
+     |FINSI;
+
+     #2#41 = #2#1;
+     #2#42 = aTAcum;
+     #2#43 = nAcum;
+     |HAZ Periodo;
+     #2#44 = nPeriodo;
+
+  |SI #2#22 ! 0; |O #2#23 ! 0; |O #2#24 ! 0;
+
+                 |O #2#48 ! 0; |O #2#49 ! 0;        || si es asiento de iva
+      |ABRE #18;
+      #18#0 = #2#13;        || tipo de iva
+      #18#1 = #2#14;        || libro
+      #18#2 = #2#16;        || fra./orden
+      #18#3 = #2#17;        || serie
+      #18#4 = #2#16;        || fra./orden segun historico
+      |GRABA 000#18n;
+      |CIERRA #18;
+  |FINSI;
+
+  |GRABA 020#2n;
+     nLinea = nLinea + 1;
+|FPRC;
+
+|PROCESO sep_apunte;
+
+     nLinea     = 0;  || 3 o 4 apuntes por registro
+     nDiario    = #0#12;
+     nDocumento = nDocumento + 1;
+
+|| ... Fecha
+     fFecha = C3;
+
+|| ... Serie Factura y Numero Factura
+     aSerie   = C1; |QBF aSerie;
+     aFactura = C2;
+
+|| ... Cuenta Cliente
+     aCtaCli  = C4;
+     aAlfa = #lubrm001#7; |QBF aAlfa;
+     |SI aAlfa ! "";
+        aAlfa = aAlfa - "*";
+        |SI FSalida ! 0;
+           nCalc = (FSalida / 100) ! 0 + 99;
+           aAlfa = aAlfa % nCalc;
+        |SINO;
+           aAlfa = #lubrm001#7; |QBF aAlfa;
+        |FINSI;
+     |FINSI;
+     |SI aAlfa ! "";
+        aAlfa1 = aAlfa % 0;   nCalc1 = aAlfa1;
+        aAlfa1 = aCtaCli % 0; nCalc2 = aAlfa1;
+        |SI nCalc1 < nCalc2;
+           nCalc = 0 - (100 + (nCalc2 - nCalc1));
+           aCtaCli = aAlfa + (aCtaCli % nCalc);
+        |FINSI;
+     |FINSI;
+     |HAZ BuscaCliente;
+
+     |QBF C5; |SI C5 ! ""; aNomEnco = C5; |FINSI;
+     |QBF C6; |SI C6 ! ""; aCif     = C6; |FINSI;
+
+     nBase  = C7;
+     nIVMA  = C8;
+     nTPIVA = C9;
+     nIVA   = C10;
+     nTotal = C11;
+
+     aDesc = #1#12; |QBF aDesc;
+     |SI #1#13 = "S";
+         aDesc = aDesc + " " + aSerie; |QBF aDesc;
+     |FINSI;
+     |SI #1#14 = "S";
+         aDesc = aDesc + " " + aFactura; |QBF aDesc;
+     |FINSI;
+     |SI #1#15 = "S";
+         |SI C5 = "";
+            aDesc = aDesc + " " + aNombre; |QBF aDesc;
+         |SINO;
+            aDesc = aDesc + " " + C5; |QBF aDesc;
+         |FINSI;
+     |FINSI;
+
+|| ... Asiento del Cliente
+     eaCuenta = aCtaCli;
+     |HAZ SacaNivel;
+     aSigno   = "D";
+     nImporte = nTotal;
+     aTAcum   = " ";
+     nAcum    = 0;
+     |HAZ GrabaAuxiliar;
+
+     aTAcum   = "F";
+     |HAZ GrabaAuxiliar;
+
+|| ... Asiento de la Base
+     eaCuenta = #1#8;
+     |HAZ SacaNivel;
+     aSigno   = "H";
+     nImporte = nBase;
+     aTAcum   = "B";
+     nAcum    = 2;
+     |HAZ GrabaAuxiliar;
+
+|| ... Asiento de la IVMDH
+     eaCuenta = #1#10;
+     |HAZ SacaNivel;
+     aSigno   = "H";
+     nImporte = nIVMA;
+     aTAcum   = "B";
+     nAcum    = 2;
+     |SI nImporte ! 0;  |HAZ GrabaAuxiliar; |FINSI;
+
+|| ... Asiento de la cuota de iva
+     eaCuenta = #1#9;
+     |HAZ SacaNivel;
+     aSigno   = "H";
+     nImporte = nIVA;
+     aTAcum   = "I";
+     nAcum    = 2;
+     |SI nImporte ! 0;  |HAZ GrabaAuxiliar; |FINSI;
+|FPRC;
+
+|PROCESO ValorCampo;
+   aValor = ""; nCalc = 0;
+   aAlfa = aReg1;
+   |PARA nCont = nCampo; |SI nCont ] 1; |HACIENDO nCont = nCont - 1;
+      aAlfa1 = aAlfa - &9;
+      |SI FSalida ! 0;
+         nCalc = ((FSalida / 100) ! 0) + 99;
+      |SINO;
+         nCalc = 199;
+      |FINSI;
+      aValor = aAlfa % nCalc; aAlfa1 = aValor + &9; aAlfa = aAlfa - aAlfa1;
+   |SIGUE;
+|FPRC;
+
+|PROCESO SacaNuevaSerie;
+    aSerie = "";
+    aAlfa  = aValor % 0;
+    nNume  = aAlfa;
+    |PARA nPara1 = 1; |SI nPara1 [ nNume; |HACIENDO nPara1 = nPara1 + 1;
+          nNume1 = (nPara1 * 100 + 1);
+          aAlfa  = aValor % nNume1;
+          |SI aAlfa ! "/";
+              aSerie = aSerie + aAlfa;
+          |SINO;
+              |SAL;
+          |FINSI;
+    |SIGUE;
+    C1 = aSerie % -102;
+|FPRC;
+
+|PROCESO RegistrosMovi;
+     nCampo = 1; |HAZ ValorCampo;
+     |SI #1#18 = "N";
+          C1  = aValor % 0102;   ||Serie
+          |SI C1 ! "ST"; C1 = "SD"; |FINSI;
+     |SINO;
+          |HAZ SacaNuevaSerie;
+     |FINSI;
+     C2  = aValor % -106;  ||Numero de factura
+
+     nCampo = 2; |HAZ ValorCampo;
+     C3  = aValor;         ||Fecha de factura
+     C3 = (C3 % 0102) + "." + (C3 % 0402) + "." + (C3 % 0704);
+
+     nCampo = 3; |HAZ ValorCampo;
+     C4  = aValor;         ||Numero de Cuenta
+
+     nCampo = 4;  |HAZ ValorCampo;
+     C5  = aValor;         ||Nombre cliente
+     nCampo = 5;  |HAZ ValorCampo;
+     C6  = aValor;         ||NIF cliente
+     nCampo = 6;  |HAZ ValorCampo;
+     C7  = aValor;         ||Base imponible
+     nCampo = 7;  |HAZ ValorCampo;
+     C8  = aValor;         ||IVMDH Estatal
+     nCampo = 9;  |HAZ ValorCampo;
+     C9  = aValor;         ||% IVA
+     nCampo = 10; |HAZ ValorCampo;
+     C10 = aValor;         ||Cuota IVA
+     nCampo = 11; |HAZ ValorCampo;
+     C11 = aValor;         || Total factura
+|FPRC;
+____________________________________/ FICHERO APUNTES
+|PROCESO apuntes;
+     nDocumento = 0;
+     aPath = #0#4; |QBF aPath;
+     aFic  = #0#5; |QBF aFic;
+     aFic  = aPath + aFic;
+
+     |ABRE #lubrm001;
+     |LEE 000#lubrm001.p;
+     |SI FSalida ! 0; |DDEFECTO #lubrm001; |FINSI;
+     |CIERRA #lubrm001;
+
+     |XABRE "U", aFic, nHandle;
+     |SI FSalida < 0;
+          |XABRE "CU", aFic, nHandle;
+     |FINSI;
+     |SI FSalida < 0;
+          aAlfa = "0000Error al abrir:" + aFic;
+          |MENAV aAlfa;
+     |SINO;
+          |XLEE nHandle, 250, aReg1;
+          |PARA; |SI FSalida ] 2; |HACIENDO;
+               |HAZ RegistrosMovi;
+               |HAZ sep_apunte;
+
+               |XLEE nHandle, 250, aReg1;
+          |SIGUE;
+          |XCIERRA nHandle;
+     |FINSI;
+|FPRC;
+_________________________________________________________________________
+____________________________________/ CALCULOS DE LECTURA DE SECUENCIALES
+|PROCESO secuencial;
+     || Empiezo a pasar el fichero de apuntes
+     fichero = #0#3;     ||empresa origen
+     fichero = "000000" + fichero;
+     fichero = fichero % -104;
+
+     fichero1 = "enco" + fichero; |QBF fichero1; |NOME_DAT #2 fichero1;
+     fichero1 = "ennm" + fichero; |QBF fichero1; |NOME_DAT #60 fichero1;
+
+     |DELINDEX #18;
+
+     |MENSA "    Preparando Fichero de Apuntes ...";
+     |ABRE #2; |ABRE #60;
+     |HAZ apuntes;
+     |CIERRA #2; |CIERRA #60;
+
+     |BLIN 4;
+     |DELINDEX #18;
+|FPRC;
+
+|PROCESO SacaNivel;
+   aLong = eaCuenta;
+   |QBF aLong;
+   aLong = aLong % 0;
+   nLong = aLong;
+   enNivel = 0;
+   |SI nLong = dig4; |Y dig4 ! 0; enNivel = 1; |FINSI;
+   |SI nLong = dig5; |Y dig5 ! 0; enNivel = 2; |FINSI;
+   |SI nLong = dig6; |Y dig6 ! 0; enNivel = 3; |FINSI;
+   |SI nLong = dig7; |Y dig7 ! 0; enNivel = 4; |FINSI;
+   |SI nLong = dig8; |Y dig8 ! 0; enNivel = 5; |FINSI;
+   |SI nLong = dig9; |Y dig9 ! 0; enNivel = 6; |FINSI;
+|FPRC;

@@ -1,0 +1,214 @@
+|FICHEROS;
+     tecaz037 #0;
+     agifa077 #77;
+     agifa080 #80;
+     tempo036 #36; || Tmp alba sin cabecera
+|FIN;
+
+|VARIABLES;
+     &enSw = 0;
+     &decim_base = 0;
+     &decim_divisa = 0;
+     &enFactu = 0;
+     &enError = 0;
+
+     aDivisa = "";
+     aMoneda = "";
+     nTotal = 0;
+     nTotalD = 0;
+     nBruto = 0;
+     nBrutoD = 0;
+
+     aFin = "";
+     aAlfa = "";
+     aFichero = "";
+     aImpresora = "";
+     aIP = "";
+     aServidor = "";
+     aFrom = "";
+     aTo = "";
+     aSubject = "";
+     aMensaje = "";
+     aDjunto = "";
+     aEmp = "";
+     aDirDestino = "";
+|FIN;
+
+|PROCESO agifa077Fin;
+     enFactu = enFactu + 1;
+
+     nTotal = nTotal ! decim_base;
+     nBruto = nBruto ! decim_base;
+     #77#15 = #77#15 ! decim_base;
+     #77#55 = #77#55 ! decim_base;
+
+     nTotal = nTotal ! decim_divisa;
+     nBruto = nBruto ! decim_divisa;
+     #77#63 = #77#63 ! decim_divisa;
+     #77#64 = #77#64 ! decim_divisa;
+
+     |SI nTotal ! #77#15; |O nBruto ! #77#55;
+               |O nTotalD ! #77#63; |O nBrutoD ! #77#64;
+
+          enError = enError + 1;
+
+          #0#6 = nTotal;
+          #0#7 = nBruto;
+          #0#8 = nTotalD;
+          #0#9 = nBrutoD;
+
+          |PRINT;
+
+          |GRABA 020#77a;
+     |FINSI;
+     |LIBERA #77;
+|FPRC;
+
+|PROCESO agifa080;
+     |HAZ CalCabAgifa077;
+|FPRC;
+
+|PROCESO agifa077;
+     |SI #77#1 ] #0#1; |Y #77#1 [ #0#2;
+          aDivisa = #77#56;
+          aMoneda = #77#58;
+          |HAZ Divisas077;
+
+          nTotal = #77#15;
+          nBruto = #77#55;
+
+          nTotalD = #77#63;
+          nBrutoD = #77#64;
+
+          |HAZ LimCabAgifa077;
+     |SINO;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa077;
+     #77#1;
+     ;
+     INICIO;
+     FINAL;
+     be;
+     NULL, agifa077, agifa080, agifa077Fin;
+|FIN;
+
+|PROCESO temporal;
+     enSw = 1;
+
+     enError = enError + 1;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE temporal;
+     #36#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, temporal;
+|FIN;
+
+|PROCESO agifa080_1;
+     |DDEFECTO #77;
+     #77#50 = #80#27;
+     #77#0 = #80#0;
+     |LEE 000#77=;
+     |SI FSalida ! 0;
+          #36#0 = #77#50;
+          #36#1 = #77#0;
+          |GRABA 040#36n;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE agifa080_1;
+     #80#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, agifa080_1;
+|FIN;
+
+|PROCESO EnviaCorreo;
+     aDirDestino = #0#4; |QBF aDirDestino;
+
+     |DFICE aEmp;
+     aEmp = aEmp %- 205;
+     aIP = "xdscorreo.dv.diagram.net";
+     aServidor = "asmtp.diagram.es";
+     aFrom = aDirDestino;
+     aTo = aDirDestino;
+     aFin = &13; aFin = aFin + &10;
+     |SI enError = 0;
+          aSubject = "Recalculo albaranes compra empresa: " + aEmp + " (correcto)";
+          aMensaje = "Sin diferencias." + aFin + aFin + aFin;
+     |SINO;
+          aSubject = "Recalculo albaranes compra empresa: " + aEmp + " (con diferencias)";
+          aMensaje = "Adjunta diferencias encontradas." + aFin + aFin + aFin;
+     |FINSI;
+     aDjunto = aFichero;
+     |DSCORREO_ENVIA aIP, aServidor, aFrom, aTo, aSubject, aMensaje, aDjunto;
+|FPRC;
+
+|PROCESO Inicio;
+     |DFICE aAlfa;
+     aFichero = aAlfa + (Usuario % 810) + ".txt";
+
+     Impresora = aFichero;
+     |IMPRE -77;
+     |SI FSalida = 0;
+          |INFOR "tecaz037";
+          |SI FSalida = 0;
+               |BUCLE agifa077;
+
+               aAlfa = Usuario;
+               |NOME_DAT #36 aAlfa; |DELINDEX #36;
+               |ABRE #36;
+               |ABRE #77;
+               |BUCLE agifa080_1;
+               |CIERRA #77;
+               |CIERRA #36;
+               |BUCLE temporal;
+               |DELINDEX #36;
+
+               |SI enError = 0; |PRINT; |FINSI;
+               |PIEINF;
+               |FININF;
+          |FINSI;
+          |FINIMP;
+
+          |SI #0#3 = "S";
+               |HAZ EnviaCorreo;
+          |FINSI;
+          |FBORRA aFichero;
+
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     |SI PARAMETRO = "menu";
+          |CLS;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |ENDATOS #1#0;
+          |SI FSalida = 0;
+               |GRABA 020#0a;
+               |HAZ Inicio;
+               |SI enError = 0;
+                    aAlfa = "0000No se a encontrado errores. Procesados:" + enFactu;
+               |SINO;
+                    aAlfa = "0000Albaranes erroneos:" + enError + ". Procesados:" + enFactu;
+               |FINSI;
+               |MENAV aAlfa;
+          |FINSI;
+     |SINO;
+          |HAZ Inicio;
+     |FINSI;
+     |CIERRA #0;
+|FPRO;

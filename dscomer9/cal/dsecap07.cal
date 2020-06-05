@@ -1,0 +1,165 @@
+|FICHEROS;
+     dsecap07 #0;
+     dsecap01 #1;
+     dsecap07@;
+|FIN;
+
+|VARIABLES;
+     &eaPais = "";
+     &eaVarDni = "";
+     aNifQbf1 = "";
+     aNifQbf2 = "";
+     aAlfa = "";
+     aCli = "";
+     nTra = 0;
+     nModo = 0;
+     nHay = 0;
+     nNume = 0;
+|FIN;
+
+|PROCESO Tipo80_7; |TIPO 7;
+     FSalida = 2994;
+|FPRC;
+
+|PROCESO Min;
+     #0#0 = aCli;
+     #0#1 = 000000;
+|FPRC;
+
+|PROCESO Max;
+     #0#0 = aCli;
+     #0#1 = 999999;
+|FPRC;
+
+|PROCESO Tipo6_7; |TIPO 6;
+     |SI FSalida = 13;
+          |ABRE #1;
+          #1#0 = #0#0;
+          |LEE 000#1];
+          |CONSULTA_CLAVE #1#1;
+          |SI FSalida = 0;
+               #0#0 = #1#0; |PINTA #0#0;
+               #0#1 = #1#1; |PINTA #0#1;
+          |SINO;
+               |ERROR;
+          |FINSI;
+          |CIERRA #1;
+     |FINSI;
+     |SI FSalida = 14;
+          aCli = #0#0;
+          |CONSULTA_F_CLAVE #1#0, Min, Max;
+          |SI FSalida ! 0;
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LetraNif07; |TIPO 6;
+     eaPais = "";
+
+     |SI FSalida = 9;
+          eaVarDni  = #0Campo;
+          |HAZ CalculoNIFCIF;
+          #0Campo = eaVarDni;
+          |PINTA #0Campo;
+          |ERROR; |ACABA;
+     |FINSI;
+
+     eaVarDni  = #0Campo;
+     |HAZ CalculoNIFCIF;
+
+     aNifQbf1 = #0Campo;   |QBF aNifQbf1;
+     aNifQbf2 = eaVarDni;  |QBF aNifQbf2;
+
+     |SI aNifQbf1 ! aNifQbf2; |Y aNifQbf1 ! "";
+          aAlfa = "0000NEl NIF puede ser erróneo."+&13+"¿Desea calcularlo?";
+          |CONFI aAlfa;
+          |SI FSalida = 0;
+               #0Campo = eaVarDni; |PINTA #0Campo;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO T7_12; |TIPO 12;
+|FPRC;
+
+|PROCESO ConTraba7; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          aCli = #0#0;
+          #0#1 = 999999;
+          |LEE 000#0];
+          |SI FSalida = 0;
+               |LEE 000#0a;
+          |SINO;
+               |LEE 000#0u;
+          |FINSI;
+          |SI FSalida = 0; |Y #0#0 = aCli;
+               nTra = #0#1 + 1;
+          |SINO;
+               nTra = 1;
+          |FINSI;
+          |DDEFECTO #0;
+          #0#0 = aCli;
+          #0#1 = nTra;
+     |FINSI;
+|FPRC;
+
+|PROCESO ConTraba0; |TIPO 0;
+     |SI FSalida = 14;
+          aCli = #0#0;
+          |CONSULTA_F_CLAVE #1#0, Min, Max;
+          |SI FSalida ! 0;
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO NifRepe;
+     |SI #0#1 ! #dsecap07@#1;
+          |SI #0#4 = #dsecap07@#4;
+               nHay = 1;
+               aAlfa = "0000Trabajador: " + #dsecap07@#1 + " con el mismo dni...";
+               |MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE NifRepe;
+     #dsecap07@#2002;
+     ;
+     #0#0, "               ";
+     #0#0, "zzzzzzzzzzzzzzz";
+     ;
+     NULL, NifRepe;
+|FIN;
+
+|PROCESO Nif0; |TIPO 0;
+     aAlfa = #0Campo; |QBF aAlfa;
+     |SI #0Campo ! Contenido; |Y aAlfa ! "";
+          |DDEF aAlfa;
+          aAlfa = aAlfa + "dsecap07";
+          |CARGA_DEF aAlfa, dsecap07@;
+          |SI FSalida = 0;
+               nHay = 0;
+               |BUCLE NifRepe;
+               |SI nHay ! 0;
+                    |CONFI "0000N¨Continuar?";
+                    |SI FSalida ! 0; |ERROR; |FINSI;
+               |FINSI;
+               |DESCARGA_DEF #dsecap07@;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Fecha; |TIPO 0;
+     aAlfa = (#0#7 % 102) + "." + (#0#7 % 402) + "." + (#0#7 % 704);
+     #0#6 = aAlfa;
+     nNume = #0#6;
+     #0#6 = nNume;
+     aAlfa = #0#6;
+     |SI aAlfa ! #0#7;
+          |MENAV "0000Fecha incorrecta...";
+          |ERROR;
+     |FINSI;
+|FPRC;

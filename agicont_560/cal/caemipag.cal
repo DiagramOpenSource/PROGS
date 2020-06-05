@@ -1,0 +1,205 @@
+|FICHEROS;
+    caemipag #0;
+    capagcab #1;
+    capaglin #2;
+    cacuenta #3;
+    camanban #4;
+    caclipro #5;
+    capagaux #6;
+    cacuadre #9;
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    &sw = 0;
+    &importe = 0;
+    &prov = "";
+    &prov1 = "";
+    &cc1 = "";
+    &cc2 = "";
+    &cc3 = "";
+    &des = " ";
+    &dni = " ";
+    &dir = " ";
+    &pob = " ";
+    &pro = " ";
+
+    &pobla = "";
+    seleccio = 0;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    pepe = 0;
+    sw_act = 0;
+    informe = "caemipag";
+    ant_pro = "-1";
+|FIN;
+
+|INCLUYE acceso_i;
+
+|PROCESO cuadre; |TIPO 8;
+  |HAZ inicio;
+
+|| ...  |CAMPO_MODIFICA #0#12, 1, "S";
+  sw_act = 0; ||  0 = N control (Carta/Pagare) junto / 1 = S por separado
+  |ABRE #9;
+  #9#0 = 1;
+  |LEE 000#9=;
+  |SI FSalida = 0;
+      |SI #9#17 = "S";
+          sw_act = 1;
+      |FINSI;
+  |FINSI;
+  |CIERRA #9;
+|FPRC;
+
+|PROCESO mayor;
+   alfa1 = #0Campo > " ";
+   #0Campo = alfa1;
+   |PINTA #0Campo;
+|FPRC;
+
+|PROCESO cuentas;
+    des = "<CUENTA SIN DEFINIR>";
+    dni = " ";
+    dir = " ";
+    pob = " ";
+    pro = " ";
+
+    #5#23 = "P";
+    #5#10 = #1#1;
+    #5#11 = #1#2;
+|LEE 000#5=;        || lee el proveedor
+|SI FSalida = 0;
+        des = #5#1;
+        dni = #5#9;
+        dir = #5#2;
+        pob = #5#6;
+    |QBF pob;
+        alfa1 = #5#3;  alfa1 = "00"  + alfa1;  alfa1 = alfa1 % -102;
+        alfa2 = #5#4;  alfa2 = "000" + alfa2;  alfa2 = alfa2 % -103;
+        pob = "(" + alfa1 + alfa2 + ") " + pob;
+        pro = #5#5;
+|SINO;
+        #3#0 = #1#1;   || si no esta lee la cuenta del proveedor
+        #3#1 = #1#2;
+    |LEE 000#3=;
+    |SI FSalida = 0;  des = #3#2;  |FINSI;
+|FINSI;
+
+|DDEFECTO #4;
+    #4#10 = #1#3;   || lee el banco
+    #4#11 = #1#4;
+|LEE 000#4=;
+    cc1 = #4#9 % 104;
+    cc2 = #4#9 % 604;
+    cc3 = #4#9;
+|QBF cc3;
+    cc3 = cc3 % -102;
+|FPRC;
+
+|PROCESO impresion;
+    seleccio = 1;
+|HAZ cuentas;
+    importe = importe + #2#7;
+    sw = 0;
+|PRINT;
+|FPRC;
+
+|PROCESO pagares;
+|SI #0#13 ! #1#10;      |ACABA;  |FINSI;  || impresa
+
+|SI #0#10 ! "A";
+    |SI #0#10 ! #1#07;  |ACABA;  |FINSI;  || emision
+|FINSI;
+
+|SI #0#11 ! "A";
+    |SI #0#11 ! #1#08;  |ACABA;  |FINSI;  || vencimiento
+|FINSI;
+
+|SI #0#14 = "S";
+    |SI ant_pro = "-1";
+            ant_pro = #1#1;
+    |FINSI;
+    |SI ant_pro ! #1#1;
+        |PIEINF;
+            #0#12 = #0#12 + 1;    || va sumando uno
+            ant_pro = #1#1;
+    |FINSI;
+|FINSI;
+
+    importe = 0;
+    seleccio = 0;
+|BUCLELIN 2impresion#1;
+|SI seleccio ! 0;
+        sw = 1;
+    |PRINT;
+    |SI #0#14 = "N";
+        |PIEINF;
+    |FINSI;
+
+    || ... Actualiza Pagare
+        #1#10 = "S";
+    |SI sw_act = 0;
+            #1#12 = "S";
+            #1#11 = #0#12;              || nro. pagare banco
+        |SI #0#14 = "N";
+                #0#12 = #0#12 + 1;      || va sumando uno
+        |FINSI;
+    |FINSI;
+    |GRABA 020#1a;
+        pepe = 1;
+|FINSI;
+|LIBERA #1;
+|FPRC;
+
+|DEFBUCLE por_proveedor;
+ #1#1;
+ 5, 6, 1, 3;
+ #0#0, #0#2, #0#4, #0#6, #0#8; || Pagare,F.emi,F.vto,Prove,Banco
+ #0#1, #0#3, #0#5, #0#7, #0#9;
+ be;
+ NULL, NULL, NULL, NULL, NULL, pagares;
+ #1#1, #1#2, #1#0;
+|FIN;
+
+|DEFBUCLE por_pagare;
+ #1#1;
+ 5, 6, 1, 3;
+ #0#0, #0#2, #0#4, #0#6, #0#8; || Pagare,F.emi,F.vto,Prove,Banco
+ #0#1, #0#3, #0#5, #0#7, #0#9;
+ be;
+ NULL, pagares;
+|FIN;
+
+|PROCESO impre;|TIPO 3;
+  |IMPRE 0;
+  |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+  |ABRE #6;  |DDEFECTO #6;  |LEE 000#6p;   |CIERRA #6;  || datos auxiliares
+
+  |INFOR informe;
+  pobla = #48#7;   |QBF pobla;
+  pobla = (" " * 30) + pobla;     pobla = pobla % -130;
+
+  |ABRE #3;
+  |ABRE #4;
+  |SELECT #2#4;
+  |ABRE #5;
+  |SI #0#14 = "N";  |BUCLE por_pagare;    |FINSI;
+  |SI #0#14 = "S";  |BUCLE por_proveedor; |FINSI;
+  |SI pepe = 0;
+      |MENAV "    Seleccion vacia ...";
+  |SINO;
+      |SI seleccio ! 0;|Y #0#14 = "S";
+          |PIEINF;
+      |FINSI;
+  |FINSI;
+  |CIERRA #3;
+  |CIERRA #4;
+  |CIERRA #5;
+
+  |FININF;
+  |FINIMP;
+|FPRC;

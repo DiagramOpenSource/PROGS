@@ -1,0 +1,512 @@
+|FICHEROS;
+    :/agitool/def/agiusers #0;
+    :/agitool/def/agiuser1 #1;
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    alfa5 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    para1 = 0;
+    para2 = 0;
+    para3 = 0;
+    para4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    elsw1 = 0;
+    elsw2 = 0;
+    elsw3 = 0;
+    elsw4 = 0;
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+    dbase = "";
+
+    opcion = 0;
+{-1}menu = "";
+    menu1 = "2400";
+    menu2 = "1";
+    menu3 = "";
+    menu4 = "GBC";
+    menu5 = " Modificar Grupo ";
+    menu6 = " Borrar Usuario ";
+    menu7 = " Cambiar Clave ";
+
+    buf_men = 0;
+    top_men = 0;
+    buf_usr = 0;
+    ele_usr = 0;
+    nro_opcion = 1;
+    clave = "";
+    input = "";
+    finput = 0;
+    camuf = 0;
+    camufz = "";
+    fcanl = "";
+    field = "";
+    mensaje = "";
+    usu_nuevo = 0;
+    mayor = 0;
+
+    nGrupo         = 0;
+    aUsuario       = "";
+    aEsteUsuario   = "";
+    aSuperUsuario  = "";
+    aBase          = "";
+    aAbre          = "";
+    aAlfa          = "";
+    aAlfa1         = "";
+    nClavesUsuario = 0;
+    nHandle        = 0;
+|FIN;
+____________________________________/ CONTROL DEL PROCESO
+|PROGRAMA;
+|CLS;
+|CABEZA "Gestion Usuarios";
+|PINPA #0#0;
+|DIRECTORIO dbase;
+
+|ABRET #0;
+|LEE 000#0p;
+    FEstado = FSalida;
+|CIERRAT #0;
+
+|SI FEstado = 0;
+     |MENAV "    Definicion de Usuarios: PROCESO OCUPADO.";
+     aAlfa = "0000NCONTINUAR?"+ &13+"Asegurese de que no hay nadie trabajando...";
+     |CONFI aAlfa;
+     |SI FSalida = 0;
+          |DELINDEX #0;
+          FEstado = 1;
+     |SINO;
+          FEstado = 0;
+     |FINSI;
+|FINSI;
+
+|SI FEstado ! 0;
+    |HAZ carga_inicial;  || lectura de 'ds_sys.psw' y carga de tablas
+    |HAZ menu_opcion;    || seleccion de usuario (BMENUG)
+    |PARA; |SI nro_opcion ] 1; |HACIENDO;
+        |HAZ cual_opcion;     || tratamiento de la opcion (modific./baja)
+        |HAZ fichero_menu;    || grabacion de 'ds_sys.psw'
+        |HAZ reset_todo;      || inicializacion de tablas y temporal
+        |HAZ carga_inicial;   || lectura de 'ds_sys.psw' y carga de tablas
+        |HAZ menu_opcion;     || seleccion de usuario (BMENUG)
+    |SIGUE;
+    |HAZ reset_todo;
+
+    alfa1 = "";
+    |DBASE alfa1;
+    alfa1 = alfa1 + "agiusers";
+    |SYSTEM alfa1;
+
+|SINO;
+    ||MENAV "    Definicion de Usuarios: PROCESO OCUPADO.";
+|FINSI;
+|FPRO;
+
+-----------------------------------------------------------------------------
+                            DESARROLLO DE RUTINAS
+-----------------------------------------------------------------------------
+
+____________________________________/ TRATAMIENTO OPCION SELECCIONADA
+|RUTINA pide_clave;      || pide la clave
+    |PARA;  |SI;  |HACIENDO;
+         |PINTA 2229, mensaje;
+         E_sup = 10;
+         E_inf = "";
+         input = "";
+         input = 2243 ? -1;
+         finput = FSalida;
+
+         aAlfa = input - "¥";
+         |SI FSalida ! 0;
+             finput = 1;
+             aAlfa  = "0000 Por favor no introduzca " + &0209;
+             |MENAV aAlfa;
+         |FINSI;
+
+         aAlfa = input - "¤";
+         |SI FSalida ! 0;
+             finput = 1;
+             aAlfa  = "0000 Por favor no introduzca " + &0241;
+             |MENAV aAlfa;
+         |FINSI;
+
+         |SI finput = 0;  |SAL;  |FINSI;
+     |SIGUE;
+|FRUT;
+
+|RUTINA alta;            || alta usuario
+|DDEFECTO #0;
+|ABRET #0;
+|PINTA 2229, "Nombre .....:              ";
+|C_V #0#1, 1, "S";
+|ENCAMPO #1#0;
+|SI FSalida = 0;
+    aAlfa = #0#1 - "¥";
+    |SI FSalida ! 0;
+        aAlfa = "0000 Por favor no introduzca " + &0209;
+        |MENAV aAlfa;
+        |ACABA;
+    |FINSI;
+
+    aAlfa = #0#1 - "¤";
+    |SI FSalida ! 0;
+        aAlfa = "0000 Por favor no introduzca " + &0241;
+        |MENAV aAlfa;
+        |ACABA;
+    |FINSI;
+
+    |C_V #0#1, 1, "N";
+    |C_V #1#2, 1, "S";
+
+    |PUSHV 0501 2380;
+    |PINPA #0#1;
+    |PINTA 2229, "Grupo ......:              ";
+    |PINDA #0#1;
+    |ENCAMPO #2#1;
+    |POPV;
+
+    nGrupo = #1#2;
+    |SI FSalida = 0;
+        |C_V #1#2, 1, "N";
+        mensaje = "Clave ......:              ";
+        |HAZ pide_clave;
+        |SI finput = 0;
+            clave = (input + "          ") % 110;
+            |HAZ traduce2;
+            #0#0 = ele_usr + 1;    || nro.opcion
+            #0#4 = mayor + 1;      || nro.usuario
+            |GRABA 020#0n;
+        |FINSI;
+    |FINSI;
+
+    |ABRE #1;
+    #1#0 = #0#4;
+    |LEE 101#1=;
+    |SI FSalida ! 0;
+        #1#0 = #0#4;
+        #1#1 = #0#1;
+        |GRABA 020#1b;
+    |FINSI;
+    #1#2 = nGrupo;
+    |GRABA 020#1a;
+    |LIBERA #1;
+    |CIERRA #1;
+|FINSI;
+|CIERRAT #0;
+|FRUT;
+
+|RUTINA baja;            || borrado de usuario
+     |DDEFECTO #0;
+     |ABRET #0;
+
+     #0#0 = nro_opcion;
+     |LEE 101#0=;
+     |SI FSalida = 0;
+         |SI aSuperUsuario = "N";
+             |HAZ traduce1;
+             mensaje = "Clave ......:";
+             |HAZ pide_clave;
+             |SI finput = 0;
+                 |SI input = clave;
+                      FSalida = 0;
+                 |SINO;
+                     |MENAV "    Clave incorrecta ...";
+                      FSalida = 1;
+                 |FINSI;
+             |SINO;
+                  FSalida = 1;
+             |FINSI;
+        |SINO;
+             FSalida = 0;
+        |FINSI;
+
+        |SI FSalida = 0;
+            |CONFI "    SBorrando usuario, esta seguro (S/N): ";
+            |SI FSalida = 0;
+                |BORRA 020#0a;
+
+                |ABRE #1;
+                #1#0 = #0#4;
+                |LEE 101#1=;
+                |SI FSalida = 0;
+                    |BORRA 020#1a;
+                    |LIBERA #1;
+                |FINSI;
+                |CIERRA #1;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+    |LIBERA #0;
+    |CIERRAT #0;
+|FRUT;
+
+|RUTINA modi;            || modificar clave
+|DDEFECTO #0;
+|ABRET #0;
+    #0#0 = nro_opcion;
+|LEE 101#0=;
+|SI FSalida = 0;
+    |HAZ traduce1;
+        mensaje = "Clave Actual:";
+    |HAZ pide_clave;
+    |SI finput = 0;
+        |SI input = clave;
+                mensaje = "Clave Nueva :";
+            |HAZ pide_clave;
+            |SI finput = 0;
+                    clave = (input + "          ") % 110;
+                |HAZ traduce2;
+                |GRABA 020#0a;
+            |FINSI;
+        |SINO;
+            |MENAV "    Clave incorrecta ...";
+        |FINSI;
+    |FINSI;
+|FINSI;
+|LIBERA #0;
+|CIERRAT #0;
+|FRUT;
+
+|RUTINA Grupo;            || modificar clave
+|DDEFECTO #0;
+|ABRET #0;
+    #0#0 = nro_opcion;
+|LEE 101#0=;
+|SI FSalida = 0;
+    |C_V #1#2, 1, "S";
+
+    |ABRE #1;
+    #1#0 = #0#4;
+    |LEE 101#1=;
+    |SI FSalida ! 0;
+        #1#0 = #0#4;
+        #1#1 = #0#1;
+        |GRABA 020#1b;
+    |FINSI;
+
+    |PUSHV 0501 2380;
+    |PINPA #0#1;
+    |PINTA 2229, "Grupo ......:              ";
+    |PINDA #0#1;
+    |ENCAMPO #2#1;
+    |POPV;
+    |SI FSalida = 0;
+        |GRABA 020#0a;
+        |GRABA 020#1a;
+    |FINSI;
+    |LIBERA #1;
+    |CIERRA #1;
+|FINSI;
+|LIBERA #0;
+|CIERRAT #0;
+|FRUT;
+
+|RUTINA cual_opcion;     || seleccionar opcion
+|ABRET #0;
+    #0#0 = nro_opcion;
+|LEE 000#0=;
+    usu_nuevo = FSalida;
+|CIERRAT #0;
+
+nClavesUsuario = 1;
+|DBASS aBase;  |QBF aBase;
+aAbre = aBase + "ds.ini";
+
+|XABRE "", aAbre, nHandle;
+|PARA;  |SI  FSalida ] 0;  |HACIENDO;
+     |XLEE nHandle, 254, aAlfa;
+     |SI FSalida < 0;  |SAL;  |FINSI;
+     aAlfa  = aAlfa > aAlfa;  |QBT aAlfa;
+     aAlfa1 = aAlfa - "CLAVESUSUARIO=";
+     |SI aAlfa1 ! aAlfa;
+         aAlfa1         = aAlfa % -101;
+         nClavesUsuario = aAlfa1;
+         |SAL;
+     |FINSI;
+|SIGUE;
+|XCIERRA  nHandle;
+
+|SI nClavesUsuario = 0;
+    menu1 = "2400";
+    menu2 = "1";
+    menu3 = "";
+    menu4 = "GBC";
+    menu5 = " Modificar Grupo ";
+    menu6 = " Borrar Usuario ";
+    menu7 = " Cambiar Clave ";
+|SINO;
+    menu1 = "2400";
+    menu2 = "1";
+    menu3 = "";
+    menu4 = "GB";
+    menu5 = " Modificar Grupo ";
+    menu6 = " Borrar Usuario ";
+    menu7 = " ";
+|FINSI;
+
+|SI usu_nuevo = 0;
+    |MENU menu;
+        opcion = FSalida;
+    |SI opcion = 1;     |HAZ Grupo;    |FINSI;
+    |SI opcion = 2;     |HAZ baja;     |FINSI;
+    |SI opcion = 3;     |HAZ modi;     |FINSI;  || Cambio de Clave Desactivado
+|SINO;
+    |HAZ alta;
+|FINSI;
+|FRUT;
+____________________________________/ (DES)ENCRIPTADO DE CLAVE
+|RUTINA traduce1;        || desencriptado
+    clave = #0#2;
+    camufz = "";
+|PARA para1 = 1; |SI para1 [ 20; |HACIENDO para1 = para1 + 2;
+        nume1 = (para1 * 100) + 1;           alfa1 = clave % nume1;
+        nume1 = ((para1 + 1) * 100) + 1;     alfa2 = clave % nume1;
+
+        nume1 = &alfa2;
+        nume1 = nume1 - 65;
+
+        camuf = &alfa1;
+        camuf = camuf - 65;
+        camuf = ((camuf * 26) + nume1) / 2;
+
+        camufz = camufz + &camuf;
+|SIGUE;
+    clave = camufz;
+|FRUT;
+
+|RUTINA traduce2;        || encriptado
+    camufz = "";
+|PARA para1 = 1; |SI para1 [ 10; |HACIENDO para1 = para1 + 1;
+        nume1 = (para1 * 100) + 1;           alfa1 = clave % nume1;
+
+        camuf = &alfa1;
+        camuf = camuf * 2;
+
+        nume1 = ((camuf - (camuf $ 26)) / 26 ) + 65;
+        camufz = camufz + &nume1;
+
+        nume1 = (camuf $ 26) + 65;
+        camufz = camufz + &nume1;
+|SIGUE;
+    #0#2 = camufz;
+|FRUT;
+____________________________________/ SELECCION DE USUARIO
+|RUTINA menu_opcion;
+|ATRI R;  |PINTA 2228, "     < Elija Usuario >    ";   |ATRI 0;
+    top_men = ele_usr + 1;
+|AL_BUF buf_men, ele_usr, "[NUEVO]   ";
+|BMENUG buf_men, 0, 1, top_men, 35, nro_opcion;
+    nro_opcion = FSalida;
+|PINTA 2228, "                          ";
+|FRUT;
+____________________________________/ LECTURA DE 'ds_sys.psw'
+|RUTINA carga_inicial;
+    aUsuario      = Usuario % 810;  |QBF aUsuario;
+    aSuperUsuario = "N";
+
+    mayor = -1;
+    Pos = -1;
+|DIMENSIONA 1000, buf_men, 0;
+|DELINDEX #0;
+|ABRET #0;
+    alfa1 = dbase + "dev/usr/ds_sys.psw"
+|LEESECUENCIAL alfa1, buf_usr, ele_usr, 0, 0;
+|PARA para1 = 0; |SI para1 < ele_usr; |HACIENDO para1 = para1 + 1;
+    |DEL_BUF buf_usr, para1, alfa1;
+    |DDEFECTO #0;
+        #0#0 = para1 + 1;               || nro.opcion
+        #0#1 = alfa1 % 410;             || nombre
+        #0#2 = alfa1 % 1420;            || clave
+        #0#3 = alfa1 % 3401;            || tipo
+        #0#4 = (A\alfa1 % 103);         || nro.usuario
+
+        aEsteUsuario = #0#1;  |QBF aEsteUsuario;
+        |SI aEsteUsuario = aUsuario;
+            aSuperUsuario = alfa1 % -101;
+        |FINSI;
+
+        |ABRE #1;
+        #1#0 = #0#4;
+        |LEE 101#1=;
+        |SI FSalida ! 0;
+            |DDEFECTO #1;
+            #1#0 = #0#4;
+            #1#1 = #0#1;
+            |GRABA 020#1n;
+        |FINSI;
+        |CIERRA #1;
+
+    |GRABA 020#0n;
+    |SI FSalida = 0;
+            alfa2 = ("000" + #0#4) % -103;
+            alfa1 = alfa2 + "-" + #0#1 + "-" + (("0000" + #1#2) % -104);
+        |AL_BUF buf_men, para1, alfa1;
+
+        |SI mayor < #0#4;     mayor = #0#4;  |FINSI;
+    |FINSI;
+|SIGUE;
+|CIERRAT #0;
+|FRUT;
+____________________________________/ GRABACION DE 'ds_sys.psw'
+|PROCESO lee_temporal5;
+|FCIERRA fcanl;
+    Pos = -1;
+|FPRC;
+
+|PROCESO lee_temporal1;
+    alfa1 = #0#4;
+    alfa1 = ("000" + alfa1) % -103;     || nro. registro
+    alfa2 = #0#1;                       || nombre
+    alfa3 = #0#2;                       || clave encriptada
+    alfa4 = #0#3;                       || tipo usuario (sin tocar)
+
+    field = fcanl + " " + alfa1 + alfa2 + alfa3 + alfa4;
+|FGRABA field;
+|FPRC;
+
+|PROCESO lee_temporal0;
+    Pos = -1;
+
+    alfa1 = dbase + "dev/usr/ds_sys.psw"
+    alfa1 = "w   " + alfa1;
+|FABRE alfa1;
+    fcanl = FSalida;
+
+|SI fcanl < 0;
+        alfa1 = "    [" + dbase + "dev/usr/ds_sys.psw] sin acceso a escritura ...";
+    |MENAV alfa1;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE lee_temporal;
+ #0#1;
+ ;
+ 000;
+ 999;
+ ;
+ lee_temporal0, lee_temporal1, NULL, NULL, lee_temporal5;
+|FIN;
+
+|RUTINA fichero_menu;
+|NOPARA;
+|BUCLE lee_temporal;
+|SIPARA;
+|FRUT;
+____________________________________/ GRABACION DE 'ds_sys.psw'
+|RUTINA reset_todo;
+|FINDIM buf_usr;
+|FINDIM buf_men;
+|DELINDEX #0;
+|FRUT;

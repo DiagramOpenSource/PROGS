@@ -1,0 +1,298 @@
+|FICHEROS;
+     vipe9999 #0;
+
+     vipem009 #909;      ||% IPC por mes/a¤o
+
+     vipem006 #906;      ||Edificios
+
+     agifa134 #134;      ||Facturas.Vtas.Cabs.
+     agifa059 #59;       ||Facturas.Vtas.Lin.
+
+     vipem017@ #117;      ||Control FactuVipei
+     vipem027@ #127;      ||Series Gestion
+|FIN;
+
+|VARIABLES;
+     aFecha = "";
+     aAnyo = "";
+     aMes = "";
+     fFecha = @;
+
+     nSwEstaSerie = 0;
+     aAuxSer = "";
+     &eaCodCliVipei = "";
+     &eaDesCliVipei = "";
+     &efFecFacVipei = @;
+     &enModoFacVipei = 0;
+     &efFecHuecos = @;
+     &efAntesHueco = @;
+     &efDespHueco = @;
+     &enContaHuecos = 0;
+     nPotencial = 0;
+     nHuecosReales = 0;
+
+     fUltima = @;
+
+     aAlfa = "";
+     aMas = "";
+
+     &eaSerFacVipei = "";
+     &enNumFacVipei = 0;
+     &eaSwEsAlquiler = "";
+
+     nDesde = 0;
+     nHasta = 0;
+     nUltimo = 0;
+     nNum = 0;
+
+     &eaHayHuecos = "";
+     &eaSerHuecos = "";
+     &enNumHueco = 0;
+
+     &enNumEdificio = 0;
+     &eaTipoContador = "";
+
+     &enAnyFac = 0;
+     &enMesFac = 0;
+     &enSwIncIPC = 0;
+     &eaAnyoMes = "";
+
+     nMeses = 0;
+     nAnyDesde = 0;
+     nAnyHasta = 0;
+     nMesDesde = 0;
+     nMesHasta = 0;
+     nAnyFac = 0;
+     nMesFac = 0;
+     nMesDif = 0;
+     nMesAux = 0;
+     nMesesAtras = 0;
+|FIN;
+
+
+|PROCESO CtrlPorIncIPC;
+     nAnyFac = enAnyFac;
+     nMesFac = enMesFac;
+
+     ||ARA
+     nMesesAtras = 2;
+
+     |SI nMesesAtras > 0;
+          nMesDif = nMesFac - nMesesAtras;
+          |SI nMesDif [ 0;
+               nMesAux = nMesFac + 12;
+               nMesDif = nMesAux - nMesesAtras;
+               nAnyHasta = nAnyFac - 1;
+          |SINO;
+               nAnyHasta = nAnyFac;
+          |FINSI;
+          nMesHasta = nMesDif;
+     |SINO;
+          nMesHasta = nMesFac;
+          nAnyHasta = nAnyFac;
+     |FINSI;
+
+     |ABRE #vipem009;
+     #vipem009#0 = nAnyHasta;
+     #vipem009#1 = nMesHasta;
+     |LEE 000#vipem009.=;
+     |SI FSalida = 0;
+          enSwIncIPC = 1;
+     |SINO;
+          enSwIncIPC = 0;
+          eaAnyoMes = nAnyHasta + "/" + (("00" + nMesHasta) % -102);
+     |FINSI;
+
+     |CIERRA #vipem009;
+|FPRC;
+
+|PROCESO DameTipoContador;
+     ||Entrada: enNumEdificio
+     ||Salida:  eaTipoContador
+     |ABRE #vipem006;
+     |DDEFECTO #vipem006;
+     #vipem006#0 = enNumEdificio;
+     |LEE 000#vipem006.=;
+     eaTipoContador = #vipem006#10;
+     |CIERRA #vipem006;
+|FPRC;
+
+|PROCESO MiraHuecosFV;
+     |QBF eaSerHuecos;
+
+     |ABRE #agifa134;
+     |DDEFECTO #agifa134;
+
+     #agifa134#49 = eaSerHuecos;
+     #agifa134#0 = 999999;
+     |LEE 000#agifa134.];
+     |SI FSalida = 0;
+          |LEE 000#agifa134.a;
+     |SINO;
+          |LEE 000#agifa134.u;
+     |FINSI;
+     aAuxSer = #agifa134#49;
+     |QBF aAuxSer;
+     |SI FSalida = 0; |Y aAuxSer = eaSerHuecos;
+          nUltimo = #agifa134#0;
+     |SINO;
+          eaHayHuecos = "S";  ||No hay ninguna factura. Caben todos los huecos
+          |ACABA;
+     |FINSI;
+
+     ||Averiguo el ultimo numero de la serie
+     ||Luego miro si hay huecos desde el 1 hasta el ultimo.
+
+     nPotencial = 0;
+     fUltima = "01.01.0000";
+     nHuecosReales = 0;
+     eaHayHuecos = "N";
+     |PARA nNum = 1; |SI nNum [ nUltimo; |HACIENDO nNum = nNum + 1;
+          #agifa134#49 = eaSerHuecos;
+          #agifa134#0 = nNum;
+          |LEE 000#agifa134.=;
+          |SI FSalida ! 0;
+               |SI fUltima [ efFecHuecos;
+                    nPotencial = nPotencial + 1;
+               |SINO;
+                    ||NADA.
+               |FINSI;
+          |SINO;
+               |SI nPotencial = 0;
+                    ||NADA.
+               |SINO;
+                    |SI #agifa134#1 ] efFecHuecos;
+                         nHuecosReales = nHuecosReales + nPotencial;
+                    |FINSI;
+               |FINSI;
+               nPotencial = 0;
+               fUltima = #agifa134#1;
+          |FINSI;
+     |SIGUE;
+
+
+     |SI nHuecosReales ] enContaHuecos;
+          eaHayHuecos = "S";       ||Hay bastantes huecos disponibles
+     |SINO;
+          |SI fUltima [ efFecHuecos;
+               eaHayHuecos = "S";  ||Podemos meter los huecos al final de la factura
+          |SINO;
+               eaHayHuecos = "N";
+          |FINSI;
+     |FINSI;
+
+     |CIERRA #agifa134;
+|FPRC;
+
+|PROCESO vipem017_esta;
+     |SI #vipem017@#12 = "N";
+          eaSwEsAlquiler = "S";
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE vipem017_esta;
+ #vipem017@#2002;
+ ;
+ eaSerFacVipei, enNumFacVipei;
+ eaSerFacVipei, enNumFacVipei;
+ ;
+ NULL, vipem017_esta;
+|FIN;
+
+|PROCESO MiraSiFacturaAlquiler;
+     |DBASE aAlfa; |QBF aAlfa;
+     aMas = aAlfa + "def/vipem017.mas";
+     |CARGA_DEF aMas, vipem017@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |BUCLE vipem017_esta;
+
+     |DESCARGA_DEF #vipem017@;
+|FPRC;
+
+|PROCESO agifa059_vipei;
+
+     |DDEFECTO #vipem017@;
+     #vipem017@#4 = #agifa059#15;
+     #vipem017@#5 = #agifa059#2;
+     |LEE 101#vipem017@.=;
+     |SI FSalida ! 0;
+          fFecha = efFecFacVipei;
+          aFecha = fFecha;
+          aAnyo = aFecha % -104;
+          aMes = aFecha % 402;
+          #vipem017@#0 = 0;        ||No tiene pq. estar relacionado con un contrato
+          #vipem017@#1 = aAnyo;
+          #vipem017@#2 = aMes;
+          #vipem017@#3 = "S";
+          #vipem017@#6 = efFecFacVipei;
+          #vipem017@#7 = eaSerFacVipei;
+          #vipem017@#8 = enNumFacVipei;
+          #vipem017@#9 = eaCodCliVipei;
+          #vipem017@#10 = eaDesCliVipei;
+          #vipem017@#12 = "S";
+          |GRABA 020#vipem017@.n;
+     |FINSI;
+     |LIBERA #vipem017@;
+|FPRC;
+
+|DEFBUCLE agifa059_vipei;
+ #agifa059#1;
+ ;
+ eaSerFacVipei, enNumFacVipei,   1;
+ eaSerFacVipei, enNumFacVipei, 999;
+ ;
+ NULL, agifa059_vipei;
+|FIN;
+
+|PROCESO vipem017_borra;
+     |SI #vipem017@#12 = "S";
+          |BORRA 020#vipem017@.a;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE vipem017_borra;
+ #vipem017@#2002;
+ ;
+ eaSerFacVipei, enNumFacVipei;
+ eaSerFacVipei, enNumFacVipei;
+ be;
+ NULL, vipem017_borra;
+|FIN;
+
+|PROCESO ControlAlbGestionVipei;
+     |DBASE aAlfa; |QBF aAlfa;
+     aMas = aAlfa + "def/vipem027.mas";
+     |CARGA_DEF aMas, vipem027@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     nSwEstaSerie = 0;
+     |ABRE #vipem027@;
+     #vipem027@#0 = eaSerFacVipei;
+     |LEE 000#vipem027@.=;
+     |SI FSalida = 0;
+          nSwEstaSerie = 1;
+     |FINSI;
+     |CIERRA #vipem027@;
+
+     |DESCARGA_DEF #vipem027@;
+
+     |SI nSwEstaSerie = 1;
+          |DBASE aAlfa; |QBF aAlfa;
+          aMas = aAlfa + "def/vipem017.mas";
+          |CARGA_DEF aMas, vipem017@;
+          |SI FSalida ! 0;  |ACABA;  |FINSI;
+          |ABRE #vipem017@;
+
+          |SI enModoFacVipei ! 3;
+               |BUCLE agifa059_vipei;
+          |SINO;
+               |BUCLE vipem017_borra;
+          |FINSI;
+          |CIERRA #vipem017@;
+
+          |DESCARGA_DEF #vipem017@;
+          ||ARA
+     |FINSI;
+|FPRC;

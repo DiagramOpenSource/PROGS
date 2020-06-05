@@ -1,0 +1,275 @@
+|FICHEROS;
+     dsmoz046 #0;
+     dsmom041 #41;
+     dsmow044 #998;  || Ayuda Chequeo Empresa / Cuenta
+     dsmow045 #999;  || Temp. Chequeo Empresa / Cuenta / Linea
+
+     dsmow106 #906;
+     :/contagen/def/cacuenta #300;
+|FIN;
+
+|VARIABLES;
+  cuen1 = "";
+  cuen2 = "";
+  sw    = 0;
+  aFichero  = "";
+  Linea  = 0;
+  total  = 0;
+  fHFecha = @;
+  nEjer   = 0;
+  aAlfa1  = "";
+|FIN;
+
+|INCLUYE i_variar;
+|INCLUYE i_varcon;
+
+|| /////////////////////// PROCESOS DE TRABAJO \\\\\\\\\\\\\\\\\\\\
+|CALCULO  VerEmpresa; |TIPO 0;  ||Desde Numero Empresa
+                     ||Busco la empresa
+
+   enEmpresa = #0#0;
+   enPerConta = -1;
+   enEjer = 0;
+   |HAZ LEmpresaConta;
+   |SI swerror = 1;   || No existe ninguna empresa
+       |MENAV "    Error. No existe Empresa Contable. ";
+       |ERROR;
+   |SINO;
+       #0#3 = eaNombreEmp; |PINTA #0#3;
+   |FINSI;
+|FCAL;
+
+|CALCULO  VerPeriodo; |TIPO 0;
+                     ||Busco la empresa y Periodo
+   enEmpresa  = #0#0;
+   enPerConta = #0#1;
+   enEjer = 0;
+   |HAZ LEmpresaConta;
+   |SI swerror = 1;   || No existe ninguna empresa
+       |MENAV "    Error. No existe Empresa Contable. ";
+       |ERROR;
+   |SINO;
+       #0#2 = enEjer;      |PINTA #0#2;
+       #0#3 = eaNombreEmp; |PINTA #0#3;
+       |SI enEjer = 2008;
+           eaPath2008 = aPathConta;
+       |FINSI;
+   |FINSI;
+|FCAL;
+
+|| ////////////////// Procesos  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+|RUTINA ClaveBaja998;
+  #998#0 = enEmpresa;
+  #998#1 = enPerConta;
+  #998#2 = cuen1;
+|FRUT;
+
+|RUTINA ClaveAlta998;
+  #998#0 = enEmpresa;
+  #998#1 = enPerConta;
+  #998#2 = cuen2;
+|FRUT;
+
+|PROCESO GrabaTemp2;
+
+ |SI #dsmom041#26 > "01.01.1900"; |ACABA; |FINSI;
+ |SI #dsmom041#27 > fHFecha;     |ACABA; |FINSI;
+
+ Linea = Linea + 1;
+ |DDEFECTO #dsmow045;
+ #999#0 = enEmpresa;    ||Empresa
+ #999#1 = enPerConta;   ||Periodo
+ #999#2 = #cacuenta#0;  ||Cuenta
+ #999#3 = Linea;        ||Linea
+ #999#4 = #dsmom041#18; ||Grupo
+ #999#5 = #dsmom041#2;  ||Elemento
+ #999#6 = #dsmom041#4;  ||Descripcion Elemento
+ #999#7 = #dsmom041#27; ||Fecha Compra
+ #999#8 = #dsmom041#19; ||Tipo Amortizacion Contable
+ #999#9 = #dsmom041#20; ||% Amortizacion
+ #999#10 = #dsmom041#10; ||% Importe Compra
+ #999#11 = #dsmom041#3;  ||Numero Elemento
+ |GRABA 020#dsmow045.n;
+ total = total + #dsmom041#10;
+|FPRC;
+
+|DEFBUCLE dsmow045;
+ #dsmom041#4;
+ ;
+ enEmpresa,#cacuenta#0;
+ enEmpresa,#cacuenta#0;
+ ;
+ NULL,GrabaTemp2;
+|FIN;
+
+|PROCESO LeeAuxiliar;
+  #41#0 = #906#0;
+  #41#2 = #906#2;
+  #41#3 = #906#3;
+  |LEE 001#41=;
+  |HAZ GrabaTemp2;
+|FPRC;
+
+|DEFBUCLE LeeAuxiliar;
+ #906#3;
+ ;
+ enEmpresa, #cacuenta#0, "        ", 00;
+ enEmpresa, #cacuenta#0, "zzzzzzzz", 99;
+ e;
+ NULL, LeeAuxiliar;
+|FIN;
+
+|PROCESO GrabaTemp1;
+ Linea   = 0;
+ total   = 0;
+
+ |SI enEjer ] 2008;
+     |ABRE #41;
+     |BUCLE LeeAuxiliar;
+     |CIERRA #41;
+ |SINO;
+     |BUCLE dsmow045;
+ |FINSI;
+ |SI Linea = 0;  |ACABA; |FINSI;
+
+ |SI sw = 0;
+     sw = 1;
+     cuen1 = #cacuenta#0;
+ |FINSI;
+ cuen2 = #cacuenta#0;
+
+ #998#0 = enEmpresa;
+ #998#1 = enPerConta;
+ #998#2 = #cacuenta#0;
+ |LEE 101#998=;
+ |SI FSalida ! 0;
+     #998#0 = enEmpresa;
+     #998#1 = enPerConta;
+     #998#2 = #cacuenta#0;
+     #998#3 = #cacuenta#2;
+     #998#4 = eaNombreEmp;
+     #998#5 = enEjer;
+     #998#6 = (#cacuenta#53 / enConversor) ! EURODBMOD;
+     #998#7 = total;
+     |GRABA 020#998n;
+ |FINSI;
+ |LIBERA #998;
+|FPRC;
+
+|DEFBUCLE dsmow044;
+ #cacuenta#6
+ ;
+ "S","            ";
+ "S","zzzzzzzzzzzz";
+ ;
+ NULL,GrabaTemp1;
+|FIN;
+
+|| ************* Proceso para cambiar las cuentas
+|PROCESO LeeAmor0;
+  |SI #41#26 > "01.01.1900"; |ACABA; |FINSI;
+  |SI #41#27 > fHFecha; |ACABA; |FINSI;
+
+  #906#0 = #41#0;
+  #906#1 = #41#1;
+  #906#2 = #41#2;
+  #906#3 = #41#3;
+  |LEE 101#906=;
+  |SI FSalida ! 0;
+      #906#0 = #41#0;
+      #906#1 = #41#1;
+      #906#2 = #41#2;
+      #906#3 = #41#3;
+      #906#4 = #41#27;
+      |GRABA 020#906b;
+  |FINSI;
+
+  aAlfa1     = #41#27;
+  aAlfa1     = #41#27; aAlfa1 = aAlfa1 % -104;
+  enEjerCam  = aAlfa1;
+  #906#5     = #41#5;
+  #906#8     = #41#5;
+  |SI enEjerCam < 2008;
+      eaCuenta  = #906#5;
+      |HAZ CambioCta;
+      #906#8 = eaCta2008;
+  |FINSI;
+  |GRABA 020#906a;
+  |LIBERA #906;
+|FPRC;
+
+|DEFBUCLE LeeAmor;
+ #41#1;
+ ;
+ enEmpresa, "        ", 00;
+ enEmpresa, "zzzzzzzz", 99;
+ e;
+ NULL, LeeAmor0;
+|FIN;
+
+|PROCESO ElAuxiliar;
+ |SI enEjer ! 2008;
+     |HAZ AntCambioCta;
+ |FINSI;
+ |ABRE #906;
+ |BUCLE LeeAmor;
+ |CIERRA #906;
+|FPRC;
+
+|PROCESO Tipo3;  |TIPO 3;
+
+   |SI #0#4 = "N"; |ACABA; |FINSI;
+
+   aFichero = ("44w" + Usuario) % 108;
+   |NOME_DAT #998 aFichero;
+   |ABRE #998;  |CIERRA #998;  |DELINDEX #998;
+   aFichero = ("45w" + Usuario) % 108;
+   |NOME_DAT #999 aFichero;
+   |ABRE #999;  |CIERRA #999;  |DELINDEX #999;
+   aFichero = ("6w" + Usuario) % 108;
+   |NOME_DAT #906 aFichero;
+
+   aAlfa1 = #0#2; aAlfa1 = "31.12." + aAlfa1; fHFecha = aAlfa1;
+
+   enEmpresa  = #0#0;
+   enPerConta = #0#1;
+   enEjer     = #0#2;
+   |SI enEjer ] 2008;
+       |HAZ ElAuxiliar;
+   |FINSI;
+
+   enEmpresa  = #0#0;
+   enPerConta = #0#1;
+   enEjer     = 0;
+   |HAZ LEmpresaConta;
+   |SI swerror = 1;   || No existe ninguna empresa
+       |ACABA;
+   |FINSI;
+   |QBT aPathConta;
+   |PATH_DAT #300 aPathConta;
+
+   enEmpresa  = #0#0;
+   enPerConta = #0#1;
+   |HAZ EnConversor;
+
+   |ABRE #998;
+   |ABRE #999;
+   sw = 0;
+   |BUCLE dsmow044;
+   |CIERRA #998;
+   |CIERRA #999;
+
+   |ENTLINEAL #1#998, -3, 4, 10, 1, ClaveBaja998, ClaveAlta998;
+   |DELINDEX #998;
+   |DELINDEX #999;
+|FPRC;
+
+|| ....................... Situa la Empresa Contable
+|PROCESO LEmpresaConta;
+   enSwSinMen = 1;
+  swerror = 0;
+  |HAZ SituaContagen;
+  |SI swerror = 1;
+      |ACABA;
+  |FINSI;
+|FPRC;

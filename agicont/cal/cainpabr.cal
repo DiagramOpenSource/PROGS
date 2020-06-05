@@ -1,0 +1,379 @@
+|FICHEROS;
+    cainpabr #0;
+    camanpag #1;
+    camanban #2;
+    cacuenta #3;
+    cainpab1 #4;
+|FIN;
+
+|VARIABLES;
+    &entrada = 1;
+    informe = "cainpabr";
+    prov =  0;
+    dprov = 0;
+    sw = 0;
+ {-1}elegir = "";
+    elegir1 = "2400";
+    elegir2 = "1";
+    elegir3 = " Elija opcion: ";
+    elegir4 = "IP";
+    elegir5 = " Impresora ";
+    elegir6 = " Pantalla ";
+    posic = 0;
+    mas = 0;
+    lin_pan = 0;
+    alfa1 = "";
+    &vto1 = @;
+    &vto2 = @;
+    &vto3 = @;
+    &vto4 = @;
+    &imp1 = 0;
+    &imp2 = 0;
+    &imp3 = 0;
+    &imp4 = 0;
+    &imp5 = 0;
+    &tot1 = 0;
+    &tot2 = 0;
+    &tot3 = 0;
+    &tot4 = 0;
+    &tot5 = 0;
+    &nomb = "";
+    &ctab = "";
+    &tit1 ="";
+    &tit2 ="";
+    cc = 0;
+    tprov = 0;
+    vto = @;
+    swfin = 0;
+    novale = 0;
+    impor = 0;
+    error = 0;
+     Parte1 = "";
+     Parte2 = "";
+     Posic1 = 0;
+     Posic2 = 0;
+     Comodin = "";
+     Long = "";
+     LongNum = 0;
+     FEstado = 0;
+     MaxDig = 0;
+
+|FIN;
+
+|INCLUYE acceso_i;
+
+|| ************************* calculos pantalla ******************************
+|PROCESO mayor;
+   alfa1 = #0Campo > " ";
+   #0Campo = alfa1;
+   |PINTA #0Campo;
+|FPRC;
+
+|PROCESO fechas;
+   cc = Campo - 1;
+   |SI #0Campo < #0cc;
+       |MENAV " Error en la introduccion ";
+       |ERROR;
+       |ACABA;
+   |FINSI;
+|FPRC;
+|| *************************************************************************
+
+|PROCESO verbueno; || segun seleccion importe pagado, pendiente o todo.
+   novale = 0;
+   impor = 0;
+   |SI #0#10 = "T";
+       impor = #1#8; || importe total pago
+       |ACABA;
+   |FINSI;
+   |SI #0#10 = "S";
+       impor = #1#23; || importe pagado
+       |SI impor = 0;
+           novale = 1;
+       |FINSI;
+       |ACABA;
+   |FINSI;
+   |SI #0#10 = "N";
+       impor = #1#8 - #1#23; || importe total - liquidado
+       |SI impor = 0; |O #1#22 = "S";
+           novale = 1;
+           impor = 0;
+       |FINSI;
+       |ACABA;
+   |FINSI;
+|FPRC;
+
+|PROCESO suma; || ============ Calculo del importe a columna correcta
+|SI #1#7 [ vto1;
+    imp1 = imp1 + impor;
+    |VETE sumado;
+|FINSI;
+
+|SI #1#7 > vto1;|Y #1#7 [ vto2;
+    imp2 = imp2 + impor;
+    |VETE sumado;
+|FINSI;
+
+|SI #1#7 > vto2;|Y #1#7 [ vto3;
+    imp3 = imp3 + impor;
+    |VETE sumado;
+|FINSI;
+
+|SI #1#7 > vto3;|Y #1#7 [ vto4;
+    imp4 = imp4 + impor;
+    |VETE sumado;
+|FINSI;
+
+    imp5 = imp5 + impor;
+
+|ET sumado;
+|FPRC;
+
+|PROCESO detalles;       || lee el prov y la cuenta
+    ctab = prov; |QBF ctab;
+    ctab = "0000" + ctab;
+    ctab = ctab % -103;
+
+    nomb = "NO EXISTE BANCO ";
+    imp1 = 0;
+    imp2 = 0;
+    imp3 = 0;
+    imp4 = 0;
+    imp5 = 0;
+    #2#0 = prov;
+    |LEE 001#2=;
+    |SI FSalida = 0;
+        nomb = #2#1;
+    |FINSI;
+|FPRC;
+
+|PROCESO impre1;
+  |HAZ verbueno;
+  |SI novale = 1; |ACABA; |FINSI;
+|SI sw = 0;
+        prov = #1#26;
+        |HAZ detalles;
+        sw = 1;
+|FINSI;
+|SI prov ! #1#26;
+    |PRINT;                   || imprime total proveedor anterior
+    tot1 = tot1 + imp1;
+    tot2 = tot2 + imp2;
+    tot3 = tot3 + imp3;
+    tot4 = tot4 + imp4;
+    tot5 = tot5 + imp5;
+        prov = #1#26;
+        |HAZ detalles;
+|FINSI;
+|HAZ suma;
+|FPRC;
+
+|DEFBUCLE impre;
+ #1#5;
+ 0, 1, 11; || selecciona libro+factura+tipo recibo
+ #0#19, "01.01.1900", #0#6, 0, #0#0, #0#2, #0#4;
+ #0#20, "31.12.2090", #0#7, 9, #0#1, #0#3, #0#5;
+ e;
+ NULL, impre1;
+|FIN;
+
+|PROCESO impresora;
+|IMPRE 0;
+|SI FSalida = 0;
+    |INFOR informe;
+    |ABRE #2;
+    |ABRE #3;
+    |BUCLE impre;
+    |CIERRA #2;
+    |CIERRA #3;
+      |SI sw = 1;
+         |PRINT;
+          tot1 = tot1 + imp1;
+          tot2 = tot2 + imp2;
+          tot3 = tot3 + imp3;
+          tot4 = tot4 + imp4;
+          tot5 = tot5 + imp5;
+         |FINSI;
+    |PIEINF;
+    |FININF;
+|SINO;
+    |MENAV "    Proceso Abortado ...";
+|FINSI;
+|FINIMP;
+|FPRC;
+
+
+|| ********************** PANTALLA
+
+|PROCESO correte;
+|CAMPO_POSICION #4#0,0,posic; posic=posic+mas; |CAMPO_POSICION #4#0,1,posic;
+|CAMPO_POSICION #4#1,0,posic; posic=posic+mas; |CAMPO_POSICION #4#1,1,posic;
+|CAMPO_POSICION #4#6,0,posic; posic=posic+mas; |CAMPO_POSICION #4#6,1,posic;
+|CAMPO_POSICION #4#7,0,posic; posic=posic+mas; |CAMPO_POSICION #4#7,1,posic;
+|CAMPO_POSICION #4#8,0,posic; posic=posic+mas; |CAMPO_POSICION #4#8,1,posic;
+|CAMPO_POSICION #4#9,0,posic; posic=posic+mas; |CAMPO_POSICION #4#9,1,posic;
+|CAMPO_POSICION #4#10,0,posic; posic=posic+mas; |CAMPO_POSICION #4#10,1,posic;
+|FPRC;
+
+|PROCESO pant4;
+  |PINPA #0#4;
+  |DDEFECTO #4;
+      #4#2  = vto1;    || 1§ vto
+      #4#3  = vto2;    || 2§ vto
+      #4#4  = vto3;    || 3§ vto
+      #4#5  = vto4;    || 4§ vto
+  |PINTA #4#2;
+  |PINTA #4#3;
+  |PINTA #4#4;
+  |PINTA #4#5;
+|FPRC;
+
+|PROCESO empieza;
+  |HAZ pant4;
+  mas = lin_pan * -100;
+  lin_pan = 0;
+  |HAZ correte;
+|FPRC;
+
+
+|PROCESO panta1;
+  |HAZ verbueno;
+  |SI novale = 1; |ACABA; |FINSI;
+|SI sw = 0;
+        prov = #1#26;
+        |HAZ detalles;
+        sw = 1;
+|FINSI;
+|SI prov ! #1#26;
+    tot1 = tot1 + imp1;
+    tot2 = tot2 + imp2;
+    tot3 = tot3 + imp3;
+    tot4 = tot4 + imp4;
+    tot5 = tot5 + imp5;
+    |HAZ imppan;                   || imprime total prov anterior
+    |SI error = 1; |ACABA; |FINSI;
+        prov = #1#26;
+        |HAZ detalles;
+|FINSI;
+|HAZ suma;
+
+|FPRC;
+
+|PROCESO imppan;
+    error = 0;
+    lin_pan = lin_pan + 1;
+|DDEFECTO #4;
+    #4#0  = ctab;    || numero banco
+    #4#1  = nomb;    || nombre banco
+    #4#2  = vto1;    || 1§ vto
+    #4#3  = vto2;    || 2§ vto
+    #4#4  = vto3;    || 3§ vto
+    #4#5  = vto4;    || 4§ vto
+    #4#6  = imp1;    || importe 1
+    #4#7  = imp2;    || importe 2
+    #4#8  = imp3;    || importe 3
+    #4#9  = imp4;    || importe 4
+    #4#10 = imp5;    || importe posterior
+    #4#11 = tot1;    || total 1
+    #4#12 = tot2;    || total 2
+    #4#13 = tot3;    || total 3
+    #4#14 = tot4;    || total 4
+    #4#15 = tot5;    || total posterior
+|PINDA #0#4;
+|SI swfin = 0;
+    |SI lin_pan < 11;
+            mas = 100;
+    |SINO;
+            mas = -1000;
+            lin_pan = 0;
+        |PAUSA;
+        |SI FSalida = 1; |O FSalida = 7;
+            error = 1;
+            |ERROR10;
+            |ACABA;
+        |SINO;
+            |HAZ pant4; || PINPA #0#4;
+        |FINSI;
+    |FINSI;
+    |HAZ correte;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE panta;
+ #1#5;
+ 0, 1, 11; || selecciona libro+factura+tipo recibo
+ #0#19, "01.01.1900", #0#6, 0, #0#0, #0#2, #0#4;
+ #0#20, "31.12.2090", #0#7, 9, #0#1, #0#3, #0#5;
+ e;
+ NULL, panta1;
+|FIN;
+
+|PROCESO pantalla;
+|HAZ pant4; || PINPA #0#4;
+|ABRE #2;
+|ABRE #3;
+|BUCLE panta;
+      |SI sw = 1;
+          |SI error = 0;
+              swfin = 1
+              tot1 = tot1 + imp1;
+              tot2 = tot2 + imp2;
+              tot3 = tot3 + imp3;
+              tot4 = tot4 + imp4;
+              tot5 = tot5 + imp5;
+              |HAZ imppan;
+              |PAUSA;
+          |FINSI;
+     |FINSI;
+|CIERRA #2;
+|CIERRA #3;
+
+|FPRC;
+
+|| -------------------------------------------------------------------------
+
+|PROCESO imprepa; |TIPO 3;
+         vto1 = #0#13;
+         vto2 = #0#14;
+         vto3 = #0#15;
+         vto4 = #0#16;
+         tit1 = #0#17;
+         tit2 = #0#18;
+|MENU elegir;
+|SI FSalida > 0;
+    |SI FSalida = 1;  |HAZ impresora;  |FINSI;
+    |SI FSalida = 2;  |HAZ pantalla;   |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO Cuenta; |TIPO 6;
+
+   |SI dig4 ! 0; MaxDig = dig4; |FINSI;
+   |SI dig5 ! 0; MaxDig = dig5; |FINSI;
+   |SI dig6 ! 0; MaxDig = dig6; |FINSI;
+   |SI dig7 ! 0; MaxDig = dig7; |FINSI;
+   |SI dig8 ! 0; MaxDig = dig8; |FINSI;
+   |SI dig9 ! 0; MaxDig = dig9; |FINSI;
+
+   Comodin = #cainpabr#Campo#;
+   Comodin = Comodin - ".";
+   |SI FSalida ! 0;
+      FEstado = FSalida;
+      Posic1 = (FEstado / 100) ! 0;
+      Posic1 = Posic1 + 99;
+      Posic2 = FEstado + 98;
+      Parte1 = Comodin % Posic1;
+      Parte2 = Comodin % Posic2;
+      |QBF Comodin;
+      Long = Comodin % 0;
+      LongNum = MaxDig - Long;
+      Comodin = "0" * LongNum;
+      Comodin = Parte1 + Comodin + Parte2;
+      #cainpabr#Campo# = Comodin;
+      |PINTA #cainpabr#Campo#;
+   |FINSI;
+|FPRC;                                                                              |PINTA #capredcb#Campo#;
+
+|PROCESO init; |TIPO 8;
+   |HAZ inicio;
+|FPRC;

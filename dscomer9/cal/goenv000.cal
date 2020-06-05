@@ -1,0 +1,390 @@
+ LAS LLAMADAS DEFINIDAS EN EL PLB SON:
+    EnviaDSCorreo, EnviaEvento, EnviaGrupo
+                   (*)
+
+|FICHEROS;
+     goenvm07 #0;
+
+     goenvm01@ #10;
+     goenvm02 #11;
+     goenvm03 #12;
+     goenvm04 #13;
+     goenvm05 #14;
+     goenvm06 #15;
+     gotrabaj@ #16;
+     goenvm02@ #17;
+     gomantho@ #18;
+
+     temporal@ #100; ||Temporal para no duplicar envios
+|FIN;
+
+|VARIABLES;
+     aCam01_1 = "";
+     aCam01_2 = "";
+     aCam01_3 = "";
+     aCam01_5 = "";
+     aCam01_6 = "";
+     nContador = 0;
+
+     &eaFicImpre = "";
+     &eaPrograma = "";
+
+     aPrograma = "";
+     aSer = "";
+     aNum = "";
+     nNum = 0;
+     aDirOrigen = "";
+
+     nCuenta    = 0;
+     aDesJefe   = "";
+     aDef       = "";
+     &eaSerJefe = "";
+     &eaJefe    = "";
+     &enGrupo   = 0;
+     &enEvento  = 0;
+     &enEnvio   = 0;
+     &eaTipo    = "";
+     &eaAsunto  = "";
+     &eaOrigen  = "";
+     &eaDestino = "";
+
+     fFecha     = @;
+     aHora      = "";
+     aAlfa      = "";
+     aAlfa1     = "";
+     aNombreMen = "000con.men";
+     aDSCorreo  = "";
+     aProxy     = "";
+     aTitulo    = "";
+     aTexto     = "";
+     aFic       = "";
+
+     nCont      = 0;
+     Handle     = 0;
+     Handle1    = 0;
+|FIN;
+
+|PROCESO CargaTempo;
+     nContador = nContador + 1;           || Controlamos que solo
+     |SI nContador > 1; |ACABA; |FINSI;   || lo haga una vez
+
+     |DDEF aDef;
+     aDef = aDef + "goenvm02";
+     |CARGA_DEF aDef, temporal@;
+     |SI FSalida = 0;
+          aAlfa = Usuario; aAlfa = aAlfa + "c";
+          |NOME_DAT #100 aAlfa; |DELINDEX #100;
+          |ABRE #100;
+     |SINO;
+          |MENAV "0000ERROR al cargar goenvm02";
+     |FINSI;
+|FPRC;
+
+|PROCESO DescargaTempo;
+     nContador = nContador - 1;
+     |SI nContador ! 0; |ACABA; |FINSI;
+
+     |CIERRA #100;
+     |DELINDEX #100;
+     |DESCARGA_DEF #temporal@;
+|FPRC;
+
+|PROCESO LinEvento;
+   enEnvio = 0;
+   enGrupo = #goenvm06#1;
+   |HAZ EnviaGrupo;
+|FPRC;
+
+|DEFBUCLE LinEvento;
+#goenvm06#1;
+;
+#goenvm05#0,00001;
+#goenvm05#0,99999;
+;
+NULL,LinEvento;
+|FIN;
+
+|PROCESO LinGrupo;
+   enEnvio = 0;
+   eaDestino = #goenvm04#1;
+   |HAZ EnviaDSCorreo;
+|FPRC;
+
+|DEFBUCLE LinGrupo;
+#goenvm04#1;
+;
+#goenvm03#0,"          ";
+#goenvm03#0,"zzzzzzzzzz";
+;
+NULL,LinGrupo;
+|FIN;
+
+|PROCESO EnviaGrupo;
+     |HAZ CargaTempo;
+     |SI FSalida = 0;
+          |ABRE #goenvm03;
+          #goenvm03#0 = enGrupo;
+          |LEE 000#goenvm03.=;
+          |SI FSalida = 0;
+               |BUCLE LinGrupo;
+          |FINSI;
+          |CIERRA #goenvm03;
+
+          |HAZ DescargaTempo;
+     |FINSI;
+|FPRC;
+
+|PROCESO CreaLinea;
+   |ABRE #goenvm07;
+   |ABRE #goenvm02;
+
+   |LEE 000#goenvm07.u;
+   |SI FSalida = 0;
+      #goenvm07#0= #goenvm07#0 + 1;
+      |CDEFECTO #goenvm07,1;
+   |SINO;
+      |DDEFECTO #goenvm07;
+   |FINSI;
+
+   aAlfa = aCam01_3; |QBF aAlfa;
+   aAlfa1 = aAlfa % -101;
+   |SI aAlfa1 ! "/"; |Y aAlfa1 ! "\";
+      aAlfa = aAlfa + "/";
+   |FINSI;
+   |MKDIR aAlfa; ||***
+
+   aAlfa = aAlfa + (("00000000" + #goenvm07#0) % -108);
+   aAlfa1 = "wt  " + aAlfa + ".txt";
+   |FABRE aAlfa1; Handle = FSalida;
+   |SI Handle < 0;
+      |MENAV "    Problemas para crear el fichero secuencial";
+      aAlfa1 = "0000Fichero:[" + aAlfa + "]";
+      |MENAV aAlfa1;
+      |CIERRA #goenvm02; |CIERRA #goenvm07;
+      |ACABA;
+   |FINSI;
+
+   fFecha = ~; |HORA aHora; aHora = aHora % 0105;
+   #goenvm07#1 = fFecha;
+   #goenvm07#2 = aHora;
+   #goenvm07#3 = eaTipo;
+   #goenvm07#4 = eaAsunto;
+
+   #goenvm02#0 = eaOrigen;
+   |LEE 000#goenvm02.=;
+   |SI FSalida ! 0; |DDEFECTO #goenvm02; |FINSI;
+   #goenvm07#5 = #goenvm02#2;
+
+   |SI aDesJefe ! "";
+          #goenvm07#6 = aDesJefe;
+   |SINO;
+          #goenvm02#0 = eaDestino;
+          |LEE 000#goenvm02.=;
+          |SI FSalida ! 0; |DDEFECTO #goenvm02; |FINSI;
+          #goenvm07#6 = #goenvm02#2;
+   |FINSI;
+
+   |GRABA 020#goenvm07.c;
+   |CIERRA #goenvm02; |CIERRA #goenvm07;
+|FPRC;
+
+|PROCESO EnviaDSCorreo;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "goenvm01";
+     |CARGA_DEF aAlfa, goenvm01@;
+     |SI FSalida = 0;
+          |ABRE #goenvm01@;
+          |LEE 000#goenvm01@.p;
+          |SI FSalida ! 0;
+             |CIERRA #goenvm01@;
+             |MENAV "    Atencion. Control de parametros de notificaciones por correo inexistente";
+             |CIERRA #goenvm01@;
+             |DESCARGA_DEF #goenvm01@;
+             |ACABA;
+          |FINSI;
+          |CIERRA #goenvm01@;
+          aCam01_1 = #goenvm01@#1;
+          aCam01_2 = #goenvm01@#2;
+          aCam01_3 = #goenvm01@#3;
+          aCam01_5 = #goenvm01@#5;
+          aCam01_6 = #goenvm01@#6;
+          |DESCARGA_DEF #goenvm01@;
+     |SINO;
+          |MENAV "0000Error al cargar 'goenvm01'";
+          |ACABA;
+     |FINSI;
+
+
+   |SI aCam01_6 = "N"; |ACABA; |FINSI;
+
+   |HAZ CargaTempo;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   || Genera la linea de la bandeja
+   |SI enEnvio = 0; |HAZ CreaLinea; |FINSI;
+
+
+   || Genera el .txt
+   aAlfa = ("00000000" + #goenvm07#0) % -108; |HAZ Graba01;
+   aAlfa = #goenvm07#1;                       |HAZ Graba01;
+   aAlfa = #goenvm07#2;                       |HAZ Graba01;
+   aAlfa = #goenvm07#4;                       |HAZ Graba01;
+   |PARA nCont = 1; |SI nCont [ 12; |HACIENDO nCont = nCont + 1;
+      aAlfa = " " * 40;                       |HAZ Graba01;
+   |SIGUE;
+   aAlfa = ("00000000" + #goenvm07#0) % -108; |HAZ Graba01;
+   aAlfa = "";                                |HAZ Graba01;
+   aAlfa = ("00000000" + #goenvm07#0) % -108; |HAZ Graba01;
+   aAlfa = #goenvm07#6;                       |HAZ Graba01;
+
+   |DBASE aAlfa1; |QBF aAlfa1;
+   aAlfa1 = aAlfa1 + aNombreMen; aAlfa1 = "rt  " + aAlfa1;
+   |FABRE aAlfa1;
+   |SI FSalida < 0;
+      aAlfa1 = "00.00.000";
+   |SINO;
+      Handle1 = FSalida;
+      aAlfa1 = Handle1 + " 250"; |FLEE aAlfa1;
+      aAlfa1 = (aAlfa1 % 2805) + "." + (aAlfa1 % 0403);
+      FSalida = Handle1; |FCIERRA FSalida;
+   |FINSI;
+
+   aAlfa = aAlfa1;                            |HAZ Graba01;
+   aAlfa = #goenvm07#5;                       |HAZ Graba01;
+
+   FSalida = Handle; |FCIERRA FSalida;
+
+   || Envia el correo
+
+   |SI aCam01_1 = "F";
+      aAlfa = aCam01_2; |QBF aAlfa;
+   |SINO;
+      aAlfa = ""; |IP_REMOTO aAlfa;
+      |SI aAlfa = "";                    || Conexion local
+         aAlfa = ""; |IP_LOCAL aAlfa;
+      |SINO;                             || Conexion cliente/servidor
+         |SI aCam01_1 = "S"; aAlfa = ""; |IP_LOCAL aAlfa;  |FINSI;
+         |SI aCam01_1 = "L"; aAlfa = ""; |IP_REMOTO aAlfa; |FINSI;
+      |FINSI;
+   |FINSI;
+
+   aDSCorreo = aAlfa;       |QBF aDSCorreo;
+   aProxy    = aCam01_5; |QBF aProxy;
+   aTitulo   = eaAsunto;    |QBF aTitulo;
+   aTexto    = aCam01_3; |QBF aTexto;
+   aAlfa = aTexto % -101;
+   |SI aAlfa ! "/"; |Y aAlfa ! "\"; aTexto = aTexto + "/"; |FINSI;
+   aTexto  = aTexto + (("00000000" + #goenvm07#0) % -108) + ".txt";
+   aFic    = aTexto; aTexto = "";
+
+   |XABRE "E", eaFicImpre, 0;
+   |SI FSalida = 0;
+      aFic = eaFicImpre;
+   |FINSI;
+
+
+   || aTexto  = "$$$$" + aTexto;
+   aAlfa = "2405Enviando [" + aDSCorreo + "] ..."; |MENSA aAlfa;
+   aAlfa = #goenvm07#5; |QBF aAlfa;
+   |SI aAlfa = "";
+     |MENAV "0000La direccion Origen no existe...";
+   |SINO;
+          |SELECT #2#100;
+          #100#2 = #goenvm07#6;
+          |LEE 000#100=;      || Sin correos duplicados
+          |SI FSalida ! 0;
+               |SELECT #1#100;
+               nCuenta = nCuenta + 1;
+               #100#0 = nCuenta;
+               #100#2 = #goenvm07#6;
+               |GRABA 020#100n;
+
+               eaDestino = #goenvm07#6; |QBF eaDestino;
+               aDirOrigen = "!" + aAlfa;
+               |DSCORREO_ENVIA aDSCorreo, aProxy, aDirOrigen, eaDestino, aTitulo, aTexto, aFic;
+               aAlfa = "2405                                    ";
+               |MENSA aAlfa;
+               |SI FSalida < 0;
+                  |MENAV "    Problemas al enviar correo. Revisar conexion.";
+                  aAlfa = "0000 Dscorreo:"+ aDSCorreo; |MENAV aAlfa;
+                  aAlfa = "0000 Servidor:"+ aProxy; |MENAV aAlfa;
+                  aAlfa = "0000 Origen:"  + aDirOrigen; |MENAV aAlfa;
+                  aAlfa = "0000 Destino:" + eaDestino; |MENAV aAlfa;
+                  aAlfa = "0000 Titulo:"  + aTitulo; |MENAV aAlfa;
+                  aAlfa = "0000 Texto:"   + aTexto; |MENAV aAlfa;
+                  aAlfa = "0000 Fichero:" + aFic; |MENAV aAlfa;
+              |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |HAZ DescargaTempo;
+|FPRC;
+
+|PROCESO Graba01;
+   aAlfa = Handle + " " + aAlfa; |FGRABA aAlfa; aAlfa = "";
+|FPRC;
+
+|PROCESO ElJefe;
+     |SI enEvento = 10; |O enEvento = 2; |O enEvento = 3; |O enEvento = 6;
+          |SI eaSerJefe ! "";
+               |DDEF aDef; aDef = aDef + "gomantho";
+               |CARGA_DEF aDef, gomantho@;
+               |SI FSalida = 0;
+                    |ABRE #18;
+                    #18#0 = eaSerJefe;
+                    |LEE 000#18];
+                    |SI FSalida = 0; |Y #18#0 = eaSerJefe;
+                         eaJefe = #18#30;
+                    |FINSI;
+                    |CIERRA #18;
+                    |DESCARGA_DEF #gomantho@;
+               |FINSI;
+          |FINSI;
+
+          |SI eaJefe ! "";
+               |DDEF aDef; aDef = aDef + "gotrabaj";
+               |CARGA_DEF aDef, gotrabaj@;
+               |SI FSalida = 0;
+                    |DDEF aDef; aDef = aDef + "goenvm02";
+                    |CARGA_DEF aDef, goenvm02@;
+                    |SI FSalida = 0;
+                         |ABRE #16;
+                         #16#0 = eaJefe;
+                         |LEE 000#16=;
+                         |SI FSalida = 0;
+                              |ABRE #17;
+                              #17#0 = #16#27;
+                              |LEE 000#17=;
+                              |SI FSalida = 0;
+                                   aDesJefe = #17#2;
+                                   enEnvio = 0;
+                                   |HAZ EnviaDSCorreo;
+                                   aDesJefe = "";
+                              |FINSI;
+                              |CIERRA #17;
+                         |FINSI;
+                         |CIERRA #16;
+                         |DESCARGA_DEF #goenvm02@;
+                    |FINSI;
+                    |DESCARGA_DEF #gotrabaj@
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO EnviaEvento;
+     |HAZ CargaTempo;
+     |SI FSalida = 0;
+          |ABRE #goenvm05;
+          #goenvm05#0 = enEvento;
+          |LEE 000#goenvm05.=;
+          |SI FSalida = 0;
+               |BUCLE LinEvento;
+          |FINSI;
+          |CIERRA #goenvm05;
+          |HAZ ElJefe;
+
+          |HAZ DescargaTempo;
+     |FINSI;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴

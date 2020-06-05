@@ -1,0 +1,190 @@
+|FICHEROS;
+     isom0011;
+     isom0018;
+|FIN;
+
+|VARIABLES;
+     nVentana       = 0;
+     nRango         = 0;
+     nGrid          = 0;
+     nImporte       = 0;
+
+     aCasilla       = "";
+     aAlfa          = "";
+     aEsc1          = "";
+     aEsc2          = "";
+     aRetu          = "";
+     aTecla         = "";
+
+     {-1}aVent      = "";
+         aVent1     = 0;
+         aVent2     = 0;
+         aVent3     = 0;
+         aVent4     = 0;
+         aVent5     = "";
+
+     &enEmpresa      = 0;
+     &enAnyo         = 0;
+     &enModoConsulta = 0;
+     &enSaltaError   = 0;
+|FIN;
+
+|PROCESO Tipo0c2;  |TIPO 0;
+     |SI #isom0018#2 > 50;
+         |MENAV "0000Solo se permiten 50 registros.";
+         |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Baja118;
+     #isom0018#0  = enEmpresa;
+     #isom0018#1  = enAnyo;
+     #isom0018#2  = 1;
+|FPRC;
+
+|PROCESO Alta118;
+     #isom0018#0  = enEmpresa;
+     #isom0018#1  = enAnyo;
+     #isom0018#2  = 99;
+|FPRC;
+
+|PROCESO isom0018B;
+     |BORRA 020#isom0018.a;
+     |LIBERA #isom0018;
+|FPRC;
+
+|DEFBUCLE isom0018B;
+     #isom0018#1;
+     ;
+     enEmpresa, enAnyo, 01;
+     enEmpresa, enAnyo, 99;
+     be;
+     NULL, isom0018B;
+|FIN;
+
+|PROCESO isom0018C;
+     nImporte = nImporte + #isom0018#5;
+|FPRC;
+
+|DEFBUCLE isom0018C;
+     #isom0018#1;
+     ;
+     enEmpresa, enAnyo, 01;
+     enEmpresa, enAnyo, 99;
+     ;
+     NULL, isom0018C;
+|FIN;
+
+|PROGRAMA;
+     |SI enAnyo = 2010;  aCasilla = "138";  |FINSI;
+     |SI enAnyo ] 2011;  aCasilla = "141";  |FINSI;
+     |SI enAnyo ] 2015;  aCasilla = "700";  |FINSI;
+
+     |HAZ SaltaError;
+
+     |ABRE #isom0011;
+     |SELECT #2#isom0011;
+     #isom0011#0 = enEmpresa;
+     #isom0011#1 = enAnyo;
+     #isom0011#4 = aCasilla;
+
+     |LEE 000#isom0011.=;
+     |SI FSalida ! 0;  |DDEFECTO #isom0011;  |FINSI;
+     |CIERRA #isom0011;
+
+     |SI #isom0011#5 [ 50000;
+         aAlfa = "0000La casilla " + aCasilla + " de las deducciones no supera los 50.000 Euros";
+         |MENAV aAlfa;
+
+         |BUCLE isom0018B;
+
+         |SI enSaltaError = 0;  |ACABA;  |FINSI;
+     |FINSI;
+
+     aAlfa = "";
+     |SI enModoConsulta = 1;
+         aAlfa = "(MODO CONSULTA)   ";
+     |FINSI;
+
+     aAlfa = aAlfa + "Deducci¢n DT 24.7 LIS, art¡culo 42 RDL 4/2004";
+     |VENTANA 0501, 2099, -1, 16, aAlfa;
+     nVentana = FSalida;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODAL";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |ABRE #isom0018;
+
+     |SI enModoConsulta = 0;
+         nRango = 1 + 2 + 4 + 8 + 16 + 32;
+     |SINO;
+         nRango = 4 + 8 + 16 + 32;
+     |FINSI;
+
+     |LINEAL_SIMPLE #1#isom0018, nRango, 0602, 1898, Baja118, Alta118, NULL;
+     nGrid = FSalida;
+
+     |PULSATECLA;
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+         FSalida = "::{{001}}Salir," + nGrid;
+         |LEETECLA aTecla;
+         |SI aTecla = aEsc1; |SAL;  |FINSI;
+         |SI aTecla = aEsc2; |SAL;  |FINSI;
+         |SI aTecla = aRetu; |SAL;  |FINSI;
+     |SIGUE;
+
+/*
+     |PARA;  |SI;  |HACIENDO;
+          |LINEAL_SIMPLE #1#isom0018, nRango, 0602, 1898, Baja118, Alta118, NULL;
+          nGrid = FSalida;
+
+          |PULSATECLA;
+          aEsc1  = &255 + "806";
+          aEsc2  = &255 + "807";
+          aRetu  = &255 + "802";
+          |PARA; |SI;  |HACIENDO;
+              FSalida = "::{{001}}Salir," + nGrid;
+              |LEETECLA aTecla;
+              |SI aTecla = aEsc1; |SAL;  |FINSI;
+              |SI aTecla = aEsc2; |SAL;  |FINSI;
+              |SI aTecla = aRetu; |SAL;  |FINSI;
+          |SIGUE;
+
+          |SI enModoConsulta = 0;
+              nImporte = 0;
+              |BUCLE isom0018C;
+              |SI nImporte ! #isom0011#5;
+                  aAlfa = "0000El total de las lineas (" + nImporte + ") ";
+                  aAlfa = aAlfa + "no corresponde a la casilla " + aCasilla + " ("  + #isom0011#5 + ")";
+                  |MENAV aAlfa;
+              |SINO;
+                  |SAL;
+              |FINSI;
+          |SINO;
+              |SAL;
+          |FINSI;
+     |SIGUE;
+*/
+
+     |CIERRA #isom0018;
+
+     |DESTRUYECONTROL nGrid;
+
+     aVent1 = -1;
+     aVent2 = -1;
+     aVent3 = 0;
+     aVent4 = nVentana;
+     aVent5 = "MODELESS";
+     |ESPECIFICA "ESTADO_VENTANA", aVent;
+
+     |PULSATECLA;
+
+     |FINVENTANA nVentana;
+|FPRO;

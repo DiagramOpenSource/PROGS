@@ -1,0 +1,104 @@
+|FICHEROS;
+   agiseg08 #500;
+   agicontr #501;
+   agifigen #502;
+|FIN;
+
+|VARIABLES;
+   alfavar   = "";
+   se_empre  = 0;
+   se_ejerc  = 0;
+   se_modelo = "";
+   se_impor  = 0;
+   se_fecha  = "";
+
+   Tipo        = "";
+   Path        = "";
+   PathAgicli  = "";
+   PathCont    = "";
+   MesEmision  = "";
+   EjeEmision  = "";
+   CuadroError = 0;
+   FEstado500  = 0;
+   SwAgicli    = 0; || (0 = no existe Modelo Integr.)
+|FIN;
+
+|PROCESO AlAgicl1;
+ SwAgicli = 0;
+ |DBASS Path;
+ |PATH_DAT #501 Path;
+ |ABRE #501;
+ |LEE 040#501p;
+ |SI FSalida ! 0; |CIERRA #501; |ACABA; |FINSI;
+ |CIERRA #501;
+
+ PathAgicli     = #501#8; |QBF PathAgicli;
+ |SI PathAgicli = "";  |ACABA; |FINSI;    || Mira si existe el directorio AGICLI
+ |SI #501#15    = "N"; |ACABA; |FINSI;    || Mira si hay control de Bancos
+ PathCont       = #501#3; |QBF PathCont;
+ |SI PathCont   = "*"; |ACABA; |FINSI;    || Mira si esta activada la R.E.O.
+ SwAgicli = 1;
+|FPRC;
+
+|PROCESO AlAgicl2;
+ |PATH_DAT #502 PathAgicli;
+ |ABRE #502;
+ #502#0 = se_empre;
+ |LEE 040#502=;
+ |SI FSalida ! 0; |CIERRA #502; |ACABA; |FINSI;
+ |CIERRA #502;
+
+ |PATH_DAT #500 PathAgicli;
+ |ABRE #500;
+ MesEmision = se_fecha % 402;
+ EjeEmision = se_fecha % -102;
+ Tipo       = 0;
+ |DDEFECTO #500;
+ #500#0 = se_empre;
+ #500#1 = MesEmision;
+ #500#2 = EjeEmision;
+ #500#3 = Tipo;
+ #500#4 = se_modelo;
+ |LIBERA #500;
+ |LEE 140#500=;
+ FEstado500 = FSalida;
+ |SI FSalida = 0; |Y #500#8 ! 0;
+     |HAZ CuadroError;
+     |SI CuadroError ! 0; |CIERRA #500; |ACABA; |FINSI;
+ |FINSI;
+
+ #500#0  = se_empre;
+ #500#1  = MesEmision;
+ #500#2  = EjeEmision;
+ #500#3  = Tipo;
+ #500#4  = se_modelo;
+ #500#5  = #502#79;
+ #500#6  = se_impor;
+ #500#7  = se_fecha;
+ #500#8  = 0;
+ #500#9  = 0;
+ #500#10 = "01.01.0000";
+ #500#11 = #502#81;
+ |SI FEstado500 = 0; |GRABA 140#500a; |SINO; |GRABA 140#500n; |FINSI;
+
+ |CIERRA #500;
+|FPRC;
+
+|PROCESO CuadroError;
+|PUSHV 0501 2380;
+|D_CUADRO 1221, 1578
+|ATRI R;
+
+alfavar = #502#0;
+alfavar = ((("00000" + alfavar) % -105) + " " + #502#1) % 146;
+alfavar = " Cliente: " + alfavar;
+
+|PINTA 1322, " El Modelo en el Modulo Integrador ya ha sido remesado. ";
+|PINTA 1422, alfavar;
+|ATRI 0;
+
+|CONFI "2400NRegrabar el Importe en el Modulo Integrador y dejarlo como Remesable : ";
+CuadroError = FSalida;
+
+|POPV;
+|FPRC;

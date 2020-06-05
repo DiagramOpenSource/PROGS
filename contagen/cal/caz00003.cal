@@ -1,0 +1,398 @@
+|FICHEROS;
+     caz00003 #0;
+
+     caivalin #3;
+     camaniva #4;
+     caivaasi #200;
+
+     canempre #30;
+     caselem1 #998;
+|FIN;
+
+|VARIABLES;
+   &pathbal  = "";
+   &balance  = 1;
+     aAlfa1  = "";
+     aAlfa   = "";
+     nEjer   = 0;
+
+     enQSerie = 0;
+     tipoRS   = "";
+     aDTipoRS = "";
+     aHTipoRS = "";
+
+     &eaMensa   = "";
+     &enSwError = 0;
+     nSwCambio  = 0;
+     nSwEnco    = 0;
+     nNume1     = 0;
+     nNume2     = 0;
+     nNume3     = 0;
+     &nImport1  = 0;
+     &nImport2  = 0;
+     nEstado    = 0;
+     nSwAlgun   = 0;
+
+     nSw        = 0;
+     &nTipo     = 0;
+     &nTpIVA    = 0;
+     &nTpRec    = 0;
+     fDFecha    = @;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ******************************************************************
+
+|CALCULO eInic8; |TIPO 8;
+ |HAZ eParaModelos;
+ |HAZ inicio;
+ |ABRE #200;
+ |DDEFECTO #200;
+ |LEE 010#200p;
+ enQSerie = 0;
+ |SI #200#44 = "S"; enQSerie = 1;|FINSI;
+ |CIERRA #200;
+|FCAL;
+
+|CALCULO def_fec; |TIPO 7;
+   |SI nSw = 0;
+       nSw = 1;
+       #0#13  = fec1;    |PINTA #0#13;
+       #0#14  = fec2;    |PINTA #0#14;
+   |FINSI;
+|FCAL;
+
+|CALCULO fecha; | TIPO 0;   || Desde/hasta fecha
+  fDFecha = fec1;
+  |SI enSwSelFc = 1; fDFecha = "01.01.0000"; |FINSI;
+   |SI #0Campo < fDFecha; |O #0Campo > fec2;
+      |MENAV "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+      |ERROR;
+   |FINSI;
+|FCAL;
+
+|CALCULO Ehque; |TIPO 7;
+ |SI enQSerie = 0;
+     |C_M #0#11,1,"N"; #0#11 = "";      |PINTA #0#11;
+     |C_M #0#12,1,"N"; #0#12 = "zzzzz"; |PINTA #0#12;
+ |SINO;
+     |C_M #0#11,1,"S";
+     |C_M #0#12,1,"S";
+ |FINSI;
+|FCAL;
+
+|CALCULO Solo0; |TIPO 0;
+  aAlfa1 = "S";
+  |SI #0#15 = 0; |Y #0#16 = 0;
+      aAlfa1 = "N";
+      #0#4 = "N"; |PINTA #0#4;
+  |FINSI;
+  |C_M #0#4, 1, aAlfa1;
+|FCAL;
+
+|| *******************************************************************
+|| *******************************************************************
+
+|PROCESO ElCambio;
+
+  |SI nTipo  ! #3#16; |O nTpIVA ! #3#7; |O nTpRec ! #3#9;
+
+      |SI nTpIVA ! enPorcIVA; |O nTpRec ! enPorcREC;
+           eaMensa = "Cambio % de IVA. Anteriores " + nTpIVA + "%";
+           |SI nTpRec ! 0; eaMensa = eaMensa + " " + nTpRec + "%"; |FINSI;
+           |PRINT; nSwAlgun = 1;
+           enSwError = 2;
+      |FINSI;
+      |SI nTipo ! #3#16;
+           eaMensa = "Cambio de Tipo de IVA. Anterior: " + nTipo;
+           |PRINT; nSwAlgun  = 1;
+           enSwError = 2;
+      |FINSI;
+
+      nImport1  = 0;
+      nSwCambio = 0;
+      |SI #3#7 ! nTpIVA;
+          nImport1 =( #3#6 % #3#7 ) ! EURODB;
+          |SI nImport1 ! #3#8;
+              nSwCambio = 1;
+              eaMensa = "Cuota de IVA incorrecta.";
+              |PRINT; nSwAlgun = 1;
+          |FINSI;
+      |FINSI;
+
+      |SI #3#9 ! nTpRec; |Y #3#9 ! 0;
+          nImport2 =( #3#6 % #3#9 ) ! EURODB;
+          |SI nImport2 ! #3#10;
+              nSwCambio = 1;
+              eaMensa = "Cuota de Recargo incorrecto.";
+              |PRINT; nSwAlgun = 1;
+          |FINSI;
+      |FINSI;
+
+      |SI #3#13 ! eaCtaIVA;
+          nSwCambio = 1;
+          eaMensa = "No corresponde la Cta de IVA con el Control";
+          |PRINT; nSwAlgun = 1;
+      |FINSI;
+
+      |SI #3#14 ! eaCtaREC; |Y #3#9 ! 0;
+          nSwCambio = 1;
+          eaMensa = "No corresponde la Cta de Recargo con el Control";
+          |PRINT; nSwAlgun = 1;
+      |FINSI;
+
+      |GRABA 020#3a;
+  |FINSI;
+|FPRC;
+
+|PROCESO BuscaIva;
+     enSwError = 0;
+     nSwCambio = 0;
+
+     nTipo  = #3#16;
+     nTpIVA = #3#7;
+     nTpRec = #3#9;
+
+     |SI #3#16 = 0; |O #0#4 = "N";
+         |SI #3#8 ! 0; |O #3#10 ! 0;
+             efFechaIVA = #camaniva#4; enLineaIVA = 0;
+             enPorcIVA = #3#7;
+             enPorcREC = #3#9;
+             eaCtaIVA  = #3#13;
+             eaCtaREC  = #3#14;
+             |HAZ BuscaTipoIVA;
+             |SI enLineaIVA < 0;
+                 enSwError = 1;
+                 eaMensa = "Error, el tipo IVA no existe en el Control";
+                 |PRINT; nSwAlgun = 1;
+             |SINO;
+                 #3#16 = enLineaIVA;
+                 |HAZ ElCambio;
+             |FINSI;
+         |FINSI;
+         |LIBERA #3;
+         |ACABA;
+     |FINSI;
+
+     efFechaIVA = #camaniva#4;
+     enLineaIVA = #3#16;
+     |HAZ SacaIVA;
+     |SI enLineaIVA ] 0;
+         #3#7 = enPorcIVA;
+         #3#9 = enPorcREC;
+         |HAZ ElCambio;
+     |SINO;
+          enSwError = 1;
+          eaMensa = "Error, el tipo IVA no existe en el Control";
+          |PRINT; nSwAlgun = 1;
+     |FINSI;
+     |LIBERA #3;
+|FPRC;
+
+|DEFBUCLE caivalin;
+     #3#1;
+     16;
+     #4#0, #4#1, 00, #0#15;
+     #4#0, #4#1, 99, #0#16;
+     be;
+     NULL, BuscaIva;
+|FIN;
+
+|PROCESO LeeIVA;
+     aTipoIVA = #4#36;
+     |SI #4#36 ! "N";
+         |BUCLE caivalin;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE camaniva;
+     #4#3;
+     4,36;
+     #0#7, #0#11, #0#9,  #0#13, aDTipoRS;
+     #0#8, #0#12, #0#10, #0#14, aHTipoRS;
+     e;
+     NULL, LeeIVA;
+|FIN;
+
+|PROCESO HazTodo;
+     |SI #30#26 < 80;
+          nEjer = 2000 + #30#26;
+     |SINO;
+          nEjer = 1900 + #30#26;
+     |FINSI;
+
+     nSwAlgun     = 0
+     |BUCLE camaniva;
+     |SI nSwAlgun = 1;
+         |PIEINF;
+     |FINSI;
+|FPRC;
+
+|| ********************************************
+|CALCULO ElTipo3; |TIPO 3;
+
+   |SI #0#17 = "N";
+       |ACABA;
+   |FINSI;
+
+   |IMPRE 0;
+   |SI FSalida ! 0;  |ACABA; |FINSI;
+
+   |INFOR "caz00003";
+   |SI FSalida ! 0;
+       |MENAV "    Error en Informe";
+       |FINIMP;
+       |ACABA;
+   |FINSI;
+
+   tipoRS= #0#3;
+   aDTipoRS = tipoRS; aHTipoRS = tipoRS;
+   |SI tipoRS = "A";
+       aDTipoRS = "R"; aHTipoRS = "S";
+   |FINSI;
+
+   |SI #48#27 = "S";
+       |PINTA 1607, "Realizando proceso en la Empresa ";
+       |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+   |FINSI;
+   |FININF;
+   |FINIMP;
+|FCAL;
+
+|| *************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #4 dirfich0;
+
+   #0#0 = #30#2;   |PINTA 1707, #0#0;
+   #0#1 = nEjer;   |PINTA 1713, #0#1;
+   #0#2 = #30#1;   |PINTA 1718, #0#2;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 00001;
+ 99999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+
+/*   || Calculo anterior
+
+|PROCESO ElCambio;
+  nImport1  = 0;
+  nSwCambio = 0;
+  |SI #3#7 ! enPorcIVA;
+      nImport1 =( #3#6 % enPorcIVA ) ! EURODB;
+      |SI nImport1 ! #3#8;
+          nSwCambio = 1;
+          eaMensa = "Cuota de IVA incorrecta.";
+          |PRINT; nSwAlgun = 1;
+      |FINSI;
+  |FINSI;
+  |SI #3#9 ! enPorcREC; |Y #3#9 ! 0;
+      nImport2 =( #3#6 % enPorcREC ) ! EURODB;
+      |SI nImport2 ! #3#10;
+          nSwCambio = 1;
+          eaMensa = "Cuota de Recargo incorrecto.";
+          |PRINT; nSwAlgun = 1;
+      |FINSI;
+  |FINSI;
+  |SI #3#13 ! eaCtaIVA;
+       nSwCambio = 1;
+       eaMensa = "No corresponde la Cuenta de IVA con el Control";
+       |PRINT; nSwAlgun = 1;
+  |FINSI;
+  |SI #3#14 ! eaCtaREC; |Y #3#9 ! 0;
+       nSwCambio = 1;
+       eaMensa = "No corresponde la Cuenta de Recargo con el Control";
+       |PRINT; nSwAlgun = 1;
+  |FINSI;
+
+  |SI #3#7 ! enPorcIVA; |O #3#9 ! enPorcREC;
+       eaMensa = "Cambio % de IVA ";
+       |PRINT; nSwAlgun = 1;
+  |FINSI;
+  #3#7 = enPorcIVA;  || % de IVA
+  #3#9 = enPorcREC;
+  |GRABA 020#3a;
+|FPRC;
+
+|PROCESO BuscaIva;
+     #4#0 = #3#0;
+     #4#1 = #3#1;
+     |LEE 040#4=;
+     |SI FSalida ! 0;
+         enSwError = 1;
+         eaMensa   = "No existe cabecera de factura ";
+         |PRINT; nSwAlgun = 1;
+         |BORRA 020#3a;
+     |SINO;
+         |SI #4#36  = "N"; |ACABA; |FINSI;   ||Solo IRPF
+         |SI #0#3 ! "A";
+             |SI #4#36 ! #0#3; |ACABA; |FINSI;
+         |FINSI;
+         |SI #4#4 < #0#13; |O #4#4 > #0#14; |ACABA; |FINSI;
+
+         aTipoIVA = #4#36;
+         nSwCambio = 0;
+
+         nEstado = 1;
+         |SI #3#16 ! 0;
+             efFechaIVA = #camaniva#4; enLineaIVA = #3#16; |HAZ SacaIVA;
+             |SI enLineaIVA ] 0;
+                nEstado = 0;
+             |SINO;
+                nEstado = 111;
+             |FINSI;
+        |FINSI;
+
+        |SI nEstado = 0;
+            |HAZ ElCambio;
+         |SINO;
+            |SI #3#16 = 0;
+                 |SI #3#8 ! 0; |O #3#10 ! 0;
+                     efFechaIVA = #camaniva#4; enLineaIVA = 0;
+                     enPorcIVA = #3#7;  enPorcREC = #3#9;
+                     eaCtaIVA  = #3#13; eaCtaREC  = #3#14;
+                     |HAZ BuscaTipoIVA;
+                     |SI enLineaIVA < 0;
+                         enSwError = 1;
+                         eaMensa = "Error, tipo de IVA incorrecto";
+                         |PRINT; nSwAlgun = 1;
+                     |SINO;
+                         #3#16 = enLineaIVA; |HAZ ElCambio;
+                     |FINSI;
+                 |FINSI;
+             |SINO;
+                 enSwError = 1;
+                 eaMensa = "Error, tipo de IVA incorrecto";
+                 |PRINT; nSwAlgun = 1;
+             |FINSI;
+         |FINSI;
+     |FINSI;
+     |LIBERA #3;
+|FRPC;
+*/

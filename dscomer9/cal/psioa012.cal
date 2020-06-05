@@ -1,0 +1,562 @@
+|FICHEROS;
+     agifa073 #0;   || Lineas de pedido
+     agifa104 #1;   || Pedido
+     agifa019 #2;   || Articulos
+     agifa024 #6;   || Clientes
+     agifa017 #8;   || Stocks almacenes
+     agifa025 #12;  || Representantes
+     agifa048 #13;  || Escandallos
+     agifa049 #14;  || Lineas de escandallos
+     dsm00024 #24;
+     agifa029 #29;
+     psioa004 #98;  || Cabecera revision.
+     psioa005 #99;  || Lineas revision.
+     agifa142 #42;  || Parametros Generales
+     agifa321 #44;  || Divisas-Parametros.
+     agifa324 #45;  || Divisas-Divisas.
+
+     psioa030 #30;   || Ayuda a Ventas
+     agifa023 #23; || Cli/Art
+     agifa020 #20;
+     dsw00074 #74;
+     referen@;
+|FIN;
+
+|CAMPOS;
+     #2#11 nec;  #2#15 sps;    #2#16 spr;
+     #2#7 stmia; #2#104 stdia; #2#12 stres;
+     #2#17 pdva; #2#13 stfa;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     nSwCoimasa = 0;
+     &enSwNoLinealDesglose = 0;
+     aResePedi = "";
+     nLinAnt = 0;
+     nContaPromo = 0;
+     &eaFichero1 = "";
+     &eaFichero2 = "";
+     aAlfa = "";
+     sw = 0;
+     nUni = 0;
+     nNume  = 0;
+     aSerie = "";
+     nCalc  = 0;
+     aTipo  = "";
+
+     &eaTag = "";
+     &nImpo = 0;
+     &enDescuento1 = 0;
+     &enDescuento2 = 0;
+     &eaTComision  = "";
+     &enComision   = 0;
+
+     vacio = "00000000000000000000";
+     nPrim = 0;
+     descu = 0;
+     tf = 0;
+     comi1 = 0;
+     comi2 = 0;
+     comi3 = 0;
+     menor = 0;
+     pc1 = 0;
+     cantidad = 0;
+     articulo = " ";
+     mensaje3 = "0410 Stock Disponible Almacen :             Stock Minimo : ";
+     mensaje  = "0000 Pedido para Exportacion.Tipo de IVA = 0  !!";
+     pc = 0;
+     &n_dec = 0;
+     &n_pre = 0;
+     codigo = "";
+     &ext1 = "";
+     modo = 0;
+     mes = 0;
+     sw_pend = 0;
+     numero = "";
+     pendiente = 0;
+     primera = 0;
+     &aMoneda = "";
+     &aDivisa = "";
+     nSal = 0;
+|FIN;
+
+|PROCESO CoimaDto1;
+     nSal = 0;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "coima041";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          #referen@#0 = #agifa019#125;
+          |LEE 0000#referen@.=;
+          |SI FSalida = 0; |Y #referen@#1 = "S";
+               nSal = 1;
+          |FINSI;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |SINO;
+          |MENAV "0000Error al cargar 'coima041'";
+     |FINSI;
+     FSalida = nSal;
+|FPRC;
+
+|PROCESO CoimaFecServicio;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "coima007";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+
+          #referen@#0 = #0#28;
+          #referen@#1 = #0#0;
+          #referen@#2 = #0#1;
+          #referen@#3 = "N";
+          #referen@#9 = #1#4;
+          |GRABA 000#referen@.n;
+          |SI FSalida ! 0;
+               |BORRA 000#referen@.c;
+               |GRABA 020#referen@.n;
+          |FINSI;
+/*
+          enModoCoimasa = 1;
+          enFormaCoimasa = 1;
+          |HAZ CtrlPrioridaReservarPed;
+*/
+          || F.Calculo Aprox. Servicio
+          eaArticulo = #0#2;
+          enAlmacen = #0#3;
+          efFecha = #1#62;
+          |SI #0#13 > efFecha; efFecha = #0#13; |FINSI;
+          eaSerie = #0#28;
+          enCodigo = #0#0;
+          enLinea  = #0#1;
+          enUnidades = #0#5;
+          |SUB_EJECUTA_NP "coimz021";
+
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |SINO;
+          |MENAV "0000Error al cargar 'coima007'...";
+     |FINSI;
+|FPRC;
+
+|PROCESO CoimasaParam;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "coima001";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          |LEE 000#referen@.p;
+          |CIERRA #referen@;
+          aResePedi = #referen@#15;
+          |DESCARGA_DEF #referen@;
+     |SINO;
+          |MENAV "0000Error al cargar 'coima001'...";
+     |FINSI;
+|FPRC;
+
+|PROCESO ActPartida;
+     |ABRE #24;
+     #24#0 = #8#0;
+     #24#1 = #8#1;
+     #24#2 = #0#45;
+     |LEE 101#24=;
+     |SI FSalida ! 0; |GRABA 020#24b; |FINSI;
+     #24#16 = #24#16 + nUni;
+     |HAZ ValoraStock;
+     |GRABA 020#24a;
+     |CIERRA #24;
+|FPRC;
+
+|CALCULO lpdefec;|TIPO 0;
+     |ABRE #12;
+     #12#0 = #98#10;
+     |LEE 000#12=;
+     |LIBERA #12;
+     |CIERRA #12;
+     #0#16 = #98#10;|| #lin.pedidos#representante=#pedido#representante
+     #0#17 = #12#7; || #lin.pedidos#tipo de comision=#pedidos#tipo de comision
+     #0#20 = #1#4;  || #lin.pedidos#cliente=#pedidos#cliente
+     #0#13= #1#2;   || #lin.pedidos#fecha entrega=#pedidos#fecha 1 entrega
+     |SI #0#2 ! #2#0;
+         |ABRE #2;
+         #2#0 = #0#2;
+         |LEE 000#2=;
+         |LIBERA #2;
+         |CIERRA #2;
+     |FINSI;
+     |SI #0#20 ! #6#0;
+         |ABRE #6;
+         #6#0 = #0#20;
+         |LEE 000#6=;
+         |LIBERA #6;
+         |CIERRA #6;
+     |FINSI;
+     #0#18 = #2#2;
+     #0#19 = #6#4;
+|FCAL;
+
+|CALCULO lpsubcom;|TIPO 0;
+     enDescuento1 = #0#8;
+     enDescuento2 = #0#29;
+     eaTComision  = #0#17;
+     eaCliente    = #1#4;
+     eaArticulo   = #0#2;
+     eaRepre      = #1#7;
+     |HAZ Comisiones;
+     #0#10 = enComision;
+|FCAL;
+
+|CALCULO totallip;|TIPO 0;
+     #0#7 = #0#5 * #0#6;
+     #0#9 = #0#7 < #0#8;
+     #0#9 = #0#9 < #0#29;
+     #0#9 = #0#9 < #1#5;
+     #0#9 = #0#9 < #1#17;
+     #0#9 = #0#9 < #1#6;
+     #0#9 = #0#9 ! #45#7;
+     #0#11 = #0#9;
+|FCAL;
+
+|CALCULO lpacarti;
+     |HAZ lpdefec;
+
+     eaProgVta = "agifa104";
+     enForma = 1;
+     |HAZ AcumulaPV;
+|FCAL;
+
+|PROCESO CalcConIva;
+     enTiva = #agifa073#14;
+     efFiva = #agifa104#1;
+     |HAZ SacaIVA;
+     nCalc = #agifa073#11 % enIva;
+     |SI #agifa024#47 = "S";
+          nCalc = nCalc + (#agifa073#11 % enRec);
+     |FINSI;
+     nImpo = nImpo + (#agifa073#11 + nCalc);
+|FPRC;
+
+|DEFBUCLE CalcConIva;
+#agifa073#1;
+;
+aSerie, nNume,001;
+aSerie, nNume,999;
+;
+NULL,CalcConIva;
+|FIN;
+
+|PROCESO pasa;
+     numero = "000000" + #99#1;
+     numero = numero % -106;
+     |SI numero ! #0#0; |O #99#2 ! #0#29;
+          |SI sw = 1;
+               |HAZ Recalcula;
+          |FINSI;
+          nContaPromo = 0;
+     |FINSI;
+     sw = 1;
+
+     |DDEFECTO #0;
+     #0#0 = numero;                || Numero Pedido.
+     #0#28 = #99#2;                || Serie Pedido.
+     #1#0 = #0#0;                  || Numero Pedido Cabecera.
+     #1#25 = #0#28;                || Serie Pedido Cab.
+     |LEE 121#1=;                  || Lee cabecera de Pedidos.
+     |LIBERA #1;
+     #0#1 = #99#3;                 || Linea Pedidos.
+     |ABRE #98;
+     #98#0 = #99#0;
+     #98#1 = #99#1;
+     #98#2 = #99#2;
+     |LEE 000#98=;
+     |LIBERA #98;
+     |CIERRA #98;
+     #0#2 = #99#4;                 || Cod. Articulo.
+     |ABRE #2;
+     #2#0 = #99#4;
+     |LEE 000#2=;
+     |LIBERA #2;
+     |CIERRA #2;
+     #0#3 = #99#11;                || Nro. Almacen.
+
+     #0#4 = #99#5;       || Descripcion
+     #0#5 = #99#6;                 || Unidades.
+     #0#44 = #99#20;
+     #0#6 = #99#7;                 || Precio.
+     #0#7 = #99#10;                || Importe.
+
+     |SI nSwCoimasa = 0;
+          |HAZ CoimaDto1;
+          |SI FSalida = 0; #0#8 = #99#8; |FINSI;                || Dto.
+     |SINO;
+          #0#8 = #99#8;                 || Dto.
+     |FINSI;
+     #0#29 = #99#13;
+     #0#9 = #0#7 < #0#8;           || Importe Total.
+     #0#9 = #0#9 < #0#29;           || Importe Total.
+     #0#11 = #0#9;                 || Importe Pendiente de servir.
+     #0#14 = #99#9;                || Tipo Iva.
+     #0#18 = #2#2;                 || Familia.
+     #0#20 = #98#4;                || Cliente.
+/*
+Quitado segun Tiquet: 3218/2686
+     |HAZ BusPartida;
+*/
+     #0#45 = #99#12;
+     #0#35 = #99#15;     || envase
+     #0#36 = #99#16;     || uni envase
+     #0#56 = #99#18;     || Importe Dto. Promo.
+     |SI aResePedi ! "";
+          #0#22 = aResePedi;
+     |FINSI;
+
+     |SI #98#40 = 3;
+          |SI #99#19 > 0;     ||Con Promocion
+               |SALVA_FICHA #0;
+               #0#1 = #99#19;
+               |LEE 121#0=;
+               |SI FSalida = 0;
+                    #0#55 = #99#3;
+                    #0#58 = #99#6;
+                    |GRABA 020#0a;
+               |FINSI;
+               |REPON_FICHA #0;
+               #0#55 = -1;
+               #0#58 = #99#6;
+          |FINSI;
+     |SINO;
+          nContaPromo = nContaPromo + 1;
+          |SI #98#38 = "S";   || Con Promocion
+               nNume = nContaPromo $ 2;
+               |SI nNume = 0;
+                    |SI #0#5 = 0; || Linea promocion sin unidades
+                         |ACABA;
+                    |FINSI;
+                    |SALVA_FICHA #0;
+                    #0#1 = nLinAnt;
+                    |LEE 121#0=;
+                    |SI FSalida = 0;
+                         #0#55 = #99#3;
+                         #0#58 = #99#6;
+                         |GRABA 020#0a;
+                    |FINSI;
+                    |REPON_FICHA #0;
+                    #0#55 = -1;
+                    #0#58 = #99#6;
+               |SINO;
+                    nLinAnt = #0#1;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |ABRE #6;
+     #6#0 = #98#4;
+     |LEE 000#6=;
+     |LIBERA #6;
+     |CIERRA #6;
+     #0#19 = #6#4;                 || Tipo cliente.
+     /* */
+     eaCliente = #1#4;
+     efFecha = #1#1;
+     enSwNoLinealDesglose = 1;
+     |HAZ SacaKit;
+     /* */
+     |HAZ totallip;
+     |HAZ TotalLin73;
+     #0#38 = #0#6;
+     #0#39 = #0#9;
+     #0#40 = #0#6;
+     #0#41 = #0#9;
+     #0#42 = #0#5;
+     #0#48 = #0#44;
+     |HAZ lpacarti;
+     |HAZ lpdefec;
+     |HAZ lpsubcom;
+     |GRABA 121#0n;
+     |LIBERA #0;
+     |HAZ AyudaVta;
+     |HAZ ActuaCli;
+     |SI nSwCoimasa = 0;
+          |HAZ CoimaFecServicio;
+     |FINSI;
+|FPRC;
+
+|PROCESO ActuaCli;
+     |ABRE #2;
+     #2#0 = #0#2;
+     |LEE 000#2=;
+     |CIERRA #2;
+
+     |SI #2#194 = 2;
+          nImpo = ((((#0#44 * #0#6) < #0#8) < #0#29) < #1#5) < #1#17;
+     |SINO;
+          nImpo = ((((#0#5 * #0#6) < #0#8) < #0#29) < #1#5) < #1#17;
+     |FINSI;
+     |SI #agifa142#115 = "S"; nImpo = nImpo < #1#6; |FINSI;
+
+     eaCliente = #agifa104#4;
+     efFecha = #agifa104#1;
+     enImpCliPed = nImpo;
+     |HAZ AcumulaCli;              |||hay que quitar lo del psioa011
+|FPRC;
+
+|DEFBUCLE lee_lineas;
+     #99#1;
+     ;
+     "P","     ",000000,001;
+     "P","zzzzz",999999,999;
+     be;
+     NULL,pasa;
+|FIN;
+
+|PROCESO para_ger;
+     |ABRE #42;
+     #42#0 = "A";
+     |LEE 001#42=;
+     |SI FSalida ! 0; |DDEFECTO #42; |FINSI;
+     |LIBERA #42;
+     |CIERRA #42;
+|FPRC;
+
+|PROCESO LeeDivisa;
+     |ABRE #44;
+     |ABRE #45;
+     #44#0 = "A";
+     |LEE 001#44=;
+     |SI FSalida ! 0; |DDEFECTO #44; |FINSI;
+     #45#0 = #44#9;
+     |LEE 001#45=;
+     |SI FSalida ! 0; |DDEFECTO #45; |FINSI;
+     |LIBERA #44;
+     |LIBERA #45;
+     |CIERRA #44;
+     |CIERRA #45;
+|FPRC;
+
+|PROCESO Recalcula;
+     |HAZ CalCabAgifa104;
+     |GRABA 020#1a;
+     |LIBERA #1;
+     nImpo = 0; |BUCLE CalcConIva;
+     eaTag = "PE";  |HAZ Riesgos;
+     |SI nSwCoimasa = 0;
+          eaSerie = #1#25;
+          enCodigo = #1#0;
+          |SUB_EJECUTA_NP "coimz025";   ||Envio correos
+     |FINSI;
+|FPRC;
+
+|PROCESO AyudaVta;
+     |ABRE #30;
+     |DDEFECTO #30;
+     #30#0 = #1#4;
+     #30#1 = #1#57;
+     #30#2 = #0#2;
+     |LEE 101#30=;
+     |SI FSalida ! 0; |GRABA 020#30b; |FINSI;
+     #30#3 = #1#1;
+     #30#4 = #0#4;
+     #30#5 = #0#5;
+     #30#6 = #0#6;
+     #30#7 = #0#8;
+     #30#8 = #30#8 + #30#5;
+     |GRABA 020#30a;
+     |CIERRA #30;
+|FPRC;
+
+|PROCESO Confirma;
+     |SI #42#79 = "S";
+          FSalida = 0;
+     |SINO;
+          #74#0 = #0#2;
+          #74#1 = #0#4;
+          #74#2 = #1#4;
+          #74#3 = #1#8;
+          #74#4 = #23#2;
+          #74#5 = #23#32;
+          #74#6 = #0#6;
+          #74#7 = #0#8;
+          |SI #74#4 = #74#6; |Y #74#5 = #74#7;
+               FSalida = 1;
+          |SINO;
+               |PUSHV 05012380;
+               |CLS;
+               |PINPA #0#74;
+               |PINDA #0#74;
+               |CONFI "0000NActualizar Precio y Dto Cliente/Articulo:";
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO ActCliArt;
+     |SI #42#79 = "N"; |ACABA; |FINSI;
+
+     |DDEFECTO #23;
+     |ABRE #23;
+     #23#0 = #1#4;
+     #23#1 = #0#2;
+     |LEE 101#23=;
+     |SI FSalida = 0;
+          |HAZ Confirma;
+          |SI FSalida = 0;
+               #23#2 = #0#6;
+               #23#32 = #0#8;
+               |GRABA 020#23a;
+
+               |DDEFECTO #20;
+               |ABRE #20;
+               #20#0 = #23#0;
+               |LEE 000#20=;
+               |SI FSalida ! 0; |GRABA 020#20n; |FINSI;
+               |CIERRA #20;
+          |FINSI;
+     |SINO;
+          |HAZ Confirma;
+          |SI FSalida = 0;
+               #23#2 = #0#6;
+               #23#32 = #0#8;
+               #23#34 = #0#4;
+               |GRABA 020#23n;
+
+               |DDEFECTO #20;
+               |ABRE #20;
+               #20#0 = #23#0;
+               |LEE 000#20=;
+               |SI FSalida ! 0; |GRABA 020#20n; |FINSI;
+               |CIERRA #20;
+          |FINSI;
+     |FINSI;
+     |CIERRA #23;
+|FPRC;
+
+|PROGRAMA;
+     |SI PARAMETRO = "DIRECTA";
+          |NOME_DAT #99#eaFichero2#;
+          |NOME_DAT #98#eaFichero1#;
+     |FINSI;
+     |HAZ EsCoimasa; nSwCoimasa = FSalida;
+     |SI nSwCoimasa = 0;
+          |HAZ CoimasaParam;
+     |FINSI;
+
+     |HAZ para_ger;
+     |HAZ LeeDivisa;
+     aMoneda = "B";
+     aDivisa = "EUR";
+     |HAZ Divisas104;
+     modo = 1;
+     |ABRE #0;
+     |ABRE #1;
+     nPrim = 0;
+     |BUCLE lee_lineas;
+     |SI sw = 1;
+          |HAZ Recalcula;
+     |FINSI;
+
+     |LIBERA #0;
+     |CIERRA #0;
+     |LIBERA #1;
+     |CIERRA #1;
+|FPRO;

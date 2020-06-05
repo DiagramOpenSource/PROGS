@@ -1,0 +1,257 @@
+|FICHEROS;
+     malpe004 #0;
+     agifa027 #1;
+     agifa007 #2;
+     malpe002 #3;
+     agifa024 #6;   || Clientes
+     malpe006 #16;
+     agifa010 #4;   || Albaranes (C)
+     agifa071 #5;   ||           (L)
+     agifa019 #9;   || Articulos
+     agifa017 #13;  || Stock Almacen
+     dsm00024 #14;  || Stock Lotes
+     agifa065 #15;  || Historico
+
+     agifa142 #41;  || Parametros Generales
+|FIN;
+
+|INCLUYE i_varart;
+
+|CAMPOS;
+     #0#0 serie;
+     #0#1 codigo;
+     #1#1 contador;
+     #1#2 ser;
+     #1#0 clave;
+     #9#11 nec;  #9#15 sps;    #9#16 spr;
+     #9#7 stmia; #9#104 stdia; #9#12 stres;
+     #9#17 pdva; #9#13 stfa;
+|FIN;
+
+|VARIABLES;
+     &n_pre  = 0;
+     &n_dec  = 0;
+     mascara = "0000000";
+     tempo = " ";
+     filtro = "-106";
+     xmodo  = 0;
+     conta  = "";
+     ymes      = "";
+     xmes      = 0;
+     fecha     = @;
+     asto      = 0;
+     cant      = 0;
+|FIN;
+
+|CALCULO contorde; |TIPO 0;
+     ser = serie;
+     clave = "orden";
+     |LEE 111#1=;
+     |SI FSalida ! 0;
+          contador = 1;
+          #1#3 = #2#27;
+          |GRABA 111#1b;
+     |FINSI;
+     tempo = mascara + contador;
+     codigo = tempo % filtro;
+     contador = contador + 1;
+     |GRABA 021#1a;
+     |LIBERA #1;
+|FCAL;
+
+|PROCESO may; |TIPO 0;
+     #0Campo = #0Campo > #0Campo;
+     |PINTA #0Campo;
+|FPRC;
+
+|PROCESO mirar_d; |TIPO 0;
+     |ABRE #41;
+     #41#0 = "A";
+     |LEE 001#41=;
+     |SI FSalida ! 0; |DDEFECTO #41; |FINSI;
+     |CIERRA #41;
+     n_dec = #41#8;
+     n_pre = #41#9;
+|FPRC;
+
+|PROCESO matri; |TIPO 0;
+     |ABRE #3;
+     #3#0 = #0#9;
+     |LEE 101#3=;
+     |SI FSalida = 0;
+          |ABRE #16;
+          #16#0 = #3#1;
+          |LEE 101#16=;
+          |SI FSalida = 0;
+               #0#16 = #16#9;  || Tarjeta
+               |PINTA #0#16;
+          |FINSI;
+          |CIERRA #16;
+     |FINSI;
+     |CIERRA #3;
+|FPRC;
+
+|PROCESO Lin;
+     #5#5 = #5#5 * (-1);
+     #5#7 = #5#7 * (-1);
+     |HAZ ActStock;
+     |HAZ BajaHisto;
+     |BORRA 021#5a;
+|FPRC;
+
+|PROCESO FinCab;
+     |ABRE #6;      || Act. Clientes pend. Facturar
+     #6#0 = #4#3;
+     |LEE 101#6=;
+     |SI FSalida = 0;
+          cant = #4#15 < #4#5;
+          cant = cant  < #4#32;
+          cant = cant < #4#7;
+          cant = cant ! 0;
+          #6#50 = #6#50 - cant;
+          |GRABA 021#6a;
+     |FINSI;
+     |CIERRA #6;
+
+     enImpCliPen = -cant;
+     eaCliente = #4#3;
+     efFecha = #4#1;
+     |HAZ AcumulaCli;
+
+     |BORRA 021#4a;
+|FPRC;
+
+|DEFBUCLE BAlbaran;
+     #4#1;
+     ;
+     #0#0, #0#17;
+     #0#0, #0#17;
+     ;
+     NULL, NULL, Lin, FinCab;
+|FIN;
+
+|PROCESO confir; |TIPO 0;
+     xmodo = (FEntrada / 100) ! 0;
+     |SI xmodo = 1;
+          #0#15 = "N";
+     |SINO;
+          |SI #0#15 = "N"; |Y Contenido = "S";
+               |AVISO;
+               |CONFI "0000NBorrar Albaran, ¨ Seguro ? ";
+               |SI FSalida = 0;
+                    |BUCLE BAlbaran;
+               |SINO;
+                    #0#15 = "S";
+               |FINSI;
+          |SINO;
+               |SI Contenido = "N";
+                    #0#15 = "N";
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |PINTA #0#15;
+|FPRC;
+
+|PROCESO tip1; |TIPO 1;
+     xmodo = (FEntrada / 100) ! 0;
+     |SI #0#15 = "S"; |Y xmodo = 3;
+          |MENAV "0000No se puede Borrar una Orden Confirmada";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO ActStock;
+     |ABRE #9;
+     |ABRE #13;
+     |ABRE #14;
+     #9#0 = #5#2;
+     #13#0 = #5#2; #13#1 = #5#3;
+     #14#0 = #5#2; #14#1 = #5#3; #14#42 = #5#35;
+     |LEE 121#9=;
+     |SI FSalida = 0;
+          |LEE 121#13=;
+          |SI FSalida = 0;
+               |LEE 121#14=;
+               |SI FSalida = 0;
+                    #9#104 = #9#104 - #5#5;     || Disponible
+                    #9#6   = #9#104 - #5#5;     || Total
+                    #9#94  = #9#94 + #5#5;      || T.Ventas
+                    #9#95  = #9#95 + #5#7;      || T.Ptas
+                    asto = #9#6 - #9#17;
+                    |SI asto > 0;
+                         #9#10 = asto * #9#9;
+                    |SINO;
+                         #9#10 = 0;
+                    |FINSI;
+
+                    #13#39 = #13#39 - #5#5;     || Disp.
+                    #13#5  = #13#5  - #5#5;     || Tot.
+                    #13#35 = #13#35 + #5#5;     || T.Ventas
+                    #13#36 = #13#36 + #5#7;     || T.Ptas
+
+                    #14#31 = #14#31 - #5#5;     || Disp.
+                    #14#11 = #14#11 - #5#5;     || Tot.
+
+                    fecha = #0#2;
+                    ymes = fecha % 402;
+                    xmes = ymes;
+                    xmes = xmes - 1; ymes = xmes;
+                    xmes = (xmes * 5) + 34
+                    #9xmes = #9xmes + #5#5;
+                    xmes = xmes + 1;
+                    #9xmes = #9xmes + #5#7;
+
+                    xmes = ymes;
+                    xmes = (xmes * 2) + 11;
+                    #13xmes = #13xmes + #5#5;
+
+                    |HAZ ValoraStock;
+                    |GRABA 021#9a;
+                    |GRABA 021#13a;
+                    |GRABA 021#14a;
+
+                    efFecha = #0#2;
+                    eaArticulo = #5#2;
+                    enAlmacen = #5#3;
+                    enImpVta = #5#7;
+                    enUniVta = #5#5;
+                    enUniSal = #5#5;
+                    |HAZ AcumulaArt;
+                    |HAZ AcumulaAlm;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #9;
+     |CIERRA #13;
+     |CIERRA #14;
+
+     enImpVta = #5#7;
+     enUniVta = #5#5;
+     enUniSal = #5#5;
+     efFecha = #0#2;
+     eaArticulo = #5#2;
+     enAlmacen = #5#3;
+     |HAZ AcumulaArt;
+     |HAZ AcumulaAlm;
+|FPRC;
+
+|PROCESO BajaHisto;
+     |ABRE #15
+     |DDEFECTO #15;
+     #15#0 = #5#2;
+     #15#11= #5#29;
+     #15#1 = #4#1;
+     #15#2 = "AV";
+     #15#3 = #5#0;
+     #15#4 = #5#1;
+     #15#5 = #5#3;        || almacen
+     #15#6 = #5#5;        || stock
+     #15#7 = #9#6;
+     #15#8 = #9#9;
+     #15#9 = #5#6;
+     #15#10 = #4#3;
+     #15#12 = #5#35;     || Lote
+     #15#13 = #4#62;     || Obra
+     |BORRA 021#15c;
+     |CIERRA #15;
+|FPRC;

@@ -1,0 +1,521 @@
+|| nuevo incluye para la nomina que el nomcal_2 se me ha quedado corto
+
+|VARIABLES;
+     nDiasPaga  = 0;
+     nAnyPaga   = 0;
+     nMeses     = 0;
+     campo1     = 0;
+     campo2     = 0;
+     denfe_XX   = 0;
+     denfe_XXC  = 0;
+     nConcepto1 = 0;
+     nDConcepto = 0;
+     nHConcepto = 0;
+     nRango     = 0;
+     nTImporInd = 0;
+     aPrecio = "";
+     nPagaCompleta = 0;
+     nNroTrab = 0;
+     tpp = 0;
+     nPagaAjustada = 0;
+     nNume = 0;
+     nJornadaAnt = 0;
+     &aFiestaAct = "";
+     &nTFAct = 0;
+     mesact = 0;
+|FIN;
+
+/************** EXCEPCIONES PARA EL CALCULO DE PAGAS ************************/
+
+|PROCESO ExcepPagas;
+     swConceptoOFF = 0;
+
+     |DBASS aBase;  |QBF aBase;
+     aMas  = aBase + "laboral/def/nomexpli.mas";
+     aFich = aBase + "laboral/fich/";
+
+     |CARGA_DEF aMas, copiadef@;
+     |SI FSalida ! 0;
+         aAlfa = "0000 No puedo cargar el Def " + aMas;
+         |MENAV aAlfa;
+         |ACABA;
+     |FINSI;
+
+     |ABRE #500;
+     #500#0 = #labtraba#0;    || empresa
+     #500#2 = concepto;       || concepto
+     |LEE 000#500.=;
+     |SI FSalida = 0; |Y #500#4 = "S";
+          |SI #500#1 = #labtraba#87;
+               swConceptoOFF = 1;
+          |FINSI;
+     |FINSI;
+     |CIERRA #500;
+
+     |DESCARGA_DEF #copiadef@;
+|FPRC;
+
+/**** ESTE PROCESO ES PARA VER QUE COBRARIA SI LA PAGA NO FUERA AJUSTADA ****/
+
+|PROCESO SimulaPaga;
+     nSimulaPaga = 0;
+     concep1 = 51 + paga;      || calcula el 1er. campo de conceptos
+     concep2 = concep1 + 32;   || calcula el ultimo campo de concep.
+     |PARA campo = concep1; |SI campo [ concep2; |HACIENDO campo=campo+8;
+          |SI #9campo ! 0;
+                                   desc = #9campo;  hasc = #9campo;
+               |SI #9campo = 100;  desc = 101;      hasc = 199;     |FINSI;
+               |SI #9campo = 400;  desc = 401;      hasc = 420;     |FINSI;
+               |PARA actc = desc; |SI actc [ hasc; |HACIENDO actc=actc+1;
+                    concepto = actc;    || bucle para los 100 y 400
+                    |HAZ leeconcep; || lee y acumula conceptos paga
+               |SIGUE;
+         |FINSI;              || si el concepto no es cero
+     |SIGUE;                  || pasa los conceptos
+     nSimulaPaga = dvalo_209;
+|FPRC;
+
+/**** ESTO ES PARA CONTROLAR SI HE ESTADO EN TIEMPO PARCIAL Y TENGO PAGA ****/
+/**** GARANTIZADA QUE ME LO CALCULE SEGUN LA PROPORCION DE CADA NUMERO DE ***/
+/**** TRABAJADOR EN CASO DE HABER TENIDO VARIOS CONTRATOS. TOMA YA **********/
+
+|PROCESO AcumPaga;
+     aAlfa = #labtraba#184 % 102;
+     |SI aAlfa = "08"; |O aAlfa = "09"; |O aAlfa = "10"; |O #nomcontr#50 = "I";
+     |O aAlfa = "11"; |O aAlfa = "12";
+
+          |SI nJornadaAnt ! #labtraba#234; |Y nJornadaAnt ! -1;
+               swSigue = 1;
+          |FINSI;
+
+          || busco el valor de la paga completa, o es la que me ponen en bruto
+          || o es la que tengo pero dividida por tp para tenerla sin pro-
+          || procionar
+
+          |SI nPagaAjustada ! 0;
+               nPagaCompleta = nPagaAjustada;
+          |SINO;
+               |SI tp ! 0; |Y tp ! 1;   || tiempo parcial
+                    nPagaCompleta = #9diasp * dvalo_999 / tp;
+               |SINO;                   || tiempo completo
+                    nPagaCompleta = #9diasp * dvalo_999;
+               |FINSI;
+          |FINSI;
+
+          nDiasPaga = #labtraba#dias_p# - nDiasAcum;
+
+          |SI #labtraba#234 = 0;
+               nNume = (nDiasPaga / nTotDiasPaga) * nPagaCompleta;
+          |SINO;
+               nNume = nPagaCompleta * (nDiasPaga / nTotDiasPaga)  * (#labtraba#234 / tp2);
+          |FINSI;
+          nImpPaga = nImpPaga + nNume;
+          nDiasAcum = nDiasAcum + nDiasPaga;
+          nNroTrab = nNroTrab + 1;
+          nJornadaAnt = #labtraba#234;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE nomhicli;
+     #500#1006;
+     ;
+     #labtraba#0, #labtraba#1, nAnyPaga, nDesdeMes, 0, concep0;
+     #labtraba#0, #labtraba#1, nAnyPaga, nHastaMes, 0, concep0;
+     ;
+     NULL, AcumPaga;
+|FIN;
+
+|PROCESO BuscaPaga;
+     tpp = 0;
+     concepto = 909; |HAZ t_parcial2; |SI tp3 ! -1; tpp = tp3; |FINSI;
+     |SI #labtraba#1 ! nTra;
+          || que sea un trabajador distinto al actual
+          |SI #labtraba#48 = "S";  || si ya ha sido finiquito, no tengo
+               |ACABA;             || que tenerlo en cuenta, pase lo que pase
+          |FINSI;
+     |FINSI;
+     |SI #nomconca#desde# < #nomconca#hasta#;
+          nDesdeMes = #nomconca#desde#;
+          nHastaMes = #nomconca#hasta#;
+          nAnyPaga = #0#9 - 2000;
+          |BUCLE nomhicli;
+     |SINO;
+          nDesdeMes = #nomconca#desde#;
+          nHastaMes = 12;
+          nAnyPaga = #0#9 - 2000 - 1;
+          |BUCLE nomhicli;
+
+          nDesdeMes = 1;
+          nHastaMes = #nomconca#hasta#;
+          nAnyPaga = #0#9 - 2000;
+          |BUCLE nomhicli;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE PorNIF_Paga;
+     #labtraba#7;
+     ;
+     aNif, nEmp, 00001;
+     aNif, nEmp, 99999;
+     ;
+     NULL, BuscaPaga;
+|FIN;
+
+|PROCESO PropPagaTP;
+     aDef = "nomhicli";
+     |HAZ carga_def_500;
+     |SALVA_FICHA #labtraba;
+     |SALVA_FICHA #nomcalca;
+     nPagaAjustada = 0;
+     |SI #labtraba#tipo_p# = "B"; |Y #labtraba#ajus_p# > 0;
+          nPagaAjustada = #labtraba#ajus_p#;
+     |FINSI;
+     |SI #nomconca#desde# < #nomconca#hasta#;
+          nDesdeMes = #nomconca#desde#;
+          nHastaMes = #nomconca#hasta#;
+          nMeses = nHastaMes - nDesdeMes + 1;
+     |SINO;
+          nDesdeMes = #nomconca#desde#;
+          nHastaMes = 12;
+          nMeses = nHastaMes - nDesdeMes + 1;
+
+          nDesdeMes = 1;
+          nHastaMes = #nomconca#hasta#;
+          nMeses = nMeses + (nHastaMes - nDesdeMes + 1);
+     |FINSI;
+
+     || nTotDiasPaga = (duni2_999 * nMeses);
+     nTotDiasPaga = perio;
+
+     nNroTrab = 0;  || nro de trabajadores con este NIF, si es solo 1 paso
+     nJornadaAnt = -1;
+     swSigue = 0;
+
+     nEmp = #labtraba#0;
+     nTra = #labtraba#1;
+     |BUCLE PorNIF_Paga;
+     |REPON_FICHA #nomcalca;
+     |REPON_FICHA #labtraba;
+
+     || del que la estoy calculando, para terminar
+
+     |SI nJornadaAnt ! #labtraba#234; |Y nJornadaAnt ! -1;
+          swSigue = 1;
+     |FINSI;
+
+     || nDiasPaga = (duni2_999 * nMeses) - nDiasAcum;
+     nDiasPaga = nTotDiasPaga1 - nDiasAcum;
+
+     |SI #labtraba#234 = 0;
+          nNume = (nDiasPaga / nTotDiasPaga) * nPagaCompleta;
+     |SINO;
+          nNume = nPagaCompleta * (nDiasPaga / nTotDiasPaga)  * (#labtraba#234 / tp2);
+     |FINSI;
+
+     nImpPaga = nImpPaga + nNume;
+
+     |DESCARGA_DEF #copiadef@;
+
+     |SI swSigue ! 1;
+          nDiasAcum = 0;
+     |FINSI;
+|FPRC;
+
+
+/****************************************************************************/
+/*******************                                    *********************/
+/********                   LIBRO DE COMENTARIOS                    *********/
+/*******************                                    *********************/
+/****************************************************************************/
+
+/*
+
+(1)
+     || - O PARA EL PERIDO DE PAGO, si no a la hora de hacer el
+     || el finiquito no salen este tipo de pagas, 27.04.2007
+     || - lo de que solo se haga en nomcalfi lo pongo el 08/04/2011
+     || porque realmente si no ... es que esta mal, para prorrateo
+     || si que hay que pagar por aqui pero para calculo de unidades
+     || a pagar de ninguna manera
+     || - ACTUALIZACION 01.09.2011, 000059.00828. Ojo con ese caso, Hay que
+     || hacer esto en finiquito Y TAMBIEN EN FINIQUITO JUNTO MES (swSigue1)
+
+(2)
+     || si no en una paga por ejemplo desde 31/3 hasta 30/3
+     || cuenta los dias para la paga del periodo siguiente
+     || eso para prorratear si, pero para pagar no, 02884.01923
+     || no se si interferira en eso de "en el finiquito no salen ... "
+
+(3)
+     || a ver, novedad. si la paga es prorrateada, en el periodo de
+     || paga TAMBIEN ha de tener en cuenta que es el a¤o siguiente
+     || lo que tiene que contar para el prorrateo Y EL PAGO si la
+     || paga se prorratea de esa manera y estoy ya en el periodo de
+     || pago: desde 01/07 al 30/06, estoy en mes 09, ha de contar
+     || los dias desde julio del a¤o actual a junio DEL SIGUIENTE
+     || tiquet 001624.01760, 22.09.2011
+
+(4)
+     || nume1 = (#labtraba#47 * dcoti_0 * dcofi_1);
+     || estaba asi pero no tiene sentido multiplicar por los dias y luego
+     || otra vez por a proporcion de tiempo en alta, falla si no estas el
+     || mes completo, lo dejo solo por los dias (13.02.2007)
+
+(5)
+     ||SI sw_mater ! 0; |Y denfe_2 > 0;  || tengo enf y mater
+          ||SI nDifMax ! 0;              || he topeado al maximo
+               ||base_6 = base_6 + nDifMax;    || asi el exceso lo quito
+          ||FINSI;                            || de la parte de maternidad
+     ||FINSI;
+     || esto lo quito ya que provoca que NO se reduzca la base en el campo
+     || de cc del mantenimiento, y no es correcto: 22.08.2011 / 03923.00500
+
+(6)
+     ||SI sw_mater ! 0; |Y denfe_2 > 0;       || tengo enf y mater
+          ||SI nDifMax ! 0;                   || he topeado al maximo
+               ||base_7 = base_7 + nDifMax;    || asi el exceso lo quito de la
+          ||FINSI;                            || parte de maternidad
+     ||FINSI;
+     || esto lo quito ya que provoca que NO se reduzca la base en el campo
+     || de cc del mantenimiento, y no es correcto: 22.08.2011 / 03923.00500
+
+(7)
+
+     || la variable swAjuste3 ya sabemos que lleva el control de los meses
+     || de 31 o 28/29 dias, para ajustar la cotizacion, pero la variable
+     || swAjuste3_C tambien se usa en determinados casos de complementoen que
+     || si bien no habia que usar la swAjuste3, si que era necesario ajustar
+
+     || para el control de IT hay meses que hace falta swAjuste3_C (los de 31
+     || dias todo el mes de IT), veces que hace falta swAjuste3 (los de 31 dias
+     || que hay IT por Enf. e IT por C, o los de 31 dias con parte en alta y
+     || parte en C)
+
+     || de esta manera lo controlo
+*/
+
+     || (7)
+     || bonificaciones para mayores de 60, 55 y 59 a¤os
+     || ya no existen, pero dejo el proceso por si acaso
+
+          /*
+          || bonificaciones estas ya no existen
+          |SI #2#211 ! 0;
+               nDiferencia = base_E - bon_60 - bon_55 - bon_59;
+               nDiferencia = nDiferencia * (-1);
+               |SI bon_60 > 0; |Y nDiferencia > 0;
+                    bon_60 = bon_60 - nDiferencia;
+                    |SI bon_60 < 0;
+                         nDiferencia = bon_60 * (-1);
+                         bon_60 = 0;
+                    |SINO;
+                         nDiferencia = 0;
+                    |FINSI;
+               |FINSI;
+               |SI bon_59 > 0; |Y nDiferencia > 0;
+                    bon_59 = bon_59 - nDiferencia;
+                    |SI bon_59 < 0;
+                         nDiferencia = bon_59 * (-1);
+                         bon_59 = 0;
+                    |SINO;
+                         nDiferencia = 0;
+                    |FINSI;
+               |FINSI;
+               |SI bon_55 > 0; |Y nDiferencia > 0;
+                    bon_55 = bon_55 - nDiferencia;
+                    |SI bon_55 < 0;
+                         nDiferencia = bon_55 * (-1);
+                         bon_55 = 0;
+                    |SINO;
+                         nDiferencia = 0;
+                    |FINSI;
+               |FINSI;
+               base_E = base_E - bon_60 - bon_55 - bon_59;        || bonif. mayores 60 a¤os
+          |FINSI;
+          */
+
+
+/****************************************************************************/
+/********* CALCULO DEL COMPLEMENTO DE MATERNIDAD, YA NO SE USA  *************/
+/****************************************************************************/
+
+/*
+||____________________________________/ DESGLOSA DIAS MATERNIDAD
+    dmate_Z = 0;   || 1ra. linea maternidad
+    dmate_Y = 0;   || 2da. linea maternidad
+|SI dmate_2 ! 0;                         || si ha estado pariendo
+     dmate_t = dmate_2 + dmate_0; || suma dias maternidad actual
+     |SI dmate_t > #14#98;
+          dmate_Z = #14#98 - #14#96 + 1;
+     |SINO;
+          dmate_Z = dmate_t;
+     |FINSI;
+     |SI dmate_t > #14#99;
+          dmate_Y = #14#99 - #14#97 + 1;
+     |SINO;
+          dmate_Y = dmate_t - dmate_Z;
+     |FINSI;
+|FINSI;
+||____________________________________/ QUITA DIAS MESES ANTERIORES
+     nume1 = dmate_2;
+|SI dmate_Y > nume1;
+     dmate_Z = 0;
+     dmate_Y = nume1;
+|SINO;
+     nume1 = nume1 - dmate_Y;
+|FINSI;
+|SI dmate_Z > nume1;
+     dmate_Z = nume1;
+|FINSI;
+||____________________________________/ CALCULA COMPLEMENTO MATERNIDAD
+     dmate_3 = 0;         || inicializa acumuladores
+|SI dmate_Z ! 0; |Y #14#102 ! " ";        || si no es cero
+     |SI #14#102 = "P";   || si es por promedio
+          dmate_3 = dmate_3 + (dmate_Z * prom_enf * (#14#100/100));
+     |SINO;
+          desde = 104;
+          hasta = 108;
+          porce = #14#100;
+          |HAZ acumcomp;
+          dmate_3 = dmate_3 +(dacum_999 * dmate_Z);
+          dacum_999 = 0;
+     |FINSI;
+|FINSI;
+|SI dmate_Y ! 0; |Y #14#103 ! " ";         || si no es cero
+     |SI #14#103 = "P";    || si es por promedio
+          dmate_3 = dmate_3 + (dmate_Y * prom_enf * (#14#101/100));
+     |SINO;
+          desde = 109;
+          hasta = 113;
+          porce = #14#101;
+          |HAZ acumcomp;
+          dmate_3 = dmate_3 +(dacum_999 * dmate_Y);
+          dacum_999 = 0;
+     |FINSI;
+|FINSI;
+*/
+
+|| NOMINAS ANTERIORES A 2009
+/*
+
+(1)
+
+          |SI #0#9 [ 2009;
+
+               base_9 = (base_7 - base_5) % (epig_ilt + epig_ims);      || epig.normal
+               |SI #0#9 [ 2006;
+                    base_9 = base_9 + (base_5 % (#15#3 + #15#4));            || epig.enf.
+               |SINO;
+                    |HAZ lee904;
+                    base_9 = base_9 + (base_5 % (#nomepigr#1 + #nomepigr#2));            || epig.enf.
+               |FINSI;
+          |SINO;
+               base_9 = ((base_7 - base_5) % epig_ilt) ! 2;      || epig.normal
+               base_9 = base_9 + (((base_7 - base_5) % epig_ims) ! 2);      || epig.normal
+               base_9 = base_9 + ((base_5 % epig_ilt) ! 2);      || epig.normal
+               base_9 = base_9 + ((base_5 % epig_ims) ! 2);      || epig.normal
+          |FINSI;
+
+(2)
+
+                    |SI #0#9 [ 2009;
+                         zbase_9 = (bon_3 - bon_5) % (epig_ilt + epig_ims);
+                         zbase_9 = zbase_9 ! EURODB;
+                         |SI #0#9 [ 2006;
+                              zbase_9 = zbase_9 + (bon_5 % (#15#3 + #15#4));            || epig.enf.
+                         |SINO;
+                              |HAZ lee904;
+                              zbase_9 = zbase_9 + (bon_5 % (#nomepigr#1 + #nomepigr#2));            || epig.enf.
+                         |FINSI;
+                    |SINO;
+                         zbase_9 = ((bon_3 - bon_5) % epig_ilt) ! 2;
+                         zbase_9 = zbase_9 + (((bon_3 - bon_5) % epig_ims) ! 2);
+                         zbase_9 = zbase_9 + ((bon_5 % epig_ilt) ! 2);
+                         zbase_9 = zbase_9 + ((bon_5 % epig_ims) ! 2);
+                    |FINSI;
+
+(3)
+
+                    |SI #0#9 [ 2009;
+                         zbase_9 = (zbon_3 - zbon_5) % (epig_ilt + epig_ims);
+                         zbase_9 = zbase_9 ! EURODB;
+                         |SI #0#9 [ 2006;
+                              zbase_9 = zbase_9 + (zbon_5 % (#15#3 + #15#4));            || epig.enf.
+                         |SINO;
+                              |HAZ lee904;
+                              zbase_9 = zbase_9 + (zbon_5 % (#nomepigr#1 + #nomepigr#2));            || epig.enf.
+                         |FINSI;
+                    |SINO;
+                         zbase_9 = ((zbon_3 - zbon_5) % epig_ilt) ! 2;
+                         zbase_9 = zbase_9 + (((zbon_3 - zbon_5) % epig_ims) ! 2);
+                         zbase_9 = zbase_9 + ((zbon_5 % epig_ilt) ! 2);
+                         zbase_9 = zbase_9 + ((zbon_5 % epig_ims) ! 2);
+                    |FINSI;
+
+
+*/
+
+
+/****************************************************************************/
+/******** PROCESOS QUE YA NO SE USAN, PERO QUE CONSERVO POR SI ACASO ********/
+/****************************************************************************/
+
+/*
+|PROCESO modulo1;   || ajusta los dias de ILT (dias d)
+|SI #labtraba#42 ! "D"; |Y #labtraba#42 ! "T";
+    |SI #0#8 ! 4; |Y #0#8 ! 6; |Y #0#8 ! 9; |Y #0#8 ! 11;
+            diff= 30 - guarda;
+        |SI ddese_2!0; |Y swaju_des=1;  ddese_2 =ddese_2  + diff;   |FINSI;
+        |SI dperm_2!0; |Y swaju_per=1;  dperm_2 =dperm_2  + diff;   |FINSI;
+        |SI dmate_2!0; |Y swaju_mat=1;  dmate_2 =dmate_2  + diff;   |FINSI;
+
+        |SI dacci_21!0;|Y swaju_acc=1;            || me lo cargo:
+             dacci_2 =dacci_2 + diff;             || esto sirve para que
+             |SI dacci_24!0;                      || no se tenga en cuenta en
+                  dacci_24=dacci_24 + diff;       || prestaciones un dias mas en
+             |SINO;                               || mensuales con IT del tipo
+                  |SI dacci_23!0;                 || "hasta el dia 0", pero esto
+                       dacci_23=dacci_23 + diff;  || provoca que cobro un dia menos
+                  |SINO;                          || de prestaciones, ya que estas
+                       |SI dacci_22!0;            || deben ser por dia natural siempre
+                            dacci_22=dacci_22 + diff;  || 22.03.2007
+                       |SINO;
+                            dacci_21=dacci_21 + diff;
+                       |FINSI;
+                  |FINSI;
+             |FINSI;
+        |FINSI;
+        |SI denfe_21!0;|Y swaju_enf=1;            || me lo cargo:
+             denfe_2 =denfe_2 + diff;             || esto sirve para que
+             |SI denfe_24!0;                      || no se tenga en cuenta en
+                  denfe_24=denfe_24 + diff;       || prestaciones un dias mas en
+             |SINO;                               || mensuales con IT del tipo
+                  |SI denfe_23!0;                 || "hasta el dia 0", pero esto
+                       denfe_23=denfe_23 + diff;  || provoca que cobro un dia menos
+                  |SINO;                          || de prestaciones, ya que estas
+                       |SI denfe_22!0;            || deben ser por dia natural siempre
+                            denfe_22=denfe_22 + diff;  || 22.03.2007 e
+                       |SINO;
+                            denfe_21=denfe_21 + diff;
+                       |FINSI;
+                  |FINSI;
+             |FINSI;
+        |FINSI;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO hmodulo1;  || ajusta los dias de ILT (dias h)
+|SI #2#64 ! "D";
+    |SI #0#8 ! 4; |Y #0#8 ! 6; |Y #0#8 ! 9; |Y #0#8 ! 11;
+            diff= 30 - guarda;
+        |SI hdese_2!0; |Y swaju_des=1;  hdese_2 =hdese_2  + diff;   |FINSI;
+        |SI hperm_3!0; |Y swaju_per=1;  hperm_3 =hperm_3  + diff;   |FINSI;
+        |SI hmate_2!0; |Y swaju_mat=1;  hmate_2 =hmate_2  + diff;   |FINSI;
+        |SI hacci_2!0; |Y swaju_acc=1;  hacci_2 =hacci_2  + diff;   |FINSI;
+        |SI henfe_2!0; |Y swaju_enf=1;  henfe_2 =henfe_2  + diff;   |FINSI;
+    |FINSI;
+|FINSI;
+|FPRC;
+*/

@@ -1,0 +1,256 @@
+|FICHEROS;
+     agifa600 #0;
+     agifa048 #1;
+     agifa049 #2;
+     agifa074 #3; ||Lineas de ordenes de fabricacion
+     agifa019 #4;
+     tempo600 #5;
+     tmp2t600 #6;
+     agifa090 #90;
+|FIN;
+
+|VARIABLES;
+     aEscanOri = "";
+     aAlfa = "";
+     &Tempo         = "";
+     aTempo5        = "";
+     aTempo6        = "";
+     &aVar          = "";
+
+
+     nContador      = 0;
+     nConta         = 0;
+     linant = 0;
+     linact = 0;
+     &uan = 0;   ||Unidades acumuladas segun nivel
+     &cambiolin = 0;
+     &stock = 0;
+     &pendrec = 0;
+     varalfa = "";
+     &totallin = 0;
+     &cabtotlin = 0;
+     linea1 = 0;
+     &totalord = 0;
+     &cabtotord = 0;
+     esescan = 0;
+     uanant = 0;
+     uanult = 0;
+|FIN;
+
+|INCLUYE escand_i;
+
+|PROCESO explo; |TIPO 0; ||Se ejecuta para cada linea de orden de fabricacion
+     linact = #3#1;
+     |SI linant ! linact;
+        |SI linea1 = 0; ||Si no es la primera linea
+          |HAZ impcomlin; ||Imprimo total componentes de la linea de fab
+                          ||Y paso a total orden componentes de lineas
+          |DELINDEX #5; ||Inicializo temporal nobres y numero comp. lin.
+          |INDEXA #5;
+        |FINSI;
+        linea1 = 0;
+        cambiolin = 1; ||Indico al informe que cambia la linea
+     |FINSI;
+
+     |ABRE #agifa048;
+     |ABRE #agifa049;
+     |ABRE #agifa019;
+     nContador = 1;
+     aEscanOri = #3#2;
+     |HAZ InicioEscan;
+     |CIERRA #agifa048;
+     |CIERRA #agifa049;
+     |CIERRA #agifa019;
+     linant = #3#1;
+     cambiolin = 0;
+|FPRC;
+
+|DEFBUCLE salida;
+     #3#1;
+     2;
+     #90#20, #90#0,    1, #0#4;
+     #90#20, #90#0,  999, #0#5;
+     be;
+     NULL,explo;
+|FIN;
+
+|PROCESO EntrarPuntero; ||Se ejecuta cada vez que estoy en un esc y subo nivel
+     |SI uan = 0;
+         uan = uan + #2#4;
+         uanult = #2#4;
+     |SINO;
+         uan = uan * #2#4;
+         uanult = uan;
+     |FINSI;
+     esescan = 1;
+     |HAZ EscanLinea; ||Para que haga print del esc como si fuera componente
+     nContador = nContador + 1;
+     esescan = 0;
+|FPRC;
+
+|PROCESO SacarPuntero;
+     uan = uan - uanult;
+     uanult = 0; ||No necesario
+     nContador = nContador - 1;
+|FPRC;
+
+|PROCESO EscanLinea; ||Se ejecuta cada vez que estoy en un componente del esc
+     #4#0 = #2#2;
+     |LEE 001#4=;
+|SI FSalida = 0; |Y #4#135 ! "N";
+     |SI esescan = 0;
+         uanant = uan;
+         |SI uan = 0;
+            uan = #2#4;
+         |SINO;
+            uan = uan * #2#4;
+         |FINSI;
+     |FINSI;
+     nConta = nContador - 1;
+     stock = #4#104 + (uan * (#3#4 - #3#5)) - #4#7; ||Stock disp = Disp + Reserv. - Minimo
+                     ||El reservado es el reserv. por la orden de fab.
+     pendrec = #4#16; ||Pendiente recibir
+     #5#0 = #2#2;
+     |LEE 001#5=;
+     |SI FSalida = 0;
+         #5#1 = #5#1 + (uan * (#3#4 - #3#5));
+         |GRABA 021#5a;
+     |SINO;
+         #5#1 = uan * (#3#4 - #3#5);
+         #5#2 = #4#104 - #4#7; ||Disponible general art menos minimo.
+         #5#3 = #4#16; ||Pend Recibir
+         |GRABA 021#5n;
+     |FINSI;
+     |SI nConta > 0;
+        aVar = "* "+#2#2;
+     |SINO;
+        aVar = #2#2;
+     |FINSI;
+     |PRINT;
+     cambiolin=0; ||solo vale 1 en el primer print de cada linea
+     |SI esescan = 0;
+         uan = uanant;
+     |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO sumatotal;
+     #6#0 = #5#0;
+     |LEE 001#6=;
+     |SI FSalida = 0;
+         #6#1 = #6#1 + #5#1;
+         |GRABA 021#6a;
+     |SINO;
+         #6#1 = #5#1;
+         #6#2 = #5#2; ||Disponible general art menos minimo.
+         #6#3 = #5#3; ||Pend Recibir
+         |GRABA 021#6n;
+     |FINSI;
+|FPRC;
+
+|PROCESO impcl2;
+   |PRINT;
+   cabtotlin = 0;
+   |HAZ sumatotal;
+|FPRC;
+
+|DEFBUCLE impcl;
+#5#1;
+;
+"                    " ;
+"zzzzzzzzzzzzzzzzzzzz" ;
+be;
+NULL,impcl2;
+|FIN;
+
+|PROCESO impcomlin;
+    totallin = 1;
+    cabtotlin = 1;
+    |BUCLE impcl;
+    totallin = 0;
+|FPRC;
+
+|PROCESO impcc2;
+   |PRINT;
+   cabtotord = 0;
+|FPRC;
+
+|DEFBUCLE impcc;
+#6#1;
+;
+"                    " ;
+"zzzzzzzzzzzzzzzzzzzz" ;
+be;
+NULL,impcc2;
+|FIN;
+
+|PROCESO impcomord;
+    totalord = 1;
+    cabtotord = 1;
+    |BUCLE impcc;
+|FPRC;
+
+|PROCESO Ordenes;
+     linant = 0;
+     linact = 0;
+     uan = 0;
+
+
+     |ABRE #3;
+     ||-------------------------------Listado Total Ordenes
+     |HAZ CreaTempo; aTempo6 = Tempo;
+     |NOME_DAT #6 aTempo6;  |DELINDEX #6;
+     |ABRE #6;
+     ||-------------------------------Listado lineas Ordenes
+     |HAZ CreaTempo; aTempo5 = Tempo;
+     |NOME_DAT #5 aTempo5;  |DELINDEX #5;
+     |ABRE #5;
+     linea1 = 1;
+     |BUCLE salida;
+     #3#1 = linact + 1; ||Ajuste linea
+     |HAZ impcomlin; ||Imprimo total componentes de la linea de fab
+     totallin = 2;||Para que no imprima lo que no es total orden
+     |HAZ impcomord; ||Imprimo total componentes de la orden
+     |CIERRA #5;
+     |CIERRA #6;
+     |CIERRA #3;
+     |DELINDEX #5; Tempo = aTempo5; |HAZ BoraTempo;
+     |DELINDEX #6; Tempo = aTempo6; |HAZ BoraTempo;
+
+     |PIEINF;
+|FPRC;
+
+|DEFBUCLE Ordenes;
+     #90#1;
+     1, 2;
+     #0#0, #0#1, #0#6, #0#8;
+     #0#2, #0#3, #0#7, #0#9;
+     ;
+     NULL, Ordenes;
+|FIN;
+
+|PROCESO informe;|TIPO 3;
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR "agifa600";
+          |SI FSalida = 0;
+               |BUCLE Ordenes;
+               |FININF;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     aAlfa = #0#11;
+     |DDEFECTO #0;
+     #0#11 = aAlfa;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0; |GRABA 020#0a; |FINSI;
+     |CIERRA #0;
+|FPRO;

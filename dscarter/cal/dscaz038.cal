@@ -1,0 +1,136 @@
+|FICHEROS;
+   dscaz038  #0;
+
+   dscam003  #10;
+   agifa041@ #100;
+   agifa114@ #101;
+|FIN;
+
+|VARIABLES;
+   Comodin = "";
+   aAlfa   = "";
+   aSerie  = "";
+
+   nTecla  = 0;
+   nNumero = 0;
+   nRecibo = 0;
+   nAgrup  = 0;
+|FIN;
+
+|PROCESO RecAgrup;
+   |SI #agifa114@#27 ! "      ";
+      aSerie = #agifa114@#17 + "   ";
+      nNumero = #agifa114@#0;
+      nRecibo = #agifa114@#1;
+      nAgrup  = #agifa114@#27;
+
+      aAlfa = " Tratando recibo " + #agifa114@#17 + "/" + #agifa114@#0 + "/" + #agifa114@#1;
+      |ATRI I; |PINTA 2310, aAlfa; |ATRI N;
+
+      || Obtengo el n§ de documento del recibo agrupador
+      |DDEFECTO #dscam003;
+      |SELECT #6#dscam003;
+      #dscam003#0 = "AG   ";
+      #dscam003#1 = nAgrup;
+      #dscam003#2 = 1;
+      |LEE 000#dscam003.];
+      |SI FSalida ! 0; |O #dscam003#0 ! "AG   "; |O #dscam003#1 ! nAgrup;
+         |DDEFECTO #dscam003;
+      |FINSI;
+      |SELECT #1#dscam003;
+      |LEE 101#dscam003.=;
+      |SI FSalida = 0;
+         nAgrup = #dscam003#40;
+         |SI #dscam003#49 = "N";
+            #dscam003#49 = "S"; |GRABA 020#dscam003.a;
+         |FINSI;
+         |LIBERA #dscam003;
+      |FINSI;
+
+      || Marco los documentos que cuelgan de el ....
+
+      |DDEFECTO #dscam003;
+      |SELECT #6#dscam003;
+      #dscam003#0 = aSerie;
+      #dscam003#1 = nNumero;
+      #dscam003#2 = nRecibo;
+      |LEE 000#dscam003.];
+      |SI FSalida ! 0; |O #dscam003#0 ! aSerie; |O #dscam003#1 ! nNumero;
+       |O #dscam003#2 ! nRecibo;
+         |DDEFECTO #dscam003;
+      |FINSI;
+      |SELECT #1#dscam003;
+      |LEE 101#dscam003.=;
+      |SI FSalida = 0;
+         #dscam003#41 = nAgrup;
+         |GRABA 020#dscam003.a; |LIBERA #dscam003;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RecAgrup;
+#agifa114@#1003;
+;
+"  ", "      ", 000;
+"zz", "zzzzzz", 999;
+;
+NULL,RecAgrup;
+|FIN;
+
+|PROCESO MiraEmp;
+   nTecla = FSalida;
+   Comodin = #dscaz038#1; |QBF Comodin;
+   Comodin = Comodin + "def/agifa041.mas";
+   |CARGA_DEF Comodin, agifa041@;
+   |SI FSalida = 0;
+      Comodin = #dscaz038#1; |QBF Comodin;
+      Comodin = Comodin + "fich/";
+      |PATH_DAT #100 Comodin;
+      |ABRE #agifa041@;
+      |SI nTecla = 10;
+         |CONSULTA_CLAVE #1#agifa041@;
+         |SI FSalida = 0;
+            #dscaz038#2 = #agifa041@#0;
+         |FINSI;
+         |ERROR;
+      |FINSI;
+      #agifa041@#0 = #dscaz038#2;
+      |LEE 000#agifa041@.=;
+      |SI FSalida = 0;
+         |PINTA 1520, #agifa041@#1;
+      |SINO;
+         |MENAV "    No se ha encontrado la empresa";
+         |ERROR;
+      |FINSI;
+      |CIERRA #agifa041@; |DESCARGA_DEF #agifa041@;
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Recalculo documentos agrupados";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0; |Y #0#0 = "S";
+      Comodin = #dscaz038#1; |QBF Comodin;
+      Comodin = Comodin + "def/agifa041.mas";
+      |CARGA_DEF Comodin, agifa041@;
+      |SI FSalida = 0;
+         Comodin = #dscaz038#1; |QBF Comodin;
+         Comodin = Comodin + "def/agifa114.mas";
+         |CARGA_DEF Comodin, agifa114@;
+         Comodin = #dscaz038#1; |QBF Comodin;
+         Comodin = Comodin + "fich/";
+         |PATH_DAT #100 Comodin;
+         Comodin = Comodin + (("00" + #dscaz038#2) % -102) + "/";
+         |PATH_DAT #101 Comodin;
+         |ABRE #agifa041@; |ABRE #agifa114@; |ABRE #dscam003;
+         |BUCLE RecAgrup;
+         |CIERRA #dscam003;
+         |CIERRA #agifa114@; |DESCARGA_DEF #agifa114@;
+         |CIERRA #agifa041@; |DESCARGA_DEF #agifa041@;
+      |SINO;
+         |MENAV "    No encuentro el fichero de recibos de Malpesa";
+      |FINSI;
+   |FINSI;
+|FPRO;

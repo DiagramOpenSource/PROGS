@@ -1,0 +1,136 @@
+|FICHEROS;
+   dscam044 #0;
+   dscam045 #1;
+
+   agif041@ #2;
+|FIN;
+
+|VARIABLES;
+   &Fichero = ""; &Tipo = ""; &Cmp = ""; &CmpNum = 0;
+   &eaUsuario = ""; &enImpAnt = 0;  &enImpAct = 0;  &eaDescr = "";
+   &eaTipoReg = ""; &eaNumero = ""; &eaTipoOp = "";
+
+   Tecla = 0;
+   ModoEntrada = 0;
+
+   Comodin = ""; Comodin1 = "";
+   aLong = "";  nLong = 0;
+   Calc = 0;
+|FIN;
+
+|PROCESO MiraPath;
+   Comodin = #dscam044#1; |QBF Comodin;
+   aLong = Comodin % 0;
+   nLong = aLong;
+   Calc = (nLong * 100) + 1;
+   Comodin = Comodin % Calc;
+   |SI Comodin ! "/";
+      Comodin = #dscam044#1; |QBF Comodin;
+      Comodin = Comodin + "/";
+      #dscam044#1 = Comodin; |PINTA #dscam044#1;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraEmpresas;
+   Tecla = FSalida;
+   |SI Tecla = 2; |ACABA; |FINSI;
+   |SI Tecla = 11;
+      |DBASS Comodin; |QBF Comodin;
+      Comodin = Comodin + "dscomer9/";
+      #dscam044#1 = Comodin;
+      |PINTA #dscam044#1;
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   Comodin = #dscam044#1; |QBF Comodin;
+   ||Comodin1 = Comodin + "def/agifa041.mas";
+   Fichero = "Empresas"; Tipo = "G"; Cmp = ""; |HAZ ObtenFich;
+   Comodin1 = Comodin + "def/" + Fichero + ".mas";
+   |CARGA_DEF Comodin1 , agif041@;
+   |SI FSalida = 0;
+      Comodin1 = Comodin + "fich/";
+      |PATH_DAT #2 Comodin1;
+      |ABRE #agif041@;
+      |SI Tecla = 10;
+         |CONSULTA_CLAVE #1#agif041@;
+         |SI FSalida ] 0;
+            Fichero = "Empresas"; Tipo = "G"; Cmp = "Codigo Empresa"; |HAZ ObtenDato;
+            #dscam044#0 = #agif041@#CmpNum#; |PINTA #dscam044#0;
+         |FINSI;
+      |SINO;
+         Fichero = "Empresas"; Tipo = "G"; Cmp = "Codigo Empresa"; |HAZ ObtenDato;
+         #agif041@#CmpNum# = #dscam044#0;
+         |LEE 010#agif041@.=;
+         |SI FSalida ! 0;
+            |MENAV "    No existe empresa";
+            |ERROR;
+         |FINSI;
+      |FINSI;
+      Fichero = "Empresas"; Tipo = "G"; Cmp = "Razon Social"; |HAZ ObtenDato;
+      ||PINTA 0721, #agif041@#CmpNum#;
+      #dscam044#2 = #agif041@#CmpNum#; |PINTA #dscam044#2;
+      |CIERRA #agif041@;
+      |DESCARGA_DEF #agif041@;
+   |SINO;
+      |MENAV "    No puedo abrir el fichero de empresas";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO NombreDoc;
+   |SI #dscam045#2 = "V"; #dscam045#3 = "VENTAS "; |FINSI;
+   |SI #dscam045#2 = "C"; #dscam045#3 = "COMPRAS"; |FINSI;
+   |PINTA #dscam045#3;
+|FPRC;
+
+|PROCESO CogePath; |TIPO 88;
+   |DBASE Comodin;
+   Comodin = Comodin + "fich/";
+   |PATH_DAT #0 Comodin;
+   |PATH_DAT #1 Comodin;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 1;
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "ALTA CONTROL RECIBOS GESTION (" + (("00000" + #dscam044#0) % -105) + ")";
+      eaTipoReg = "Cg";  eaNumero = ("00000" + #dscam044#0) % -105;
+      eaTipoOp  = "A";   enImpAnt = 0; enImpAct = 0;
+      |HAZ GrabaAudit;
+   |FINSI;
+   |SI ModoEntrada = 2;
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "MODIFICACION CONTROL RECIBOS GESTION (" + (("00000" + #dscam044#0) % -105) + ")";
+      eaTipoReg = "Cg";  eaNumero = ("00000" + #dscam044#0) % -105;
+      eaTipoOp  = "M";   enImpAnt = 0; enImpAct = 0;
+      |HAZ GrabaAudit;
+   |FINSI;
+|FPRC;
+
+|PROCESO BorraLin;
+   |BORRA 020#dscam045.a;
+|FPRC;
+
+|DEFBUCLE BorraLin;
+#dscam045#1;
+;
+#dscam044#0,001;
+#dscam044#0,999;
+be;
+NULL,BorraLin;
+|FIN;
+
+|PROCESO Tipo1; |TIPO 1;
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 3;
+      |BUCLE BorraLin;
+      eaUsuario = Usuario % 0810;
+      eaDescr   = "BAJA CONTROL RECIBOS GESTION (" + (("00000" + #dscam044#0) % -105) + ")";
+      eaTipoReg = "Cg";  eaNumero = ("00000" + #dscam044#0) % -105;
+      eaTipoOp  = "B";   enImpAnt = 0; enImpAct = 0;
+      |HAZ GrabaAudit;
+   |FINSI;
+|FPRC;

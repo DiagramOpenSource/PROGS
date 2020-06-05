@@ -1,0 +1,117 @@
+|FICHEROS;
+     diam0100 #100;
+     diam0102 #102;
+
+     :/dspartes/def/dsparm01 #101;
+     :/dspartes/def/dsparm05 #105;
+|FIN;
+
+|VARIABLES;
+     aTo             = "";
+     aFrom           = "";
+     aSubject        = "";
+     aServidor       = "";
+     aIP             = "";
+     aMensaje        = "";
+     aAdjunto        = "";
+     aBase           = "";
+     aPathInforme    = "";
+     aHora           = "";
+     aImpresora      = "";
+     aSystem         = "";
+     aBaseBin        = "";
+     aOrigen         = "";
+
+     fFecha          = @;
+
+     nSwHay          = 0;
+     aAlfa          = "";
+|FIN;
+
+|PROCESO EnviaCorreo;
+     |ABRE #101; |LEE 000#101p; |CIERRA #101;
+     |ABRE #102; |LEE 000#102p; |CIERRA #102;
+
+     |ABRE #105;
+     #105#0 = #102#7;
+     |LEE 000#105=;
+     |SI FSalida ! 0;  |DDEFECTO #105;  |FINSI;
+     |CIERRA #105;
+
+     aTo   = #105#3;      |QBF aTo;
+     aFrom = #105#3;      |QBF aFrom;
+
+     |SI aTo   = "";  |ACABA;  |FINSI;
+     |SI aFrom = "";  |ACABA;  |FINSI;
+
+     aSubject = "DSCRON .- Informe de Facturas Compras Pedientes de Validar";
+     aServidor = #101#7; |QBF aServidor;
+     aIP       = #101#8;       |QBF aIP;
+     aMensaje  = "Leer fichero adjunto.";
+     aAdjunto  = aOrigen;
+
+     |DSCORREO_ENVIA aIP, aServidor, aFrom, aTo, aSubject, aMensaje, aAdjunto;
+|FPRC;
+
+|PROCESO diam0100;
+     nSwHay = 1;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE diam0100;
+     #100#1;
+     5;
+     "      ", "                    ", 01, "01.01.0000";
+     "zzzzzz", "zzzzzzzzzzzzzzzzzzzz", 99, "01.01.0000";
+     ;
+     NULL, diam0100;
+|FIN;
+
+|PROGRAMA;
+     |DBASE aBase;   |QBF aBase;
+     aPathInforme = aBase + "000577/pdf";
+     |MKDIR aPathInforme;
+
+     |HORA aHora
+     fFecha = ~;
+
+     aImpresora = aPathInforme + "/compras.txt";
+
+     Impresora  = aImpresora;
+     |IMPRE -77;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |INFOR "diaz0015";
+     |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+     nSwHay = 0;
+     |BUCLE diam0100;
+
+     |SI nSwHay = 1;
+         |PIEINF;
+         |FININF;
+         |FINIMP;
+
+         |DBASS aBaseBin;  |QBF aBaseBin;
+         aBaseBin = aBaseBin + "bin/topdf.sh ";
+         aSystem  = aBaseBin + aImpresora;
+
+         |QUE_SISTEMA aAlfa;
+         |SI aAlfa = "ESDOS";
+              aSystem = "d:\perl\bin\perl.exe d:\perl\bin\dsbin\ascii2pdf.pl -p6 " + aImpresora  + " >> d:\dsx\bin\log.log 2>> d:\dsx\bin\log.err";
+         |FINSI;
+
+         |SYSTEM aSystem;
+
+         aOrigen  = aImpresora - ".txt" + ".pdf";
+         |FBORRA aImpresora;
+
+         |HAZ EnviaCorreo;
+
+         |FBORRA aOrigen;
+     |SINO;
+         |FININF;
+         |FINIMP;
+         |FBORRA aImpresora;
+     |FINSI;
+|FPRO;

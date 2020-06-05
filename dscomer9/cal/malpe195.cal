@@ -1,0 +1,540 @@
+|FICHEROS;
+     malpe195 #0;
+     malpe001 #1;   || obras
+     malpe003 #3;   || importe por tonelada
+     malpe006 #6;   || Transportista
+     dsm00024 #24;
+     malpe081 #81;
+     malpe085 #85;
+     malpe090 #90;
+     malpe091 #91;
+     malpe109 #109;
+     malpe190 #190;
+     malpe191 #191;
+     malpe192 #192;
+     malpe197 #197;
+     malpe200 #200;
+     malpe201 #201;
+     malpe203 #203; || Agen
+     agifa321;
+     agifa324;
+|FIN;
+
+|VARIABLES;
+     &enTiva = 0;
+     &efFiva = @;
+     &eaDiva = "";
+     &enIva = 0;
+     &enRec = 0;
+     nEmp = 0;
+     aTipo = "";
+     aCod = "";
+     aMatri = "";
+     nAlma = 0;
+     aAgen = "";
+     aTran = "";
+     nConta = 0;
+     nIncr = 0;
+     nRete = 0;
+     aBruTota = "";
+     nTiva = 0;
+     nFactu = 0;
+     nPrime = 999999999;
+     nUlti = 0;
+     nPrecio = 0;
+     nPeso = 0;
+     nLin = 0;
+     aDSer1 = "";
+     aDSer2 = "";
+     aDSer3 = "";
+     aDSer4 = "";
+     aDSer5 = "";
+     aDSer6 = "";
+     aHSer1 = "";
+     aHSer2 = "";
+     aHSer3 = "";
+     aHSer4 = "";
+     aHSer5 = "";
+     aHSer6 = "";
+
+     &nDeci_IVADiv   = 0;
+     &nDeci_Base     = 0;   || Decimales en Totales de la moneda base
+     &nDeci_PreBase  = 0;   || Decimales en el Precio en moneda base
+     &nDeci_BaseMx   = 0;   || Decimales en Totales de la moneda base (Maxima precision)
+     &nDeci_PreBaseMx= 0;   || Decimales en el Precio en moneda base (Maxima precision)
+     &nDeci_Div      = 0;   || Decimales en Totales de la divisa
+     &nDeci_PreDiv   = 0;   || Decimales en el Precio en divisa
+     &nDeci_TotVis   = 0;   || Decimales en Totales visibles (el de la moneda de trabajo)
+     &nDeci_TotNoVis = 0;   || Decimales en Totales no visibles (el de la otra moneda)
+     &nDeci_PreVis   = 0;   || Decimales en el Precio visual. (lineas)
+     &nDeci_ImpVis   = 0;   || Decimales en el Importe visual. (lineas)
+     nfecha    = 0;
+     &ac_divisa = "N";   || Vale "S" cuando las divisas en ventas estan
+                         || activadas y la serie es de divisas
+     &pintado = 0;       || Sirve para controlar los pintados de las lineas
+     &decim_divisa = 0;  || Decimales de la divisa
+     &precio_divisa = 0; || Decimales del precio en divisa
+     &decim_base = 0;    || Decimales de la moneda base
+     &precio_base = 0;   || Decimales del precio en moneda base
+|FIN;
+
+|PROCESO Param_Divisas;
+     |ABRE #agifa324;
+     #agifa324#0 = #malpe090#68;
+     |LEE 001#agifa324.=;   || Leo la divisa
+     |CIERRA #agifa324;
+
+     decim_divisa = #agifa324#7;  || Decimales de la divisa
+     precio_divisa = #agifa324#9;  || Decimales en el precio de la divisa
+     nDeci_Div = decim_divisa;   || Decimales de la divisa
+     nDeci_PreDiv = precio_divisa;  || Decimales en el precio de la divisa
+     |SI #malpe090#70 = "B";   || Si trabajo con la moneda base ...
+          nDeci_PreVis   = precio_divisa;
+          nDeci_ImpVis   = decim_divisa;
+          nDeci_Base     = decim_base;
+          nDeci_PreBase  = precio_base;
+          nDeci_BaseMx  = decim_base;
+          nDeci_PreBaseMx = precio_base;
+          nDeci_TotVis   = decim_base;
+          nDeci_TotNoVis = decim_divisa;
+     |SINO;     || Si trabajo con la divisa ...
+          nDeci_PreVis   = precio_base;
+          nDeci_ImpVis   = decim_base;
+          nDeci_Base     = decim_base; || Max. precision en los decimales de la moneda base
+          nDeci_PreBase  = precio_base;  || Max. precision en los dec. del precio de la moneda base
+          |SI #malpe090#69 = 1;
+               nDeci_BaseMx    = decim_base;    || sin triangulacion
+               nDeci_PreBaseMx = precio_base;
+          |SINO;
+               nDeci_BaseMx    = #agifa321#10;  || con triangulacion
+               nDeci_PreBaseMx = #agifa321#11;
+          |FINSI;
+          nDeci_TotVis   = decim_divisa;
+          nDeci_TotNoVis = decim_base;
+     |FINSI;
+     |HAZ Deci_IVA;
+|FPRC;
+
+|PROCESO LeeMonBase; ||Lee los parametros de la moneda base
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 000#agifa321.p;   ||Leo parametros de divisa
+||     #malpe090#73 = #agifa321#9;  ||Cojo la Moneda Base de parametros
+     #agifa324#0 = #agifa321#9;
+     |LEE 010#agifa324.=;         ||Leo la ficha de la moneda base en Divisas
+||     #malpe090#74 = #agifa324#2;  ||Asigno el cambio de la moneda base con el euro
+     decim_base = #agifa324#7;    ||Asigno los decimales de la moneda base
+     precio_base = #agifa324#9;   ||Asigno los decimales del precio en la mon. base
+     |CIERRA #agifa324;
+     |CIERRA #agifa321;
+|FPRC;
+
+|PROCESO DivisaAlb;
+     |HAZ LeeMonBase;
+     |HAZ Param_Divisas;
+|FPRC;
+
+--------------------------------------------------------------
+|PROCESO Cabecera;
+     |QBF aAgen;
+     |SI aAgen = "";
+          |DDEFECTO #6;
+          #6#0 = aTran;
+          |LEE 000#6=;
+          aCod = aTran;
+          aTipo = "T";
+          nIncr = #6#12;
+          nRete = #6#13;
+          aBruTota = #6#14;
+          nTiva = #6#15;
+          nFactu = #6#16;
+     |SINO;
+          |DDEFECTO #203;
+          #203#0 = aAgen;
+          |LEE 000#203=;
+          aCod = aAgen;
+          aTipo = "A";
+          nIncr = #203#9;
+          nRete = #203#10;
+          aBruTota = #203#11;
+          nTiva = #203#12;
+          nFactu = #203#13;
+     |FINSI;
+
+     |LIBERA #190;
+
+     |SI nFactu = 1;
+          aMatri = "";
+          nAlma = 0;
+     |FINSI;
+     |SI nFactu = 2;
+          aMatri = "";
+     |FINSI;
+     |SI nFactu = 3;
+          nAlma = 0;
+     |FINSI;
+
+     |SELECT #3#190;
+     #190#5 = aTipo;
+     #190#2 = nFactu;
+     #190#6 = aCod;
+     #190#3 = aMatri;
+     #190#4 = nAlma;
+     #190#1 = #0#0;
+     #190#22 = nEmp;
+     |LEE 101#190=;
+     |SI FSalida ! 0;
+          |SELECT #1#190;
+          |LEE 000#190u;
+          |SI FSalida = 0;
+               nConta = #190#0 + 1;
+          |SINO;
+               nConta = 1;
+          |FINSI;
+          |DDEFECTO #190;
+          #190#0 = nConta;
+          #190#5 = aTipo;
+          #190#2 = nFactu;
+          #190#6 = aCod;
+          #190#3 = aMatri;
+          #190#4 = nAlma;
+          #190#1 = #0#0;
+          #190#22 = nEmp;
+          |GRABA 020#190b;
+     |FINSI;
+     #190#8 = nIncr;
+     #190#10 = nTiva;
+     #190#12 = nRete;
+     #190#13 = aBruTota;
+     |GRABA 020#190a;
+
+     |SI nPrime > #190#0; nPrime = #190#0; |FINSI;
+     |SI #190#0 > nUlti; nUlti = #190#0; |FINSI;
+|FPRC;
+
+|PROCESO UltLin;
+     #191#0 = #190#0;
+     #191#1 = 99999;
+     |LEE 000#191];
+     |SI FSalida = 0;
+          |LEE 000#191a;
+     |SINO;
+          |LEE 000#191u;
+     |FINSI;
+     |SI FSalida = 0; |Y #191#0 = #190#0;
+          nLin = #191#1 + 1;
+     |SINO;
+          nLin = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO PesoAlb;
+     #24#0 = #91#2;
+     #24#1 = #91#3;
+     #24#2 = #91#49;
+     |LEE 000#24=;
+     |SI FSalida ! 0 ; |DDEFECTO #24; |FINSI;
+
+     #85#0 = #24#0;
+     #85#1 = #24#1;
+     #85#2 = #24#2;
+     |LEE 000#85=;
+     |SI FSalida ! 0; |DDEFECTO #85; |FINSI;
+     nPeso = #85#3;;
+|FPRC;
+
+|PROCESO PrecioAlb;
+     #1#0 = #90#3;  ||Cli
+     #1#1 = #90#84; ||Obra
+     |LEE 000#1=;
+     |SI FSalida ! 0 ; |DDEFECTO #1; |FINSI;
+     #3#0 = #1#22;  ||Tipo Trans
+     #3#3 = #90#1;  ||Fecha Alba
+     |LEE 000#3];
+     |SI FSalida ! 0;
+          |LEE 000#3u;
+     |SINO;
+          |LEE 000#3a;
+     |FINSI;
+     |SI FSalida ! 0 ; |O #3#0 ! #1#22;
+          |DDEFECTO #3;
+     |FINSI;
+     nPrecio = #3#2;
+|FPRC;
+
+|PROCESO Albaranes;
+     |SI #91#66 = "R"; ||SI es una rotura, ni suma ni resta
+          |ACABA;
+     |FINSI;
+     |SI #91#78 ! 0; |ACABA; |FINSI;    ||Ya esta calculado
+
+     |SI #90#52 ] aDSer1; |Y #90#52 [ aHSer1; |ACABA; |FINSI;
+     |SI #90#52 ] aDSer2; |Y #90#52 [ aHSer2; |ACABA; |FINSI;
+     |SI #90#52 ] aDSer3; |Y #90#52 [ aHSer3; |ACABA; |FINSI;
+     |SI #90#52 ] aDSer4; |Y #90#52 [ aHSer4; |ACABA; |FINSI;
+     |SI #90#52 ] aDSer5; |Y #90#52 [ aHSer5; |ACABA; |FINSI;
+     |SI #90#52 ] aDSer6; |Y #90#52 [ aHSer6; |ACABA; |FINSI;
+
+     |SI #90#52 ] "PC   "; |Y #90#52 [ "PCZZZ";
+          nEmp = 2;
+     |SINO;
+          nEmp = 1;
+     |FINSI;
+     aTran = #90#100;
+     aAgen = #90#104;
+     nAlma = #91#3;
+     aMatri = #90#98;
+     |HAZ Cabecera;
+
+     |HAZ PesoAlb;
+     |HAZ PrecioAlb;
+
+     |HAZ UltLin;
+     |DDEFECTO #191;
+     #191#0 = #190#0;
+     #191#1 = nLin;
+     #191#2 = "A";
+     #191#3 = #90#1;
+     #191#4 = #90#98;
+     #191#5 = #91#29;
+     #191#6 = #91#0;
+     #191#7 = #91#1;
+     #191#8 = #91#2;
+     #191#9 = #91#3;
+     |SI #91#2 = #81#18; || Art. autodescarga
+          #191#10 = #91#5 / #81#20 * 1000;
+          #191#11 = #91#5 / #81#20;
+          #191#12 = #81#19;
+          #191#13 = #191#12 * #191#11;
+     |SINO;
+          #191#10 = nPeso * #91#5;
+          #191#11 = #191#10 / 1000;
+          #191#12 = nPrecio;
+          #191#13 = #191#11 * #191#12;
+     |FINSI;
+     |GRABA 020#191n;
+
+     |HAZ DivisaAlb;
+     #91#78 = #190#0;
+     |GRABA 020#91a;
+     |LIBERA #91;
+|FPRC;
+
+|DEFBUCLE Albaranes;
+     #90#8;
+     64;
+     "01.01.0000", "P";
+     #0#0        , "P";
+     be;
+     NULL, NULL, Albaranes;
+|FIN;
+
+|PROCESO PesoTras;
+     |DDEFECTO #85;
+     #85#0 = #201#2;
+     #85#1 = #201#7;
+     #85#2 = #201#9;
+     |LEE 000#85=;
+     nPeso = #85#3;
+|FPRC;
+
+|PROCESO PrecioTras;
+     #3#0 = #200#13; || Tipo Trans
+     #3#3 = #200#7;   || Fecha
+     |LEE 000#3];
+     |SI FSalida ! 0;
+          |LEE 000#3u;
+     |SINO;
+          |LEE 000#3a;
+     |FINSI;
+     |SI FSalida ! 0 ; |O #3#0 ! #200#13;
+          |DDEFECTO #3;
+     |FINSI;
+     nPrecio = #3#2;
+|FPRC;
+
+|PROCESO Traspasos;
+     |SI #201#10 ! 0; |ACABA; |FINSI; ||Ya esta calculado
+     nEmp = 1;
+     aTran = #200#14;
+     aAgen = #200#15;
+     nAlma = #201#7;
+     aMatri = #200#11;
+     |HAZ Cabecera;
+
+     |HAZ PesoTras;
+     |HAZ PrecioTras;
+     |HAZ UltLin;
+     |DDEFECTO #191;
+     #191#0 = #190#0;
+     #191#1 = nLin;
+     #191#2 = "T";
+     #191#3 = #200#7;
+     #191#4 = #200#11;
+     #191#6 = #201#1;
+     #191#7 = #201#0;
+     #191#8 = #201#2;
+     #191#9 = #201#7;
+     #191#10 = nPeso * #201#4;
+     #191#11 = #191#10 / 1000;
+     #191#12 = nPrecio;
+     #191#13 = #191#11 * #191#12;
+     |GRABA 020#191n;
+
+     #201#10 = #190#0;
+     |GRABA 020#201a;
+     |LIBERA #201;
+|FPRC,
+
+|DEFBUCLE Traspasos;
+     #200#3;
+     ;
+     "01.01.0000";
+     #0#0;
+     be;
+     NULL, NULL, Traspasos;
+|FIN;
+
+|PROCESO Suplementos;
+     nEmp = #109#17;
+     aTran = #109#1;
+     aAgen = #109#15;
+     nAlma = #109#13;
+     aMatri = #109#12;
+     |HAZ Cabecera;
+
+     |HAZ UltLin;
+     |DDEFECTO #191;
+     #191#0 = #190#0;
+     #191#1 = nLin;
+     #191#2 = "S";
+     #191#3 = #109#9;
+     #191#4 = #109#12;
+     #191#6 = #109#0;
+     #191#9 = #109#13;
+     #191#13 = #109#14;
+     |GRABA 020#191n;
+
+     #109#16 = #190#0;
+     |GRABA 020#109a;
+     |LIBERA #109;
+|FPRC;
+
+|DEFBUCLE Suplementos;
+     #109#2;
+     16;
+     "01.01.0000", 0;
+     #0#0, 0;
+     be;
+     NULL, Suplementos;
+|FIN;
+
+|PROCESO RecalLin;
+     |SI #191#2 ! "S";
+          #191#13 = #191#12 * #191#11;
+          |GRABA 020#191a;
+     |FINSI;
+     |LIBERA #191;
+
+     #190#7 = #190#7 + #191#13;
+
+     |DDEFECTO #192;
+     #192#0 = #191#0;
+     #192#1 = #191#9;
+     |LEE 101#192=;
+     |SI FSalida ! 0; |GRABA 020#192b; |FINSI;
+     #192#2 = #192#2 + #191#13;
+     |GRABA 020#192a;
+     |LIBERA #192;
+|FPRC;
+
+|PROCESO RecalFin;
+     enIva = #190#10;
+     efFiva = #190#1;
+     |HAZ SacaIVA;
+
+     #190#9 = #190#7 + (#190#7 * #190#8 / 100);
+     #190#11 = (#190#9 * enIva) / 100;
+     |SI #190#13 = "B";
+          #190#14 = #190#9 * #190#12 / 100;
+     |SINO;
+          #190#14 = (#190#9 + #190#11) * #190#12 / 100;
+     |FINSI;
+
+     #190#15 = #190#9 + #190#11 - #190#14;
+     |GRABA 020#190a;
+     |LIBERA #190;
+|FPRC;
+
+|PROCESO RecalCab;
+     #190#7 = 0;
+
+     #192#0 = #190#0;
+     #192#1 = 1;
+     |LEE 101#192];
+     |PARA; |SI FSalida = 0; |Y #192#0 = #190#0; |HACIENDO;
+          |BORRA 020#192a;
+          |LIBERA #192;
+          |LEE 101#192s;
+     |SIGUE;
+     |LIBERA #192;
+|FPRC;
+
+|DEFBUCLE Recalcula;
+     #190#1;
+     ;
+     nPrime;
+     nUlti;
+     be;
+     NULL, RecalCab, RecalLin, RecalFin;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     |SI #0#1 ! "SI"; |ACABA; |FINSI;
+
+     |ABRE #197; |LEE 000#197p; |CIERRA #197;
+     |ABRE #81; |LEE 000#81p; |CIERRA #81;
+
+     aDSer1 = #197#1; |QBF aDSer1;
+     aDSer2 = #197#2; |QBF aDSer2;
+     aDSer3 = #197#3; |QBF aDSer3;
+     aDSer4 = #197#4; |QBF aDSer4;
+     aDSer5 = #197#5; |QBF aDSer5;
+     aDSer6 = #197#6; |QBF aDSer6;
+     aHSer1 = (aDSer1 + "zzzzzz") % 105;
+     aHSer2 = (aDSer2 + "zzzzzz") % 105;
+     aHSer3 = (aDSer3 + "zzzzzz") % 105;
+     aHSer4 = (aDSer4 + "zzzzzz") % 105;
+     aHSer5 = (aDSer5 + "zzzzzz") % 105;
+     aHSer6 = (aDSer6 + "zzzzzz") % 105;
+     aDSer1 = (aDSer1 + "      ") % 105;
+     aDSer2 = (aDSer2 + "      ") % 105;
+     aDSer3 = (aDSer3 + "      ") % 105;
+     aDSer4 = (aDSer4 + "      ") % 105;
+     aDSer5 = (aDSer5 + "      ") % 105;
+     aDSer6 = (aDSer6 + "      ") % 105;
+
+     |ABRE #1;
+     |ABRE #3;
+     |ABRE #6;
+     |ABRE #24;
+     |ABRE #85;
+     |ABRE #190;
+     |ABRE #191;
+     |ABRE #203;
+     |BUCLE Albaranes;
+     |BUCLE Traspasos;
+     |BUCLE Suplementos;
+     |CIERRA #203;
+     |CIERRA #191;
+     |CIERRA #190;
+     |CIERRA #85;
+     |CIERRA #24;
+     |CIERRA #6;
+     |CIERRA #3;
+     |CIERRA #1;
+
+     |ABRE #192;
+     |BUCLE Recalcula;
+     |CIERRA #192;
+|FPRC;

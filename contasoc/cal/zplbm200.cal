@@ -1,0 +1,298 @@
+|FICHEROS;
+     maempr10;
+     zregubic;
+|FIN;
+
+|VARIABLES;
+      aAlfa          = "";
+      aAbre          = "";
+      aDocRemoto     = "";
+      aDocServidor   = "";
+      aEjecuta       = "";
+
+      nHandleTgz     = 0;
+      nHandle        = 0;
+      nPausa         = 0;
+      nConta         = 0;
+
+  {1}aContiene       = "";
+
+     &eaRutaOrigen   = "";
+     &eaRutaDestino  = "";
+     &eaFicheroTra   = "";
+     &eaFicheroTxt   = "";
+     &eaFicheroTgz   = "";
+     &eaFicheroTar   = "";
+     &eaOrigen       = "";
+     &eaDestino      = "";
+     &eaAlfa         = "";
+     &eaPathExplorador = "";
+     &eaForzExplorador = "";
+     &eaUnidadBasico   = "";
+     &enEjercicio      = 0;
+     &eaDSMAC          = "";
+     &eaIPRemoto       = "";
+|FIN;
+
+|PROCESO CargaMac;
+     |SI eaDSMAC ! "";  |ACABA;  |FINSI;
+
+     |HAZ LeeUnidadBasico;
+
+     aAlfa = eaUnidadBasico + "\MODELOS";  |RMKDIR aAlfa;
+     aAlfa = aAlfa + "\DSMAC";          |RMKDIR aAlfa;
+
+     |DBASE aAlfa;   |QBF aAlfa;
+     aAlfa      = aAlfa + "planilla/";
+     eaOrigen   = aAlfa + "dsmac.exe";
+     eaDestino  = eaUnidadBasico + "\MODELOS\DSMAC\DSMAC.EXE";
+
+     aContiene1 = eaDestino;
+     |ESPECIFICA "REMOTOMD5", aContiene;
+     aDocRemoto = FSalida;  |QBF aDocRemoto;
+
+     aContiene1 = eaOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aDocServidor = FSalida;  |QBF aDocServidor;
+
+     eaIPRemoto = "";
+     |IP_REMOTO eaIPRemoto;  |QBT eaIPRemoto;
+
+     |SI aDocRemoto ! aDocServidor;
+         |SI eaIPRemoto ! "";
+             |ENVIA_FICHERO eaOrigen, eaDestino;
+         |SINO;
+             |COPIA_FICHERO eaOrigen, eaDestino;
+         |FINSI;
+     |FINSI;
+
+     |XABRE "EC", eaDestino, nHandle;
+     |SI FSalida < 0;
+         |SI eaIPRemoto ! "";
+             |ENVIA_FICHERO eaOrigen, eaDestino;
+         |SINO;
+             |COPIA_FICHERO eaOrigen, eaDestino;
+         |FINSI;
+     |FINSI;
+
+     aAbre    = eaUnidadBasico + "\MODELOS\DSMAC\DSMAC.TXT";  |RFBORRA aAbre;
+
+     aEjecuta = "cmd " + &34 + "/c START /WAIT " + eaDestino + " ";
+     aEjecuta = aEjecuta +  eaUnidadBasico + "\MODELOS\DSMAC\DSMAC.TXT" + &34;
+     |RSYSTEM aEjecuta;
+
+     nConta = 0;
+     |PARA;  |SI;  |HACIENDO;
+             |PARA nPausa = 1; |SI nPausa [ 10000; |HACIENDO nPausa = nPausa + 1;
+             |SIGUE;
+
+             |XABRE "EC", aAbre, nHandle;
+             |SI FSalida ] 0;
+                 |SAL;
+             |FINSI;
+
+             nConta = nConta + 1;
+             |SI nConta > 100;
+                 |SAL;
+             |FINSI;
+
+             |PULSATECLA;
+     |SIGUE;
+
+     aAbre    = eaUnidadBasico + "\MODELOS\DSMAC\DSMAC.TXT";
+     |XABRE "EC", aAbre, nHandle;
+     |SI FSalida < 0;
+         aEjecuta = "START "+ eaDestino + " ";
+         aEjecuta = aEjecuta +  eaUnidadBasico + "\MODELOS\DSMAC\DSMAC.TXT" + &34;
+         |RSYSTEM aEjecuta;
+
+         nConta = 0;
+         |PARA;  |SI;  |HACIENDO;
+                 |PARA nPausa = 1; |SI nPausa [ 10000; |HACIENDO nPausa = nPausa + 1;
+                 |SIGUE;
+
+                 |XABRE "EC", aAbre, nHandle;
+                 |SI FSalida ] 0;
+                     |SAL;
+                 |FINSI;
+
+                 nConta = nConta + 1;
+                 |SI nConta > 100;
+                     |SAL;
+                 |FINSI;
+
+                 |PULSATECLA;
+         |SIGUE;
+     |FINSI;
+
+     eaDSMAC   = "";
+     aAbre    = eaUnidadBasico + "\MODELOS\DSMAC\DSMAC.TXT";
+     |XABRE "CU", aAbre, nHandle;
+     |SI FSalida < 0;   |ACABA;  |FINSI;
+
+     |XLEE nHandle, 250, eaDSMAC;
+     |SI FSalida < 0
+         eaDSMAC   = "";
+     |FINSI;
+     |XCIERRA nHandle;
+
+     |QBF eaDSMAC;
+|FPRC;
+
+|PROCESO CogeMac;
+     |HAZ CargaMac;
+
+     |ABRE #zregubic;
+     #zregubic#0 = enEjercicio;
+     #zregubic#1 = eaDSMAC;
+     |LEE 000#zregubic.=;
+     |SI FSalida = 0;
+         |CIERRA #zregubic;
+         |ACABA;
+     |FINSI;
+
+     #zregubic#0 = enEjercicio;
+     #zregubic#1 = eaIPRemoto;
+     |LEE 000#zregubic.=;
+     |SI FSalida = 0;
+         #zregubic#1 = eaDSMAC;
+         |GRABA 020#zregubic.n;
+         |LIBERA #zregubic;
+     |FINSI;
+     |CIERRA #zregubic;
+|FPRC;
+
+|PROCESO EnviaFicheroSinMD5Adi;
+     |PULSATECLA;
+
+     eaIPRemoto = "";
+     |IP_REMOTO eaIPRemoto;  |QBT eaIPRemoto;
+
+     |SI eaIPRemoto ! "";
+         |ENVIA_FICHERO eaOrigen, eaDestino;
+     |SINO;
+         |COPIA_FICHERO eaOrigen, eaDestino;
+     |FINSI;
+
+     |SI FSalida ! 0;
+         |PULSATECLA;
+         |SI eaIPRemoto ! "";
+             |ENVIA_FICHERO eaOrigen, eaDestino;
+         |SINO;
+             |COPIA_FICHERO eaOrigen, eaDestino;
+         |FINSI;
+     |FINSI;
+
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO TraeTxtComprimido;
+     aAlfa = eaRutaOrigen + eaFicheroTar + " " + eaFicheroTxt;
+     |ATAR aAlfa, eaRutaOrigen;
+
+     |PARA;  |SI;  |HACIENDO;
+          aAbre = eaRutaOrigen + eaFicheroTar;
+          |XABRE "E", aAbre, nHandleTgz;
+          |SI FSalida ] 0;  |SAL;  |FINSI;
+
+          |PULSATECLA;
+     |SIGUE;
+
+     aAlfa = eaRutaOrigen + eaFicheroTar;
+     |COMPRIME aAlfa;
+
+     |PARA;  |SI;  |HACIENDO;
+          aAbre = eaRutaOrigen + eaFicheroTgz;
+          |XABRE "E", aAbre, nHandleTgz;
+          |SI FSalida ] 0;  |SAL;  |FINSI;
+
+          |PULSATECLA;
+     |SIGUE;
+
+     aAlfa = eaRutaOrigen + eaFicheroTxt;  |FBORRA aAlfa;
+     aAlfa = eaRutaOrigen + eaFicheroTar;  |FBORRA aAlfa;
+
+     eaOrigen  = eaRutaOrigen  + eaFicheroTgz;
+     eaDestino = eaRutaDestino + eaFicheroTgz;
+
+     |RFBORRA eaDestino;
+     |HAZ EnviaFicheroSinMD5Adi;
+
+     |PARA;  |SI;  |HACIENDO;
+          aAbre = eaRutaDestino + eaFicheroTgz;
+          |XABRE "EC", aAbre, nHandleTgz;
+          |SI FSalida ] 0;  |SAL;  |FINSI;
+
+          |PULSATECLA;
+     |SIGUE;
+
+     Pos   = -1;
+     aAlfa = eaRutaDestino + eaFicheroTgz;
+     |RDESCOMPRIME aAlfa;
+
+     |PARA;  |SI;  |HACIENDO;
+          aAbre = eaRutaDestino + eaFicheroTar;
+          |XABRE "EC", aAbre, nHandleTgz;
+          |SI FSalida ] 0;  |SAL;  |FINSI;
+
+          |PULSATECLA;
+     |SIGUE;
+
+     |RDETAR aAlfa, eaRutaDestino;
+
+     |PARA;  |SI;  |HACIENDO;
+          aAbre = eaRutaDestino + eaFicheroTxt;
+          |XABRE "EC", aAbre, nHandleTgz;
+          |SI FSalida ] 0;  |SAL;  |FINSI;
+
+          |PULSATECLA;
+     |SIGUE;
+
+     aAlfa = eaRutaOrigen  + eaFicheroTgz;  |FBORRA aAlfa;
+     aAlfa = eaRutaDestino + eaFicheroTgz;  |RFBORRA aAlfa;
+     aAlfa = eaRutaDestino + eaFicheroTar;  |RFBORRA aAlfa;
+|FPRC;
+
+|PROCESO Explorador;
+     |HAZ CogeMac;
+
+     |ABRE #zregubic;
+     #zregubic#0 = enEjercicio;
+     #zregubic#1 = eaDSMAC;
+     |LEE 101#zregubic.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #zregubic;
+         #zregubic#0 = enEjercicio;
+         #zregubic#1 = eaDSMAC;
+         |GRABA 020#zregubic.b;
+     |FINSI;
+
+     eaPathExplorador = #zregubic#4;  |QBF eaPathExplorador;
+
+     |SI eaPathExplorador = "";  |O eaForzExplorador = "S";
+         |MENAV "0000Busque y pinche en el explorador con el que quiera trabajar";
+
+         eaPathExplorador = "F" + eaPathExplorador;
+         |BROWSE eaPathExplorador;
+         eaPathExplorador = eaPathExplorador % 290;  |QBF eaPathExplorador;
+     |FINSI;
+
+     |SI eaPathExplorador ! "";
+         #zregubic#4 = eaPathExplorador;
+     |FINSI;
+
+     |GRABA 020#zregubic.a;
+     |LIBERA #zregubic;
+     |CIERRA #zregubic;
+|FPRC;
+
+|PROCESO LeeUnidadBasico;
+     aContiene = "";
+     |ESPECIFICA "RBASS", aContiene;
+     eaUnidadBasico = (aContiene1 % 102) > "";
+
+     aAlfa = eaUnidadBasico % -101;
+     |SI aAlfa ! ":";
+         eaUnidadBasico = "";
+     |FINSI;
+|FPRC;

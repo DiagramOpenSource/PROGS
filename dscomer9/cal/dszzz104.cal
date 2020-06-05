@@ -1,0 +1,212 @@
+           RUTINA DE VALORES Y POSICIONAMIENTO DE CAMPOS EN PEDIDOS
+
+|FICHEROS;
+     agifa321 #321;
+     agifa324 #324;
+     agifa104 #410;
+     agifa073 #471;
+     agifa007 #407;
+|FIN;
+
+|VARIABLES;
+     &nDeci_Base     = 0;   || Decimales en Totales de la moneda base
+     &nDeci_PreBase  = 0;   || Decimales en el Precio en moneda base
+     &nDeci_BaseMxP  = 0;   || Decimales en Totales de la moneda base (Maxima precision)
+     &nDeci_PreBasMxP= 0;   || Decimales en el Precio en moneda base (Maxima precision)
+     &nDeci_DivP     = 0;   || Decimales en Totales de la divisa
+     &nDeci_PreDivP  = 0;   || Decimales en el Precio en divisa
+     &nDeci_TotVisP  = 0;   || Decimales en Totales visibles (el de la moneda de trabajo)
+     &nDeci_TotNoVisP = 0;  || Decimales en Totales no visibles (el de la otra moneda)
+     &nDeci_PreVisP  = 0;   || Decimales en el Precio visual. (lineas)
+     &nDeci_ImpVisP  = 0;   || Decimales en el Importe visual. (lineas)
+     nfecha    = 0;
+     &ac_divisa = "N";   || Vale "S" cuando las divisas en ventas estan
+                         || activadas y la serie es de divisas
+     &pintado = 0;       || Sirve para controlar los pintados de las lineas
+     &decim_divisa = 0;  || Decimales de la divisa
+     &precio_divisa = 0; || Decimales del precio en divisa
+     &decim_base = 0;    || Decimales de la moneda base
+     &precio_base = 0;   || Decimales del precio en moneda base
+     div_act = 0;        || Divisa actualizada. Me sirve en un PARA para que
+                         || no salga hasta que este actualizada (div_act=1)
+     &cli_divisa = "";   || Codigo de Cliente. Se pasa a CLIENTES/DIVISAS
+     &divisa = "";       || Codigo de Divisa. Se pasa a ACTUAL. de DIVISAS
+|FIN;
+
+|PROCESO LeeMonBase_104;      || Lee los parametros de la moneda base
+     |ABRE #agifa321;
+     |ABRE #agifa324;
+     |LEE 010#agifa321.p;   ||Leo parametros de divisa
+     #agifa104#40 = #agifa321#9;  ||Cojo la Moneda Base de parametros
+     #agifa324#0 = #agifa321#9;
+     |LEE 010#agifa324.=;         ||Leo la ficha de la moneda base en Divisas
+     #agifa104#41 = #agifa324#2;  ||Asigno el cambio de la moneda base con el euro
+     decim_base = #agifa324#7;    ||Asigno los decimales de la moneda base
+     precio_base = #agifa324#9;   ||Asigno los decimales del precio en la mon. base
+     |CIERRA #agifa324;
+     |CIERRA #agifa321;
+|FPRC;
+
+|PROCESO LeeParamDiv_104;
+     |ABRE #agifa321;
+     |LEE 001#agifa321.p;    || Leo parametros de divisas
+     |ABRE #agifa007;
+     #agifa007#26 = #agifa104#25;
+     |LEE 001#agifa007.=;        || Leo la serie
+     |SI #agifa104#37 = "D";      || Si la mon. de trabajo es la divisa...
+       || ...escondo los campos de la moneda base :
+       |CAMPO_POSICION #agifa073#6 , 1 , 1009;
+       |CAMPO_POSICION #agifa073#9 , 1 ,1026;
+       |CAMPO_VISUAL #agifa073#6 , 1 , "N";
+       |CAMPO_VISUAL #agifa073#9 , 1 , "N";
+       |CAMPO_LINEAL #agifa073#6 , 1 , "N";
+       |CAMPO_LINEAL #agifa073#9 , 1 , "N";
+       |CAMPO_MODIFICA #agifa073#6 , 1 , "N";
+       || ...y pongo en pantalla los de divisa
+       |CAMPO_POSICION #agifa073#38 , 1 , 1544;
+       |CAMPO_POSICION #agifa073#39 , 1 ,1568;
+       |CAMPO_VISUAL #agifa073#38 , 1 , "S";
+       |CAMPO_VISUAL #agifa073#39 , 1 , "S";
+       |CAMPO_MODIFICA #agifa073#38 , 1 , "S";
+       |CAMPO_LINEAL #agifa073#38 , 1 , "S";
+       |CAMPO_LINEAL #agifa073#39 , 1 , "S";
+       |SI #agifa007#39 = "S"; |Y #agifa321#1 = "S"; ||Si la serie es de ...
+          ac_divisa = "S";  || ... divisas, y en parametros estan activadas ...
+          || ... pongo como modificables los campos relacionados con divisas
+          |CAMPO_MODIFICA #agifa104#35 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#36 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#37 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#38 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#39 , 1 , "S";
+          |SI #agifa321#3 = "S";  || Si la visualizacion de parametros esta activada
+            || ... pongo los campos visual. de lineas como visualizables
+            |CAMPO_VISUAL #agifa073#40, 1 , "S";
+            |CAMPO_VISUAL #agifa073#41 , 1 , "S";
+          |SINO;
+            || ... los pongo como no visualizables
+            |CAMPO_VISUAL #agifa073#40 , 1 , "N";
+            |CAMPO_VISUAL #agifa073#41 , 1 , "N";
+          |FINSI;
+       |SINO; || Si la serie no es de divisas, o no estan activados parametros
+          ac_divisa = "N";
+          #agifa104#37 = "B";  || La moneda de trabajo es por fuerza la moneda base
+          |PINTA #agifa104#37;
+          || Pongo como no modificables los campos relacionados con divisas
+          |CAMPO_MODIFICA #agifa104#37 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#38 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#39 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#35 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#36 , 1 , "N";
+          || Pongo como no visualizables los campos visual. de lineas
+          |CAMPO_VISUAL #agifa073#40, 1 , "N";
+          |CAMPO_VISUAL #agifa073#41, 1 , "N";
+       |FINSI;
+     |SINO;  || Si la moneda de trabajo es la moneda base
+       || ...escondo los campos en divisa :
+       |CAMPO_POSICION #agifa073#38 , 1 , 1009;
+       |CAMPO_POSICION #agifa073#39 , 1 ,1026;
+       |CAMPO_VISUAL #agifa073#38 , 1 , "N";
+       |CAMPO_VISUAL #agifa073#39 , 1 , "N";
+       |CAMPO_MODIFICA #agifa073#38 , 1 , "N";
+       |CAMPO_LINEAL #agifa073#38 , 1 , "N";
+       |CAMPO_LINEAL #agifa073#39 , 1 , "N";
+       || ...coloco los campos en moneda base:
+       |CAMPO_POSICION #agifa073#6 , 1 , 1544;
+       |CAMPO_POSICION #agifa073#9 , 1 ,1568;
+       |CAMPO_VISUAL #agifa073#6 , 1 , "S";
+       |CAMPO_VISUAL #agifa073#9 , 1 , "S";
+       |CAMPO_MODIFICA #agifa073#6 , 1 , "S";
+       |CAMPO_LINEAL #agifa073#6 , 1 , "S";
+       |CAMPO_LINEAL #agifa073#9 , 1 , "S";
+       |SI #agifa007#39 = "S"; |Y #agifa321#1 = "S"; || Si la serie es de divisas...
+          ac_divisa = "S"; || ... y divisas estan activadas en parametros
+          || Pongo como modificables los campos relacionados con divisas
+          |CAMPO_MODIFICA #agifa104#35 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#36 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#37 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#38 , 1 , "S";
+          |CAMPO_MODIFICA #agifa104#39 , 1 , "S";
+          |SI #agifa321#3 = "S";  || Si la visualizacion esta activada en parametros ...
+            || Pongo como visualizables los campos visual. de las lineas
+            |CAMPO_VISUAL #agifa073#40, 1 , "S";
+            |CAMPO_VISUAL #agifa073#41 , 1 , "S";
+          |SINO; || Los pongo como no visualizables
+            |CAMPO_VISUAL #agifa073#40 , 1 , "N";
+            |CAMPO_VISUAL #agifa073#41 , 1 , "N";
+          |FINSI;
+       |SINO;  || Si la serie no es de divisas o no estan activados los parametros
+          ac_divisa = "N";
+          #agifa104#37 = "B";  || La moneda de trabajo es por fuerza la moneda base
+          || Pongo como no modificables los campos relacionados con divisas
+          |CAMPO_MODIFICA #agifa104#37 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#38 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#39 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#35 , 1 , "N";
+          |CAMPO_MODIFICA #agifa104#36 , 1 , "N";
+          || Pongo como no visualizables los campos visual. de lineas
+          |CAMPO_VISUAL #agifa073#40, 1 , "N";
+          |CAMPO_VISUAL #agifa073#41, 1 , "N";
+       |FINSI;
+     |FINSI;
+     |CIERRA #agifa007;
+|CIERRA #agifa321;
+|HAZ Param_Divisas_104;
+|FPRC;
+
+|PROCESO Param_Divisas_104;
+     pintado = 0;  ||Controla pintados de las lineas
+
+     |ABRE #agifa324;
+     #agifa324#0 = #agifa104#35;
+     |LEE 001#agifa324.=;   || Leo la divisa
+     |CIERRA #agifa324;
+
+     decim_divisa = #agifa324#7;  || Decimales de la divisa
+     precio_divisa = #agifa324#9;  || Decimales en el precio de la divisa
+     nDeci_DivP = decim_divisa;   || Decimales de la divisa
+     nDeci_PreDivP = precio_divisa;  || Decimales en el precio de la divisa
+     |SI #agifa104#37 = "B";   ||Si trabajo con la moneda base ...
+          nDeci_PreVisP   = precio_divisa;
+          nDeci_ImpVisP   = decim_divisa;
+          nDeci_Base     = decim_base;
+          nDeci_PreBase  = precio_base;
+          nDeci_BaseMxP  = decim_base;
+          nDeci_PreBasMxP = precio_base;
+          nDeci_TotVisP   = decim_base;
+          nDeci_TotNoVisP = decim_divisa;
+     |SINO;     ||Si trabajo con la divisa ...
+          nDeci_PreVisP   = precio_base;
+          nDeci_ImpVisP   = decim_base;
+          nDeci_Base     = decim_base; || Max. precision en los decimales de la moneda base
+          nDeci_PreBase  = precio_base;  || Max. precision en los dec. del precio de la moneda base
+         |SI #agifa104#36 = 1;
+              nDeci_BaseMxP   = decim_base;    || sin triangulacion
+              nDeci_PreBasMxP = precio_base;
+         |SINO;
+              nDeci_BaseMxP   = #agifa321#10;  || con triangulacion
+              nDeci_PreBasMxP = #agifa321#11;
+         |FINSI;
+          nDeci_TotVisP   = decim_divisa;
+          nDeci_TotNoVisP = decim_base;
+     |FINSI;
+|FPRC;
+
+|PROCESO CambioDivisa_104;    || Sirve para cargar los valores cada vez que
+                             || cambio de ficha
+     pintado = 0;            || controla pintado de las lineas
+     |HAZ LeeMonBase_104;
+     |HAZ LeeParamDiv_104;
+|FPRC;
+
+|PROCESO LeeMonBase;
+     |ABRE #agifa321;
+     |LEE 000#agifa321.p;
+     |CIERRA #agifa321;
+
+     |ABRE #agifa324;
+     #agifa324#0 = #agifa321#9;
+     |LEE 001#agifa324.=
+     |CIERRA #agifa324;
+
+     nDeci_Base = #agifa324#7;
+|FPRC;

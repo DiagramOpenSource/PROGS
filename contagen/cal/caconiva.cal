@@ -1,0 +1,1066 @@
+|FICHEROS;
+   caconiva #0;
+   camaniva #1;    || Mantenimiento Registro IVA/IRPF
+   caivalin #2;    || Lineas registro IVA/IRPF
+
+   camaasic #3;    || apuntes cabs.
+   camaasil #4;    || apuntes lins.
+   cacuenta #5;    || Plan Contable
+   caconiv1 #6,MANTE; || Lineal direcciones de correo
+
+   caivaasi;
+   caivaaxx;
+   caivases #10;
+   calibros #11;
+   caivam03 #223;
+
+   canempre #30;
+   caselem1 #998;
+
+   :/modelos/def/dsmom030 #330;
+   :/basica/def/agifigen  #100;
+   :/basica/def/agicen14  #114;
+|FIN;
+
+|VARIABLES;
+   aAlfa     = "";
+   aAlfa1    = "";
+   aAlfa2    = "";
+   aAlfa3    = "";
+
+   nNume    = 0;
+   nNume1    = 0;
+   nNume2    = 0;
+   nNume3    = 0;
+
+   &TipoIva  = "";
+   &e        = "";
+   &nSwError = 0;
+   &eaConcep = "";
+   nSwAlgun  = 0;
+   nSwGraba  = 0;
+   nEnvia    = 0;
+   nEnvia1   = 0;
+   aDFact    = "";
+   aHFact    = "";
+
+   aFichero    = "";
+   aDsCorreoIP = "";
+   aDirOrigen  = "";
+   aDirDestino = "";
+   aServidor   = "";
+   aAsunto     = "";
+   aTexto      = "";
+
+   Calc      = 0;
+   Difer     = 0;
+   TotBases  = 0;
+   TotIvas   = 0;
+   TotDtos   = 0;
+   TotRecs   = 0;
+   TotIRPF   = 0;
+   BaseImp   = 0;
+   CuotaIva  = 0;
+   CuotaRec  = 0;
+   CuotaIRPF = 0;
+   TotalReg  = 0;
+
+   aCuenta  = "";
+   nSiPrin  = 0;
+   nSwPrim  = 0;
+   nLibro   = 0;
+   aSerie   = "";
+   nNumero  = 0;
+   nResta   = 0;
+
+   &snFiltr = "";
+   &snFilAc = "";
+   &snFilBa = "";
+   nLinea   = 0;
+   nSwBueno = 0;
+   nSAl     = 0;
+
+   nSw      = 0;
+   nOpera   = 0;
+   nEstado223 = 0;
+   nSwIntra   = 0;
+   nAntLib    = 0;
+   nAntDoc    = 0;
+   aAntSer    = "";
+   nAntFra    = 0;
+   &enAParam  = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|CALCULO elmargen; |TIPO 7;
+ |SI EURODB = 2;
+     #0#2 = 0.05;
+ |SINO;
+     #0#2 = 5;
+ |FINSI;
+ |PINTA #0#2;
+|FCAL;
+
+|CALCULO QueChequeo; |TIPO 0;
+  aAlfa1 = "S";
+  |SI #0#12 = "S"; aAlfa1 = "N"; |FINSI;
+
+  |C_M #0#1,  1, aAlfa1; #0#1  = "N"; |PINTA #0#1;
+  |C_M #0#2,  1, aAlfa1;
+  |C_M #0#15, 1, aAlfa1; #0#15 = "N"; |PINTA #0#15;
+|FCAL;
+
+||************************************************************************
+|PROCESO MiroElConcepto;
+
+  eswLect = 0;
+  |ABRE #330;
+  #330#0 = enConcepto;
+  |LEE 000#330=;
+  |SI FSalida ! 0;
+       e = "NO EXISTE CONCEPTO CONTABLE ";
+       eswLect = 1;
+  |FINSI;
+  |CIERRA #330;
+  enTIVACon = #330#24;
+
+  |SI eswLect ! 0;
+      |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+      |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |ACABA;
+  |FINSI;
+
+  |SI aTipoIVA ! "N"; |Y #330#4 = "N";
+      e = "EL CONCEPTO NO ES DE IVA ";
+      |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+      |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |ACABA;
+  |FINSI;
+  |SI aTipoIVA = "N"; |Y #330#4 = "S";
+      e = "EL CONCEPTO ES DE IVA ";
+      |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+      |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |ACABA;
+  |FINSI;
+
+  |SI aTipoIVA = "R"; |Y #330#12 ! #1#0;
+      e = "EL CONCEPTO NO CORRESPONDE A EL LIBRO DE IVA ";
+      |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+      |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+  |SI aTipoIVA = "S"; |Y #330#14 ! #1#0;
+      e = "EL CONCEPTO NO CORRESPONDE A EL LIBRO DE IVA ";
+      |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+      |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+
+  |SI Haybasica = 1; |Y aTipoIVA ! "N"; |Y snFilAc = "S";
+      eswLect = 0;
+      |SI enFilRegIVA = 0;  || no tiene la actividad aun.
+          eOpDep     = 0;
+          eSwNoalta  = 1;
+          |HAZ Actividad;
+      |FINSI;
+      |SI enTipoIva = 0; |ACABA; |FINSI;  || no tengo tipo iva
+
+      eswLect = 0;
+
+      nSwBueno = 1;
+      |SI enTipoIva = enTIVACon;
+          nSwBueno = 0;
+      |SINO;
+          |PARA nNume1 = 78; |SI nNume1 [ 101; |HACIENDO nNume1 = nNume1 + 1;
+                |SI #330#nNume1# ! 0; |Y enTipoIva = #330#nNume1#;
+                    nSwBueno = 0;
+                |FINSI;
+                |SI nNume1 = 89; nNume1 = 93; |FINSI;
+                |SI nNume1 = 95; nNume1 = 99; |FINSI;
+          |SIGUE;
+      |FINSI;
+      |SI nSwBueno = 1;
+          e = "CONCEPTO NO CORRECTO PARA LA ACTIVIDAD POR TIPO DE IVA";
+          |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+          |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+          nSwError = 1; nEnvia1 = 1;
+          |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO MiroElIRPF;
+
+  |SI enConcepto = 0; |ACABA; |FINSI; || no hay irpf
+
+  nNume1 = 83; nNume2 = 84;
+  |SI aTipoIVA = "S"; nNume1 = 85; nNume2 = 86; |FINSI;
+  |SI enConcepto < #caivaasi#nNume1#; |O enConcepto > #caivaasi#nNume2#;
+      e = "CONCEPTO FUERA DE LOS LIMITES " + "(L." + #2#2 + ")";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |ACABA;
+  |FINSI;
+
+  |ABRE #330;
+  #330#0 = enConcepto;
+  |LEE 000#330=;
+  |SI FSalida ! 0;
+       e = "NO EXISTE CONCEPTO CONTABLE " + "(L." + #2#2 +")";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |CIERRA #330;
+      |ACABA;
+  |FINSI;
+  |CIERRA #330;
+
+  |SI #330#5 = "N";
+      e = "EL CONCEPTO NO ES DE IRPF " + "(L." + #2#2 + ")";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |ACABA;
+  |FINSI;
+
+  |SI aTipoIVA = "R"; |Y #330#12 ! #2#0;
+      e = "EL CONCEPTO NO CORRESPONDE A EL LIBRO DE IVA ";
+      |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+      |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+  |SI aTipoIVA = "S"; |Y #330#14 ! #2#0;
+      e = "EL CONCEPTO NO CORRESPONDE A EL LIBRO DE IVA ";
+      |SI nLinea = 0; e = e + "(Cabecera)"; |FINSI;
+      |SI nLinea ! 0; e = e + "(L." + #2#2 + ")"; |FINSI;
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+
+|FPRC;
+
+|PROCESO MiraDif;
+   nResta = 1;
+   |SI #caivaasi#44 = "N";
+       |ABRE #11;
+       #11#0 = nLibro;
+       |LEE 001#11=;
+       |SI FSalida = 0;
+           nResta = #11#3;
+       |FINSI;
+       |CIERRA #11;
+   |SINO;
+       |ABRE #10;
+       #10#0 = aSerie;
+       #10#1 = #1#36;
+       |LEE 001#10=;
+       |SI FSalida = 0;
+           nResta = #10#4;
+      |FINSI;
+      |CIERRA #10;
+   |FINSI;
+|FPRC;
+
+
+|PROCESO BuscaIVAs;
+ efFechaIVA = #camaniva#4;
+ enLineaIVA = #caivalin#16;
+ |HAZ SacaIVA;
+ |SI #caivalin#7 ! enPorcIVA;
+     e = "% de IVA " + #caivalin#7 + " no corresponde al codigo del Tipo IVA (L." + #2#2 + ")";
+     nSwError = 1; nEnvia1 = 1;
+     |SI PARAMETRO = ""; |PRINT; |FINSI;
+ |FINSI;
+ |SI #caivalin#9 ! enPorcREC; |Y #caivalin#9 ! 0; |Y #caivalin#10 ! 0;
+     e = "% de Rec " + #caivalin#9 + " no corresponde al codigo del Tipo IVA (L." + #2#2 + ")";
+     nSwError = 1; nEnvia1 = 1;
+     |SI PARAMETRO = ""; |PRINT; |FINSI;
+ |FINSI;
+|FPRC;
+
+|PROCESO Lineas0;
+   |SI nOpera = 1;
+       nSw = 1;
+       |ERROR10;
+       |ACABA;
+   |FINSI;
+
+   aAlfa1 = #2#30; |QBF aAlfa1;
+   |SI aAlfa1 = ""; #2#30 = #1#10; |FINSI;
+
+   TotBases = TotBases + #caivalin#6;
+   TotIvas  = TotIvas  + #caivalin#8;
+   TotRecs  = TotRecs  + #caivalin#10;
+   TotDtos  = TotDtos  + #caivalin#11;
+   TotIRPF  = TotIRPF  + #caivalin#22;
+
+   nNume = #caivalin#7 ! 0;
+   |SI nNume ! #caivalin#7; |Y #caivalin#7 ! 0.5; |Y #caivalin#7 ! 7.5; |Y #caivalin#7 ! 8.5;
+       e = "% de IVA igual a " + #caivalin#7 + "(L." + #2#2 + ")";
+       nSwError = 1; nEnvia1 = 1;
+       |SI PARAMETRO = ""; |PRINT; |FINSI;
+   |SINO;
+       |SI #caivalin#16 ! 0;
+           |HAZ BuscaIVAs;
+       |SINO;
+           e = "Tipo de IVA informado igual a 0";
+           nSwError = 1; nEnvia1 = 1;
+           |SI PARAMETRO = ""; |PRINT; |FINSI;
+       |FINSI;
+   |FINSI;
+
+   eaConcep = #2#3;
+   eaConcep = ("000" + eaConcep) % -103;
+   |SI #2#3 = 0;
+       e = "CONCEPTO AUTOMATICO IGUAL A CERO (L." + #2#2 + ")";
+       nSwError = 1; nEnvia1 = 1;
+       |SI PARAMETRO = ""; |PRINT; |FINSI;
+   |SINO;
+       |SI snFiltr = "S";
+           nLinea = #2#2;
+           enFilRegIVA = 1;
+           enConcepto  = #2#3;
+           enActividad = #2#30;
+           |HAZ MiroElConcepto;
+
+           eaConcep = #2#18;
+           eaConcep = ("000" + eaConcep) % -103;
+           |SI aTipoIVA ! "N";
+               enConcepto = #2#18;
+               |HAZ MiroElIRPF;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   eaConcep = #2#3;
+   eaConcep = ("000" + eaConcep) % -103;
+   |SI #0#12 = "N";
+      aCuenta = #2#12;
+      |SI #1#36 = "N"; aCuenta = #2#23; |FINSI;
+
+      || Miro si la cuenta esta en blanco y si no miro que exista
+      aAlfa1 = aCuenta; |QBF aAlfa1;
+      |SI aAlfa1 = "";
+          e = "CONTRAPARTIDA EN BLANCO";
+          nSwError = 1; nEnvia1 = 1;
+          |SI PARAMETRO = ""; |PRINT; |FINSI;
+      |SINO;
+          #cacuenta#0 = aCuenta;
+          |LEE 010#cacuenta.=;
+          |SI FSalida ! 0;
+              e = "NO EXISTE CONTRAPARTIDA";
+              nSwError = 1; nEnvia1 = 1;
+              |SI PARAMETRO = ""; |PRINT; |FINSI;
+          |SINO;
+              |SI #cacuenta#3 = "N";
+                  e = "CONTRAPARTIDA SIN ASIENTO DIRECTO";
+                  nSwError = 1; nEnvia1 = 1;
+                  |SI PARAMETRO = ""; |PRINT; |FINSI;
+              |SINO;
+                   eaCuenta = aCuenta; |HAZ SacaNivel;
+                   |SI enNivel = 0;
+                       e = "CONTRAPARTIDA FUERA DE NIVEL ";
+                       nSwError = 1; nEnvia1 = 1;
+                       |SI PARAMETRO = ""; |PRINT; |FINSI;
+                   |FINSI;
+              |FINSI;
+           |FINSI;
+      |FINSI;
+
+       nSwGraba = 0;
+       Calc = #caivalin#6 % #caivalin#7;
+       |SI Calc ! #caivalin#8;
+           |SI Calc < #caivalin#8;
+               Difer = #caivalin#8 - Calc;
+           |SINO;
+               Difer = Calc - #caivalin#8;
+          |FINSI;
+          |SI Difer > #0#2;
+              e = "EL IMPORTE CUOTA IVA INCORRECTO";
+              |SI #0#1 = "S";
+                  #caivalin#8 = Calc; e = e + ". RECALCULADO";
+                  nSwGraba = 1;
+              |FINSI;
+              nSwError = 1; nEnvia = 1; nEnvia1 = 1;
+              |PRINT;
+          |FINSI;
+       |FINSI;
+
+       Calc = #caivalin#6 % #caivalin#9;
+       |SI Calc ! #caivalin#10;
+           |SI Calc < #caivalin#10;
+               Difer = #caivalin#10 - Calc;
+           |SINO;
+               Difer = Calc - #caivalin#10;
+           |FINSI;
+           |SI Difer > #0#2;
+               e = "EL IMPORTE CUOTA RECARGO INCORRECTO";
+               |SI #0#1 = "S";
+                   #caivalin#10 = Calc; e = e + ". RECALCULADO";
+                   nSwGraba = 1;
+               |FINSI;
+               nSwError = 1; nEnvia1 = 1;
+               |SI PARAMETRO = ""; |PRINT; |FINSI;
+           |FINSI;
+       |FINSI;
+
+       Calc = #caivalin#20 % #caivalin#21;
+       |SI Calc ! #caivalin#22;
+           |SI Calc < #caivalin#22;
+               Difer = #caivalin#22 - Calc;
+           |SINO;
+               Difer = Calc - #caivalin#22;
+           |FINSI;
+           |SI Difer > #0#2;
+               e = "EL IMPORTE CUOTA IRPF INCORRECTO";
+               |SI #0#1 = "S";
+                   #caivalin#22 = Calc; e = e + ". RECALCULADO";
+                   nSwGraba = 1;
+               |FINSI;
+               nSwError = 1; nEnvia1 = 1;
+               |SI PARAMETRO = ""; |PRINT; |FINSI;
+           |FINSI;
+       |FINSI;
+
+       |SI nSwGraba = 1;
+           |GRABA 020#2a;
+       |FINSI;
+   |FINSI;
+
+   BaseImp   = BaseImp   + #caivalin#6;
+   CuotaIva  = CuotaIva  + #caivalin#8;
+   CuotaRec  = CuotaRec  + #caivalin#10;
+   CuotaIRPF = CuotaIRPF + #caivalin#22;
+   TotalReg  = TotalReg  + (BaseImp + CuotaIva + CuotaRec - CuotaIRPF);
+
+   |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE Lineas;
+   #2#1;
+   ;
+   #1#0, #1#1, 01;
+   #1#0, #1#1, 99;
+   be;
+   NULL, Lineas0;
+|FIN;
+
+|PROCESO lee_iva1;
+  enAParam = #1#10;
+  |HAZ eActivParam;
+
+  e = ""; nSwError = 0;
+  aTipoIVA = #1#36;
+  |SI #1#36 = "R";  aAlfa1 = "REPERCUTIDO"; |FINSI;
+  |SI #1#36 = "S";  aAlfa1 = "SOPORTADO  "; |FINSI;
+  |SI #1#36 = "N";  aAlfa1 = "NO IVA     "; |FINSI;
+  TipoIva = aAlfa1;
+
+  #0#3  = TipoIva; #0#4 = #1#0;
+  #0#8  = #1#1;    #0#5 = #1#3;
+  #0#6  = #1#2;
+  #0#9  = #1#7;    #0#10 = #1#8;
+  #0#11 = #1#9;
+
+  |PINTA #0#3; |PINTA #0#4;
+  |PINTA #0#5; |PINTA #0#6;
+  |PINTA #0#8;
+
+  eaConcep = #1#27;
+  eaConcep = ("000" + eaConcep) % -103;
+
+  |SI #0#12 = "N";
+|| .... ...... .. ..... . ..... ERROR SALTO DE NUMEROS
+     |SI nSwPrim = 0;
+         nSwPrim = 1;
+         nLibro  = #1#0;
+         aSerie  = #1#2;
+         |HAZ MiraDif;
+         nNumero = 0;
+         nSiPrin = 0;
+         nAntLib = #1#0;
+         nAntDoc = #1#1;
+         aAntSer = #1#2;
+         nAntFra = #1#3;
+     |FINSI;
+     |SI nLibro ! #1#0; |O aSerie ! #1#2;
+         |SI nLibro ! #1#0;
+             |SI nSiPrin = 1;
+                 |SI PARAMETRO = ""; |PRINT; |FINSI;
+                 nSwAlgun = 1;
+             |FINSI;
+             nSiPrin = 0;
+         |FINSI;
+         nLibro  = #1#0;
+         aSerie  = #1#2;
+         |HAZ MiraDif;
+         nNumero = 0;
+         nAntLib = #1#0;
+         nAntDoc = #1#1;
+         aAntSer = #1#2;
+         nAntFra = #1#3;
+     |FINSI;
+
+     |SI nAntLib = #1#0; |Y aAntSer = #1#2; |Y nAntFra = #1#3;
+         |SI #1#1 ! nAntDoc;
+             e = "LIBRO+SERIE+FACTURA REPETIDA";
+             nSwError = 1; nEnvia1 = 1;
+             |SI PARAMETRO = ""; |PRINT; |FINSI;
+         |FINSI;
+     |FINSI;
+
+     nAntLib = #1#0;
+     nAntDoc = #1#1;
+     aAntSer = #1#2;
+     nAntFra = #1#3;
+
+     nNume1 = #1#3 - nNumero;
+     |SI nNume1 > nResta; |Y PARAMETRO = "";
+         aAlfa1 = #1#2; |QBF aAlfa1;
+         |SI aAlfa1 ! ""; aAlfa1 = " EN LA SERIE " + aAlfa1; |FINSI;
+
+         nNume2 = nNumero + 1; aAlfa2 = nNume2;
+         nNume3 = #1#3 - 1;    aAlfa3 = nNume3;
+         |SI nNume2 ! nNume3;
+             e = "FALTAN LOS NUMEROS DE ORDEN DESDE " + aAlfa2 + " HASTA " + aAlfa3 + aAlfa1;
+         |SINO;
+             e = "FALTA EL NUMERO DE ORDEN " + aAlfa2 + aAlfa1;
+         |FINSI;
+         nSwError = 2;
+         |SI PARAMETRO = ""; |PRINT; |FINSI;
+     |FINSI;
+     nNumero = #1#3;
+|| .........................................................................
+
+|| Miro si hay lineas
+     nSw    = 0;
+     nOpera = 1; |BUCLE Lineas; nOpera = 0;
+     |SI nSw = 0;
+         e = "FACTURA SIN LINEAS. ";
+         |SI #0#15 = "S"; e = e + "REGISTRO BORRADO"; |FINSI;
+         nSwError = 1; nEnvia1 = 1;
+         |SI PARAMETRO = ""; |PRINT; |FINSI;
+
+         |SI #0#15 = "S";
+             nSwGraba = 0;
+             |BORRA 020#1a;
+         |FINSI;
+         |VETE Alfinal;
+     |FINSI;
+
+|| .........................................................................
+|| Miro si el n§ de documento del asiento al que apunta la factura es cero
+     |SI #1#9 = 0;
+         e = "ASIENTO INEXISTENTE. DOCUMENTO IGUAL A 000000";
+         nSwError = 1; nEnvia1 = 1;
+         |SI PARAMETRO = ""; |PRINT; |FINSI;
+     |SINO;
+          || Busco si el asiento al que apunta la factura existe
+          #4#0 = #1#7;
+          #4#1 = #1#8;
+          #4#2 = #1#9;
+          #4#3 = 1;
+          |LEE 010#4];
+          |SI FSalida ! 0; |O #4#0 ! #1#7; |O #4#1 ! #1#8; |O #4#2 ! #1#9;
+              |SI #1#9 ! -1;
+                  e = "ASIENTO INEXISTENTE";
+                  nSwError = 1; nEnvia1 = 1;
+                  |SI PARAMETRO = ""; |PRINT; |FINSI;
+              |FINSI;
+          |SINO;
+              || Miro si el asiento al que apunta la factura, apunta a esta factura
+              |SI #4#12 ! #1#36; |O #4#13 ! #1#0; |O #4#15 ! #1#2;  |O #4#14 ! #1#3;
+                  e = "EL ASTO CONTABLE INFORMADO NO CORRESPONDE A LA FACTURA";
+                  nSwError = 1; nEnvia1 = 1;
+                  |SI PARAMETRO = ""; |PRINT; |FINSI;
+              |SINO;
+                  || Miro la fecha del asiento
+                  |SI #1#8 < fec1; |O #1#8 > fec2;
+                      e = "LA FECHA DEL ASIENTO NO CORRESPONDE AL EJERCICIO";
+                      nSwError = 1; nEnvia1 = 1;
+                      |SI PARAMETRO = ""; |PRINT; |FINSI;
+                  |FINSI;
+              |FINSI;
+          |FINSI;
+     |FINSI;
+
+     || Miro si la cuenta esta en blanco y si no miro que exista
+     aAlfa1 = #1#12; |QBF aAlfa1;
+     |SI aAlfa1 = "";
+         e = "CUENTA CONTABLE EN BLANCO";
+         nSwError = 1; nEnvia1 = 1;
+         |SI PARAMETRO = ""; |PRINT; |FINSI;
+     |SINO;
+         #cacuenta#0 = #1#12;
+         |LEE 010#cacuenta.=;
+         |SI FSalida ! 0;
+             e = "NO EXISTE CUENTA CONTABLE";
+             nSwError = 1; nEnvia1 = 1;
+             |SI PARAMETRO = ""; |PRINT; |FINSI;
+         |SINO;
+             |SI #cacuenta#3 = "N";
+                 e = "CUENTA CONTABLE SIN ASIENTO DIRECTO";
+                 nSwError = 1; nEnvia1 = 1;
+                 |SI PARAMETRO = ""; |PRINT; |FINSI;
+             |SINO;
+                  eaCuenta = #1#12; |HAZ SacaNivel;
+                  |SI enNivel = 0;
+                      e = "CUENTA CONTABLE FUERA DE NIVEL ";
+                      nSwError = 1; nEnvia1 = 1;
+                      |SI PARAMETRO = ""; |PRINT; |FINSI;
+                  |FINSI;
+             |FINSI;
+          |FINSI;
+     |FINSI;
+
+  |FINSI;
+
+  || Miro que los conceptos automaticos sean correctos
+  |SI #1#27 = 0; |O #1#29 = 0;
+      e = "CONCEPTO AUTOMATICO IGUAL A CERO";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+
+  |SI snFiltr = "S";
+      nLinea = 0;
+      enFilRegIVA = 0;
+      enConcepto  = #1#27;
+      enActividad = #1#10;
+      |HAZ MiroElConcepto;
+  |FINSI;
+
+  |ABRE #calibros;
+  |DDEFECTO #calibros;
+  #calibros#0 = #camaniva#0;
+  |LEE 041#calibros.=;
+  |SI #calibros#2 ! #camaniva#36;
+      e = "TIPO DE IVA DIFERENTE AL DEL LIBRO ";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+  |CIERRA #calibros;
+
+  nSwIntra = 0;
+  |ABRE #330;
+  |DDEFECTO #330;
+  #330#0 = #1#27;
+  |LEE 041#330=;
+  |SI #dsmom030#72 = "S";
+      nSwIntra = 1;
+  |FINSI;
+  |CIERRA #dsmom030;
+
+  |ABRE #223;
+  |DDEFECTO #223;
+  #223#0 = #1#0;
+  #223#1 = #1#1;
+  |LEE 001#223=;
+  nEstado223 = FSalida;
+  |CIERRA #223;
+
+  |SI nSwIntra = 0; |Y nEstado223 = 0;
+      e = "Fra No Intracomunitaria y con Datos de Rect. Modelo 349";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+  |SI nSwIntra = 1; |Y nEstado223 = 0; |Y #1#21 ] 0;
+      e = "Fra Intracomunitaria Positiva y con Datos de Rect. Modelo 349";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+  |SI nSwIntra = 1; |Y nEstado223 ! 0; |Y #1#21 < 0;
+      e = "Fra Intracomunitaria Rectif. y Sin Datos de Rect. Modelo 349";
+      nSwError = 1; nEnvia1 = 1;
+      |SI PARAMETRO = ""; |PRINT; |FINSI;
+  |FINSI;
+
+  ||\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+  || \\\\ Lineas
+
+||  Reviso que el total de las bases , cuotas , descuentos , etc... sean los correctos
+
+   TotBases = 0;
+   TotIvas  = 0;
+   TotDtos  = 0;
+   TotRecs  = 0;
+   TotIRPF  = 0;
+   BaseImp  = 0;
+   CuotaIva = 0;
+   CuotaRec = 0;
+   CuotaIRPF = 0;
+   TotalReg = 0;
+
+   nSwGraba = 0;
+   |BUCLE Lineas;
+
+   nSwGraba = 0;
+
+   |SI #0#12 = "N";
+
+       |SI TotBases ! #camaniva#19;
+           |SI TotBases < #camaniva#19;
+                Difer = #camaniva#19 - TotBases;
+           |SINO;
+                Difer = TotBases - #camaniva#19;
+           |FINSI;
+           |SI Difer > #0#2;
+               e = "EL TOTAL BASES INCORRECTO";
+               |SI #0#1 = "S";
+                  #camaniva#19 = TotBases; e = e + ". RECALCULADO";
+                  nSwGraba = 1;
+               |FINSI;
+               nSwError = 1; nEnvia = 1; nEnvia1 = 1;
+               |PRINT;
+            |FINSI;
+         |FINSI;
+
+         Calc = TotIvas + TotRecs;
+         |SI Calc ! #camaniva#23;
+             |SI Calc < #camaniva#23;
+                 Difer = #camaniva#23 - Calc;
+             |SINO;
+                 Difer = Calc - #camaniva#23;
+             |FINSI;
+             |SI Difer > #0#2;
+                 e = "EL TOTAL CUOTAS INCORRECTO";
+                 |SI #0#1 = "S";
+                    #camaniva#23 = Calc; e = e + ". RECALCULADO";
+                    nSwGraba = 1;
+                 |FINSI;
+                 nSwError = 1; nEnvia = 1; nEnvia1 = 1;
+                 |PRINT;
+            |FINSI;
+         |FINSI;
+
+         |SI TotDtos ! #camaniva#26;
+             |SI TotDtos < #camaniva#26;
+                  Difer = #camaniva#26 - TotDtos;
+             |SINO;
+                  Difer = TotDtos - #camaniva#26;
+             |FINSI;
+             |SI Difer > #0#2;
+                 e = "EL TOTAL DESCUENTOS INCORRECTO";
+                 |SI #0#1 = "S";
+                     #camaniva#26 = TotDtos; e = e + ". RECALCULADO";
+                     nSwGraba = 1;
+                 |FINSI;
+                 nSwError = 1; nEnvia1 = 1;
+                 |SI PARAMETRO = ""; |PRINT; |FINSI;
+            |FINSI;
+         |FINSI;
+
+|| Reviso que el importe total factura sea correcto
+         |SI #camaniva#36 = "N";
+             Calc = #camaniva#19 + #camaniva#23 - #camaniva#26 - #camaniva#20;
+         |SINO;
+             Calc = #camaniva#19 + #camaniva#23 - #camaniva#20;
+         |FINSI;
+         |SI nSwIntra = 1;
+             |SI #camaniva#21 = #camaniva#19; |VETE Alfinal; |FINSI;
+         |FINSI;
+
+         |SI #camaniva#21 ! Calc;
+             |SI Calc < #camaniva#21;
+                 Difer = #camaniva#21 - Calc;
+             |SINO;
+                 Difer = Calc - #camaniva#21;
+             |FINSI;
+             |SI Difer > #0#2;
+                 e = "ERROR EN IMPORTE TOTAL";
+                 |SI #0#1 = "S";
+                     #camaniva#21 = Calc; e = e + ".RECALCULADO";
+                     nSwGraba = 1;
+                 |FINSI;
+                 nSwError = 1; nEnvia1 = 1;
+                 |SI PARAMETRO = ""; |PRINT; |FINSI;
+              |FINSI;
+         |FINSI;
+   |FINSI;
+
+|ET Alfinal;
+   |SI nSwError ! 0;
+       nSwAlgun = 1;
+       nSiPrin = 1;
+   |FINSI;
+
+   |SI nSwGraba = 1;
+       |GRABA 020#1a;
+   |FINSI;
+
+   |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE lee_iva;
+   #1#3;
+   36;
+    1, "     ", 000001, aDFact;
+   99, "zzzzz", 999999, aHFact;
+   be;
+   NULL, lee_iva1;
+|FIN;
+
+____________________________________/ CALCULO PRINCIPAL
+|PROCESO HazTodo;
+
+   |ABRE #caivaasi;
+   |DDEFECTO #caivaasi;
+   |LEE 041#caivaasi.p;
+   |CIERRA #caivaasi;
+   snFiltr = #caivaasi#95;
+   snFilAc = #caivaasi#118;
+   snFilBa = #caivaasi#119;
+
+   nSwAlgun = 0;
+
+   nAntLib  = 0;
+   nAntDoc  = 0;
+   aAntSer  = "";
+   nAntFra  = 0;
+   nSwPrim = 0;
+   nSiPrin = 0;
+   nLibro  = 0;
+   aSerie  = "";
+   nNumero = 0;
+   nSwError = 0;
+
+   |ABRE #4;
+   |ABRE #5;
+   |BUCLE lee_iva;
+   |CIERRA #4;
+   |CIERRA #5;
+
+   |SI nSwAlgun = 1;
+       |PIEINF;
+       nSAl = 1;
+   |FINSI;
+|FPRC;
+
+|| ********************************************
+|PROCESO Direcciones;
+   aDirDestino = #caconiv1#1; |QBF aDirDestino;
+   |DSCORREO_ENVIA aDsCorreoIP, aServidor, aDirOrigen, aDirDestino, aAsunto, aTexto, aFichero;
+|FPRC;
+
+|DEFBUCLE Direcciones;
+#caconiv1#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Direcciones;
+|FIN;
+
+|CALCULO tipo3;
+   |SI #0#0 = "N"; |ACABA; |FINSI;
+   nEnvia = 0; nEnvia1 = 0;
+
+   |HAZ DirAplicSt;
+
+   |SI #0#14 = "N";
+      |IMPRE 0;
+      |SI FSalida ! 0;  |ACABA; |FINSI;
+   |SINO;
+      |DFICE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "testeo.txt";
+      Impresora = aAlfa;
+      |IMPRE -77;
+      |SI FSalida ! 0;  |ACABA; |FINSI;
+   |FINSI;
+
+   |INFOR "caconiva";
+   |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+
+   |SI #0#7 = "S"; aDFact = "S"; aHFact = "S";|FINSI;
+   |SI #0#7 = "R"; aDFact = "R"; aHFact = "R";|FINSI;
+   |SI #0#7 = "N"; aDFact = "N"; aHFact = "N";|FINSI;
+   |SI #0#7 = "T"; aDFact = "R"; aHFact = "S";|FINSI;
+
+   |SI #48#27 = "S";
+       |HAZ MultiEmpresa;
+   |SINO;
+       nSAl = 0;
+       |DFICE dirfich0; |QBF dirfich0;
+       |HAZ HazTodo;
+       |SI nSAl = 0;
+           |MENAV "    Registros sin incidencias";
+       |FINSI;
+   |FINSI;
+   |FININF; |FINIMP;
+
+   |SI #0#14 = "S";
+      |SI PARAMETRO = "";
+         |SI nEnvia1 = 1;
+            aDsCorreoIP = "217.13.81.114";
+            aDirOrigen  = "soporte@diagram.es";
+            aServidor   = "asmtp.diagram.es";
+            aAsunto     = " Notificacion avisos en enlace contable ";
+            |DFICE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "testeo.txt";
+            aTexto      = "$$$$" + aAlfa; aFichero = aAlfa;
+            |BUCLE Direcciones;
+
+            |MENAV "    Informe de incidencias enviadas por correo electronico";
+         |SINO;
+            |MENAV "    Sin incidencias a enviar";
+         |FINSI;
+      |SINO;
+         |SI nEnvia = 1;
+            aDsCorreoIP = "217.13.81.114";
+            aDirOrigen  = "soporte@diagram.es";
+            aServidor   = "asmtp.diagram.es";
+            aAsunto     = " Notificacion avisos en enlace contable ";
+            |DFICE aAlfa; |QBF aAlfa; aAlfa = aAlfa + "testeo.txt";
+            aTexto      = "$$$$" + aAlfa; aFichero = aAlfa;
+            |BUCLE Direcciones;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FCAL;
+
+|| *************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #2 dirfich0;
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #4 dirfich0;
+   |PATH_DAT #5 dirfich0;
+   |PATH_DAT #10 dirfich0;
+   |PATH_DAT #11 dirfich0;
+   |PATH_DAT #caivaasi#dirfich0#;
+   |PATH_DAT #caivaaxx#dirfich0#;
+   |PATH_DAT #223 dirfich0;
+
+   |BLANCO 2002 2264;
+   |ATRI N; |CUADRO 2002 2264; |ATRI 0;
+   |PINTA 2002, "Ã";
+   |PINTA 2202, "Ã"; |PINTA 2264, "Å";
+   |ATRI R; |PINTA 2103, " Empresa: ";      |ATRI 0;
+   |PINTA 2113, #30#2; |PINTA 2119, #30#1;  |ATRI 0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+   #caselem1#1;
+   ;
+   000001;
+   999999;
+   ;
+   NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SI PARAMETRO = "";
+     |SUB_EJECUTA "caselemp";
+     |DFICE aAlfa; |QBF aAlfa;
+
+     aAlfa1 = aAlfa + eaFichsel + ".dat"; aAlfa2 = aAlfa + "selmulti.dat";
+     |COPIA_FICHERO aAlfa1, aAlfa2;
+     aAlfa1 = aAlfa + eaFichsel + ".ddx"; aAlfa2 = aAlfa + "selmulti.ddx";
+     |COPIA_FICHERO aAlfa1, aAlfa2;
+     aAlfa1 = aAlfa + eaFichsel + ".ixx"; aAlfa2 = aAlfa + "selmulti.ixx";
+     |COPIA_FICHERO aAlfa1, aAlfa2;
+
+     |NOME_DAT #998 eaFichsel; |BUCLE MultiEmp0; |DELINDEX #998;
+  |SINO;
+     aAlfa = "selmulti"; |NOME_DAT #998 aAlfa; |BUCLE MultiEmp0;
+  |FINSI;
+|FPRC;
+
+|RUTINA inf;
+   #caconiv1#0 = 1;
+|FRUT;
+
+|RUTINA sup;
+   #caconiv1#0 = 999;
+|FRUT;
+
+|PROCESO PideDir;
+  |SI #caconiva#14 = "N"; |ACABA; |FINSI;
+
+  |PUSHV 0931 2380;
+  |ENTLINEAL #1#caconiv1, -1, 1, 21, 1, inf, sup;
+  |POPV;
+|FPRC;
+
+|PROCESO MiraDir;
+  aAlfa = #caconiv1#1; |QBF aAlfa;
+  aAlfa1 = aAlfa - "@";
+  |SI FSalida ! 0;
+     aAlfa1 = aAlfa - ".";
+     |SI FSalida = 0;
+        |MENAV "    Cuenta de correo mal construida"; |ERROR;
+     |FINSI;
+  |SINO;
+     |MENAV "    Cuenta de correo mal construida"; |ERROR;
+  |FINSI;
+|FPRC;
+
+|| *************************************************************************
+|| *************************************************************************
+|| *************************************************************************
+|| *************************************************************************
+
+|PROGRAMA;
+   |HAZ inicio;
+
+   |ABRE #0;
+   |LEE 000#0p;
+   |SI FSalida ! 0;
+      |DDEFECTO #0;
+      |GRABA 020#0c;
+   |FINSI;
+
+   |SI PARAMETRO = "";
+      |CLS;
+      |PINPA #0#0; |PINDA #0#0;
+      |ENDATOS #1#0;
+      |SI FSalida = 0;
+         |GRABA 020#caconiva.a;
+         |HAZ tipo3;
+      |FINSI;
+   |SINO;
+      #0#14 = "S";
+      |SI PARAMETRO = "CHEQUEO";
+          PARAMETRO = "";
+          |DDEFECTO #caconiva;
+          #caconiva#0  = "S";
+          #caconiva#1  = "N";
+          #caconiva#2  = .05;
+          #caconiva#3  = "";
+          #caconiva#4  = 0;
+          #caconiva#5  = 0;
+          #caconiva#6  = "";
+          #caconiva#7  = "T";
+          #caconiva#8  = 0;
+          #caconiva#9  = 0;
+          #caconiva#10 = "01.01.0000";
+          #caconiva#11 = 1;
+          #caconiva#12 = "N";
+          #caconiva#13 = 1;
+          #caconiva#14 = "N";
+          #caconiva#15 = "N";
+          |GRABA 020#caconiva.a;
+      |FINSI;
+
+      |HAZ tipo3;
+   |FINSI;
+
+   |LIBERA #0;
+   |CIERRA #0;
+|FPRO;

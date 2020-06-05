@@ -1,0 +1,331 @@
+|FICHEROS;
+   dscaz068 #0;
+   dscaw050 #1;
+
+   dscam003 #10;
+   dscam004 #11;
+|FIN;
+
+|VARIABLES;
+   &enSw = 0;
+   &enContLin = 0;
+   &nDeci_Div = 0;
+   nNumLins = 0;
+
+   aAntCli = "";
+   aAntRep = "";
+   nPrimCli = 0;
+   nPrimRep = 0;
+   nInc     = 0;
+   nSwAnt   = 0;
+   nDocum   = 0;
+
+   nTotRecibo = 0;
+   nTotCobrad = 0;
+   nTotPendte = 0;
+   fFechCobro = @;
+
+   nDocAgr  = 0;
+   fFecha   = @;
+   fFechaEmis = @;
+   fFechaVto  = @;
+
+   &TipoCliente = ""; &CodCliente = "";
+   &DCampoG = 0;      &HCampoG = 0;
+   &DCampoC = 0;      &HCampoC = 0;
+   &MaxDigit = 0;     &Divisa  = "";
+
+   nSw  = 0;
+
+   CodCliAnt = ""; CtaCliAnt = "";
+   nTecla = 0;
+   Comodin = ""; Comodin1 = "";
+   Cuenta = "";
+   aLong = ""; nLong = 0;
+   Parte1 = "";
+   Parte2 = "";
+   Posic1 = 0;
+   Posic2 = 0;
+   FEstado = 0;
+   aAlfa  = "";
+   aAlfa1 = "";
+   aAlfa2 = "";
+
+   nCalc    = 0;
+   nCalc1   = 0;
+   nVtoReal = 0;
+|FIN;
+
+|PROCESO MiraCliente;
+   |SI FSalida = 10;
+      TipoCliente = "G"; DCampoG = 2; HCampoG = 3;
+      |HAZ ExisteCliente;
+      #dscaz068#Campo# = CodCliente; |PINTA #dscaz068#Campo#;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraCuenta;
+   aAlfa1 = " " * 12; aAlfa2 = "z" * 12;
+   |SI #dscaz068#4 ! aAlfa1; |O #dscaz068#5 ! aAlfa2;
+      #dscaz068#2 = "      "; |PINTA #dscaz068#2;
+   |FINSI;
+
+   |SI FSalida = 10;
+      TipoCliente = "C"; DCampoC = 4; HCampoC = 5;
+      |HAZ ExisteCliente;
+      #dscaz068#Campo# = CodCliente; |PINTA #dscaz068#Campo#;
+   |FINSI;
+|FPRC;
+
+|PROCESO PuntoCuenta; |TIPO 6;
+   nTecla = FSalida;
+      Cuenta = #Fichero@#Campo#;
+      Cuenta = Cuenta - ".";
+      |PARA; |SI FSalida ! 0; |HACIENDO;
+         FEstado = FSalida;
+         Posic1 = ((FEstado / 100) ! 0) + 99;
+         Posic2 = FEstado + 98;
+         Parte1 = Cuenta % Posic1;
+         Parte2 = Cuenta % Posic2;
+         |QBF Cuenta;
+         aLong = Cuenta % 0; nLong = aLong;
+         nLong = MaxDigit - nLong;
+         Cuenta = "0" * nLong;
+         Cuenta = Parte1 + Cuenta + Parte2;
+         Cuenta = Cuenta - ".";
+      |SIGUE;
+      #Fichero@#Campo# = Cuenta; |PINTA #Fichero@#Campo#;
+   FSalida = nTecla;
+|FPRC;
+
+|PROCESO BuscaPrimero;
+
+   |SI fFecha > #dscam003#3; fFecha = #dscam003#3; |FINSI;
+
+   |SI #dscam003#49 = "S";
+      |SALVA_FICHA #dscam003;
+      nDocum = #dscam003#40;
+      |SELECT #13#dscam003;
+      #dscam003#40 = 1;
+      #dscam003#41 = nDocum;
+      |LEE 000#dscam003.];
+      |PARA; |SI FSalida = 0; |Y #dscam003#41 = nDocum; |HACIENDO;
+         |SALVA_FICHA #dscam003;
+         |SELECT #1#dscam003; |HAZ BuscaPrimero; |SELECT #13#dscam003;
+         |REPON_FICHA #dscam003;
+         |LEE 000#dscam003.s;
+      |SIGUE;
+      |SELECT #1#dscam003; |REPON_FICHA #dscam003;
+   |FINSI;
+
+   |SI #dscam003#82 = "S";
+      nDocum = #dscam003#83;
+      |SALVA_FICHA #dscam003;
+      #dscam003#40 = nDocum;
+      |LEE 000#dscam003.=;
+      |SI FSalida = 0; |HAZ BuscaPrimero; |FINSI;
+      |REPON_FICHA #dscam003;
+   |FINSI;
+|FPRC;
+
+|PROCESO Temporal;
+
+      |SI #dscam003#14 = "D"; |O #dscam003#49 = "S"; |ACABA; |FINSI;
+
+      Divisa = #dscam003#57; |HAZ TomaDecim;
+
+      |SI #dscam003#14 = "A";
+         fFechaEmis = #dscam003#4;
+         |SALVA_FICHA #dscam003;
+         nDocum = #dscam003#41;
+         #dscam003#40 = nDocum;
+         |LEE 000#dscam003.=;
+         |SI FSalida ! 0; |DDEFECTO #dscam003; |FINSI;
+         fFechaVto = #dscam003#3;
+         nTotRecibo = #dscam003#30;
+         nTotCobrad = #dscam003#23;
+         nTotPendte = #dscam003#31;
+         fFechCobro = #dscam003#26;
+         |REPON_FICHA #dscam003;
+         nTotCobrad = ((#dscam003#30 * nTotCobrad) / nTotRecibo) ! nDeci_Div;
+         nDocAgr = nDocum;
+      |SINO;
+         nDocAgr = 0;
+         fFechaVto = #dscam003#3; fFechaEmis = #dscam003#4;
+         nTotCobrad = #dscam003#23;
+         nTotPendte = #dscam003#31;
+         fFechCobro = #dscam003#26;
+
+         |SI #dscam003#70 ! "          "; |Y #dscam003#72 ! "    ";
+            fFechaVto = #dscam003#71; fFechaEmis = #dscam003#4;
+         |SINO;
+            |SI #dscam003#82 = "S";
+               #dscam003#3 = "31.12.9999"; #dscam003#4 = "31.12.9999";
+               fFechaVto = #dscam003#3; fFechaEmis = #dscam003#4;
+               |HAZ BuscaPrimero;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+
+      nCalc = fFechaVto; nCalc1 = fFechaEmis;
+      |SI nCalc = nCalc1; nCalc = nCalc + #dscaz068#8; |FINSI;
+      nVtoReal = nCalc; nCalc1 = #dscaz068#10;
+      |SI nCalc > nCalc1; |ACABA; |FINSI;
+
+      aAlfa = #dscam003#26; |QBF aAlfa;
+      |SI aAlfa ! "00.00.0000"; |Y aAlfa ! "01.01.0000";
+         nCalc1 = #dscam003#26;
+         |SI nCalc > nCalc1; |ACABA; |FINSI;
+      |FINSI;
+
+      |DDEFECTO #dscaw050;
+      #dscaw050#0 = #dscam003#33;
+      #dscaw050#1 = #dscam003#34;
+      #dscaw050#2 = #dscam003#32;
+      #dscaw050#3 = #dscam003#6;
+      #dscaw050#4 = #dscam003#0;
+      #dscaw050#5 = #dscam003#1;
+      #dscaw050#6 = #dscam003#2;
+      #dscaw050#7 = fFechaVto;
+      #dscaw050#8 = #dscam003#30;
+      nCalc = fFechaVto; nCalc1 = fFechaEmis;
+      #dscaw050#9 = nCalc - nCalc1;
+      #dscaw050#10 = nTotCobrad;
+      |SI nVtoReal = 0; nCalc = fFechaVto; |SINO; nCalc = nVtoReal; |FINSI;
+      nCalc1 = fFechCobro; nCalc = fFechaEmis;
+      aAlfa = fFechCobro; |QBF aAlfa;
+      |SI aAlfa ! "00.00.0000"; |Y aAlfa ! "01.01.0000";
+         |SI #dscam003#14 ! "R";
+            #dscaw050#11 = nCalc1 - nCalc;
+         |SINO;
+            #dscaw050#11 = 0;
+         |FINSI;
+      |SINO;
+         #dscaw050#11 = 0;
+      |FINSI;
+      #dscaw050#12 = nTotPendte;
+      |SI #dscaw050#12 ! 0; ||O #dscam003#65 ! 0;
+         nCalc1 = fFechaEmis; nCalc = #dscaz068#10;
+         #dscaw050#13 = nCalc - nCalc1;
+      |FINSI;
+      |SI #dscaw050#11 = 0;
+         |SI #dscaw050#13 ! 0;
+            #dscaw050#14 = #dscaw050#13;
+         |SINO;
+            #dscaw050#14 = 0;
+         |FINSI;
+      |SINO;
+         |SI #dscaw050#13 ! 0;
+            nCalc = ((#dscaw050#10 * #dscaw050#11) + (#dscaw050#12 * #dscaw050#13)) / #dscaw050#8;
+            #dscaw050#14 = nCalc;
+         |SINO;
+            #dscaw050#14 = #dscaw050#11;
+         |FINSI;
+      |FINSI;
+      #dscaw050#15 = 1;
+      #dscaw050#16 = #dscam003#40;
+      #dscaw050#17 = #dscam003#27;
+      #dscaw050#18 = fFechaEmis;
+      #dscaw050#19 = nDocAgr;
+      |GRABA 020#dscaw050.n;
+|FPRC;
+
+|DEFBUCLE Temporal;
+#dscam003#1;
+33,32,5,4;
+000000001,#dscaz068#0,#dscaz068#2,#dscaz068#4,#dscaz068#6;
+999999999,#dscaz068#1,#dscaz068#3,#dscaz068#5,#dscaz068#7;
+;
+NULL, Temporal;
+|FIN;
+
+|PROCESO MiraLim;
+   nSwAnt = enSw;
+   nCalc = enContLin + nInc;
+   |SI nSwAnt = 0; nCalc = nCalc + 4; |FINSI;
+   |SI enSw = 1; |O enSw = 2; nCalc = nCalc + 4; |FINSI;
+   |SI nCalc > nNumLins;
+      enContLin = enContLin + 1;
+      |PARA; |SI enContLin < nNumLins; |HACIENDO enContLin = enContLin + 1;
+         enSw = 5; |PRINT;
+      |SIGUE;
+      |PIEINF; enContLin = 6;
+      |SI nSwAnt = 0;
+         enContLin = enContLin + 2; enSw = 1; |PRINT;
+         enContLin = enContLin + 2; enSw = 2; |PRINT;
+      |FINSI;
+      |SI nSwAnt = 2;
+         enContLin = enContLin + 2; enSw = 1; |PRINT;
+      |FINSI;
+      enContLin = enContLin + nInc;
+   |SINO;
+      enContLin = enContLin + nInc;
+   |FINSI;
+   enSw = nSwAnt;
+|FPRC;
+
+|PROCESO Imprime;
+   |SI aAntRep ! #dscaw050#0;
+      |SI nPrimRep = 1;
+         nPrimRep = 0;
+         enSw = 1; nInc = 2; |HAZ MiraLim; |PRINT;
+      |SINO;
+         nSw = 0;
+         enSw = 3; nInc = 3; |HAZ MiraLim; |PRINT;
+         aAntCli = #dscaw050#2; nSw = 1;
+         enSw = 4; nInc = 3; |HAZ MiraLim; |PRINT;
+         enSw = 1; nInc = 2; |HAZ MiraLim; |PRINT;
+         |SI nSw = 1; enSw = 2; nInc = 2; |HAZ MiraLim; |PRINT; |FINSI;
+      |FINSI;
+      aAntRep = #dscaw050#0;
+   |FINSI;
+
+   |SI aAntCli ! #dscaw050#2;
+      |SI nPrimCli = 1;
+         nPrimCli = 0;
+         enSw = 2; nInc = 2; |HAZ MiraLim; |PRINT;
+      |SINO;
+         enSw = 3; nInc = 3; |HAZ MiraLim; |PRINT;
+         enSw = 2; nInc = 2; |HAZ MiraLim; |PRINT;
+      |FINSI;
+      aAntCli = #dscaw050#2;
+   |FINSI;
+
+   enSw = 0; nInc = 1; |HAZ MiraLim; |PRINT;
+|FPRC;
+
+|DEFBUCLE Imprime;
+#dscaw050#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Imprime;
+|FIN;
+
+|PROGRAMA;
+   |HAZ Tipo8;
+
+   |CLS;
+   |CABEZA "Informe incidencias vencimiento cliente";
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      nPrimCli = 1; nPrimRep = 1;
+      enContLin = 6;
+      |IMPRE 0;
+      |SI FSalida < 0; |ACABA; |FINSI;
+      |CIMPR 11; nNumLins = FSalida;
+      |INFOR "dscaz068";
+      |SI FSalida < 0; |FINIMP; |ACABA; |FINSI;
+      aAlfa = "50" + Usuario; |NOME_DAT #1 aAlfa;
+      |DELINDEX #dscaw050; |ABRE #dscaw050;
+      |BUCLE Temporal; |BUCLE Imprime;
+      enSw = 3; nInc = 3; |HAZ MiraLim; |PRINT;
+      enSw = 4; nInc = 3; |HAZ MiraLim; |PRINT;
+      |PIEINF; |FININF; |FINIMP;
+      |CIERRA #dscaw050;
+   |FINSI;
+
+   |HAZ Tipo9;
+|FPRO;

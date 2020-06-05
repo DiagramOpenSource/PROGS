@@ -1,0 +1,606 @@
+|FICHEROS;
+     tecaz034 #0;
+     tecaw024 #1;   || Tmp
+     web10005 #5;   || parametros correo
+     agifa010 #10;
+     agifa024 #24;
+     tecam036 #36;   ||Aux Agencias
+     tecam038 #38;   ||Aux Alb.
+     agifa041 #41;
+|FIN;
+
+|VARIABLES;
+     nConta = 0;
+     aIP = "";
+     aDSCorreo = "";
+     aProxy = "";
+     aDirOri = "";
+     aDirDes = "";
+     aTitulo = "";
+     aTexto = "";
+     aFic = "";
+     nAgencia = -1;
+     nHay = 0;
+     aRuta = "";
+     nHandle = 0;
+     aAlfa = "";
+     aFin = "";
+     aTipo = "";
+     aAlf1 = "";
+     nLon = 0;
+     nPos = 0;
+     nNume = 0;
+     nAbo = 0;
+     nNu1 = 0;
+     nNu2 = 0;
+     nDec = 0;
+|FIN;
+
+|PROCESO Path; |TIPO 0;
+     |SI FSalida = 10;
+         aRuta = #0#10;  |QBF aRuta;
+         aRuta = "D" + aRuta;
+         |BROWSE aRuta;
+         aRuta = aRuta % 260;  |QBF aRuta;
+         #0#10 = aRuta + "\";
+     |FINSI;
+
+     aRuta = #0#10;
+     |QBT aRuta;
+     |SI aRuta = "";
+         |MENAV "0000 Necesito una ubicacion.";
+         |ERROR;
+     |FINSI;
+
+     aAlfa = aRuta % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\";
+          aRuta = aRuta + "/";
+          #0#10 = aRuta;
+     |FINSI;
+     |PINTA #0#10;
+|FPRC;
+
+|PROCESO EnviaCorreo;
+     |ABRE #5; |LEE 000#5p; |CIERRA #5;
+
+     |SI #5#20 = "F"; aDSCorreo = #5#19;             |FINSI;
+     |SI #5#20 = "L"; aDSCorreo = ""; |IP_REMOTO aDSCorreo; |FINSI;
+     |SI #5#20 = "S"; aDSCorreo = ""; |IP_LOCAL  aDSCorreo; |FINSI;
+     |QBF aDSCorreo;
+     aProxy = #5#21; |QBF aProxy;
+     aDirOri = #5#22; |QBF aDirOri;
+     aDirDes = #36#4;  |QBF aDirDes;
+     aTitulo = "Secuencial de Intercambio";
+     aTexto = aTitulo;
+     aFic = #0#10; |QBF aFic;
+     aFic = aFic + #0#11; |QBF aFic;
+     aIP = ""; |IP_REMOTO aIP;
+
+     aAlfa = "2405Enviando [" + aDSCorreo + "] ...";
+     |MENSA aAlfa;
+
+     |DFICE aAlfa;
+     aAlfa = aAlfa + #0#11; |QBF aAlfa;
+     |SI aIP ! "";
+          |RECIBE_FICHERO aFic, aAlfa;
+     |SINO;
+          |COPIA_FICHERO aFic, aAlfa;
+     |FINSI;
+     aFic = aAlfa;
+     |DSCORREO_ENVIA aDSCorreo, aProxy, aDirOri, aDirDes, aTitulo, aTexto, aFic;
+     |SI FSalida ! 0;
+          |MENAV "0000Problemas al enviar correo. Revise la conexion.";
+     |SINO;
+          |MENAV "0000Envio correo completado.";
+     |FINSI;
+     |FBORRA aFic;
+|FPRC;
+
+|PROCESO DDMMAAAA;
+     aAlfa = (aAlfa % 102) + (aAlfa % 402) + (aAlfa % -104);
+     |XGRABA nHandle, aAlfa;
+     aAlfa = "";
+|FPRC;
+
+|PROCESO Relleno;
+     |SI aTipo = "F";
+          aAlfa = (aAlfa % -104) + (aAlfa % 402) + (aAlfa % 102);
+     |FINSI;
+
+     |SI aTipo = "A";
+          aAlf1 = " " * nLon;
+          aAlfa = aAlfa + aAlf1;
+          nPos = nLon + 100;
+          aAlfa = aAlfa % nPos;
+     |FINSI;
+
+     |SI aTipo = "N";
+          nNume = aAlfa;
+          |SI nNume < 0; nAbo = -1; |SINO; nAbo = 1; |FINSI;
+          |SI nNume < 0; nNume = nNume * - 1; |FINSI;
+          nNu1 = nNume ! 0;
+          |SI nNu1 > nNume; nNu1 = nNu1 - 1; |FINSI;
+          nNu2 = nNume - nNu1;
+          |SI nDec < 0;
+               aAlfa = nNume;
+          |SINO;
+               |SI nDec = 0;
+                    aAlfa = nNu1;
+               |SINO;
+                    aAlfa = nNu2;
+                    aAlfa = aAlfa + "00000000000000000000000000";
+                    nPos = nDec + 300;
+                    aAlfa = aAlfa % nPos;
+                    aAlfa = nNu1 + "." + aAlfa;
+               |FINSI;
+          |FINSI;
+          aAlfa = "000000000000000000000000000000000000000000000" + aAlfa;
+          |SI nAbo = 1;
+               nPos = -1 * (nLon + 100);
+               aAlfa = aAlfa % nPos;
+          |SINO;
+               nPos = -1 * (nLon + 99);
+               aAlfa = "-" + aAlfa % nPos;
+          |FINSI;
+          nDec = 0;
+     |FINSI;
+
+     |XGRABA nHandle, aAlfa;
+     aAlfa = "";
+|FPRC;
+
+
+|PROCESO FicHDL;
+||COCODCLI  6
+     aAlfa = #36#3;
+     aTipo = "A"; nLon = 6; |HAZ Relleno;
+
+||COAÑOD    1
+     aAlfa = #10#1; aAlfa = aAlfa % -101;
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COPADE    2
+     aAlfa = #24#205;
+     aTipo = "A"; nLon = 2; |HAZ Relleno;
+
+||COEXPE    8
+     aAlfa = #1#0;
+     |SI #0#14 = "N";
+          aAlfa = "00000000";
+     |FINSI;
+     aTipo = "N"; nLon = 8; |HAZ Relleno;
+
+||COCORRELA 1
+     aAlfa = "";
+     aTipo = "N"; nLon = 1; |HAZ Relleno;
+
+||          1
+     aAlfa = "";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COSERVICIO1
+     aAlfa = ""
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COCONSIG  40
+     aAlfa = #10#29;
+     aTipo = "A"; nLon = 40; |HAZ Relleno;
+
+||CODIRDES  40
+     aAlfa = #10#30;
+     aTipo = "A"; nLon = 40; |HAZ Relleno;
+
+||COPOBDES  20
+     aAlfa = #10#31;
+     aTipo = "A"; nLon = 20; |HAZ Relleno;
+
+||COCPDES   9
+     aAlfa = #10#62;
+     aTipo = "A"; nLon = 9; |HAZ Relleno;
+
+||COTLFDES  9
+     aAlfa = #24#17;
+     aTipo = "A"; nLon = 9; |HAZ Relleno;
+
+||          1
+     aAlfa = "";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COREFCLI  35
+     aAlfa = #10#52 + "-" + (("000000" + #10#0) % -106);
+     aTipo = "A"; nLon = 35; |HAZ Relleno;
+
+||          2
+     aAlfa = "";
+     aTipo = "A"; nLon = 2; |HAZ Relleno;
+
+||COBULTOS  3
+     aAlfa = #1#3;
+     aTipo = "N"; nLon = 3; |HAZ Relleno;
+
+||COKILOS   5
+     aAlfa = #1#4;
+     aTipo = "N"; nLon = 5; |HAZ Relleno;
+
+||COKILVOL  5
+     aAlfa = #1#5;
+     aTipo = "N"; nLon = 5; |HAZ Relleno;
+
+||COREEMBO  11
+     nNume = (#1#6 * 100) ! 0;
+     aAlfa = nNume;
+     aTipo = "N"; nLon = 11; nDec = 0; |HAZ Relleno;
+
+||COMONREM  3
+     aAlfa = "EUR";
+     aTipo = "A"; nLon = 3; |HAZ Relleno;
+
+||COPREEMB  1
+     aAlfa = #10#64;
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COVASEG   9
+     nNume = (#1#7 * 100) ! 0;
+     aAlfa = nNume;
+     aTipo = "N"; nLon = 9; nDec = 0; |HAZ Relleno;
+
+||COMONVAL  3
+     aAlfa = "EUR";
+     aTipo = "A"; nLon = 3; |HAZ Relleno;
+
+||COPVASE   1
+     aAlfa = #10#64;
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COALBFIR  1
+     aAlfa = "";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||          1
+     aAlfa = "";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COOBSER1  40
+     aAlfa = "";
+     aTipo = "A"; nLon = 40; |HAZ Relleno;
+
+||COOBSER2  40
+     aAlfa = "";
+     aTipo = "A"; nLon = 40; |HAZ Relleno;
+
+||COCLVADU  1
+     aAlfa = "";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||COFECSAL  8
+     aAlfa = #38#10;
+     |HAZ DDMMAAAA;
+
+     aAlfa = "";
+||          40
+     aTipo = "A"; nLon = 40; |HAZ Relleno;
+
+||          40
+     aTipo = "A"; nLon = 40; |HAZ Relleno;
+
+||          20
+     aTipo = "A"; nLon = 20; |HAZ Relleno;
+
+||          5
+     aTipo = "A"; nLon = 5; |HAZ Relleno;
+
+||          5
+     aTipo = "A"; nLon = 5; |HAZ Relleno;
+
+||          15
+     aTipo = "A"; nLon = 15; |HAZ Relleno;
+
+||COCLPINT  3
+     aAlfa = "EXW";
+     |SI #10#64 = "P"; aAlfa = "CPT"; |FINSI;
+     aTipo = "A"; nLon = 3; |HAZ Relleno;
+
+||COPRODU   3
+     aAlfa = "102";
+     aTipo = "A"; nLon = 3; |HAZ Relleno;
+
+||CONOMCTO  25
+     aAlfa = "";
+     aTipo = "A"; nLon = 25; |HAZ Relleno;
+
+||CODESBIE  70
+     aAlfa = "";
+     aTipo = "A"; nLon = 70; |HAZ Relleno;
+
+||COIMPADU  15
+     aAlfa = "";
+     aTipo = "A"; nLon = 15; |HAZ Relleno;
+
+||COMONADU  3
+     aAlfa = "";
+     aTipo = "A"; nLon = 3; |HAZ Relleno;
+
+||         15
+     aAlfa = "";
+     aTipo = "A"; nLon = 15; |HAZ Relleno;
+|FPRC;
+
+|PROCESO FicSouto;
+||Cliente                                      pic X(10)
+     aAlfa = #36#3;
+     aTipo = "A"; nLon = 10; |HAZ Relleno;
+
+||Albarán                                      pic x(10)
+||     aAlfa = #10#52 % 102 + "-" + (("000000" + #10#0) % -106);
+     aAlfa = ("0000000000" + #38#9) % -106;
+     aTipo = "N"; nLon = 10; |HAZ Relleno;
+
+||Fecha albaran                                pic 9(08) (aaaammdd)
+     aAlfa = #10#1;
+     aTipo = "F"; |HAZ Relleno;
+
+||Fecha Salida                                 pic 9(08) (aaaammdd)
+     aAlfa = #38#10;
+     aTipo = "F"; |HAZ Relleno;
+
+||Hora salida                                  pic 9(04) (a ceros)
+     aAlfa = "0000";
+     aTipo = "N"; nLon = 4; |HAZ Relleno;
+
+||Anulado                                      pic x(01) (en blanco)
+     aAlfa = " ";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||Remitente Nombre                        pic x(25)
+     aAlfa = #10#29;
+     aTipo = "A"; nLon = 25; |HAZ Relleno;
+
+||Remitente Dirección                          pic x(25)
+     aAlfa = #41#2;
+     aTipo = "A"; nLon = 25; |HAZ Relleno;
+
+||Consignatario                                pic x(25)
+     aAlfa = #10#29;
+     aTipo = "A"; nLon = 25; |HAZ Relleno;
+
+||Dirección                               pic x(25)
+     aAlfa = #10#30;
+     aTipo = "A"; nLon = 25; |HAZ Relleno;
+
+||Provincia                               pic x(25)
+     aAlfa = #10#33;
+     aTipo = "A"; nLon = 25; |HAZ Relleno;
+
+||Ultimo destino                               pic x(20)
+     aAlfa = #10#31;
+     aTipo = "A"; nLon = 20; |HAZ Relleno;
+
+||Código Postal                                pic 9(05)
+     aAlfa = #10#62;
+     aTipo = "A"; nLon = 5; |HAZ Relleno;
+
+||Tipo Mercancía                               pic x(15)
+     aAlfa = "";
+     aTipo = "A"; nLon = 15; |HAZ Relleno;
+
+||Bultos                                       pic 9(04)
+     aAlfa = #1#3;
+     aTipo = "N"; nLon = 4; |HAZ Relleno;
+
+||Kilos                                        pic 9(05)
+     nNume = #1#4 ! 0;
+     aAlfa = nNume;
+     aTipo = "N"; nLon = 5; |HAZ Relleno;
+
+||Metros cúbicos                               pic 9(06) (multiplicado por 1000)
+     nNume = #1#5 * 1000;
+     aAlfa = nNume;
+     aTipo = "N"; nLon = 6; |HAZ Relleno;
+
+||Porte Pagado/Debido                          pic x(01)
+     aAlfa = #10#64;
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||Importe Reembolso                       pic 9(09) (multiplicado por 100)
+     nNume = #1#6 * 100;
+     aAlfa = nNume;
+     aTipo = "N"; nLon = 9; |HAZ Relleno;
+
+||Observaciones                                pic x(30)
+     aAlfa = "";
+     aTipo = "A"; nLon = 30; |HAZ Relleno;
+
+||Agrupa albaranes                        pic x(01)
+     aAlfa = " ";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||CódigoAgrupación                        pic x(10)
+     aAlfa = "";
+     aTipo = "A"; nLon = 10; |HAZ Relleno;
+
+||D.A.C.                        pic x(01) (S/N)
+     aAlfa = "N";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||País                     pic x(01) (S/N) (S = Portugal, N = España)
+     aAlfa = "N";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||Numeración Souto              pic x(01) (S/N)
+     aAlfa = "S";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||Nº expedición Souto           pic 9(08)
+     aAlfa = #38#9;
+     aTipo = "A"; nLon = 8; |HAZ Relleno;
+
+||Tipo de reparto                    pic x(01) (A  = aplazada)
+     aAlfa = "";
+     aTipo = "A"; nLon = 1; |HAZ Relleno;
+
+||Teléfono consignatario             pic x(10)
+     aAlfa = #24#17;
+     aTipo = "A"; nLon = 10; |HAZ Relleno;
+|FPRC;
+
+|PROCESO Temporal;
+     #10#52 = #1#1;
+     #10#0 = #1#2;
+     |LEE 020#10=;
+
+     |DDEFECTO #24;
+     #24#0 = #10#3;
+     |LEE 000#24=;
+
+     |DDEFECTO #38;
+     #38#0 = #10#52;
+     #38#1 = #10#0;
+     |LEE 000#38=;
+
+     |SI #0#6 = 1;
+          |HAZ FicHDL;
+     |SINO;
+          |HAZ FicSouto;
+     |FINSI;
+     |XGRABA nHandle, aFin;
+|FPRC;
+
+|DEFBUCLE Temporal;
+     #1#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Temporal;
+|FIN;
+
+|PROCESO agifa010;
+     |DDEFECTO #38;
+     #38#0 = #10#52;
+     #38#1 = #10#0;
+     |LEE 101#38=;
+     |SI FSalida ! 0;
+          aAlfa = "0000No existe Aux.Albaran:" + #10#52 + "/" + #10#0;
+          |MENAV aAlfa;
+          |ACABA;
+     |FINSI;
+     |SI #0#8 = "N";
+          |SI #38#8 ! "N"; |ACABA; |FINSI;
+          #38#8 = "S";
+          #38#6 = #0#7;
+     |FINSI;
+     |SI #0#8 = "S";
+          |SI #0#9 = "S";
+               #38#8 = "S";
+               #38#6 = #0#7;
+          |FINSI;
+          |SI #38#8 ! "S"; |ACABA; |FINSI;
+          |SI #38#6 ! #0#7; |ACABA; |FINSI;
+     |FINSI;
+     |GRABA 020#38a;
+     |LIBERA #38;
+     nHay = nHay + 1;
+
+
+     |DDEFECTO #1;
+     |SI #0#14 = "N";
+          nConta = nConta + 1;
+          #1#0 = nConta;
+     |SINO;
+          #1#0 = #38#9;
+     |FINSI;
+     |LEE 101#1=;
+     |SI FSalida ! 0; |GRABA 020#1b; |FINSI;
+     #1#1 = #10#52;
+     #1#2 = #10#0;
+     #1#3 = #1#3 + #10#2;
+     #1#4 = #1#4 + #38#2;
+     #1#5 = #1#5 + #38#3;
+     |SI #38#4 = "S";
+          #1#6 = #1#6 + #10#67;
+     |FINSI;
+     #1#7 = #1#7 + #38#5;
+     |GRABA 020#1a;
+     |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE agifa010;
+     #10#1;
+     1, 88;
+     #0#0, #0#2, #0#4, #0#13;
+     #0#1, #0#3, #0#5, #0#13;
+     ;
+     NULL, agifa010;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     aFin = &13 + &10;
+
+     aAlfa = Usuario;
+     |NOME_DAT #1 aAlfa;
+     |DELINDEX #1;
+
+     |DFICB aAlfa;
+     |PATH_DAT #41 aAlfa;
+
+     |DFICE aAlfa;
+     aAlfa = aAlfa % -205;
+
+     |ABRE #41;
+     #41#0 = aAlfa;
+     |LEE 020#41=;
+     |CIERRA #41;
+
+     |ABRE #36;
+     #36#0 = #0#13;
+     |LEE 000#36=;
+     |SI FSalida ! 0;
+          |MENAV "0000No existe Auxiliar Agencia...";
+          |ACABA;
+     |FINSI;
+     |CIERRA #36;
+
+     aAlfa = #0#10; |QBF aAlfa;
+     aAlfa = aAlfa + #0#11; |QBF aAlfa;
+     |XABRE "CWB", aAlfa, nHandle;
+     |SI FSalida < 0;
+          aAlfa = "0000Error al crear:" + aAlfa;
+          |MENAV aAlfa;
+     |SINO;
+          |ABRE #38;
+          |ABRE #1;
+          |BUCLE agifa010;
+          |CIERRA #1;
+
+          |ABRE #10;
+          |ABRE #24;
+          |BUCLE Temporal;
+          |CIERRA #24;
+          |CIERRA #10;
+          |CIERRA #38;
+
+          |XCIERRA nHandle;
+          |SI nHay = 0;
+               |MENAV "0000Seleccion Vacia...";
+          |SINO;
+               |HAZ EnviaCorreo;
+               aAlfa = "0000Albaranes exportados:" + nHay;
+               ||MENAV aAlfa;
+          |FINSI;
+     |FINSI;
+     |DELINDEX #1;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |ABRE #0;
+     |LEE 101#0p;
+     |SI FSalida ! 0; |GRABA 020#0b; |FINSI;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |GRABA 020#0a;
+     |FINSI;
+     |CIERRA #0;
+|FPRO;

@@ -1,0 +1,313 @@
+|FICHEROS;
+   dscaz192 #0;
+
+   dscam003 #10;
+   dscam051 #11;
+
+   dscam03@ #100;
+   agif010@ #101;
+   agif071@ #102;
+   agif134@ #103;
+
+   dscaw179 #200;
+|FIN;
+
+|VARIABLES;
+   &eaEntrada = "";
+   &eaSalida  = "";
+
+   aAlfa   = "";
+   aAlfa1  = "";
+   aAlfa2  = "";
+   aAntCli = "";
+
+   nCalc   = 0;
+
+   nSwError = 0;
+   nSwDatos = 0;
+
+   nHandle  = 0;
+
+   aFichero    = "";
+   aDsCorreoIP = "";
+   aDirOrigen  = "";
+   aDirDestino = "";
+   aServidor   = "";
+   aAsunto     = "";
+   aTexto      = "";
+
+   fFechaHoy   = @;
+   fFechaDesde = @;
+|FIN;
+
+|PROCESO EnviaCorreo;
+   |DFICB aAlfa; |QBF aAlfa; aAlfa = aAlfa + (("00000" + #48#0) % -105) + "/";
+   |PATH_DAT #dscam051#aAlfa#;
+   aFichero = aAlfa + "estado.txt";
+
+   |ABRE #dscam051;
+   |LEE 000#dscam051.p;
+   |CIERRA #dscam051;
+
+   aAlfa = #dscam051#81; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#82; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#83; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#84; |QBF aAlfa;
+   |SI aAlfa = "0.0.0.0"; |ACABA; |FINSI;
+
+   aDsCorreoIP = aAlfa;
+   aDirOrigen  = #dscam051#90;
+   aDirDestino = #dscam051#91;
+   aServidor   = #dscam051#88; |QBF aServidor;
+   aAsunto     = " Entregas a cuenta pendientes de saldar ";
+   aTexto      = "$$$$" + aFichero;
+   |SI #dscam051#89 = "S";
+      eaEntrada = #dscam051#92; |HAZ Encriptado;
+      aAlfa = eaSalida;             |QBF aAlfa; aAlfa = aAlfa + ":";
+      aAlfa = aAlfa + #dscam051#86; |QBF aAlfa; aAlfa = aAlfa + ":";
+      aDirOrigen = aAlfa + aDirOrigen;
+   |FINSI;
+
+   |DSCORREO_ENVIA aDsCorreoIP, aServidor, aDirOrigen, aDirDestino, aAsunto, aTexto, aFichero;
+   |SI FSalida < 0;
+      |MENAV "    Problemas al enviar correo";
+   |FINSI;
+|FPRC;
+
+|PROCESO BuscaRecibos;
+   #dscam03@#27 = 0;
+   #dscam03@#0  = #agif134@#49;
+   #dscam03@#1  = #agif134@#0;
+   #dscam03@#2  = 1;
+   #dscam03@#40 = 1;
+   |LEE 000#dscam03@.];
+   |PARA; |SI FSalida = 0; |Y #dscam03@#0  = #agif134@#49; |Y #dscam03@#1  = #agif134@#0; |HACIENDO;
+      |SI #agif134@#49 = #dscam03@#0; |Y #agif134@#0 = #dscam03@#1; |Y #agif134@#1 = #dscam03@#4; |Y #dscam03@#31 ! 0;
+         #dscaw179#0 = #dscam003#32;
+         #dscaw179#4 = #dscam003#40;
+         |LEE 000#dscaw179.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #dscaw179;
+            #dscaw179#0 = #dscam003#32;
+            #dscaw179#1 = #dscam003#5;
+            #dscaw179#2 = #dscam003#6;
+            #dscaw179#3 = #dscam003#69;
+            #dscaw179#4 = #dscam003#40;
+            #dscaw179#5 = #dscam003#30;
+            |GRABA 020#dscaw179.n;
+         |FINSI;
+         #dscaw179#0 = #dscam03@#32;
+         #dscaw179#4 = #dscam03@#40;
+         |LEE 000#dscaw179.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #dscaw179;
+            #dscaw179#0 = #dscam03@#32;
+            #dscaw179#1 = #dscam03@#5;
+            #dscaw179#2 = #dscam03@#6;
+            #dscaw179#3 = #dscam03@#69;
+            #dscaw179#4 = #dscam03@#40;
+            #dscaw179#5 = #dscam03@#30;
+            |GRABA 020#dscaw179.n;
+         |FINSI;
+         nSwDatos = 1;
+      |FINSI;
+      |LEE 000#dscam03@.s;
+   |SIGUE;
+|FPRC;
+
+|PROCESO EntregasACuenta;
+   |SI #dscam003#30 = 0; |ACABA; |FINSI;
+
+   aAlfa = #48#17; |QBF aAlfa;
+   aAlfa = aAlfa + "fich/" + (("00000" + #dscam003#46) % -105) + "/";
+   |PATH_DAT #agif010@#aAlfa#; |PATH_DAT #agif071@#aAlfa#; |PATH_DAT #agif134@#aAlfa#;
+   |ABRE #agif134@; |ABRE #agif010@; |ABRE #agif071@;
+
+   || Busco un recibo pendiente que se refiera a la misma factura
+   nSwError = 1;
+   |SI #dscam003#69 = "P";
+      |SELECT #4#agif071@;
+      #agif071@#31 = #dscam003#0;
+      #agif071@#12 = #dscam003#1;
+      #agif071@#21 = 1;
+      |LEE 000#agif071@.];
+      |PARA; |SI FSalida = 0; |Y #agif071@#31 = #dscam003#0; |Y #agif071@#12 = #dscam003#1; |HACIENDO;
+         #agif010@#52 = #agif071@#29;
+         #agif010@#0  = #agif071@#0;
+         |LEE 000#agif010@.=;
+         |SI FSalida = 0;
+            #agif134@#49 = #agif010@#53;
+            #agif134@#0  = #agif010@#39;
+            |LEE 000#agif134@.=;
+            |SI FSalida = 0;
+               |SELECT #9#dscam03@; |HAZ BuscaRecibos; |SELECT #1#dscam03@;
+            |FINSI;
+         |FINSI;
+         |LEE 000#agif071@.s;
+      |SIGUE;
+      |SELECT #1#agif071@;
+   |FINSI;
+   |SI #dscam003#69 = "A";
+      #agif071@#29 = #dscam003#0;
+      #agif071@#0  = #dscam003#1;
+      #agif071@#1  = 1;
+      |LEE 000#agif071@.];
+      |PARA; |SI FSalida = 0; |Y #agif071@#29 = #dscam003#0; |Y #agif071@#0  = #dscam003#1; |HACIENDO;
+         #agif010@#52 = #agif071@#29;
+         #agif010@#0  = #agif071@#0;
+         |LEE 000#agif010@.=;
+         |SI FSalida = 0;
+            #agif134@#49 = #agif010@#53;
+            #agif134@#0  = #agif010@#39;
+            |LEE 000#agif134@.=;
+            |SI FSalida = 0;
+               |SELECT #9#dscam03@; |HAZ BuscaRecibos; |SELECT #1#dscam03@;
+            |FINSI;
+         |FINSI;
+         |LEE 000#agif071@.s;
+      |SIGUE;
+   |FINSI;
+
+   |CIERRA #agif134@; |CIERRA #agif071@; |CIERRA #agif010@;
+|FPRC;
+/*
+|DEFBUCLE EntregasACuenta;
+#dscam003#6;
+4;
+00, "     ", 000000, 000, "!", 0000000001, fFechaDesde;
+99, "zzzzz", 999999, 999, "z", 9999999999, "31.12.9999";
+;
+NULL, EntregasACuenta;
+|FIN;
+*/
+
+|DEFBUCLE EntregasACuenta;
+     #dscam003#3;
+     69;
+     fFechaDesde,  0000000001, "!";
+     "31.12.9999", 9999999999, "z";
+     ;
+     NULL, EntregasACuenta;
+|FIN;
+
+|PROCESO EscribeDatos;
+   |SI aAntCli ! #dscaw179#0;
+      aAlfa = "     Cliente " + (("000000" + #dscaw179#0) % -106) + " ";
+      aAlfa = aAlfa + #dscaw179#1 + " ";
+      aAlfa = aAlfa + #dscaw179#2; |QBF aAlfa; aAlfa = aAlfa + " ";
+                                                               |XGRABA nHandle, aAlfa;
+      aAlfa = " ";                                             |XGRABA nHandle, aAlfa;
+      aAlfa = "        Tipo Documento   N§ Documento    Importe ";  |XGRABA nHandle, aAlfa;
+      aAlfa = "        -----------------------------------------";  |XGRABA nHandle, aAlfa;
+      aAntCli = #dscaw179#0;
+   |FINSI;
+
+   |SI #dscaw179#3 = "P"; aAlfa = "        Entrega Pedido  "; |FINSI;
+   |SI #dscaw179#3 = "A"; aAlfa = "        Entrega Albaran "; |FINSI;
+   |SI #dscaw179#3 = " "; aAlfa = "        Recibo normal   "; |FINSI;
+
+   aAlfa = aAlfa + "  " + (("          " + #dscaw179#4) % -110) + "  ";
+   aAlfa1 = #dscaw179#5; aAlfa2 = aAlfa1 % -301;
+   |SI aAlfa2 ! ".";
+      aAlfa2 = aAlfa1 % -201
+      |SI aAlfa2 = ".";
+         aAlfa1 = aAlfa1 + "0";
+      |SINO;
+         aAlfa2 = aAlfa1 - ".";
+         |SI FSalida = 0;
+            aAlfa1 = aAlfa1 + ".00";
+         |FINSI;
+      |FINSI;
+   |FINSI;
+   aAlfa = aAlfa + (("          " + aAlfa1) % -110);
+   |XGRABA nHandle, aAlfa;
+|FPRC;
+
+|DEFBUCLE EscribeDatos;
+#dscaw179#1;
+;
+INICIO;
+FINAL;
+;
+NULL, EscribeDatos;
+|FIN;
+
+|PROGRAMA;
+   fFechaHoy = ~;
+   |DFICB aAlfa; |QBF aAlfa; aAlfa = aAlfa + (("00000" + #48#0) % -105) + "/";
+   |PATH_DAT #dscaz192#aAlfa#;
+   |ABRE #dscaz192;
+   |LEE 101#dscaz192.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscaz192;
+      |GRABA 000#dscaz192.b;
+   |FINSI;
+
+   |SI #dscaz192#1 = fFechaHoy;
+      |LIBERA #dscaz192; |CIERRA #dscaz192;
+      |ACABA;
+   |SINO;
+      #dscaz192#1 = fFechaHoy;
+      |GRABA 000#dscaz192.a;
+   |FINSI;
+   |LIBERA #dscaz192; |CIERRA #dscaz192;
+
+   |PINPA #0#0;
+
+   nCalc = fFechaHoy; nCalc = nCalc - 10; fFechaDesde = nCalc;
+
+   aAlfa = #48#17; |QBF aAlfa;
+   aAlfa = aAlfa + "def/agifa010.mas";
+   |CARGA_DEF aAlfa, agif010@;
+   |SI FSalida = 0;
+      aAlfa = #48#17; |QBF aAlfa;
+      aAlfa = aAlfa + "def/agifa071.mas";
+      |CARGA_DEF aAlfa, agif071@;
+      |SI FSalida = 0;
+         aAlfa = #48#17; |QBF aAlfa;
+         aAlfa = aAlfa + "def/agifa134.mas";
+         |CARGA_DEF aAlfa, agif134@;
+         |SI FSalida = 0;
+            |DDEF aAlfa; |QBF aAlfa;
+            aAlfa = aAlfa + "dscam003.mas";
+            |CARGA_DEF aAlfa, dscam03@;
+            |SI FSalida = 0;
+               |DFICB aAlfa; |QBF aAlfa; aAlfa = aAlfa + (("00000" + #48#0) % -105) + "/";
+               |PATH_DAT #dscam03@#aAlfa#; |ABRE #dscam03@;
+               |PATH_DAT #dscam003#aAlfa#;
+               aAlfa = "w79" + Usuario; |NOME_DAT #dscaw179#aAlfa#;
+               |DELINDEX #dscaw179; |ABRE #dscaw179;
+
+               nSwDatos = 0;
+               |BUCLE EntregasACuenta;
+
+               |SI nSwDatos = 1;
+                  fFechaHoy = ~;
+
+                  |DFICB aAlfa; |QBF aAlfa; aAlfa = aAlfa + (("00000" + #48#0) % -105) + "/";
+                  aAlfa = aAlfa + "estado.txt";
+                  |XABRE "W", aAlfa, nHandle;
+                  |SI FSalida = 0;
+                     aAlfa = " **************************************************************************** ";  |XGRABA nHandle, aAlfa;
+                     aAlfa = " ******         INFORME ENTREGAS A CUENTA PENDIENTES DE SALDAR         ****** ";  |XGRABA nHandle, aAlfa;
+                     aAlfa = " **************************************************************************** ";  |XGRABA nHandle, aAlfa;
+                     aAlfa = "";                                                                                |XGRABA nHandle, aAlfa;
+                     aAlfa = "   Fecha : " + fFechaHoy;                                                         |XGRABA nHandle, aAlfa;
+                     aAlfa = "";                                                                                |XGRABA nHandle, aAlfa;
+                     |BUCLE EscribeDatos;
+                     |XCIERRA nHandle;
+
+                     |HAZ EnviaCorreo;
+                  |FINSI;
+               |FINSI;
+               |CIERRA #dscaw179; |DELINDEX #dscaw179;
+
+               |CIERRA #dscam03@; |DESCARGA_DEF #dscam03@;
+            |FINSI;
+            |CIERRA #agif134@; |DESCARGA_DEF #agif134@;
+         |FINSI;
+         |CIERRA #agif071@; |DESCARGA_DEF #agif071@;
+      |FINSI;
+      |CIERRA #agif010@; |DESCARGA_DEF #agif010@;
+   |FINSI;
+|FPRO;

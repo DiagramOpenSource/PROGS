@@ -1,0 +1,216 @@
+|FICHEROS;
+     vipem025 #0;
+
+     vipem007 #7;        ||Contratos
+
+     dscam003@ #300;     ||Recibos Venta (En Cartera)
+     dscam045@ #450;     ||Ctrl.Recibos Gest.LI
+|FIN;
+
+|VARIABLES;
+     nFechaCreacion = 0;
+     nFechaRecibo = 0;
+     nDifDias = 0;
+     fFechaRec = @;
+
+     nExiste = 0;
+     aMensaje = "";
+     aAux = "";
+     aReturn = "";
+     nImpagados = 0;
+     nPendientes = 0;
+     aTarjeta = "";
+     aTexto = "";
+     nHandle = 0;
+     aDestino = "";
+     aAlfa = "";
+     nEmpresa = 0;
+     aPath = "";
+     aLong = "";
+|FIN;
+
+|PROCESO Tipo0C2_m025; |TIPO 0;
+     |SI #vipem025#2 = 1;
+          |C_M #vipem025#5, 1, "S";
+          |PINTA #vipem025#5;
+     |SINO;
+          |C_M #vipem025#5, 1, "N";
+          |PINTA #vipem025#5;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo80; |TIPO 80;
+     FSalida = 3299;
+|FPRC;
+
+|PROCESO Recibos;
+     |SI #dscam003@#14 = "C"; |O #dscam003@#14 = "P";
+          nPendientes = nPendientes + 1;
+          fFechaRec = #dscam003@#3;
+     |SINO;
+          |SI #dscam003@#14 = "I";
+               nImpagados = nImpagados + 1;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Recibos;
+     #dscam003@#11003;
+     ;
+     #vipem007#3, "01.01.0000", "     ";
+     #vipem007#3, "31.12.2999", "zzzzz";
+     ;
+     NULL, Recibos;
+|FIN;
+
+|PROCESO Empresas;
+     |SI #dscam045@#2 = "V";
+          |DBASS aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscarter/fich/";
+          aAlfa = aAlfa + (("00000" + #dscam045@#6) % -105) + "/";
+          |PATH_DAT #dscam003@#aAlfa#;
+          |BUCLE Recibos;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Empresas;
+     #dscam045@#1002;
+     ;
+     nEmpresa, 001;
+     nEmpresa, 999;
+     ;
+     NULL, Empresas;
+|FIN;
+
+|PROCESO vipem007;
+     |SI #vipem025#1 < #vipem007#17;
+
+          nImpagados = 0;
+          nPendientes = 0;
+          nEmpresa = #48#0;
+          |BUCLE Empresas;
+          ||TODO CCC
+
+          |SI nImpagados [ #vipem025#3; |Y nPendientes [ #vipem025#2;
+               aLong = #vipem007#44; |QBF aLong;
+               aLong = aLong % A0;
+               |SI aLong = 11;
+                    aTarjeta = #vipem007#44 % 210;
+               |SINO;
+                    aTarjeta = #vipem007#44 % 110;
+               |FINSI;
+               aAux = aTarjeta;
+               |QBT aAux;
+               |SI aAux = "";
+                    aMensaje = "0000El contrato: " + #vipem007#0 + " no tiene tarjeta, el proceso no se realizara correctamente";
+                    |MENAV aMensaje;
+               |SINO;
+                    |SI nPendientes = 1;
+                         nFechaCreacion = #vipem025#1;
+                         nFechaRecibo = fFechaRec;
+                         nDifDias = nFechaCreacion - nFechaRecibo;
+                         |SI nDifDias < #vipem025#5;
+                              aAux = ("000" + #vipem007#58) % -103;
+                              aTexto = "00" + aTarjeta + "," + aAux + ",";
+                              aAux = ("000" + #vipem007#59) % -103;
+                              aTexto = aTexto + aAux;
+                              aTexto = aTexto + aReturn;
+                              |XGRABA nHandle, aTexto;
+                         |FINSI;
+                    |SINO;
+                         aAux = ("000" + #vipem007#58) % -103;
+                         aTexto = "00" + aTarjeta + "," + aAux + ",";
+                         aAux = ("000" + #vipem007#59) % -103;
+                         aTexto = aTexto + aAux;
+                         aTexto = aTexto + aReturn;
+                         |XGRABA nHandle, aTexto;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE vipem007;
+ #vipem007#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, vipem007;
+|FIN;
+
+|PROCESO Principal;
+     |SI #vipem025#2 = 0; |Y #vipem025#3 = 0;
+          aMensaje = "0000Numeros Maximos Recibos e Impagados Pendientes igual a cero";
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     aDestino = #vipem025#4;
+     |QBF aDestino;
+
+     aAux = aDestino % -101;
+     |SI aAux ! "/"; |Y aAux ! "\";
+          aDestino = aDestino + "/";
+     |FINSI;
+     aDestino = aDestino + "tarjetas.dat";
+
+     |XABRE "WB", aDestino, nHandle;
+     |SI FSalida < 0;
+          aMensaje = "0000Problemas al crear fichero " + aDestino;
+          |MENAV aMensaje;
+          |ACABA;
+     |FINSI;
+
+     |DBASS aPath; |QBF aPath; aPath = aPath + "dscarter/def/";
+     aAlfa = aPath + "dscam045.mas";
+     |CARGA_DEF aAlfa, dscam045@;
+     |SI FSalida = 0;
+          aAlfa = aPath + "dscam003.mas";
+          |CARGA_DEF aAlfa, dscam003@;
+          |SI FSalida = 0;
+               |DBASS aAlfa; |QBF aAlfa; aAlfa = aAlfa + "dscarter/fich/";
+               |PATH_DAT #dscam045@#aAlfa#;
+
+               |BUCLE vipem007;
+
+               |DESCARGA_DEF #dscam003@;
+          |FINSI;
+          |DESCARGA_DEF #dscam045@;
+     |FINSI;
+
+     |XCIERRA nHandle;
+|FPRC;
+
+
+|PROCESO Tipo0C4_m025; |TIPO 0;
+     aAux = #vipem025#4;
+     |QBF aAux;
+     |SI aAux = "";
+          aMensaje = "0000Por favor introduzca el Path Destino de los Datos";
+          |MENAV aMensaje;
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     aReturn = &13 + &10;     ||DOS
+
+     |CLS;
+     |ABRE #0;
+     |DDEFECTO #0;
+     |LEE 101#0p;
+     nExiste = FSalida;
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |SI nExiste = 0;
+               |GRABA 020#0a;
+          |SINO;
+               |GRABA 020#0n;
+          |FINSI;
+          |HAZ Principal;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+|FPRO;

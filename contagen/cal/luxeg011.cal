@@ -1,0 +1,1226 @@
+|FICHEROS;
+     luxeg011 #0;
+     luxeg007 #1;               || Historico
+     luxeg008 #2,MANTE;         || Historico
+     luxeg009 #3,MANTE;         || Historico Kmts
+     luxeg013 #4,MANTE;         || Historico Estancias
+     luxeg003 #5;               || Conceptos
+     luxeg001 #6;               || Tipo IVA
+     luxeg004 #7;               || Empleados
+     luxeg002 #8;               || Cuentas por defecto
+     luxeg016 #9;               || Historico enlaces contables
+     canempre #100;
+
+     caenlace #200;
+     caconasi #201;
+     cajainca #202;
+     cajainli #202;
+     cajasald #203;
+     :/modelos/def/dsmom030 #204;
+     camaniva #206;
+     cacuenta #207;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|VARIABLES;
+
+     imprime = 0;
+     &Numero   = 0;
+     i         = 0;
+     entra     = 0;
+     campo     = 0;
+     alfa      = "";
+     iva       = 0;
+     iva1      = 0;
+     iva2      = 0;
+     iva3      = 0;
+     iva4      = 0;
+     nMaxDig   = 0;
+
+     aAlfa = "";
+     aCuenta   = "";
+     aCuentaDf = "";
+     nSigno   = 0;
+     nEmpresa = 0;
+     nPeriodo = 0;
+     nLinea   = 0;
+     Documento = 0;
+     nNivel   = 0;
+     nCont    = 0;
+     nCalc    = 0;
+     nApunte  = 0;
+     nNumFact = 0;
+     nTipoIVA = 0;
+     nAnyo    = 0;
+     nSw      = 0;
+
+     fFechaCont = @;
+     fFechaHoy  = @;
+     nNumLineaIVA = 0;
+     nNumAcumIVA  = 0;
+     nNumAsiento = 0;
+
+     nParte1 = 0; aParte1 = "";
+     nParte2 = 0; aParte2 = "";
+
+     nSaldoCaja = 0;
+     fFecha     = @;
+|FIN;
+---------------------------------------------------------------------
+|PROCESO total4; |TIPO 0;
+     |C_M #4#7, 0, alfa;
+     |SI alfa = "S";
+          |HAZ LeeIva;
+          #4#5 = (#4#7 / (1 + (iva / 100) ) ) ! EURODB;
+          #4#6 = #4#7 - #4#5;
+     |FINSI;
+|FPRC;
+
+|PROCESO base4; |TIPO 0;
+     |C_M #4#5, 0, alfa;
+     |SI alfa = "S";
+          |HAZ LeeIva;
+          #4#6 = #4#5 - ((#4#5 < iva) ! EURODB);
+          #4#7 = #4#5 + #4#6;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo2_4; |TIPO 2;
+     #2#5 = #2#5 +. #4#5;
+     #2#6 = #2#6 +. #4#6;
+     #2#7 = #2#5 + #2#6;
+|FPRC;
+---------------------------------------------------------------------
+|PROCESO total3; |TIPO 0;
+     |C_M #3#6, 0, alfa;
+     |SI alfa = "S";
+          |HAZ LeeIva;
+          #3#4 = (#3#6 / (1 + (iva / 100) ) ) ! EURODB;
+          #3#5 = #3#6 - #3#4;
+     |FINSI;
+|FPRC;
+
+|PROCESO base3; |TIPO 0;
+     |C_M #3#4, 0, alfa;
+     |SI alfa = "S";
+          |HAZ LeeIva;
+          #3#5 = #3#4 - ((#3#4 < iva) ! EURODB);
+          #3#6 = #3#4 + #3#5;
+     |FINSI;
+|FPRC;
+
+|PROCESO tipo2_3; |TIPO 2;
+     #2#5 = #2#5 +. #3#4;
+     #2#6 = #2#6 +. #3#5;
+     #2#7 = #2#5 + #2#6;
+|FPRC;
+---------------------------------------------------------------------
+|PROCESO BorraEst;
+     |BORRA 040#4a;
+|FPRC;
+
+|DEFBUCLE BorraEst;
+     #4#1;
+     ;
+     #2#0, #2#1, 01;
+     #2#0, #2#1, 99;
+     be;
+     NULL, BorraEst;
+|FIN;
+
+|PROCESO BorraKmt;
+     #2#9 = 0;
+     #2#10 = 0;
+     |BORRA 040#3a;
+|FPRC;
+
+|DEFBUCLE BorraKmt;
+     #3#1;
+     ;
+     #2#0, #2#1, 01;
+     #2#0, #2#1, 99;
+     be;
+     NULL, BorraKmt;
+|FIN;
+---------------------------------------------------------------------
+|PROCESO LeeIva;
+     |SI #2#4 = 0; iva = 0;    |FINSI;
+     |SI #2#4 = 1; iva = iva1; |FINSI;
+     |SI #2#4 = 2; iva = iva2; |FINSI;
+     |SI #2#4 = 3; iva = iva3; |FINSI;
+     |SI #2#4 = 4; iva = iva4; |FINSI;
+|FPRC;
+
+|PROCESO AcumulaCab;
+     #1#7 = #1#9 + #1#10 + #1#11 + #1#12 + #1#13 + #1#14 + #1#15 + #1#21;
+     #1#8 = #1#7 - #1#6;
+
+     #0#7 = #1#7; |PINTA #0#7;
+     #0#8 = #1#8; |PINTA #0#8;
+|FPRC;
+
+|PROCESO tipo2_2; |TIPO 2;
+     entra = (FEntrada / 100) ! 0;
+     |SI #2#4 = 0;
+          #1#9 = #1#9 +. #2#5;
+     |SINO;
+        |SI #2#4 = 4;
+          #1#21 = #1#21 +. #2#5;||Tipo iva 4;
+          #1#22 = #1#22 +. #2#6;
+        |SINO;
+          campo = #2#4 + 9;
+          #1campo = #1campo +. #2#5;
+          campo = campo + 3;
+          #1campo = #1campo +. #2#6;
+        |FINSI;
+     |FINSI;
+     |HAZ AcumulaCab;
+     |SI entra = 3;
+          |BUCLE BorraEst;
+          |BUCLE BorraKmt;
+     |FINSI;
+|FPRC;
+
+|PROCESO total2; |TIPO 0;
+     |C_M #2#7, 0, alfa;
+     |SI alfa = "S";
+          |HAZ LeeIva;
+          #2#5 = (#2#7 / (1 + (iva / 100) ) ) ! EURODB;
+          #2#6 = #2#7 - #2#5;
+     |FINSI;
+|FPRC;
+
+|PROCESO base2; |TIPO 0;
+     |C_M #2#5, 0, alfa;
+     |SI alfa = "S";
+          |HAZ LeeIva;
+          #2#6 = #2#5 - ((#2#5 < iva) ! EURODB);
+          #2#7 = #2#5 + #2#6;
+     |FINSI;
+|FPRC;
+
+|PROCESO inf4;
+     #4#0 = #2#0;
+     #4#1 = #2#1;
+     #4#2 = 1;
+|FPRC;
+
+|PROCESO sup4;
+     #4#0 = #2#0;
+     #4#1 = #2#1;
+     #4#2 = 99;
+|FPRC;
+
+|PROCESO inf3;
+     #3#0 = #2#0;
+     #3#1 = #2#1;
+     #3#2 = 1;
+|FPRC;
+
+|PROCESO sup3;
+     #3#0 = #2#0;
+     #3#1 = #2#1;
+     #3#2 = 99;
+|FPRC;
+
+|PROCESO tipcar; |TIPO 0;
+     |SI #2Campo ! Contenido;
+          |BUCLE BorraEst;
+          |BUCLE BorraKmt;
+     |FINSI;
+
+     |ABRE #5;
+     #5#0 = #2#2;
+     |LEE 000#5=;
+     |CIERRA #5;
+
+     |ABRE #luxeg004;
+     #luxeg004#0 = #luxeg011#4;
+     |LEE 000#luxeg004.=;
+     |SI FSalida ! 0; |DDEFECTO #luxeg004; |FINSI;
+     |CIERRA #luxeg004;
+
+     #2#8 = #5#3;        || Tipo Concepto
+
+     |SI #5#4 = "B";
+          |C_M #2#5, 1, "S"; |C_M #3#4, 1, "S"; |C_M #4#5, 1, "S";
+          |C_M #2#7, 1, "N"; |C_M #3#6, 1, "N"; |C_M #4#7, 1, "N";
+     |SINO;
+          |C_M #2#5, 1, "N"; |C_M #3#4, 1, "N"; |C_M #4#5, 1, "N";
+          |C_M #2#7, 1, "S"; |C_M #3#6, 1, "S"; |C_M #4#7, 1, "S";
+     |FINSI;
+
+     |SI #2#8 = "K";
+          |SI #luxeg008#11 = "            "; #luxeg008#11 = #luxeg004#9; |FINSI;
+          |PUSHV 0501 2380;
+          |PINPA #0#3;
+          |PTEC 806; |ENTLINEAL #1#3, 3, 4, 22, 0, inf3, sup3;
+
+          |C_M #2#9, 1, "S"; |C_V #2#9, 1, "S";
+          |C_M #2#10,1, "S"; |C_V #2#10,1, "S";
+          |PINTA #2#9; |PINTA #2#10;
+          |ENCAMPO #9#2;
+          |ENCAMPO #10#2;
+          |ENTLINEAL #1#3, 3, 2, 22, 0, inf3, sup3;
+          |C_M #2#9, 1, "N"; |C_V #2#9, 1, "N";
+          |C_M #2#10,1, "N"; |C_V #2#10,1, "N";
+          |POPV;
+          |PTEC 806;
+     |FINSI;
+
+     |SI #2#8 = "E";
+          |SI #luxeg008#11 = "            "; #luxeg008#11 = #luxeg004#10; |FINSI;
+          |PUSHV 0501 2380;
+          |PINPA #0#4;
+          |ENTLINEAL #1#4, 3, 2, 22, 0, inf4, sup4;
+          |POPV;
+          |PTEC 806;
+     |FINSI;
+
+     |SI #2#8 = "V";
+          |SI #luxeg008#11 = "            "; #luxeg008#11 = #luxeg004#11; |FINSI;
+     |FINSI;
+
+     |PINTA #luxeg008#11;
+|FPRC;
+
+|PROCESO inf2g008;
+     #2#0 = #0#0;
+     #2#1 = 1;
+|FPRC;
+
+|PROCESO sup2g008;
+     #2#0 = #0#0;
+     #2#1 = 999;
+|FPRC;
+
+|PROCESO LeeDocum;
+   |ABRE #caconasi;
+   |DDEFECTO #caconasi;
+   |LEE 101#caconasi.p;
+   |SI FSalida = 0;
+      #cajainca#4 = #caconasi#1 + 1;
+   |FINSI;
+   |LIBERA #caconasi;
+   |CIERRA #caconasi;
+|FPRC;
+
+|PROCESO ApunteCaja;
+   |ABRE #cajasald;
+   |LEE 000#cajasald.p;
+   |SI FSalida ! 0; |DDEFECTO #cajasald; |FINSI;
+   |CIERRA #cajasald;
+
+   |ABRE #luxeg004;
+   #luxeg004#0 = #luxeg011#4;
+   |LEE 000#luxeg004.=;
+   |SI FSalida ! 0; |DDEFECTO #luxeg004; |FINSI;
+   |CIERRA #luxeg004;
+
+   |ABRE #cajainca; |ABRE #cajainli; |ABRE #dsmom030;
+
+   #cajainca#1 = #luxeg011#2;
+   |LEE 101#cajainca.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #cajainca;
+      #cajainca#0 = #luxeg002#2;
+      #cajainca#1 = #luxeg011#2;
+      |HAZ LeeDocum;
+      |GRABA 020#cajainca.b;
+   |FINSI;
+
+   nApunte = 1;
+   #cajainli#1 = #cajainca#1;
+   #cajainli#3 = 1;
+   |LEE 000#cajainli.];
+   |PARA; |SI FSalida = 0; |Y #cajainli#1 = #cajainca#1; |HACIENDO;
+      nApunte = #cajainli#3 + 1;
+      |LEE 000#cajainli.s;
+   |SIGUE;
+
+   |DDEFECTO #cajainli;
+   #cajainli#0 = #cajainca#0;
+   #cajainli#1 = #cajainca#1;
+   #cajainli#2 = #cajainca#4;
+   #cajainli#3 = nApunte;
+   #cajainli#4 = #luxeg004#8;
+   eaCuenta = #cajainli#4; |HAZ SacaNivel;
+   #cajainli#5 = enNivel;
+   |SI #luxeg011#6 > #luxeg011#7;
+      #cajainli#6 = #cajasald#4;
+      #cajainli#8 = "C";
+      nSigno = -1;
+   |SINO;
+      #cajainli#6 = #cajasald#5;
+      #cajainli#8 = "P";
+      nSigno = 1;
+   |FINSI;
+
+   #dsmom030#0 = #cajainli#6;
+   |LEE 000#dsmom030.=;
+   |SI FSalida ! 0; |DDEFECTO #dsmom030; |FINSI;
+   aAlfa = #dsmom030#1; |QBF aAlfa;
+   aAlfa = aAlfa + "Liquidac.parte n§ " + (("000000" + #luxeg011#0) % -106);
+   #cajainli#7 = aAlfa;
+
+   #cajainli#9 = (#luxeg011#7 - #luxeg011#6) * nSigno;
+   #cajainli#13 = #cajainli#8;
+   |GRABA 020#cajainli.n;
+
+   |SI #cajainli#8 = "P";
+      #cajainca#2 = #cajainca#2 + #luxeg011#8;
+   |SINO;
+      nCalc = #luxeg011#8 * nSigno;
+      #cajainca#3 = #cajainca#3 + nCalc;
+   |FINSI;
+   #cajainli#12 = #cajasald#6;
+   #cajainli#18 = #cajasald#8;
+   |GRABA 020#cajainca.a; |LIBERA #cajainca;
+
+   |CIERRA #cajainca; |CIERRA #cajainli; |CIERRA #dsmom030;
+
+   |ABRE #luxeg007;
+   #luxeg007#0 = #0#0;
+   |LEE 101#luxeg007.=;
+   |SI FSalida = 0;
+      #luxeg007#20 = "S";
+      #luxeg007#25 = nApunte;
+      #luxeg007#26 = #luxeg011#9;
+      |GRABA 020#luxeg007.a; |LIBERA #luxeg007;
+   |FINSI;
+   |CIERRA #luxeg007;
+|FPRC;
+
+|PROCESO PideCuenta;
+   |ABRE #cacuenta;
+   |PUSHV 0501 2380;
+   |BLANCO 1919 2261;
+   |CUADRO 2020 2260;
+   |ATRI R; |PINTA 2021, " Indique la cuenta del parte           "; |ATRI N;
+   |ATRI I; |PINTA 2121, " Cuenta contable "; |ATRI N;
+   |ABRE #luxeg002;
+   |LEE 000#luxeg002.p;
+   |SI FSalida ! 0; |DDEFECTO #luxeg002; |FINSI;
+   |CIERRA #luxeg002;
+   aAlfa = #luxeg002#16;
+   aCuentaDf = aAlfa;
+|ET PintaOtra;
+   E_sup = 12; E_inf = "";
+   aAlfa=2138 ? 1;
+   |SI FSalida = 10;
+      #cacuenta#0 = aAlfa;
+      |LEE 000#cacuenta.];
+      |CONSULTA_CLAVE #1#cacuenta;
+      aAlfa = #cacuenta#0;
+      |VETE PintaOtra;
+   |FINSI;
+   |QBF aAlfa;
+
+   nMaxDig = 0;
+   |SI #48#14 ] nMaxDig; nMaxDig = #48#14; |FINSI;
+   |SI #48#15 ] nMaxDig; nMaxDig = #48#15; |FINSI;
+   |SI #48#16 ] nMaxDig; nMaxDig = #48#16; |FINSI;
+   |SI #48#17 ] nMaxDig; nMaxDig = #48#17; |FINSI;
+   |SI #48#18 ] nMaxDig; nMaxDig = #48#18; |FINSI;
+   |SI #48#19 ] nMaxDig; nMaxDig = #48#19; |FINSI;
+
+   aAlfa = aAlfa - ".";
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      nParte1 = ((FSalida / 100) ! 0) + 99; aParte1 = aAlfa % nParte1;
+      nParte2 = FSalida + 98;               aParte2 = aAlfa % nParte2;
+      aAlfa = aParte1 % 0; nCalc = aAlfa;
+      aAlfa = aParte2 % 0; nCalc = nCalc + aAlfa;
+      nCalc = nMaxDig - nCalc;
+      aAlfa = aParte1 + ("0" * nCalc) + aParte2;
+      aAlfa = aAlfa - ".";
+   |SIGUE;
+
+   #cacuenta#0 = aAlfa; aAlfa = #cacuenta#0;
+   |LEE 000#cacuenta.=;
+   |SI FSalida = 0;
+      |SI #cacuenta#3 ! "S";
+         |MENAV "    Cuenta sin pase directo";
+         |VETE PintaOtra;
+      |FINSI;
+   |FINSI;
+   |POPV;
+   |CIERRA #cacuenta;
+   aCuenta = aAlfa;
+|FPRC;
+
+|PROCESO CalcCaja;
+   nSaldoCaja = nSaldoCaja + (#cajainca#3 - #cajainca#2);
+   nSaldoCaja = nSaldoCaja ! 2;
+|FPRC;
+
+|DEFBUCLE CalcCaja;
+#cajainca#1;
+;
+"01.01.0000";
+fFecha;
+;
+NULL, CalcCaja;
+|FIN;
+
+|PROCESO tipo3; |TIPO 3;
+     |ABRE #1;
+     #1#0 = #0#0;
+     |LEE 121#1=;
+     |SI FSalida = 0;
+          |ENTLINEAL #1#2, 2, 2, 21, 0, inf2g008, sup2g008;
+     |FINSI;
+
+     |HAZ PideCuenta; #luxeg011#9 = aCuenta;
+
+     ||-----------------Si existe alguna linea liquida el parte
+     |ABRE #2;
+     |DDEFECTO #2;
+     #2#0 = #0#0;
+     |LEE 000#2];
+     imprime = 0;
+     |SI FSalida = 0; |Y #2#0 = #0#0;
+          #1#2 = #0#2;
+          imprime = 1;
+     |SINO;
+          #1#2 = "01.01.0000";
+     |FINSI;
+     |CIERRA #2;
+     #1#16 = iva1;
+     #1#17 = iva2;
+     #1#18 = iva3;
+     #1#23 = iva4;
+     #1#26 = #luxeg011#9;
+     |GRABA 021#1a; |LIBERA #1;
+     |CIERRA #1;
+
+     nSaldoCaja = 0; fFecha = #cajainca#1;
+     |ABRE #cajasald;
+     |LEE 000#cajasald.p;
+     |SI FSalida ! 0; |DDEFECTO #cajasald; |FINSI;
+     |CIERRA #cajasald;
+     nSaldoCaja = #cajasald#1;
+     |SALVA_FICHA #cajainca;
+     |BUCLE CalcCaja;
+     |REPON_FICHA #cajainca;
+
+     nCalc = #luxeg011#7 - #luxeg011#6;
+     |SI imprime = 1; |Y nSaldoCaja < nCalc;
+        |MENAV "    Caja sin saldo suficiente";
+        imprime = 0;
+     |FINSI;
+
+     |SI imprime = 1;
+        |CONFI "2400SImprimir S/N.: ";
+        |SI FSalida = 0;
+           Numero = #0#0;
+           |SUB_EJECUTA "luxeg015";
+        |FINSI;
+
+        |ABRE #luxeg002;
+        |LEE 000#luxeg002.p;
+        |SI FSalida ! 0; |DDEFECTO #luxeg002; |FINSI;
+        |CIERRA #luxeg002;
+
+        nCalc = #luxeg011#7 - #luxeg011#6;
+        |SI nCalc ! 0;
+          |SI aCuenta = aCuentaDf;
+            |SI #luxeg011#2 < fFechaHoy;
+               |ABRE #cajainca;
+               #cajainca#1 = #luxeg011#2;
+               |LEE 000#cajainca.=;
+               |SI FSalida ! 0;
+                  aAlfa = "    NCaja diaria cerrada, " + &191 + " quiere realizar el asiento directo ?";
+                  |CONFI aAlfa;
+                  |SI FSalida = 0;
+                     aCuenta = #luxeg002#1; |HAZ ContabDirecta;
+                  |FINSI;
+               |SINO;
+                  |CIERRA #cajainca;
+                  |HAZ ApunteCaja;
+               |FINSI;
+            |SINO;
+               |HAZ ApunteCaja;
+            |FINSI;
+
+            aAlfa = "2400S" + &191 + " Contabilizar factura gasto (S/N) ?";
+            |CONFI aAlfa;
+            |SI FSalida = 0;
+               nNumAsiento = 1;
+               |HAZ Contabiliza;
+            |FINSI;
+          |SINO;
+             aAlfa = "2400S" + &191 + " Contabilizar factura gasto (S/N) ?";
+             |CONFI aAlfa;
+             |SI FSalida = 0;
+                nNumAsiento = 1;
+                |HAZ Contabiliza;
+             |FINSI;
+
+             aAlfa = "    NCuenta de caja distinta, " + &191 + " quiere realizar el asiento directo ?";
+             |CONFI aAlfa;
+             |SI FSalida = 0;
+                nNumAsiento = 2;
+                |HAZ ContabDirecta;
+             |FINSI;
+          |FINSI;
+        |FINSI;
+     |FINSI;
+|FPRC;
+---------------------------------------------------------------------
+|PROCESO LeeIvas;
+     |ABRE #6;
+
+     #6#0 = 1;
+     |LEE 000#6=;
+     |SI FSalida ! 0; |DDEFECTO #6; |FINSI;
+     iva1 = #6#2;
+
+     #6#0 = 2;
+     |LEE 000#6=;
+     |SI FSalida ! 0; |DDEFECTO #6; |FINSI;
+     iva2 = #6#2;
+
+     #6#0 = 3;
+     |LEE 000#6=;
+     |SI FSalida ! 0; |DDEFECTO #6; |FINSI;
+     iva3 = #6#2;
+
+     #6#0 = 4;
+     |LEE 000#6=;
+     |SI FSalida ! 0; |DDEFECTO #6; |FINSI;
+     iva4 = #6#2;
+
+     |CIERRA #6;
+
+     #1#16 = iva1;
+     #1#17 = iva2;
+     #1#18 = iva3;
+     #1#23 = iva4;
+|FPRC;
+
+|PROCESO ModifLiqu;
+   |PTEC 806; |ENTLINEAL #1#2, 2, 4, 21, 0, inf2g008, sup2g008;
+   iva1 = #1#16;
+   iva2 = #1#17;
+   iva3 = #1#18;
+   iva4 = #1#23;
+
+   aAlfa = "pu" + Usuario; |NOME_DAT #caenlace#aAlfa#;
+   |DELINDEX #caenlace; |ABRE #caenlace;
+   nSw = 0;
+   |ABRE #luxeg016;
+   #luxeg016#0 = #luxeg011#0;
+   #luxeg016#5 = 0;
+   #luxeg016#1 = 1;
+   |LEE 000#luxeg016.];
+   |PARA; |SI FSalida = 0; |Y #luxeg016#0 = #luxeg011#0; |HACIENDO;
+      nSw = 1;
+      |DDEFECTO #caenlace;
+      #caenlace#0 = #luxeg016#2;
+      #caenlace#1 = #luxeg016#3;
+      #caenlace#2 = #luxeg016#4;
+      #caenlace#3 = 0;
+      #caenlace#25 = "S";
+      #caenlace#37 = #48#2;
+      #caenlace#38 = #48#3;
+      |GRABA 020#caenlace.n;
+      |BORRA 020#luxeg016.a;
+      |LEE 000#luxeg016.s;
+   |SIGUE;
+   |CIERRA #caenlace;
+   |SI nSw = 1;
+      |DFICE aAlfa; |QBF aAlfa;
+      aAlfa = "dsapunte.tab;" + aAlfa + ",pu" + Usuario;
+      |SUB_EJECUTA aAlfa;
+   |FINSI;
+   |CIERRA #luxeg016;
+|FPRC;
+
+|PROCESO ContabDirecta;
+   |SI #0#8 = 0; |ACABA; |FINSI;
+
+   aAlfa = "pu" + Usuario; |NOME_DAT #caenlace#aAlfa#; |DELINDEX #caenlace;
+   |ABRE #caenlace;
+
+   |ABRE #luxeg016; |ABRE #luxeg004;
+   |ABRE #luxeg003; |ABRE #luxeg001;
+
+   #luxeg004#0 = #luxeg011#4;
+   |LEE 000#luxeg004.=;
+   |SI FSalida ! 0; |DDEFECTO #luxeg004; |FINSI;
+
+   |ABRE #cajasald;
+   |LEE 000#cajasald.p;
+   |SI FSalida ! 0; |DDEFECTO #cajasald; |FINSI;
+   |CIERRA #cajasald;
+
+   #luxeg016#0 = #luxeg011#0;
+   #luxeg016#5 = nNumAsiento;
+   #luxeg016#1 = 1;
+   |LEE 101#luxeg016.=;
+   |SI FSalida ! 0;
+      fFechaCont = #luxeg011#2;
+      |ABRE #caconasi;
+      |LEE 101#caconasi.p;
+      |SI FSalida ! 0;
+         |DDEFECTO #caconasi;
+         |GRABA 020#caconasi.b;
+      |FINSI;
+      #caconasi#1 = #caconasi#1 + 1;
+      Documento = #caconasi#1;
+      |GRABA 020#caconasi.a;
+      |LIBERA #caconasi; |CIERRA #caconasi;
+
+      |DDEFECTO #luxeg016;
+      #luxeg016#0 = #luxeg011#0;
+      #luxeg016#1 = 1;
+      #luxeg016#2 = #luxeg002#2;
+      #luxeg016#3 = fFechaCont;
+      #luxeg016#4 = Documento;
+      #luxeg016#5 = nNumAsiento;
+      |GRABA 020#luxeg016.c;
+   |SINO;
+      fFechaCont = #luxeg016#3;
+      Documento  = #luxeg016#4;
+   |FINSI;
+
+   nLinea = 1;
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = nLinea; nLinea = nLinea + 10;
+   #caenlace#4 = aCuenta;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#3;
+   aAlfa = #luxeg002#4; |QBF aAlfa;
+   |SI aAlfa = "";
+      #caenlace#7 = "Factura liquidacion";
+   |SINO;
+      #caenlace#7 = #luxeg002#4;
+   |FINSI;
+   aAlfa = #caenlace#7; |QBF aAlfa;
+   aAlfa = aAlfa + " parte n§ " + #luxeg011#0;
+   #caenlace#7 = aAlfa;
+   #caenlace#9   = #luxeg011#8;
+   |SI #luxeg011#8 < 0;
+      #caenlace#8   = "D";
+      #caenlace#9   = -#caenlace#9;
+   |SINO;
+      #caenlace#8   = "H";
+   |FINSI;
+
+   #caenlace#15  = #cajasald#6;
+   #caenlace#37  = #48#2;
+   #caenlace#38  = #48#3;
+   |GRABA 020#caenlace.n;
+
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = nLinea; nLinea = nLinea + 10;
+||   #caenlace#4 = aCuenta;
+   #caenlace#4 = #luxeg004#8;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#7;
+   aAlfa = #luxeg002#8; |QBF aAlfa;
+   |SI aAlfa = "";
+      #caenlace#7 = "Pago ";
+   |SINO;
+      #caenlace#7 = #luxeg002#8;
+   |FINSI;
+   aAlfa = #caenlace#7; |QBF aAlfa;
+   aAlfa = aAlfa + " parte n§ " + #luxeg011#0;
+   #caenlace#7 = aAlfa;
+   #caenlace#9   = #luxeg011#8;
+   |SI #luxeg011#8 < 0;
+      #caenlace#8   = "H";
+      #caenlace#9   = -#caenlace#9;
+   |SINO;
+      #caenlace#8   = "D";
+   |FINSI;
+   #caenlace#15  = #cajasald#6;
+   #caenlace#37  = #48#2;
+   #caenlace#38  = #48#3;
+   |GRABA 020#caenlace.n;
+
+   |CIERRA #caenlace;
+
+   |DFICE aAlfa; |QBF aAlfa;
+   aAlfa = "dsapunte.tab;" + aAlfa + ",pu" + Usuario;
+   |SUB_EJECUTA aAlfa;
+
+   |CIERRA #luxeg001; |CIERRA #luxeg003;
+   |CIERRA #luxeg016; |CIERRA #luxeg004;
+
+   |ABRE #luxeg007;
+   #luxeg007#0 = #0#0;
+   |LEE 101#luxeg007.=;
+   |SI FSalida = 0;
+      #luxeg007#20 = "S";
+      #luxeg007#26 = #luxeg011#9;
+      |GRABA 020#luxeg007.a; |LIBERA #luxeg007;
+   |FINSI;
+   |CIERRA #luxeg007;
+|FPRC;
+
+|PROCESO QuitaFactura;
+   aAlfa = "pu" + Usuario; |NOME_DAT #caenlace#aAlfa#;
+   |DELINDEX #caenlace; |ABRE #caenlace;
+   nSw = 0;
+   |ABRE #luxeg016;
+   #luxeg016#0 = #luxeg011#0;
+   #luxeg016#5 = 0;
+   #luxeg016#1 = 1;
+   |LEE 000#luxeg016.];
+   |PARA; |SI FSalida = 0; |Y #luxeg016#0 = #luxeg011#0; |HACIENDO;
+      nSw = 1;
+      |DDEFECTO #caenlace;
+      #caenlace#0 = #luxeg016#2;
+      #caenlace#1 = #luxeg016#3;
+      #caenlace#2 = #luxeg016#4;
+      #caenlace#3 = 0;
+      #caenlace#25 = "S";
+      #caenlace#37 = #48#2;
+      #caenlace#38 = #48#3;
+      |GRABA 020#caenlace.n;
+      |BORRA 020#luxeg016.a;
+      |LEE 000#luxeg016.s;
+   |SIGUE;
+   |CIERRA #caenlace;
+   |SI nSw = 1;
+      |DFICE aAlfa; |QBF aAlfa;
+      aAlfa = "dsapunte.tab;" + aAlfa + ",pu" + Usuario;
+      |SUB_EJECUTA aAlfa;
+   |FINSI;
+   |CIERRA #luxeg016;
+|FPRC;
+
+|PROCESO QuitaApunteCaja;
+   |ABRE #luxeg007;
+   #luxeg007#0 = #0#0;
+   |LEE 101#luxeg007.=;
+   |SI FSalida = 0;
+      |SI #luxeg007#25 ! 0;
+         #cajainca#1 = #luxeg011#2;
+         |LEE 101#cajainca.=;
+         |SI FSalida = 0;
+            #cajainli#1 = #luxeg011#2;
+            #cajainli#3 = #luxeg007#25;
+            |LEE 101#cajainli.=;
+            |SI FSalida = 0;
+               |SI #cajainli#8 = "P";
+                  #cajainca#2 = #cajainca#2 + #luxeg011#8;
+               |SINO;
+                  #cajainca#3 = #cajainca#3 + #luxeg011#8;
+               |FINSI;
+               |GRABA 020#cajainca.a;
+
+               |BORRA 020#cajainli.a; |LIBERA #cajainli;
+
+               #luxeg007#20 = "N";
+               #luxeg007#25 = 0;
+               #luxeg007#26 = "";
+               |GRABA 020#luxeg007.a;
+            |FINSI;
+            |LIBERA #cajainca;
+         |FINSI;
+      |FINSI;
+      |LIBERA #luxeg007;
+   |FINSI;
+|FPRC;
+
+|PROCESO rellena; TIPO 0;
+     |SI FSalida = 1;
+          |ERROR; |PTEC 807; |ACABA;
+     |FINSI;
+
+     |ABRE #1;
+     #1#0 = #0#0;
+     |LEE 000#1=;
+     |SI FSalida = 0;
+       |PARA i = 0; |SI i [ 8; |HACIENDO i = i + 1;
+          #0i = #1i;
+       |SIGUE;
+       |PINDA #0#0;
+
+       |SI #1#2 ! "01.01.0000"; || Estamos modificando ....
+          |ABRE #cajainca;
+          #cajainca#1 = #luxeg011#2;
+          |LEE 101#cajainca.=;
+          |SI FSalida ! 0;
+             |SI #luxeg011#2 < fFechaHoy;
+                aAlfa = "    Operacion contabilizada, no se puede modificar, realice otra hoja para realizar las correcciones.";
+                |MENAV aAlfa; |ERROR;
+             |SINO;
+                || Se permitir  la modificacion, pero hay que eliminar la
+                ||    factura ya que al final la volver  a contabilizar
+                |HAZ QuitaFactura;
+             |FINSI;
+          |SINO;
+             |ABRE #cajainli;
+             |HAZ QuitaApunteCaja;
+             |CIERRA #cajainli;
+             |HAZ QuitaFactura;
+          |FINSI;
+          |CIERRA #cajainca;
+       |SINO;
+          |HAZ LeeIvas;
+          #0#2 = ~;
+       |FINSI;
+     |SINO;
+       |MENAV "0000Parte inexistente...";
+       |ERROR;
+     |FINSI;
+     |CIERRA #1;
+|FPRC;
+
+|PROCESO PintaEmpresa; |TIPO 7;
+   nEmpresa = #48#2; nPeriodo = #48#3;
+
+   |DFICB aAlfa; |QBF aAlfa;
+   |PATH_DAT #canempre#aAlfa#;
+   |ABRE #canempre;
+   #canempre#2 = nEmpresa;
+   #canempre#3 = nPeriodo;
+   |LEE 000#canempre.=;
+   |SI FSalida ! 0; |DDEFECTO #canempre; |FINSI;
+   |CIERRA #canempre;
+
+   |PINTA 0931, #canempre#1;
+   |PINTA 1016, #canempre#5;
+|FPRC;
+
+|PROCESO MiraNivel;
+   nNivel = 0;
+   aAlfa = #caenlace#4; |QBF aAlfa;
+   aAlfa = aAlfa % 0; nCalc = aAlfa;
+
+   |PARA nCont = 14; |SI nCont [ 19; |HACIENDO nCont = nCont + 1;
+      |SI #48nCont = nCalc; nNivel = nCont - 13; |SAL; |FINSI;
+   |SIGUE;
+|FPRC;
+
+|PROCESO ApuntesLineas;
+   || Cada linea lo que hace es una base del registro de iva soportado
+
+   #luxeg001#0 = #luxeg008#4;
+   |LEE 000#luxeg001.=;
+   |SI FSalida ! 0; |DDEFECTO #luxeg001; |FINSI;
+
+   #luxeg003#0 = #luxeg008#2;
+   |LEE 000#luxeg003.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #luxeg003;
+      #luxeg003#3 = " ";
+   |FINSI;
+
+   nTipoIVA = #luxeg001#2;
+   aAlfa = #luxeg011#1; |QBF aAlfa; aAlfa = aAlfa % -104;
+   nAnyo = aAlfa;
+
+   aTipoIVA    = "S";
+   enEjercicio = nAnyo;
+   efFechaIVA  = #luxeg011#2;
+   enLineaIVA  = 0;
+   enPorcIVA   = nTipoIVA; enPorcREC = 0;
+   |HAZ BuscaTipoIVA;
+   |SI enLineaIVA < 0; enLineaIVA = 0; |FINSI;
+
+   nNumLineaIVA = 0;
+   || Creo la parte del asiento de la factura de soportado .....
+   |DDEFECTO #caenlace;
+   #caenlace#0  = #luxeg002#2;
+   #caenlace#1  = fFechaCont;
+   #caenlace#2  = Documento;
+   #caenlace#3  = 1;
+   #caenlace#37 = #48#2;
+   #caenlace#38 = #48#3;
+   |LEE 000#caenlace.];
+   |PARA; |SI FSalida = 0; |Y #caenlace#0 = #luxeg002#2; |Y #caenlace#1 = fFechaCont;
+    |Y #caenlace#2 = Documento; |Y #caenlace#37  = #48#2; |Y #caenlace#38  = #48#3; |HACIENDO;
+      |SI #caenlace#26 = "I";
+         |SI eaCtaIVA = #caenlace#4;
+            nNumLineaIVA = #caenlace#3;
+         |FINSI;
+      |FINSI;
+      |LEE 000#caenlace.s;
+   |SIGUE;
+
+   |SI nNumLineaIVA = 0;
+      |DDEFECTO #caenlace;
+      #caenlace#0 = #luxeg002#2;
+      #caenlace#1 = fFechaCont;
+      #caenlace#2 = Documento;
+      #caenlace#3 = nLinea; nLinea = nLinea + 10;
+      #caenlace#4 = eaCtaIVA;
+      |HAZ MiraNivel;
+      #caenlace#5 = nNivel;
+      #caenlace#6 = #luxeg002#5;
+      aAlfa = #luxeg002#6; |QBF aAlfa;
+      |SI aAlfa = "";
+         #caenlace#7 = "Factura liquidacion";
+      |SINO;
+         #caenlace#7 = #luxeg002#6;
+      |FINSI;
+      aAlfa = #caenlace#7; |QBF aAlfa;
+      aAlfa = aAlfa + " parte n§ " + #luxeg011#0;
+      #caenlace#7 = aAlfa;
+      #caenlace#8   = "D";
+      #caenlace#10  = "S";
+      #caenlace#11  = #luxeg002#13;
+      #caenlace#12  = #luxeg002#14;
+      #caenlace#13  = nNumFact;
+      #caenlace#15  = #cajasald#6;
+      #caenlace#26  = "I";
+      #caenlace#27  = 0;
+      #caenlace#29  = #luxeg011#2;
+      #caenlace#37  = #48#2;
+      #caenlace#38  = #48#3;
+      |GRABA 020#caenlace.c;
+   |SINO;
+      #caenlace#0 = #luxeg002#2;
+      #caenlace#1 = fFechaCont;
+      #caenlace#2 = Documento;
+      #caenlace#3 = nNumLineaIVA;
+      |LEE 000#caenlace.=;
+   |FINSI;
+   #caenlace#9 = #caenlace#9 + (#luxeg008#6 ! 2);
+   |GRABA 020#caenlace.a;
+
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = nLinea; nLinea = nLinea + 10;
+   #caenlace#4 = #luxeg008#11;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#11;
+   aAlfa = #luxeg002#12; |QBF aAlfa;
+   |SI aAlfa = "";
+      #caenlace#7 = #luxeg008#3;
+   |SINO;
+      #caenlace#7 = #luxeg002#12;
+   |FINSI;
+   aAlfa = #caenlace#7; |QBF aAlfa;
+   aAlfa = aAlfa + " parte n§ " + #luxeg011#0;
+   #caenlace#7 = aAlfa;
+   #caenlace#8   = "D";
+   #caenlace#9   = #luxeg008#5;
+   #caenlace#10  = "S";
+   #caenlace#11  = #luxeg002#13;
+   #caenlace#12  = #luxeg002#14;
+   #caenlace#13  = nNumFact;
+   #caenlace#15  = #cajasald#6;
+   #caenlace#26  = "B";
+   #caenlace#27  = nNumAcumIVA; nNumAcumIVA = nNumAcumIVA + 1;
+   #caenlace#28  = nTipoIVA;
+   #caenlace#29  = #luxeg011#2;
+   #caenlace#37  = #48#2;
+   #caenlace#38  = #48#3;
+   |GRABA 020#caenlace.n;
+|FPRC;
+
+|DEFBUCLE ApuntesLineas;
+#luxeg008#1;
+;
+#luxeg011#0, 001;
+#luxeg011#0, 999;
+;
+NULL, ApuntesLineas;
+|FIN;
+
+|PROCESO Contabiliza;
+
+   aAlfa = "pu" + Usuario; |NOME_DAT #caenlace#aAlfa#; |DELINDEX #caenlace;
+   |ABRE #caenlace;
+
+   |ABRE #luxeg016; |ABRE #luxeg004;
+   |ABRE #luxeg003; |ABRE #luxeg001;
+
+   #luxeg004#0 = #luxeg011#4;
+   |LEE 000#luxeg004.=;
+   |SI FSalida ! 0; |DDEFECTO #luxeg004; |FINSI;
+
+   |ABRE #cajasald;
+   |LEE 000#cajasald.p;
+   |SI FSalida ! 0; |DDEFECTO #cajasald; |FINSI;
+   |CIERRA #cajasald;
+
+   nNumFact = 1;
+   |ABRE #camaniva; |SELECT #3#camaniva;
+   #camaniva#0 = #luxeg002#13;
+   #camaniva#2 = #luxeg002#14;
+   #camaniva#3 = 1;
+   |LEE 000#camaniva.];
+   |PARA; |SI FSalida = 0; |Y #camaniva#0 = #luxeg002#13; |Y #camaniva#2 = #luxeg002#14; |HACIENDO;
+      nNumFact = #camaniva#3 + 1;
+      |LEE 000#camaniva.s;
+   |SIGUE;
+   |SELECT #1#camaniva; |CIERRA #camaniva;
+
+   || Creacion del fichero puente con las facturas por cada linea
+   || Lo primero es crear el historico de enlaces ...
+   #luxeg016#0 = #luxeg011#0;
+   #luxeg016#5 = nNumAsiento;
+   #luxeg016#1 = 1;
+   |LEE 101#luxeg016.=;
+   |SI FSalida ! 0;
+      fFechaCont = #luxeg011#2;
+      |ABRE #caconasi;
+      |LEE 101#caconasi.p;
+      |SI FSalida ! 0;
+         |DDEFECTO #caconasi;
+         |GRABA 020#caconasi.b;
+      |FINSI;
+      #caconasi#1 = #caconasi#1 + 1;
+      Documento = #caconasi#1;
+      |GRABA 020#caconasi.a;
+      |LIBERA #caconasi; |CIERRA #caconasi;
+
+      |DDEFECTO #luxeg016;
+      #luxeg016#0 = #luxeg011#0;
+      #luxeg016#1 = 1;
+      #luxeg016#2 = #luxeg002#2;
+      #luxeg016#3 = fFechaCont;
+      #luxeg016#4 = Documento;
+      #luxeg016#5 = nNumAsiento;
+      |GRABA 020#luxeg016.c;
+   |SINO;
+      fFechaCont = #luxeg016#3;
+      Documento  = #luxeg016#4;
+   |FINSI;
+
+   nLinea = 1;
+   || Creo la parte del asiento de la factura de soportado .....
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = nLinea; nLinea = nLinea + 10;
+   #caenlace#4 = #luxeg002#1;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#3;
+   aAlfa = #luxeg002#4; |QBF aAlfa;
+   |SI aAlfa = "";
+      #caenlace#7 = "Factura liquidacion";
+   |SINO;
+      #caenlace#7 = #luxeg002#4;
+   |FINSI;
+   aAlfa = #caenlace#7; |QBF aAlfa;
+   aAlfa = aAlfa + " parte n§ " + #luxeg011#0;
+   #caenlace#7 = aAlfa;
+   #caenlace#8   = "H";
+   #caenlace#9   = #luxeg011#7;
+   #caenlace#10  = "S";
+   #caenlace#11  = #luxeg002#13;
+   #caenlace#12  = #luxeg002#14;
+
+   #caenlace#13  = nNumFact;
+   #caenlace#15  = #cajasald#6;
+   #caenlace#26  = "F";
+   #caenlace#27  = 0;
+   #caenlace#29  = #luxeg011#2;
+   #caenlace#37  = #48#2;
+   #caenlace#38  = #48#3;
+   |GRABA 020#caenlace.n;
+
+   nNumAcumIVA  = 1; |BUCLE ApuntesLineas
+
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = nLinea; nLinea = nLinea + 10;
+   #caenlace#4 = #luxeg002#1;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#7;
+   aAlfa = #luxeg002#8; |QBF aAlfa;
+   |SI aAlfa = "";
+      #caenlace#7 = "Pago ";
+   |SINO;
+      #caenlace#7 = #luxeg002#8;
+   |FINSI;
+   aAlfa = #caenlace#7; |QBF aAlfa;
+   aAlfa = aAlfa + " parte n§ " + #luxeg011#0;
+   #caenlace#7 = aAlfa;
+   #caenlace#8   = "D";
+   #caenlace#9   = #luxeg011#7;
+   #caenlace#15  = #cajasald#6;
+   #caenlace#26  = "X";
+   #caenlace#37  = #48#2;
+   #caenlace#38  = #48#3;
+   |GRABA 020#caenlace.n;
+
+   |DDEFECTO #caenlace;
+   #caenlace#0 = #luxeg002#2;
+   #caenlace#1 = fFechaCont;
+   #caenlace#2 = Documento;
+   #caenlace#3 = nLinea; nLinea = nLinea + 10;
+   #caenlace#4 = #luxeg004#8;
+   |HAZ MiraNivel;
+   #caenlace#5 = nNivel;
+   #caenlace#6 = #luxeg002#9;
+   aAlfa = #luxeg002#10; |QBF aAlfa;
+   |SI aAlfa = "";
+      #caenlace#7 = "Pago ";
+   |SINO;
+      #caenlace#7 = #luxeg002#10;
+   |FINSI;
+   aAlfa = #caenlace#7; |QBF aAlfa;
+   aAlfa = aAlfa + " parte n§ " + #luxeg011#0;
+   #caenlace#7 = aAlfa;
+   #caenlace#8   = "H";
+   #caenlace#9   = #luxeg011#7;
+   #caenlace#15  = #cajasald#6;
+   #caenlace#26  = "X";
+   #caenlace#37  = #48#2;
+   #caenlace#38  = #48#3;
+   |GRABA 020#caenlace.n;
+
+   |CIERRA #caenlace;
+
+   |DFICE aAlfa; |QBF aAlfa;
+   aAlfa = "dsapunte.tab;" + aAlfa + ",pu" + Usuario;
+   |SUB_EJECUTA aAlfa;
+
+   |CIERRA #luxeg001; |CIERRA #luxeg003;
+   |CIERRA #luxeg016; |CIERRA #luxeg004;
+|FPRC;
+
+|PROCESO OfreceCta;
+   |SI #luxeg008#11 ! "            "; |ACABA; |FINSI;
+
+   |SI #luxeg003#3 = "K"; #luxeg008#11 = #luxeg004#9;  |FINSI;
+   |SI #luxeg003#3 = "E"; #luxeg008#11 = #luxeg004#10; |FINSI;
+   |SI #luxeg003#3 = "V"; #luxeg008#11 = #luxeg004#11; |FINSI;
+   |PINTA #luxeg008#11;
+|FPRC;
+
+|PROGRAMA;
+     fFechaHoy = ~;
+
+     |CLS;
+     |CABEZA "Liquidacion";
+     |PARA FSalida = 0; |SI FSalida = 0; |HACIENDO;
+          |DDEFECTO #0;
+          |PINPA #0#0;
+          |PINDA #0#0;
+          |HAZ PintaEmpresa;
+          |ENDATOS #1#0;
+     |SIGUE;
+|FPRO;
+
+|PROCESO ControlFecha;
+   |SI #luxeg011#2 < #luxeg011#1;
+      |MENAV "     La fecha de regreso no puede ser menor que la de salida";
+      |ERROR;
+   |FINSI;
+|FPRC;

@@ -1,0 +1,178 @@
+|VARIABLES;
+  leidos   = 0;
+  dirfich0 = "";
+  xx       = 0;
+  yy       = 0;
+  any      = 0;
+  &r_emp   = 0;
+  &r_per   = 0;
+  i_cm2    = 0;
+  i_cm3    = 0;
+  i_cm4    = 0;
+  i_cm5    = 0;
+  i_cm6    = 0;
+  i_cm7    = 0;
+  i_cm8    = 0;
+  i_cm9    = 0;
+  d_period = 0;
+  h_period = 0;
+  d_empres = 0;
+  h_empres = 0;
+|FIN;
+
+|PROCESO coloca;                   || Calculo directorio y variables
+ |DBASE dir_fich;
+ dir_fich = dir_fich + "fich/";
+ i_cm2 = i_cm1 + 1;  || Desde Empresa
+ i_cm3 = i_cm1 + 2;  || Hasta Empresa
+ i_cm4 = i_cm1 + 3;  || Desde Periodo
+ i_cm5 = i_cm1 + 4;  || Hasta Periodo
+ i_cm6 = i_cm1 + 5;  || Primera Empresa
+ i_cm7 = i_cm6 + 19; || Ultima  Empresa
+ i_cm8 = i_cm6 + 20; || Primer Periodo
+ i_cm9 = i_cm7 + 20; || Ultimo Periodo
+|FPRC;
+
+|PROCESO consulta;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+  |SUB_EJECUTA "caconemp.run";
+  |ERROR;
+  |SI Campo = i_cm2;
+      #0i_cm2 = r_emp;
+      #0i_cm4 = r_per;
+      |PTEC 802;
+      |PTEC 802;
+  |FINSI;
+  |SI Campo = i_cm3;
+      #0i_cm3 = r_emp;
+      #0i_cm5 = r_per;
+      |PTEC 802;
+  |FINSI;
+  |SI Campo ] i_cm6;
+      #0Campo = r_emp;
+      xx = Campo + 20;
+      #0xx = r_per;
+      |PTEC 802;
+      |PTEC 802;
+  |FINSI;
+|FPRC;
+
+|PROCESO mayor1;
+  |HAZ mayor;
+  |SI #0Campo = "N";
+      |PARA xx = i_cm6;  |SI xx [ i_cm9;  |HACIENDO xx = xx + 1;
+            |CAMPO_MODIFICA #0xx,1,"S";
+      |SIGUE;
+      #0i_cm2 = 0; |CAMPO_MODIFICA #0i_cm2,1,"N"; |PINTA #0i_cm2;
+      #0i_cm4 = 0; |CAMPO_MODIFICA #0i_cm4,1,"N"; |PINTA #0i_cm4;
+      #0i_cm3 = 0; |CAMPO_MODIFICA #0i_cm3,1,"N"; |PINTA #0i_cm3;
+      #0i_cm5 = 0; |CAMPO_MODIFICA #0i_cm5,1,"N"; |PINTA #0i_cm5;
+  |SINO;
+      |PARA xx = i_cm6;  |SI xx [ i_cm9;  |HACIENDO xx = xx + 1;
+            #0xx = 0; |CAMPO_MODIFICA #0xx,1,"N";
+      |SIGUE;
+      |CAMPO_MODIFICA #0i_cm2,1,"S";
+      |CAMPO_MODIFICA #0i_cm4,1,"S";
+      |CAMPO_MODIFICA #0i_cm3,1,"S";
+      |CAMPO_MODIFICA #0i_cm5,1,"S";
+  |FINSI;
+|FPRC;
+
+|| --------------- comprueba desde-hasta empresas ---------------------------
+
+|PROCESO buscaem1;
+  |HAZ sel_multi;
+  |SI leidos = 1; |ERROR10; |FINSI;
+|FPRC;
+
+|DEFBUCLE buscaempre;
+ #30#1;
+ ;
+ d_empres, d_period;
+ h_empres, h_period;
+ e;
+ NULL,buscaem1;
+|FIN;
+
+|PROCESO buclempre;
+  leidos = 0;
+  |SI #0i_cm4 > #0i_cm5;
+      |MENAV "     ERROR EN INTRODUCCION";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI #0i_cm2 = 0;  |Y #0i_cm3 = 0; |ACABA; |FINSI;
+  d_empres = #0i_cm2; d_period = #0i_cm4;
+  h_empres = #0i_cm3; h_period = #0i_cm5;
+  |BUCLE buscaempre;
+  |SI leidos = 0;
+      |MENAV "    ATENCION SELECCION VACIA";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO deshas;
+  |SI #0i_cm3 < #0i_cm2;
+      |MENAV "      Error en Introduccion";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|| ------------------------------------------------------------------------
+|PROCESO nomodi;
+  |CAMPO_MODIFICA #0Campo, 0, alfa1;
+  |SI alfa1 = "N"; |ACABA; |FINSI;
+  |PARA xx = Campo + 1;  |SI xx [ i_cm7;|HACIENDO xx = xx + 1;
+        #0xx = 0; |CAMPO_MODIFICA #0xx,1,"N";
+        yy = xx + 20;
+        #0yy = 0; |CAMPO_MODIFICA #0yy,1,"N";
+  |SIGUE;
+  yy   = Campo + 20;
+  #0yy = 0; |CAMPO_MODIFICA #0yy,1,"N"; |PINTA #0yy;
+|FPRC;
+
+|PROCESO esbuena; || desde campo de empresas seleccion
+  |SI FSalida = 2; |ACABA; |FINSI;
+  |SI #0Campo = 0; |HAZ nomodi;  |ACABA;  |FINSI;
+  |ABRE #30;
+  #30#2 = #0Campo;
+  #30#3 = 0;
+  |LEE 011#30];
+  |SI FSalida ! 0;  |O #30#2 ! #0Campo;
+      |MENAV "     NO Existe la empresa Contable";
+      |ERROR;
+  |FINSI;
+  |CIERRA #30;
+|FPRC;
+
+|PROCESO esbuena1;
+  |SI FSalida = 2;|ACABA;|FINSI;
+  xx = Campo - 20;
+  |SI #0xx = 0;  |ACABA;  |FINSI;
+  |ABRE #30;
+  #30#2 = #0xx;
+  #30#3 = #0Campo;
+  |LEE 011#30=;
+  |SI FSalida ! 0;
+      |MENAV "     NO Existe Periodo en la empresa Contable";
+      |CIERRA #30;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |CIERRA #30;
+  |SI #30#21 = "I";
+      |MENAV "    Empresa Contable INACTIVA ";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  leidos = 0;
+  |HAZ sel_multi;
+  |SI leidos = 0;
+      |MENAV "     EMPRESA NO CORRECTA ";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  yy   = Campo + 20;
+  #0yy = #30#1;
+  |PINTA #0yy;
+|FPRC;

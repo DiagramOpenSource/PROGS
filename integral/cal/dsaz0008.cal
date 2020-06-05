@@ -1,0 +1,222 @@
+|FICHEROS;
+     dsaz0008 #8;
+     :/basica/def/dspase00 #0;
+
+     :/basica/def/agifigen   #118;
+     :/contagen/def/canempre #200;
+     :/contagen/def/caclipro #201;
+     :/contagen/def/cacuenta #202;
+
+     refer00@ #900;
+|FIN;
+
+|VARIABLES;
+
+     nCodigoReo      = 0;
+     aNif            = "";
+     aNom            = "";
+
+     &aPathAnterior   = "";
+     &aPathDefFiscal  = "";
+     &aPathFichFiscal = "";
+     &aPathDestino    = "";
+
+     nSwError        = 0;
+     aDef            = "";
+     aDirEmpresa     = "";
+     aDirFichDestino = "";
+     aAlfa1          = "";
+     aAlfa2          = "";
+     aAlfa3          = "";
+     aAlfa4          = "";
+     aBase           = "";
+     nCanal          = 0;
+
+     eaPathBasica    = "";
+     &eaPathContagen = "";
+
+     nAny            = 0;
+     &enEmprEos      = 0;
+     &enEmpresa      = 0;
+     &enPerConta     = 0;
+     &enAny          = 0;
+     &eaNombreEmp    = "";
+|FIN;
+
+|PROCESO CargoEos;
+     nSwError = 0;
+     aDef = aPathDefFiscal + "eosclien.mas";
+     |CARGA_DEF aDef, refer00@;
+     |SI FSalida ! 0;
+         aAlfa1   = "     Error en Cargar el Def fichero de Empresas";
+         aDef     = "";
+         nSwError = 1;
+     |SINO;
+         |PATH_DAT #900 aPathFichFiscal;
+     |FINSI;
+|FPRC;
+
+|PROCESO DescargoEos;
+  |SI aDef ! ""; |DESCARGA_DEF #900; aDef = ""; |FINSI;
+|FPRC;
+
+|PROCESO CogeCodigo;
+
+ nCodigoReo = 0;
+ |HAZ CargoEos;
+ |SI nSwError = 1; |ACABA; |FINSI;
+
+ |ABRE #118;
+ #118#0 = enEmpresa;
+ |LEE 041#118=;
+ |SI FSalida = 0;
+     aNif = #118#13; |QBF aNif;
+     aNom = #118#2;  |QBT aNom;
+ |FINSI;
+ |CIERRA #118;
+
+ |ABRE #900;
+ |DDEFECTO #900;
+ #900#0 = enEmpresa;
+ |LEE 041#900=;
+ |SI FSalida = 0;
+     aAlfa1 = #900#1; |QBF aAlfa1;
+     |SI aAlfa1 = aNif; |Y aNif ! "";
+         nCodigoReo = #900#0;
+     |SINO;
+         aAlfa1 = #900#2; |QBT aAlfa1;
+         |SI aAlfa1 = aNom; |Y aNom ! "";
+             nCodigoReo = #900#0;
+         |FINSI;
+     |FINSI;
+ |FINSI;
+ |CIERRA #900;
+ |SI nCodigoReo = 0;
+     |SI aNif ! "";
+         |ABRE #900;
+         |SELECT #2#900;
+         #900#1 = aNif;
+         |LEE 041#900=;
+         |SI FSalida = 0;
+             nCodigoReo = #900#0;
+         |FINSI;
+         |SELECT #1#900;
+         |CIERRA #900;
+     |FINSI;
+ |FINSI;
+
+ |HAZ DescargoEos;
+|FPRC;
+
+|PROCESO LEmpresa;
+
+     aAlfa1 = #200#2; aAlfa1 = ("00000" + aAlfa1) % -105;
+     aAlfa2 = #200#3; aAlfa2 = ("0"     + aAlfa2) % -101;
+     aDirEmpresa     = aAlfa1 + aAlfa2;
+     aDirFichDestino = aPathDestino + "fich/" + aDirEmpresa + "/";
+
+     |PATH_DAT #201 aDirFichDestino;
+     |PATH_DAT #202 aDirFichDestino;
+     |ABRE #201;
+     |LEE 040#201p;
+     |SI FSalida ! 0;
+         |CIERRA #201;
+         |ABRE #202;
+         #202#0 = "4           ";
+         |LEE 040#202];
+         |SI FSalida ! 0;
+             |CIERRA #202;
+             |ACABA;
+         |FINSI;
+         |CIERRA #202;
+     |FINSI;
+     |CIERRA #201;
+
+
+     enEmpresa  = #200#2;
+     aNif       = #200#8; |QBF aNif;
+     aNom       = #200#1; |QBT aNom;
+
+     nCodigoReo = 0;
+     |HAZ CogeCodigo;
+     |SI nCodigoReo ! 0;
+         enEmpresa   = #200#2;
+         enPerConta  = #200#3;
+         enEmprEos   = nCodigoReo;
+
+         #8#0 = enEmpresa; |PINTA #8#0;
+         #8#1 = #200#1;    |PINTA #8#1;
+         #8#2 = enAny;     |PINTA #8#2;
+
+         |SUB_EJECUTA_NP ":basica/dspase08";
+     |FINSI;
+|FPRC;
+
+
+|DEFBUCLE LEmpresa;
+ #200#4;
+ ;
+ 00000, nAny;
+ 99999, nAny;
+ e;
+ NULL, LEmpresa;
+|FIN;
+
+|PROGRAMA;
+     |HAZ BusApli;
+     |SI eaPathContagen = "";
+         |MENAV "     No tiene instalada la Contabilidad";
+         |ACABA;
+     |FINSI;
+
+     aDirFichDestino = eaPathBasica + "fich/";
+     |PATH_DAT #0 aDirFichDestino;
+
+     |ABRE #0;
+     |LEE 040#0p;
+     |SI FSalida ! 0;
+         |MENAV "     Pase de Ficheros Generales no Realizado";
+         |CIERRA #0;
+         |ACABA;
+     |FINSI;
+     |CIERRA #0;
+
+     |SI enAny ] 2000;
+         nAny = enAny - 2000;
+     |SINO;
+         nAny = enAny - 1900;
+     |FINSI;
+
+     aPathAnterior   = #0#0;  |QBT aPathAnterior;
+     aPathDefFiscal  = aPathAnterior + "agieos/def/";
+     aPathFichFiscal = aPathAnterior + "agieos/fich/";
+     aPathDestino    = eaPathContagen - "fich/";
+
+     |HAZ CargoEos;
+     |SI nSwError = 1;
+         |MENAV "     No tiene instalada la Eos Anterior";
+         |ACABA;
+     |FINSI;
+     |HAZ DescargoEos;
+
+     |PINPA #0#8;
+     |BUCLE LEmpresa;
+|FPRO;
+
+|PROCESO BusApli;
+     eaPathContagen  = "";
+     |DBASS aBase;   |QBF aBase;
+
+     aAlfa1 = aBase + "basica/def/agifigen.mas";
+     |XABRE "E", aAlfa1, nCanal;
+     |SI FSalida ] 0;
+         eaPathBasica = aBase + "basica/";
+     |FINSI;
+
+     aAlfa1 = aBase + "contagen/def/canempre.mas";
+     |XABRE "E", aAlfa1, nCanal;
+     |SI FSalida ] 0;
+         eaPathContagen = aBase + "contagen/";
+     |FINSI;
+
+|FPRC;

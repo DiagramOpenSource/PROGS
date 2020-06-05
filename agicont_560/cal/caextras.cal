@@ -1,0 +1,149 @@
+|FICHEROS;
+ caextras #0;
+ caextral #1;
+ camaasic #2;
+ cacuenta #5;
+ caextrp4 #6;         || display asientos completo
+ camaasil #7;
+|FIN;
+
+|VARIABLES;
+ modo     = 0;
+ inkey    = -1;
+ inkeyc   = 0;
+ totallin = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+
+||  ***********************************************************
+|PROCESO fecha; |TIPO 0;
+  |SI #0Campo > fec2;|O #0Campo < fec1;
+      |MENAV "    Fecha fuera de Periodo ...";
+      |ERROR;
+  |FINSI;
+|FPRC;
+
+|PROCESO paraconsulta; |TIPO 0;
+ modo = (FEntrada / 100) ! 0;
+ |SI modo = 1; inkey = 0; |FINSI;
+ |SI FSalida = 9;
+     |PUSHV 0501 2380;
+     |ABRE #2;
+     |PINPA #0#2;
+     #2#0 = #0#0;
+     #2#1 = #0#1;
+     #2#2 = #0#2;
+     |PTEC 802;
+     |PTEC 802;
+     |CONSULTA #0#2;
+     inkeyc = FSalida;
+     |CIERRA #2;
+     |POPV;
+     |SI inkeyc = 0;
+          #0#0 = #2#0; |PINTA #0#0;
+          #0#1 = #2#1; |PINTA #0#1;
+          #0#2 = #2#2; |PINTA #0#2;
+     |SINO;
+          |ERROR;
+     |FINSI;
+ |FINSI;
+|FPRC;
+
+||  ***********************************************************
+||  ************* Calculos de las Lineas
+||  ***********************************************************
+
+|PROCESO linea7; |TIPO 7;
+ |SI inkey = 1; |O inkey = 7;
+     inkey = -1;
+     |PTEC 807;
+     |ACABA;
+ |FINSI;
+
+ modo = (FEntrada / 100) ! 0;
+ |SI inkey = 0; |PTEC 802; |FINSI;
+||  |SI inkey = 3; |Y modo = 1; |PTEC 802; |FINSI;
+|FPRC;
+
+|PROCESO linea0; |TIPO 0;
+ modo = (FEntrada / 100) ! 0;
+ |SI inkey ! 0; |ACABA; |FINSI;
+ |SI modo ! 1; |PTEC 802; |FINSI;
+ inkey = -1;
+|FPRC;
+
+|| -------------------------------------------------------------------------
+|PROCESO lee_asiento1;             || CARGA LA PANTALLA DEL ASIENTO COMPLETO
+   |HAZ lacuenta;
+   |DDEFECTO #6;
+   #6#00 = #7#3;        || apunte
+   #6#01 = #7#16;       || cuenta DEBE
+   #6#02 = #7#17;       || digito DEBE
+   #6#03 = #7#10;       || cuenta HABER
+   #6#04 = #7#11;       || digito HABER
+   #6#05 = #7#6;        || concepto
+   #6#06 = #7#7;        || descripcion
+   #6#07 = #7#21;       || departamento
+   #6#08 = #7#9;        || importe
+   #6#09 = #5#2;        || descripcion
+   #6#10 = #5#51;       || debe
+   #6#11 = #5#52;       || haber
+   #6#12 = #5#53;       || saldo
+   #6#13 = #7#0;        || diario
+   #6#14 = #7#1;        || fecha
+   #6#15 = #7#2;        || documento
+   |GRABA 020#6n;
+   totallin = totallin + 1;
+|FPRC;
+
+|DEFBUCLE lee_asiento;
+ #7#1;
+ ;
+ #0#0, #0#1, #0#2,    1;
+ #0#0, #0#1, #0#2, 9999;
+ e;
+ NULL, lee_asiento1;
+|FIN;
+
+|| ------------------------------------------
+|PROCESO sallinea; |TIPO 0;
+ inkey = FSalida;
+ |SI inkey = 16; |PTEC 802; |PTEC 811; |ACABA; |FINSI;
+ |SI inkey ! 9;  |ACABA; |FINSI;
+ |ERROR;
+ ||       ........ Lectura del Asiento.
+ |DELINDEX #6;
+ |ABRE #6;
+ totallin = 0;
+ |BUCLE lee_asiento;
+ |CIERRA #6;
+ |SI totallin ! 0;
+     |PUSHV 07012380;
+     |ENTLINEAL #1#6, 1, 4, 20, 1, mini, maxi;
+     |POPV;
+ |SINO;
+     |MENAV "    No existe Asiento Relacionado ...";
+ |FINSI;
+ |DELINDEX #6;
+|FPRC;
+
+|RUTINA mini;
+  #6#0 = 1;
+|FRUT;
+
+|RUTINA maxi;
+  #6#0 = 9999;
+|FRUT;
+
+|PROCESO lacuenta;
+ |ABRE #5;
+ #5#0 = #7#4;         || cuenta
+ #5#1 = #7#5;         || digito
+ |LEE 001#5=;
+ |SI FSalida ! 0;
+     |DDEFECTO #5;
+     #5#2 = "<CUENTA INEXISTENTE>";
+ |FINSI;
+ |CIERRA #5;
+|FPRC;

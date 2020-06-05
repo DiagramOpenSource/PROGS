@@ -1,0 +1,311 @@
+|FICHEROS;
+     tagm0018 #0;   || Lineas revision.
+     tagm0017 #1;   || Cabecera revision.
+     agifa024 #3;   || Clientes.
+     agifa007 #4;   || Series.
+     agifa321 #14;  || Divisas-Parametros.
+     agifa324 #15;  || Divisas-Divisas.
+     agifa019 #19;
+     dsm00238 #38;
+     tagm0001 #10;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     nUni = 0;
+     i = 0;
+     nModo = 0;
+     aArtDefecto = "";
+     aAlfa = "";
+     nBruto = 0;
+     nError = 0;
+     nCamBase = 0;
+     nCamIva = 0;
+     nCamRec = 0;
+     nBase = 0;
+     liquid = 0;
+     base  = 0;
+     base2 = 0;
+     nUni2 = 0;
+     impue = 0;
+     nDeci = 0;
+
+     &uni_dt = 0;   || Unidades
+     &fed_dt = @;   || Fecha....
+     &art_dt = "";  || Articulo.
+     &cli_dt = "";  || Cliente..
+     &fam_dt = "";  || Familia.
+     &iva_dt = 0;   || Tipo Iva.
+     &dtos_2 = 0;   || Descuento 2.
+     &dto_pt = 0;   || Descuento Ptas.
+     &dtos_1 = 0;   || Descuento 1.
+     &pvp_ve = 0;   || Precio Venta.
+     &tarifa = 0;   || Tarifa Cliente.
+     &quedto = 0;   || 1=cli./art, 2=cli./familia, 3=cli./subfam.
+     &gru_dt = "";  || Grupo Cliente.
+     &nPromo = 0;
+      verpre = "";
+     &enMensaje = 0;
+     &aParam    = "";
+     &c_clien       = "";
+     &c_artic       = "";
+     &c_serie       = "";
+     &entrada       = 0;
+|FIN;
+
+|PROCESO CamPrecio; |TIPO 0;
+     |SI FSalida = 14;
+          c_clien = #1#4;
+          c_artic = #0#4;
+          c_serie = #1#2;
+          entrada = 1;
+          |SUB_EJECUTA_NP "agifa283.run";
+          |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO totalb; |TIPO 2;
+     |HAZ LeeSerie_018;
+     |HAZ LeeDivisa;
+     |HAZ lee;
+||T.Linea
+
+     nUni2 = 0;
+     |SI #19#179 = "S"; ||Doble Stock
+          |ABRE #38;
+          #38#0 = #19#201;
+          |LEE 020#38=;
+          |SI FSalida = 0;
+               |SI #38#8 = 1; nUni2 = #0#6 * #0#12; |FINSI;
+               |SI #38#8 = 2; nUni2 = #0#6 * #0#12*#0#13; |FINSI;
+               |SI #38#8 = 3; nUni2 = #0#6 * #0#12*#0#13*#0#14; |FINSI;
+          |FINSI;
+          |CIERRA #38;
+     |FINSI;
+     |SI #38#6 = 1; |O #19#179  = "N";
+          #0#10 = (((#0#6 * #0#7)!nDeci) < #0#8)!nDeci; ||Importe
+     |SINO;
+          #0#10 = (((nUni2 * #0#7)!nDeci) < #0#8)!nDeci; ||Importe
+     |FINSI;
+
+||Bruto
+     #1#8 = (#1#8 +. #0#10) ! #15#7;
+     nBruto = (((#0#10 < #1#11) < #1#13) < #1#12);
+
+     nError = 1;
+     |SI #1#8 < 0; nError = -1; |FINSI;
+     #1#8 = #1#8 * nError;
+
+||Dto
+     #1#30 = (((#1#8 < #1#11) < #1#13) < #1#12) ! #15#7;
+     #1#30 = #1#30 * nError;
+     #1#8 = #1#8 * nError;
+     #1#30 = #1#8 - #1#30;
+
+||Ivas
+     |SI #0#9 = 0;
+          #1#14 = (#1#14 +. nBruto) ! #15#7;
+     |SINO;
+          nCamBase = #0#9 - 1 + 15;
+          nCamIva = #0#9 - 1 + 20;
+          nCamRec = #0#9 - 1 + 25;
+          #1nCamBase = (#1nCamBase +. nBruto) ! #15#7;
+          #1nCamIva = (#1nCamBase %  enIva) ! #15#7;
+          |SI #3#47 = "S";
+               #1nCamRec = (#1nCamBase % enRec) ! #15#7;
+          |FINSI;
+     |FINSI;
+
+||T.IVA
+     #1#31 = #1#20+#1#21+#1#22+#1#23+#1#24+#1#25+#1#26+#1#27+#1#28+#1#29;
+     #1#31 = #1#31 ! #15#7;
+
+||Total
+     #1#9 = (#1#8 - #1#30 + #1#31) ! #15#7;
+
+     |PINTA #1#8;
+     |PINTA #1#9;
+|FPRC;
+
+|PROCESO lee;
+     enTiva = #0#9;
+     efFiva = #1#3;
+     |HAZ SacaIVA;
+
+     |ABRE #3;
+     #3#0 = #1#4;
+     |LEE 000#3=;
+     |CIERRA #3;
+
+     |ABRE #19;
+     #19#0 = #0#4;
+     |LEE 000#19=;
+     |CIERRA #19;
+|FPRC;
+
+|PROCESO LeeDivisa;
+     |ABRE #14;
+     |ABRE #15;
+     |LEE 001#14p;
+     #15#0 = #14#9;
+     |LEE 001#15=;
+     |CIERRA #14;
+     |CIERRA #15;
+     nDeci = #15#7;
+|FPRC;
+
+|CALCULO LeeSerie_018;
+     |ABRE #4;
+     #4#26 = #0#2;
+     |LEE 000#4=;
+     |CIERRA #4;
+|FCAL;
+
+|PROCESO Tipo13; |TIPO 13;
+     |DDEFECTO #19;
+     |ABRE #19;
+     #19#0 = #0#4;
+     |LEE 000#19=;
+     |CIERRA #19;
+
+     |SI #19#179 = "S";
+          |ABRE #38;
+          #38#0 = #19#201;
+          |LEE 000#38=;
+          |CIERRA #38;
+     |FINSI;
+
+     |ATRI I;
+     |SI #19#179 = "S"; |Y #38#8 > 0;
+          |PINTA 2203, "Medidas:         x         x         ";
+          |PINTA 2212, #38#9;
+          |PINTA 2222, #38#10;
+          |PINTA 2232, #38#11;
+     |SINO;
+          |PINTA 2203, "                                     ";
+     |FINSI;
+     |ATRI 0;
+|FPRC;
+
+|PROCESO Articulo7; |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo = 1;
+          #0#4 = aArtDefecto;
+     |FINSI;
+|FPRC;
+
+|PROCESO Articulo0; |TIPO 0;
+     aArtDefecto = #0#4;
+     |SI #0Campo ! Contenido;
+          |ABRE #19;
+          #19#0 = #0#4;
+          |LEE 020#19=;
+          |CIERRA #19;
+          |C_M #0#12, 1, "S";
+          |C_M #0#13, 1, "S";
+          |C_M #0#14, 1, "S";
+          #0#12 = 0; #0#15 = 0;
+          #0#13 = 0;
+          #0#14 = 0;
+          |SI #19#179 = "S";  || Doble
+               |C_M #0#12, 1, "N";
+               |C_M #0#13, 1, "N";
+               |C_M #0#14, 1, "N";
+               |DDEFECTO #38;
+               |ABRE #38;
+               #38#0 = #19#201;
+               |LEE 020#38=;
+               |CIERRA #38;
+               aAlfa = #38#12;
+               |SI #38#8 = 1;
+                    |C_M #0#12, 1, aAlfa;
+                    #0#12 = #38#9; #0#15 = #38#9;
+               |FINSI;
+               |SI #38#8 = 2;
+                    |C_M #0#12, 1, aAlfa;
+                    |C_M #0#13, 1, aAlfa;
+                    #0#12 = #38#9; #0#15 = #38#9;
+                    #0#13 = #38#10;
+               |FINSI;
+               |SI #38#8 = 3;
+                    |C_M #0#12, 1, aAlfa;
+                    |C_M #0#13, 1, aAlfa;
+                    |C_M #0#14, 1, aAlfa;
+                    #0#12 = #38#9; #0#15 = #38#9;
+                    #0#13 = #38#10;
+                    #0#14 = #38#11;
+               |FINSI;
+               nUni = 0;
+               |HAZ LosMetros;
+               |SI nUni ! 0;
+                    #0#12 = nUni; |PINTA #0#12;
+               |FINSI;
+          |FINSI;
+          |CIERRA #19;
+          |PINTA #0#12;
+          |PINTA #0#13;
+          |PINTA #0#14;
+
+          |ABRE #3;
+          #3#0 = #1#4;
+          |LEE 000#3=;
+          |CIERRA #3;
+
+          fed_dt = #1#3;   || Fecha....
+          art_dt = #0#4;   || Articulo.
+          cli_dt = #1#4;  || Cliente..
+          fam_dt = #19#2;  || Familia.
+          iva_dt = #19#30;  || Tipo Iva.
+          dtos_2 = 0;      || Descuento 2.
+          dto_pt = 0;      || Descuento Ptas.
+          dtos_1 = 0;      || Descuento 1.
+          pvp_ve = 0;      || Precio Venta.
+          tarifa = #3#39;  || Tarifa Cliente....
+          gru_dt = #3#158; || Grupo Cliente.
+          nPromo = 0;
+          uni_dt = #0#6;
+          enMensaje = 0;
+          aParam = "";
+          eaSerie = #0#2;
+          enDirEnt = 1;
+          enAlmacen = #0#11;
+
+          |HAZ calcdtos;              || Calculo Dtos.....
+          #0#7   = pvp_ve - dto_pt;   || Precio Venta. sin iva.
+          #0#8   = dtos_1;            || 1¦ Dto.
+          |PINTA #0#7;
+          |PINTA #0#8;
+     |FINSI;
+|FPRC;
+
+|PROCESO LosMetros;
+     |ABRE #19;
+     #19#0 = #0#4;
+     |LEE 000#19=;
+     |CIERRA #19;
+
+     |ABRE #10;
+     #10#0 = #19#3;
+     |LEE 000#10=;
+     |SI FSalida = 0;
+          |PARA i = 1; |SI i [ 20; |HACIENDO i = i + 1;
+               |SI #0#12 [ #10i;
+                    nUni = #10i;
+                    |SAL;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #10;
+|FPRC;
+
+|PROCESO Medida1;
+     |SI #0Campo ! Contenido;
+          |HAZ LosMetros;
+          |SI nUni ! 0;
+               #0#15 = #0#12;
+               #0#12 = nUni;
+               |PINTA #0Campo;
+          |FINSI;
+     |FINSI;
+|FPRC;

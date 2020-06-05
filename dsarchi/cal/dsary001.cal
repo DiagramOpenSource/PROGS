@@ -1,0 +1,916 @@
+||Parametros:
+|| Sin parametros, pregunta la pantalla y la impresora destino
+|| UNIX, pregunta los datos
+|| UNIXDIA, no pregunta nada.  Lo ejecuta del dia actual
+|| UNIXHORA, no pregunta nada. Lo ejecuta del dia y hora actual.
+
+|FICHEROS;
+     dsary001 #0;
+
+     dsarm005 #5;
+
+     dsarw060 #60;       ||Aux. Faxes Asterisk
+     dsarw063 #63;       ||Aux. Inf.Compro Fax1
+     dsarw064 #64;       ||Aux. Inf.Compro Fax2
+
+     dsarm017 #17;       ||Faxes Registro NIF
+
+     dsarm001 #1;
+
+     dsarw010 #910;
+
+     Referen@ #100;
+|FIN;
+
+|VARIABLES;
+     &enAprobacion = 0;
+     &eaPrograma = "";
+     nSwSMTPServPropio = 0;
+     aVarSMTP = "";
+     aVarUsuario = "";
+     aVarPassword = "";
+     aAlfa2 = "";
+
+     aLong = "";
+     nLong = 0;
+     aFrase = "";
+     aDirec = "";
+     nPosi = 0;
+     nPos = 0;
+     aCarac = "";
+     aIPRemoto = "";
+     &eaAlfa = "";
+     aFicheroAdjunto = "";
+     aBasePla = "";
+     aBaseMensaje = "";
+     aAbreTXT = "";
+     aAsunto = "";
+     aPara = "";
+     aTo = "";
+     aDestinoCorreo = "";
+     aFotoOrigen = "";
+     aNLogo = "";
+     aMD5Ori = "";
+     aMD5Des = "";
+     aLogoFacturae = "";
+     aUsuario = "";
+     aAbreHTMO = "";
+     aAbreHTMD = "";
+     nHandle1 = 0;
+     nHandle2 = 0;
+     nRegilla = 0;
+     nLLave = 0;
+     aConten = "";
+     aAbreTXTO = "";
+     aAbreFIN = "";
+     aAbreTXTD = "";
+     aCarac10 = "";
+     {1}aContiene    = "";
+     {1}aLocal       = "";
+     aAlfa1 = "";
+     aEjecuta = "";
+
+
+     aNomDestino = "";
+     aFicDestino = "";
+     aOrigen = "";
+
+
+     aBase = "";
+     aPath = "";
+     aDestino = "";
+     nHandle = 0;
+     aLinea = "";
+
+     aAux = "";
+     nSwModoUnix = 0;
+
+     aBorra = "";
+     &enLinea = 0;
+
+     aFax = "";
+     aEstado = "";       ||Indica (N)o conforme; (E)rror; (C)onforme
+     aTelefono = "";
+     aNif = "";
+     aNombre = "";
+     nSwEsta = 0;
+     aPathBase = "";
+     aAlfa = "";
+     Handle1 = 0;
+     aTel = "";
+     aTel2 = "";
+     aReporte = "";
+
+     fHasta = @;
+     fDesde = @;
+     aDFecha = "";
+     aHFecha = "";
+     fFecha = @;
+
+     aMensaje = "";
+     aParametro = "";
+     nPanta = 0;
+     nExiste = 0;
+
+     aDesde = "";
+     aHasta = "";
+     aHora = "";
+
+     aInforme = "";
+     nSwPie = 0;
+
+     aDesdeHora = "";
+     aHastaHora = "";
+|FIN;
+
+|PROCESO Tipo80; |TIPO 80;
+     aParametro = PARAMETRO;
+     |QBF aParametro;
+     aAux = aParametro - "UNIX";
+     |QBF aAux;
+     |SI aParametro ! aAux;
+          aParametro = aAux;
+     |FINSI;
+     |SI aParametro ! "DIA"; |Y aParametro ! "HORA";
+          FSalida = 3099;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tipo12; |TIPO 12;
+|FPRC;
+
+|PROCESO dsarw064;
+     |SI nSwModoUnix = 1;
+          |SI #64#3 ! "E";
+               aLinea = "                                                                       ";
+               aLinea = aLinea + "                       ";
+               aLinea = aLinea + #64#1 + "  " + #64#2 + "   " + #64#7;
+          |SINO;
+               aLinea = #64#1 + "  " + #64#2 + " " + ((#64#4 + "               ") % 115) + " " + #64#5 + "   " + #64#6 + " " + #64#7;
+          |FINSI;
+          |XGRABA nHandle, aLinea;
+     |SINO;
+          enLinea = 2;
+          |PRINT;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsarw064;
+ #dsarw064#1;
+ ;
+ #dsarw063#0, "01.01.0000", "     ";
+ #dsarw063#0, "31.12.2099", "zzzzz";
+ ;
+ NULL, dsarw064;
+|FIN;
+
+|PROCESO dsarw063;
+     |SI #dsary001#5 = "N";
+          |SI #dsarw063#6 = #dsarw063#7;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |SI nSwModoUnix = 1;
+          aLinea = "";
+          |XGRABA nHandle, aLinea;
+
+          aLinea = "FAX:       " + #63#0 + "         " + "NIF: " + #63#2;
+          aLinea = aLinea + "                               ";
+          aLinea = aLinea + "No registrados: " + (("    " + #63#4) % -104) + "   " + #63#8 + " %";
+          |XGRABA nHandle, aLinea;
+
+          aLinea = "Tel.:      " + #63#1 + "         " + "Nombre: " + #63#3;
+          aLinea = aLinea + "Errores:        " + (("    " + #63#5) % -104) + "   " + #63#9 + " %";
+          |XGRABA nHandle, aLinea;
+
+          aLinea = "                                                                                   ";
+          aLinea = aLinea + "Conformes:      " + (("    " + #63#6) % -104) + "   " + #63#10 + " %";
+          |XGRABA nHandle, aLinea;
+
+          aLinea = "                                                                                   ";
+          aLinea = aLinea + "Total:          " + (("    " + #63#7) % -104);
+          |XGRABA nHandle, aLinea;
+
+          aLinea = "";
+          |XGRABA nHandle, aLinea;
+
+          aLinea = "           ERRORES COMUNICACION                         ";
+          aLinea = aLinea + "                                                 CONFORMES";
+          |XGRABA nHandle, aLinea;
+
+          aLinea = "Fecha       Hora  Canal         Tiempo Error";
+          aLinea = aLinea + "                                  N. Registro     Fecha       Hora   N. Registro";
+          |XGRABA nHandle, aLinea;
+     |SINO;
+          enLinea = 1;
+          |PRINT;
+          nSwPie = 1;
+     |FINSI;
+
+     |BUCLE dsarw064;
+|FPRC;
+
+|DEFBUCLE dsarw063;
+ #dsarw063#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, dsarw063;
+|FIN;
+
+|PROCESO Referen;
+     aTel = #Referen@#8;
+     |QBT aTel;
+     aTel2 = #Referen@#17;
+     |QBT aTel2;
+     |SI aTel = aFax; |O aTel2 = aFax;
+          nSwEsta = 1;
+          aNif = #Referen@#0;
+          aNombre = #Referen@#1;
+          aTelefono = #Referen@#8;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Referen;
+ #Referen@#1001;
+ ;
+ "            ";
+ "zzzzzzzzzzzz";
+ ;
+ NULL, Referen;
+|FIN;
+
+
+|PROCESO DameDatosFax;
+     ||Devuelve
+     ||aTelefono
+     ||aNif
+     ||aNombre
+
+     aNif = "000000000";
+     aNombre = "*DESCONOCIDO*";
+
+
+     |ABRE #dsarm017;
+     |SELECT #2#dsarm017;
+     #dsarm017#2 = aFax;
+     |LEE 000#dsarm017.=;
+     |SI FSalida = 0;
+          aNif = #dsarm017#0;
+     |FINSI;
+     |CIERRA #dsarm017;
+
+     |SI aNif = "000000000";       ||Lo buscamos en Integral/Basica
+
+          nSwEsta = 0;
+          ||TODO CCC. Buscamos el telefono
+          |DBASS aPathBase;
+          |QBF aPathBase;
+          aAlfa = aPathBase + "integral/fich/dsam0103.dat";
+          |XABRE "E", aAlfa, Handle1;
+          |SI FSalida ] 0;
+             aAlfa = aPathBase + "integral/def/dsam0103.mas";
+             |CARGA_DEF aAlfa, Referen@;
+             |SI FSalida = 0;
+                aAlfa = aPathBase + "integral/fich/";
+                |PATH_DAT #100 aAlfa;
+                |BUCLE Referen;
+                |DESCARGA_DEF #Referen@;
+             |FINSI;
+          |FINSI;
+
+
+          |SI nSwEsta = 0;
+               aAlfa = aPathBase + "basica/fich/agim0003.dat";
+               |XABRE "E", aAlfa, Handle1;
+               |SI FSalida ] 0;
+                  aAlfa = aPathBase + "basica/def/agim0003.mas";
+                  |CARGA_DEF aAlfa, Referen@;
+                  |SI FSalida = 0;
+                     aAlfa = aPathBase + "basica/fich/";
+                     |PATH_DAT #100 aAlfa;
+                     |BUCLE Referen;
+                     |DESCARGA_DEF #Referen@;
+                  |FINSI;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          ||Buscamos el Nombre del CIF
+          nSwEsta = 0;
+          |DBASS aPathBase;
+          |QBF aPathBase;
+          aAlfa = aPathBase + "integral/fich/dsam0103.dat";
+          |XABRE "E", aAlfa, Handle1;
+          |SI FSalida ] 0;
+             aAlfa = aPathBase + "integral/def/dsam0103.mas";
+             |CARGA_DEF aAlfa, Referen@;
+             |SI FSalida = 0;
+                aAlfa = aPathBase + "integral/fich/";
+                |PATH_DAT #100 aAlfa;
+                |ABRE #100;
+                #100#0 = aNif;
+                |LEE 000#100.=;
+                |SI FSalida = 0;
+                    nSwEsta = 1;
+                    aNombre = #100#1;
+                    aTelefono = #100#8;
+                |FINSI;
+                |CIERRA #100;
+                |DESCARGA_DEF #Referen@;
+             |FINSI;
+          |FINSI;
+          |SI nSwEsta = 0;
+               aAlfa = aPathBase + "basica/fich/agim0003.dat";
+               |XABRE "E", aAlfa, Handle1;
+               |SI FSalida ] 0;
+                  aAlfa = aPathBase + "basica/def/agim0003.mas";
+                  |CARGA_DEF aAlfa, Referen@;
+                  |SI FSalida = 0;
+                     aAlfa = aPathBase + "basica/fich/";
+                     |PATH_DAT #100 aAlfa;
+                     |ABRE #100;
+                     #100#0 = aNif;
+                     |LEE 000#100.=;
+                     |SI FSalida = 0;
+                         aNombre = #100#1;
+                         aTelefono = #100#8;
+                     |FINSI;
+                     |CIERRA #100;
+                     |DESCARGA_DEF #Referen@;
+                  |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO dsarw060;
+     |SI #dsarw060#1 < #dsary001#1; |O #dsarw060#1 > #dsary001#2;
+          |ACABA;
+     |FINSI;
+     |SI #dsarw060#2 < aDesdeHora; |O #dsarw060#2 > aHastaHora;
+          |ACABA;
+     |FINSI;
+
+     aFax = #dsarw060#5;
+     |QBF aFax;
+
+     |DDEFECTO #dsarw063;
+     #dsarw063#0 = aFax;
+     |LEE 101#dsarw063.=;
+     |SI FSalida ! 0;
+          aTelefono = "";
+          aNif = "";
+          aNombre = "";
+          |HAZ DameDatosFax;
+
+          #dsarw063#1 = aTelefono;
+          #dsarw063#2 = aNif;
+          #dsarw063#3 = aNombre;
+          |GRABA 020#dsarw063.b;
+     |FINSI;
+
+     |SI #dsarw060#18 = 0;
+          aEstado = "N";
+     |SINO;
+          |ABRE #dsarm005;
+          #dsarm005#0 = #dsarw060#18;
+          |LEE 000#dsarm005.=;
+          |SI FSalida = 0;
+               aReporte = #dsarm005#28;
+               |QBF aReporte;
+               |SI aReporte = ""; |O aReporte = "REPORTE:";
+                    aEstado = "C";
+               |SINO;
+                    aReporte = aReporte - "REPORTE:";
+                    aEstado = "E";
+               |FINSI;
+          |SINO;
+               aEstado = "N";
+          |FINSI;
+          |CIERRA #dsarm005;
+     |FINSI;
+
+     #dsarw063#7 = #dsarw063#7 + 1;
+     |SI aEstado = "N";       ||No registrados
+          #dsarw063#4 = #dsarw063#4 + 1;
+     |FINSI;
+     |SI aEstado = "E";       ||Errores
+          #dsarw063#5 = #dsarw063#5 + 1;
+     |FINSI;
+     |SI aEstado = "C";       ||Conforme
+          #dsarw063#6 = #dsarw063#6 + 1;
+     |FINSI;
+     #dsarw063#8 = (#dsarw063#4 / #dsarw063#7) * 100;
+     #dsarw063#9 = (#dsarw063#5 / #dsarw063#7) * 100;
+     #dsarw063#10 = (#dsarw063#6 / #dsarw063#7) * 100;
+     |GRABA 020#dsarw063.a;
+     |LIBERA #dsarw063;
+
+     |SI #dsary001#5 = "N";
+          |SI aEstado = "C";
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |DDEFECTO #dsarw064;
+     #dsarw064#0 = aFax;
+     #dsarw064#1 = #dsarw060#1;
+     #dsarw064#2 = #dsarw060#2;
+     |LEE 101#dsarw064.=;
+     |SI FSalida ! 0; |GRABA 020#dsarw064.b; |FINSI;
+
+     |SI aEstado = "C";
+          #dsarw064#3 = "O";
+     |SINO;
+          #dsarw064#3 = "E";
+     |FINSI;
+     #dsarw064#4 = #dsarw060#8;
+     #dsarw064#5 = #dsarw060#12;
+     |SI aEstado = "E";
+          #dsarw064#6 = aReporte;
+     |FINSI;
+     #dsarw064#7 = #dsarw060#18;
+     |GRABA 020#dsarw064.a;
+     |LIBERA #dsarw064;
+|FPRC;
+
+|DEFBUCLE dsarw060;
+ #dsarw060#1;
+ ;
+ INICIO;
+ FINAL;
+ ;
+ NULL, dsarw060;
+|FIN;
+
+|PROCESO CopiaOrigenDestino;
+     |SI #1#7 = "N";
+         |COPIA_FICHERO aOrigen, aDestino;
+     |SINO;
+         aIPRemoto = "";
+         |IP_REMOTO aIPRemoto;  |QBF aIPRemoto;
+         |SI aIPRemoto ! "";
+             |RECIBE_FICHERO aOrigen, aDestino;
+         |SINO;
+             |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaCuerpo;
+||     |HAZ QuitaRarosCorreo;
+
+     |SI eaAlfa = "";
+         eaAlfa = "<br>";
+     |SINO;
+         eaAlfa = eaAlfa + "<br>" + &10;
+     |FINSI;
+
+     |XGRABA nHandle, eaAlfa;
+|FPRC;
+
+|PROCESO CargaTextoSMTPCLI;
+     ||ARA22
+|FPRC;
+
+|PROCESO EnviaCorreo;
+     |ABRE #dsarm001;
+     |DDEFECTO #dsarm001;
+     |LEE 000#dsarm001.=;
+     |CIERRA #dsarm001;
+
+     aFicheroAdjunto = "";
+
+     |DBASE aBasePla;  |QBF aBasePla;
+     aBaseMensaje = aBasePla + "dscorreo/";
+
+     aAsunto  = "Informe comprobacion FAX";
+
+     aPara = "verificafax@diagram.es"; |QBF aPara;
+
+     aTo = #dsary001#6; |QBF aTo;
+     aDestinoCorreo = aTo;
+
+     ||TRAE LOGO.
+     aFotoOrigen = aBasePla + "logos/logofax.jpg";
+     aNLogo      = "logofax.jpg";
+
+     |XABRE "E", aFotoOrigen, nHandle;
+     |SI FSalida < 0;
+          aFotoOrigen = aBasePla + "logos/insertarlogo.jpg";
+          aNLogo      = "insertarlogo.jpg";
+          |XABRE "E", aFotoOrigen, nHandle;
+          |SI FSalida < 0;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     aOrigen = aFotoOrigen;
+     aContiene1 = aOrigen;
+     |ESPECIFICA "MD5", aContiene;
+     aMD5Ori = FSalida;
+
+     aDestino = aBasePla + "dscorreo/" + aNLogo;
+     aContiene1 = aDestino;
+     |ESPECIFICA "MD5", aContiene;
+     aMD5Des = FSalida;
+
+     |SI aMD5Ori ! aMD5Des;
+          |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+     aLogoFacturae = aDestino;
+
+     |HAZ CargaTextoSMTPCLI;
+     |XCIERRA nHandle;
+
+     ||ARA66
+     ||Los adjuntos.
+     |DBASE aBase;  |QBF aBase;
+
+     aDestino = aBase + "dscorreo";     |MKDIR aDestino;
+     aDestino = aDestino + "/adjunto.txt";  |QBF aDestino;
+     aOrigen  = aFicDestino;
+     |HAZ CopiaOrigenDestino;
+     aFicheroAdjunto = aDestino;
+
+     |HAZ EjecutaShellCorreo;
+|FPRC;
+
+|PROCESO PonDirecciones;
+     aLong  = aTo % 0;
+     nLong  = aLong;
+     aFrase = "";
+     aDirec = "";
+     |PARA nPosi = 1;  |SI nPosi [ nLong;  |HACIENDO nPosi = nPosi + 1;
+           nPos   = (nPosi * 100) + 1;
+           aCarac = aTo % nPos;
+
+           |SI aCarac = ";";  |O aCarac = ",";
+               aFrase = aFrase + "--to=" + &34 + aDirec + &34 + " ";
+               aDirec = "";
+           |SINO;
+               aDirec = aDirec + aCarac;
+           |FINSI;
+     |SIGUE;
+
+     |SI aDirec ! "";
+         aFrase = aFrase + "--to=" + &34 + aDirec + &34;
+     |FINSI;
+
+     aConten = aConten + aFrase + " \" + &10;
+|FPRC;
+
+
+|PROCESO EjecutaShellCorreo;
+     aUsuario = Usuario;
+
+     aAbreHTMO = aBaseMensaje + "verifax.htm";
+     aAbreHTMD = aBaseMensaje + aUsuario + ".htm";  |QBT aAbreHTMD;
+     |FBORRA aAbreHTMD;
+
+     |XABRE "WB", aAbreHTMD, nHandle1;
+     |XABRE "AB", aAbreHTMO, nHandle2;
+
+     nRegilla = 0;
+     nLLave   = 0;
+     |XLEE nHandle2, 1, aAlfa;
+     |PARA; |SI FSalida > 0; |HACIENDO;
+            |SI aAlfa = "#";
+                nRegilla = nRegilla + 1;
+            |FINSI;
+
+            |SI nRegilla = 2;  |SAL;  |FINSI;
+
+            |SI nLLave = 0;  |Y aAlfa ! "{";  |Y nRegilla = 0;
+                |XGRABA nHandle1, aAlfa;
+            |FINSI;
+
+            |SI aAlfa = "}";
+                aConten  = aConten + aAlfa;
+
+                |SI aConten = "{LOGO}";
+                    ||Por el tema del "cid:" Para la imagen embebida
+                    ||aAlfa = &34 + aNLogo + &34;
+                    aAlfa = aNLogo;
+                |FINSI;
+
+                |XGRABA nHandle1, aAlfa;
+
+                nLLave   = 0;
+                aConten  = "";
+            |SINO;
+                |SI aAlfa = "{";  |O nLLave = 1;
+                    aConten  = aConten + aAlfa;
+                    nLLave = 1;
+                |FINSI;
+            |FINSI;
+
+            |XLEE nHandle2, 1, aAlfa;
+     |SIGUE;
+     |XCIERRA nHandle1;
+
+     |AFEGIR_FICHERO aAbreTXT, aAbreHTMD;
+
+     |XABRE "AB", aAbreHTMD, nHandle1;
+
+     |XLEE nHandle2, 1, aAlfa;
+     |PARA; |SI FSalida > 0; |HACIENDO;
+            |XGRABA nHandle1, aAlfa;
+
+            |XLEE nHandle2, 1, aAlfa;
+     |SIGUE;
+     |XCIERRA nHandle1;
+     |XCIERRA nHandle2;
+
+     aAbreTXTO = aBaseMensaje + "dscorreo.sh";
+     aAbreTXTD = aBaseMensaje + aUsuario + ".sh";  |QBT aAbreTXTD;
+     aAbreFIN  = aBaseMensaje + "fin_" + aUsuario + ".txt"; |QBT aAbreFIN;
+     |FBORRA aAbreTXTD;
+     |FBORRA aAbreFIN;
+
+     |XABRE "WB", aAbreTXTD, nHandle1;
+     |XABRE "AB", aAbreTXTO, nHandle2;
+
+
+     |ABRE #910;
+     |LEE 000#910p;
+     |SI FSalida ! 0;  |DDEFECTO #910;  |FINSI;
+     |CIERRA #910;
+
+     |HAZ ParametrosSMTPCLI;
+
+     aCarac10 = &10;
+     aConten = "";
+     aVarSMTP = #dsarw010#19;
+     |QBF aVarSMTP;
+     aVarUsuario = #dsarw010#21;
+     |QBF aVarUsuario;
+     aVarPassword = #dsarw010#22;
+     |QBF aVarPassword;
+
+     |XLEE nHandle2, 1, aAlfa;
+     |PARA; |SI FSalida > 0; |HACIENDO;
+            aConten = aConten + aAlfa;
+
+            |SI aAlfa = aCarac10;
+                aAlfa1 = aConten - "/usr/bin/smtp-cli";
+                |SI FSalida ! 0;
+                     ||SMTPSERVPROPIO
+                     |SI nSwSMTPServPropio = 1;
+                         |SI aVarSMTP ! ""; |Y aVarUsuario ! ""; |Y aVarPassword ! "";
+                              aAlfa2 = aAlfa1 - "--host=asmtp.diagram.es --user=control.smtp@diagram.es --pass=elpollogalactico \";
+                              |SI FSalida ! 0;
+                                   aAlfa1 = " --host=" + aVarSMTP + " --user=" + aVarUsuario + " --pass=" + aVarPassword + " \" + &10;
+                              |FINSI;
+                         |FINSI;
+                     |FINSI;
+
+                     aConten = aBaseMensaje + "smtp-cli" + aAlfa1;
+                |FINSI;
+
+                aAlfa1 = aConten - "DE=$1";
+                |SI FSalida ! 0;
+                    aConten = "DE=" + &34 + aPara + &34 + &10;
+                |FINSI;
+
+                aAlfa1 = aConten - "$PARA";
+                |SI FSalida ! 0;
+                    aConten = "";
+                    |HAZ PonDirecciones;
+                |FINSI;
+
+                aAlfa1 = aConten - "ASUNTO=$3";
+                |SI FSalida ! 0;
+                    aConten = "ASUNTO=" + &34 + aAsunto + &34 + &10;
+                |FINSI;
+
+                aAlfa1 = aConten - "FICHTM=$4";
+                |SI FSalida ! 0;
+                    aConten = "FICHTM=" + &34 + aAbreHTMD + &34 + &10;
+                |FINSI;
+
+                aAlfa1 = aConten - "FICAT1=$5";
+                |SI FSalida ! 0;
+                    aConten = "FICAT1=" + &34 + aLogoFacturae + &34 + &10;
+                |FINSI;
+
+                aAlfa1 = aConten - "FICFIN=$6";
+                |SI FSalida ! 0;
+                    aConten = "FICFIN=" + &34 + aAbreFIN + &34 + &10;  |QBT aConten;
+                |FINSI;
+
+                aAlfa1 = aConten - "$ADJUNTO";
+                |SI FSalida ! 0;
+                    aConten = "";
+                    |SI aFicheroAdjunto ! "";
+                        aConten = "--attach " + aFicheroAdjunto + " \" + &10;
+                        |XGRABA nHandle1, aConten;
+                    |FINSI;
+                |SINO;
+                     |XGRABA nHandle1, aConten;
+                |FINSI;
+
+                aConten = "";
+            |FINSI;
+
+            |XLEE nHandle2, 1, aAlfa;
+     |SIGUE;
+
+     |XCIERRA nHandle1;
+     |XCIERRA nHandle2;
+     aEjecuta = "/bin/sh " + aAbreTXTD;
+
+     ||TODO CCC. DESCOMENTAR ESTE TROZO
+     |SYSTEM aEjecuta;
+
+     |PARA;  |SI;  |HACIENDO;
+          |XABRE "E", aAbreFIN, nHandle;
+          |SI FSalida ] 0;  |SAL;  |FINSI;
+
+          |SLEEP 1;
+          |PULSATECLA;
+     |SIGUE;
+
+
+     |FBORRA aAbreTXT;
+     |FBORRA aAbreTXTD;
+     |FBORRA aAbreHTMD;
+     |FBORRA aAbreFIN;
+
+     |SI aFicheroAdjunto ! "";
+          |FBORRA aFicheroAdjunto;
+     |FINSI;
+|FPRC;
+
+|PROCESO Principal;
+     |SI nSwModoUnix = 1;
+          |DBASE aBase;
+          |QBF aBase;
+
+          aPath = aBase + "unixtxt/";
+          |MKDIR aPath;
+
+          aDestino = aPath + Usuario;
+          |QBF aDestino;
+          aDestino = aDestino + ".txt";
+
+          aNomDestino = Usuario;
+          |QBF aNomDestino;
+          aNomDestino = aNomDestino + ".txt";
+          aFicDestino = aDestino;
+
+          |FBORRA aDestino;
+
+          |XABRE "W", aDestino, nHandle;
+          |SI FSalida < 0;
+               aMensaje = "0000No puedo grabar " + aDestino;
+               |MENAV aMensaje;
+               |ACABA;
+          |SINO;
+               aLinea = "Fecha desde: " + #dsary001#1;
+               |QBF aLinea;
+               aLinea = aLinea + "         " + "Hora desde: " + #dsary001#3;
+               |QBF aLinea;
+               aLinea = aLinea + "         " + "Mostrar sin errores: " + #dsary001#5;
+               |XGRABA nHandle, aLinea;
+
+               aLinea = "Fecha hasta: " + #dsary001#2;
+               |QBF aLinea;
+               aLinea = aLinea + "         " + "Hora hasta: " + #dsary001#4;
+               |QBF aLinea;
+               |XGRABA nHandle, aLinea;
+
+               aLinea = "";
+               |XGRABA nHandle, aLinea;
+
+               aLinea = "                          INFORME COMPROBACION FAX";
+               |XGRABA nHandle, aLinea;
+
+               aLinea = "";
+               |XGRABA nHandle, aLinea;
+
+               |DELINDEX #dsarw063;
+               |DELINDEX #dsarw064;
+               |ABRE #dsarw063;
+               |ABRE #dsarw064;
+               aDesdeHora = #dsary001#3 + ":00";
+               aHastaHora = #dsary001#4 + ":59";
+               |BUCLE dsarw060;
+               |CIERRA #dsarw063;
+               |CIERRA #dsarw064;
+               |BUCLE dsarw063;
+
+               |XCIERRA nHandle;
+          |FINSI;
+
+          ||Falta el envio por correo, modo UNIX.
+
+          |HAZ EnviaCorreo;
+
+          |ACABA;
+     |SINO;
+          |SI aParametro ! "DIA"; |Y aParametro ! "HORA";
+               Impresora = "CrystalReport";
+               |IMPRE -1;
+          |SINO;
+               aBorra = "c:/ds/crystal/dsary001.pdf";
+               |RFBORRA aBorra;
+               Impresora = "CrystalReport;c:/ds/crystal/dsary001.pdf";
+               |IMPRE -1;
+               ||PDF.  :)
+          |FINSI;
+     |FINSI;
+     |SI FSalida = 0;
+          aInforme = "dsary001";
+          |INFOR aInforme;
+          |SI FSalida = 0;
+               |DELINDEX #dsarw063;
+               |DELINDEX #dsarw064;
+               |ABRE #dsarw063;
+               |ABRE #dsarw064;
+               aDesdeHora = #dsary001#3 + ":00";
+               aHastaHora = #dsary001#4 + ":59";
+               |BUCLE dsarw060;
+               |CIERRA #dsarw063;
+               |CIERRA #dsarw064;
+               |BUCLE dsarw063;
+               |SI nSwPie = 1;
+                    |PIEINF;
+               |FINSI;
+               |FININF;
+          |SINO;
+               aMensaje = "0000Informe " + aInforme + " inaccesible.";
+               |MENAV aMensaje;
+          |FINSI;
+          |FINIMP;
+     |SINO;
+          |MENAV "0000Proceso cancelado.";
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     enAprobacion = 0;
+     eaPrograma = "SMTPSERVPROPIO";
+     |HAZ DSARCHI_INI;
+     nSwSMTPServPropio = enAprobacion;
+
+     |CLS;
+     aParametro = PARAMETRO;
+     |QBF aParametro;
+
+     aAux = aParametro - "UNIX";
+     |QBF aAux;
+     |SI aParametro ! aAux;
+          aParametro = aAux;
+          nSwModoUnix = 1;
+     |SINO;
+          nSwModoUnix = 0;
+     |FINSI;
+
+     |ABRE #dsary001;
+
+     |ABRE #0;
+     |DDEFECTO #0;
+     |LEE 101#0p;
+     nExiste = FSalida;
+     |SI aParametro ! "DIA"; |Y aParametro ! "HORA";
+          |PINPA #0#dsary001;
+          nPanta = FSalida;
+          |PINDA #0#dsary001;
+          |ENDATOS #1#0;
+          |SI FSalida = 0;
+               |SI nExiste = 0;
+                    |GRABA 020#0a;
+               |SINO;
+                    |GRABA 020#0n;
+               |FINSI;
+               |HAZ Principal;
+          |FINSI;
+     |SINO;
+          fFecha = ~;
+          #0#1 = fFecha;
+          #0#2 = fFecha;
+          |SI aParametro = "DIA";
+               #0#3 = "00:00";
+               #0#4 = "23:59";
+          |SINO;
+               |HORA aHora;
+               aHora = aHora % 102;
+               aDesde = aHora + ":00";
+               aHasta = aHora + ":59";
+               #0#3 = aDesde;
+               #0#4 = aHasta;
+          |FINSI;
+          |SI nExiste = 0;
+               |GRABA 020#0a;
+          |SINO;
+               |GRABA 020#0n;
+          |FINSI;
+          |HAZ Principal;
+     |FINSI;
+     |LIBERA #0;
+     |CIERRA #0;
+|FPRO;

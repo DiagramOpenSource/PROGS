@@ -1,0 +1,218 @@
+|FICHEROS;
+     dsmozp87 #0;
+
+     dsmom002 #2;
+
+     dsmom084 #84,MANTE;
+     dsmom080 #80;
+     dsmom081 #81;
+     dsmom082 #82;
+     dsmom083 #83;
+
+     :/basica/def/agifigen #1000;
+|FIN;
+
+|VARIABLES;
+   aAlfa1    = "";
+   fFecha1   = @;
+
+   nDEmpresa = 0;
+   nHEmpresa = 0;
+   nEjer     = 0;
+
+   errconta  = 0;
+   nModo     = 0;
+   nInkey    = 0;
+
+   nSwConPro   = 0;
+   fFecIni     = @;
+   fFecFin     = @;
+|FIN;
+
+|INCLUYE i_variar;
+
+|| \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+|| .... Mirar si hace el modelo de IVA
+|PROCESO MiraSiD;
+ |SI #2#8 > "01.01.0000";
+     |SI #2#8 > fFecFin;  |ACABA;  |FINSI;
+ |FINSI;
+ |SI #2#9 > "01.01.0000";
+     |SI #2#9 < fFecIni;  |ACABA;  |FINSI;
+ |FINSI;
+ |SI #2#2 = 309; |O #2#2 = 308; |ACABA; |FINSI;
+ |SI #2#2 = 310; |O #2#2 = 311; |ACABA; |FINSI;
+ |SI #2#2 = 300; |O #2#2 = 320; |O #2#2 = 330; |O #2#2 = 332; |O #2#2 = 370;
+     nSwConPro = 0;
+     |ERROR10;
+ |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraSiDIVA;
+ #2#1;
+ ;
+ #84#0, 01, 300;
+ #84#1, 99, 370;
+ ;
+ NULL, MiraSiD;
+|FIN;
+
+|PROCESO LeeEmpresa;
+  || Lee Empresa
+    errconta = 0;
+    |ABRE #1000;
+    #1000#0 = #84#0;
+    |LEE 041#1000=;
+    |SI FSalida ! 0;
+        errconta = 1;
+    |FINSI;
+    |CIERRA #1000;
+|FPRC;
+
+|PROCESO Tipo11_84; |TIPO 11;
+ nInkey = FSalida;
+ |SI nInkey = 10;
+     |HAZ Consulta;
+     |ERROR;
+ |FINSI;
+ |SI nInkey = 11;
+       |ERROR;
+       eaElProm = "dsmom084";
+       |HAZ ConsuCliente7;
+       eaElProm = "";
+       |PTEC 802;
+       |ACABA;
+ |FINSI;
+|FPRC;
+
+|PROCESO Tipo7_84; |TIPO 7;
+    #0#1 = "";
+    |HAZ LeeEmpresa;
+    |SI errconta = 0; #0#1 = #1000#1; |FINSI;
+    |PINTA #0#1;
+    |PINTA 1712, "                   ";
+    |ABRE #80;
+    #80#0 = #84#0;
+    #80#1 = #84#1;
+    |LEE 001#80=;
+    |SI FSalida ! 0;
+        |ATRI I; |PINTA 1812, "SIN CALCULOS ... "; |ATRI 0;
+    |FINSI;
+    |CIERRA #80;
+|FPRC;
+
+|PROCESO Leom082;
+ |SI #82#6 ! 0; #84#6 = "S"; |FINSI;
+|FPRC;
+
+|DEFBUCLE Leom082;
+ #82#1;
+ ;
+ #80#0, #80#1, 01;
+ #80#0, #80#1, 99;
+ ;
+ NULL, Leom082;
+|FIN;
+
+|PROCESO Tipo0_84; |TIPO 0;
+    |HAZ LeeEmpresa;
+    |SI errconta = 1;
+        |MENAV "    No existe Empresa ";
+        |ERROR;
+        |ACABA;
+    |FINSI;
+    #0#1 = #1000#1;
+    |PINTA #0#1;
+
+    |PINTA 1712, "                   ";
+    |ABRE #80;
+    #80#0 = #84#0;
+    #80#1 = #84#1;
+    |LEE 001#80=;
+    |SI FSalida = 0;
+        #84#2 = #80#2; |PINTA #84#2;
+        #84#3 = #80#3; |PINTA #84#3;
+        #84#4 = #80#4; |PINTA #84#4;
+        #84#5 = #80#5; |PINTA #84#5;
+        #84#7 = #80#6; |PINTA #84#7;
+        #84#8 = #80#7; |PINTA #84#8;
+        #84#9 = #80#9; |PINTA #84#9;
+        #84#10 = #80#43; |PINTA #84#10;
+        #84#11 = #80#8; |PINTA #84#8;
+
+        |SI #80#13 ! 0;
+            #84#6 = "S";
+        |SINO;
+            #84#6 = "N";
+            |BUCLE Leom082;
+        |FINSI;
+        |PINTA #84#6;
+    |SINO;
+        nSwConPro = -1;
+        |BUCLE MiraSiDIVA;
+        |SI nSwConPro = -1;
+            |MENAV "    Esta Empresa no tiene Modelos de IVA en el Planing";
+            nModo = (FEntrada / 100) ! 0;
+            |SI nModo = 2;
+                |BORRA 020#84a;
+                |LIBERA #84;
+                |PONCONTROL  23, "SI";
+            |FINSI;
+            |ERROR;
+        |SINO;
+            |ATRI I; |PINTA 1812, "SIN CALCULOS ... "; |ATRI 0;
+        |FINSI;
+    |FINSI;
+    |CIERRA #80;
+|FPRC;
+
+|PROCESO LaConsulta;
+ nInkey = FSalida;
+ |SI nInkey = 10;
+     |HAZ Consulta;
+ |FINSI;
+|FPRC;
+
+|PROCESO Consulta;
+     enTipoEntrada = 4;
+     enEmpresa = #84#0;
+     enEjer    = #84#1;
+     |PUSHV 0924 2380;
+     |SUB_EJECUTA_NP "dsmom080";
+     |POPV;
+|FPRC;
+
+|| \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+|RUTINA ClaveBaja84;
+   #84#0 = nDEmpresa;
+   #84#1 = nEjer;
+|FRUT;
+
+|RUTINA ClaveAlta84;
+   #84#0 = nHEmpresa;
+   #84#1 = nEjer;
+|FRUT;
+
+|PROGRAMA;
+
+    |CLS;
+    |CABEZA "Empresas Sin Prorrata ";
+
+    |PINPA #0#0;
+
+    fFecha1 = ~;
+    aAlfa1 = fFecha1; aAlfa1 = aAlfa1 % -104;
+    #0#0 = aAlfa1; |PINTA #0#0;
+    aAlfa1 = "01.01." + aAlfa1; fFecIni = aAlfa1;
+    aAlfa1 = #0#0;
+    aAlfa1 = "31.12." + aAlfa1; fFecFin = aAlfa1;
+
+    |ENCAMPO #0#0;
+    |SI FSalida = 7; |O FSalida = 1; |ACABA; |FINSI;
+
+    nEjer = #0#0;
+    nDEmpresa = 00001;
+    nHEmpresa = 99999;
+
+    |ENTLINEAL #2#84, -2, 2, 22, 0, ClaveBaja84, ClaveAlta84;
+|FPRO;

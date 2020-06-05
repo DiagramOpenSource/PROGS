@@ -1,0 +1,797 @@
+|| modificacion de asientos desde entrada 'camoddi0' y desde menu 'camoddia'
+
+|FICHEROS;
+    camaasic #01;        || apuntes cabs.
+    camaasil #02;        || apuntes lins.
+    catramod #05;        || actualizacion niveles inferiores
+
+    camaniva #15;
+    caivalin #16;
+
+    caivaasi #21;
+    &Puente@ #22;
+
+    calicont #31;        || Contrapartidas
+
+    calincob #40;
+    calinpag #41;
+    carepres #42;
+    caclipro #43;
+    caforpag #44;
+
+    camanefe #347;       || Cobros y pagos Modelo 347
+
+    anm00012 #112;       || Grupos Analitica
+    anm00013 #113;
+
+    camacc01 #501;
+    camacc02 #502;
+
+    referen@;
+|FIN;
+
+|VARIABLES;
+   &eaPath    = "";
+   &eaRetorno = "";
+   Comodin    = "";
+
+   aCuenta = "";
+   nNivel  = 0;
+   NumDoc  = 0;
+
+   aAlfa = "";
+   &ant_dia = 0;
+   &ant_fec = @;
+   &ant_doc = 0;
+
+   &vie_dia = 0;
+   &vie_fec = @;
+   &vie_doc = 0;
+   nume1    = 0;
+
+    &enEmbDia  = 0;
+    &enNuevo0  = 0;
+    &efNuevo1  = @;
+    &enEmbDoc  = 0;
+    &enNuevo2  = 0;
+    &enEmbLin  = 0;
+    &enNuevo3  = 0;
+
+    fFechaAnt  = @;
+
+    aPathDatos      = "";
+    aDef            = "";
+    aAux            = "";
+    aEmpresa        = "";
+    aPeriodo        = "";
+
+    aLong = ""; nLong = 0;
+
+    nEmpresaConta   = 0;
+    nPeriodo        = 0;
+    nLibroConta     = 0;
+    nLineaConta     = 0;
+    nRegFactura     = 0;
+    aQueQuiero = "";
+    aNumCampos = "";
+    nNumCampos = 0;
+|FIN;
+
+|PROCESO SacaNivel1;
+   aAlfa = aCuenta; |QBF aAlfa;
+   aLong = aAlfa % 0; nLong = aLong;
+   nNivel = 0;
+   |SI nLong > 0;
+      |SI nLong = #48#14; nNivel = 1; |FINSI;
+      |SI nLong = #48#15; nNivel = 2; |FINSI;
+      |SI nLong = #48#16; nNivel = 3; |FINSI;
+      |SI nLong = #48#17; nNivel = 4; |FINSI;
+      |SI nLong = #48#18; nNivel = 5; |FINSI;
+      |SI nLong = #48#19; nNivel = 6; |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO fecha; |TIPO 0;
+  |SI #0Campo < fec1; |O #0Campo > fec2;
+
+       |SI Campo = 1;
+           alfa1 = "    NERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO. CONTINUAR ";
+           |CONFI alfa1;
+           |SI FSalida !  0; |ERROR; |FINSI;
+       |SINO;
+           |MENAV mensa1;
+           |ERROR;
+       |FINSI;
+
+   |SINO;
+
+      |SI #0Campo [ fec3;
+          |SI Campo = 1;
+              alfa1 = "    NERROR FECHA INFERIOR O IGUAL AL BLOQUEO DE DATOS. CONTINUAR";
+              |CONFI alfa1;
+              |SI FSalida !  0; |ERROR; |FINSI;
+          |SINO;
+              |MENAV mensa2;
+              |ERROR;
+          |FINSI;
+      |FINSI;
+
+   |FINSI;
+|FPRC;
+
+|PROCESO borrar;
+    modcon = 0;
+|FPRC;
+
+|PROCESO CambiaDSARCHI;
+     |DBASS aBase;
+     aPathDatos = aBase + "dsarchi/fich/";
+     aDef       = aBase + "dsarchi/def/dsarm005.mas";
+     |CARGA_DEF aDef, referen@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |PATH_DAT #referen@#aPathDatos#;
+     nEmpresaConta = #48#0;
+     aAux          = ("000000" + nEmpresaConta) % -106;
+     aEmpresa      = aAux % 105;
+     nEmpresaConta = aEmpresa;
+     aPeriodo      = aAux % -101;
+     nPeriodo      = aPeriodo;
+     nLibroConta   = #camaniva#0;
+     nRegFactura   = #camaniva#1;
+
+     |ABRE #referen@;
+     |SELECT #11#referen@;
+     #referen@#67 = nEmpresaConta;
+     #referen@#68 = nPeriodo;
+     #referen@#72 = nLibroConta;
+     #referen@#73 = nRegFactura;
+     |LEE 101#referen@.=;
+     |PARA; |SI; |HACIENDO;
+          |SI FSalida ! 0;                    |SAL;  |FINSI;
+          |SI #referen@#67 ! nEmpresaConta;   |SAL;  |FINSI;
+          |SI #referen@#68 ! nPeriodo;        |SAL;  |FINSI;
+          |SI #referen@#72 ! nLibroConta;     |SAL;  |FINSI;
+          |SI #referen@#73 ! nRegFactura;     |SAL;  |FINSI;
+
+          #referen@#69 = #camaniva#7;
+          #referen@#70 = #camaniva#8;
+          #referen@#71 = #camaniva#9;
+          #referen@#72 = #camaniva#0;
+          #referen@#73 = #camaniva#1;
+
+          |GRABA 020#referen@.a;
+          |LIBERA #referen@;
+
+          |LEE 101#referen@.s;
+     |SIGUE;
+     |LIBERA #referen@;
+
+     |CIERRA #referen@;
+     |DESCARGA_DEF #referen@;
+|FPRC;
+
+|PROCESO cambio;
+|SI #0#0 ! #0#3;                        || diario
+    |SI #0#0 = 0; |O #0#0 = 99;
+            modcon = 1;
+    |FINSI;
+    |SI #0#3 = 0; |O #0#3 = 99;
+            modcon = 1;
+    |FINSI;
+|FINSI;
+|SI #0#1 ! #0#4;                        || fecha
+        traba1 = #0#1;
+        mesi1 = traba1 % 402;
+        traba1 = #0#4;
+        mesi2 = traba1 % 402;
+    |SI mesi1 ! mesi2;
+            modcon = 1;
+    |FINSI;
+|FINSI;
+    #1#0 = #0#0;
+    #1#1 = #0#1;
+    #1#2 = #0#2;
+|LEE 021#1=;             || lee cabs. vieja
+|SI FSalida = 0;
+        #1#0 = #0#3;
+        #1#1 = #0#4;
+        #1#2 = #0#5;
+        #1#3 = #0#10;
+    |GRABA 020#1n;       || graba cabs. nueva
+|FINSI;
+    #2#3 = 0;
+|ET otralinea;
+    #2#0 = #0#0;
+    #2#1 = #0#1;
+    #2#2 = #0#2;
+|LEE 001#2>;             || lee lins. vieja
+|SI FSalida = 0;
+    |SI #2#0 = #0#0;  |Y #2#1 = #0#1; |Y #2#2 = #0#2;
+            #2#0 = #0#3;
+            #2#1 = #0#4;
+            #2#2 = #0#5;
+        |GRABA 020#2n;        || graba lins. nueva
+
+     MasMenos     = #camaasil#9;
+     DebeHaber    = #camaasil#8;
+     aCUENTA      = #camaasil#4;
+     nREGISTRO    = #camaasil#24;
+     nDIARIO      = #camaasil#0;
+     aFECHA       = #camaasil#1;
+     nDOCUMENTO   = #camaasil#2;
+     nNIVELCUENTA = #camaasil#5;
+     |HAZ ActDiario;          || diario
+     |HAZ ActCuenta;          || cuenta
+     |HAZ ActTesteo;
+
+        |HAZ contrapartida;
+        |HAZ cobpag347;
+        |HAZ cobpagCaja;
+        |HAZ grupoana;
+        |HAZ grabaEmbargo;
+        |VETE otralinea;
+    |FINSI;
+|FINSI;
+    #1#0 = #0#0;
+    #1#1 = #0#1;
+    #1#2 = #0#2;
+|LEE 021#1=;             || lee cabs. vieja
+|SI FSalida = 0;
+    |BORRA 020#1a;
+|FINSI;
+
+    #2#3 = 0;
+|ET bajalinea;
+    #2#0 = #0#0;
+    #2#1 = #0#1;
+    #2#2 = #0#2;
+|LEE 001#2>;
+|SI FSalida = 0;
+    |SI #2#0 = #0#0;  |Y #2#1 = #0#1; |Y #2#2 = #0#2;
+        |BORRA 020#2a;
+     MasMenos     = -1 * #camaasil#9;
+     DebeHaber    = #camaasil#8;
+     aCUENTA      = #camaasil#4;
+     nREGISTRO    = #camaasil#24;
+     nDIARIO      = #camaasil#0;
+     aFECHA       = #camaasil#1;
+     nDOCUMENTO   = #camaasil#2;
+     nNIVELCUENTA = #camaasil#5;
+     |HAZ ActDiario;          || diario
+     |HAZ ActCuenta;          || cuenta
+     |HAZ ActTesteo;
+
+        |VETE bajalinea;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO antasto; |TIPO 7;
+  #0#10 = #0#5; |PINTA #0#10;
+|FPRC;
+
+|PROCESO lectura; |TIPO 0;
+    |SI FSalida = 2; |ACABA; |FINSI;
+
+    enTipoAsto = 0;
+    enSwDejar  = 0;
+    si_sigue = 1;
+    |ABRE #1;
+    #1#0 = #0#0;
+    #1#1 = #0#1;
+    #1#2 = #0#2;
+    |LEE 040#1=;
+
+    |SI FSalida = 0;
+        enTipoAsto = #1#13;
+        |SI #1#13 > 100;
+||            |SI #1#13 = 110; |O #1#13 = 150;
+||                |HAZ eDejarModificar;
+||            |FINSI;
+            |SI enSwDejar = 0;
+                aAlfa = "    FACTURA DESDE PASE DE GESTION. MODIFICACION NO PERMITIDA ";
+                |SI #1#13 = 103; aAlfa = "    NOMINA DESDE PASE DE LABORAL. MODIFICACION NO PERMITIDA ";         |FINSI;
+                |SI #1#13 = 104; aAlfa = "    NOMINAS DE RETRIBUCION ADMINITRAORES. MODIFICACION NO PERMITIDA";  |FINSI;
+                |SI #1#13 = 105; aAlfa = "    ASTO DE CAJA. MODIFICACION NO PERMITODA"; |FINSI;
+                |SI #1#13 = 106; aAlfa = "    ASTO DE PRESTAMOS DE SOCIOS. MODIFICACION NO PERMITODA"; |FINSI;
+                |SI #1#13 = 190; aAlfa = "    ASTO SEG.SOCIALES DESDE PASE LABORAL. MODIFICACION NO PERMITIDA "; |FINSI;
+                |SI #1#13 = 110; aAlfa = "    ASIENTO DESDE PASE DE GESTION. NO MODIFICABLE ";                   |FINSI;
+                |SI #1#13 = 150;
+                    aAlfa = "    ASIENTO DESDE PASE DE CARTERA. NO MODIFICABLE ";
+                    |SI eaTexError ! ""; aAlfa = eaTexError; |FINSI;
+                |FINSI;
+                |MENAV aAlfa;
+                si_sigue = 0;
+            |FINSI;
+        |SINO;
+            |HAZ ver_iva;
+            #0#6 = #1#4; |PINTA #0#6;
+            #0#7 = #1#5; |PINTA #0#7;
+            #0#9 = #1#3; |PINTA #0#9;
+        |FINSI;
+    |SINO;
+        |MENAV men4;
+        si_sigue = 0;
+    |FINSI;
+    |CIERRA #1;
+|FPRC;
+
+|PROCESO cambia_iva;
+    #camaniva#7 = #0#3;       || diario nuevo
+    #camaniva#8 = #0#4;       || fecha nueva
+    #camaniva#9 = #0#5;       || documento nuevo
+    |SI #0#8 = "S";
+        fFechaAnt = #camaniva#4;
+        #camaniva#4 = #0#4;
+        |SI #camaniva#6 = "N";
+            |SI fFechaAnt ! #camaniva#4;
+               |SI #camaniva#36 = "R"; |HAZ act_cob; |FINSI;
+               |SI #camaniva#36 = "S"; |HAZ act_pag; |FINSI;
+            |FINSI;
+            |HAZ periodo;
+            #camaniva#5 = i_perio;
+        |FINSI;
+    |FINSI;
+    |GRABA 020#camaniva.a;
+    |LIBERA #camaniva;
+
+    |SI enEjercicio ] 2014;
+        |ABRE #501;
+        #501#0 = #camaniva#0;
+        #501#1 = #camaniva#1;
+        |LEE 141#501=;
+        |SI FSalida = 0;
+            #501#2 = #0#3;
+            #501#3 = #0#4;
+            #501#4 = #0#5;
+            |GRABA 020#501a;
+        |FINSI;
+        |LIBERA #501;
+        |CIERRA #501;
+    |FINSI;
+
+    |HAZ CambiaDSARCHI;
+|FPRC;
+
+|DEFBUCLE iva;
+ #camaniva#2;
+ ;
+ #0#0, #0#1, #0#2;
+ #0#0, #0#1, #0#2;
+ be;
+ NULL, cambia_iva;
+|FIN;
+
+|PROCESO los_ivas;
+  |ABRE #21;
+  |LEE 001#21p;
+  |CIERRA #21;
+  nume1 = 46; |SI enTipoAsto ] 3; nume1 = 149; |FINSI;
+  |BUCLE iva;
+|FPRC;
+
+|PROCESO ver_iva;
+ |ABRE #camaniva;
+ sw_exi = 0;
+
+ |SELECT #2#camaniva;
+ #camaniva#7 = #0#0;
+ #camaniva#8 = #0#1;
+ #camaniva#9 = #0#2;
+ |LEE 040#camaniva.=;
+ |SI FSalida ! 0;
+     |CAMPO_MODIFICA #0#8,1,"N";
+     #0#8 = "N";
+     |PINTA #0#8;
+ |SINO;
+     |CAMPO_MODIFICA #0#8,1,"S";
+ |FINSI;
+
+ |CIERRA #camaniva;
+|FPRC;
+
+|PROCESO periodo;
+    alfa1 = #0#4;
+    alfa1 = alfa1 % 0402;
+    i_perio = alfa1;
+
+    |SI enEjercicio [ 2009;
+       |SI #21nume1 = "T";
+           |SI alfa1 ] "01"; |Y alfa1 [ "03"; i_perio = 1; |FINSI;
+           |SI alfa1 ] "04"; |Y alfa1 [ "06"; i_perio = 2; |FINSI;
+           |SI alfa1 ] "07"; |Y alfa1 [ "09"; i_perio = 3; |FINSI;
+           |SI alfa1 ] "10"; |Y alfa1 [ "12"; i_perio = 4; |FINSI;
+       |SINO;
+           |SI #21nume1 = "A"; i_perio=  0; |FINSI;
+       |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO Calincob;
+   |SI #calincob#6 ! #camaniva#4;
+      #calincob#6 = #camaniva#4; |GRABA 020#calincob.a;
+
+      |ABRE #carepres;
+      #carepres#0 = #calincob#28;
+      |LEE 000#carepres.=;
+      |SI FSalida ! 0; |DDEFECTO #carepres; |FINSI;
+      |CIERRA #carepres;
+
+      |ABRE #caclipro;
+      #caclipro#23 = "C";
+      #caclipro#10 = #calincob#4; aCuenta = #calincob#4; |HAZ SacaNivel1;
+      #caclipro#11 = nNivel;
+      |LEE 000#caclipro.=;
+      |SI FSalida ! 0; |DDEFECTO #caclipro; |FINSI;
+      |CIERRA #caclipro;
+
+      |ABRE #caforpag;
+      #caforpag#0 = #caclipro#20;
+      |LEE 000#caforpag.=;
+      |SI FSalida ! 0;
+          |DDEFECTO #caforpag;
+          |SI #caclipro#20 = 0;
+              #caforpag#2  = 1;
+          |FINSI;
+      |FINSI;
+      |CIERRA #caforpag;
+
+      |DDEFECTO #Puente@;
+      #Puente@#0  = #calincob#0;            || Libro
+      #Puente@#1  = #calincob#2;            || Serie
+      #Puente@#2  = #calincob#1;            || Factura
+      #Puente@#3  = #calincob#3;            || Numero recibo
+      #Puente@#4  = #calincob#7;            || Fecha vto.
+      #Puente@#5  = #calincob#6;            || Fecha emision
+      #Puente@#6  = #calincob#4;            || Cuenta Cliente
+      #Puente@#7  = #caclipro#1;            || Nombre Cliente
+      #Puente@#8  = #calincob#15;           || Nombre Banco
+      #Puente@#9  = #caclipro#29;           || Entidad
+      #Puente@#10 = #caclipro#30;           || Sucursal
+      #Puente@#11 = #caclipro#31;           || DC
+      #Puente@#12 = #caclipro#32;           || N§ Cuenta
+      #Puente@#13 = #calincob#11;           || Tipo de recibo
+      #Puente@#14 = "";                     || Departamento
+      #Puente@#15 = #calincob#8;            || Importe Recibo
+      #Puente@#16 = "";                     || A Aceptar
+      #Puente@#17 = "";                     || Aceptado
+      #Puente@#18 = "";                     || Codigo Cliente (GESTION)
+      #Puente@#19 = #calincob#28;           || Representante
+      #Puente@#20 = #carepres#1;            || Nombre Representante
+      #Puente@#21 = "";                     || Zona
+      #Puente@#22 = NumDoc;                 || N§ Documento
+      #Puente@#23 = #48#2;                  || Codigo Empresa
+      #Puente@#24 = #48#3;                  || Periodo Empresa
+      #Puente@#25 = "";                     || Empresa gestion
+      #Puente@#26 = "N";                    || Recibo a cuenta
+      #Puente@#27 = "V";                    || Tipo de recibo
+      #Puente@#28 = "A";                    || Tipo de Operacion
+      #Puente@#29 = "EUR";               || Divisa
+      #Puente@#30 = "EURO";              || Nombre Divisa
+      #Puente@#31 = 1;                   || Cambio Divisa en EUROS
+      #Puente@#32 = 1;                   || Cambio M.Base en EUROS
+      #Puente@#33 = #caclipro#28;
+      #Puente@#37 = #camaniva#22;
+      #Puente@#40 = #caclipro#20;
+      #Puente@#41 = #caforpag#1;
+       |SI nNumCampos ] 49;
+           #Puente@#48 = #caclipro#40;
+           #Puente@#49 = #caclipro#41;
+       |FINSI;
+      |GRABA 020#Puente@.n;
+      NumDoc = NumDoc + 1;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Calincob;
+#calincob#1;
+;
+#camaniva#0, #camaniva#2, #camaniva#3, 001;
+#camaniva#0, #camaniva#2, #camaniva#3, 999;
+be;
+NULL, Calincob;
+|FIN;
+
+|PROCESO act_cob;
+   |ABRE #caivaasi;
+   |LEE 000#caivaasi.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #caivaasi;
+      |GRABA 020#caivaasi.n;
+      |LEE 000#caivaasi.p;
+   |FINSI;
+   Comodin = #caivaasi#56; |QBF Comodin;
+   |CIERRA #caivaasi;
+   |SI Comodin = ""; |ACABA; |FINSI;
+
+   eaPath = Comodin;
+   |HAZ CreaPuente;
+   |SI eaRetorno = "ERROR"; |ACABA; |FINSI;
+
+   aQueQuiero = "|NC";
+   aNumCampos = #Puente@#aQueQuiero#;
+   nNumCampos = aNumCampos;
+   nNumCampos = nNumCampos - 1;
+
+   |DDEFECTO #Puente@;
+   #Puente@#0 = #camaniva#0;
+   #Puente@#1 = #camaniva#2;
+   #Puente@#2 = #camaniva#3;
+   #Puente@#3 = 0;
+   #Puente@#5 = fFechaAnt;
+   #Puente@#23 = #48#2;
+   #Puente@#24 = #48#3;
+   #Puente@#27 = "V";
+   #Puente@#28 = "B";
+   |GRABA 020#Puente@.n;
+
+   || .... Y CREO LOS NUEVOS con la fecha ya cambiada ....
+   NumDoc = 2;
+   |BUCLE Calincob;
+
+   |HAZ CierraPuente;
+|FPRC;
+
+|PROCESO Calinpag;
+   |SI #calinpag#6 ! #camaniva#4;
+      #calinpag#6 = #camaniva#4; |GRABA 020#calinpag.a;
+
+      |ABRE #caclipro;
+      #caclipro#23 = "P";
+      #caclipro#10 = #calinpag#4; aCuenta = #calinpag#4; |HAZ SacaNivel1;
+      #caclipro#11 = nNivel;
+      |LEE 000#caclipro.=;
+      |SI FSalida ! 0; |DDEFECTO #caclipro; |FINSI;
+      |CIERRA #caclipro;
+
+      |ABRE #caforpag;
+      #caforpag#0 = #caclipro#20;
+      |LEE 000#caforpag.=;
+      |SI FSalida ! 0;
+          |DDEFECTO #caforpag;
+          |SI #caclipro#20 = 0;
+              #caforpag#2  = 1;
+          |FINSI;
+      |FINSI;
+      |CIERRA #caforpag;
+
+      |DDEFECTO #Puente@;
+      #Puente@#0  = #calinpag#0;            || Libro
+      #Puente@#1  = #calinpag#2;            || Serie
+      #Puente@#2  = #calinpag#1;            || Factura
+      #Puente@#3  = #calinpag#3;            || Numero recibo
+      #Puente@#4  = #calinpag#7;            || Fecha vto.
+      #Puente@#5  = #calinpag#6;            || Fecha emision
+      #Puente@#6  = #calinpag#4;            || Cuenta Cliente
+      #Puente@#7  = #caclipro#1;            || Nombre Cliente
+      #Puente@#8  = #calinpag#15;           || Nombre Banco
+      #Puente@#9  = #caclipro#29;           || Entidad
+      #Puente@#10 = #caclipro#30;           || Sucursal
+      #Puente@#11 = #caclipro#31;           || DC
+      #Puente@#12 = #caclipro#32;           || N§ Cuenta
+      #Puente@#13 = #calinpag#11;           || Tipo de recibo
+      #Puente@#14 = "";                     || Departamento
+      #Puente@#15 = #calinpag#8;            || Importe Recibo
+      #Puente@#16 = "";                     || A Aceptar
+      #Puente@#17 = "";                     || Aceptado
+      #Puente@#18 = "";                     || Codigo Cliente (GESTION)
+      #Puente@#19 = #calinpag#28;           || Representante
+      #Puente@#20 = 0;                      || Nombre Representante
+      #Puente@#21 = "   ";                  || Zona
+      #Puente@#22 = NumDoc;                 || N§ Documento
+      #Puente@#23 = #48#2;                  || Codigo Empresa
+      #Puente@#24 = #48#3;                  || Periodo Empresa
+      #Puente@#25 = "";                     || Empresa gestion
+      #Puente@#26 = "N";                    || Recibo a cuenta
+      #Puente@#27 = "C";                    || Tipo de recibo
+      #Puente@#28 = "A";                    || Tipo de Operacion
+      #Puente@#29 = "EUR";               || Divisa
+      #Puente@#30 = "EURO";              || Nombre Divisa
+      #Puente@#31 = 1;                   || Cambio Divisa en EUROS
+      #Puente@#32 = 1;                   || Cambio M.Base en EUROS
+      #Puente@#33 = #calinpag#26;
+      #Puente@#37 = #camaniva#22;
+      #Puente@#40 = #caclipro#20;
+      #Puente@#41 = #caforpag#1;
+      |SI nNumCampos ] 49;
+          #Puente@#48 = #caclipro#40;
+          #Puente@#49 = #caclipro#41;
+      |FINSI;
+      |GRABA 020#Puente@.n;
+      NumDoc = NumDoc + 1;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Calinpag;
+#calinpag#1;
+;
+#camaniva#0, #camaniva#2, #camaniva#3, 001;
+#camaniva#0, #camaniva#2, #camaniva#3, 999;
+be;
+NULL, Calinpag;
+|FIN;
+
+|PROCESO act_pag;
+   |ABRE #caivaasi;
+   |LEE 000#caivaasi.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #caivaasi;
+      |GRABA 020#caivaasi.n;
+      |LEE 000#caivaasi.p;
+   |FINSI;
+   Comodin = #caivaasi#56; |QBF Comodin;
+   |CIERRA #caivaasi;
+   |SI Comodin = ""; |ACABA; |FINSI;
+
+   eaPath = Comodin;
+   |HAZ CreaPuente;
+   |SI eaRetorno = "ERROR"; |ACABA; |FINSI;
+
+   aQueQuiero = "|NC";
+   aNumCampos = #Puente@#aQueQuiero#;
+   nNumCampos = aNumCampos;
+   nNumCampos = nNumCampos - 1;
+
+   |DDEFECTO #Puente@;
+   #Puente@#0 = #camaniva#0;
+   #Puente@#1 = #camaniva#2;
+   #Puente@#2 = #camaniva#3;
+   #Puente@#3 = 0;
+   #Puente@#5 = fFechaAnt;
+   #Puente@#23 = #48#2;
+   #Puente@#24 = #48#3;
+   #Puente@#27 = "C";
+   #Puente@#28 = "B";
+   |GRABA 020#Puente@.n;
+
+   || .... Y CREO LOS NUEVOS con la fecha ya cambiada ....
+   NumDoc = 2;
+   |BUCLE Calinpag;
+
+   |HAZ CierraPuente;
+|FPRC;
+
+|| ****************************************************************************
+|PROCESO grabaEmbargo;
+
+    |SI HayAcceso = 1;
+        |SI eaTEmbargo = "P"; |O eaTEmbargo = "A";
+            |SI enCEmbargo ! 0; |Y enCEmbargo = #2#6;
+                enEmbDia = #0#0; enNuevo0 = #0#3;
+                efFechaE = #0#1; efNuevo1 = #0#4;
+                enEmbDoc = #0#2; enNuevo2 = #0#5;
+                enEmbLin = #2#3; enNuevo3 = #2#3;
+                |HAZ eCambioApteEmb;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+|FPRC;
+
+|PROCESO contrapartida;
+ |ABRE #31;
+ #31#0 = #0#0;
+ #31#1 = #0#1;
+ #31#2 = #0#2;
+ #31#3 = #2#3;
+ |LEE 001#31=;
+ |SI FSalida = 0;
+     |LIBERA #31;
+     #31#0 = #0#3;
+     #31#1 = #0#4;
+     #31#2 = #0#5;
+     #31#3 = #2#3;
+     |GRABA 020#31n;
+
+     #31#0 = #0#0;
+     #31#1 = #0#1;
+     #31#2 = #0#2;
+     #31#3 = #2#3;
+     |BORRA 020#31c;
+ |FINSI;
+ |LIBERA #31;
+ |CIERRA #31;
+|FPRC;
+
+|PROCESO cpCaja;
+  fFechaAnt = #0#1;
+  #502#3 = #0#3;
+  #502#4 = #0#4;
+  #502#5 = #0#5;
+  |SI #502#8 = 0; |Y #0#1 ! #0#4;
+      alfa1 = #0#4; alfa1 = alfa1 % 0402;
+      #502#7 = alfa1;
+  |FINSI;
+  |GRABA 020#502a;
+  |LIBERA #502;
+|FPRC;
+
+|DEFBUCLE cpCaja;
+  #502#1;
+  3,4,5,6;
+  0000, 01,0000000001, 01, #0#0,#0#1,#0#2,#2#3;
+  0000, 99,9999999999, 99, #0#0,#0#1,#0#2,#2#3;
+  be;
+  NULL, cpCaja;
+|FIN;
+
+|PROCESO cobpagCaja;
+  |SI enEjercicio ] 2014;
+      |BUCLE cpCaja;
+  |FINSI;
+|FPRC;
+
+|PROCESO cobpag347;
+ |ABRE #347;
+ #347#0 = #0#0;
+ #347#1 = #0#1;
+ #347#2 = #0#2;
+ #347#3 = #2#3;
+ |LEE 001#347=;
+ |SI FSalida = 0;
+     |LIBERA #347;
+     #347#0 = #0#3;
+     #347#1 = #0#4;
+     #347#2 = #0#5;
+     #347#3 = #2#3;
+     |GRABA 020#347n;
+
+     #347#0 = #0#0;
+     #347#1 = #0#1;
+     #347#2 = #0#2;
+     #347#3 = #2#3;
+     |BORRA 020#347c;
+ |FINSI;
+ |LIBERA #347;
+ |CIERRA #347;
+|FPRC;
+
+|PROCESO GrupoAnaL;
+     |BORRA 020#113a;
+
+     #113#0 = #0#3;
+     #113#1 = #0#4;
+     #113#2 = #0#5;
+     #113#3 = #2#3;
+
+     |GRABA 040#113n;
+|FPRC;
+
+|DEFBUCLE GrupoAnaL;
+ #113#1;
+ ;
+ #0#0, #0#1, #0#2, #2#3, #112#4, 001;
+ #0#0, #0#1, #0#2, #2#3, #112#4, 999;
+ be;
+ NULL, GrupoAnaL;
+|FIN;
+
+|PROCESO grupoana;
+ |SI enSwAna = 0;  |ACABA; |FINSI;
+
+ |ABRE #112;
+ #112#0 = #0#0;
+ #112#1 = #0#1;
+ #112#2 = #0#2;
+ #112#3 = #2#3;
+ #112#4 = "       ";
+ |LEE 001#112];
+ |SI FSalida = 0; |Y #112#0 = #0#0; |Y #112#1 = #0#1; |Y #112#2 = #0#2; |Y #112#3 = #2#3;
+     |LIBERA #112;
+     #112#0 = #0#3;
+     #112#1 = #0#4;
+     #112#2 = #0#5;
+     #112#3 = #2#3;
+     |GRABA 020#112n;
+
+     #112#0 = #0#0;
+     #112#1 = #0#1;
+     #112#2 = #0#2;
+     #112#3 = #2#3;
+     |BORRA 020#112c;
+
+     |BUCLE GrupoAnaL;
+ |FINSI;
+ |LIBERA #112;
+ |CIERRA #112;
+|FPRC;

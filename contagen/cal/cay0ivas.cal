@@ -1,0 +1,313 @@
+|FICHEROS;
+    cay0ivas #0;
+
+    cainliva #1;
+    cacuenta #3;
+    camaniva #4;
+    calibros #6;
+    caivaasi #200;
+
+    canempre #30;
+    caselem1 #998;
+|FIN;
+
+
+|VARIABLES;
+    &entrada = 1;
+
+    aAlfa1   = "";
+    nSw      = 0;
+    nLibro   = 0;
+    LibroAnt = 0;
+    SerieAnt = "";
+    FactAnt  = 0;
+    LinAnt   = 0;
+    ClPrAnt  = "";
+    FechaAnt = @;
+
+    informe  = "cay0ivas";
+    &nSwLin  = 0;
+    &eaError = "";
+    swError  = 0;
+    nPrint   = 0;
+    aParam   = "";
+    fDFecha  = @;
+
+    &enDFra   = 0;
+    &enHFra   = 0;
+    &eaDSerie = "";
+    &eaHSerie = "";
+    &efDFecha = @;
+    &efHFecha = @;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+
+|| ***************** Calculos de Pantalla
+
+|CALCULO defectos; |TIPO 7;
+  fDFecha = fec1;
+  |SI enSwSelFc = 1; fDFecha = "01.01.2000"; |FINSI;
+  #0#4 = fec1; |PINTA #0#4;
+  #0#5 = fec2; |PINTA #0#5;
+
+  |ABRE #caivaasi;
+  |LEE 000#caivaasi.p;
+  |SI FSalida ! 0;
+      |DDEFECTO #caivaasi;
+      |GRABA 040#caivaasi.n;
+  |FINSI;
+  |CIERRA #caivaasi;
+
+  aAlfa1 = #caivaasi#44;
+  |C_M #0#6,1,aAlfa1;
+  |C_M #0#7,1,aAlfa1;
+|FCAL;
+
+|CALCULO fecha; |TIPO 0;
+  |SI #0Campo < fDFecha; |O #0Campo > fec2;
+      |MENAV "    ERROR ESTA FECHA NO CORRESPONDE AL EJERCICIO";
+      |ERROR;
+      |ACABA;
+  |FINSI;
+  |SI Campo = 5; |Y #0#5 < #0#4;
+      |MENAV "    FECHA ERRONEA ";
+      |ERROR;
+  |FINSI;
+|FCAL;
+
+|CALCULO TrasLibro; |TIPO 0;
+   |ABRE #6;
+   #6#0 = #0#0;
+   |LEE 010#6=;
+   |SI FSalida ! 0;
+      |MENAV "     No existe el libro";
+      |CIERRA #6;
+      |C_M #0#0,1,"S";
+      |ERROR;
+      |ACABA;
+   |FINSI;
+   |CIERRA #6;
+   |PINTA 1028, #6#1;
+
+   aTipoIVA = #6#2;
+   |HAZ LeeDefIVA;
+   |SI aTipoIVA = "R";
+      |ATRI R;
+      |PINTA 0630, "EMITIDAS ";
+      |ATRI N;
+   |SINO;
+      |ATRI R;
+      |PINTA 0630, "RECIBIDAS ";
+      |ATRI N;
+   |FINSI;
+
+   |C_M #0#6,1,snSerie; #0#6 = dSerie;
+   |C_M #0#7,1,snSerie; #0#7 = dSerie;
+   |SI #200#44 = "S"; |Y dSerie = "     ";
+       #0#6 = "     ";
+       #0#7 = "zzzzz";
+   |FINSI;
+   |PINTA #0#6;
+   |PINTA #0#7;
+|FCAL;
+
+
+|| **************************************************************************
+|| ***** Chequea los posibles errores en Facturas antes de Actualizar *******
+|| **************************************************************************
+
+|PROCESO MiraErrores;
+  swError = 0;
+  eaError = "";
+
+                      || ... Duplicados en Lineas de Introduccion
+ |SI LibroAnt  = #cainliva#0; |Y SerieAnt = #cainliva#26;
+     |Y FactAnt = #cainliva#2; |Y LinAnt = #cainliva#3;
+      eaError = "Lineas duplicadas";
+      swError = 1;
+      |VETE ElFinal;
+ |SINO;
+      |SI LibroAnt = #cainliva#0; |Y SerieAnt = #cainliva#26;
+          |Y FactAnt = #cainliva#2;
+             |SI #cainliva#4 ! FechaAnt;
+                 eaError = "Error ! Existe lineas de la misma Factura con distinta fecha";
+                 swError = 1;
+                 |VETE ElFinal;
+             |FINSI;
+             |SI #cainliva#5 ! ClPrAnt;
+                 eaError = "Error ! Existe lineas de la misma Factura con distinto Cliente/Proveedor";
+                 swError = 1;
+                 |VETE ElFinal;
+             |FINSI;
+
+      |FINSI;
+
+       nSw = 1;
+ |FINSI;
+                      || ... Facturas Ya existentes en Mantenimiento IVA
+
+
+  #camaniva#0 = #cainliva#0;
+  #camaniva#2 = #cainliva#26;
+  #camaniva#3 = #cainliva#2;
+  |LEE 010#camaniva.=;
+  |SI FSalida = 0;
+      eaError ="Factura Duplicada. Ya existe en el Registro de IVA";
+      swError = 1;
+  |FINSI;
+
+
+ |ET ElFinal;
+   |SI swError = 1;
+       |PRINT;
+       nPrint = 1;
+   |FINSI;
+
+  LibroAnt = #cainliva#0;
+  SerieAnt = #cainliva#26;
+  FactAnt  = #cainliva#2;
+  LinAnt   = #cainliva#3;
+  FechaAnt = #cainliva#4;
+  ClPrAnt  = #cainliva#5;
+|FPRC;
+
+|DEFBUCLE MiraErrores0;
+   #cainliva#2;
+   4;
+   #0#0, #0#6, #0#2, 01, #0#4;
+   #0#0, #0#7, #0#3, 99, #0#5;
+   ;
+   NULL, MiraErrores;
+|FIN;
+
+|PROCESO HazTodo;
+
+  nSw    = 0;
+  nPrint = 0;
+  |ABRE #4;
+  |SELECT #3#4;
+
+  swError = 0;
+  |BUCLE MiraErrores0;
+
+  |SELECT #1#4;
+  |CIERRA #4;
+
+  |SI nPrint = 1;
+      |PIEINF;
+  |FINSI;
+|FPRC;
+
+|| ********************************************************************
+|CALCULO impre;
+
+  |IMPRE 0;
+  |SI FSalida ! 0;
+      |MENAV "    Proceso interrumpido";
+      |ACABA;
+  |FINSI;
+
+  |INFOR informe;
+  |SI FSalida ! 0;
+      |MENAV "    No existe informe. Proceso interrumpido";
+      |FINIMP;
+      |ACABA;
+  |FINSI;
+
+  |SI #48#27 = "S"; |Y aParam = "";
+      |HAZ MultiEmpresa;
+  |SINO;
+      |DFICE dirfich0; |QBF dirfich0;
+      |HAZ HazTodo;
+  |FINSI;
+
+  |FININF;
+  |FINIMP;
+|FCAL;
+
+|| **********************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #3 dirfich0;
+   |PATH_DAT #4 dirfich0;
+   |PATH_DAT #6 dirfich0;
+   |PATH_DAT #200 dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+   #caselem1#1;
+   ;
+   00001;
+   99999;
+   ;
+   NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+
+
+|| ***************************************************** PROGRAMA
+|PROGRAMA;
+    aParam = PARAMETRO; |QBF aParam;
+
+    |SI aParam = "";
+        |HAZ inicio;
+    |SINO;
+        aTipoIVA = aParam;
+    |FINSI;
+
+    |ABRE #200;
+    |LEE 000#200p;
+    |CIERRA #200;
+
+    |DDEFECTO #0;
+    |SI aTipoIVA  ! "";
+       |SI enLibIVA = 0;
+           |HAZ LeeDefIVA;
+           #0#0 = dLibro;
+           |C_M #0#0,1,snLibro;
+       |SINO;
+           #0#0 = enLibIVA; |C_M #0#0,1,"N";
+           |HAZ LeeDefIVA;
+       |FINSI;
+       |ABRE #6;
+       #6#0 = #0#0;
+       |LEE 010#6=;
+       |CIERRA #6;
+    |FINSI;
+
+    |SI aParam ! "";
+        #0#0 = enLibro;
+        #0#2 = enDFra;
+        #0#3 = enHFra;
+        #0#4 = efDFecha;
+        #0#5 = efHFecha;
+        #0#6 = eaDSerie;
+        #0#7 = eaHSerie;
+        |HAZ impre;
+        |ACABA;
+    |FINSI;
+
+    |PINPA #0#0;
+    |PINDA #0#0;
+    |ENDATOS #1#0;
+    |SI FSalida = 0;
+        |HAZ impre;
+    |FINSI;
+|FPRO;

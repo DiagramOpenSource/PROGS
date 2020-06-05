@@ -1,0 +1,1118 @@
+/* Calculo anterior al 4077/130
+
+|FICHEROS;
+   golis009 #0;
+   gotmp007 #7;
+   gotmp008 #8;
+   agifa142 #142;
+   agifa724 #724;
+
+   agifa059 #59;
+   agifa069 #69;
+   agifa134 #134;
+   agifa084 #84;
+   agifa010 #10;
+   agifa071 #71;
+   agifa072 #72;
+
+   agifa079 #79;
+   agifa077 #77;
+   agifa080 #80;
+
+   agifa722 #722;        ||Historico Enlaces
+   agif722@ #1722;       ||Historico Enlaces (CARGA_DEF)
+
+   cacuent@ #1000;
+   camasic@ #1001;
+   camasil@ #1002;
+
+   goparame #100;
+|FIN;
+
+|VARIABLES;
+   aAux = "";
+   &eaDesc = "";
+   &enSw   = 0;
+   &enTotalCta = 0;
+
+   aClv2  = "";
+   aClv3  = "";
+   aDSerie = "";
+   aHSerie = "";
+
+   aPath  = "";
+   aAlfa  = "";
+   aCuenta = "";
+   aInforme = "golis09a";
+   aImpre = "";
+
+   nIncid  = 0;
+   nNumInc = 0;
+   nHay    = 0;
+   nConta  = 0;
+   nImpInc = 0;
+   nImporte = 0;
+   aCtaDefecto = "";
+
+   aCta = "";
+   aCtaAnt = "";
+   aBase = "";
+   aHistorico = "";
+   nSwEsta = 0;
+   nDiaApu = 0;
+   fFecApu = @;
+   nDocApu = 0;
+   aTipoMov = "";
+   aNumero = "";
+   nNumero = 0;
+|FIN;
+
+|PROCESO Incidencias;
+   || 1 - La factura esta contabilizada y tiene apunte en el historico de
+   ||     enlaces, pero no esta en contabilidad
+   || 2 - La factura esta contabilizada pero no tiene apunte en el
+   ||     historico de enlaces
+   || 3 - Articulo incluido en un albaran contabilizado sin cuenta contable
+   || 4 - Asiento propio de contabilidad
+   || 5 - Factura pasada desde gestion, pero no esta en gestion
+   || 6 - Factura pasada desde gestion, pero no esta marcada como contabilizada
+|FPRC;
+
+|PROCESO ImpreIncid;
+   aCta = #gotmp008#8;
+   |SI aCta ! aCtaAnt;
+     |SI aCtaAnt ! "-1";
+       enSw = 4;
+       |PRINT;
+       enTotalCta = 0;
+     |FINSI;
+     aCtaAnt = aCta;
+   |FINSI;
+
+   #gotmp008#8 = aCta;
+
+   enTotalCta = enTotalCta + #gotmp008#6;
+
+   |SI #gotmp008#7 = 1;
+      eaDesc = " La factura esta marcada como contabilizada en gestion,";
+      eaDesc = eaDesc + " pero no existe en contabilidad ";
+      enSw = 1;
+   |FINSI;
+   |SI #gotmp008#7 = 2;
+      eaDesc = " La factura esta marcada como contabilizada en gestion,";
+      eaDesc = eaDesc + " pero no tiene registro en el historico de enlaces";
+      enSw = 1;
+   |FINSI;
+   |SI #gotmp008#7 = 3;
+      eaDesc = " La factura esta contabilizada, pero tiene un albaran con";
+      eaDesc = eaDesc + " un articulo que no tiene asignada cuenta contable";
+      enSw = 1;
+   |FINSI;
+   |SI #gotmp008#7 = 4;
+      eaDesc = " El asiento ha sido introducido manualmente en contabilidad";
+      enSw = 3;
+   |FINSI;
+   |SI #gotmp008#7 = 5;
+      eaDesc = " La factura es original de gestion comercial, pero no esta en";
+      eaDesc = eaDesc + " dicha gestion";
+      enSw = 3;
+   |FINSI;
+   |SI #gotmp008#7 = 6;
+      eaDesc = " La factura es original de gestion comercial, pero no esta marcada como contabilizada";
+      enSw = 3;
+   |FINSI;
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE ImpreIncid;
+#gotmp008#2;
+;
+INICIO;
+FINAL;
+;
+NULL,ImpreIncid;
+|FIN;
+
+|PROCESO Imprime;
+   enSw = 2; |PRINT;
+|FPRC;
+
+|DEFBUCLE Imprime;
+#gotmp007#1;
+;
+INICIO;
+FINAL;
+;
+NULL, Imprime;
+|FIN;
+
+|PROCESO agif722;
+     nSwEsta = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE agif722;
+ #agif722@#2006;
+ ;
+ 00000, 0, nDiaApu, fFecApu, nDocApu, 0000;
+ 99999, 9, nDiaApu, fFecApu, nDocApu, 9999;
+ ;
+ NULL, agif722;
+|FIN;
+
+|PROCESO Cuentas;
+   nHay = 1; nIncid = 0;
+
+   #cacuent@#0 = #camasil@#4;
+   |LEE 000#cacuent@.=;
+   |SI FSalida ! 0; |DDEFECTO #cacuent@; |FINSI;
+
+   #camasic@#0 = #camasil@#0;
+   #camasic@#1 = #camasil@#1;
+   #camasic@#2 = #camasil@#2;
+   |LEE 000#camasic@.=;
+   |SI FSalida ! 0; |DDEFECTO #camasic@; |FINSI;
+
+||   |SI #camasil@#12 ! "S"; |Y #camasil@#12 ! "R";
+     |SI #camasic@#13 [ 100;
+       ||TODO CCC
+       ||Hemos estado viendo que no se graba el tipo de forma correcta,
+       ||tendrian que sera > 100 TODOS los que vienen de gestion,
+       ||pero no se graba bien, por eso vamos a ver si esta o no en el historico
+       ||de enlaces. agifa722
+       nSwEsta = 0;
+       nDiaApu = #camasil@#0;
+       fFecApu = #camasil@#1;
+       nDocApu = #camasil@#2;
+       |BUCLE agif722;
+       |SI nSwEsta = 0;
+            nIncid = 4;
+       |FINSI;
+     |FINSI;
+     ||TODO CCC
+     ||Ver si esta en historico de enlaces.  agifa722
+
+
+   |SI #camasil@#12 = "S"; |Y #camasic@#13 > 100;
+      #agifa079#66 = #camasil@#15;
+      #agifa079#0  = #camasil@#14;
+      |LEE 000#agifa079.=;
+      |SI FSalida ! 0;
+          nIncid = 5;
+      |SINO;
+          |SI #agifa079#48 = "N"; nIncid = 6; |FINSI;
+      |FINSI;
+   |FINSI;
+   |SI #camasil@#12 = "R"; |Y #camasic@#13 > 100;
+      #agifa134#49 = #camasil@#15;
+      #agifa134#0  = #camasil@#14;
+      |LEE 000#agifa134.=;
+      |SI FSalida ! 0;
+         #agifa084#48 = #camasil@#15;
+         #agifa084#0  = #camasil@#14;
+         |LEE 000#agifa084.=;
+         |SI FSalida ! 0;
+            nIncid = 5;
+         |SINO;
+            |SI #agifa084#39 = "N"; nIncid = 6; |FINSI;
+         |FINSI;
+      |SINO;
+         |SI #agifa134#48 = "N"; nIncid = 6; |FINSI;
+      |FINSI;
+   |FINSI;
+
+   #gotmp007#0 = #camasil@#4;
+   |LEE 000#gotmp007.=;
+   |SI FSalida ! 0;
+      #cacuent@#0 = #camasil@#4;
+      |LEE 000#cacuent@.=;
+      |SI FSalida ! 0; |DDEFECTO #cacuent@; #cacuent@#2 = ""; |FINSI;
+      |DDEFECTO #gotmp007;
+      #gotmp007#0 = #camasil@#4;
+      #gotmp007#1 = #cacuent@#2;
+      |GRABA 020#gotmp007.c;
+   |FINSI;
+
+   aAlfa = #camasil@#4; |QBF aAlfa; aAlfa = aAlfa % 0101;
+   |SI aAlfa = "6"; |Y #camasil@#8 = "H"; #camasil@#9 = #camasil@#9 * -1; |FINSI;
+   |SI aAlfa = "7"; |Y #camasil@#8 = "D"; #camasil@#9 = #camasil@#9 * -1; |FINSI;
+
+   |SI nIncid = 0;
+      #gotmp007#3 = #gotmp007#3 + #camasil@#9;
+   |SINO;
+      #gotmp007#5 = #gotmp007#5 + #camasil@#9;
+   |FINSI;
+   |GRABA 020#gotmp007.a;
+
+   |SI #camasil@#12 = "R"; |O #camasil@#12 = "S";
+      |SI #camasil@#12 = "R"; |Y nIncid ! 0;
+         |DDEFECTO #gotmp008;
+         #gotmp008#0 = "V";
+         #gotmp008#1 = #camasil@#15;
+         #gotmp008#2 = #camasil@#14;
+         |LEE 000#gotmp008.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #gotmp008;
+            #gotmp008#0 = "V";
+            #gotmp008#1 = #camasil@#15;
+            #gotmp008#2 = #camasil@#14;
+            |GRABA 020#gotmp008.c;
+         |FINSI;
+         #gotmp008#6 = #camasil@#9;
+         #gotmp008#7 = nIncid;
+         |SI nIncid ! 0; nNumInc = nNumInc + 1; |FINSI;
+         |SI nIncid = 4; |O nIncid = 5; |O nIncid = 6;
+            #gotmp008#10 = #camasil@#0;
+            #gotmp008#11 = #camasil@#1;
+            #gotmp008#12 = #camasil@#2
+         |SINO;
+            #gotmp008#10 = 0;
+            #gotmp008#11 = "01.01.0000";
+            #gotmp008#12 = 0;
+         |FINSI;
+         |GRABA 020#gotmp008.a;
+      |FINSI;
+      |SI #camasil@#12 = "S"; |Y nIncid ! 0;
+         |DDEFECTO #gotmp008;
+         #gotmp008#0 = "C";
+         #gotmp008#1 = #camasil@#15;
+         #gotmp008#2 = #camasil@#14;
+         |LEE 000#gotmp008.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #gotmp008;
+            #gotmp008#0 = "C";
+            #gotmp008#1 = #camasil@#15;
+            #gotmp008#2 = #camasil@#14;
+            |GRABA 020#gotmp008.c;
+         |FINSI;
+         #gotmp008#6 = #camasil@#9;
+         #gotmp008#7 = nIncid;
+         |SI nIncid ! 0; nNumInc = nNumInc + 1; |FINSI;
+         #gotmp008#8 = #camasil@#4;
+         #gotmp008#9 = #cacuent@#2;
+         |SI nIncid = 4; |O nIncid = 5; |O nIncid = 6;
+            #gotmp008#10 = #camasil@#0;
+            #gotmp008#11 = #camasil@#1;
+            #gotmp008#12 = #camasil@#2
+         |SINO;
+            #gotmp008#10 = 0;
+            #gotmp008#11 = "01.01.0000";
+            #gotmp008#12 = 0;
+         |FINSI;
+         |GRABA 020#gotmp008.a;
+      |FINSI;
+   |SINO;
+      |SI nIncid ! 0;
+         |DDEFECTO #gotmp008;
+         #gotmp008#10 = #camasil@#0;
+         #gotmp008#11 = #camasil@#1;
+         #gotmp008#12 = #camasil@#2
+         |LEE 000#gotmp008.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #gotmp008;
+            #gotmp008#10 = #camasil@#0;
+            #gotmp008#11 = #camasil@#1;
+            #gotmp008#12 = #camasil@#2
+            |GRABA 020#gotmp008.c;
+         |FINSI;
+         #gotmp008#7 = nIncid;
+         |SI nIncid ! 0; nNumInc = nNumInc + 1; |FINSI;
+
+         #gotmp008#6 = #camasil@#9;
+         #gotmp008#8 = #camasil@#4;
+         #gotmp008#9 = #cacuent@#2;
+         |GRABA 020#gotmp008.a;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Cuentas;
+#camasil@#3004;
+;
+aCuenta, #golis009#0, 000000, 0000;
+aCuenta, #golis009#1, 999999, 9999;
+;
+NULL,Cuentas;
+|FIN;
+
+|PROCESO Cuentas1;
+   aCuenta = #cacuent@#0; |BUCLE Cuentas;
+|FPRC;
+
+|DEFBUCLE Cuentas1;
+#cacuent@#1001;
+;
+"6           ";
+"799999999999";
+;
+NULL,Cuentas1;
+|FIN;
+
+|PROCESO MiraCuenta;
+   aPath = #142#151; |QBF aPath;
+   aAlfa = aPath % -101;
+   |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPath = aPath + "/"; |FINSI;
+   aAlfa = aPath + "fich/" + (("000000" + #142#152) % -106) + "/";
+
+   |PATH_DAT #1000 aAlfa; |PATH_DAT #1001 aAlfa; |PATH_DAT #1002 aAlfa;
+   |ABRE #cacuent@; |ABRE #camasic@; |ABRE #camasil@;
+   |BUCLE Cuentas;
+   |CIERRA #camasil@; |CIERRA #camasic@; |CIERRA #cacuent@;
+|FPRC;
+
+|PROCESO CtasArt;
+   aCuenta = #agifa724#2;
+   #gotmp007#0 = aCuenta;
+   |LEE 000#gotmp007.=;
+   |SI FSalida ! 0;
+      |BUCLE Cuentas;
+   |SINO;
+      |SI #gotmp007#3 = 0; |Y #gotmp007#5 = 0;
+         |BUCLE Cuentas;
+      |FINSI;
+   |FINSI;
+
+   aCuenta = #agifa724#3;
+   #gotmp007#0 = aCuenta;
+   |LEE 000#gotmp007.=;
+   |SI FSalida ! 0;
+      |BUCLE Cuentas;
+   |SINO;
+      |SI #gotmp007#3 = 0; |Y #gotmp007#5 = 0;
+         |BUCLE Cuentas;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CtasArt;
+#agifa724#1;
+;
+INICIO;
+FINAL;
+;
+NULL,CtasArt;
+|FIN;
+
+|PROCESO MiraLinArtCmp;
+   #agifa724#0 = #agifa080#2;
+   |LEE 000#agifa724.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   nHay = 1;
+
+   #agifa077#50 = #agifa080#27;
+   #agifa077#0  = #agifa080#0;
+   |LEE 000#agifa079.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   nIncid = 0;
+   nImporte = 0;
+   |DDEFECTO #agifa722;
+   aClv2 = #agifa079#66; |QBF aClv2; aClv2 = (aClv2 + (" " * 10)) % 0110;
+   aClv3 = #agifa079#1;  |QBF aClv3; aClv3 = (aClv3 % -104) + (" " * 6);
+   #agifa722#0 = "FC";
+   #agifa722#1 = #agifa079#66;
+   #agifa722#2 = #agifa079#0;
+   #agifa722#3 = aClv3;
+   |LEE 000#agifa722.];
+   |SI FSalida = 0; |Y #agifa722#0 = "FC"; |Y #agifa722#1 = aClv2; |Y #agifa722#2 = #agifa079#0; |Y #agifa722#3 = aClv3;
+      nConta = 1;
+      aAlfa = aPath + "fich/" + (("00000" + #agifa722#8) % -105) + #agifa722#9 + "/";
+      |PATH_DAT #1000 aAlfa; |PATH_DAT #1001 aAlfa; |PATH_DAT #1002 aAlfa;
+      |ABRE #cacuent@; |ABRE #camasic@; |ABRE #camasil@;
+      |DDEFECTO #cacuent@;
+
+      #camasil@#0 = #agifa722#4;
+      #camasil@#1 = #agifa722#5;
+      #camasil@#2 = #agifa722#6;
+      #camasil@#3 = 1;
+      |LEE 000#camasil@.];
+      |SI FSalida = 0; |Y #camasil@#0 = #agifa722#4;
+      |Y #camasil@#1 = #agifa722#5; |Y #camasil@#2 = #agifa722#6;
+         |SI #agifa724#3 ! "            ";
+            nIncid = 0;
+            |PARA; |SI FSalida = 0; |Y #camasil@#0 = #agifa722#4;
+             |Y #camasil@#1 = #agifa722#5; |Y #camasil@#2 = #agifa722#6; |HACIENDO;
+                |SI #camasil@#4 = #agifa724#3; nImporte = #agifa080#31; |SAL; |FINSI;
+                |LEE 000#camasil@.s;
+            |SIGUE;
+         |SINO;
+            nIncid = 3;
+         |FINSI;
+      |SINO;
+         nIncid = 1;
+      |FINSI;
+   |SINO;
+      nConta = 0; nIncid = 2;
+   |FINSI;
+
+   #cacuent@#0 = #agifa724#3;
+   |LEE 000#cacuent@.=;
+   |SI FSalida ! 0; |DDEFECTO #cacuent@; |FINSI;
+
+   #gotmp007#0 = #agifa724#3;
+   |LEE 000#gotmp007.=;
+   |SI FSalida ! 0;
+      #cacuent@#0 = #agifa724#3;
+      |LEE 000#cacuent@.=;
+      |SI FSalida ! 0; |DDEFECTO #cacuent@; |FINSI;
+      |DDEFECTO #gotmp007;
+      #gotmp007#0 = #agifa724#3;
+      #gotmp007#1 = #cacuent@#2;
+      |GRABA 020#gotmp007.c;
+   |FINSI;
+   |SI #agifa077#42 = "N";
+      #gotmp007#2 = #gotmp007#2 + #agifa080#31;
+   |SINO;
+      #gotmp007#2 = #gotmp007#2 - #agifa080#31;
+   |FINSI;
+   ||SI nImporte ! 0; #gotmp007#3 = #gotmp007#3 + nImporte; |FINSI;
+   |GRABA 020#gotmp007.a;
+
+   |SI nIncid ! 0;
+      #gotmp008#0 = "C";
+      #gotmp008#1 = #agifa079#66;
+      #gotmp008#2 = #agifa079#0;
+      |LEE 000#gotmp008.=;
+      |SI FSalida ! 0;
+         #gotmp008#0 = "C";
+         #gotmp008#1 = #agifa079#66;
+         #gotmp008#2 = #agifa079#0;
+         #gotmp008#3 = #agifa079#2;
+         #gotmp008#4 = #agifa079#3;
+         #gotmp008#5 = #agifa079#1;
+         #gotmp008#6 = #agifa079#118;
+         |GRABA 020#gotmp008.c;
+      |FINSI;
+      #gotmp008#7 = nIncid;
+      #gotmp008#8 = #agifa724#3;
+      #gotmp008#9 = #cacuent@#2;
+      |SI nIncid ! 0; nNumInc = nNumInc + 1; |FINSI;
+      |GRABA 020#gotmp008.a;
+   |FINSI;
+   |SI nConta = 1;
+      |CIERRA #camasil@; |CIERRA #camasic@; |CIERRA #cacuent@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraLinArtCmp;
+#agifa080#1;
+;
+#agifa072#17, #agifa072#2, 001;
+#agifa072#17, #agifa072#2, 999;
+;
+NULL,MiraLinArtCmp;
+|FIN;
+
+|PROCESO MiraLinFactCmp;
+   |BUCLE MiraLinArtCmp;
+|FPRC;
+
+|DEFBUCLE MiraLinFactCmp;
+#agifa072#1;
+;
+#agifa079#66, #agifa079#0, 001;
+#agifa079#66, #agifa079#0, 999;
+;
+NULL,MiraLinFactCmp;
+|FIN;
+
+|PROCESO MiraFactCmp;
+   aAlfa = " Comprobando factura compra " + ((#agifa079#66 + "     ") % 0105) + "/";
+   aAlfa = aAlfa + (("000000" + #agifa079#0) % -106) + " ..... revisando albaranes ";
+   |ATRI I; |PINTA 2301, aAlfa; |ATRI N;
+
+   |BUCLE MiraLinFactCmp;
+|FPRC;
+
+|DEFBUCLE MiraFactCmp;
+#agifa079#3;
+48;
+"N", "      ", #golis009#0, "     ", 000000, "S";
+"S", "zzzzzz", #golis009#1, "zzzzz", 999999, "S";
+;
+NULL, MiraFactCmp;
+|FIN;
+
+|PROCESO agif722_factura;
+     nSwEsta = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE agif722_factura;
+ #agif722@#1007;
+ ;
+ aTipoMov, aClv2, aNumero, "          ", 000000, 00000, 0;
+ aTipoMov, aClv2, aNumero, "zzzzzzzzzz", 999999, 99999, 9;
+ ;
+ NULL, agif722_factura;
+|FIN;
+
+|PROCESO MiraLinArtVnt;
+   #agifa724#0 = #agifa071#2;
+   |LEE 000#agifa724.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   nHay = 1;
+
+   #agifa010#52 = #agifa071#29;
+   #agifa010#0  = #agifa071#0;
+   |LEE 000#agifa010.=;
+   |SI FSalida ! 0; |DDEFECTO #agifa010; |FINSI;
+
+   nIncid = 0;
+   nImporte = 0;
+   aClv2 = #agifa134#49; |QBF aClv2; aClv2 = (aClv2 + (" " * 10)) % 0110;
+   aClv3 = #agifa134#1;  |QBF aClv3; aClv3 = (aClv3 % -104) + (" " * 6);
+   |DDEFECTO #agifa722;
+   #agifa722#0 = "FV";
+   #agifa722#1 = #agifa134#49;
+   #agifa722#2 = #agifa134#0;
+   #agifa722#3 = aClv3;
+   |LEE 000#agifa722.];
+   |SI FSalida = 0; |Y #agifa722#0 = "FV"; |Y #agifa722#1 = aClv2; |Y #agifa722#2 = #agifa134#0; |Y #agifa722#3 = aClv3;
+      nConta = 1;
+      aAlfa = aPath + "/fich/" + (("00000" + #agifa722#8) % -105) + #agifa722#9 + "/";
+      |PATH_DAT #1000 aAlfa; |PATH_DAT #1001 aAlfa; |PATH_DAT #1002 aAlfa;
+      |ABRE #cacuent@; |ABRE #camasic@; |ABRE #camasil@;
+      |DDEFECTO #cacuent@;
+
+      #camasil@#0 = #agifa722#4;
+      #camasil@#1 = #agifa722#5;
+      #camasil@#2 = #agifa722#6;
+      #camasil@#3 = 1;
+      |LEE 000#camasil@.];
+      |SI FSalida = 0; |Y #camasil@#0 = #agifa722#4;
+      |Y #camasil@#1 = #agifa722#5; |Y #camasil@#2 = #agifa722#6;
+         |SI #agifa724#2 ! "            ";
+            nIncid = 0;
+            |PARA; |SI FSalida = 0; |Y #camasil@#0 = #agifa722#4;
+             |Y #camasil@#1 = #agifa722#5; |Y #camasil@#2 = #agifa722#6; |HACIENDO;
+                |SI #camasil@#4 = #agifa724#2; nImporte = #agifa071#37; |SAL; |FINSI;
+                |LEE 000#camasil@.s;
+            |SIGUE;
+         |SINO;
+            nIncid = 3;
+         |FINSI;
+      |SINO;
+         nIncid = 1;
+      |FINSI;
+   |SINO;
+      nConta = 0;
+      ||Falta ver si esta en el historico de enlaces como el otro tipo de
+      ||movimiento de Factura.   FVentas o FDirectas
+      aTipoMov = "FV";
+      nSwEsta = 0;
+      nNumero = #agifa134#0;
+      aNumero = (nNumero + "          ") % 110;
+      |BUCLE agif722_factura;
+      |SI nSwEsta = 0;
+           nIncid = 2;
+      |FINSI;
+   |FINSI;
+
+   aAux = #agifa724#2;
+   |QBF aAux;
+   |SI aAux = "";
+        #agifa724#2 = aCtaDefecto;
+   |FINSI;
+
+   #cacuent@#0 = #agifa724#2;
+   |LEE 000#cacuent@.=;
+   |SI FSalida ! 0; |DDEFECTO #cacuent@; |FINSI;
+
+   #gotmp007#0 = #agifa724#2;
+   |LEE 000#gotmp007.=;
+   |SI FSalida ! 0;
+      #cacuent@#0 = #agifa724#2;
+      |LEE 000#cacuent@.=;
+      |SI FSalida ! 0; |DDEFECTO #cacuent@; |FINSI;
+      |DDEFECTO #gotmp007;
+      #gotmp007#0 = #agifa724#2;
+      #gotmp007#1 = #cacuent@#2;
+      |GRABA 020#gotmp007.c;
+   |FINSI;
+   |SI #agifa010#43 = "N";
+      #gotmp007#2 = #gotmp007#2 + #agifa071#37;
+   |SINO;
+      #gotmp007#2 = #gotmp007#2 - #agifa071#37;
+   |FINSI;
+   ||SI nImporte ! 0; #gotmp007#3 = #gotmp007#3 + nImporte; |FINSI;
+   |GRABA 020#gotmp007.a;
+
+   |SI nIncid ! 0;
+      #gotmp008#0 = "V";
+      #gotmp008#1 = #agifa134#49;
+      #gotmp008#2 = #agifa134#0;
+      |LEE 000#gotmp008.=;
+      |SI FSalida ! 0;
+         #gotmp008#0 = "V";
+         #gotmp008#1 = #agifa134#49;
+         #gotmp008#2 = #agifa134#0;
+         #gotmp008#3 = #agifa134#2;
+         #gotmp008#4 = #agifa134#3;
+         #gotmp008#5 = #agifa134#1;
+         #gotmp008#6 = #agifa134#101;
+         |GRABA 020#gotmp008.c;
+      |FINSI;
+      #gotmp008#7 = nIncid;
+      #gotmp008#8 = #agifa724#2;
+      #gotmp008#9 = #cacuent@#2;
+      |SI nIncid ! 0; nNumInc = nNumInc + 1; |FINSI;
+      |GRABA 020#gotmp008.a;
+   |FINSI;
+
+   |SI nConta = 1;
+      |CIERRA #camasil@; |CIERRA #camasic@; |CIERRA #cacuent@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraLinArtVnt;
+#agifa071#1;
+;
+#agifa059#15, #agifa059#2, 001;
+#agifa059#15, #agifa059#2, 999;
+;
+NULL,MiraLinArtVnt;
+|FIN;
+
+|PROCESO MiraLinFactVnt;
+   |BUCLE MiraLinArtVnt;
+|FPRC;
+
+|DEFBUCLE MiraLinFactVnt;
+#agifa059#1;
+;
+#agifa134#49, #agifa134#0, 001;
+#agifa134#49, #agifa134#0, 999;
+;
+NULL,MiraLinFactVnt;
+|FIN;
+
+|PROCESO MiraFactVnt;
+   aAlfa = " Comprobando factura venta " + ((#agifa134#49 + "     ") % 0105) + "/";
+   aAlfa = aAlfa + (("000000" + #agifa134#0) % -106) + " ..... revisando albaranes ";
+   |ATRI I; |PINTA 2301, aAlfa; |ATRI N;
+
+   |BUCLE MiraLinFactVnt;
+|FPRC;
+
+|DEFBUCLE MiraFactVnt;
+#agifa134#3;
+;
+"      ", #golis009#0, aDSerie, 000000;
+"zzzzzz", #golis009#1, aHSerie, 999999;
+;
+NULL,MiraFactVnt;
+|FIN;
+
+|PROCESO MiraLinFactDir;
+   #agifa724#0 = #agifa069#2;
+   |LEE 000#agifa724.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   nHay = 1;
+
+   nIncid = 0;
+   nImporte = 0;
+   aClv2 = #agifa084#48; |QBF aClv2; aClv2 = (aClv2 + (" " * 10)) % 0110;
+   ||aClv3 = #agifa084#1;  |QBF aClv3; aClv3 = (aClv3 % -104) + (" " * 6);
+   aClv3 = "1";
+   |DDEFECTO #agifa722;
+   #agifa722#0 = "FD";
+   #agifa722#1 = #agifa084#48;
+   #agifa722#2 = #agifa084#0;
+   #agifa722#3 = aClv3;
+   |LEE 000#agifa722.];
+   |SI FSalida = 0; |Y #agifa722#0 = "FD"; |Y #agifa722#1 = aClv2; |Y #agifa722#2 = #agifa084#0; |Y #agifa722#3 = aClv3;
+      nConta = 1;
+      aAlfa = aPath + "/fich/" + (("00000" + #agifa722#8) % -105) + #agifa722#9 + "/";
+      |PATH_DAT #1000 aAlfa; |PATH_DAT #1001 aAlfa; |PATH_DAT #1002 aAlfa;
+      |ABRE #cacuent@; |ABRE #camasic@; |ABRE #camasil@;
+      |DDEFECTO #cacuent@;
+
+      #camasil@#0 = #agifa722#4;
+      #camasil@#1 = #agifa722#5;
+      #camasil@#2 = #agifa722#6;
+      #camasil@#3 = 1;
+      |LEE 000#camasil@.];
+      |SI FSalida = 0; |Y #camasil@#0 = #agifa722#4;
+      |Y #camasil@#1 = #agifa722#5; |Y #camasil@#2 = #agifa722#6;
+         |SI #agifa724#2 ! "            ";
+            nIncid = 0;
+            |PARA; |SI FSalida = 0; |Y #camasil@#0 = #agifa722#4;
+             |Y #camasil@#1 = #agifa722#5; |Y #camasil@#2 = #agifa722#6; |HACIENDO;
+                |SI #camasil@#4 = #agifa724#2; nImporte = #agifa069#27; |SAL; |FINSI;
+                |LEE 000#camasil@.s;
+            |SIGUE;
+         |SINO;
+            nIncid = 3;
+         |FINSI;
+      |SINO;
+         nIncid = 1;
+      |FINSI;
+   |SINO;
+      nConta = 0;
+      ||Falta ver si esta en el historico de enlaces como el otro tipo de
+      ||movimiento de Factura.   FVentas o FDirectas
+      ||NO, parece que no lo esta buscando bien.
+      aTipoMov = "FD";
+      nSwEsta = 0;
+      nNumero = #agifa084#0;
+      aNumero = (nNumero + "          ") % 110;
+      |BUCLE agif722_factura;
+      |SI nSwEsta = 0;
+           nIncid = 2;
+      |FINSI;
+   |FINSI;
+
+   aAux = #agifa724#2;
+   |QBF aAux;
+   |SI aAux = "";
+        #agifa724#2 = aCtaDefecto;
+   |FINSI;
+
+   #cacuent@#0 = #agifa724#2;
+   |LEE 000#cacuent@.=;
+   |SI FSalida ! 0; |DDEFECTO #cacuent@; |FINSI;
+
+   #gotmp007#0 = #agifa724#2;
+   |LEE 000#gotmp007.=;
+   |SI FSalida ! 0;
+      #cacuent@#0 = #agifa724#2;
+      |LEE 000#cacuent@.=;
+      |SI FSalida ! 0; |DDEFECTO #cacuent@; |FINSI;
+      |DDEFECTO #gotmp007;
+      #gotmp007#0 = #agifa724#2;
+      #gotmp007#1 = #cacuent@#2;
+      |GRABA 020#gotmp007.c;
+   |FINSI;
+   #gotmp007#2 = #gotmp007#2 + #agifa069#27;
+   ||SI nImporte ! 0; #gotmp007#3 = #gotmp007#3 + nImporte; |FINSI;
+   |GRABA 020#gotmp007.a;
+
+   |SI nIncid ! 0;
+      #gotmp008#0 = "V";
+      #gotmp008#1 = #agifa084#48;
+      #gotmp008#2 = #agifa084#0;
+      |LEE 000#gotmp008.=;
+      |SI FSalida ! 0;
+         #gotmp008#0 = "V";
+         #gotmp008#1 = #agifa084#48;
+         #gotmp008#2 = #agifa084#0;
+         #gotmp008#3 = #agifa084#3;
+         #gotmp008#4 = #agifa084#4;
+         #gotmp008#5 = #agifa084#1;
+         #gotmp008#6 = #agifa084#73;
+         |GRABA 020#gotmp008.c;
+      |FINSI;
+      #gotmp008#7 = nIncid;
+      #gotmp008#8 = #agifa724#2;
+      #gotmp008#9 = #cacuent@#2;
+      |SI nIncid ! 0; nNumInc = nNumInc + 1; |FINSI;
+      |GRABA 020#gotmp008.a;
+   |FINSI;
+
+   |SI nConta = 1;
+      |CIERRA #camasil@; |CIERRA #camasic@; |CIERRA #cacuent@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraLinFactDir;
+#agifa069#1;
+;
+#agifa084#48, #agifa084#0, 001;
+#agifa084#48, #agifa084#0, 999;
+;
+NULL,MiraLinFactDir;
+|FIN;
+
+|PROCESO MiraFactDir;
+   aAlfa = " Comprobando factura directa " + ((#agifa084#48 + "     ") % 0105) + "/";
+   aAlfa = aAlfa + (("000000" + #agifa084#0) % -106) + " ..... revisando lineas    ";
+   |ATRI I; |PINTA 2301, aAlfa; |ATRI N;
+
+   |BUCLE MiraLinFactDir;
+|FPRC;
+
+|DEFBUCLE MiraFactDir;
+#agifa084#3;
+39;
+"      ", #golis009#0, aDSerie, 000000, "S";
+"zzzzzz", #golis009#1, aHSerie, 999999, "S";
+;
+NULL,MiraFactDir;
+|FIN;
+
+|PROCESO agifa724;
+   |BUCLE MiraFactCmp;
+   |BUCLE MiraFactVnt;
+   |BUCLE MiraFactDir;
+
+   |BUCLE CtasArt;
+|FPRC;
+
+|PROCESO Tipo3; |TIPO 3;
+     |HAZ MiraLogos; || Copia Logos para el Crystal
+
+     |ABRE #goparame;
+     |DDEFECTO #goparame;
+     |LEE 000#goparame.p;
+     aCtaDefecto = #goparame#65;
+     |CIERRA #goparame;
+
+     |ABRE #agifa142; |LEE 000#agifa142.p; |CIERRA #agifa142;
+     aPath = #agifa142#151; |QBF aPath;
+     aAlfa = aPath % -101;
+     |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPath = aPath + "/"; |FINSI;
+
+     aAlfa = aPath + "def/cacuenta";
+     |CARGA_DEF aAlfa, cacuent@;
+     |SI FSalida ! 0;
+          |MENAV "0000Error al cargar 'cacuenta'"; |ACABA;
+     |FINSI;
+
+     aAlfa = aPath + "def/camaasic";
+     |CARGA_DEF aAlfa, camasic@;
+     |SI FSalida ! 0;
+          |DESCARGA_DEF #cacuent@;
+          |MENAV "0000Error al cargar 'camaasic'"; |ACABA;
+     |FINSI;
+
+     aAlfa = aPath + "def/camaasil";
+     |CARGA_DEF aAlfa, camasil@;
+     |SI FSalida ! 0;
+          |DESCARGA_DEF #cacuent@; |DESCARGA_DEF #camasic@;
+          |MENAV "0000Error al cargar 'camaasil'"; |ACABA;
+     |FINSI;
+
+
+     |DBASE aBase;
+     |QBF aBase;
+     aHistorico = aBase + "def/agifa722";
+     |CARGA_DEF aHistorico, agif722@;
+     |SI FSalida ! 0;
+          |DESCARGA_DEF #cacuent@; |DESCARGA_DEF #camasic@; |DESCARGA_DEF #camasil@;
+          |MENAV "0000Error al cargar 'agifa722'"; |ACABA;
+     |FINSI;
+
+     aAlfa = "t1" + Usuario; |NOME_DAT #7 aAlfa;
+     |DELINDEX #gotmp007; |ABRE #gotmp007;
+     aAlfa = "t2" + Usuario; |NOME_DAT #8 aAlfa;
+     |DELINDEX #gotmp008; |ABRE #gotmp008;
+
+     |IMPRE 0;
+     |SI FSalida = 0;
+          aImpre = Impresora; nIncid = 0; nNumInc = 0;
+          |ABRE #agifa724; |ABRE #agifa134; |ABRE #agifa079; |ABRE #agifa084;
+          |ABRE #agifa077; |ABRE #agifa010; |ABRE #agifa722;
+          |BUCLE MiraFactCmp;
+          |BUCLE MiraFactVnt;
+          |BUCLE MiraFactDir;
+
+          ||BUCLE CtasArt;
+
+          aPath = #142#151; |QBF aPath;
+          aAlfa = aPath % -101;
+          |SI aAlfa ! "/"; |Y aAlfa ! "\"; aPath = aPath + "/"; |FINSI;
+          aAlfa = aPath + "fich/" + (("000000" + #142#152) % -106) + "/";
+
+          |PATH_DAT #1000 aAlfa; |PATH_DAT #1001 aAlfa; |PATH_DAT #1002 aAlfa;
+          |ABRE #cacuent@; |ABRE #camasic@; |ABRE #camasil@;
+          |BUCLE Cuentas1;
+          |CIERRA #camasil@; |CIERRA #camasic@; |CIERRA #cacuent@;
+          |CIERRA #agifa010; |CIERRA #agifa077; |CIERRA #agifa722;
+          |CIERRA #agifa084; |CIERRA #agifa079; |CIERRA #agifa134; |CIERRA #agifa724;
+          |SI nHay ! 0;
+             |SI nNumInc > 0;
+                |CONFI "    NImprimir incidencias ? ";
+                |SI FSalida = 0;
+                   |INFOR "golis09a";
+                   |SI FSalida = 0;
+                      aCtaAnt = "-1";
+                      |BUCLE ImpreIncid;
+                      |SI aCtaAnt ! "-1";
+                         enSw = 4;
+                         |PRINT;
+                      |FINSI;
+                      |PIEINF; |FININF; |FINIMP;
+                      Impresora = aImpre; |IMPRE -1;
+                   |SINO;
+                      aInforme = "0000No existe informe " + aInforme;
+                      |MENAV aInforme;
+                   |FINSI;
+                |FINSI;
+             |FINSI;
+             |CONFI "    NImprimir listado ? ";
+             |SI FSalida = 0;
+                |SI #golis009#2 = "N";
+                   |INFOR "golis09b";
+                |SINO;
+                   |INFOR "golis09c";
+                |FINSI;
+                |BUCLE Imprime;
+                |PIEINF; |FININF;
+             |FINSI;
+          |SINO;
+             |MENAV "    Seleccion vacia";
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+
+     |CIERRA #gotmp007; |DELINDEX #gotmp007;
+     |CIERRA #gotmp008; |DELINDEX #gotmp008;
+
+     |DESCARGA_DEF #agif722@;
+     |DESCARGA_DEF #camasil@; |DESCARGA_DEF #camasic@; |DESCARGA_DEF #cacuent@;
+|FPRC;
+
+|PROCESO MiraSerie;
+   |SI #golis009#3 = "N";
+      |C_M #golis009#4, 1, "S";
+      aDSerie = #golis009#4; aHSerie = #golis009#4;
+   |SINO;
+      |C_M #golis009#4, 1, "N";
+      aDSerie = "     "; aHSerie = "zzzzz";
+   |FINSI;
+|FPRC;
+
+*/
+
+
+||***************************************************************************
+||***************************************************************************
+||***************************************************************************
+
+
+/*
+|FICHEROS;
+     golis009 #0;
+     gotmp004 #4;
+     agifa724 #724;
+     agifa072 #72;
+     agifa077 #77;
+     agifa079 #79;
+     agifa080 #80;
+     cacuenta@ #1;
+     agifa142 #142;
+|FIN;
+
+|VARIABLES;
+     aPath     = "";
+     nHay      = 0;
+     aInforme  = "golis009";
+     nImpo     = 0;
+     aAlfa     = "";
+
+     nIncid    = 0;
+|FIN;
+
+|PROCESO Tmp;
+     nHay = 1;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE Tmp;
+     #4#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp;
+|FIN;
+
+|PROCESO agifa080;
+     nImpo = ((((((#80#5 * #80#6) < #80#8) < #80#26) < #80#45) < #77#5) < #77#32) < #77#7;
+
+     |DDEFECTO #724;
+     #724#0 = #80#2;
+     |LEE 000#724=;
+||     |SI FSalida ! 0;
+||          aAlfa = "0000 Error:[" + FSalida + "] Articulo " + #80#2;
+||          |MENAV aAlfa;
+||     |SINO;
+||          aAlfa = "0000Articulo[" + #80#2 + "] Cuenta [" + #724#3 +"]" + #80#27 +"/"+ #80#0 + "-"+#80#1;
+||          |MENAV aAlfa;
+||     |FINSI;
+
+     |DDEFECTO #4;
+     #4#3 = #724#3;
+     |LEE 101#4=;
+     |SI FSalida ! 0; |GRABA 020#4b; |FINSI;
+     #4#4 = #4#4 + nImpo;
+
+     |DDEFECTO #1;
+     #1#0 = #4#3;
+     |LEE 000#1=;
+
+     #4#6 = #1#2;
+     |GRABA 020#4a;
+     |LIBERA #4;
+|FPRC;
+
+|DEFBUCLE agifa077;
+     #77#1;
+     ;
+     #72#17, #72#2;
+     #72#17, #72#2;
+     ;
+     NULL, NULL, agifa080;
+|FIN;
+
+|PROCESO agifa072;
+     |BUCLE agifa077;
+|FPRC;
+
+|DEFBUCLE agifa079;
+     #79#3;
+     ;
+     " ", "      ", #0#0, "     ", 000001;
+     "z", "zzzzzz", #0#1, "zzzzz", 999999;
+     ;
+     NULL, NULL, agifa072;
+|FIN;
+
+|PROCESO Tipo3; |TIPO 3;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     aPath = #142#151; |QBF aPath;
+
+     aAlfa = aPath + "def/cacuenta";
+     |CARGA_DEF aAlfa, cacuenta@;
+     |SI FSalida ! 0;
+          |MENAV "0000Error al cargar 'cacuenta'";
+          |ACABA;
+     |FINSI;
+     aAlfa = ("000000" + #142#152) % -106;
+     aPath = aPath + "fich/" + aAlfa + "/";
+     |PATH_DAT #1 aPath;
+     |ABRE #1;
+
+     aAlfa = Usuario; |QBF aAlfa;
+     |NOME_DAT #4 aAlfa;
+     |DELINDEX #4;
+
+     |IMPRE 0;
+     |SI FSalida = 0;
+          |INFOR aInforme;
+          |SI FSalida = 0;
+               |ABRE #4;
+               |ABRE #724;
+               |BUCLE agifa079;
+               |CIERRA #724;
+               |CIERRA #4;
+               |BUCLE Tmp;
+               |SI nHay ! 0; |PIEINF; |FINSI;
+               |FININF;
+          |SINO;
+               aInforme = "0000No existe informe " + aInforme;
+               |MENAV aInforme;
+          |FINSI;
+          |FINIMP;
+     |FINSI;
+
+     |DELINDEX #4;
+
+     |CIERRA #1;
+     |DESCARGA_DEF #cacuenta@;
+|FPRC;
+*/

@@ -1,0 +1,263 @@
+|FICHEROS;
+   dsaw0044;
+   :/integral/def/dsam0127;
+
+   :/integral/def/dsam0026;
+
+   dsam027@;
+   dsam028@;
+   dsam030@;
+|FIN;
+
+|VARIABLES;
+   aAlfa   = "";
+   aAlfa1  = "";
+   aAlfa2  = "";
+   aAlfa3  = "";
+
+   nPara1  = 0;
+   nNume1  = 0;
+   nNume2  = 0;
+   nNume3  = 0;
+
+   aTAny   = "";
+   nError  = 0;
+   aBase   = "";
+   aDef    = "";
+   aMes    = "";
+   aAny    = "";
+   nEstado = 0;
+   fFecha  = @;
+|FIN;
+
+|INCLUYE i_varfun;
+
+|PROCESO LeeTipTarjeta; |TIPO 0;
+   |C_M #dsaw0044#Campo#,0,aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   aTAny = "X";
+   |ABRE #dsam0127;
+   #dsam0127#0 = #dsaw0044#3;
+   |LEE 041#dsam0127.=;
+   |SI FSalida = 0;
+       aTAny = #dsam0127#2;
+       #dsaw0044#4 = #dsam0127#1;
+       |PINTA #dsaw0044#4;
+   |FINSI;
+   |CIERRA #dsam0127;
+|FPRC;
+
+|PROCESO MiraAny;
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |C_M #dsaw0044#Campo#,0,aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI aTAny ! ""; |Y aTAny ! "X";
+       nNume1 = #dsaw0044#6 / 2;
+       nNume2 = (#dsaw0044#6 / 2) ! 0;
+       aAlfa1 = "I";
+       |SI nNume1 = nNume2; aAlfa1 = "P"; |FINSI;
+       |SI aAlfa1 ! aTAny;
+           aAlfa2 = "impares";
+           |SI aAlfa = "P"; aAlfa2 = "pares"; |FINSI;
+           aAlfa2 = "0000El tipo de tarjeta renueva los a¤os "+ aAlfa2;
+           |MENAV aAlfa2;
+           |ERROR;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Estado; |TIPO 0;
+   |C_M #dsaw0044#Campo#,0,aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI #dsaw0044#8 = "A";
+       aAlfa1 = "N";
+       aAlfa2 = "S";
+       #dsaw0044#11 = "";
+       #dsaw0044#10 = "01.01.0000";
+   |SINO;
+       aAlfa2 = "S";
+       aAlfa1 = "S";
+   |FINSI;
+   |C_M #dsaw0044#9, 1, aAlfa2;
+   |C_M #dsaw0044#10,1, aAlfa1;
+   |C_M #dsaw0044#11,1, aAlfa1;
+   |PINTA #dsaw0044#10;
+   |PINTA #dsaw0044#11;
+|FPRC;
+|| //////////////////////////////////////////////////////
+
+|PROCESO YaExiste;
+    nError = 0;
+
+    |DBASE aBase;
+    aDef = aBase + "def/dsam0030";
+    |CARGA_DEF aDef, dsam030@;
+    |SI FSalida = 0;
+        |ABRE #dsam030@;
+        |SELECT #3#dsam030@;
+        #dsam030@#0 = eaFun07;
+        #dsam030@#3 = enEmpresa;
+        #dsam030@#2 = eaMatricula;
+        #dsam030@#6 = enHMes;
+        #dsam030@#7 = enEjer;
+        |LEE 041#dsam030@.=;
+        |SI FSalida = 0;
+            |SI #dsam030@#1 ! enNExpediente; |O #dsam030@#0 ! eaFun07;
+                nError = 1;
+            |FINSI;
+        |FINSI;
+        |CIERRA #dsam030@;
+        |DESCARGA_DEF #dsam030@;
+    |FINSI;
+    |SI nError = 0;
+        |DBASE aBase;
+        aDef = aBase + "def/dsam0028";
+        |CARGA_DEF aDef, dsam028@;
+        |SI FSalida = 0;
+            |ABRE #dsam028@;
+            |SELECT #3#dsam028@;
+            #dsam028@#0 = eaFun07;
+            #dsam028@#3 = enEmpresa;
+            #dsam028@#2 = eaMatricula;
+            #dsam028@#6 = enHMes;
+            #dsam028@#7 = enEjer;
+            |LEE 041#dsam028@.=;
+            |SI FSalida = 0;
+                |SI #dsam028@#1 ! enNExpediente; |O #dsam028@#0 ! eaFun07;
+                    nError = 1;
+                |FINSI;
+            |FINSI;
+            |CIERRA #dsam028@;
+            |DESCARGA_DEF #dsam028@;
+        |FINSI;
+    |FINSI;
+
+    |SI nError ! 0;
+        |MENAV "0000Transporte incluido en otro Expediente";
+        |ACABA;
+    |FINSI;
+
+    |SI #dsam0026#8 = "B";
+        aMes = "01";
+        aAny = "2000";
+        |SI #dsam0026#10 > "01.01.0000";
+            aMes = #dsam0026#10 % 0402;
+            aAny = #dsam0026#10 % 0704;
+        |FINSI;
+        |SI aAny [ enEjer;
+            aAlfa = "Transporte dado de Baja";
+            nError = 1;
+            |SI aAny = enEjer; |Y aMes > enHMes;
+                nError = 0;
+            |FINSI;
+        |FINSI;
+        |SI nError ! 0;
+            aAlfa = "0000NError: " + aAlfa + ". Continuar";
+            |CONFI aAlfa;
+            |SI FSalida ! 0;  |ACABA;  |FINSI;
+            nError = 0;
+        |FINSI;
+    |FINSI;
+    |SI nError = 0;
+        |SI enHMes ! #dsam0026#5; |O enEjer ! #dsam0026#6;
+            aAlfa = "Fecha de visado diferente a la del expediente";
+            nError = 2;
+        |FINSI;
+    |FINSI;
+    |SI nError ! 0;
+        aAlfa = "0000NError: " + aAlfa + ". Continuar";
+        |CONFI aAlfa;
+        |SI FSalida ! 0;  |ACABA;  |FINSI;
+    |FINSI;
+
+    nError = 0;
+    |PARA nPara1 = 2; |SI nPara1 [ 11; |HACIENDO nPara1 = nPara1 + 1;
+          #dsaw0044#nPara1# = #dsam0026#nPara1#;
+          |PINTA #dsaw0044#nPara1#;
+    |SIGUE;
+|FPRC;
+
+|PROCESO LeeTrans_w44;
+   |DDEFECTO #dsam0026;
+   #dsam0026#0 = enEmpresa;
+   #dsam0026#1 = eaMatricula;
+   |LEE 041#dsam0026.=;
+   nEstado = FSalida;
+|FPRC;
+
+|PROCESO Tipo0C1w44; |TIPO 0;
+   enTecla = FSalida;
+
+   |SI enTecla = 10; |O enTecla = 11;
+       eaMatricula = #dsaw0044#1;
+       |HAZ AltasBajas_26;
+       #dsaw0044#1 = eaMatricula;
+       |PINTA #dsaw0044#1;
+   |FINSI;
+
+   aAlfa = #dsaw0044#1; |QBF aAlfa;
+   |SI aAlfa = "";
+       |ERROR;
+       |ACABA;
+   |FINSI;
+
+   |ABRE #dsam0026;
+   eaMatricula = #dsaw0044#1;
+   |HAZ LeeTrans_w44;
+   |CIERRA #dsam0026;
+
+   |SI nEstado = 0;
+       |HAZ YaExiste;
+       |SI nError ! 0;
+           |ERROR;
+           |ACABA;
+       |FINSI;
+       aAlfa = "N";
+   |SINO;
+       |PDEFECTO #dsaw0044,2,12;
+       #dsaw0044#5 = enHMes;
+       #dsaw0044#6 = enEjer;
+       fFecha      = ~;
+       |PINDA #0#dsaw0044;
+       aAlfa = "S";
+       |CONFI "0000SNo existe transporte. Desea darlo de alta";
+       |SI FSalida ! 0;
+           |ERROR;
+           |ACABA;
+       |FINSI;
+   |FINSI;
+   |PARA nPara1 = 2; |SI nPara1 [ 11; |HACIENDO nPara1 = nPara1 + 1;
+         |C_M #dsaw0044#nPara1#, 1, aAlfa;
+   |SIGUE;
+   |C_M #dsaw0044#4, 1, "N";
+   |C_M #dsaw0044#5, 1, "N";
+   |C_M #dsaw0044#6, 1, "N";
+
+    enTecla = 0;
+|FPRC;
+
+|PROCESO Tipo3w44; |TIPO 12;
+   enSalida = FSalida;
+   |SI enSalida = 0;
+       |ABRE #dsam0026;
+       |DDEFECTO #dsam0026;
+       #dsam0026#0 = enEmpresa;
+       #dsam0026#1 = #dsaw0044#1;
+       |LEE 041#dsam0026.=;
+       |SI FSalida ! 0;
+           |DDEFECTO #dsam0026;
+           #dsam0026#0 = enEmpresa;
+           #dsam0026#1 = #dsaw0044#1;
+           |PARA nPara1 = 2; |SI nPara1 [ 11; |HACIENDO nPara1 = nPara1 + 1;
+                 #dsam0026#nPara1# = #dsaw0044#nPara1#;
+           |SIGUE;
+           |GRABA 020#dsam0026.b;
+       |FINSI;
+       |LIBERA #dsam0026;
+       |CIERRA #dsam0026;
+       enSalida = 0;
+   |FINSI;
+|FPRC;

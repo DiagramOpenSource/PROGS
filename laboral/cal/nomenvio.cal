@@ -1,0 +1,1321 @@
+|FICHEROS;
+     nomenv00;
+     nomenv01,MANTE;
+
+     nomenv03,MANTE;
+     nomenv04,MANTE;
+     nomenv05,MANTE;
+     labempre;
+     labtraba;
+
+     dsarm005@ #505;
+     nomenvtm;
+     nomenv10;      || registro
+
+     nomnomin;      || registro de nominas impresas
+     nomcontr;
+     nomnotmp #150;
+|FIN;
+
+|VARIABLES;
+
+     &enEmpCorreo = 0;
+     &nDocs = 0;
+     aDef = "";
+     aBass = "";
+     aPathDatos = "";
+     aAlfa = "";
+     aAlfa1 = "";
+
+     aUbicacion = "";
+     aDocumento = "";
+     aOrigen = "";
+     aDestino = "";
+     nCanal = 0;
+     nCanal1 = 0;
+     aFicheroBAT = "";
+
+     &eaVengoDe = "nomenvio";
+     &enSwDesde9 = 1;
+     &enSwMeteGrupoSubTipo = 1;
+     &eaOrig = "";
+     FEstado = 0;
+     &enCentro = 0;
+     &nEnvio = 0;
+     &eaTipoCorreo = "";
+     &enDocumento = 0;
+     &enErrorCorreo = 0;
+
+     &swPorTrabajador = 0;
+
+     {1}aContiene = ""; || Esta es la declaracion
+     aFichero = "";
+     aFichero1 = "";
+     aFichero2 = "";
+     aRuta = "";
+     &enSwNominaEmpCen = 0;
+     aCadena = "";
+     aCadenaSal = "";
+     aLongitud = "";
+     nLongitud = 0;
+     nPos = 0;
+     aCaracter = "";
+     nBusca = 0;
+     aCaracterSal = "\";
+     swPreparadoEnvio = 0;
+
+     &nEmp = 0;
+     &nCen = 0;
+     &nTra = 0;
+     &aNomEmp = "";
+     &aNomCen = "";
+     &aNomTra = "";
+     &swAlMenosUno = 0;
+     nFlag = 0;
+     aFlag = "";
+     nNume = 0;
+     nPunto = 0;
+     aMensa = "";
+     &nDoc = 0;
+     &nTotalDoc = 0;
+     &nDocMensa = 0;
+     &nTotalDocMensa = 0;
+     swEstoyContando = 0;
+     &enSwNomina = 0;
+     &nDesdeTipo = 0;
+     &nHastaTipo = 0;
+     &nDesdeMes = 0;
+     &nHastaMes = 0;
+     &enDesdeMod = 0;
+     &enHastaMod = 0;
+     &nTotalTrab = 0;
+     &enTrab = 0;
+     &eaEmailCen = ""
+     &eaEmailTra = ""
+     aIPRemoto = "";
+     &enSwBorradoLaboral = 0;
+     nNroEnvio = 0;
+     &eaFechaEnvio = "";
+     &eaHoraEnvio = "";
+     &eaEmailEnvio = "";
+     swEnviado = 0;
+     swReenvio = 0;
+     {1}aRutaLocal = "";
+     swRevisada = 0;
+     swHayNoRevisadas = 0;
+     swStop = 0;
+
+     nResumenes = 0;
+     &aVersionGS = "";
+     aDocumentoDes = "";
+     fFecha = @;
+     aFecha = "";
+     aHora = "";
+     aIdFichero = "";
+     &eaPDFEmpresa = "";
+|FIN;
+
+|PROCESO IdFichEmpresa;
+     || construyo el identificador que ira en los primeros caracteres de
+     || los pdf que enviar  despu‚s
+     fFecha = ~;
+     aFecha = fFecha;
+     |QBF aFecha;
+     aFecha = aFecha - "." - ".";
+     |HORA aHora;
+     |QBF aHora;
+     aHora = aHora - ":" - ":";
+
+     eaPDFEmpresa = "empresa" + "_" + aFecha + "_" + aHora + ".pdf";
+|FPRC;
+
+|PROCESO CabeceraBAT;
+     |HAZ IdFichEmpresa;
+     aFicheroBAT = aRuta + "crea.bat";
+     |XABRE "CBW", aFicheroBAT, nCanal;
+     |SI FSalida ] 0;
+          aAlfa = "@echo off" + &13 + &10;
+          |XGRABA nCanal, aAlfa;
+          aAlfa = "cd " + aRuta + &13 + &10;
+          |XGRABA nCanal, aAlfa;
+          |SI nEnvio = 1; |O nEnvio = 2;
+               aAlfa = "pdftk " + aIdFichero  + "*.pdf cat output " + eaPDFEmpresa;
+          |SINO;
+               aAlfa = "pdftk *.pdf cat output " + eaPDFEmpresa;
+          |FINSI;
+          |XGRABA nCanal, aAlfa;
+     |FINSI;
+|FPRC;
+
+|PROCESO PieBAT;
+     aAlfa = &13 + &10;
+     |XGRABA nCanal, aAlfa;
+     aAlfa = "exit" + &13 + &10;
+     |XGRABA nCanal, aAlfa;
+     |XCIERRA nCanal;
+|FPRC;
+
+|PROCESO UneFicheros;
+     || migue
+
+     |HAZ PieBAT;
+
+     aAlfa = "cmd " + &34 + "/c START /WAIT ";
+     aAlfa = aAlfa + aRuta + "dsmini.exe" + " ";
+     aAlfa = aAlfa + aRuta + "crea.bat" + " ";
+     aAlfa = aAlfa + aRuta + "fin.txt" + &34;
+
+     aFlag = aRuta + "fin.txt";
+     |HAZ MensajeUnion;
+     |RSYSTEM aAlfa;
+
+     nFlag = -1;
+     |PARA nNume = 0; |SI nFlag < 0; |Y nNume < 100000; |HACIENDO nNume = nNume + 1;
+          |XABRE "CE", aFlag, nFlag;
+          nFlag = FSalida;
+          |PULSATECLA;
+     |SIGUE;
+     |XCIERRA nFlag;
+     |SI nNume ] 100000;
+          aAlfa = "    ATENCION. Se ha producido un error en el env¡o de correos";
+          |MENAV aAlfa;
+     |FINSI;
+
+     aFichero = aRuta + "fin.txt";
+     |RFBORRA aFichero;
+
+     swPreparadoEnvio = 1;
+|FPRC;
+
+|PROCESO ReenvioSINO;
+     |SI swEnviado = 1;
+          |SI swReenvio = 0; || NO HE PREGUNTADO
+               aAlfa = "    Se han detectado trabajadores cuyas nóminas ";
+               aAlfa = aAlfa + "ya han sido enviadas por correo electrónico.";
+               |MENAV aAlfa;
+               aAlfa = "     ¿Desea volver a enviar sus nóminas a estos trabajadores?";
+               |CONFI aAlfa;
+               |SI FSalida = 0;
+                    swReenvio = 1;     || reenviar correos
+               |SINO;
+                    swReenvio = 2;     || NO reenviar correos
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeRegistro;
+     swEnviado = 1;
+|FPRC;
+
+|DEFBUCLE LeeRegistro;
+     #nomenv10#1;
+     11;
+     #nomenvtm#0, #nomenvtm#1, #nomenv00#1, #nomenvtm#7, #nomenvtm#2, 001, "S";
+     #nomenvtm#0, #nomenvtm#1, #nomenv00#1, #nomenvtm#7, #nomenvtm#2, 999, "S";
+     ;
+     NULL, LeeRegistro;
+|FIN;
+
+|PROCESO trae_docs;
+     #505#0 = #nomenvtm#3;
+     |LEE 000#505=;
+
+     nEmp = #505#8;
+     aNomEmp = #505#14;
+     |SI nEnvio = 1;
+          aAlfa = #nomenvtm#4;
+          |QBF aAlfa;
+          nDoc = nDoc + 1;
+          |SI #dsarm005@#19 ! 995; || no cuentes horas TP, forma parte de nomina
+               nDocMensa = nDocMensa + 1;
+          |FINSI;
+          |SI aAlfa = "aaaaaaaaaa_resumen";
+               #nomenv01#2 = #nomenv01#2 + 1;
+          |FINSI;
+          nTotalDoc = #nomenv01#2;
+          |HAZ Mensaje;
+     |FINSI;
+     |SI nEnvio = 2;
+          nDoc = nDoc + 1;
+          |SI #dsarm005@#19 ! 995; || no cuentes horas TP, forma parte de nomina
+               nDocMensa = nDocMensa + 1;
+          |FINSI;
+          nTotalDoc = nTotalDoc;
+          nCen = #nomenv03#1;
+          aNomCen = #nomenv03#2;
+          eaEmailCen = #nomenv03#3;
+          |HAZ Mensaje;
+     |FINSI;
+     |SI nEnvio = 3;
+          swEnviado = 0;
+          |BUCLE LeeRegistro;
+
+          |SI swEnviado = 1; |Y swReenvio = 2;
+               |ACABA;
+               || NO LO ENVIO
+          |FINSI;
+          eaEmailTra = #nomenv04#3;
+     |FINSI;
+
+     |SI nDocs = 0;
+          |HAZ CabeceraBAT;
+     |FINSI;
+
+     aUbicacion = #505#7;
+     |QBF aUbicacion;
+     aDocumento = #505#9;
+     |QBF aDocumento;
+
+     aOrigen = aUbicacion + aDocumento;
+
+     |SI nEnvio = 1; |O nEnvio = 2;
+          aDocumentoDes = nDoc;
+          |QBF aDocumentoDes;
+          aDocumentoDes = ("00000" + aDocumentoDes) % -106;
+          aDocumentoDes = aIdFichero + "_" + aDocumentoDes + ".pdf";
+          aDestino = aRuta + aDocumentoDes;
+     |SINO;
+          || si se le envia al trabajador no le cambio el nombre, lo dejo
+          || como esta, lo otro es por empresa y centro para que ordene
+          || alfabeticamente a la hora de crear el documento
+
+          aDestino = aRuta + aDocumento;
+     |FINSI;
+
+     aIPRemoto = "";
+     |IP_REMOTO aIPRemoto;  |QBT aIPRemoto;
+     |SI aIPRemoto ! "";
+          |ENVIA_FICHERO aOrigen, aDestino;
+     |SINO;
+          |COPIA_FICHERO aOrigen, aDestino;
+     |FINSI;
+
+     |SI FSalida = 0;
+          nDocs = nDocs + 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaRegistro_2;
+     #nomenv10#0 = #nomenvtm#0;         || empresa
+     #nomenv10#1 = #nomenvtm#1;         || trabajador
+     #nomenv10#2 = #nomenv00#1;         || a¤o
+     #nomenv10#3 = #nomenvtm#7;         || mes
+     #nomenv10#4 = #nomenvtm#2;         || tipo de nomina
+     #nomenv10#5 = 999;
+     |LEE 000#nomenv10.];
+     |SI FSalida = 0;
+          |SI #nomenv10#0 ! #nomenvtm#0; |O #nomenv10#1 ! #nomenvtm#1;
+          |O #nomenv10#2 ! #nomenv00#1; |O #nomenv10#3 ! #nomenvtm#7;
+          |O #nomenv10#4 ! #nomenvtm#2; |O #nomenv10#5 ! 999;
+               |LEE 000#nomenv10.a;
+          |FINSI;
+     |SINO;
+          |LEE 000#nomenv10.u;
+     |FINSI;
+     |SI FSalida = 0;
+     |Y #nomenv10#0 = #nomenvtm#0; |Y #nomenv10#1 = #nomenvtm#1;
+     |Y #nomenv10#2 = #nomenv00#1; |Y #nomenv10#3 = #nomenvtm#7;
+     |Y #nomenv10#4 = #nomenvtm#2;
+          nNroEnvio = #nomenv10#5 + 1;
+     |SINO;
+          nNroEnvio = 1;
+     |FINSI;
+
+     |DDEFECTO #nomenv10;
+     #nomenv10#0 = #nomenvtm#0;         || empresa
+     #nomenv10#1 = #nomenvtm#1;         || trabajador
+     #nomenv10#2 = #nomenv00#1;         || a¤o
+     #nomenv10#3 = #nomenvtm#7;         || mes
+     #nomenv10#4 = #nomenvtm#2;         || tipo de nomina
+     #nomenv10#5 = nNroEnvio;
+
+     #nomenv10#6 = nDocs;                    || nro documentos en el correo
+
+     || estas variables vienen del dsarchi, del dsarz032
+     #nomenv10#7 = eaFechaEnvio;             || fecha
+     #nomenv10#8 = eaHoraEnvio;             || hora
+     #nomenv10#9 = eaEmailEnvio;             || correo
+     #nomenv10#10 = #nomenvtm#3;             || nro registro dsarchi
+     |SI enErrorCorreo = 0;
+          #nomenv10#11 = "S";
+     |SINO;
+          #nomenv10#11 = "N";
+     |FINSI;
+
+     |GRABA 020#nomenv10.n;
+     |LIBERA #nomenv10;
+|FPRC;
+
+|DEFBUCLE GrabaRegistro_2;
+     #nomenvtm#1;
+     ;
+     #nomenv04#0, #nomenv04#1, nDesdeTipo, nDesdeMes;
+     #nomenv04#0, #nomenv04#1, nHastaTipo, nHastaMes;
+     ;
+     NULL, GrabaRegistro_2;
+|FIN;
+
+|PROCESO GrabaRegistro;
+     |LEE 000#505=;      || vuelvo a leer documento
+
+     #nomenv10#0 = #505#8;                   || empresa
+     #nomenv10#1 = #505#15;                  || trabajador
+     #nomenv10#2 = #nomenv00#1;              || a¤o
+     #nomenv10#3 = #505#18;                  || mes
+     #nomenv10#4 = #505#20;                  || tipo de nomina
+     #nomenv10#5 = 999;
+     |LEE 000#nomenv10.];
+     |SI FSalida = 0;
+          |SI #nomenv10#0 ! #505#8; |O #nomenv10#1 ! #505#15;
+          |O #nomenv10#2 ! #nomenv00#1; |O #nomenv10#3 ! #505#18;
+          |O #nomenv10#4 ! #505#20; |O #nomenv10#5 = 999;
+               |LEE 000#nomenv10.a;
+          |FINSI;
+     |SINO;
+          |LEE 000#nomenv10.u;
+     |FINSI;
+     |SI FSalida = 0;
+     |Y #nomenv10#0 = #505#8; |Y #nomenv10#1 = #505#15;
+     |Y #nomenv10#2 = #nomenv00#1; |Y #nomenv10#3 = #505#18;
+     |Y #nomenv10#4 = #505#20;
+          nNroEnvio = #nomenv10#5 + 1;
+     |SINO;
+          nNroEnvio = 1;
+     |FINSI;
+
+     |DDEFECTO #nomenv10;
+     #nomenv10#0 = #505#8;                   || empresa
+     #nomenv10#1 = #505#15;                  || trabajador
+     #nomenv10#2 = #nomenv00#1;              || a¤o
+     #nomenv10#3 = #505#18;                  || mes
+     #nomenv10#4 = #505#20;                  || tipo de nomina
+     #nomenv10#5 = nNroEnvio;
+     #nomenv10#6 = 1;                        || nro documentos en el correo
+
+     #nomenv10#7 = #505#79;
+     #nomenv10#8 = #505#80;
+     #nomenv10#9 = #505#78;
+     #nomenv10#10 = #505#0;                  || nro registro dsarchi
+     |SI enErrorCorreo = 0;
+          #nomenv10#11 = "S";
+     |SINO;
+          #nomenv10#11 = "N";
+     |FINSI;
+
+     |GRABA 020#nomenv10.n;
+     |LIBERA #nomenv10;
+|FPRC;
+
+|PROCESO busca_docs_tra;
+     |SI #dsarm005@#19 ! 990; |Y #dsarm005@#19 ! 995;
+         |ACABA;
+     |FINSI;
+
+     #nomenvtm#0 = #505#8;
+     #nomenvtm#1 = #505#15;
+     #nomenvtm#2 = #505#20;
+     #nomenvtm#7 = #505#18;
+     |LEE 000#nomenvtm.=;
+     |SI FSalida = 0;              || debe serlo a la fuerza
+          |SI #nomenvtm#3 ! #505#0;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     swEnviado = 0;
+     |BUCLE LeeRegistro;
+     |SI swReenvio = 0;
+          |HAZ ReenvioSINO;
+     |FINSI;
+
+     |SI swEnviado = 1; |Y swReenvio = 2;
+          |ACABA;
+          || NO LO ENVIO
+     |FINSI;
+
+     |SI swEstoyContando = 1;
+          nTotalDoc = nTotalDoc + 1;
+          |ERROR10;      || aqui solo quiero contar los trabajadores
+                         || no todos los documentos de cada trabajador
+     |SINO;
+
+          nEmp = #505#8;
+          aNomEmp = #505#14;
+          |SI nEnvio = 3;
+               nTra = #nomenv04#1;
+               aNomTra = #nomenv04#2;
+               nDoc = nDoc + 1;
+               nDocMensa = nDocMensa + 1;
+               |HAZ Mensaje;
+          |FINSI;
+
+          #505#78 = #nomenv04#3;
+          |GRABA 020#505a;
+          |LIBERA #505;
+
+          enEmpCorreo = #505#8;
+          eaTipoCorreo = "nominas";
+          enDocumento = #505#0;
+          enErrorCorreo = 1;
+          enSwNomina = 1;
+          enSwBorradoLaboral = 0;       || ni se te ocurra borrar despues
+                                        || el documento de dsarchi
+          |SUB_EJECUTA_NP ":dsarchi/dsarw010;AUTODESDED9";
+          |HAZ GrabaRegistro;
+          swAlMenosUno = 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE busca_docs_tra;
+     #505#9006;
+     15;
+     #nomenv01#0, enDesdeMod, #nomenv00#1, nDesdeMes, nDesdeTipo, 000000001, #nomenv04#1;
+     #nomenv01#0, enHastaMod, #nomenv00#1, nHastaMes, nHastaTipo, 999999999, #nomenv04#1;
+     be;
+     NULL, busca_docs_tra;
+|FIN;
+
+|DEFBUCLE trae_docs_tra;
+     #nomenvtm#1;
+     ;
+     #nomenv04#0, #nomenv04#1, nDesdeTipo, nDesdeMes;
+     || #nomenv04#0, #nomenv04#1, nHastaTipo, nDesdeMes;
+     || lo dejo para que se traiga hasta el Tipo 99 ya que de esta manera, se
+     || trae tambien el informe de horas de los TP si existe
+     || esto se podria pensar que provocaria problemas, ya que se trae todos
+     || los tipos, pero en verdad esta limitado al guardar los documentos
+     || en el nomenvtm, lo cual se hace en el proceso carga_docs_tra
+     || con lo que aqui no haria falta
+     #nomenv04#0, #nomenv04#1, 99, nHastaMes;
+     ;
+     NULL, trae_docs;
+|FIN;
+
+|DEFBUCLE trae_docs;
+     #nomenvtm#2;
+     ;
+     #nomenv01#0, "                                        ", nDesdeMes;
+     #nomenv01#0, "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", nHastaMes;
+     ;
+     NULL, trae_docs;
+|FIN;
+
+|DEFBUCLE trae_docs_cen;
+     #nomenvtm#3;
+     ;
+     #nomenv03#0, #nomenv03#1, "                                        ", nDesdeMes;
+     #nomenv03#0, #nomenv03#1, "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", nHastaMes;
+     ;
+     NULL, trae_docs;
+|FIN;
+
+|PROCESO cuenta_docs_cen;
+     nTotalDoc = nTotalDoc + 1;
+|FPRC;
+
+|DEFBUCLE cuenta_docs_cen;
+     #nomenvtm#3;
+     ;
+     #nomenv03#0, #nomenv03#1, "                                        ", nDesdeMes;
+     #nomenv03#0, #nomenv03#1, "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", nHastaMes;
+     ;
+     NULL, cuenta_docs_cen;
+|FIN;
+
+|PROCESO cuenta_docs_tra;
+     swEnviado = 0;
+     |BUCLE LeeRegistro;
+
+     |SI swEnviado = 1; |Y swReenvio = 2;
+          |ACABA;
+          || NO LO CUENTO
+     |SINO;
+          nTotalDoc = nTotalDoc + 1;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE cuenta_docs_tra;
+     #nomenvtm#1;
+     ;
+     #nomenv04#0, #nomenv04#1, nDesdeTipo, nDesdeMes;
+     || #nomenv04#0, #nomenv04#1, nHastaTipo, nHastaMes;
+     #nomenv04#0, #nomenv04#1, 99, nHastaMes;
+     ;
+     NULL, cuenta_docs_tra;
+|FIN;
+
+|PROCESO unidor_pdf_trab;
+     aAlfa = #nomenv04#3;
+     |QBF aAlfa;
+
+     |SI aAlfa ! ""; |Y #nomenv04#4 = "**";
+          nTotalDoc = 0;      || para contador del mensaje, nro total docs
+
+          nDocs = 0;
+          nDocMensa = nDocMensa + 1;
+          enTrab = #nomenv04#1;
+          |BUCLE trae_docs_tra;
+
+          |SI nDocs ! 0;
+               |HAZ UneFicheros;
+          |FINSI;
+          |SI swPreparadoEnvio = 1;
+               || aFichero = aRuta + "empresa.pdf";
+               aFichero = aRuta + eaPDFEmpresa;
+               eaOrig = aFichero;
+               swAlMenosUno = 1;
+               nDoc = nDoc + 1;
+               nTra = #nomenv04#1;
+               aNomTra = #nomenv04#2;
+               |HAZ Mensaje;
+
+               enSwBorradoLaboral = 1;
+               ||enSwBorradoLaboral = 0;
+
+               eaFechaEnvio = "";
+               eaHoraEnvio = "";
+               eaEmailEnvio = "";
+               enErrorCorreo = 1;
+               |HAZ Archivando;
+               |RFBORRA eaOrig;
+               swPreparadoEnvio = 0;
+               |BUCLE GrabaRegistro_2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO por_trabajador;
+     |HAZ limpiadir;
+     enSwBorradoLaboral = 0;
+     |SI swEstoyContando = 1;
+          aAlfa = #nomenv04#3;
+          |QBF aAlfa;
+          |SI aAlfa ! ""; |Y #nomenv04#4 = "**";
+               nDocs = 0;
+
+               |BUCLE busca_docs_tra;
+
+               nTotalTrab = nTotalDoc;
+          |FINSI;
+     |SINO;
+          aAlfa = #nomenv04#3;
+          |QBF aAlfa;
+          |SI aAlfa ! ""; |Y #nomenv04#4 = "**";
+               nTotalDoc = 0;
+
+               |BUCLE cuenta_docs_tra;
+
+               |SI nTotalDoc = 1;
+                    swEstoyContando = 0;
+                    enSwNominaEmpCen = 0;    || que borre el ultimo si esta
+                                             || asi en la configuracion
+                    |BUCLE busca_docs_tra;
+               |SINO;
+                    |SI nTotalDoc > 1;
+                         || tengo que unir pdfs;
+                         enSwNominaEmpCen = 1;    || que no borre el ultimo
+                         |HAZ unidor_pdf_trab;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE por_trabajador;
+     #nomenv04#1;
+     ;
+     #nomenv01#0, 00001;
+     #nomenv01#0, 99999;
+     ;
+     NULL, por_trabajador;
+|FIN;
+
+|PROCESO por_centro;
+     |SI nDocs ! 0;
+          |HAZ UneFicheros;
+
+          || eaOrig = aRuta + "empresa.pdf";
+          eaOrig = aRuta + eaPDFEmpresa;
+          swAlMenosUno = 1;
+          |HAZ MensajeCorreo;
+          ||enSwBorradoLaboral = 1;
+          enSwBorradoLaboral = 0;
+          |HAZ Archivando;
+          swPreparadoEnvio = 0;
+          |RFBORRA eaOrig;
+     |FINSI;
+
+     aAlfa = #nomenv03#3;
+     |QBF aAlfa;
+     |SI aAlfa ! ""; |Y #nomenv03#4 = "**";
+          nDoc = 0;           || para contador del mensaje, nro del doc
+          nDocMensa = 0;           || para contador del mensaje, nro del doc
+          nTotalDoc = 0;      || para contador del mensaje, nro total docs
+
+          nDocs = 0;
+          enCentro = #nomenv03#1;
+          |HAZ IdFicheros;
+          |BUCLE cuenta_docs_cen;
+          |BUCLE trae_docs_cen;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE por_centro;
+     #nomenv03#1;
+     ;
+     #nomenv01#0, 001;
+     #nomenv01#0, 999;
+     ;
+     NULL, por_centro;
+|FIN;
+
+|PROCESO sustituyebarra;
+     aCadenaSal = "";
+     aLongitud = aCadena % 0;
+     nLongitud = aLongitud;
+     |PARA nPos = 1; |SI nPos [ nLongitud; |HACIENDO nPos = nPos + 1;
+          nBusca = (nPos * 100) + 1;
+          aCaracter = aCadena % nBusca;
+          |SI aCaracter = "/";
+               aCaracterSal = "\";
+          |SINO;
+               aCaracterSal = aCaracter;
+          |FINSI;
+          aCadenaSal = aCadenaSal + aCaracterSal;
+     |SIGUE;
+|FPRC;
+
+|PROCESO limpiadir;
+     aAlfa = aRuta + "*.pdf";
+     |R_PDIR aAlfa;
+     |SI FSalida = 0;
+          |PARA; |SI FSalida = 0; |HACIENDO;
+               aAlfa1 = aAlfa;
+               |RFBORRA aAlfa1;
+               |R_SDIR aAlfa;
+          |SIGUE;
+     |FINSI;
+
+     aAlfa = aRuta + "*.bat";
+     |R_PDIR aAlfa;
+     aAlfa1 = aAlfa;
+     |RFBORRA aAlfa1;
+|FPRC;
+
+|PROCESO nomnotmp_imp;
+     |PRINT;
+|FPRC;
+
+|DEFBUCLE nomnotmp_imp;
+     #nomnotmp#1;
+     ;
+     #nomenv01#0, 00001, #nomenv00#1, 01, 0;
+     #nomenv01#0, 99999, #nomenv00#1, 12, 9;
+     ;
+     NULL, nomnotmp_imp;
+|FIN;
+
+|PROCESO nomnotmp_lee;
+     swHayNoRevisadas = 1;
+|FPRC;
+
+|DEFBUCLE nomnotmp_lee;
+     #nomnotmp#1;
+     ;
+     #nomenv01#0, 00001, #nomenv00#1, 01, 0;
+     #nomenv01#0, 99999, #nomenv00#1, 12, 9;
+     ;
+     NULL, nomnotmp_lee;
+|FIN;
+
+|PROCESO Comprueba;
+     |SI #nomcontr#60 = "S";
+          swHayNoRevisadas = 0;
+          |BUCLE nomnotmp_lee;
+          |SI swHayNoRevisadas = 1;    || existen nominas que no han sido revisadas
+               aAlfa1 = #nomenv01#0;
+               |QBF aAlfa1;
+               aAlfa1 = ("00000" + aAlfa1) % -105;
+               aAlfa = "    ATENCION. Existen nóminas archivadas que NO han sido ";
+               aAlfa = aAlfa + "visualizadas en la empresa " + aAlfa1;
+               |MENAV aAlfa;
+               aAlfa = "    No se realizará el envío de esta empresa. ";
+               aAlfa = aAlfa + "Se imprimirá a continuación un listado de estas nóminas.";
+               |MENAV aAlfa;
+
+               Impresora = "CrystalReport";
+               |IMPRE -1;
+               |SI FSalida = 0;
+                    |INFOR "nomnotmp";
+                    |BUCLE nomnotmp_imp;
+                    |PIEINF;
+                    |FININF;
+               |FINSI;
+               |FINIMP;
+               swStop = 1;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO IdFicheros;
+     || construyo el identificador que ira en los primeros caracteres de
+     || los pdf que enviar  despu‚s
+     fFecha = ~;
+     aFecha = fFecha;
+     |QBF aFecha;
+     aFecha = aFecha - "." - ".";
+     |HORA aHora;
+     |QBF aHora;
+     aHora = aHora - ":" - ":";
+
+     aIdFichero = aFecha + "_" + aHora;
+|FPRC;
+
+|PROCESO recogida;
+     |SI #nomenv01#2 = 0; |Y #nomenv01#7 = "NO";
+          |ACABA;
+     |FINSI;
+     |SI #nomenv01#6 ! "**";
+          |ACABA;
+     |FINSI;
+
+     |HAZ CargaDef;
+     |ABRE #505;
+
+     aContiene = "";
+     |ESPECIFICA "RBASS", aContiene;
+     aRuta = aContiene1;
+     |QBF aRuta;
+     aCadena = aRuta;
+     |HAZ sustituyebarra;
+     aRuta = aCadenaSal;
+     aRuta = aRuta + "spoolpdf\dsarchi\";
+     |RMKDIR aRuta;       || lo creo primero de nada, por si no hubiera
+
+     |HAZ limpiadir;
+
+     |PARA nEnvio = 1; |SI nEnvio [ 3; |HACIENDO nEnvio = nEnvio + 1;
+          nDocs = 0;
+          |SI nEnvio = 1;          || por empresa
+               |SI #nomenv01#3 = "SI"; |O #nomenv01#7 = "SI";
+                    enSwNominaEmpCen = 1;
+                    nDoc = 0;
+                    nDocMensa = 0;
+                    |HAZ IdFicheros;
+                    |BUCLE trae_docs;
+                    |SI nDocs ! 0;
+                         ||migue
+                         |HAZ UneFicheros;
+                    |FINSI;
+                    |SI swPreparadoEnvio = 1;
+                         || aFichero = aRuta + "empresa.pdf";
+                         aFichero = aRuta + eaPDFEmpresa;
+                         eaOrig = aFichero;
+                         swAlMenosUno = 1;
+                         |HAZ MensajeCorreo;
+                         ||enSwBorradoLaboral = 1;
+                         enSwBorradoLaboral = 0;
+                         |HAZ Archivando;
+                         ||RFBORRA eaOrig;
+                         swPreparadoEnvio = 0;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |SI nEnvio = 2;          || por centro
+               |SI #nomenv01#4 = "SI";
+                    |HAZ limpiadir;
+                    enSwNominaEmpCen = 1;
+                    nDoc = 0;
+                    nDocMensa = 0;
+                    |BUCLE por_centro;
+                    |SI nDocs ! 0;
+                         |HAZ UneFicheros;
+                    |FINSI;
+                    |SI swPreparadoEnvio = 1;
+                         || aFichero = aRuta + "empresa.pdf";
+                         aFichero = aRuta + eaPDFEmpresa;
+                         eaOrig = aFichero;
+                         swAlMenosUno = 1;
+                         |HAZ MensajeCorreo;
+                         ||enSwBorradoLaboral = 1;
+                         enSwBorradoLaboral = 0;
+                         |HAZ Archivando;
+                         |RFBORRA eaOrig;
+                         swPreparadoEnvio = 0;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |SI nEnvio = 3;          || por trabajador
+               swStop = 0;
+               |HAZ Comprueba;
+               |SI #nomenv01#5 = "SI"; |Y swStop = 0;
+                    enSwBorradoLaboral = 0;
+                    |ABRE #nomenv10;
+                    |HAZ limpiadir;
+                    nDoc = 0;
+                    nDocMensa = 0;
+                    nTotalDoc = 0;
+                    nTotalTrab = 0;
+                    swEstoyContando = 1;
+                    |BUCLE por_trabajador;
+
+                    enSwNominaEmpCen = 0;
+                    swEstoyContando = 0;
+                    |BUCLE por_trabajador;
+                    |CIERRA #nomenv10;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+
+     |CIERRA #505;
+     |HAZ DescargaDef;
+|FPRC;
+
+/****************************************************************************/
+/************** CARGA DE TEMPORALES POR EMPRESA Y TRABAJADOR ****************/
+/****************************************************************************/
+
+|PROCESO GrabaNoRevisadas;
+     #nomnotmp#0 = #nomenvtm#0;
+     #nomnotmp#1 = #nomenvtm#1;
+     #nomnotmp#2 = #nomenv00#1;
+     #nomnotmp#3 = #nomenvtm#7;
+     #nomnotmp#4 = #nomenvtm#2;
+     #nomnotmp#5 = #nomenvtm#4;
+     #nomnotmp#6 = #nomenvtm#3;
+     |GRABA 020#nomnotmp.n;
+     |LIBERA #nomnotmp;
+|FPRC;
+
+|PROCESO nomnomin;
+     swRevisada = 1;
+|FPRC;
+
+|DEFBUCLE nomnomin;
+     #nomnomin#1;
+     ;
+     #nomenvtm#0, #nomenvtm#1, #nomenv00#1, #nomenvtm#7, #nomenvtm#2, 01;
+     #nomenvtm#0, #nomenvtm#1, #nomenv00#1, #nomenvtm#7, #nomenvtm#2, 99;
+     ;
+     NULL, nomnomin;
+|FIN;
+
+|PROCESO carga_tmp_resumen;
+     |DDEFECTO #nomenvtm;
+     #nomenvtm#0 = #nomenv01#0;         || empresa
+     #nomenvtm#1 = 00000;               || trabajador: 00000
+     #nomenvtm#2 = #nomenv05#2;         || tipo de resumen
+     #nomenvtm#3 = #nomenv05#1;         || nro. documento
+     #nomenvtm#4 = "aaaaaaaaaa_resumen";|| nombre trabajador
+                                        || para que primero de nada cuando
+                                        || construya el doc saque el resumen
+     #nomenvtm#5 = #nomenv01#0;         || empresa, otra vez
+     #nomenvtm#6 = 00;                  || centro
+     #nomenvtm#7 = #nomenv05#6;         || mes
+
+     |LEE 101#nomenvtm.=;
+     FEstado = FSalida;
+
+     |SI FEstado = 0;
+          #nomenvtm#3 = #nomenv05#1;
+          |GRABA 020#nomenvtm.a;
+     |SINO;
+          #nomenvtm#3 = #nomenv05#1;
+          |GRABA 020#nomenvtm.n;
+     |FINSI;
+     |LIBERA #nomenvtm;
+|FPRC;
+
+|DEFBUCLE carga_tmp_resumen;
+     #nomenv05#1;
+     5;
+     #nomenv01#0, 000000001, "**";
+     #nomenv01#0, 999999999, "**";
+     ;
+     NULL, carga_tmp_resumen;
+|FIN;
+
+|PROCESO carga_docs_tra;
+     |SI #dsarm005@#19 ! 990;  |Y #dsarm005@#19 ! 995;
+         |ACABA;
+     |FINSI;
+
+     |DDEFECTO #nomenvtm;
+     #nomenvtm#0 = #505#8;
+     #nomenvtm#1 = #505#15;
+     #nomenvtm#2 = #505#20;
+     #nomenvtm#7 = #505#18;
+
+     |SI #dsarm005@#19 = 995;
+         #nomenvtm#2 = 99;
+     |FINSI;
+
+     |LEE 101#nomenvtm.=;
+     FEstado = FSalida;
+
+     aAlfa = #505#16;
+     aAlfa = aAlfa % 101;
+     |SI aAlfa = "¥";
+          #nomenvtm#4 = "NZ" + #505#16;
+     |SINO;
+          #nomenvtm#4 = #505#16;
+     |FINSI;
+
+     |SI nEnvio = 1;
+          #nomenvtm#5 = #505#8;
+     |FINSI;
+
+     |SI nEnvio = 2;
+          #nomenvtm#6 = #nomenv03#1;
+     |FINSI;
+
+     |SI FEstado = 0;
+          #nomenvtm#3 = #505#0;
+          |GRABA 020#nomenvtm.a;
+     |SINO;
+          #nomenvtm#3 = #505#0;
+          |GRABA 020#nomenvtm.n;
+     |FINSI;
+     |LIBERA #nomenvtm;
+     |SI #dsarm005@#19 = 995;
+         |ACABA;
+     |FINSI;
+
+     swRevisada = 0;
+     |SI #nomcontr#60 = "S"; |Y nEnvio = 3;
+          |BUCLE nomnomin;
+          |SI swRevisada = 0;
+               |HAZ GrabaNoRevisadas;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE carga_docs_tra;
+     #505#9006;
+     15;
+     #nomenv01#0, enDesdeMod, #nomenv00#1, nDesdeMes, nDesdeTipo, 000000001, #nomenv04#1;
+     #nomenv01#0, enHastaMod, #nomenv00#1, nHastaMes, nHastaTipo, 999999999, #nomenv04#1;
+     be;
+     NULL, carga_docs_tra;
+|FIN;
+
+|PROCESO carga_tmp_tra;
+     aAlfa = #nomenv04#3;
+     |QBF aAlfa;
+     |SI aAlfa ! ""; |Y #nomenv04#4 = "**";
+          nDocs = 0;
+          |BUCLE carga_docs_tra;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE carga_tmp_tra;
+     #nomenv04#1;
+     ;
+     #nomenv01#0, 00001;
+     #nomenv01#0, 99999;
+     ;
+     NULL, carga_tmp_tra;
+|FIN;
+
+|PROCESO carga_tmp;
+     |SI #dsarm005@#19 ! 990;  |Y #dsarm005@#19 ! 995;
+         |ACABA;
+     |FINSI;
+
+     |SI #505#15 = 0;
+          |ACABA;
+     |FINSI;
+
+     |SI nEnvio = 2;
+          #labtraba#0 = #505#8;
+          #labtraba#1 = #505#15;
+          |LEE 000#labtraba.=;
+
+          |SI #labtraba#77 ! enCentro;
+               |ACABA;
+          |FINSI;
+     |FINSI;
+
+     |HAZ carga_docs_tra;
+|FPRC;
+
+|DEFBUCLE carga_tmp;
+     #505#9006;
+     ;
+     #nomenv01#0, enDesdeMod, #nomenv00#1, nDesdeMes, nDesdeTipo, 000000001;
+     #nomenv01#0, enHastaMod, #nomenv00#1, nHastaMes, nHastaTipo, 999999999;
+     ;
+     NULL, carga_tmp;
+|FIN;
+
+|PROCESO carga_tmp_cen;
+     aAlfa = #nomenv03#3;
+     |QBF aAlfa;
+     |SI aAlfa ! ""; |Y #nomenv03#4 = "**";
+          nDocs = 0;
+          enCentro = #nomenv03#1;
+
+          |BUCLE carga_tmp;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE carga_tmp_cen;
+     #nomenv03#1;
+     ;
+     #nomenv01#0, 001;
+     #nomenv01#0, 999;
+     ;
+     NULL, carga_tmp_cen;
+|FIN;
+
+|PROCESO PrimeraCarga;
+     |DELINDEX #nomenvtm;
+     |ABRE #nomenvtm;
+
+     |SI #nomenv01#2 = 0;
+          |ACABA;
+     |FINSI;
+     /*
+     || es que en teoria deberia enviar el resumen, aunque solo hubiera resumen
+     || pero como de moemento no funciona (lo ha pedido Serna varias veces)
+     || quito esto y que no entre en las que tengan Nro Nominas = 0
+     |SI #nomenv01#2 = 0; |Y #nomenv01#7 = "NO";
+          |ACABA;
+     |FINSI;
+     */
+     |SI #nomenv01#6 ! "**";
+          |ACABA;
+     |FINSI;
+
+     |HAZ CargaDef;
+
+     |PARA nEnvio = 1; |SI nEnvio [ 3; |HACIENDO nEnvio = nEnvio + 1;
+          nDocs = 0;
+          |SI nEnvio = 1;          || por empresa
+               |SI #nomenv01#3 = "SI";
+                    |BUCLE carga_tmp;
+               |FINSI;
+               |SI #nomenv01#7 = "SI";
+                    |BUCLE carga_tmp_resumen;
+               |FINSI;
+          |FINSI;
+          |SI nEnvio = 2;          || por centro
+               |SI #nomenv01#4 = "SI";
+                    |BUCLE carga_tmp_cen;
+               |FINSI;
+          |FINSI;
+          |SI nEnvio = 3;          || por trabajador
+               |SI #nomenv01#5 = "SI";
+                    |ABRE #505;
+                    |BUCLE carga_tmp_tra;
+                    |CIERRA #505;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+
+     |HAZ DescargaDef;
+     |CIERRA #nomenvtm;
+|FPRC;
+
+|PROCESO nomenv01_recoge;
+     |HAZ PrimeraCarga;
+     |ABRE #nomenvtm;
+     |ABRE #nomnomin;
+     ||CONSULTA_CLAVE #1#nomenvtm;
+
+     |HAZ recogida;
+
+     |CIERRA #nomnomin;
+     |CIERRA #nomenvtm;
+|FPRC;
+
+|DEFBUCLE nomenv01_recoge;
+     #nomenv01#1;
+     ;
+     INICIO;
+     FINAL;
+     be;
+     NULL, nomenv01_recoge;
+|FIN;
+
+|PROCESO Correos;
+     |ESPECIFICA "RBASS", aRutaLocal;
+     |QBF aRutaLocal1;
+
+     |ABRE #nomcontr; |LEE 000#nomcontr.p; |CIERRA #nomcontr;
+     aAlfa = Usuario;     aAlfa = (aAlfa + "zzzzzzzz") % 108;
+     |NOME_DAT #150 aAlfa;
+     |DELINDEX #150;
+     |ABRE #150;
+
+     |ABRE #labtraba;
+
+     aAlfa = Usuario; |QBT aAlfa;    aAlfa = ("o" + aAlfa) % 108;
+     |NOME_DAT #nomenvtm#aAlfa#;
+
+     |BUCLE nomenv01_recoge;
+
+     |CIERRA #labtraba;
+     |DELINDEX #150;
+     |CIERRA #150;
+|FPRC;
+
+|PROCESO CargaResumenes;
+     nResumenes = nResumenes + 1;
+     #nomenv05#0 = #nomenv01#0;
+     #nomenv05#1 = #505#0;
+     #nomenv05#2 = #505#20;
+     #nomenv05#3 = #505#21;
+     #nomenv05#4 = #505#4;
+     #nomenv05#5 = "**";
+     #nomenv05#6 = #505#18;
+     |GRABA 020#nomenv05.n;
+     |LIBERA #nomenv05;
+|FPRC;
+
+
+|DEFBUCLE CargaResumenes;
+     #505#9006;
+     ;
+     #nomenv01#0, 994, #nomenv00#1, #nomenv00#0, 00, 000000001;
+     #nomenv01#0, 994, #nomenv00#1, #nomenv00#4, 99, 999999999;
+     ;
+     NULL, CargaResumenes;
+|FIN;
+
+|PROCESO EmpresasAEnviar;
+     nResumenes = 0;
+     |BUCLE CargaResumenes;
+     |SI nResumenes ! 0;
+          #nomenv01#7 = "SI";
+          |GRABA 020#nomenv01.a;
+          |LIBERA #nomenv01;
+     |FINSI;
+     || grabar el nro de resumenes encontrados en el nomenv00
+|FPRC;
+
+|DEFBUCLE EmpresasAEnviar;
+     #nomenv01#1;
+     ;
+     00001;
+     99999;
+     be;
+     NULL, EmpresasAEnviar;
+|FIN;
+
+|PROCESO ResumenNominas;
+     |ABRE #nomenv01;
+     |ABRE #nomenv05;
+     |HAZ CargaDef;
+     |BUCLE EmpresasAEnviar;
+     |HAZ DescargaDef;
+     |CIERRA #labtraba;
+     |CIERRA #nomenv05;
+     |CIERRA #nomenv01;
+|FPRC;
+
+|PROCESO GrabaTrabajador;
+     |DDEFECTO #nomenv04;
+
+     #labtraba#0 = #505#8;
+     #labtraba#1 = #505#15;
+     |LEE 000#labtraba.=;
+
+     #nomenv04#0 = #labtraba#0;
+     #nomenv04#1 = #labtraba#1;
+     |LEE 101#nomenv04.=;
+
+     FEstado = FSalida;
+     #nomenv04#0 = #labtraba#0;
+     #nomenv04#1 = #labtraba#1;
+     #nomenv04#2 = #labtraba#2;
+     #nomenv04#3 = #labtraba#127;
+     |SI #labtraba#128 = "S";
+          #nomenv04#4 = "**";
+          swPorTrabajador = 1;
+     |SINO;
+          #nomenv04#4 = "  ";
+     |FINSI;
+
+     |SI FEstado = 0;
+          |GRABA 020#nomenv04.a;
+     |SINO;
+          |GRABA 020#nomenv04.n;
+     |FINSI;
+     |LIBERA #nomenv04;
+
+     ||HAZ AltaLineaEmp;
+|FPRC;
+
+|PROCESO CuentaDocs;
+     |SI #dsarm005@#19 ! 990;
+||Y #dsarm005@#19 ! 995;
+         |ACABA;
+     |FINSI;
+
+     |SI #505#15 ! 0;
+          |HAZ carga_docs_tra;
+          |SI FEstado ! 0;
+               nDocs = nDocs + 1;
+               |HAZ GrabaTrabajador;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE CuentaDocs;
+     #505#9006;
+     ;
+     #nomenv01#0, enDesdeMod, #nomenv00#1, nDesdeMes, nDesdeTipo, 000000001;
+     #nomenv01#0, enHastaMod, #nomenv00#1, nHastaMes, nHastaTipo, 999999999;
+     ;
+     NULL, CuentaDocs;
+|FIN;
+
+|PROCESO CuentaUna;
+     aAlfa = Usuario; |QBT aAlfa;    aAlfa = ("o" + aAlfa) % 108;
+     |NOME_DAT #nomenvtm#aAlfa#;
+     |DELINDEX #nomenvtm;
+     |ABRE #nomenvtm;
+
+     |ABRE #nomenv04;
+     |ABRE #labtraba;
+     |HAZ CargaDef;
+     nDocs = 0;
+     swPorTrabajador = 0;
+     |BUCLE CuentaDocs;
+     |HAZ DescargaDef;
+     |CIERRA #labtraba;
+     |CIERRA #nomenv04;
+
+     |CIERRA #nomenvtm;
+|FPRC;
+
+|DEFBUCLE nomenv01_cuenta;
+     #nomenv01#1;
+     ;
+     INICIO;
+     FINAL;
+     be;
+     NULL, CuentaUna;
+|FIN;
+
+|PROCESO CargaDef;
+     |DBASS aBass;
+     |QBF aBass;
+     aDef = aBass + "dsarchi/def/dsarm005.mas";
+     |CARGA_DEF aDef, dsarm005@;
+     |SI FSalida ! 0;
+          aAlfa = aDef; |QBF aAlfa;
+          aAlfa = "    ATENCION: Error en CARGADEF: " + aAlfa;
+          |MENAV aAlfa;
+          |ACABA;
+     |FINSI;
+
+     aPathDatos = aBass + "dsarchi/fich/";
+     |PATH_DAT #505 aPathDatos;
+|FPRC;
+
+|PROCESO DescargaDef;
+     |DESCARGA_DEF #dsarm005@;
+|FPRC;

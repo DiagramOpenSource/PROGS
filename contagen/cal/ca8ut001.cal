@@ -1,0 +1,483 @@
+|FICHEROS;
+    ca8ut001 #0;
+
+    cacuenta #1;         || cuentas
+    cacuent@ #3;
+    ca8m0003 #403;  || Tabla Equivalencia
+    ca8cumay #410;  || Control de Balances
+
+    canempre #30;
+    caselem1 #998;
+
+    ca8ctrle #400;
+|FIN;
+
+|VARIABLES;
+   &entrada  = 1;
+   informe   = "ca8ut001";
+   aAlfa1    = "";
+   aAlfa2    = "";
+   nNume1    = 0;
+   nNume2    = 0;
+   nCampo    = 0;
+   nSw       = 0;
+
+   &r_emp  = 0;
+   &r_per  = 0;
+
+   aDCuenta    = "";
+   aHCuenta    = "";
+   nConTabla   = 0;
+   aCta90      = "";
+   nTabla      = 0;
+   aDef        = "";
+   aMas        = "";
+   aPathPlan   = "";
+   nError      = 0;
+   nGraba      = 0;
+
+   nEmpTab     = 0;
+   nPerTab     = 0;
+   nExisEmp    = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| ========================================================================
+||                        CALCULOS PANTALLA
+|| ========================================================================
+|CALCULO Nivel;|TIPO 0;
+ |SI FSalida = 2; |ACABA; |FINSI;
+ |SI #0Campo > dig3;
+     |MENAV "    Nivel erroneo!";
+     |ERROR;
+ |SINO;
+     |SI Campo = 14; |Y #0#13 > #0#14;
+         |MENAV "    Nivel erroneo!";
+         |ERROR;
+     |FINSI;
+ |FINSI;
+|FCAL;
+
+|CALCULO cuenta; |TIPO 6;
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta;
+     |PINTA #0Campo;
+     |SI #0Campo = "            ";  |ACABA;  |FINSI;
+     |HAZ SacaNivel;
+|FCAL;
+
+|PROCESO QuieroTabla;
+ |C_M #0Campo, 0, aAlfa1;
+ |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+ |SI #0Campo ! "S";
+     |C_M #0#4,1,"S";
+     |C_M #0#5,1,"S";
+ |SINO;
+     |C_M #0#4,1,"N";
+     |C_M #0#5,1,"N";
+ |FINSI;
+|FPRC;
+
+|PROCESO DelSuper;
+  |SI #0#15 = "S";
+      |C_M #0#10, 1, "N";
+      |C_M #0#4,  1, "N";
+      |C_M #0#5,  1, "N";
+      #0#4 = #0#0; |PINTA #0#4;
+      #0#5 = #0#1; |PINTA #0#5;
+      #0#6 = #0#2; |PINTA #0#6;
+      #0#7 = #0#3; |PINTA #0#7;
+  |SINO;
+      |C_M #0#10, 1, "S";
+      |C_M #0#4,  1, "S";
+      |C_M #0#5,  1, "S";
+      |SI nConTabla = 0;
+         |C_M #0#10, 1, "N"; #0#10 = "N";
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+
+|PROCESO consulta;
+   |SI FSalida ! 9;  |ACABA;  |FINSI;
+   r_emp = 0;
+   |SUB_EJECUTA "caconemp";
+   |ERROR;
+   |SI r_emp = 0; |ACABA; |FINSI;
+   #0#4 = r_emp;
+   #0#5 = r_per;
+   |PTEC 802;
+|FPRC;
+
+|PROCESO ejercicio;
+   |C_M #0Campo, 0, aAlfa1;
+   |SI aAlfa1 = "N"; |ACABA; |FINSI;
+
+   |SI FSalida = 2; |ACABA; |FINSI;
+   |SI #0#4 = #0#0; |Y #0#5 = #0#1;
+       |MENAV "    Error, seleccionada Empresa Actual";
+       |ERROR;
+       |ACABA;
+   |FINSI;
+
+   |SI nConTabla = 1; |Y nPerTab ! -1;
+       |SI #0#4 ! nEmpTab; |O #0#5 ! nPerTab;
+           |CONFI "    SEmpresa seleccionada diferente a la de la tabla de Equivalencia. Continuar ";
+           |SI FSalida ! 0;
+               #0#4 = nEmpTab; |PINTA #0#4;
+               #0#5 = nPerTab; |PINTA #0#5;
+               |ERROR;
+               |ACABA;
+           |FINSI;
+       |FINSI;
+   |FINSI;
+
+   |ABRE #30;
+   #30#2 = #0#4;
+   #30#3 = #0#5;
+   |LEE 001#30=;
+   |SI FSalida ! 0;
+       |MENAV "    Error. No existe Empresa Contable";
+       |ERROR;
+       |CIERRA #30;
+       |ACABA;
+   |FINSI;
+   #0#6 = #30#1;
+   |SI #30#26 < 80;
+       #0#7 = #30#26 + 2000;
+   |SINO;
+       #0#7 = #30#26 + 1900;
+   |FINSI;
+   |PINTA #0#6;
+   |PINTA #0#7;
+|FPRC;
+
+|PROCESO DefectoEmp;
+   |ABRE #30;
+   |SI nPerTab ! -1;
+       |SELECT #1#30;
+       #30#2 = nEmpTab;
+       #30#3 = nPerTab;
+       |LEE 001#30=;
+       |SI FSalida ! 0;
+           nPerTab = -1;
+       |FINSI;
+   |FINSI;
+
+   |SI nPerTab = -1;
+       |SELECT #4#30;
+       #30#2  = enEmpresa;
+       nNume1 = enEjercicio - 1;
+       aAlfa1 = nNume1;
+       aAlfa1 = aAlfa1 % -102;
+       #30#26 = aAlfa1;
+       |LEE 001#30=;
+       |SI FSalida = 0;
+           nEmpTab = #30#2;
+           nPerTab = #30#3;
+       |FINSI;
+       |SELECT #1#30;
+   |FINSI;
+   |CIERRA #30;
+
+   |SI nPerTab ! -1;
+       #0#4 = nEmpTab;
+       #0#5 = nPerTab;
+       #0#6 = #30#1;
+       |SI #30#26 < 80;
+           #0#7 = #30#26 + 2000;
+       |SINO;
+           #0#7 = #30#26 + 1900;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|| ------------------------------------------------------------------------
+|PROCESO  BuscaMayor;
+  #410#12 = 2008;
+  #410#0  = eaCuenta % 105;
+  #410#10 = eNum2008;
+  |LEE 000#410=;
+  |SI FSalida = 0;
+      eaNomCta = #410#9; |QBF eaNomCta;
+      |SI eaNomCta ! "";
+          #1#2 =  eaNomCta;
+          nGraba = 1;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO LeoCuentas;
+
+  aAlfa1 = #1#0; |QBF aAlfa1;
+  |SI aAlfa1 = ""; |ACABA; |FINSI;
+
+  eaCuenta = #1#0; |HAZ SacaNivel;
+  |SI enNivel < #0#13; |O enNivel > #0#14; |ACABA; |FINSI;
+
+  aAlfa2 = aAlfa1 % 0;
+  nNume1 = aAlfa2;
+
+  aAlfa1 = #1#2; |QBF aAlfa1;
+  |SI aAlfa1 ! ""; |Y #0#11 = "S";
+      |LIBERA #1;
+      |ACABA;
+  |FINSI;
+
+  nGraba   = 0;
+  nTabla   = 0;
+  eaNomCta = "";
+
+  |SI #0#15 = "N"
+      |SI #0#3 ] 2008; |Y #0#7 < 2008; |Y nNume1 [ 4;
+          |HAZ BuscaMayor;
+      |FINSI;
+
+      |SI nGraba = 0;
+          |SI nConTabla = 1;
+              |DDEFECTO #403;
+              |SELECT #2#403;
+              #403#2 = eaCuenta;
+              |LEE 041#403];
+              |SI FSalida = 0; |Y #403#2 = eaCuenta;
+                  aCta90   = #403#0;
+                  nTabla   = 1;
+                  eaNomCta = #403#3; |QBF eaNomCta;
+                  |SI eaNomCta = "";
+                      eaNomCta = #403#1; |QBF eaNomCta;
+                  |FINSI;
+              |FINSI;
+              |SELECT #1#403;
+          |FINSI;
+
+          |SI #0#10 = "S"; |Y nTabla = 1;
+              |SI eaNomCta ! "";
+                  #1#2 = eaNomCta;
+                  nGraba = 1;
+              |FINSI;
+          |FINSI;
+      |FINSI;
+
+      |SI nGraba = 0; |Y nExisEmp = 1;
+          #3#0 = #1#0;
+          |SI nTabla = 1;   || si existe la tabla y no hemos cambiado de empresa
+              |SI #0#4 = nEmpTab; |Y  #0#5 = nPerTab;
+                  #3#0 = aCta90;
+              |FINSI;
+          |FINSI;
+          |LEE 041#3=;
+          |SI FSalida = 0;
+              #1#2 = #3#2;
+              nGraba = 1;
+          |FINSI;
+      |FINSI;
+   |SINO;
+      eaCuenta = #1#0;
+      aAlfa1 = #1#0; |QBF aAlfa1;
+      aAlfa1 = aAlfa1 % 0;
+      nNume1 = aAlfa1;
+      eaNomCtaSup = "";
+      |SI nNume1 > 0; |Y nNume1 [ 5; |Y enEjercicio ] 2008;
+          |HAZ eLeeCtaMayor;
+      |FINSI;
+
+      |SI eaNomCtaSup = ""; |HAZ LeeCtaSup; |FINSI;
+      |SI eaNomCtaSup ! "";
+          #1#2 = eaNomCtaSup;
+          nGraba = 1;
+     |FINSI;
+  |FINSI;
+
+ |SI nGraba = 1;
+     |GRABA 020#1a;
+     nError = 1;
+     |PRINT;
+ |FINSI;
+ |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE LeoCuentas;
+   #1#1;
+   ;
+   aDCuenta;
+   aHCuenta;
+   be;
+   NULL, LeoCuentas;
+|FIN;
+
+|PROCESO HazTodo;
+
+    nExisEmp = 0;
+    aAlfa1 = #0#4; aAlfa1 = ("00000" + aAlfa1) % -105;
+    aAlfa2 = #0#5; aAlfa2 = ("0"     + aAlfa2) % -101;
+    |DFICB aPathPlan;
+    aPathPlan = aPathPlan + aAlfa1 + aAlfa2 + "/";
+
+    |PATH_DAT #3 aPathPlan;
+    |ABRE #30;
+    #30#2 = #0#4;
+    #30#3 = #0#5;
+    |LEE 041#30=;
+    |SI FSalida = 0; nExisEmp = 1; |FINSI;
+    |CIERRA #30;
+
+    aDCuenta = #0#8;
+    aHCuenta = #0#9;
+    nError = 0;
+
+    |ABRE #410;
+    |ABRE #403;
+    |ABRE #3;
+    |BUCLE LeoCuentas;
+    |CIERRA #3;
+    |CIERRA #403;
+    |CIERRA #410;
+
+    |SI nError ! 0;
+       |PIEINF;
+    |SINO;
+       |SI nSw = 1; |MENAV "    No existe ninguna Cuenta en Blanco"; |FINSI;
+    |FINSI;
+
+|FPRC;
+
+|PROCESO ElTipo3;
+
+    |DBASE aMas;
+    aDef = aMas + "def/cacuenta";
+    |CARGA_DEF aDef, cacuent@;
+    |SI FSalida ! 0;
+        |MENAV "    Error al Carga fichero de Cuentas";
+        |ACABA;
+    |FINSI;
+
+    |IMPRE 0;
+    |SI FSalida ! 0;  |ACABA;  |FINSI;
+    |INFOR informe;
+    |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+
+    nSw = 0;
+    |SI #48#27 = "S";
+        |HAZ MultiEmpresa;
+    |SINO;
+        nSw = 1;
+        |DFICE dirfich0; |QBF dirfich0;
+        |HAZ HazTodo;
+    |FINSI;
+
+    |FININF;
+    |FINIMP;
+
+    |DESCARGA_DEF #3;
+|FPRC;
+
+|| **********************************************************************
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   #0#0 = enEmpresa;
+   #0#1 = enPeriodo;
+   #0#2 = eaNombreEmp;
+   #0#3 = enEjercicio;
+
+   |SI #0#15 = "S";
+       #0#4 = #0#0;
+       #0#5 = #0#1;
+       #0#6 = #0#2;
+       #0#7 = #0#3;
+   |FINSI;
+
+   |PATH_DAT #1  dirfich0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 000001;
+ 999999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;
+|| **********************************************************************
+
+|PROGRAMA;
+
+   |HAZ inicio;
+
+   |DDEFECTO #0;
+   #0#0 = enEmpresa;
+   #0#1 = enPeriodo;
+   #0#2 = eaNombreEmp;
+   #0#3 = enEjercicio;
+
+   nConTabla = 0;
+   nEmpTab   = 0;
+   nPerTab   = -1;
+   |SI enEjercicio = 2008;
+       |DFICB eaPath2008;
+
+       |ABRE #403;
+       #403#0 = "";
+       |LEE 040#403];
+       |SI FSalida = 0;
+           nConTabla = 1;
+       |FINSI;
+       |CIERRA #403;
+
+       |ABRE #400;
+       |DDEFECTO #400;
+       #400#0 = enEmpresa;
+       #400#1 = enPeriodo;
+       |LEE 000#400=;
+       |SI FSalida = 0;
+           eNum2008 = #400#2;
+           nEmpTab  = #400#3;
+           nPerTab  = #400#4;
+       |FINSI;
+       |CIERRA #400;
+  |FINSI;
+
+  |HAZ DefectoEmp;
+  |SI nConTabla = 0;
+      |C_M #0#10, 1, "N"; #0#10 = "N";  || No existe Tabla Equivalencia
+  |FINSI;
+
+  #0#13 = dig3;
+  #0#14 = dig3;
+  |CLS;
+  |CABEZA "Recuperar Titulos Ctas";
+
+  |PINPA #0#0;
+  |SI nConTabla = 0;
+      |ATRI P; |PINTA 1804, "(Empresa sin tabla de Equivalencia)"; |ATRI 0;
+  |SINO;
+      |SI nPerTab = -1;
+          |ATRI P; |PINTA 1804, "(Error, la empresa anterior de la Tabla ya no existe)"; |ATRI 0;
+      |FINSI;
+  |FINSI;
+  |PINDA #0#0;
+
+  |ENDATOS #1#0;
+  |SI #0#12 = "SI";
+      |HAZ ElTipo3;
+  |FINSI;
+|FPRO;

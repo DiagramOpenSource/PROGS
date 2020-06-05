@@ -1,0 +1,451 @@
+|FICHEROS;
+     agist003 #0;   || Actualizacion
+     agist001 #1;   || Caberecas Stock Iniciales
+     agifa019 #2;   || Articulos
+     agist002 #50;  || Lineas    Stock Iniciales
+     agist007 #5;   || Temporal
+     agifa065 #6;   || Historico
+     dsm00004 #904;
+     dsm00005 #905;
+     dsm00006 #906;
+     agist008 #71;  || Usado de Temporal
+     agifa029 #29;
+|FIN;
+
+|VARIABLES;
+     aParti = "";
+     &Tempo    = "";
+     aTempo5   = "";
+     aTempo71  = "";
+     aDef1     = "";
+     aPath     = "";
+     aMensa    = "";
+     nDoc           = 0;
+     nCod0          = 0;
+     aFichero       = "";
+     nLinea         = 0;
+     &Cie_pasa      = 0;
+     &Cie_fech      = @;
+     &Cie_alma      = 0;
+     fechareg = @;
+     documreg = 0;
+     seriereg = "";
+     nCodigo  = 0;
+
+     alfa1   = "";
+     fe1     = @;
+     fe2     = @;
+     informe  = "";
+     cam      = 0;
+     sw_error = 0;
+     swmalo    = 0;
+     swmalm    = 0;
+
+     &bloque   = "";
+     &almacen  = 0;
+     &articulo = "";
+     &numero   = 0;
+     &numer1   = 0;
+     &texto    = "";
+     &descrip  = "";
+
+     mensa1   = "    No existe CODIGO de Entrada Stocks";
+     linea    = 0;
+     pmc      = 0;
+     estado   = 0;
+     SwCheq   = 0;
+     aSer     = "";
+     nCod     = 0;
+     nLin     = 0;
+|FIN;
+
+|INCLUYE i_varart;
+
+|| **************************************************************************
+|| ****** DATOS PANTALLA
+|| **************************************************************************
+
+|PROCESO cierre; |TIPO 0;
+     efFec = #0#1;
+     enAlma = 0;
+     |HAZ MiraHisT;
+     |SI enErrHis ! 0;
+          |ERROR;
+          |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO impresora;
+     |SI sw_error = 0;
+         |IMPRE 0;
+         |SI FSalida ! 0;  |ACABA;  |FINSI;
+         |INFOR "agist003";
+         |SI FSalida ! 0;  |FINIMP;  |ACABA;  |FINSI;
+         sw_error = 1;
+     |FINSI;
+     numero = numero + 1;
+     |PRINT;
+|FPRC;
+
+|PROCESO BorraCompo;
+     |BORRA 020#906a;
+     |LIBERA #906;
+|FPRC;
+
+|DEFBUCLE dsm00006A;
+     #906#1;
+     ;
+     #6#0, #6#5, #6#1, #6#2, #6#11, #6#3, #6#4, "      ";
+     #6#0, #6#5, #6#1, #6#2, #6#11, #6#3, #6#4, "zzzzzz";
+     be;
+     NULL, BorraCompo;
+|FIN;
+
+|PROCESO borroant;
+     |BUCLE dsm00006A;
+
+     |BORRA 020#6a;
+     |LIBERA #6;
+|FPRC;;
+
+|DEFBUCLE bajaanterior;
+     #6#1;
+     5, 18;
+     articulo, fe1, "  ",      0, 00000, "     ", almacen, aParti;
+     articulo, fe2, "zz", 999999, 99999, "zzzzz", almacen, aParti;
+     be;
+     NULL, borroant;
+|FIN;
+
+|PROCESO nuevoArt;
+     swmalo   = 0;
+     texto    = "";
+     articulo = #5#2;
+     linea    = 0;
+
+     #2#0 = articulo;
+     |LEE 000#2=;
+     |SI FSalida ! 0;
+         swmalo = 1; texto = "NO EXISTE ARTICULO EN MAESTROS ";
+         |HAZ impresora;
+         |ACABA;
+     |FINSI;
+|FPRC;
+
+|PROCESO haycambio;
+     |SI swmalo = 1; |ACABA; |FINSI;
+
+     #2#9 = pmc;
+     |GRABA 020#2a;
+     |LIBERA #2;
+     pmc  = 0;
+|FPRC;
+
+|PROCESO combloq;
+     |SI #50#14 = "N";
+          cam = 1;
+          |ERROR10;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE combloque;
+     #50#1;
+     ;
+     #0#3, #0#2, 00001;
+     #0#3, #0#2, 99999;
+     ;
+     NULL, combloq;
+|FIN;
+
+|PROCESO verotro;
+     swmalm = 1;
+     |ERROR10;
+|FPRC;
+
+|DEFBUCLE verotroSA;
+     #6#1;
+     5,18;
+     articulo, fe1, "SA",      0, 00000, "     ", almacen, aParti;
+     articulo, fe2, "SA", 999999, 99999, "zzzzz", almacen, aParti;
+     e;
+     NULL, verotro;
+|FIN;
+
+|PROCESO poralmacen;
+     swmalm  = 0;
+     almacen = #5#3;
+     aParti = #5#8;
+     fe1     = fechareg;
+     fe2     = "31.12.2090";
+     |BUCLE verotroSA;
+     |SI swmalm = 1;
+         alfa1 = #6#1;
+         texto = "EXISTE UN MOVIMIENTO 'SA' POSTERIOR CON FECHA " + alfa1;
+         |HAZ impresora;
+     |SINO;
+         fe1  = "01.01.1900";
+         fe2  = fechareg;
+         |BUCLE bajaanterior;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaCompo;
+     #906#0 = #6#0;
+     #906#1 = #6#5;
+     #906#2 = #6#1;
+     #906#3 = #6#2;
+     #906#4 = #6#11;
+     #906#5 = #6#3;
+     #906#6 = #6#4;
+     #906#7 = #905#4;
+     |LEE 101#906=;
+     |SI FSalida ! 0;
+         |DDEFECTO #906;
+         #906#0 = #6#0;
+         #906#1 = #6#5;
+         #906#2 = #6#1;
+         #906#3 = #6#2;
+         #906#4 = #6#11;
+         #906#5 = #6#3;
+         #906#6 = #6#4;
+         #906#7 = #905#4;
+         |GRABA 020#906b;
+     |FINSI;
+
+     #906#8  = #905#5;
+     #906#9  = #906#9  + #905#6;
+     #906#10 = #905#7;
+     |GRABA 020#906a;
+     |LIBERA #906;
+
+     #904#0 = #906#0;
+     #904#1 = #906#1;
+     #904#2 = #905#4;
+     |LEE 101#904=;
+     |SI FSalida ! 0; |GRABA 020#904b; |FINSI;
+     #904#3 = #905#5;
+     #904#12 = #904#12 + #905#6;
+     #904#13 = #904#13 + #905#6;
+     |GRABA 020#904a;
+     |LIBERA #904;
+|FPRC;
+
+|DEFBUCLE GrabaCompo;
+     #905#1;
+     ;
+     "T2", aSer, nCod, nLin, "      ";
+     "T2", aSer, nCod, nLin, "zzzzzz";
+     ;
+     NULL, GrabaCompo;
+|FIN;
+
+|PROCESO Tmp2;
+     aSer = #71#0;
+     nCod = #71#1;
+     nLin = #71#2;
+     |BUCLE GrabaCompo;
+
+     #50#13 = #71#0;
+     #50#0 = #71#1;
+     #50#1 = #71#2;
+     |LEE 121#50=;
+     |SI FSalida = 0;
+          #50#14 = "S";
+          |GRABA 020#50a;
+          |LIBERA #50;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE Tmp2;
+     #71#2;
+     ;
+     #5#13, #5#0, #5#1;
+     #5#13, #5#0, #5#1;
+     ;
+     NULL, Tmp2;
+|FIN;
+
+|PROCESO actualiza;
+     |SI articulo ! #5#2;
+          |SI articulo ! ""; |Y SwCheq = 0; || Y no es Comprobacion
+               |HAZ haycambio;
+          |FINSI;
+          |HAZ nuevoArt;
+     |FINSI;
+
+     |SI swmalo = 1; SwCheq = SwCheq + 1; |ACABA; |FINSI;
+
+     |ATRI I;
+     |PINTA 1062, #5#2;
+     |PINTA 1267, #5#3;
+     |ATRI 0;
+
+     swmalm = 0;
+     |HAZ poralmacen;
+     |SI swmalm = 1; SwCheq = SwCheq + 1; |ACABA; |FINSI;
+
+     |SI SwCheq > 0; |ACABA; |FINSI;   || Chequeo
+
+     ||컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+     |DDEFECTO #29;
+     #29#0 = #5#3;
+     |LEE 101#29=;
+     |SI FSalida ! 0; |GRABA 020#29a; |FINSI;
+     #29#5 = #0#1;
+     |GRABA 020#29a;
+     |LIBERA #29;
+
+     ||컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+     linea = linea + 1;
+     eaArticulo = articulo;
+     efFecha = fechareg;
+     enLinea = linea;
+     eaSerie = seriereg;
+     enCodigo = documreg;
+     |HAZ AcumulaSA;
+     ||컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+     |ABRE #904;
+     |BUCLE Tmp2;
+     |CIERRA #904;
+
+     numer1 = numer1 + 1;
+     pmc    = #5#5;
+
+     |BORRA 020#5a;
+     |LIBERA #5;
+|FPRC;
+
+|DEFBUCLE actualiza;
+     #5#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, actualiza;
+|FIN;
+
+|PROCESO AcumulaDupli;
+     |DDEFECTO #71;
+     #71#0 = #50#13;|| Serie
+     #71#1 = #50#0;  || Numero
+     #71#2 = #50#1;  || Linea
+     ||--------------------------------
+     |DDEFECTO #5;
+     #5#13 = #50#13;
+     #5#0 = #50#0;
+     #5#1 = #50#1;
+     #5#2 = #50#2;
+     #5#3 = #50#3;
+     #5#8 = #50#8;
+     |LEE 101#5=;
+     |SI FSalida ! 0; |GRABA 020#5b; |FINSI;
+     #5#4 = #5#4 + #50#4;
+     #5#5 = #50#5;
+     #5#6 = #50#6;
+     #5#7 = #5#7 + #50#7;
+     #5#9 = #5#9 + #50#9;
+     |GRABA 020#5a;
+     |LIBERA #5;
+     ||--------------------
+     #71#3 = #5#1;  || Linea Refundida
+     |GRABA 020#71n;
+|FPRC;
+
+|DEFBUCLE AcumulaDupli;
+     #50#2;
+     14;
+     "                    ", 00001, #0#3, #0#2, "N";
+     "zzzzzzzzzzzzzzzzzzzz", 99999, #0#3, #0#2, "N";
+     ;
+     NULL, AcumulaDupli;
+|FIN;
+
+|PROCESO actual; |TIPO 3;
+     |SI #0#4 = "N"; |ACABA; |FINSI;
+     |HAZ DecimalesBase;
+
+     bloque   = #0#0;
+     fechareg = #0#1;
+     documreg = #0#2;
+     seriereg = #0#3;
+
+     |ABRET #2;   || Articulos
+     |ABRET #6;   || Historico
+     |ABRET #906; || Historico
+
+     cam      = 0;
+     sw_error = 0;
+     articulo = "";
+     almacen  = 0;
+
+     |HAZ CreaTempo; aTempo5 = Tempo;
+     |NOME_DAT #5 aTempo5; |DELINDEX #5;
+
+     |HAZ CreaTempo; aTempo71 = Tempo;
+     |NOME_DAT #71 aTempo71; |DELINDEX #71;
+
+     |ABRE #5; |ABRE #71;
+     |BUCLE AcumulaDupli;
+     |CIERRA #5; |CIERRA #71;
+     ||컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+     SwCheq = 1;             || Comprobacion
+     |BUCLE actualiza;
+     |SI SwCheq ! 1;         || Hay errores, anula proceso
+          |DELINDEX #5; Tempo = aTempo71; |HAZ BoraTempo;
+          |DELINDEX #71; Tempo = aTempo5;  |HAZ BoraTempo;
+          |PIEINF;
+          |FININF;
+          |FINIMP;
+          |MENAV "0000Hay errores en la entrada, proceso anulado...";
+          |ACABA;
+     |FINSI;
+     SwCheq = 0;
+     ||컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+     |ABRE #29;
+     |ABRE #50;
+     |BUCLE actualiza;
+     |CIERRA #50;
+     |CIERRA #29;
+     |SI articulo ! "";
+         |HAZ haycambio;
+     |FINSI;
+
+     |DELINDEX #5; Tempo = aTempo71; |HAZ BoraTempo;
+     |DELINDEX #71; Tempo = aTempo5;  |HAZ BoraTempo;
+
+     |CIERRAT #2;
+     |CIERRAT #6;
+     |CIERRAT #906;
+
+     |SI sw_error = 1;
+         |PIEINF;
+         |FININF;
+         |FINIMP;
+     |FINSI;
+
+     || ............... Terminar
+     cam = 0;
+     |BUCLE combloque;   || Comprobar si queda algo;
+
+     || ... Actualiza cabeceras de Bloques
+     |SI cam = 0;
+          |ABRE #1;
+          #1#2 = #0#3;
+          #1#0 = #0#2;
+          |LEE 121#1=;
+          #1#4 = "S";
+          |GRABA 020#1a;
+          |CIERRA #1;
+     |FINSI;
+/*
+     Quitado: Subtiquet nro. 00046.0007 Cliente: 003288
+     (Modificado calculo AcumulaSA)
+
+     |SI numer1 = 0; |ACABA; |FINSI;
+     |AVISO;
+     |CONFI "2400SDesea recalcular Stocks AHORA S/N : ";
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     bloque = #0#0;
+     |CORRE "agifa068";
+*/
+|FPRC;

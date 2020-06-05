@@ -1,0 +1,190 @@
+|FICHEROS;
+    caimppag #0;
+    camanpag #1;
+    caclipro #2;
+    caprovin #3;
+
+    clinic01@ #4;
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    FEstado = 0;
+    seleccio = 0;
+    &fec_emi = "";
+    &fec_ven = "";
+    &pro_cli = "";
+    &pro_ban = "";
+    &nDia     = 0;
+    &aMes     = "";
+    &nAnyo    = 0;
+
+    aAlfa = "";
+    nSwDescarga = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE puntos_i;
+
+|PROCESO mayus;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+_____________________________________________________________________________
+|PROCESO cuenta; |TIPO 0;               || CALCULOS DESDE CAMPOS
+    p_alfa1 = #0Campo;
+     salidas = FSalida;
+|HAZ punto;
+|SI p_error ! 0;  |ERROR;  |FINSI;
+|FPRC;
+_____________________________________________________________________________
+|PROCESO fechas;                        || CALCULOS AUXILIARES DE DETALLE
+    fech1 = #1#6 % 2;
+    alfa1 = fech1;
+    fec_emi = alfa1 % 11;     || fecha emision
+
+    fech1 = #1#7 % 2;
+    alfa1 = fech1;
+    fec_ven = alfa1 % 11;     || fecha vencimiento
+|FPRC;
+
+|PROCESO proveedor;
+  |DDEFECTO #2;
+  |ABRE #2;
+  #2#23 = "P";
+  #2#10 = #1#4;   || cuenta
+  #2#11 = #1#5;   || digito
+  |LEE 001#2=;
+  |CIERRA #2;
+|FPRC;
+
+|PROCESO provincia;
+|ABRE #3;
+    #3#0 = #2#3;
+|LEE 001#3=;
+|SI FSalida ! 0;  |DDEFECTO #3;  |FINSI;
+    pro_cli = #3#1;                || provincia proveedor
+
+    #3#0 = #2#15;
+|LEE 001#3=;
+|SI FSalida ! 0;  |DDEFECTO #3;  |FINSI;
+    pro_ban = #3#1;                || provincia banco
+|CIERRA #3;
+|FPRC;
+_____________________________________________________________________________
+|PROCESO lee_pagos1;                   || LECTURA E IMPRESION DE PAGOS
+    seleccio = 1;
+|HAZ fechas;
+|HAZ proveedor;
+|HAZ provincia;
+|DBASE aAlfa; |QBF aAlfa;
+nSwDescarga = 0;
+aAlfa = aAlfa + "def/clinic01.mas";
+|CARGA_DEF aAlfa, clinic01@;
+|SI FSalida = 0;
+   nSwDescarga = 1;
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "fich/" + (("000000" + #48#0) % -106) + "/";
+   |PATH_DAT #4 aAlfa;
+   |ABRE #clinic01@;
+   #clinic01@#0 = #camanpag#0;
+   #clinic01@#1 = #camanpag#2;
+   #clinic01@#2 = #camanpag#1;
+   |LEE 000#clinic01@.=;
+   |SI FSalida ! 0;
+      |DDEFECTO #clinic01@;
+   |FINSI;
+   |CIERRA #clinic01@;
+|FINSI;
+alfa1 = #camanpag#6; |QBF alfa1;
+alfa2 = alfa1 % 0102; nDia = alfa2;
+alfa2 = alfa1 % 0402; aMes = alfa2; |QBF aMes; |HAZ MesLetra;
+alfa2 = alfa1 % 0704; nAnyo = alfa2;
+alfa1 = #caimppag#15; |QBF alfa1;
+|INFOR alfa1;
+|PRINT;
+|PIEINF;
+|FININF;
+    #1#13 = "S";
+|GRABA 020#1a;
+|LIBERA #1;
+|SI nSwDescarga = 1;
+     |DESCARGA_DEF #clinic01@;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE lee_pagos;
+ #1#1;
+ 4, 11, 12, 13, 25;
+ #0#0, "  ", #0#2, #0#4, #0#11, #0#6, #0#8, #0#10, #0#13;
+ #0#1, "zz", #0#3, #0#5, #0#12, #0#7, #0#9, #0#10, #0#14;
+ be;
+ NULL, lee_pagos1;
+|FIN;
+
+|PROCESO impresion;
+
+|IMPRE 0;
+|SI FSalida = 0;
+    |BUCLE lee_pagos;
+    |SI seleccio = 0;
+        |MENAV "    ATENCION!!! Seleccion vacia ...";
+    |FINSI;
+|SINO;
+    |MENAV "    Proceso Abortado ...";
+|FINSI;
+|FINIMP;
+|FPRC;
+
+|PROGRAMA;
+   |ABRE #caimppag;
+   |CLS;
+   |CABEZA " Impresion de pagos";
+
+   |HAZ inicio;
+
+   |LEE 000#caimppag.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #caimppag;
+      |GRABA 020#caimppag.c;
+   |SINO;
+      alfa1 = #caimppag#15;
+      |DDEFECTO #caimppag;
+      #caimppag#15 = alfa1;
+      |GRABA 020#caimppag.a;
+   |FINSI;
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      |GRABA 020#caimppag.a;
+      |HAZ impresion;
+   |FINSI;
+   |CIERRA #caimppag;
+|FPRO;
+
+|PROCESO MesLetra;
+   |SI aMes = "01"; aMes = "Enero";      |FINSI;
+   |SI aMes = "02"; aMes = "Febrero";    |FINSI;
+   |SI aMes = "03"; aMes = "Marzo";      |FINSI;
+   |SI aMes = "04"; aMes = "Abril";      |FINSI;
+   |SI aMes = "05"; aMes = "Mayo";       |FINSI;
+   |SI aMes = "06"; aMes = "Junio";      |FINSI;
+   |SI aMes = "07"; aMes = "Julio";      |FINSI;
+   |SI aMes = "08"; aMes = "Agosto";     |FINSI;
+   |SI aMes = "09"; aMes = "Septiembre"; |FINSI;
+   |SI aMes = "10"; aMes = "Octubre";    |FINSI;
+   |SI aMes = "11"; aMes = "Noviembre";  |FINSI;
+   |SI aMes = "12"; aMes = "Diciembre";  |FINSI;
+|FPRC;

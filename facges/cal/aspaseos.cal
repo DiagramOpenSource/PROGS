@@ -1,0 +1,424 @@
+|FICHEROS;
+   eoslinve #0;       || Lineas cliente eos
+   eosclpre #1;       || Clientes - Proveedores empresas eos
+   eosconce #2;       || Conceptos eos
+   eoscabve #3;       || Cabecera cliente eos
+   eosclipr #4;       || Clientes-Proveedore general eos
+   eosclien #5;       || Empresas eos
+   ashisfac #6;       || Historico de facturacion
+   asclient #7;       || Clientes facturacion
+   eosactiv #8;       || Actividades Facturacion
+   aspaseos #10;      || Pase a eos
+   eosconc6 #11;      || Conceptos 6 Digitos
+   ashismic #90;
+|FIN;
+
+|VARIABLES;
+    linea    = 0;
+    parteos  =  "";     || Variable con el  Path
+    error1   = " No existe empresa en la E.O.S. ";
+    anyo     = "";
+    anyo1    = "";
+    fecha1   = "";   || Variables para coger solo los cuatro
+    fecha2   = "";   || primeros digitos de la fecha
+    fecha3   = "";   || Formato (ddmm)
+    factura  = "";  || Numero de factura alfanumericamente
+    trime    = "";
+    anyoalfa = "";
+    ret      = "";
+    fichero  = "";
+    n_cli    = "";
+|FIN;
+
+|PROCESO acceso;|TIPO 7;
+     |DBASS parteos;   || Recoge la particion base
+     parteos = parteos + "/agieos/fich/";   || Busca la particion de la eos
+     #10#4 = #48#0;    || Iguala la empresa con la empresa de acceso
+     |PINTA #10#4;
+|FPRC;
+
+|PROCESO empresa;|TIPO 0;
+    |PATH_DAT #5parteos;    || Busca el fichero de empresa eos
+    |ABRE #5;
+    #5#0 = #10#4;
+    |LEE 040#5=;            || Lee la empresa
+    |SI FSalida ! 0;
+       |MENAV error1;   || Si no existe da error
+       |ERROR;
+    |FINSI;
+    |CIERRA #5;
+|FPRC;
+
+|PROCESO activida;
+  |PATH_DAT #8parteos;    || Busca el fichero de Actividades eos
+  |ABRE #8;
+  #8#0 = #10#4;
+  #8#1 = #10#7;
+  #8#2 = #10#8;
+  |LEE 040#8=;
+  |SI FSalida ! 0;
+      |MENAV "    No Existe esta Actividad en la Empresa Seleccionada";
+      |ERROR;
+      |CIERRA #8;
+      |ACABA;
+  |FINSI;
+  |CIERRA #8;
+
+  ret = #8#17;
+  |SI #8#50 = 2;
+      |C_V #10#5,  1, "N";   |C_M #10#5,  1, "N";
+      |C_V #10#9,  1, "S";   |C_M #10#9,  1, "S";
+      |C_V #10#10, 1, "N";   |C_M #10#10, 1, "N";
+      |C_V #10#11, 1, "S";   |C_M #10#11, 1, "S";
+  |SINO;
+      |C_V #10#5,  1, "S";    |C_M #10#5, 1, "S";
+      |C_V #10#9,  1, "N";    |C_M #10#9, 1, "N";
+      |C_V #10#10, 1, "S";    |C_M #10#10, 1, "S";
+      |C_V #10#11, 1, "N";    |C_M #10#11, 1, "N";
+  |FINSI;
+|FPRC;
+
+|PROCESO concepto;|TIPO 0;
+|SI #8#50 = 1; |Y Campo = 9; |ACABA; |FINSI;
+|SI #8#50 = 2; |Y Campo = 5; |ACABA; |FINSI;
+
+|SI #8#50 = 1;
+    |PATH_DAT #2parteos;
+    |ABRE #2;
+    #2#0 = #10#5;
+    |LEE 040#2=;
+    |SI FSalida ! 0;
+        |MENAV " No existe concepto en la E.O.S. ";
+        |ERROR;
+    |SINO;
+        #10#6 = #2#1;    || Si existe pinta la descripcion
+        |PINTA #10#6;
+    |FINSI;
+    |CIERRA #2;
+|SINO;
+    |PATH_DAT #11parteos;
+    |ABRE #11;
+    #11#0 = #10#9;
+    |LEE 040#11=;
+    |SI FSalida ! 0;
+        |MENAV " No existe concepto en la E.O.S. ";
+        |ERROR;
+    |SINO;
+        #10#6 = #11#1;    || Si existe pinta la descripcion
+        |PINTA #10#6;
+    |FINSI;
+    |CIERRA #11;
+|FINSI;
+|FPRC;
+
+|PROCESO ConceptoSuplido;  |TIPO 0;
+     |SI #8#50 = 1; |Y Campo = 11; |ACABA; |FINSI;
+     |SI #8#50 = 2; |Y Campo = 10; |ACABA; |FINSI;
+
+     |SI Campo = 10;  |Y #10Campo = 0;
+         |ACABA;
+     |FINSI;
+
+     |SI Campo = 11;  |Y #10Campo = "      ";
+         |ACABA;
+     |FINSI;
+
+     |SI #8#50 = 1;
+         |PATH_DAT #2parteos;
+         |ABRE #2;
+         #2#0 = #10#10;
+         |LEE 040#2=;
+         |SI FSalida ! 0;
+             |MENAV " No existe concepto en la E.O.S. ";
+             |ERROR;
+         |SINO;
+             |SI #2#3 ! "S";
+                 |MENAV "     El Concepto no es de Suplidos";
+                 |ERROR;
+             |FINSI;
+             #10#12 = #2#1;    || Si existe pinta la descripcion
+             |PINTA #10#12;
+         |FINSI;
+         |CIERRA #2;
+     |SINO;
+         |PATH_DAT #11parteos;
+         |ABRE #11;
+         #11#0 = #10#11;
+         |LEE 040#11=;
+         |SI FSalida ! 0;
+             |MENAV " No existe concepto en la E.O.S. ";
+             |ERROR;
+         |SINO;
+             |SI #11#3 ! "S";
+                 |MENAV "     El Concepto no es de Suplidos";
+                 |ERROR;
+             |FINSI;
+             #10#12 = #11#1;    || Si existe pinta la descripcion
+             |PINTA #10#12;
+         |FINSI;
+         |CIERRA #11;
+     |FINSI;
+|FPRC;
+
+|PROCESO miralin;
+linea = #0#1;
+|FPRC;
+
+|PROCESO grabacab;   || Graba cabecera de clientes
+    #3#0 = #5#0;
+    anyo1 = #6#2 % -102;
+    #3#4 = anyo;
+    |LIBERA #3;
+    |LEE 110#3=;                    || Lee la cabecera de clientes eos
+    |SI FSalida ! 0;            || Si no existe
+       linea = 1;
+       |DDEFECTO #3;
+       #3#0 = #5#0;
+       anyo = #6#2 % -102;
+       #3#4 = anyo;
+       #3#1 = #5#2;            || la crea y la graba
+       #3#2 = #5#1;
+       #3#3 = 1;
+       anyo = #6#2 % -102;
+       #3#4 = anyo;
+       |GRABA 020#3n;
+       |LIBERA #3;
+    |SINO;
+       |BUCLELIN 0miralin#3;
+       linea = linea + 1;
+    |FINSI;
+|FPRC;
+
+|PROCESO crealinea;
+fichero = #5#0;
+fichero = "00000" + fichero;
+fichero = fichero % -105;
+anyoalfa = #6#2;
+anyoalfa = "00" + #6#2;
+anyoalfa = anyoalfa % -102;
+fichero  = "v" + fichero + anyoalfa;
+|NOME_DAT #0fichero;
+|FPRC;
+
+|PROCESO actualiza;
+#3#0 = #0#0;
+#3#4 = #0#14;
+|LIBERA #3;
+|LEE 110#3=;
+|SI FSalida = 0;
+    #3#5 = #3#5 + #0#7;
+    #3#6 = #3#6 + #0#9;
+    #3#7 = #3#7 + #0#11;
+    #3#9 = #3#9 + #0#42;
+    #3#8 = #3#5 + #3#6 + #3#7 - #3#9;
+    |GRABA 020#3a;
+|FINSI;
+|FPRC;
+
+|PROCESO trimes;
+trime = #0#13 % 402;
+|SI trime = "01"; |O trime = "02"; |O trime = "03";
+    #0#17 = 1;
+|FINSI;
+|SI trime = "04"; |O trime = "05"; |O trime = "06";
+    #0#17 = 2;
+|FINSI;
+|SI trime = "07"; |O trime = "08"; |O trime = "09";
+    #0#17 = 3;
+|FINSI;
+|SI trime = "10"; |O trime = "11"; |O trime = "12";
+    #0#17 = 4;
+|FINSI;
+|FPRC;
+
+|PROCESO grabalin;   || Graba linea de clientes
+     |ABRE #7;
+     #7#0 = #6#3;
+     |LEE 040#7=;
+     |SI FSalida ! 0; |DDEFECTO #7; |FINSI;
+     |CIERRA #7;
+
+     n_cli = #7#1; |QBF n_cli;
+     |SI n_cli = "";  n_cli = #7#2; |FINSI;
+
+     |ABRE #0;
+
+     |DDEFECTO #0;
+     fecha1  = #6#2 % 102;      || Si no hace formato fecha
+     fecha2  = #6#2 % 402;
+     fecha3  = fecha1 + fecha2;
+     factura = #6#1;           || factura alfa
+     #0#0  = #5#0;             || Codigo empresa
+     #0#1  = linea;            || Registro
+     #0#2  = 1;                || Tipo
+     #0#3  = #6#3;             || Codigo cliente
+     #0#4  = fecha3;           || Fecha con formato
+     |SI #8#50 = 1; #0#5  = #10#5;  |FINSI;   || Codigo concepto 2
+     |SI #8#50 = 2; #0#72 = #10#9;  |FINSI;   || Codigo concepto 6
+     #0#6  = "FACTURA : " + #6#0 + " " + factura; || Descripcion
+     #0#7  = #6#5;             || Base imponible
+     #0#8  = #6#7;             || iva
+     #0#9  = #6#8;             || Total iva
+     #0#39 = #6#9;             || retencion
+     #0#42 = #6#10;            || Total retencion
+     #0#12 = #7#8;             || DNI
+     #0#13 = #6#2;             || Fecha
+     #0#14 = anyo;             || A¤o
+     #0#15 = #6#0;             || Serie
+     #0#16 = #6#1;             || Factura
+     |HAZ trimes;
+     #0#18 = "N";              || Pasado al 300
+     #0#19 = #10#7;            || Actividad
+     #0#20 = "N";
+     #0#21 = 1;
+     #0#22 = #0#7 + #0#9 + #0#11 - #0#42;
+     #0#35 = #10#6;
+     #0#38 = n_cli;
+
+     |SI #6#6 ! 0;
+         |SI #10#10 ! 0;  |O #10#11 ! "      ";
+             |SI #8#50 = 1; |Y #10#10 ! 0;
+                 #0#33 = #10#10;
+             |FINSI;
+             |SI #8#50 = 2; |Y #10#10 ! 0;
+                 #0#73 = #10#11;
+             |FINSI;
+             #0#36 = #10#12;
+             #0#23 = #6#6;
+         |FINSI;
+     |FINSI;
+
+     linea = linea + 1;
+     |GRABA 020#0n;            || Graba nuevo
+     |LIBERA #0;
+     |CIERRA #0;
+
+     |HAZ actualiza;
+|FPRC;
+
+|PROCESO grabaclient;  ||Graba clientes empresas
+    |DDEFECTO #1;
+    #1#0 = #0#0;
+    #1#1 = #0#3;
+    #1#2 = #0#2;
+    |LIBERA #1;
+    |LEE 110#1=;
+    |SI FSalida ! 0;
+       |ABRE #7;
+       #7#0 = #6#3;
+       |LEE 040#7=;
+       |SI FSalida = 0;
+           n_cli = #7#1; |QBF n_cli;
+           |SI n_cli = "";  n_cli = #7#2; |FINSI;
+
+           #1#3 = #7#8;   || Cif cliente
+           #1#4 = n_cli;   || Nombre cliente
+           #1#5 = "";     || SG
+           #1#6 = #7#3;   || Direccion
+           #1#7 = "";     || Numero
+           #1#8 = "";     || Piso
+           #1#9 = "";     || Puerta
+           #1#10 = #7#4;  || Codigo provincia
+           #1#11 = #7#5;  || Resto codigo postal
+           #1#12 = #7#7;  || Provincia
+           #1#13 = #7#6;  || Poblacion
+           #1#14 = #6#7;  || % iva
+           #1#22 = #6#9;  || % irpf
+           #1#16 = 0;
+           #1#17 = 0;
+           #1#18 = "";    || Epigrafe
+           #1#19 = #5#2;  || Nombre empresa
+           |GRABA 020#1n;
+           |LIBERA #1;
+       |FINSI;
+       |CIERRA #7;
+    |FINSI;
+
+    #1#0 = #0#0;
+    #1#1 = #0#3;
+    #1#2 = #0#2;
+    |LIBERA #1;
+    |LEE 110#1=;
+    |SI FSalida = 0;
+        |SI #0#9 ! 0;
+            #1#17 = #1#17 + #0#7 + #0#9 + #0#11 - #0#42;
+        |SINO;
+            #1#16 = #1#16 + #0#7;
+        |FINSI;
+        |GRABA 020#1a;
+    |FINSI;
+|FPRC;
+
+|PROCESO grabageneral;   ||Graba clientes general
+#4#0 = #1#3;
+|LIBERA #4;
+|LEE 110#4=;
+|SI FSalida ! 0;
+   #4#1  = #1#4;
+   #4#2  = #1#5;
+   #4#3  = #1#6;
+   #4#4  = #1#7;
+   #4#5  = #1#8;
+   #4#6  = #1#9;
+   #4#7  = #1#10;
+   #4#8  = #1#11;
+   #4#9  = #1#12;
+   #4#10 = #1#13;
+   #4#11 = #1#14;
+   #4#12 = #1#15;
+   #4#13 = #1#18;
+   |GRABA 020#4n;
+   |LIBERA #4;
+|FINSI;
+|FPRC;
+
+|PROCESO ejecuta;
+|SI #6#12 = "N";|O #6#12 = " ";     || Comprueba sino esta pasada la factura
+    anyo = #6#2 % -102;
+   |DDEFECTO #1;
+   |DDEFECTO #0;
+   |DDEFECTO #3;
+   |DDEFECTO #4;
+   |SI anyo ! anyo1;
+       |HAZ crealinea;
+       |HAZ grabacab;
+   |FINSI;
+   |HAZ grabalin;
+   |HAZ grabaclient;
+   |HAZ grabageneral;
+   #6#12 = "S";
+   |GRABA 020#6a;
+   |LIBERA #6;
+
+   |ABRE #90;
+   #90#0 = #6#0;
+   #90#1 = #6#1;
+   |LIBERA #90;
+   |LEE 140#90=;
+   |SI FSalida = 0;
+       #90#30 = #6#12;
+       |GRABA 140#90a;
+   |FINSI;
+   |CIERRA #90;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE capaseos0;
+#6#1;
+;
+#10#0,#10#2;
+#10#1,#10#3;
+be;
+NULL,ejecuta;
+|FIN;
+
+|PROCESO pase;|TIPO 3;
+    |PATH_DAT #4parteos; |ABRE #4;
+    |PATH_DAT #3parteos; |ABRE #3;
+    |PATH_DAT #0parteos;
+    |PATH_DAT #1parteos; |ABRE #1;
+    |BUCLE capaseos0;
+    |CIERRA #3;
+    |CIERRA #1;
+    |CIERRA #4;
+|FPRC;

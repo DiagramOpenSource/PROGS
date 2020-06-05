@@ -1,0 +1,697 @@
+|FICHEROS;
+   tagw0019 #0;
+||   tagm0001 #1;
+   tagm0003 #3;
+   tagm0017 #10;
+   tagm0018 #11;
+   agifa007 #12;
+
+   agifa010 #20;
+   agifa071 #21;
+   agifa019 #22;
+   dsm00238 #23;
+   agifa321 #24;
+   agifa324 #25;
+   agifa024 #26;
+   agifa025 #27;
+
+   agifa142 #29;
+   agifa084 #31;
+   agifa069 #32;
+   agifa220 #33;
+   dsm00053 #34;
+   tagmpara #100;
+   dsm00020;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+    &enSwObsCli = 0;
+
+    &enSwMenu = 0;
+    &aDivisa  = "";
+    &aMoneda  = "";
+    &eaTag    = "";
+
+    &ser_alb  = "";
+    &num_alb  = 0;
+    &abono    = "";   || Lo utilizo en agifa014
+    &serie              = "";  ||
+    &numero             = 0;  || Usadas en el subejecuta de impresion
+    &reimpr             = "";  ||
+
+{-1}aMenu = "";
+    aMenu1 = "2400";
+    aMenu2 = "1";
+    aMenu3 = " Seleccione opcion ";
+    aMenu4 = "AF";
+    aMenu5 = " Albaran";
+    aMenu6 = "Factura Directa";
+
+    nSwError = 0;
+    nOpcion  = 0;
+    nImpr    = 0;
+
+    aAlfa    = "";
+    aSerie   = "";
+
+    nSw       = 0;
+    nAlma     = 1;
+    nForma    = 1;
+    nLin      = 0;
+    imneto    = 0;
+    nImpDiv   = 0;
+    nMult     = 0;
+    fmes      = "";
+    mes       = 0;
+    nImpo     = 0;
+    nMargen   = 0;
+    nDto      = 0;
+    retencion = 0;
+    nSeleccio = 0;
+    aSub = "";
+    nUni1 = 0;
+    nUni2 = 0;
+    nUni = 0;
+    i = 0;
+    nMed1 = 0;
+    aTip = "";
+    aSer = "";
+    nNum = 0;
+    aArt = "";
+|FIN;
+
+|PROCESO PideSerie;
+   |ABRE #100; |LEE 000#100p; |CIERRA #100;
+
+   |ABRE #agifa007;
+
+   |PUSHV 0501 2380;
+   |BLANCO 1023 1557;
+   |CUADRO 1023 1557;
+   aAlfa = " Indique serie ";
+   |SI nOpcion = 1;
+      aAlfa = aAlfa + "albaran ";
+   |SINO;
+      aAlfa = aAlfa + "factura ";
+   |FINSI;
+   |ATRI R; |PINTA 1126, aAlfa; |ATRI N;
+   |PINTA 1226, #agifa007#26; |PINTA 1232, #agifa007#27;
+   |MENSA "    <F2> Consulta series ";
+   |PINTA 1426, "Defecto: "
+   |SI nOpcion = 1;
+       aSerie = #100#2;
+       |PINTA 1436, #100#2;
+   |SINO;
+       aSerie = #100#6;
+       |PINTA 1436, #100#6; |PINTA 1442, #100#7;
+   |FINSI;
+
+|ET Otra;
+   E_sup = 5; E_inf = "";
+   |PARA; |SI; |HACIENDO;
+          aSerie = 1226 ? 1;
+          |QBF aSerie;
+          |SI aSerie ! ""; |SAL; |FINSI;
+          |AVISO;
+   |SIGUE;
+   |SI FSalida = 0;
+      #agifa007#26 = aSerie;
+      |LEE 000#agifa007.=;
+      |SI FSalida = 0;
+         |PINTA 1226, #agifa007#26; |PINTA 1232, #agifa007#27;
+      |SINO;
+         |MENAV "    Serie inexistente ";
+         |VETE Otra;
+      |FINSI;
+   |SINO;
+      |SI FSalida = 10; |O FSalida = 6;
+         #agifa007#26 = aSerie;
+         |LEE 000#agifa007.];
+         |CONSULTA_CLAVE #1#agifa007;
+         |SI FSalida = 0;
+            aSerie = #agifa007#26;
+            |PINTA 1226, #agifa007#26; |PINTA 1232, #agifa007#27;
+         |FINSI;
+         |VETE Otra;
+      |SINO;
+         |AVISO;
+         |VETE Otra;
+      |FINSI;
+   |FINSI;
+   |POPV;
+   |CIERRA #agifa007;
+|FPRC;
+
+|PROCESO LineasAlb;
+     |ABRE #agifa019;
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #tagm0018#4;
+     |LEE 000#agifa019.=;
+     |CIERRA #agifa019;
+
+     #agifa071#29 = #agifa010#52;
+     #agifa071#0 = #agifa010#0;
+     #agifa071#1 = #tagm0018#3;
+
+     #agifa071#2 = #tagm0018#4;
+     #agifa071#3 = #tagm0018#11;
+     #agifa071#4 = #tagm0018#5;
+
+     #agifa071#5 = #tagm0018#6;
+     nUni2 = 0;
+     |SI #agifa019#179 = "S"; ||Doble Stock
+          |ABRE #dsm00238;
+          #dsm00238#0 = #agifa019#201;
+          |LEE 020#dsm00238.=;
+          |SI FSalida = 0;
+               |SI #dsm00238#8 = 1; nUni2 = #tagm0018#6 * #tagm0018#12; |FINSI;
+               |SI #dsm00238#8 = 2; nUni2 = #tagm0018#6 * #tagm0018#12*#tagm0018#13; |FINSI;
+               |SI #dsm00238#8 = 3; nUni2 = #tagm0018#6 * #tagm0018#12*#tagm0018#13*#tagm0018#14; |FINSI;
+          |FINSI;
+          |CIERRA #dsm00238;
+     |FINSI;
+     #agifa071#48 = nUni2;
+
+     #agifa071#6 = #tagm0018#7; ||Precio
+     #agifa071#7 = #agifa071#5 * #agifa071#6;
+     #agifa071#8 = #tagm0018#8;
+     #agifa071#3 = #tagm0018#11;
+     #agifa071#10 = #agifa071#5 * #agifa019#9;       || Comision
+     |SI #agifa007#30 = "S";
+          #agifa071#11 = 0;
+     |SINO;
+          #agifa071#11 = #tagm0018#9;
+     |FINSI;
+     #agifa071#13 = #agifa019#2;
+     #agifa071#15 = #agifa010#3;
+     #agifa071#16 = #agifa010#34; ||Tipo Comision
+     #agifa071#17 = #agifa010#35; ||Tipo Cliente
+     #agifa071#38 = #tagm0018#7;
+     #agifa071#51 = #tagm0018#12;
+     #agifa071#52 = #tagm0018#13;
+     #agifa071#53 = #tagm0018#14;
+     |HAZ TotalLin71;
+     |GRABA 000#agifa071.b;
+     |SI FSalida = 0;
+          enForma = 1;
+          |HAZ AcumulaAV;
+          #agifa071#14 = enCoste;
+          |GRABA 020#agifa071.a;
+          |LIBERA #agifa071;
+
+          |HAZ Act_tagm0003_Alb;
+
+     |SINO;
+          aAlfa = ("000000" + #agifa071#0) % -106;
+          aAlfa = "0000Ya Existe: [" + #agifa071#29 + "/" + aAlfa + "-" + #agifa071#1 + "]";
+          |MENAV aAlfa;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE LineasAlb;
+#tagm0018#1;
+;
+#tagm0017#0,#tagm0017#2,#tagm0017#1,000;
+#tagm0017#0,#tagm0017#2,#tagm0017#1,999;
+;
+NULL,LineasAlb;
+|FIN;
+
+|PROCESO CreaAlbaran;
+   |ABRE #agifa321; |LEE 000#agifa321.p; |CIERRA #agifa321;
+   |ABRE #agifa024; |ABRE #agifa025; |ABRE #agifa010;
+   |ABRE #agifa071; |ABRE #agifa324; |ABRE #agifa019;
+   |ABRE #dsm00238; |ABRE #tagm0017; |ABRE #tagm0018;
+
+   |DDEFECTO #tagm0017;
+   #tagm0017#2 = #tagw0019#0;
+   #tagm0017#1 = #tagw0019#1;
+   |LEE 101#tagm0017.=;
+   |SI FSalida ! 0; |ACABA; |FINSI;
+
+   |DDEFECTO #24;
+   #agifa024#0 = #tagm0017#4;
+   |LEE 000#agifa024.=;
+   |DDEFECTO #agifa025;
+   #agifa025#0 = #tagm0017#10;
+   |LEE 000#agifa025.=;
+   |DDEFECTO #agifa010;
+   #agifa010#52 = aSerie;
+   #agifa010#0 = 0;
+   enSwMenu = 1;
+   |HAZ ContaAV7;
+   |LEE 000#agifa010.=;
+   |SI FSalida = 0;
+        aAlfa = ("000000" + #tagm0017#1) % -106;
+        aAlfa = "0000Ya Existe: [" + #tagm0017#2 + "/" + aAlfa + "]";
+        |MENAV aAlfa;
+        |ERROR; |ACABA;
+   |SINO;
+        |GRABA 020#agifa010.b;
+        #agifa010#1 = #tagm0017#3;
+        #agifa010#3 = #tagm0017#4;
+        #agifa010#4 = #tagm0017#5;
+        #agifa010#6 = #tagm0017#10;
+
+        #agifa010#5 = #tagm0017#11;
+        #agifa010#32 = #tagm0017#13;
+        #agifa010#7 = #tagm0017#12;
+
+        #agifa010#8 = #tagm0017#44;   || #agifa024#20;
+        #agifa010#9 = #agifa024#35;
+        #agifa010#29 = #agifa024#2;
+        #agifa010#30 = #agifa024#5;
+        #agifa010#31 = #agifa024#6;
+        #agifa010#33 = #agifa024#7;
+        #agifa010#34 = #agifa025#7;
+        #agifa010#35 = #agifa024#4;
+        #agifa010#36 = #agifa024#47;
+        #agifa010#40 = #agifa024#41;
+        #agifa010#50 = #agifa024#40;
+        #agifa010#51 = #agifa007#28;
+        #agifa010#62 = #agifa024#180;
+        #agifa010#63 = #agifa024#15;
+        #agifa010#68 = #agifa024#192;  ||Divisa
+        #agifa324#0 = #agifa010#68;
+        |LEE 020#agifa324.=;
+        #agifa010#69 = #agifa324#2; ||Cambio
+        #agifa010#70 = #agifa024#193;
+        #agifa010#73 = #agifa321#9; ||Moneda Base
+        #agifa324#0 = #agifa010#73;
+        |LEE 020#agifa324.=;
+        #agifa010#74 = #agifa324#2; ||Cambio
+        #agifa010#91 = #agifa024#206;
+        aDivisa = #agifa010#68;
+        aMoneda = #agifa010#70;
+        |HAZ Divisas010;
+        #agifa010#88 = #tagm0017#32;
+        #agifa010#9 = #tagm0017#33;
+        #agifa010#55 = #tagm0017#34;
+        #agifa010#56 = #tagm0017#35;
+        #agifa010#57 = #tagm0017#36;
+        #agifa010#83 = #tagm0017#37;
+   |FINSI;
+
+   |BUCLE LineasAlb;
+
+   |BUCLELIN 0 CalCabAgifa010 #agifa010;
+   |GRABA 020#agifa010.a; |LIBERA #agifa010;
+
+   #tagm0017#38 = "A";
+   #tagm0017#39 = #agifa010#52;
+   #tagm0017#40 = #agifa010#0;
+   |GRABA 020#tagm0017.a; |LIBERA #tagm0017;
+
+   |CIERRA #dsm00238;
+   |CIERRA #agifa071; |CIERRA #agifa324; |CIERRA #agifa019;
+   |CIERRA #agifa024; |CIERRA #agifa025; |CIERRA #agifa010;
+|FPRC;
+
+|PROCESO agifa220;
+     #dsm00053#0 = "F";
+     #dsm00053#1 = #agifa069#20;
+     #dsm00053#2 = #agifa069#0;
+     #dsm00053#3 = #agifa069#1;
+     #dsm00053#4 = #agifa220#1;
+     #dsm00053#5 = #agifa220#2;
+     |GRABA 020#dsm00053.n;
+|FPRC;
+
+|DEFBUCLE agifa220;
+     #agifa220#1;
+     ;
+     #agifa069#2, 1;
+     #agifa069#2, 999;
+     ;
+     NULL, agifa220;
+|FIN;
+
+|PROCESO ActArti;
+     fmes = #agifa084#1 % A402;
+     mes = fmes - 1;
+     mes = mes * 5;
+     mes = mes + 35;
+     #agifa019#0 = #agifa069#2;
+     |LEE 101#agifa019.=;
+     |SI FSalida = 0;
+          |SI #agifa019#194 = 2;
+               nImpo = ((((#agifa069#30 * #agifa069#6) < #agifa069#8) < #agifa069#21) < #agifa084#5) < #agifa084#32;
+          |SINO;
+               nImpo = ((((#agifa069#5 * #agifa069#6) < #agifa069#8) < #agifa069#21) < #agifa084#5) < #agifa084#32;
+          |FINSI;
+          |SI #agifa142#115 = "S";
+               nImpo = nImpo < #agifa084#7;
+          |FINSI;
+          nMargen = nImpo - #agifa069#14;
+          #agifa019#mes# = #agifa019#mes# + (nImpo * nForma);
+          #agifa019#95 = #agifa019#95 + (nImpo * nForma);
+          mes = mes + 1;
+          #agifa019#mes# = #agifa019#mes# + (nMargen * nForma);
+          #agifa019#96 = #agifa019#96 + (nMargen * nForma);
+          |GRABA 020#agifa019.a; |LIBERA #agifa019;
+
+          efFecha = #agifa084#1;
+          eaArticulo = #agifa069#2;
+          enImpVta = (nImpo * nForma);
+          enImpMar = (nMargen * nForma);
+          |HAZ AcumulaArt;
+     |FINSI;
+|FPRC;
+
+|CALCULO ActCli;
+     #agifa024#0 = #agifa084#3;
+     |LEE 101#agifa024.=;
+     |SI 0 = FSalida;
+          fmes = #agifa084#1 % A402;
+          mes = fmes - 1;
+          mes = mes * 4;
+          mes = mes + 54;
+          imneto = #agifa084#15 - #agifa084#25;
+          |SI #agifa142#115 = "N";
+               nImpo = (imneto * 100) / (100 - #agifa084#7);
+               nDto = #agifa084#25 + (imneto - nImpo);
+          |SINO;
+               nImpo = imneto;
+               nDto = #agifa084#25;
+          |FINSI;
+          #agifa024#mes# = #agifa024#mes# +. nImpo; || imneto;
+          mes = mes + 1;
+          #agifa024#mes# = #agifa024#mes# +. nDto;  || #84#25;
+          mes = mes + 1;
+          #agifa024#mes# = #agifa024#mes# +. #agifa084#37;
+          #agifa024#102 = #agifa024#102 +. nImpo; || imneto;
+          #agifa024#103 = #agifa024#103 +. nDto;  || #84#25;
+          #agifa024#104 = #agifa024#104 +. #agifa084#37;
+          mes = FEntrada / 100;
+          mes = mes ! 0;
+          |SI 1 = mes;
+               #agifa024#45 = #agifa084#1;
+               #agifa024#46 = imneto;
+          |FINSI;
+          #agifa024#110 = #agifa024#110 +. imneto;
+          imneto = imneto + #agifa084#24;
+          |GRABA 020#agifa024.a; |LIBERA #agifa024;
+
+          enImpCliCom = nImpo * enForma;
+          enImpCliDto = nDto * enForma;
+          enImpCliFac = imneto * enForma;
+          enImpCliMar = #agifa084#37 * enForma;
+          eaCliente = #agifa084#3;
+          efFecha = #agifa084#1;
+          |HAZ AcumulaCli;
+     |FINSI;
+
+     #agifa025#0 = #agifa084#6;
+     |LEE 101#agifa025.=;
+     |SI 0 = FSalida;
+           imneto = #agifa084#15 - #agifa084#25;
+           fmes = #agifa084#1 % A402;
+           mes = fmes - 1;
+           mes = mes * 2;
+           mes = mes + 11;
+           #agifa025#mes# = #agifa025#mes# +. #agifa084#26;
+           retencion = #agifa025#mes# % #agifa025#39;
+           mes = mes + 1;
+           #agifa025#mes# = #agifa025#mes# +. imneto;
+           #agifa025#35 = #agifa025#35 +. #agifa084#26;
+           #agifa025#36 = #agifa025#36 +. imneto;
+           mes = fmes - 1;
+           mes = mes + 40;
+           #agifa025#mes# = retencion;
+           retencion = #agifa025#35 % #agifa025#39;
+           #agifa025#52 = retencion;
+           |GRABA 020#agifa025.a; |LIBERA #agifa025;
+
+          enImpRepComi = #agifa084#26;
+          enImpRepVta = imneto;
+          enImpRepRete = retencion;
+          eaRepre = #agifa084#6;
+          efFecha = #agifa084#1;
+          |HAZ AcumulaRep;
+     |FINSI;
+     |CIERRA #agifa025;
+     ||***************** CALCULO DEL RIESGO;
+
+     |SI #agifa142#47 = "S";  ||컴컴컴컴컴� Acumula en riesgos Si Crea Recibo
+          eaTag = "FC";  |HAZ Riesgos;
+     |FINSI;
+|FCAL;
+
+|PROCESO LineasFac;
+     |ABRE #agifa019;
+     |DDEFECTO #agifa019;
+     #agifa019#0 = #tagm0018#4;
+     |LEE 000#agifa019.=;
+     |CIERRA #agifa019;
+
+     nLin = nLin + 1;
+     |DDEFECTO #agifa069;
+     #agifa069#20 = #agifa084#48;
+     #agifa069#0 = #agifa084#0;
+     #agifa069#1 = #tagm0018#3;
+     #agifa069#2 = #tagm0018#4;
+     #agifa069#3 = #tagm0018#11;
+     #agifa069#4 = #tagm0018#5;
+     #agifa069#5 = #tagm0018#6;
+     #agifa069#6 = #tagm0018#7;
+     #agifa069#8 = #tagm0018#8;
+     |SI #agifa007#30 = "S";
+          #agifa069#11 = 0;
+     |SINO;
+          #agifa069#11 = #tagm0018#9;
+     |FINSI;
+     #agifa069#26 = #tagm0018#7;
+     #agifa069#28 = #tagm0018#7;
+
+     nUni2 = 0;
+     |SI #agifa019#179 = "S"; ||Doble Stock
+          |ABRE #dsm00238;
+          #dsm00238#0 = #agifa019#201;
+          |LEE 020#dsm00238.=;
+          |SI FSalida = 0;
+               |SI #dsm00238#8 = 1; nUni2 = #tagm0018#6 * #tagm0018#12; |FINSI;
+               |SI #dsm00238#8 = 2; nUni2 = #tagm0018#6 * #tagm0018#12*#tagm0018#13; |FINSI;
+               |SI #dsm00238#8 = 3; nUni2 = #tagm0018#6 * #tagm0018#12*#tagm0018#13*#tagm0018#14; |FINSI;
+          |FINSI;
+          |CIERRA #dsm00238;
+     |FINSI;
+     #agifa069#30 = nUni2;
+
+     #agifa069#33 = #tagm0018#12;
+     #agifa069#34 = #tagm0018#13;
+     #agifa069#35 = #tagm0018#14;
+
+     ||#agifa069#8 = Dto1
+     ||#agifa069#10 = Comision
+     #agifa069#13 = #agifa019#2;
+     ||#agifa069#14
+     #agifa069#15 = #agifa084#3;
+     #agifa069#16 = #agifa084#34;
+     #agifa069#17 = #agifa084#35;
+     #agifa069#26 = #agifa069#6;
+
+     imneto  = ((((#agifa069#9  < #agifa084#5) < #agifa084#32) < #agifa084#7));
+
+     |HAZ TotalLin69;
+
+     enForma = 1; |HAZ AcumulaFC;
+
+     #agifa069#14 = enCoste;
+     #agifa084#37 = #agifa084#37 + (imneto - enCoste);
+
+     |HAZ ActArti;
+     |GRABA 020#agifa069.n;
+
+     |HAZ Act_tagm0003_Fac;
+
+
+     |BUCLE agifa220;
+|FPRC;
+
+|DEFBUCLE LineasFac;
+     #tagm0018#1;
+     ;
+     #tagm0017#0, #tagm0017#2, #tagm0017#1,001;
+     #tagm0017#0, #tagm0017#2, #tagm0017#1,999;
+     ;
+     NULL, LineasFac;
+|FIN;
+
+|PROCESO CreaFactura
+     enForma = 1; enCoste = 1;
+
+     |ABRE #agifa142; |LEE 000#agifa142.p; |CIERRA #agifa142;
+     |ABRE #agifa321; |LEE 000#agifa321.p; |CIERRA #agifa321;
+     |ABRE #agifa084; |ABRE #agifa069; |ABRE #agifa025;
+     |ABRE #agifa007; |ABRE #agifa324; |ABRE #agifa220;
+     |ABRE #dsm00053; |ABRE #tagm0017; |ABRE #tagm0018;
+
+     |DDEFECTO #tagm0017;
+     #tagm0017#2 = #tagw0019#0;
+     #tagm0017#1 = #tagw0019#1;
+     |LEE 101#tagm0017.=;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |DDEFECTO #24;
+     #agifa024#0 = #tagm0017#4;
+     |LEE 000#agifa024.=;
+
+     |DDEFECTO #agifa025;
+     #agifa025#0 = #tagm0017#10;
+     |LEE 000#agifa025.=;
+
+     |DDEFECTO #agifa007;
+     #agifa007#26 = aSerie;
+     |LEE 000#agifa007.=;
+
+     nSeleccio = 1; nSw = 0; nLin = 0; enSwMenu = 1;
+
+     #agifa084#48 = aSerie;
+     |HAZ ContaFD7
+     |GRABA 020#agifa084.b;
+
+     #agifa084#1 = #tagm0017#3;
+     #agifa084#3 = #tagm0017#4;
+     #agifa084#4 = #tagm0017#5;
+
+     #agifa084#5 = #tagm0017#11;  ||Dto
+     #agifa084#32 = #tagm0017#13; ||Acu
+     #agifa084#7 = #tagm0017#12; ||Pp
+
+     #agifa084#6 = #tagm0017#10;
+     #agifa084#8 = #tagm0017#44;   || #agifa024#20;
+     #agifa084#9 = #tagm0017#33;
+     #agifa084#29 = #agifa024#1;
+     #agifa084#30 = #agifa024#8;
+     #agifa084#31 = #agifa024#9;
+     #agifa084#33 = #agifa024#10;
+     #agifa084#34 = #agifa025#7;
+     #agifa084#35 = #agifa024#4;
+     #agifa084#36 = #agifa024#47;
+     #agifa084#40 = #agifa024#16;
+     #agifa084#60 = #agifa024#15;
+     #agifa084#64 = #agifa024#183;
+     #agifa084#65 = #agifa024#192;
+
+     #agifa324#0 = #agifa084#65;
+     |LEE 000#agifa324.=;
+
+     #agifa084#66 = #agifa324#2;
+     #agifa084#67 = #agifa024#193;
+     #agifa084#68 = #agifa321#9;
+
+     #agifa324#0 = #agifa084#65;
+     |LEE 000#agifa324.=;
+     #agifa084#69 = #agifa324#2;
+
+     #agifa084#78 = #tagm0017#32;
+     #agifa084#87 = #tagm0017#37;
+     #agifa084#88 = #agifa024#22;
+     #agifa084#89 = #agifa024#23;
+     #agifa084#90 = #agifa024#24;
+
+     |BUCLE LineasFac;
+
+     |BUCLELIN 0 CalCabAgifa084 #agifa084;
+     |GRABA 020#agifa084.a; |LIBERA #agifa084;
+     |HAZ ActCli;
+     |SI #agifa142#47 = "S"; |HAZ VenciDir; |FINSI;
+
+     #tagm0017#38 = "F";
+     #tagm0017#39 = #agifa084#48;
+     #tagm0017#40 = #agifa084#0;
+     |GRABA 020#tagm0017.a; |LIBERA #tagm0017;
+
+     |CIERRA #dsm00053; |CIERRA #agifa220; |CIERRA #agifa324;
+     |CIERRA #agifa007; |CIERRA #agifa025; |CIERRA #agifa069;
+     |CIERRA #agifa084; |CIERRA #tagm0017; |CIERRA #tagm0018;
+|FPRC;
+
+|PROCESO Tipo11w19; |TIPO 11;
+   |SI FSalida = 10;
+      |LEE 000#0=;
+      |SI FSalida ! 0; |ACABA; |FINSI;
+
+      |ABRE #tagm0017;
+      |PUSHV 0501 2380;
+      |DDEFECTO #tagm0017;
+      #tagm0017#2 = #tagw0019#0;
+      #tagm0017#1 = #tagw0019#1;
+      |LEE 101#tagm0017.=;
+      |SI FSalida = 0;
+         enSwObsCli = 1;
+         |PINPA #0#tagm0017; |PINDA #0#tagm0017;
+         |ENDATOS #1#tagm0017;
+         |SI FSalida = 0; |GRABA 020#tagm0017.a; |LIBERA #tagm0017; |FINSI;
+         enSwObsCli = 0;
+      |FINSI;
+      |POPV;
+      |CIERRA #tagm0017;
+      |MENU aMenu; nOpcion = FSalida;
+      |SI nOpcion ] 1; |Y nOpcion [ 2;
+         nSwError = 0;
+         |HAZ PideSerie;
+         |SI nSwError = 0;
+            |CONFI "    SConforme con la seleccion ? ";
+            |SI FSalida = 0;
+               |SI nOpcion = 1; aAlfa = " el albaran "; |FINSI;
+               |SI nOpcion = 2; aAlfa = " la factura "; |FINSI;
+               aAlfa = "    SDesea imprimir" + aAlfa;
+               |CONFI aAlfa; nImpr = FSalida;
+
+               |SI nOpcion = 1;
+                  |HAZ CreaAlbaran;
+                  |SI nImpr = 0;
+                     ser_alb = #agifa010#52; num_alb = #agifa010#0;
+                     abono = "N";
+                     |SUB_EJECUTA_NP "agifa014";
+                  |FINSI;
+               |FINSI;
+               |SI nOpcion = 2;
+                  |HAZ CreaFactura;
+                  |SI nImpr = 0;
+                     serie = #agifa084#48; numero = #agifa084#0;
+                     reimpr = #agifa084#10;
+                     |SUB_EJECUTA_NP "agifa086";
+                  |FINSI;
+               |FINSI;
+               |BORRA 020#tagw0019.a; |PONCONTROL 23, "SI";
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Act_tagm0003_Fac;
+     aTip = "F";
+     aSer = #agifa069#20;
+     nNum = #agifa069#0;
+     nLin = #agifa069#1;
+     |HAZ Act_tagm0003;
+|FPRC;
+
+|PROCESO Act_tagm0003_Alb;
+     aTip = "A";
+     aSer = #agifa071#29;
+     nNum = #agifa071#0;
+     nLin = #agifa071#1;
+     |HAZ Act_tagm0003;
+|FPRC;
+
+|PROCESO Act_tagm0003;
+     |SI #tagm0018#12 ! #tagm0018#15;
+          |ABRE #3;
+          #3#0 = aTip;
+          #3#1 = aSer;
+          #3#2 = nNum;
+          #3#3 = nLin;
+          |LEE 000#3=;
+          |SI FSalida ! 0; |GRABA 020#3b; |FINSI;
+          #3#4 = #tagm0018#15;
+          #3#5 = #tagm0018#15 * #tagm0018#6;
+          |GRABA 020#3a;
+          |CIERRA #3;
+     |FINSI;
+|FPRC;

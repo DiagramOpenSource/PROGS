@@ -1,0 +1,1420 @@
+|| Calculos: calcdtos, PintaPromo
+||******** Acordarse de poner sw para cuando pida otra tarifa
+||*
+|FICHEROS;
+     agifa019 #2;   || Articulos
+     agifa039 #5;   || Dtos. Cliente/Familia
+     agifa310 #6;   || Dtos. Cli/Fami/Subfa
+     agifa023 #10;  || Dto/Tarifa Cliente/Articulo.
+     dsm00117 #15;  || Promociones Definibles
+     agifa017 #17;
+     agifa142 #20;  || Parametros Generales
+     agifa290 #25;  || Promocion Articulos
+     agifa291 #26; ||Pinta promo
+     agifa024 #24;
+     dsm00123 #123;
+     dsm00145 #145;
+     dsm00279 #279;
+     refere1@ #100; || tecam023, tecam026, tagm0021, dsz99972, gestrm10
+     refere2@;
+|FIN;
+
+|VARIABLES;
+     nNume = 0;
+     aFami = "";
+     aPath = "";
+     nFactor = 0;
+     &eaCliArtDiviSN = "";
+     &eaCliArtDivi = "";
+     &enInterno = 0;
+     nTariAnt = 0;
+     aProg = "";
+     nSwTagloma = 0;
+     nSwGestral = 0;
+     nSal = 0;
+     &eaGrupo = "";
+     nSwTecatel = 0;
+     &enDirEnt    = 0;
+     &enPromo     = 0;
+     &eaArticulo  = "";
+     &eaCliente   = "";
+     &enAlmacen   = 0;
+     &efFecha     = @;
+     aModulo      = "";
+     nHayMarhu    = 0;
+     &enPromoTPV1 = 0;
+     &enPromoTPV2 = 0;
+     &enTiva   = 0;
+     &enIva    = 0;
+     &enRec    = 0;
+     &eaPrv    = "";
+     &efFiva = @;
+     &eaSerie  = "";
+     &nDeci_PreBase = 0;
+     aIVAsn    = "";
+     nTariCli  = 0;
+     aCli      = "";
+     aFam      = "";
+     &nDeci_PreVis   = 0;   || Decimales en el Precio visual. (lineas)
+     nHaLeido  = 0;
+     &enPreTPV  = 0; || PRECIO TPV
+     &eaIVAsn   = "";|| IVA incluido S/N
+     &nPromo = 0;
+     &uni_dt = 0;   || Unidades
+     &uni_dt2 = 0;  || Uni2
+     &fed_dt = @;   || Fecha....
+     &art_dt = "";  || Articulo.
+     &cli_dt = "";  || Cliente..
+     &fam_dt = "";  || Familia.
+     &iva_dt = 0;   || Tipo Iva.
+     &dtos_2 = 0;   || Descuento 2.
+     &dto_pt = 0;   || Descuento Ptas.
+     &dtos_1 = 0;   || Descuento 1.
+     &pvp_ve = 0;   || Precio Venta.
+     &gru_dt = "";  || Grupo Cliente.
+     &tarifa = 0;   || Tarifa Cliente.
+     &quedto = 0;   || 1=cli./art, 2=cli./familia, 3=cli./subfam.
+     &enMensaje = 0;
+     &aParam  = "";
+
+     aAlfa   = "";
+     pcs     = 0;
+     pcv     = 0;
+     pcd     = 0;
+     pa      = 0;
+     pa1     = 0;
+     pa2     = 0;
+
+     nPrecio   = 0;
+     nDto      = 0;
+     nDtoDos   = 0;
+     nSw_Dto   = 0;
+     i         = 0;
+     nTipDto   = 0;
+     nCero     = "";
+     nFEstado  = 0;
+     nSwActua  = 0;
+     nSwCongecar = 0;
+     aGru = "";
+     nSwCoimasa = 0;
+|FIN;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO CoimaDtoLin;
+     nSal = 0;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "coima041";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |ABRE #refere1@;
+          #refere1@#0 = #agifa019#125;
+          |LEE 0000#refere1@.=;
+          |SI FSalida = 0; |Y #refere1@#1 = "S";
+               nSal = 1;
+          |FINSI;
+          |CIERRA #refere1@;
+          |DESCARGA_DEF #refere1@;
+     |SINO;
+          |MENAV "0000Error al cargar 'coima041'";
+     |FINSI;
+     FSalida = nSal;
+|FPRC;
+
+|PROCESO EsTagArtVario;
+     nSal = 1;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "tagm0021";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |ABRE #refere1@;
+          |SELECT #2#refere1@;
+          #refere1@#0 = cli_dt;
+          #refere1@#2 = art_dt;
+          |LEE 0000#refere1@.=;
+          nSal = FSalida;
+          |CIERRA #refere1@;
+          |DESCARGA_DEF #refere1@;
+     |SINO;
+          |MENAV "0000Error al cargar 'tagm0021'";
+     |FINSI;
+     FSalida = nSal;
+|FPRC;
+컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+|PROCESO PorCliArtAlm;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "tecam023";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'tecam023'";
+          |ACABA;
+     |FINSI;
+
+     |ABRE #100;
+     |DDEFECTO #100;
+     #100#0 = cli_dt;     || cliente
+     #100#1 = art_dt;     || articulo
+     #100#2 = enAlmacen;
+     |LEE 000#100=;
+     |SI FSalida = 0; |Y fed_dt ] #100#7; |Y fed_dt [ #100#8;
+          nHaLeido = 1;
+          nPrecio = #100#3;
+          nDto    = #100#4;
+          nDtoDos = 0;
+          dto_pt  = 0;
+     |FINSI;
+     |CIERRA #100;
+
+     |DESCARGA_DEF #refere1@;
+|FPRC;
+
+|PROCESO PorCliArt;
+     |SI nSwTecatel = 0; |Y #20#9 = "S";
+          |HAZ PorCliArtAlm;
+          |ACABA;
+     |FINSI;
+
+     |SI nSwGestral = 0; |Y uni_dt2 = 0; |Y #2#179 = "S";
+          |DDEF aAlfa;
+          aAlfa = aAlfa + "gestrm10";
+          |CARGA_DEF aAlfa, refere1@;
+          |SI FSalida = 0;
+               |ABRE #100;
+               |DDEFECTO #100;
+               #100#0 = cli_dt;     || cliente
+               #100#1 = art_dt;     || articulo
+               |LEE 000#100=;
+               |SI FSalida = 0; |Y fed_dt ] #100#6; |Y fed_dt [ #100#7;
+                    nHaLeido = 1;
+                    nPrecio = #100#3;
+                    nDto    = #100#4;
+                    nDtoDos = 0;
+                    dto_pt  = 0;
+
+                    |DDEF aAlfa;
+                    aAlfa = aAlfa + "gestrm09";
+                    |CARGA_DEF aAlfa, refere2@;
+                    |SI FSalida = 0;
+                         |ABRE #refere2@;
+                         #refere2@#0 = #100#0;
+                         |LEE 000#refere2@.=;
+                         eaCliArtDiviSN = #refere2@#1;
+                         eaCliArtDivi = #refere2@#2;
+                         |CIERRA #refere2@
+                         |DESCARGA_DEF #refere2@;
+                    |FINSI;
+
+               |FINSI;
+               |CIERRA #100;
+               |DESCARGA_DEF #refere1@;
+          |FINSI;
+          |SI nHaLeido = 1; |ACABA; |FINSI;
+     |FINSI;
+
+     |ABRE #10;
+     |DDEFECTO #10;
+     #10#0 = cli_dt;     || cliente
+     #10#1 = art_dt;     || articulo
+     |LEE 000#10=;
+     |SI FSalida = 0; |Y fed_dt ] #10#28; |Y fed_dt [ #10#29;
+          nHaLeido = 1;
+          nPrecio = #10#2;
+          nDto    = #10#32;
+          nDtoDos = #10#36;
+          dto_pt  = 0;
+
+          |DDEF aAlfa;
+          aAlfa = aAlfa + "agifa020";
+          |CARGA_DEF aAlfa, refere2@;
+          |SI FSalida = 0;
+               |ABRE #refere2@;
+               #refere2@#0 = #10#0;
+               |LEE 000#refere2@.=;
+               eaCliArtDiviSN = #refere2@#1;
+               eaCliArtDivi = #refere2@#2;
+               |CIERRA #refere2@;
+               |DESCARGA_DEF #refere2@;
+          |FINSI;
+     |FINSI;
+     |CIERRA #10;
+
+     |SI nSwGestral = 0; |Y nHaLeido = 0; |Y uni_dt2 = 0; |Y #2#179 = "S";
+          |SI tarifa = 1; nPrecio = #2#18; nDto = #2#21; |FINSI;
+          |SI tarifa = 2; nPrecio = #2#19; nDto = #2#22; |FINSI;
+          |SI tarifa = 3; nPrecio = #2#20; nDto = #2#23; |FINSI;
+          |SI tarifa = 4; nPrecio = #2#147; nDto = #2#150; |FINSI;
+          |SI tarifa = 5; nPrecio = #2#148; nDto = #2#151; |FINSI;
+          |SI tarifa = 6; nPrecio = #2#149; nDto = #2#152; |FINSI;
+          nHaLeido = 1;
+     |FINSI;
+|FPRC;
+
+|PROCESO CliArt;
+/*   anulado segun tiquet 3218/1067, viernes,  5 de septiembre de 2008, 11:01:15 CEST
+     |SI nSwCongecar = 0; |Y tarifa ! 0;
+          |ACABA;
+     |FINSI;
+*/
+     |DDEFECTO #123;
+     |ABRE #123;
+     #123#0 = cli_dt;
+     #123#1 = enDirEnt;
+     #123#2 = art_dt;
+     |LEE 000#123=;
+     |SI FSalida = 0; |Y fed_dt ] #123#7; |Y fed_dt [ #123#8;
+          nHaLeido = 1;
+          nPrecio = #123#4;
+          nDto    = #123#5;
+          nDtoDos = 0;
+          dto_pt  = 0;
+     |SINO;
+          |HAZ PorCliArt;
+     |FINSI;
+     |CIERRA #123;
+|FPRC;
+
+|PROCESO CliFam;
+     |ABRE #5;
+     |DDEFECTO #5;
+     #5#0 = "zzzzzz";    || cliente
+     #5#1 = fam_dt;      || familia
+     |LEE 000#5=;
+     |SI FSalida = 0; |Y fed_dt ] #5#3; |Y fed_dt [ #5#4;
+          nHaLeido = 1;
+          nDto = #5#2;
+          nDtoDos = 0;
+     |FINSI;
+     #5#0 = cli_dt;      || cliente
+     #5#1 = fam_dt;      || familia
+     |LEE 000#5=;
+     |SI FSalida = 0; |Y fed_dt ] #5#3; |Y fed_dt [ #5#4;
+          nHaLeido = 1;
+          nDto = #5#2;
+          nDtoDos = 0;
+     |FINSI;
+     |CIERRA #5;
+|FPRC;
+
+|PROCESO CliFamSub0;
+     |ABRE #6;
+     |DDEFECTO #6;
+     #6#0 = aCli;
+     #6#1 = aFam;
+     #6#2 = #2#3;        || subfamilia
+     |LEE 000#6=;
+     |SI FSalida = 0; |Y fed_dt ] #6#4; |Y fed_dt [ #6#5;
+          nHaLeido = 1;
+          nDto = #6#3;
+          nDtoDos = 0;
+     |FINSI;
+     |CIERRA #6;
+|FPRC;
+
+|PROCESO CliFamSub;
+     aCli = "zzzzzz";
+     aFam = "zzz";
+     |HAZ CliFamSub0;
+
+     aCli = cli_dt;
+     aFam = "zzz";
+     |HAZ CliFamSub0;
+
+     aCli = "zzzzzz";
+     aFam = fam_dt;
+     |HAZ CliFamSub0;
+
+     aCli = cli_dt;
+     aFam = fam_dt;
+     |HAZ CliFamSub0;
+|FPRC;
+
+|PROCESO GruFamSub0;
+     |ABRE #145;
+     |DDEFECTO #145;
+     #145#0 = aGru;
+     #145#1 = aFam;
+     #145#2 = #2#3;        || subfamilia
+     |LEE 000#145=;
+     |SI FSalida = 0; |Y fed_dt ] #145#4; |Y fed_dt [ #145#5;
+          nHaLeido = 1;
+          nDto = #145#3;
+          nDtoDos = 0;
+     |FINSI;
+     |CIERRA #145;
+|FPRC;
+
+|PROCESO GruFamSub;
+     aGru = "zz";
+     aFam = "zzz";
+     |HAZ GruFamSub0;
+
+     aGru = #24#158;
+     aFam = "zzz";
+     |HAZ GruFamSub0;
+
+     aGru = "zz";
+     aFam = fam_dt;
+     |HAZ GruFamSub0;
+
+     aGru = #24#158;
+     aFam = fam_dt;
+     |HAZ GruFamSub0;
+|FPRC;
+
+|PROCESO Promocion;
+     |SI #15#3 ! "S"; |ACABA; |FINSI;
+     |SI fed_dt < #15#5; |O fed_dt > #15#6;   |ACABA; |FINSI;
+     |SI eaSerie < #15#7; |O eaSerie > #15#8; |ACABA; |FINSI;
+     |SI #24#4 < #15#9;  |O #24#4 > #15#10; |ACABA; |FINSI;
+     |SI #24#158 < #15#11; |O #24#158 > #15#12; |ACABA; |FINSI;
+     |SI #2#125 < #15#13; |O #2#125 > #15#14; |ACABA; |FINSI;
+     |SI #2#2 < #15#15; |O #2#2 > #15#16; |ACABA; |FINSI;
+     |SI #2#3 < #15#17; |O #2#3 > #15#18; |ACABA; |FINSI;
+     |SI #2#126 < #15#19; |O #2#126 > #15#20; |ACABA; |FINSI;
+     |SI #2#127 < #15#21; |O #2#127 > #15#22; |ACABA; |FINSI;
+     |SI #2#200 < #15#23; |O #2#200 > #15#24; |ACABA; |FINSI;
+
+     dtos_2 = #15#1;
+     dto_pt = #15#2;
+|FPRC;
+
+|DEFBUCLE DtoSelec;
+     #15#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL , Promocion;
+|FIN;
+
+|DEFBUCLE DtoNume;
+     #15#1;
+     ;
+     nPromo;
+     nPromo;
+     ;
+     NULL , Promocion;
+|FIN;
+
+|PROCESO PromoArtAlm;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "tecam026";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'tecam026'";
+          |ACABA;
+     |FINSI;
+
+     |ABRE #100;
+     #100#0 = art_dt;
+     #100#41 = gru_dt;
+     #100#50 = enAlmacen;
+     |LEE 000#100=;
+     |SI FSalida = 0;
+          |PARA pa = 1;|SI pa < 40;|HACIENDO pa = pa + 2;
+               pa1 = pa + 1;
+               pa2 = pa1 + 1;
+               |SI #100pa ! 0;
+                    |SI uni_dt ] #100pa;
+                         pvp_ve = #100pa1;
+                         dtos_1 = 0;
+                         dtos_2 = 0;
+                         dto_pt = 0;
+                         nSw_Dto = 1;
+                         nHaLeido = 1;  || R.PRIEGO (29.08.2001)
+                     |FINSI;            || en promociones no hay ningun dto.
+               |SINO;
+                     |SAL;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #100;
+
+     |DESCARGA_DEF #refere1@;
+|FPRC;
+
+|PROCESO PromoArt;
+     |SI nSwTecatel = 0; |Y #20#9 = "S";
+          |HAZ PromoArtAlm;
+          |ACABA;
+     |FINSI;
+
+     |ABRE #25;
+     #25#0 = art_dt;
+     #25#41 = gru_dt;
+     |LEE 000#25=;
+     |SI FSalida = 0;
+          |SI uni_dt ] 0; nNume = uni_dt; |SINO nNume = -uni_dt; |FINSI;
+          |PARA pa = 1;|SI pa < 40;|HACIENDO pa = pa + 2;
+               pa1 = pa + 1;
+               pa2 = pa1 + 1;
+               |SI #25pa ! 0;
+                    |SI nNume ] #25pa;
+                         pvp_ve = #25pa1;
+                         dtos_1 = 0;
+                         dtos_2 = 0;
+                         dto_pt = 0;
+                         nSw_Dto = 1;
+                         nHaLeido = 1;  || R.PRIEGO (29.08.2001)
+                    |FINSI;            || en promociones no hay ningun dto.
+               |SINO;
+                    |SAL;
+               |FINSI;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #25;
+|FPRC;
+
+|PROCESO LeeArti;
+     |SI aParam ! "grapre";
+          |SI enPromo = 1;
+               |SI nSwCongecar = 0;
+                    |HAZ TarifaCongecar;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+     |ABRE #2;
+     #2#0 = art_dt;
+     |LEE 000#2=;
+     |SI tarifa = 1; pcs = 130; pcv = 18;  pcd = 21;  |FINSI;
+     |SI tarifa = 2; pcs = 131; pcv = 19;  pcd = 22;  |FINSI;
+     |SI tarifa = 3; pcs = 132; pcv = 20;  pcd = 23;  |FINSI;
+     |SI tarifa = 4; pcs = 153; pcv = 147; pcd = 150; |FINSI;
+     |SI tarifa = 5; pcs = 154; pcv = 148; pcd = 151; |FINSI;
+     |SI tarifa = 6; pcs = 155; pcv = 149; pcd = 152; |FINSI;
+     |CIERRA #2;
+
+     |SI nSwTecatel = 0; |Y #20#9 = "S";
+          |ABRE #17;
+          #17#0 = art_dt;
+          #17#1 = enAlmacen;
+          |LEE 000#17=;
+          |CIERRA #17;
+          |SI tarifa = 1; pcs = 57; pcv = 51; pcd = 63; |FINSI;
+          |SI tarifa = 2; pcs = 58; pcv = 52; pcd = 64; |FINSI;
+          |SI tarifa = 3; pcs = 59; pcv = 53; pcd = 65; |FINSI;
+          |SI tarifa = 4; pcs = 60; pcv = 54; pcd = 66; |FINSI;
+          |SI tarifa = 5; pcs = 61; pcv = 55; pcd = 67; |FINSI;
+          |SI tarifa = 6; pcs = 62; pcv = 56; pcd = 68; |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Gradto3;        || dto. cliente/familia/subfamilia
+     |SI #20#94 = "S"; |O #20#94 = "P";
+          |SI quedto = 0;|Y #20#94 ! "P";    |ACABA;   |FINSI;
+          |ABRE #6;
+          |DDEFECTO #6;
+          #6#0 = cli_dt;      || cliente
+          #6#1 = fam_dt;      || familia
+          #6#2 = #2#3;        || subfamilia
+          |LEE 101#6=;
+          nFEstado = FSalida;
+          |SI dtos_1 ! #6#3;
+               nSwActua = 0;
+               |SI #20#94 = "P";
+                    |AVISO;
+                    |CONFI "2400SActualizar Dto. Cliente/Familia/Subfamilia S/N: ";
+                    nSwActua = FSalida;
+               |FINSI;
+               |SI nSwActua = 0;
+                    #6#3 = dtos_1;
+                    |SI nFEstado = 0;   |GRABA 020#6a;      |FINSI;
+                    |SI nFEstado ! 0;   |GRABA 020#6n;      |FINSI;
+               |FINSI;
+          |FINSI;
+          |LIBERA #6;
+          |CIERRA #6;
+     |FINSI;
+|FPRC;
+
+|PROCESO Gradto4;        || dto. grupo/familia/subfamilia
+     |SI #20#94 = "S"; |O #20#94 = "P";
+          |SI quedto = 0;|Y #20#94 ! "P";    |ACABA;   |FINSI;
+          |ABRE #145;
+          |DDEFECTO #145;
+          #145#0 = #24#158;     || grupo cliente
+          #145#1 = fam_dt;      || familia
+          #145#2 = #2#3;        || subfamilia
+          |LEE 101#145=;
+          nFEstado = FSalida;
+          |SI dtos_1 ! #145#3;
+               nSwActua = 0;
+               |SI #20#94 = "P";
+                    |AVISO;
+                    |CONFI "2400SActualizar Dto. Grupo Cliente/Familia/Subfamilia S/N: ";
+                    nSwActua = FSalida;
+               |FINSI;
+               |SI nSwActua = 0;
+                    #145#3 = dtos_1;
+                    |SI nFEstado = 0;   |GRABA 020#145a;      |FINSI;
+                    |SI nFEstado ! 0;   |GRABA 020#145n;      |FINSI;
+               |FINSI;
+          |FINSI;
+          |LIBERA #145;
+          |CIERRA #145;
+     |FINSI;
+|FPRC;
+
+|PROCESO Gradto2;        || dto. cliente/familia
+     |SI #20#95 = "S"; |O #20#95 = "P";
+          |SI quedto = 0;|Y #20#95 ! "P";    |ACABA;   |FINSI;
+          |ABRE #5;
+          |DDEFECTO #5;
+          #5#0 = cli_dt;      || cliente
+          #5#1 = fam_dt;      || familia
+          |LEE 101#5=;
+          nFEstado = FSalida;
+          |SI dtos_1 ! #5#2;
+               nSwActua = 0;
+               |SI #20#95 = "P";
+                    |AVISO;
+                    |CONFI "2400SActualizar Dto. Cliente/Familia S/N: ";
+                    nSwActua = FSalida;
+               |FINSI;
+               |SI nSwActua = 0;
+                    #5#2 = dtos_1;
+                    |SI nFEstado = 0;   |GRABA 020#5a;      |FINSI;
+                    |SI nFEstado ! 0;   |GRABA 020#5n;      |FINSI;
+               |FINSI;
+          |FINSI;
+          |LIBERA #5;
+          |CIERRA #5;
+     |FINSI;
+|FPRC;
+
+|PROCESO GraCliArtAlm1;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "tecam023";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'tecam023'";
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #100;
+     |ABRE #100
+     #100#0 = cli_dt;
+     #100#1 = art_dt;
+     #100#2 = enAlmacen;
+     |LEE 101#100=;
+     nFEstado = FSalida;
+     |SI dtos_1 ! #100#4;
+          nSwActua = 0;
+          |SI #20#96 = "P";
+               |AVISO;
+               |CONFI "2400SActualizar Dto. Cliente/Articulo/Almacen S/N: ";
+               nSwActua = FSalida;
+          |FINSI;
+          |SI nSwActua = 0;
+               #100#4 = dtos_1;
+               |SI nFEstado = 0;   |GRABA 020#100a;     |FINSI;
+               |SI nFEstado ! 0;   |GRABA 020#100n;     |FINSI;
+          |FINSI;
+     |FINSI;
+     |LIBERA #100;
+     |CIERRA #100;
+
+     |DESCARGA_DEF #refere1@;
+|FPRC;
+
+|PROCESO Gradto1;
+     |SI #20#96 = "S"; |O #20#96 = "P";
+          |SI quedto = 0;|Y #20#96 ! "P";    |ACABA;   |FINSI;
+          |SI nSwTecatel = 0; |Y #20#9 = "S";
+               |HAZ GraCliArtAlm1;
+               |ACABA;
+          |FINSI;
+          |DDEFECTO #10;
+          |ABRE #10;
+          #10#0 = cli_dt;
+          #10#1 = art_dt;
+          |LEE 101#10=;
+          nFEstado = FSalida;
+          |SI dtos_1 ! #10#32;
+               nSwActua = 0;
+               |SI #20#96 = "P"; |O nFEstado ! 0;
+                    |AVISO;
+                    |CONFI "2400SActualizar Dto. Cliente/Articulo S/N: ";
+                    nSwActua = FSalida;
+               |FINSI;
+               |SI nSwActua = 0;
+                    #10#32 = dtos_1;
+                    #10#35 = #2#1;
+                    #10#36 = dtos_2;
+                    |SI nFEstado = 0;   |GRABA 020#10a;     |FINSI;
+                    |SI nFEstado ! 0;   |GRABA 020#10n;     |FINSI;
+                    |HAZ Actua200;
+               |FINSI;
+          |FINSI;
+          |LIBERA #10;
+          |CIERRA #10;
+     |FINSI;
+|FPRC;
+
+|PROCESO GraCliArtAlm;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "tecam023";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'tecam023'";
+          |ACABA;
+     |FINSI;
+
+     |DDEFECTO #100;
+     |ABRE #100;
+     #100#0 = cli_dt;
+     #100#1 = art_dt;
+     #100#2 = enAlmacen;
+     |LEE 101#100=;
+     nFEstado = FSalida;
+
+     eaPrv = "";
+     enTiva = #2#30;
+     efFiva = ~;
+     |HAZ IVAPrv;
+
+     nTariCli = #24#39;
+     |SI nTariCli = 1; aIVAsn = #17#57; |FINSI;
+     |SI nTariCli = 2; aIVAsn = #17#58; |FINSI;
+     |SI nTariCli = 3; aIVAsn = #17#59; |FINSI;
+     |SI nTariCli = 4; aIVAsn = #17#60; |FINSI;
+     |SI nTariCli = 5; aIVAsn = #17#61; |FINSI;
+     |SI nTariCli = 6; aIVAsn = #17#62; |FINSI;
+     |SI aIVAsn = "S";
+          nPrecio = pvp_ve > enIva;
+     |SINO;
+          nPrecio = pvp_ve;
+     |FINSI;
+
+     nPrecio = nPrecio ! nDeci_PreVis;
+
+     |SI nPrecio ! #100#3;
+          nSwActua = 0;
+          |SI #20#79 = "P"; |O nFEstado ! 0;
+               |AVISO;
+               |CONFI "2400SActualizar Precio Cliente/Articulo/Almacen S/N: ";
+               nSwActua = FSalida;
+          |FINSI;
+          |SI nSwActua = 0;
+               |SI quedto = 0; |Y #20#96 = "S";
+                    #100#4 = dtos_1;
+               |FINSI;
+               #100#3 = nPrecio;             || Precio Cliente/Articulo
+               |SI nFEstado = 0;   |GRABA 020#100a;     |FINSI;
+               |SI nFEstado ! 0;   |GRABA 020#100n;     |FINSI;
+          |FINSI;
+     |FINSI;
+     |CIERRA #100;
+     |DESCARGA_DEF #refere1@;
+|FPRC;
+
+|PROCESO Graprecio;
+     |SI #20#79 = "S"; |O #20#79 = "P";
+          |SI nSwTecatel = 0; |Y #20#9 = "S";
+               |HAZ GraCliArtAlm;
+               |ACABA;
+          |FINSI;
+          |SI nSwGestral = 0; |Y uni_dt2 = 0; |Y #2#179 = "S";
+               |HAZ GesGraPre;
+               |ACABA;
+          |FINSI;
+          |DDEFECTO #10;
+          |ABRE #10;
+          #10#0 = cli_dt;
+          #10#1 = art_dt;
+          |LEE 101#10=;
+          nFEstado = FSalida;
+
+          eaPrv = "";
+          enTiva = #2#30;
+          efFiva = ~;
+          |HAZ IVAPrv;
+
+          nTariCli = #24#39;
+          |SI nTariCli = 1; aIVAsn = #2#130; |FINSI;
+          |SI nTariCli = 2; aIVAsn = #2#131; |FINSI;
+          |SI nTariCli = 3; aIVAsn = #2#132; |FINSI;
+          |SI nTariCli = 4; aIVAsn = #2#153; |FINSI;
+          |SI nTariCli = 5; aIVAsn = #2#154; |FINSI;
+          |SI nTariCli = 6; aIVAsn = #2#155; |FINSI;
+          |SI aIVAsn = "S";
+               nPrecio = pvp_ve > enIva;
+          |SINO;
+               nPrecio = pvp_ve;
+          |FINSI;
+
+          nPrecio = nPrecio ! nDeci_PreVis;
+
+          |SI nPrecio ! #10#2;
+               nSwActua = 0;
+               |SI #20#79 = "P"; |O nFEstado ! 0;
+                    |AVISO;
+                    |CONFI "2400SActualizar Precio Cliente/Articulo S/N: ";
+                    nSwActua = FSalida;
+               |FINSI;
+               |SI nSwActua = 0;
+                    |SI quedto = 0; |Y #20#96 = "S";
+                         #10#32 = dtos_1;
+                         #10#36 = dtos_2;
+                    |FINSI;
+                    #10#2 = nPrecio;             || Precio Cliente/Articulo
+                    #10#35 = #2#1;
+                    |SI nFEstado = 0;   |GRABA 020#10a;     |FINSI;
+                    |SI nFEstado ! 0;   |GRABA 020#10n;     |FINSI;
+                    |HAZ Actua200;
+                    |SI #2#176 = "S";
+                         |SUB_EJECUTA_NP "dsm00075;grapre";
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |LIBERA #10;
+          |CIERRA #10;
+     |FINSI;
+|FPRC;
+
+|PROCESO Grapre;
+     |SI nSwGestral = 0; |Y #2#2 ! "   ";
+          |HAZ GesGraDibu; |ACABA;
+     |FINSI;
+     |HAZ Graprecio;                              || precio cliente/articulo
+     |SI quedto ! 0;
+          |SI quedto = 1;     |HAZ Gradto1;  |FINSI;   || dto.cliente/articulo
+          |SI quedto = 2;     |HAZ Gradto2;  |FINSI;   || dto.cliente/familia
+          |SI quedto = 3;     |HAZ Gradto3;  |FINSI;   || dto.cliente/familia/subf.
+          |SI quedto = 4;     |HAZ Gradto4;  |FINSI;   || dto.grupo/familia/subf.
+     |SINO;
+          |HAZ Gradto1;    || dto.cliente/articulo
+          |HAZ Gradto2;    || dto.cliente/familia
+          |HAZ Gradto3;    || dto.cliente/familia/subf.
+          |HAZ Gradto4;    || dto.grupo/familia/subf.
+     |FINSI;
+|FPRC;
+
+|PROCESO calcdtos; || Calculo Descuento para Todos Los procesos........
+     |ABRE #20; |LEE 000#20p; |CIERRA #20;
+     |ABRE #279; |LEE 000#279p; |CIERRA #279;
+
+     |HAZ EsTecatel; nSwTecatel = FSalida;
+     |HAZ EsTagloma; nSwTagloma = FSalida;
+     |HAZ EsCongecar; nSwCongecar = FSalida;
+     |HAZ EsCoimasa; nSwCoimasa = FSalida;
+     |HAZ EsGestral; nSwGestral = FSalida;
+
+     |HAZ LeeArti;
+
+     |ABRE #24;
+     #24#0 = cli_dt;
+     |LEE 000#24=;
+     |CIERRA #24;
+
+     |SI aParam = "grapre";
+          |HAZ Grapre;
+          |ACABA;
+     |FINSI;;
+
+     nPrecio = 0;
+     nDto    = 0;
+     nDtoDos = 0;
+     nSw_Dto = 0;
+     dtos_1 = 0;
+     dtos_2 = 0;
+     dto_pt = 0;
+     quedto = 0;
+     |SI enPromo = 2;              || llamado por agifa211
+          |HAZ PromoArt; |ACABA;
+     |FINSI;
+     pvp_ve = 0;
+
+     |SI nSwGestral = 0; |Y #2#2 ! "   ";
+          |HAZ GesPreDibu; |ACABA;
+     |FINSI;
+
+/* Lo pongo abajo segun tiquet: 3042/876
+
+     |SI #20#18 = "S"; |O enPromoTPV2 = 1;  || Promocion por Seleccion
+          |BUCLE DtoSelec;
+     |FINSI;
+
+     |SI #20#129 = "S";   || Promocion por Numero
+          |BUCLE DtoNume;
+     |FINSI;
+*/
+     nHaLeido = 0;
+     |PARA nTipDto = 1; |SI nTipDto [ 4; |HACIENDO nTipDto = nTipDto + 1;
+          |PARA i = 87; |SI i [ 91; |HACIENDO i = i + 2;
+               |SI #20i = nTipDto;
+                    pa1 = i + 1;
+                    nCero = #20pa1;
+                    |SI i = 87; |HAZ CliArt;    |FINSI;
+                    |SI i = 89; |HAZ CliFam;    |FINSI;
+                    |SI i = 91; |HAZ CliFamSub; |FINSI;
+                    |SI pvp_ve = 0;
+                         pvp_ve = nPrecio;        || me quedo con el primero
+                    |FINSI;
+                    |SI nSw_Dto = 0;|Y nHaLeido = 1;
+                         |SI nDto ! 0; |O nCero = "S";
+                              dtos_1 = nDto;
+                              dtos_2 = nDtoDos;
+                              nSw_Dto = 1;        || no entra mas
+                         |FINSI;
+                         |SI i = 87;    quedto = 1;    |FINSI;
+                         |SI i = 89;    quedto = 2;    |FINSI;
+                         |SI i = 91;    quedto = 3;    |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SIGUE;
+          ||....
+          |SI #279#7 = nTipDto;
+               nCero = #279#8;
+               |HAZ GruFamSub;
+               |SI pvp_ve = 0;
+                    pvp_ve = nPrecio;        || me quedo con el primero
+               |FINSI;
+               |SI nSw_Dto = 0;|Y nHaLeido = 1;
+                    |SI nDto ! 0; |O nCero = "S";
+                         dtos_1 = nDto;
+                         dtos_2 = nDtoDos;
+                         nSw_Dto = 1;        || no entra mas
+                    |FINSI;
+                    quedto = 4;
+               |FINSI;
+          |FINSI;
+          ||....
+     |SIGUE;
+
+/* se ha puesto aqui segun tiquet: 3042/876 */
+     |SI #20#18 = "S"; |O enPromoTPV2 = 1;  || Promocion por Seleccion
+          |BUCLE DtoSelec;
+     |FINSI;
+
+     |SI #20#129 = "S";   || Promocion por Numero
+          |BUCLE DtoNume;
+     |FINSI;
+/*  */
+
+     |SI #20#93 = "S"; |O enPromoTPV1 = 1;
+          |HAZ PromoArt;       || Promocion Articulos
+     |FINSI;
+     ||-------------- SI no hay ninguno cojo el del Articulo
+     |SI nSwTecatel = 0; |Y #20#9 = "S";
+          |SI pvp_ve = 0;
+               pvp_ve = #17pcv; || Pvp.
+          |FINSI;
+          |SI nSw_Dto = 0; |O nHaLeido = 0;
+               dtos_1 = #17pcd; || Dto.
+          |FINSI;
+     |SINO;
+          |SI pvp_ve = 0;
+               pvp_ve = #2pcv; || Pvp.
+          |FINSI;
+          |SI nSw_Dto = 0; |O nHaLeido = 0;
+               dtos_1 = #2pcd; || Dto.
+          |FINSI;
+     |FINSI;
+     ||---------------SI el dto_1 = 0 cojo el del cliente
+     |SI nSw_Dto = 0; |O nHaLeido = 0;
+          |SI dtos_1 = 0;
+               |SI nSwTagloma = 0;     || Los articulos varios de Tagloma
+                    |HAZ EsTagArtVario;|| no tienen el Dto linea del cliente
+                    |SI FSalida ! 0;
+                         dtos_1 = #24#204;
+                    |FINSI;
+               |SINO;
+                    |SI nSwCoimasa = 0;
+                         |HAZ CoimaDtoLin;
+                         |SI FSalida = 0;
+                              dtos_1 = #24#204;
+                         |FINSI;
+                    |SINO;
+                         dtos_1 = #24#204;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |SI nSwTecatel = 0; |Y #20#9 = "S";
+          |SI pvp_ve ! #17pcv;  |Y #20#98 = "S"; ||....|Y enMensaje = 1;
+              |PUSHV 0501 2380;
+              |BLANCO 0819 1551;
+              |CUADRO 0819 1551;
+              |CUADRO 0920 1450;
+              |ATRI S;
+              |PINTA 1021, "  ATENCION PRECIO ESPECIAL   ";
+              |ATRI 0;
+              aAlfa = "PRECIO ARTICULO : " + #17pcv;   |PINTA 1221, aAlfa;
+              aAlfa = "PRECIO ASIGNADO : " + pvp_ve;  |PINTA 1321, aAlfa;
+              |PAUSA;
+              |POPV;
+          |FINSI;
+          ||컴컴컴컴컴컴컴컴컴�
+          enPreTPV  = pvp_ve;
+          eaIVAsn   = #17pcs;
+          ||컴컴컴컴컴컴컴컴컴 Quitar IVA si el precio es con iva incluido....
+          |SI #17pcs = "S";
+               eaPrv = "";
+               enTiva = iva_dt;
+               efFiva = ~;
+               |HAZ IVAPrv;
+               pvp_ve = pvp_ve / ( 1 + (enIva/100));         ||quito el iva
+          |FINSI;
+     |SINO;
+          |SI pvp_ve ! #2pcv;  |Y #20#98 = "S"; ||....|Y enMensaje = 1;
+              |PUSHV 0501 2380;
+              |BLANCO 0819 1551;
+              |CUADRO 0819 1551;
+              |CUADRO 0920 1450;
+              |ATRI S;
+              |PINTA 1021, "  ATENCION PRECIO ESPECIAL   ";
+              |ATRI 0;
+              aAlfa = "PRECIO ARTICULO : " + #2pcv;   |PINTA 1221, aAlfa;
+              aAlfa = "PRECIO ASIGNADO : " + pvp_ve;  |PINTA 1321, aAlfa;
+              |PAUSA;
+              |POPV;
+          |FINSI;
+          ||컴컴컴컴컴컴컴컴컴�
+          enPreTPV  = pvp_ve;
+          eaIVAsn   = #2pcs;
+          ||컴컴컴컴컴컴컴컴컴 Quitar IVA si el precio es con iva incluido....
+          |SI #2pcs = "S";
+               eaPrv = "";
+               enTiva = iva_dt;
+               efFiva = ~;
+               |HAZ IVAPrv;
+               pvp_ve = pvp_ve / ( 1 + (enIva/100));         ||quito el iva
+          |FINSI;
+     |FINSI;
+
+     |HAZ EsMarhuenda;
+     |SI FSalida = 0;
+          |HAZ PrecioMarhuenda;
+     |FINSI;
+
+     |SI nSwTecatel = 0;
+          |HAZ TecaPrvFijo;
+     |FINSI;
+
+/*
+                         || SOLO Marhuenda y en el TPV
+     |MODULO aModulo;
+     |SI nHayMarhu = 0; |Y aModulo = "agifa501";
+          eaArticulo = art_dt;
+          eaCliente = cli_dt;
+          efFecha = fed_dt;
+          |HAZ ComisionMarhuenda;
+     |FINSI;
+*/
+     |HAZ EsInforAlba;
+     |SI FSalida = 0;
+          |HAZ InforAlbDto;
+     |FINSI;
+
+     |HAZ EsEvaristo;
+     |SI FSalida = 0;
+          |HAZ EvaPreArtCli;
+     |FINSI;
+|FPRC;
+
+
+|PROCESO PintaPromo;
+     |HAZ EsDesanch;
+     |SI FSalida = 0;
+          |SUB_EJECUTA_NP "desan048";
+          |ACABA;
+     |FINSI;
+
+     |ABRE #25;
+     #25#0 = eaArticulo;
+     #25#41 = eaGrupo;
+     |LEE 000#25=;
+     nSal = FSalida;
+     |SI FSalida = 0;
+          |PARA i = 0;|SI i [ 41;|HACIENDO i = i + 1;
+               #26i = #25i;
+          |SIGUE;
+     |FINSI;
+     |CIERRA #25;
+
+     |HAZ EsTecatel;
+     |SI FSalida = 0; |Y #20#9 = "S";
+          |DDEF aAlfa;
+          aAlfa = aAlfa + "tecam026";
+          |CARGA_DEF aAlfa, refere1@;
+          |SI FSalida ! 0;
+               |MENAV "0000ERROR al cargar 'tecam026'";
+               |ACABA;
+          |FINSI;
+          |ABRE #100;
+          #100#0 = eaArticulo;
+          #100#41 = eaGrupo;
+          #100#50 = enAlmacen;
+          |LEE 000#100=;
+          nSal = FSalida;
+          |SI FSalida = 0;
+               |PARA i = 0;|SI i [ 41;|HACIENDO i = i + 1;
+                    #26i = #100i;
+               |SIGUE;
+          |FINSI;
+          |CIERRA #100;
+          |DESCARGA_DEF #refere1@;
+     |FINSI;
+
+     |SI nSal = 0;
+          |PUSHV 0449 1778;
+          |BLANCO 0459 1778;
+          |CUADRO 0458 1778;
+          |PINPA #0#26;
+          |PINDA #0#26;
+          |PAUSA;
+          |POPV;
+     |FINSI;
+|FPRC;
+
+|PROCESO Actua200;  || Con referencia por exceso de ficheros
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "agifa020";
+     |CARGA_DEF aAlfa, refere2@;
+     |SI FSalida = 0;
+          |ABRE #refere2@;
+          #refere2@#0 = #10#0;
+          |LEE 000#refere2@.=;
+          |SI FSalida ! 0;
+               |GRABA 020#refere2@.n;
+          |FINSI;
+          |CIERRA #refere2@
+          |DESCARGA_DEF #refere2@;
+     |FINSI;
+|FPRC;
+
+-----------------   Tarifa para modulo 002448
+|PROCESO ClienArti;
+     nHaLeido = 0;
+     |ABRE #10;
+     #10#0 = cli_dt;     || cliente
+     #10#1 = art_dt;     || articulo
+     |LEE 000#10=;
+     |SI FSalida = 0; |Y fed_dt ] #10#28; |Y fed_dt [ #10#29;
+          nHaLeido = 1;
+     |FINSI;
+     |CIERRA #10;
+|FPRC;
+
+|PROCESO TarifaCongecar;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "dsz99972";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida ! 0;
+          |MENAV "0000Error al cargar 'dsz99972'";
+          |ACABA;
+     |FINSI;
+
+     |PUSHV 0501 2380;
+     |BLANCO 931 1144;
+     |HAZ ClienArti;
+     |PINPA #0#refere1@;
+     |SI nHaLeido = 1;
+          #refere1@#0 = 0;
+     |SINO;
+          #refere1@#0 = tarifa;
+     |FINSI;
+
+     tarifa = enInterno;
+     nTariAnt = tarifa;
+     #refere1@#0 = tarifa;
+
+     |PINDA #0#refere1@;
+     |ENCAMPO #0#refere1@;
+     |SI FSalida = 0;
+          tarifa = #refere1@#0;
+     |FINSI;
+     |POPV;
+
+     enInterno = tarifa;
+
+     |DESCARGA_DEF #refere1@;
+|FPRC;
+
+|PROCESO ModiTariCongecar;
+     |HAZ TarifaCongecar;
+
+     |SI nTariAnt = tarifa; |ACABA; |FINSI; || No se modifico!!
+
+     |ABRE #2;
+     #2#0 = art_dt;
+     |LEE 000#2=;
+     |CIERRA #2;
+
+     |SI tarifa = 1; pcs = 130; pcv = 18;  pcd = 21;  |FINSI;
+     |SI tarifa = 2; pcs = 131; pcv = 19;  pcd = 22;  |FINSI;
+     |SI tarifa = 3; pcs = 132; pcv = 20;  pcd = 23;  |FINSI;
+     |SI tarifa = 4; pcs = 153; pcv = 147; pcd = 150; |FINSI;
+     |SI tarifa = 5; pcs = 154; pcv = 148; pcd = 151; |FINSI;
+     |SI tarifa = 6; pcs = 155; pcv = 149; pcd = 152; |FINSI;
+     pvp_ve = #2pcv;
+     |SI #2pcs = "S";
+          eaPrv = "";
+          enTiva = iva_dt;
+          efFiva = ~;
+          |HAZ IVAPrv;
+          pvp_ve = pvp_ve / ( 1 + (enIva/100));  ||quito el iva
+     |FINSI;
+|FPRC;
+-----------------   Fin Tarifa para modulo 002448
+
+|PROCESO InforAlbDto;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "ialbm006";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |ABRE #100; |LEE 000#100p; |CIERRA #100;
+          |SI fam_dt = #100#23; |O fam_dt = #100#24; |O fam_dt = #100#25;
+                    |O fam_dt = #100#26;
+               dtos_1 = #24#204;
+          |FINSI;
+          |DESCARGA_DEF #refere1@;
+     |FINSI;
+|FPRC;
+
+|PROCESO GesGraPre;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "gestrm10";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |DDEFECTO #100;
+          |ABRE #100;
+          #100#0 = cli_dt;
+          #100#1 = art_dt;
+          |LEE 101#100=;
+          nFEstado = FSalida;
+
+          eaPrv = "";
+          enTiva = #2#30;
+          efFiva = ~;
+          |HAZ IVAPrv;
+
+          nTariCli = #24#39;
+          |SI nTariCli = 1; aIVAsn = #2#130; |FINSI;
+          |SI nTariCli = 2; aIVAsn = #2#131; |FINSI;
+          |SI nTariCli = 3; aIVAsn = #2#132; |FINSI;
+          |SI nTariCli = 4; aIVAsn = #2#153; |FINSI;
+          |SI nTariCli = 5; aIVAsn = #2#154; |FINSI;
+          |SI nTariCli = 6; aIVAsn = #2#155; |FINSI;
+          |SI aIVAsn = "S";
+               nPrecio = pvp_ve > enIva;
+          |SINO;
+               nPrecio = pvp_ve;
+          |FINSI;
+
+          nPrecio = nPrecio ! nDeci_PreVis;
+
+          |SI nPrecio ! #100#3;
+               nSwActua = 0;
+               |SI #20#79 = "P"; |O nFEstado ! 0;
+                    |AVISO;
+                    |CONFI "2400SActualizar Precio Cliente/Articulo Metros S/N: ";
+                    nSwActua = FSalida;
+               |FINSI;
+               |SI nSwActua = 0;
+                    |SI quedto = 0; |Y #20#96 = "S";
+                         #100#4 = dtos_1;
+                    |FINSI;
+                    #100#3 = nPrecio;
+                    #100#2 = #2#1;
+                    |SI nFEstado = 0;   |GRABA 020#100a;     |FINSI;
+                    |SI nFEstado ! 0;   |GRABA 020#100n;     |FINSI;
+
+                    |DDEF aAlfa;
+                    aAlfa = aAlfa + "gestrm09";
+                    |CARGA_DEF aAlfa, refere2@;
+                    |SI FSalida = 0;
+                         |ABRE #refere2@;
+                         #refere2@#0 = cli_dt;
+                         |LEE 000#refere2@.=;
+                         |SI FSalida ! 0;
+                              |GRABA 020#refere2@.n;
+                         |FINSI;
+                         |CIERRA #refere2@;
+                         |DESCARGA_DEF #refere2@;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+          |LIBERA #100;
+          |CIERRA #100;
+
+          |DESCARGA_DEF #refere1@;
+     |FINSI;
+|FPRC;
+
+|PROCESO GesParam;
+     aAlfa = aPath + "gestrm01";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |ABRE #refere1@; |LEE 000#refere1@.p; |CIERRA #refere1@;
+          aAlfa = #refere1@#44;
+          |DESCARGA_DEF #refere1@;
+     |SINO;
+          |MENAV "0000Error al cargar 'gestrm01'...";
+     |FINSI;
+|FPRC;
+
+|PROCESO GesFactor;
+     |DDEF aPath;
+     aAlfa = aPath + "gestrm13";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |ABRE #refere1@;
+          #refere1@#0 = #2#126;
+          |LEE 000#refere1@.=;
+          |SI FSalida = 0;
+               nFactor = #refere1@#2;
+          |SINO;
+               nFactor = 1;
+          |FINSI;
+          |CIERRA #refere1@;
+          |DESCARGA_DEF #refere1@;
+     |SINO;
+          |MENAV "0000Error al cargar 'gestrm13'...";
+     |FINSI;
+|FPRC;
+
+|PROCESO GesUsuAct;
+     |HAZ GesParam;
+     |SI aAlfa = "S";
+          aAlfa = "1";
+          |DDEF aPath;
+          aAlfa = aPath + "gestrm15";
+          |CARGA_DEF aAlfa, refere1@;
+          |SI FSalida = 0;
+               aAlfa = Usuario % 810;
+               |ABRE #refere1@;
+               #refere1@#0 = aAlfa;
+               |LEE 000#refere1@.=;
+               aAlfa = FSalida;
+               |CIERRA #refere1@;
+               |DESCARGA_DEF #refere1@;
+          |SINO;
+               |MENAV "0000Error al cargar 'gestrm15'...";
+          |FINSI;
+          FSalida = aAlfa;
+     |SINO;
+          FSalida = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO LeeFam;
+     aFami = "";
+     |DDEF aPath;
+     aAlfa = aPath + "agifa060";
+     |CARGA_DEF aAlfa, refere2@;
+     |SI FSalida = 0;
+          |ABRE #refere2@;
+          #refere2@#0 = #2#2;
+          |LEE 000#refere2@.=;
+          |SI FSalida = 0;
+               aFami = #refere2@#1;
+          |FINSI;
+          |CIERRA #refere2@;
+          |DESCARGA_DEF #refere2@;
+     |SINO;
+          |MENAV "0000Error al cargar 'agifa060'...";
+     |FINSI;
+|FPRC;
+
+|PROCESO GesPreDibu;
+     |HAZ GesFactor;
+     aAlfa = aPath + "gestrm12";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |ABRE #refere1@;
+          #refere1@#0 = cli_dt;
+          #refere1@#1 = #2#2;
+          |LEE 000#refere1@.=;
+          |SI FSalida = 0;
+               |SI uni_dt2 ! 0;
+                    pvp_ve = #refere1@#4 * nFactor;
+               |SINO;
+                    pvp_ve = #refere1@#5 * nFactor;
+               |FINSI;
+               pvp_ve = pvp_ve ! nDeci_PreVis;
+          |FINSI;
+          |CIERRA #refere1@;
+          |DESCARGA_DEF #refere1@;
+     |SINO;
+          |MENAV "0000Error al cargar 'gestrm12'...";
+     |FINSI;
+|FPRC;
+
+|PROCESO GesGraDibu;
+     |HAZ GesUsuAct;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |HAZ GesFactor;
+     aAlfa = aPath + "gestrm12";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          nPrecio = pvp_ve;
+          |ABRE #refere1@;
+          #refere1@#0 = cli_dt;
+          #refere1@#1 = #2#2;
+          |LEE 101#refere1@.=;
+          |SI FSalida = 0;
+               |SI uni_dt2 ! 0;
+                    pvp_ve = #refere1@#4 * nFactor;
+                    pvp_ve = pvp_ve ! nDeci_PreVis;
+                    |SI nPrecio ! pvp_ve;
+                         |CONFI "2400SActualizar Precio Cliente/Dibujo:";
+                         |SI FSalida = 0;
+                              nNume = nPrecio / nFactor;
+                              #refere1@#4 = nNume;
+                              |GRABA 020#refere1@.a;
+                         |FINSI;
+                    |FINSI;
+               |SINO;
+                    pvp_ve = #refere1@#5 * nFactor;
+                    pvp_ve = pvp_ve ! nDeci_PreVis;
+                    |SI nPrecio ! pvp_ve;
+                         |CONFI "2400SActualizar Precio Cliente/Dibujo:";
+                         |SI FSalida = 0;
+                              nNume = nPrecio / nFactor;
+                              #refere1@#5 = nNume;
+                              |GRABA 020#refere1@.a;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               |CONFI "2400SActualizar Precio Cliente/Dibujo:";
+               |SI FSalida = 0;
+                    |HAZ LeeFam;
+                    #refere1@#2 = #24#1;
+                    #refere1@#3 = aFami;
+                    |SI uni_dt2 ! 0;
+                         nNume = nPrecio / nFactor;
+                         #refere1@#4 = nNume;
+                    |SINO;
+                         nNume = nPrecio / nFactor;
+                         #refere1@#5 = nNume;
+                    |FINSI;
+                    |GRABA 020#refere1@.n;
+               |FINSI;
+          |FINSI;
+          |CIERRA #refere1@;
+          |DESCARGA_DEF #refere1@;
+     |SINO;
+          |MENAV "0000Error al cargar 'gestrm12'...";
+     |FINSI;
+|FPRC;
+
+|PROCESO EvaPreArtCli;
+     aAlfa = aPath + "evarm003";
+     |CARGA_DEF aAlfa, refere1@;
+     |SI FSalida = 0;
+          |ABRE #refere1@;
+          #refere1@#0 = cli_dt;
+          #refere1@#1 = art_dt;
+          |LEE 000#refere1@.=;
+          |SI FSalida = 0;
+               pvp_ve = #refere1@#4;
+          |FINSI;
+          |CIERRA #refere1@;
+          |DESCARGA_DEF #refere1@;
+     |SINO;
+          |MENAV "0000Error al cargar 'evarm003'...";
+     |FINSI;
+|FPRC;

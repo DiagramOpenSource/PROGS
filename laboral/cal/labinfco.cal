@@ -1,0 +1,679 @@
+|FICHEROS;
+     labinfco;
+     labempre;            || empresas
+     labtraba;            || trabajadores
+
+     labcatip;            || iae cabs.
+     lablitip;            || iae lins.
+     labdesca;            || desglose cabs.
+     labdesli;            || desglose lins.
+     lablitmp;            || tmp iae lins.
+     labdcotm;            || tmp. desgloses para informe comparativo
+|FIN;
+
+|VARIABLES;
+     nume1 = 0;
+     nume2 = 0;
+     nume3 = 0;
+     nume4 = 0;
+     alfa1 = "";
+     alfa2 = "";
+     alfa3 = "";
+     alfa4 = "";
+     fech1 = @;
+     fech2 = @;
+     fech3 = @;
+     fech4 = @;
+     para1 = 0;
+     para2 = 0;
+     para3 = 0;
+     para4 = 0;
+     elsw1 = 0;
+     elsw2 = 0;
+     elsw3 = 0;
+     elsw4 = 0;
+     seleccio = 0;
+
+     sw = 0;
+     empresa = 0;
+     ejercicio = 0;
+     sw_calculo = 0;
+     FEstado = 0;
+     sw_repe = 0;
+     nEmpresas = 0;
+     aAlfa = "";
+     fFinal = @;
+
+     swSinPlanilla = 0;
+     nCampo = 0;
+     nNume = 0;
+
+     nDEmpre             = 0;
+     nHEmpre             = 0;
+     nOpcion             = 0;
+
+     aEmp                = "";
+     aNomEmp             = "";
+
+     {-1}aMenu           = "";
+         aMenu1          = "2400";
+         aMenu2          = "1";
+         aMenu3          = "Archivo documental activado. Elija opci¢n: ";
+         aMenu4          = "IAB";
+         aMenu5          = "Imprimir";
+         aMenu6          = "Archivar";
+         aMenu7          = "Ambos";
+
+     &eaVengoDe          = "";
+     &eaPeriodos         = "";
+     &enDesdeMes         = 0;
+     &enAny              = 0;
+     &nArchi             = 0;
+     &swErrorDSArchi     = 0;
+     &nEjer1             = 0;
+     &nEjer2             = 0;
+     &linea              = 0;
+|FIN;
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO PlanillasSN;
+     aAlfa = #labinfco#26;
+     |PARA nCampo = 4; |SI nCampo [ 23; |HACIENDO nCampo = nCampo + 1;
+          |CAMPO_MODIFICA #labinfco#nCampo#, 1, aAlfa;
+     |SIGUE;
+|FPRC;
+
+|PROCESO pin_desglo; |TIPO 7;
+|SI #labinfco#Campo# ! 0;
+    |DDEFECTO #labdesca;
+    |ABRE #labdesca;
+        #labdesca#0 = #labinfco#Campo#;
+    |LEE 000#labdesca.=;
+    |CIERRA #labdesca;
+
+    |ATRI I;
+    |PINTA 1938, #labdesca#1;
+    |ATRI 0;
+|SINO;
+    |PINTA 1938, "                                        ";
+|FINSI;
+|FPRC;
+
+|PROCESO lee_desglo; |TIPO 0;
+|SI #labinfco#Campo# ! 0;
+    |DDEFECTO #labdesca;
+    |ABRE #labdesca;
+        #labdesca#0 = #labinfco#Campo#;
+    |LEE 000#labdesca.=;
+    |SI FSalida ! 0;
+        |MENAV "    Desglose inexistente ...";
+        |ERROR;
+    |SINO;
+            elsw1 = 0;
+        |PARA para1 = 4; |SI para1 [ 23; |HACIENDO para1 = para1 + 1;
+            |SI para1 ! Campo;
+                |SI #labinfco#para1# = #labinfco#Campo#;  elsw1 = 1;     |FINSI;
+            |FINSI;
+        |SIGUE;
+        |SI elsw1 = 1;
+            |MENAV "    Codigo de Desglose repetido ...";
+            |ERROR;
+        |FINSI;
+    |FINSI;
+    |CIERRA #labdesca;
+|FINSI;
+|FPRC;
+____________________________________/
+|PROCESO lee_tmp1;
+     #labcatip#0 = #labdcotm#0;
+     #labcatip#1 = #labdcotm#1 - 2000;
+     |LEE 000#labcatip.=;
+     |SI FSalida = 0;
+          linea = 2;
+          |PRINT;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_tmp;
+     #labdcotm#1;
+     ;
+     empresa, ejercicio, 00;
+     empresa, ejercicio, 99;
+     ;
+     NULL, lee_tmp1;
+|FIN;
+
+|PROCESO imprime_detalle;
+     |DDEFECTO #labtraba;          || trabajadores
+     #labtraba#0 = #lablitmp#0;
+     #labtraba#1 = #lablitmp#5;
+     |LEE 000#labtraba.=;
+     linea = 0;
+     |PRINT;
+|FPRC;
+
+|PROCESO detalle;
+|SI swSinPlanilla = 1;
+     |HAZ imprime_detalle;
+     |ACABA;
+|FINSI;
+     |PARA para1 = 4; |SI para1 [ 23; |HACIENDO para1 = para1 + 1;
+          |SI #labinfco#para1# ! 0;
+               #labdesli#0 = #labinfco#para1#;
+               alfa1 = #lablitmp#4;     |QBF alfa1;
+               alfa1 = ("000" + alfa1) % -103;
+               #labdesli#2 = alfa1;
+               |LEE 000#labdesli.=;
+               |SI FSalida = 0;                          || si existe desglose
+                    |SI #lablitmp#3 ] #labdesli#7;|Y #lablitmp#3 [ #labdesli#8;       || grupos de tarifa
+                         |SI #lablitmp#6 ] #labdesli#5;|Y #lablitmp#6 [ #labdesli#6;   || fechas de alta
+                              |HAZ imprime_detalle;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO imprime;
+     |SI sw = 0;
+          sw = 1;
+          empresa   = #lablitmp#0;
+          ejercicio = #lablitmp#1;
+
+          |SI eaPeriodos = "";
+              |DDEFECTO #labempre;
+              #labempre#0 = #lablitmp#0;
+              |LEE 000#labempre.=;
+          |FINSI;
+
+          linea = 1;
+          |PRINT;
+     |FINSI;
+
+     |SI empresa ! #lablitmp#0;
+          |BUCLE lee_tmp;
+          empresa = #lablitmp#0;
+          ejercicio = #lablitmp#1;
+
+          |SI eaPeriodos = "";
+              |DDEFECTO #labempre;
+              #labempre#0 = #lablitmp#0;
+              |LEE 000#labempre.=;
+          |FINSI;
+
+          linea = 1;
+
+          |PRINT;
+     |FINSI;
+
+     |HAZ detalle;
+|FPRC;
+
+|DEFBUCLE imprime_detalle_Orden2;
+     #lablitmp#2;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, imprime;
+|FIN;
+
+|DEFBUCLE imprime_detalle_Orden1;
+     #lablitmp#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, imprime;
+|FIN;
+
+|PROCESO GrabaTrabTotales;
+          |DDEFECTO #lablitmp;
+          #lablitmp#0 = #lablitip#0;
+          #lablitmp#5 = #lablitip#5;
+          |LEE 101#lablitmp.=;
+          FEstado = FSalida;
+          #lablitmp#1 = #labinfco#2 + 2000;
+          #lablitmp#2 = 00;         || la planilla de momento no la se, no
+                              || es que me importe, pero por si algun
+                              || dia tuviera que sacar los trabaadores por
+                              || planilla, que para mi seria lo normal
+          #lablitmp#3 = #lablitip#3;       || grupo de tarifa
+          #lablitmp#4 = #lablitip#4;       || contrato
+          #lablitmp#6 = #lablitip#6;       || fecha de alta
+          #lablitmp#7 = #lablitip#7;       || fecha de baja
+
+          |SI #labinfco#2 > #labinfco#3;
+               nNume = #labinfco#2;
+          |SINO;
+               nNume = #labinfco#3;
+          |FINSI;
+          |SI #lablitip#1 = nNume;
+               #lablitmp#8 = #lablitip#8;       || dias de alta total
+               #lablitmp#21 = #lablitip#15;     || Discapacitado (S/N)
+          |FINSI;
+
+          alfa1 = #lablitip#11;
+          |QBF alfa1;
+          |SI alfa1 ! "";
+               alfa1 = alfa1 - "proporcion ";
+               alfa1 = alfa1 + " h.";
+          |FINSI;
+          #lablitmp#11 = alfa1;     || observaciones
+          |SI #lablitip#1 = #labinfco#2;
+               #lablitmp#9 = #lablitip#9;            || dias alta ejercicio 1
+               #lablitmp#10 = #lablitip#10;          || % jornada ejerc 1
+          |FINSI;
+          #lablitmp#17 = #labinfco#3 + 2000;
+          |SI #lablitip#1 = #labinfco#3;
+               #lablitmp#13 = #lablitip#9;           || dias alta ejercicio 2
+               #lablitmp#14 = #lablitip#10;          || % jornada ejerc 2
+          |FINSI;
+          #lablitmp#15 = #lablitmp#13 - #lablitmp#9;      || diferencia dias ej2 - ej1
+          #lablitmp#16 = #lablitmp#14 - #lablitmp#10;     || diferencia jornadas ej2 - ej1
+
+          |SI eaPeriodos = "";
+              #labempre#0 = #lablitmp#0;
+              |LEE 000#labempre.=;
+          |FINSI;
+
+          #lablitmp#18 = #labempre#2;                || nombre empresa
+
+          #lablitmp#19 = #lablitip#12;               || fijo (S/N)
+          #lablitmp#20 = #lablitip#14;               || sexo
+
+          |SI FEstado ! 0;   |GRABA 020#lablitmp.n; |FINSI;
+          |SI FEstado = 0;   |GRABA 020#lablitmp.a; |FINSI;
+          |LIBERA #lablitmp;
+
+          |DDEFECTO #labdcotm;
+          #labdcotm#0 = #lablitip#0;          || empresa
+          #labdcotm#1 = #labinfco#2 + 2000;   || ejercicio 1
+          #labdcotm#2 = #labdesca#0;          || codigo desglose
+          |LEE 101#labdcotm.=;
+          FEstado = FSalida;
+          |SI swSinPlanilla = 1;
+               #labdcotm#3 = "Distribuci¢n de trabajadores";
+          |SINO;
+               #labdcotm#3 = #labdesca#1;          || descripcion
+          |FINSI;
+          |SI #lablitip#1 = #labinfco#2;
+               #labdcotm#4 = #labdcotm#4 + #lablitip#9;   || dias totales
+               #labdcotm#5 = #labdcotm#5 + #lablitip#10;  || jornadas totales
+               aAlfa = #labdcotm#1;
+               aAlfa = "31.12." + aAlfa;
+               fFinal = aAlfa;
+               |SI fFinal [ #lablitip#7;                 || de alta el 31/12
+                    |SI #lablitip#12 = "S";              || fijos
+                         |SI #lablitip#14 = "H";         || hombre
+                              #labdcotm#11 = #labdcotm#11 + 1;
+                         |FINSI;
+                         |SI #lablitip#14 = "M";         || mujer
+                              #labdcotm#12 = #labdcotm#12 + 1;
+                         |FINSI;
+                    |FINSI;
+                    |SI #lablitip#12 = "N";              || eventuales
+                         |SI #lablitip#14 = "H";         || hombre
+                              #labdcotm#13 = #labdcotm#13 + 1;
+                         |FINSI;
+                         |SI #lablitip#14 = "M";         || mujer
+                              #labdcotm#14 = #labdcotm#14 + 1;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+               |SI #lablitip#15 = "S";
+                    #labdcotm#15 = #labdcotm#15 + #lablitip#10;
+               |FINSI;
+                                             || media total
+               |SI #lablitip#12 = "S";              || fijos ejercicio 1
+                    #labdcotm#21 = #labdcotm#21 + #lablitip#10;
+               |FINSI;
+               |SI #lablitip#12 = "N";              || eventuales ejercicio 1
+                    #labdcotm#22 = #labdcotm#22 + #lablitip#10;
+               |FINSI;
+          |FINSI;
+
+          #labdcotm#6 = #labinfco#3 + 2000;          || ejercicio 2
+          |SI #lablitip#1 = #labinfco#3;
+               #labdcotm#7 = #labdcotm#7 + #lablitip#9;   || dias totales
+               #labdcotm#8 = #labdcotm#8 + #lablitip#10;  || jornadas totales
+
+               aAlfa = #labdcotm#6;
+               aAlfa = "31.12." + aAlfa;
+               fFinal = aAlfa;
+               |SI fFinal [ #lablitip#7;                 || de alta el 31/12
+                    |SI #lablitip#12 = "S";              || fijos
+                         |SI #lablitip#14 = "H";         || hombre
+                              #labdcotm#16 = #labdcotm#16 + 1;
+                         |FINSI;
+                         |SI #lablitip#14 = "M";         || mujer
+                              #labdcotm#17 = #labdcotm#17 + 1;
+                         |FINSI;
+                    |FINSI;
+                    |SI #lablitip#12 = "N";              || eventuales
+                         |SI #lablitip#14 = "H";         || hombre
+                              #labdcotm#18 = #labdcotm#18 + 1;
+                         |FINSI;
+                         |SI #lablitip#14 = "M";         || mujer
+                              #labdcotm#19 = #labdcotm#19 + 1;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+               |SI #lablitip#15 = "S";
+                    #labdcotm#20 = #labdcotm#20 + #lablitip#10;
+               |FINSI;
+                                             || media total
+               |SI #lablitip#12 = "S";              || fijos ejercicio 1
+                    #labdcotm#23 = #labdcotm#23 + #lablitip#10;
+               |FINSI;
+               |SI #lablitip#12 = "N";              || eventuales ejercicio 1
+                    #labdcotm#24 = #labdcotm#24 + #lablitip#10;
+               |FINSI;
+          |FINSI;
+          #labdcotm#9 = #labdcotm#7 - #labdcotm#4;        || diferencia dias
+          #labdcotm#10 = #labdcotm#8 - #labdcotm#5;       || diferencia jornadas
+
+          |SI FEstado ! 0;   |GRABA 020#labdcotm.n; |FINSI;
+          |SI FEstado = 0;   |GRABA 020#labdcotm.a; |FINSI;
+          |LIBERA #labdcotm;
+          seleccio = 1;
+|FPRC;
+
+|PROCESO graba_tmp_comp;
+     |SI swSinPlanilla = 1;
+          #labdesca#0 = 00;
+          |HAZ GrabaTrabTotales;
+          |ACABA;
+     |FINSI;
+          #labdesca#0 = #labinfco#para1#;
+          |LEE 000#labdesca.=;                  || cabecera desglose
+          |SI FSalida = 0;
+               |HAZ GrabaTrabTotales;
+          |FINSI;
+|FPRC;
+
+|PROCESO calcula;
+     |SI swSinPlanilla = 1;
+          |HAZ graba_tmp_comp;
+          |ACABA;
+     |FINSI;
+     sw_repe = 0;
+     |PARA para1 = 4; |SI para1 [ 23; |HACIENDO para1 = para1 + 1;
+          |SI #labinfco#para1# ! 0;
+               #labdesli#0 = #labinfco#para1#;
+               alfa1 = #lablitip#4;     |QBF alfa1;
+               alfa1 = ("000" + alfa1) % -103;
+               #labdesli#2 = alfa1;
+               |LEE 000#labdesli.=;
+               |SI FSalida = 0;                          || si existe desglose
+                    |SI #lablitip#3 ] #labdesli#7;|Y #lablitip#3 [ #labdesli#8;       || grupos de tarifa
+                         |SI #lablitip#6 ] #labdesli#5;|Y #lablitip#6 [ #labdesli#6;   || fechas de alta
+                              |SI sw_repe = 0;
+                                   sw_repe = 1;
+                                   |HAZ graba_tmp_comp;
+                              |SINO;
+                                   alfa1 = "    Contrato [" + #labdesli#2 + "] repetido en desgloses ...";
+                                   |MENAV alfa1;
+                              |FINSI;
+                         |FINSI;
+                    |FINSI;
+               |FINSI;
+          |SINO;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO lee_iae1;
+     |SI sw_calculo = 0;
+          |HAZ imprime;
+     |SINO;
+          |HAZ calcula;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_iae_per2;
+     #lablitip#1;
+     ;
+     nDEmpre, #labinfco#3,    1;
+     nHEmpre, #labinfco#3, 9999;
+     ;
+     NULL, lee_iae1;
+|FIN;
+
+|DEFBUCLE lee_iae_per1;
+     #lablitip#1;
+     ;
+     nDEmpre, #labinfco#2,    1;
+     nHEmpre, #labinfco#2, 9999;
+     ;
+     NULL, lee_iae1;
+|FIN;
+
+|PROCESO Papel;
+     alfa1 = "b" + Usuario; |QBF alfa1;
+     |NOME_DAT #lablitmp#alfa1#;
+     |ABRE #lablitmp;  |CIERRA #lablitmp;  |DELINDEX #lablitmp;
+
+     alfa1 = "c" + Usuario; |QBF alfa1;
+     |NOME_DAT #labdcotm#alfa1#;
+     |ABRE #labdcotm;  |CIERRA #labdcotm;  |DELINDEX #labdcotm;
+
+     |ABRE #lablitmp;
+     |ABRE #labdcotm;
+     sw_calculo = 1;
+     seleccio   = 0;
+
+     |BUCLE lee_iae_per1;               || calcula y graba temporal
+     |SI #labinfco#2 ! #labinfco#3;
+         |BUCLE lee_iae_per2;               || calcula y graba temporal
+     |FINSI;
+
+     |SI seleccio = 0;
+         |CIERRA #lablitmp;  |DELINDEX #lablitmp;
+         |CIERRA #labdcotm;  |DELINDEX #labdcotm;
+
+         |MENAV "    Seleccion vacia";
+         |ACABA;
+     |FINSI;
+
+     Impresora = "CrystalReport";
+     |IMPRE -1;
+     |SI FSalida ! 0;
+         |CIERRA #lablitmp;  |DELINDEX #lablitmp;
+         |CIERRA #labdcotm;  |DELINDEX #labdcotm;
+
+         |ACABA;
+     |FINSI;
+
+     |INFOR "labinfco";
+     sw_calculo = 0;
+     |SI #labinfco#25 = 1;
+         |BUCLE imprime_detalle_Orden1;     || imprime detalle
+     |SINO;
+         |BUCLE imprime_detalle_Orden2;     || imprime detalle
+     |FINSI;
+
+     |BUCLE lee_tmp;
+
+     |PIEINF;
+     |FININF;
+     |FINIMP;
+
+     |CIERRA #lablitmp;  |DELINDEX #lablitmp;
+     |CIERRA #labdcotm;  |DELINDEX #labdcotm;
+|FPRC;
+
+|PROCESO Mensaje;
+     aEmp = "                                             ";
+
+     aAlfa   = ("00000" + #labempre#0) % -105;
+     aNomEmp = #labempre#2;
+     aNomEmp = aNomEmp % 126;
+     aEmp = "Empresa: " + aAlfa + " - " + aNomEmp;
+     aEmp = " " + aEmp + " ";
+
+     |CUADRO 1217 1619;
+     |ATRI R;
+     |PINTA 1318, "       - Procesando archivo de vencimientos -       ";
+     |PINTA 1418, "                                                    ";
+     |PINTA 1518, "                                                    ";
+     |PINTA 1518, aEmp;
+     |ATRI 0;
+|FPRC;
+
+|PROCESO labempre;
+     nDEmpre = #labempre#0;
+     nHEmpre = #labempre#0;
+
+     alfa1 = "b" + Usuario; |QBF alfa1;
+     |NOME_DAT #lablitmp#alfa1#;
+     |ABRE #lablitmp;  |CIERRA #lablitmp;  |DELINDEX #lablitmp;
+
+     alfa1 = "c" + Usuario; |QBF alfa1;
+     |NOME_DAT #labdcotm#alfa1#;
+     |ABRE #labdcotm;  |CIERRA #labdcotm;  |DELINDEX #labdcotm;
+
+     |ABRE #lablitmp;
+     |ABRE #labdcotm;
+
+     sw_calculo = 1;
+     seleccio   = 0;
+
+     |BUCLE lee_iae_per1;               || calcula y graba temporal
+     |SI #labinfco#2 ! #labinfco#3;
+         |BUCLE lee_iae_per2;               || calcula y graba temporal
+     |FINSI;
+
+     |SI seleccio = 0;
+         |CIERRA #lablitmp;  |DELINDEX #lablitmp;
+         |CIERRA #labdcotm;  |DELINDEX #labdcotm;
+
+         |ACABA;
+     |FINSI;
+
+     |HAZ Mensaje;
+     |HAZ IMPREArchi;
+
+     sw_calculo = 0;
+     |SI #labinfco#25 = 1;
+         |BUCLE imprime_detalle_Orden1;     || imprime detalle
+     |SINO;
+         |BUCLE imprime_detalle_Orden2;     || imprime detalle
+     |FINSI;
+
+     |BUCLE lee_tmp;
+
+     |PIEINF;
+     |FININF;
+
+     |SI swErrorDSArchi = 0;
+         |HAZ Archivando;
+     |FINSI;
+
+     |CIERRA #lablitmp;  |DELINDEX #lablitmp;
+     |CIERRA #labdcotm;  |DELINDEX #labdcotm;
+|FPRC;
+
+|DEFBUCLE labempre;
+     #labempre#1;
+     ;
+     #labinfco#0;
+     #labinfco#1;
+     ;
+     NULL, labempre;
+|FIN;
+
+|PROCESO Archivado;
+     eaPeriodos = "Comparaci¢n entre los ejercicios 20" + (("00" + #labinfco#2) % -102);
+     eaPeriodos = eaPeriodos + " y 20" + (("00" + #labinfco#3) % -102);
+
+     enDesdeMes = 12;
+
+     |SI #labinfco#2 > #labinfco#3;
+         enAny      = 2000 + #labinfco#2;
+     |SINO;
+         enAny      = 2000 + #labinfco#3;
+     |FINSI;
+
+     |BUCLE labempre;
+|FPRC;
+
+|PROCESO T3;  |TIPO 3;
+     |SI #labinfco#26 = "S";
+         swSinPlanilla = 0;
+     |SINO;
+         swSinPlanilla = 1;
+     |FINSI;
+
+     nEjer1  = #labinfco#2 + 2000;
+     nEjer2  = #labinfco#3 + 2000;
+     nDEmpre = #labinfco#0;
+     nHEmpre = #labinfco#1;
+
+     |ABRET #labcatip;
+     |ABRET #labdesca;
+     |ABRET #labdesli;   |SELECT #2#labdesli;
+     |ABRET #lablitmp;
+     |ABRET #labdcotm;
+     |ABRET #labempre;
+     |ABRET #labtraba;
+
+     eaVengoDe = "labinfco";
+
+     |HAZ MiraSiArchiva;
+     |SI nArchi = 0;
+         |HAZ Papel;
+
+         |CIERRAT #labcatip;
+         |CIERRAT #labdesca;
+         |CIERRAT #labdesli;
+         |CIERRAT #lablitmp;
+         |CIERRAT #labdcotm;
+         |CIERRAT #labempre;
+         |CIERRAT #labtraba;
+
+         |ACABA;
+     |FINSI;
+
+     |MENU aMenu;
+     nOpcion = FSalida;
+     |SI nOpcion = 1;  |HAZ Papel;      |FINSI;
+     |SI nOpcion = 2;  |HAZ Archivado;  |FINSI;
+     |SI nOpcion = 3;  |HAZ Papel;      |FINSI;
+     |SI nOpcion = 3;  |HAZ Archivado;  |FINSI;
+
+     |SI nOpcion ! 1;
+         aAlfa = ":dsarchi/dpntz001;CLI";
+         |SUB_EJECUTA aAlfa;
+     |FINSI;
+
+     |CIERRAT #labcatip;
+     |CIERRAT #labdesca;
+     |CIERRAT #labdesli;
+     |CIERRAT #lablitmp;
+     |CIERRAT #labdcotm;
+     |CIERRAT #labempre;
+     |CIERRAT #labtraba;
+|FPRC;
+
+|PROGRAMA;
+     |CLS;
+     |CABEZA "Informe Desgloses";
+     |PINPA #0#labinfco;
+     |DDEFECTO #labinfco;
+
+     |ABRE #labinfco;
+     |LEE 101#labinfco.p;
+     |SI FSalida ! 0;    |GRABA 020#labinfco.b; |FINSI;
+
+     |PINDA #0#labinfco;
+     |ENDATOS #1#labinfco;
+
+     |GRABA 020#labinfco.a;
+
+     |LIBERA #labinfco;
+     |CIERRA #labinfco;
+|FPRO;

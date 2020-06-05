@@ -1,0 +1,819 @@
+|FICHEROS;
+     gocalcoc #0;
+     gocalcol #1;
+     agifa321 #2;             ||Parametros Divisa.
+     agifa324 #3;             ||Fichero Divisa.
+     gocallac #4;             ||Calendario Laboral (cab).
+     gocallal #5;             ||Calendario Laboral (lin).
+     gotrabaj #6;             ||Trabajadores.
+     gonomica #7;             ||Nominas (CAB).
+     gonomili #8;             ||Nominas (LIN).
+     gocatcon #9;             ||Categorias.
+     gocostli #10,MANTE;      ||Gastos Fijos Imputables.
+     gocoscat #11,MANTE;      ||Coste por Categoria.
+     gocostdi #12,MANTE;      ||Coste Indirectos.
+     gocostl1 #13,MANTE;
+     gocostl2 #14;
+|FIN;
+-----------------------------------------------------------------------------
+|VARIABLES;
+     &Tempo = "";
+     aTmp13 = "";
+     aTmp14 = "";
+     &cCodMonBase   = "";
+     &cCodMonTrab   = "";
+     &cCodMonConv   = "";
+     &cCodMonActu   = "";
+     &cDesMonBase   = "";
+     &cDesMonTrab   = "";
+
+     &nDeci_PBase   = 0;
+     &nDeci_TBase   = 0;
+     &nDeci_PTrab   = 0;
+     &nDeci_TTrab   = 0;
+     &nDeci_TotVis  = 0;
+
+     &nEurComTrab   = 0;
+     &nEurComBase   = 0;
+     &nEurVenTrab   = 0;
+     &nEurVenBase   = 0;
+     &nPreComTrab   = 0;
+     &nPreComBase   = 0;
+     &nPreVenTrab   = 0;
+     &nPreVenBase   = 0;
+     &nPrecioComp   = 0;
+     &nPrecioVent   = 0;
+
+     nModo          = 0;
+     nDiaEmp        = 0;
+     nMes           = 0;
+     nTotDia        = 0;
+     nDias          = 0;
+     nSuma          = 0;
+     nTrab          = 0;
+     nOpera         = 0;
+     nConta         = 0;
+     nCon           = 0;
+     nCampo         = 0;
+     nSueldos       = 0;
+     nSeguros       = 0;
+     nRetencion     = 0;
+     nBase          = 0;
+     nLiquido       = 0;
+     nHay           = 0;
+     nBotHora       = 0;
+     nBotGasT       = 0;
+     nBotGasG       = 0;
+     nLinea         = 0;
+
+     fDia           = @;
+     fFecha         = @;
+
+     cMes           = "";
+     cDia           = "";
+     cAno           = "";
+     cFecha         = "";
+     cEstado        = "";
+     cFichero       = "";
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO MirMon; |TIPO 13;
+     |HAZ Gastos;
+     |ABRE #2;
+     #2#0 = "A";
+     |LEE 000#2=;
+
+     |SI FSalida = 0;
+          cCodMonTrab = #2#9;
+          |HAZ MonBas;
+     |SINO;
+          |MENAV "0000NO HAY DEFINIDA MONEDA BASE";
+          |ERROR;
+     |FINSI;
+
+     |CIERRA #2;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MiraFech;
+     |SELECT #2#5;
+     #5#0 = #0#0;
+     #5#2 = fFecha;
+     |LEE 000#5=;
+
+     |SI FSalida = 0;
+          nSuma = 1;
+     |SINO;
+          nSuma = 0;
+     |FINSI;
+
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO BorraCateg;
+     |BORRA 020#11a;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE BorraCateg;
+     #11#1;
+     ;
+     #0#0,  1,   1;
+     #0#0, 99, 999;
+     ;
+     NULL, BorraCateg;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO TotEmp; |TIPO 2;
+     nModo = (FEntrada/100)!0;
+
+     |SI nModo = 3;
+          |BUCLE BorraCateg;
+     |FINSI;
+
+     #0#43 = #0#43 +. #1#5;                       ||Sueldos.
+     #0#44 = #0#44 +. #1#6;                       ||S.S.
+     #0#45 = #0#45 +. #1#7;                       ||APlazamientos.
+     #0#46 = #0#46 +. #1#8;                       ||Retenciones.
+     #0#47 = #0#47 +. #1#9;                       ||Total.
+     #0#49 = #0#49 +. #1#11;                      ||Total Pactado.
+
+     #0#53 = #0#53 +. #1#10;                      ||Total Gastos Directos.
+     #0#54 = #0#52 +  #0#53;                      ||Total Gastos Dir+Ind.
+
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO GasTra;
+     #1#10 = #1#10 + #10#6;                       ||Importe Gastos Trabajador.
+     |GRABA 020#1a;
+     |PINTA #1#10;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE GasTra;
+     #10#1;
+     ;                                            ||Campos Extras.
+     #0#0, #1#1, #0#50,   1;
+     #0#0, #1#1, #0#51, 999;
+     ;                                            ||b/e Bolqueo-Ordenacion.
+     NULL, GasTra;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO DatoNomi;
+
+     cMes = #8#2;
+     cMes = cMes % 402;
+     nMes = cMes;
+
+     |SI nMes ] #0#50; |Y nMes [ #0#51; |Y #8#17 = "N";
+
+          nTrab = nMes + 55;
+          #0nTrab = #0nTrab + 1;
+
+          nSueldos   = nSueldos   + #8#14;        ||Sueldo Pactado;
+          nLiquido   = nLiquido   + #8#7;         ||Sueldo Liquido.
+          nRetencion = nRetencion + #8#13;        ||Total Deducciones.
+          nBase      = nBase      + #8#16;        ||Salario Base.
+          nHay       = 1;
+
+          nSuma = 0;
+          nDias = 0;
+          fFecha = #8#2;
+
+          |PARA; |SI fFecha [ #8#3; |HACIENDO fFecha = fFecha + 1;
+
+               fDia = fFecha % 1;
+               cDia = fDia % 1115;
+               |QBF cDia;
+
+               /* Comprobamos si la fecha es día festivo.*/
+
+               |HAZ MiraFech;
+
+               |SI cDia = "Lunes"; |Y nSuma = 0;
+                     |SI #4#1 = "N";nSuma = 1;|FINSI;
+               |FINSI;
+
+               |SI cDia = "Martes"; |Y nSuma = 0;
+                     |SI #4#2 = "N";nSuma = 1;|FINSI;
+               |FINSI;
+
+               |SI cDia = "Miercoles"; |Y nSuma = 0;
+                     |SI #4#3 = "N";nSuma = 1;|FINSI;
+               |FINSI;
+
+               |SI cDia = "Jueves"; |Y nSuma = 0;
+                     |SI #4#4 = "N";nSuma = 1;|FINSI;
+               |FINSI;
+
+               |SI cDia = "Viernes"; |Y nSuma = 0;
+                |SI #4#5 = "N";nSuma = 1;|FINSI;
+               |FINSI;
+
+               |SI cDia = "Sabado"; |Y nSuma = 0;
+                |SI #4#6 = "N";nSuma = 1;|FINSI;
+               |FINSI;
+
+               |SI cDia = "Domingo"; |Y nSuma = 0;
+                |SI #4#7 = "N";nSuma = 1;|FINSI;
+               |FINSI;
+
+               nDias = nDias + nSuma;
+          |SIGUE;
+
+          nDiaEmp = (nDiaEmp + (#8#4 - nDias));
+          nTotDia = #8#4 - nDias;
+
+          |SI nTotDia > #0nMes;
+               #0nMes  = nTotDia;
+          |FINSI;
+
+          nConta = nMes + 12;
+          #0nConta = #0nConta + (nTotDia*#6#22);
+
+     |FINSI;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO MiraNomi;
+
+     nLiquido       = 0;
+     nSueldos       = 0;
+     nSeguros       = 0;
+     nRetencion     = 0;
+     nBase          = 0;
+     nHay           = 0;
+     nDiaEmp        = 0;
+
+     |BUCLELIN 2 DatoNomi #7;
+
+     |SI nHay = 1;
+          |ABRE #9;
+          #9#0 = #6#3;                            ||Categoria;
+          #9#1 = #6#2;                            ||Convenio.
+          |LEE 000#9=;
+
+          |SI FSalida = 0;
+               |DDEFECTO #1;
+               #1#0 = #0#0;                       ||Año.
+               #1#1 = #7#0;                       ||Empleado.
+               |LEE 000#1=;
+
+               |SI FSalida ! 0;
+                    |GRABA 020#1c;
+               |FINSI;
+
+
+               #1#2 = #7#8;                       ||Nombre Empleado.
+               #1#3 = #9#0;                       ||Categoria.
+               #1#4 = #9#2 > "";                  ||Des. Categoria.
+               #1#13 = #9#1;                      ||Codigo del Convenio.
+               #1#14 = #9#11 > "";                ||Descripcion Convenio.
+               #1#15 = nDiaEmp;                   ||Dias Trabajados Empleado.
+               #1#16 = #1#15 * #6#22;             ||Horas Trabajadas.
+               #1#5 = nLiquido;                   ||Sueldos Nominas.
+               #1#11 = nSueldos;                  ||Sueldo Nominas.
+               nSeguros = nBase % #9#12;          ||Seguridad Social.
+               #1#6 = nSeguros;                   ||SS.
+               #1#8 = nRetencion;                 ||Retenciones.
+               #1#7 = #1#6 % #0#55;
+               #1#9 = #1#11+#1#6+#1#7+#1#8;       ||Total.
+
+               /*Calculamos los gastos directos del trabajador.*/
+
+               |BUCLE GasTra;
+               |GRABA 020#1a;
+               |HAZ TotEmp;
+               nOpera = nOpera + 1;
+          |FINSI;
+
+          |CIERRA #9;
+     |FINSI;
+
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE MiraNomi;
+     #7#1;
+     ;
+     #6#0;
+     #6#0;
+     ;
+     NULL, MiraNomi;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO MiraEmpleado;
+     |BUCLE MiraNomi;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE MiraEmpleado;
+     #6#1;
+     ;
+     1;
+     99999;
+     ;
+     NULL, MiraEmpleado;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO GasDir;
+     #0#52 = #0#52 + #12#3;                            ||Importe Gastos Trabajador.
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE GasDir;
+     #12#1;
+     ;                                                 ||Campos Extras.
+     #0#0,   1;
+     #0#0, 999;
+     ;                                                 ||b/e Bolqueo-Ordenacion.
+     NULL, GasDir;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO DiaMes; |TIPO 0;
+     nModo = (FEntrada / 100) ! 0;
+
+     |ABRE #1;
+     |ABRE #4;
+     #4#0 = #0#0;
+     |LEE 000#4=;
+
+     |SI FSalida ! 0;
+          |MENAV "0000NO EXISTE AÑO LABORAL";
+          |ERROR;
+          |ACABA;
+     |FINSI;
+
+
+     |ABRE #5;
+     nOpera = 0;
+     cAno = #0#0;
+     |QBF cAno;
+
+     /*Ponemos a Cero los valores de los empleados.*/
+
+     |BUCLELIN 1 NULL #0;
+
+     /*Ponemos a Cero la Cabecera.*/
+
+     |PARA nMes = 1; |SI nMes [ 67; |HACIENDO nMes = nMes + 1;
+
+          |SI nMes ! 50; |Y nMes ! 51; |Y nMes ! 55;
+               #0nMes = 0;
+          |FINSI;
+
+     |SIGUE;
+
+     /*Calculamos los gastos indirectos;*/
+
+     |BUCLE GasDir;
+
+     /*Calculamos los datos por operario.*/
+
+     |BUCLE MiraEmpleado;
+
+     /*Calculamos las horas trabajadas.*/
+
+     |HAZ CalHor;
+
+     |PINDA #0#0;
+     |CIERRA #4;
+     |CIERRA #1;
+
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO CalHor;
+     #0#37 = 0;
+
+     nMes = (#0#51 - #0#50) + 1;
+
+     |PARA nCon = 25; |SI nCon [ 36; |HACIENDO nCon = nCon + 1;
+          nConta = nCon - 12;
+          #0nCon = ((#0#47+#0#54) / nMes) / #0nConta;
+     |SIGUE;
+
+     |PARA nConta = 13; |SI nConta [ 24; |HACIENDO nConta = nConta + 1;
+          nCampo = nConta - 12;
+
+          |SI nCampo ] #0#50; |Y nCampo [ #0#51;
+               #0#39 = #0#39 + #0nConta;
+               #0#37 = #0#37 + #0nCampo;
+               nCampo = nConta + 12;
+               #0#41 = #0#41 + #0nCampo;
+          |FINSI;
+
+     |SIGUE;
+
+     nMes = (#0#51-#0#50) + 1;
+     #0#42 = #0#41 / nMes;
+     #0#38 = #0#37 / nMes;
+     #0#40 = #0#39 / nMes;
+     #0#48 = #0#39 / nOpera;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE MiraCate;
+     #1#1;
+     ;
+     #0#0,     1;
+     #0#0, 99999;
+     ;
+     NULL, GrabCate;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO GrabCate;
+
+
+     |DDEFECTO #11;
+     #11#0 = #0#0;                                ||Año.
+     #11#1 = #1#3;                                ||Categoria.
+     #11#16 = #1#13;                              ||Convenio.
+     |LEE 000#11=;
+
+     |SI FSalida ! 0;
+          |GRABA 020#11c;
+     |FINSI;
+
+     #11#6  = #1#4;                               ||Descripcion Categoria.
+     #11#17 = #1#14;                              ||Descripcion Convenio.
+     #11#21 = #11#21 + #1#15;                     ||Total Dias.
+     #11#19 = #11#19 + #1#16;                     ||Total Horas Categoria.
+     #11#14 = #11#14 + #1#9;                      ||Total Coste Categoria.
+     #11#15 = #11#15 + #1#10;                     ||Costes Directos.
+     #11#7  = #11#7 + 1;                          ||Cantidad Empleados.
+     #11#18 = #0#52 / nOpera;
+     #11#18 = #11#18 * #11#7;                     ||Costes Indirectos.
+     #11#2  = (#11#14 + #11#15 + #11#18) / #11#7; ||Coste Medio Categoria.
+     #11#20 = #11#19 / #11#7;                     ||Media Horas Categoria.
+     #11#3  = #11#2 / #11#20;                     ||Coste Hora Categoria.
+
+     |ABRE #9;
+     #9#0 = #11#1;
+     #9#1 = #11#16;
+     |LEE 000#9=;
+
+     |SI FSalida = 0;
+          #11#11 = #9#3;                          ||PVP Presupuesto.
+          #11#12 = #9#7;                          ||PVP Administracion.
+          #11#13 = #9#8;                          ||PVP Extras.
+          #11#8  = (((#11#11-#11#3)*100)/#11#3);
+          #11#9  = (((#11#12-#11#3)*100)/#11#3);
+          #11#10 = (((#11#13-#11#3)*100)/#11#3);
+     |FINSI;
+
+     |CIERRA #9;
+     |GRABA 020#11a;
+
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO Categoria;
+     |BUCLE BorraCateg;
+     |BUCLE MiraCate;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO BorraGasto;
+     |BORRA 020#10a;
+|FPRC;
+-----------------------------------------------------------------------------
+|DEFBUCLE BorraGasto;
+     #10#1;
+     ;
+     #0#0, #1#1,  1,   1;
+     #0#0, #1#1, 12, 999;
+     ;
+     NULL, BorraGasto;
+|FIN;
+-----------------------------------------------------------------------------
+|PROCESO Gastos; |TIPO 7;
+     |ENTLINEAL #1#10, -4, 7, 22, 0, MinGas, MaxGas;
+     |PINTA #0#43;|PINTA #0#44;|PINTA #0#45;|PINTA #0#46;|PINTA #0#47; |PINTA #0#49; |PINTA #0#52;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO GasEnt; |TIPO 0;
+     nModo = (FEntrada/100)!0;
+
+     |SI nModo = 1; |O nModo = 2;
+          |ERROR10;
+     |FINSI;
+
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO CogeGast;
+     nLinea = nLinea + 1;
+     |DDEFECTO #10;
+     #10#0 = #0#0;
+     #10#1 = #13#0;
+     #10#2 = nLinea;
+     #10#3 = #14#1;
+     #10#4 = #14#2;
+     #10#6 = #14#2;
+     #10#7 = #14#3;
+     |GRABA 020#10c;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE CogeGast;
+     #14#1;
+     ;                                          ||Campos Extras.
+     1;
+     999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, CogeGast;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO Ultimo;
+     nLinea = #10#2;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE Ultimo;
+     #10#1;
+     ;                                          ||Campos Extras.
+     #0#0, #13#0, #0#50,   1;
+     #0#0, #13#0, #0#51, 999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, Ultimo;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO CogeDato;
+     |BUCLE Ultimo;
+     |BUCLE CogeGast;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE CogeDato;
+     #13#1;
+     ;                                          ||Campos Extras.
+     1;
+     99999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, CogeDato;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO GastTra;
+     |BUCLE GasTra;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE GastosEm;
+     #1#1;
+     ;                                          ||Campos Extras.
+     #0#0,     1;
+     #0#0, 99999;
+     ;                                          ||b/e Bolqueo-Ordenacion.
+     NULL, GastTra;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO GastosEm;
+     |SALVA_FICHA #1;
+     nLinea = #1#1;
+     |BUCLE GastosEm;
+     |REPON_FICHA #1;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO CostCate; |TIPO 11;
+
+     nModo = (FEntrada/100) ! 0;
+
+     |HAZ BH003;
+
+     |SI FSalida = 10;
+          |HAZ BH003;
+          |PUSHV 01012380;
+          |SALVA_FICHA #1;
+          |ABRE #11;
+          ||BUCLE CeroEmpl;
+          |HAZ Categoria;
+          ||BUCLE MiraCate;
+
+          |SI nModo = 4;
+               |ENTLINEAL #1#11, 2, 4, 17, 1, MinGas, MaxGas;
+          |SINO;
+             |ENTLINEAL #1#11, 2, 2, 17, 1, MinGas, MaxGas;
+          |FINSI;
+
+          |CIERRA #11;
+          |ERROR;
+          |REPON_FICHA #1;
+          |POPV;
+          |HAZ BS003;
+     |FINSI;
+
+     |SI FSalida = 11;
+          |HAZ BH003;
+          |SI nModo ! 4;
+               |CONFI "0000SRepartir Costes entre Trabajadores";
+
+               |SI FSalida = 0;
+                    |HAZ CreaTempo; aTmp13 = Tempo;
+                    |HAZ CreaTempo; aTmp14 = Tempo;
+                    |NOME_DAT #13 aTmp13; |DELINDEX #13;
+                    |NOME_DAT #14 aTmp14; |DELINDEX #14;
+                    |PUSHV 01012380;
+                    |ENTLINEAL #1#13, 1, 1, 22, 1, MinGas, MaxGas;
+                    |ABRE #10;
+                    |BUCLE CogeDato;
+                    |CIERRA #10;
+                    |POPV;
+                    #1#10 = 0;
+                    |HAZ GastosEm;
+                    |ENTLINEAL #1#10, -4, 7, 22, 0, MinGas, MaxGas;
+                    Tempo = aTmp13; |HAZ BoraTempo; |DELINDEX #13;
+                    Tempo = aTmp14; |HAZ BoraTempo; |DELINDEX #14;
+                    |ERROR10;
+                    |ACABA;
+               |FINSI;
+          |FINSI;
+
+          |SI nModo = 4;
+               |ENTLINEAL #1#10, -4, 4, 22, 0, MinGas, MaxGas;
+          |SINO;
+               |ENTLINEAL #1#10, -4, 2, 22, 0, MinGas, MaxGas;
+               |ENTLINEAL #1#10, -4, 7, 22, 0, MinGas, MaxGas;
+          |FINSI;
+
+          |ERROR10;
+          |HAZ BS003;
+     |FINSI;
+
+     |SI FSalida = 12;
+          |HAZ BH003;
+          |PUSHV 01012380;
+
+          |SI nModo = 4;
+               |ENTLINEAL #1#12, 2, 4, 22, 1, MinGas, MaxGas;
+          |SINO;
+               |ENTLINEAL #1#12, 2, 2, 22, 1, MinGas, MaxGas;
+          |FINSI;
+
+          |ERROR10;
+          |POPV;
+          ||PINTA #0#52;
+          |HAZ BS003;
+     |FINSI;
+
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MinGas;
+     #10#0 = #1#0;            ||A¤o.
+     #10#1 = #1#1;            ||Empleado.
+     #10#2 = 1;               ||Linea.
+     #10#7 = #0#50;           ||Mes.
+
+     #11#0 = #1#0;
+     #11#1 = 1;
+
+     #12#0 = #0#0;
+     #12#1 = 1;
+     #13#0 = 0;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO MaxGas;
+     #10#0 = #1#0;            ||A¤o.
+     #10#1 = #1#1;            ||Empleado.
+     #10#2 = 999;             ||Linea.
+     #10#7 = #0#51;           ||Mes
+
+     #11#0 = #1#0;
+     #11#1 = 99;
+
+     #12#0 = #0#0;
+     #12#1 = 999;
+     #13#0 = 99999;
+|FPRC;
+-----------------------------------------------------------------------------
+|PROCESO BI003; |TIPO 80;
+     |CLS;
+     |CONTROL_SIMPLE 0, "BOTON,F2 - Coste Hora M.O.", 2405, 2425, F2003;
+     nBotHora = FSalida;
+     |ESTADO_CONTROL nBotHora, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+
+
+     |CONTROL_SIMPLE 0, "BOTON,F3 - Gastos Trabajador", 2430, 2450, F3003;
+     nBotGasT = FSalida;
+     |ESTADO_CONTROL nBotGasT, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+
+
+     |CONTROL_SIMPLE 0, "BOTON,F4 - Gastos Generales", 2455, 2475, F4003;
+     nBotGasG = FSalida;
+     |ESTADO_CONTROL nBotGasG, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+------------------------------------------------------------------------------
+|PROCESO BF003; |TIPO 90;
+     |PULSATECLA;
+     |FIN_CONTROL_WINDOWS nBotHora;
+     |PULSATECLA;
+     |FIN_CONTROL_WINDOWS nBotGasT;
+     |PULSATECLA;
+     |FIN_CONTROL_WINDOWS nBotGasG;
+     |PULSATECLA;
+|FPRC;
+------------------------------------------------------------------------------
+|PROCESO BS003; |TIPO 7;
+     |ESTADO_CONTROL nBotHora, "SHOW"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |ESTADO_CONTROL nBotGasT, "SHOW"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |ESTADO_CONTROL nBotGasG, "SHOW"; ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO BH003;
+     |ESTADO_CONTROL nBotHora, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |ESTADO_CONTROL nBotGasT, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+     |ESTADO_CONTROL nBotGasG, "HIDE"; ||"SHOW""HIDE""ENABLE""DISABLE".
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO F2003;
+     |PTEC 824;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO F3003;
+     |PTEC 825;
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO F4003;
+     |PTEC 826;
+|FPRC;
+-------------------------------------------------------------------------------
+|DEFBUCLE gocoscat;
+     #11#1;
+     ;                                                 ||Campos Extras.
+     #0#0,  1,   1;
+     #0#0, 99, 999;
+     ;                                                 ||b/e Bolqueo-Ordenacion.
+     NULL, ImpLine;
+|FIN;
+-------------------------------------------------------------------------------
+
+|DEFBUCLE gocosind;
+     #12#1;
+     ;                                                 ||Campos Extras.
+     #0#0,   1;
+     #0#0, 999;
+     ;                                                 ||b/e Bolqueo-Ordenacion.
+     NULL, ImpLine;
+|FIN;
+-------------------------------------------------------------------------------
+|DEFBUCLE gocosdir;
+     #10#1;
+     ;                                                 ||Campos Extras.
+     #0#0,     1, #0#50,   1;
+     #0#0, 99999, #0#51, 999;
+     ;                                                 ||b/e Bolqueo-Ordenacion.
+     NULL, ImpLine;
+|FIN;
+-------------------------------------------------------------------------------
+|PROCESO ImpCos; |TIPO 4;
+     |LEE 000#0=;
+
+     |SI FSalida ! 0;
+          |MENAV "0000DEBE SELECIONAR UN PERIODO";
+          |ACABA;
+     |FINSI;
+
+     |ABRE #11;
+     |HAZ Categoria;
+     |CIERRA #11;
+
+     |SUB_EJECUTA_NP "goinform;IMPgocalcoc";
+     |INFOR "gocalcoc";
+     |PRINT;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgocalcoc";
+
+     |SUB_EJECUTA_NP "goinform;IMPgocalco1";
+     |INFOR "gocalco1";
+     |PRINT;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgocalco1";
+
+     |SUB_EJECUTA_NP "goinform;IMPgocalco2";
+     |INFOR "gocalco2";
+     |PRINT;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgocalco2";
+
+     |SUB_EJECUTA_NP "goinform;IMPgocalcol";
+     |INFOR "gocalcol";
+     |BUCLELIN 2 ImpLine #0;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgocalcol";
+
+     |SUB_EJECUTA_NP "goinform;IMPgocosdir";
+     |INFOR "gocosdir";
+     |BUCLE gocosdir;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgocosdir";
+
+     |SUB_EJECUTA_NP "goinform;IMPgocosind";
+     |INFOR "gocosind";
+     |BUCLE gocosind;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgocosind";
+
+     |SUB_EJECUTA_NP "goinform;IMPgocoscat";
+     |INFOR "gocoscat";
+     |BUCLE gocoscat;
+     |PIEINF;
+     |FININF;
+     |SUB_EJECUTA_NP "goinform;ENVgocoscat";
+     |SUB_EJECUTA_NP "goinform;RUNcosteman";
+
+|FPRC;
+-------------------------------------------------------------------------------
+|PROCESO ImpLine;
+     |PRINT;
+|FPRC;
+-------------------------------------------------------------------------------

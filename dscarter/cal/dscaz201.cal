@@ -1,0 +1,394 @@
+|FICHEROS;
+   dscaz201 #0;
+
+   dscam008 #10;
+   dscam009 #11;
+
+   recibos@ #100;
+   dscaw213 #101;
+   dscaw214 #102;
+|FIN;
+
+|VARIABLES;
+   &enImportePdt = 0;
+
+   nSwHayDatos = 0;
+
+   nNivel    = 0;
+   nDocum    = 0;
+   nNumDocum = 0;
+   nFactor   = 0;
+   nTotalRec = 0;
+   nTotalFra = 0;
+
+   nLibro    = 0;
+   aSerie    = "";
+   nFactura  = 0;
+
+   aAlfa     = "";
+
+   nLinea    = 0;
+   nCont     = 0;
+   nCalc     = 0;
+   nCalc1    = 0;
+
+   fFechaRef = @;
+{200}nFactores = 0;
+|FIN;
+
+|PROCESO Movimientos;
+   |SI #dscam009#5 = "RCC"; |ACABA; |FINSI;
+
+   |SELECT #2#dscaw214;
+   #dscaw214#6 = #dscam009#14;
+   #dscaw214#7 = #dscam009#3;
+   |LEE 000#dscaw214.=;
+   |SI FSalida ! 0; #dscaw214#0 = ""; |FINSI;
+   |SELECT #1#dscaw214;
+   |LEE 000#dscaw214.=;
+   |SI FSalida ! 0;
+      #dscaw214#0 = "C";
+      #dscaw214#1 = nNumDocum;
+      #dscaw214#2  = 99;
+      |LEE 000#dscaw214.];
+      |SI FSalida = 0;
+         |LEE 000#dscaw214.a;
+         |SI FSalida = 0;
+            |SI #dscaw214#0 = "C"; |Y #dscaw214#1 = nNumDocum;
+               nLinea = #dscaw214#2 + 1;
+            |SINO;
+               nLinea = 1;
+            |FINSI;
+         |SINO;
+            nLinea = 1;
+         |FINSI;
+      |SINO;
+         |LEE 000#dscaw214.u;
+         |SI FSalida = 0;
+            |SI #dscaw214#0 = "C"; |Y #dscaw214#1 = nNumDocum;
+               nLinea = #dscaw214#2 + 1;
+            |SINO;
+               nLinea = 1;
+            |FINSI;
+         |SINO;
+            nLinea = 1;
+         |FINSI;
+      |FINSI;
+
+      |DDEFECTO #dscaw214;
+      #dscaw214#0 = "C";
+      #dscaw214#1 = nNumDocum;
+      #dscaw214#2 = nLinea;
+      #dscaw214#3 = #dscam009#6;
+      #dscaw214#4 = #dscam009#7;
+      #dscaw214#6 = #dscam009#14;
+      #dscaw214#7 = #dscam009#3;
+      |GRABA 020#dscaw214.c;
+   |FINSI;
+
+   nCalc1 = InFactores;
+   nCalc = #dscam009#8 * nFactor;
+
+   |PARA nCont = 1; |SI nCont < 200; |HACIENDO nCont = nCont + 1;
+      InFactores = nFactores1<-; InFactores = InFactores + nCont;
+      |SI nFactores = 0; |SAL; |FINSI;
+
+      nCalc = nCalc * nFactores;
+   |SIGUE;
+
+   InFactores = nCalc1;
+
+   #dscaw214#5 = #dscaw214#5 + nCalc;
+   |GRABA 020#dscaw214.a;
+|FPRC;
+
+|DEFBUCLE Movimientos;
+#dscam009#1;
+;
+#dscam008#40, 01;
+#dscam008#40, 99;
+;
+NULL, Movimientos;
+|FIN;
+
+|PROCESO Divididos;
+   |SALVA_FICHA #dscam008;
+   |SELECT #1#dscam008;
+   |HAZ CalculaMovtos;
+   |SELECT #11#dscam008;
+   |REPON_FICHA #dscam008;
+|FPRC;
+
+|DEFBUCLE Divididos;
+#dscam008#11;
+;
+nDocum, 000000001;
+nDocum, 999999999;
+;
+NULL, Divididos;
+|FIN;
+
+|PROCESO CalculaMovtos;
+   |SI #dscam008#14 ! "A"; |Y #dscam008#14 ! "D";
+      |BUCLE Movimientos;
+   |FINSI;
+
+   |SI #dscam008#14 = "A";
+      || Recojo los pagos que se hubieran hecho de este recibo y luego sigo ...
+
+      nNivel = nNivel + 1;
+      nDocum = #dscam008#40; nTotalRec = #dscam008#31;
+      |BUCLE Movimientos;
+
+      |SALVA_FICHA #dscam008;
+      #dscam008#40 = #dscam008#41;
+      |LEE 000#dscam008.=;
+      |SI FSalida = 0;
+         nFactores = nFactor; InFactores = InFactores + 1;
+         nFactor   = nTotalRec / #dscam008#25;
+
+         |HAZ CalculaMovtos;
+
+         InFactores = InFactores - 1;
+         nFactor = nFactores; nFactores = 0;
+      |FINSI;
+      |REPON_FICHA #dscam008;
+      nNivel = nNivel - 1;
+   |FINSI;
+
+   |SI #dscam008#14 = "D";
+      nDocum = #dscam008#40; nTotalRec = #dscam008#31;
+      |BUCLE Movimientos;
+
+      nFactores = nFactor; InFactores = InFactores + 1;
+      nFactor = 1;
+
+      nNivel = nNivel + 1;
+      nDocum = #dscam008#40;
+      |SALVA_FICHA #dscam008;
+      |BUCLE Divididos;
+      |REPON_FICHA #dscam008;
+      nDocum = #dscam008#40;
+      nNivel = nNivel - 1;
+
+      InFactores = InFactores - 1;
+      nFactor = nFactores; nFactores = 0;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraMovtos;
+   #dscaw213#5 = #dscaw213#5 - #dscaw214#5;
+   #dscaw213#6 = #dscaw213#6 + #dscaw214#5;
+
+   |SI #dscaw214#3 ] #dscaz201#0; |Y #dscaw214#3 [ #dscaz201#1; nSwHayDatos = 1; |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraMovtos;
+#dscaw214#1;
+;
+#dscaw213#0, #dscaw213#1, 01;
+#dscaw213#0, #dscaw213#1, 99;
+;
+NULL, MiraMovtos;
+|FIN;
+
+|PROCESO PasaMovtos;
+   |SI #dscam009#5 = "RCC"; |ACABA; |FINSI;
+
+   |DDEFECTO #dscaw214;
+   #dscaw214#0 = "C";
+   #dscaw214#1 = nNumDocum;
+   #dscaw214#2 = #dscam009#3
+   #dscaw214#3 = #dscam009#6;
+   #dscaw214#4 = #dscam009#7;
+   #dscaw214#5 = #dscam009#8;
+   #dscaw214#6 = #dscam009#14;
+   #dscaw214#7 = #dscam009#3;
+   |GRABA 020#dscaw214.c;
+|FPRC;
+
+|DEFBUCLE PasaMovtos;
+#dscam009#1;
+;
+#dscam008#40, 01;
+#dscam008#40, 99;
+;
+NULL, PasaMovtos;
+|FIN;
+
+|PROCESO TotalFra;
+   nTotalFra = nTotalFra + #dscam008#22;
+|FPRC;
+
+|DEFBUCLE TotalFra;
+#dscam008#2;
+;
+nLibro, aSerie, nFactura, 001;
+nLibro, aSerie, nFactura, 999;
+;
+NULL, TotalFra;
+|FIN;
+
+|PROCESO PasaRecibo;
+   nLibro = #dscam008#27; aSerie = #dscam008#0; nFactura = #dscam008#1;
+   |SALVA_FICHA #dscam008;
+   nTotalFra = 0; |BUCLE TotalFra;
+   |REPON_FICHA #dscam008;
+
+   |DDEFECTO #dscaw213;
+   #dscaw213#0 = "C";
+   #dscaw213#1 = #dscam008#40;
+   #dscaw213#2 = "P";
+   #dscaw213#3 = "Pendiente de pago";
+   #dscaw213#4 = #dscam008#25;
+   #dscaw213#5 = #dscam008#25;
+   #dscaw213#6 = 0;
+   #dscaw213#7 = #dscam008#4;
+   #dscaw213#8 = nTotalFra;
+   |GRABA 020#dscaw213.c;
+
+   |BUCLE MiraMovtos;
+   |SI #dscaw213#5 = 0;
+      #dscaw213#2 = "L";
+      #dscaw213#3 = "Recibo Liquidado";
+   |SINO;
+      |SI #dscaw213#6 = 0;
+         #dscaw213#2 = "P";
+         #dscaw213#3 = "Pendiente de pago";
+      |SINO;
+         #dscaw213#2 = "C";
+         #dscaw213#3 = "Parcialmente pagado";
+      |FINSI;
+   |FINSI;
+   |GRABA 020#dscaw213.a;
+|FPRC;
+
+|PROCESO RecibosCmp;
+   |PARA nCont = 0; |SI nCont < 200; |HACIENDO nCont = nCont + 1;
+      InFactores = nFactores1<-; InFactores = InFactores + nCont;
+      nFactores = 0;
+   |SIGUE;
+
+   || Primero miro si el recibo est  agrupado o dividido. Si no es asi, lo
+   ||     copiamos en el temporal de recibos y movimientos.
+
+   InFactores = nFactores1<-;
+   nNumDocum = #recibos@#40;
+
+   nFactor = 1; nTotalRec = #recibos@#31;
+   |SI #recibos@#14 ! "A"; |Y #recibos@#14 ! "D";
+      |SI #recibos@#49 ! "S"; |Y #recibos@#69 ! "S";
+         #dscam008#40 = #recibos@#40; |LEE 000#dscam008.=;
+         |BUCLE PasaMovtos;
+
+         #dscam008#40 = #recibos@#40;
+         |LEE 000#dscam008.=;
+         |SI FSalida = 0; |HAZ PasaRecibo; |FINSI;
+      |FINSI;
+   |SINO;
+      #dscam008#40 = #recibos@#40; |LEE 000#dscam008.=;
+      |HAZ CalculaMovtos;
+
+      #dscam008#40 = #recibos@#40;
+      |LEE 000#dscam008.=;
+      |SI FSalida = 0;
+         |HAZ PasaRecibo;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE RecibosCmp;
+#recibos@#6003;
+;
+#dscaz201#4, #dscaz201#2, "01.01.0000";
+#dscaz201#5, #dscaz201#3, "31.12.9999";
+;
+NULL, RecibosCmp;
+|FIN;
+
+|PROCESO ImpMovtos;
+   enImportePdt = enImportePdt - #dscaw214#5;
+
+   |SI #dscaw214#3 < #dscaz201#0; |O #dscaw214#3 > #dscaz201#1; |ACABA; |FINSI;
+
+   fFechaRef = #dscaw213#7; nCalc = fFechaRef; nCalc = nCalc + #dscaz201#6;
+   |SI #dscaw214#3 < fFechaRef; |ACABA; |FINSI;
+
+   |PRINT;
+|FPRC;
+
+|DEFBUCLE ImpMovtos;
+#dscaw214#3;
+;
+"01.01.0000", #dscaw213#0, #dscaw213#1, 01;
+"31.12.9999", #dscaw213#0, #dscaw213#1, 99;
+;
+NULL, ImpMovtos;
+|FIN;
+
+|PROCESO Informe;
+   #dscam008#40 = #dscaw213#1;
+   |LEE 000#dscam008.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam008; |FINSI;
+
+   enImportePdt = #dscaw213#4;
+   |BUCLE ImpMovtos;
+|FPRC;
+
+|DEFBUCLE Informe;
+#dscaw213#1;
+;
+"C", 000000000;
+"C", 999999999;
+;
+NULL, Informe;
+|FIN;
+
+|PROCESO CreaTempoRecs;
+   |DDEF aAlfa; aAlfa = aAlfa + "dscam008.mas";
+   |CARGA_DEF aAlfa, recibos@;
+   |SI FSalida = 0;
+      |BUCLE RecibosCmp;
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+   |ABRE #dscaz201;
+   |LEE 000#dscaz201.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscaz201;
+      |GRABA 020#dscaz201.c;
+   |FINSI;
+
+   |ABRE #dscam008;
+
+   |PINPA #0#dscaz201; |PINDA #0#dscaz201;
+   |ENDATOS #1#dscaz201;
+   |SI FSalida = 0;
+      |GRABA 020#dscaz201.a;
+      aAlfa = "tc" + Usuario; |NOME_DAT #dscaw213#aAlfa#;
+      aAlfa = "tl" + Usuario; |NOME_DAT #dscaw214#aAlfa#;
+
+      |DELINDEX #dscaw213; |ABRE #dscaw213;
+      |DELINDEX #dscaw214; |ABRE #dscaw214;
+      nSwHayDatos = 0; |HAZ CreaTempoRecs;
+
+      |SI nSwHayDatos = 1;
+         Impresora = "CrystalReport";
+         |IMPRE -1;
+         |SI FSalida = 0;
+            |INFOR "dscaz201";
+            |SI FSalida = 0;
+               |BUCLE Informe;
+               |PIEINF; |FININF;
+            |FINSI;
+            |FINIMP;
+         |FINSI;
+      |FINSI;
+
+      |CIERRA #dscaw214; |DELINDEX #dscaw214;
+      |CIERRA #dscaw213; |DELINDEX #dscaw213;
+   |FINSI;
+
+   |CIERRA #dscam008; |CIERRA #dscaz201;
+|FPRO;

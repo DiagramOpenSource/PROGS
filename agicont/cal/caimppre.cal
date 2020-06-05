@@ -1,0 +1,269 @@
+|FICHEROS;
+    caimppre #0;    || def de la importacion
+    cacuepre #1;    || fichas presupuestarias
+    cacuenta #3;    || plan contable
+
+    canempre #30;
+    camoneda #31;
+|FIN;
+
+|VARIABLES;
+  &eaFicbal = "";
+  &eaNomSes = "";
+  &eaDepSes = "";
+    alfa1 = "";
+    alfa2 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    fech1 = @;
+    fech2 = @;
+    FEstado = 0;
+    dir_empresa = "";
+    emp_act = 0;
+    eje_act = 0;
+    nom_act = "";
+    seleccio = 0;
+    sw = 0;
+    factor = 0;
+    &r_emp = 0;
+    &r_per = 0;
+    aParam = "";
+    swsuma = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE puntos_i;
+|INCLUYE dsmone_i;
+
+____________________________________/ CALCULOS DE PANTALLA
+|PROCESO hasnivel;
+ |SI #0#5 > #0#9;
+     |MENAV "    Error en Nivel !!! ";
+     |ERROR;
+ |FINSI;
+|FPRC;
+
+|PROCESO mayus;
+  #0Campo = #0Campo > " ";
+  |PINTA #0Campo;
+|FPRC;
+
+|PROCESO antesque;  |TIPO 8;
+  aParam = PARAMETRO;
+  |QBF aParam;
+  |SI aParam = "fech";
+      |HAZ AntesSesion;
+      |NOME_DAT #3 eaFicbal;
+      |NOME_DAT #1 "cabalpre";
+  |FINSI;
+
+  |HAZ inicio;
+  nom_act = #30#1;
+  emp_act = #30#2;
+  eje_act = #30#3;
+  aMonedaA = eaMoneda;
+|FPRC;
+
+|PROCESO PintoSes; |TIPO 7;
+  aParam = PARAMETRO; |QBF aParam;
+  |SI aParam = "fech";
+      |HAZ AntesSesion;
+      |SI eaNomSes > "";
+          |ATRI I; |PINTA 0505, "SESION: "; |PINTA 0513,eaNomSes;
+          |SI eaDepSes > "";
+              |PINTA 0558, "Departamento: "; |PINTA 0572, eaDepSes;
+          |FINSI;
+          |ATRI 0;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+
+|PROCESO cuenta; |TIPO 0;
+  p_alfa1 = #0Campo;
+  salidas = FSalida;
+  |HAZ punto;
+  |SI p_error ! 0;  |ERROR;  |ACABA;  |FINSI;
+|FPRC;
+
+|PROCESO empresa; |TIPO 0;
+ |SI FSalida ! 2;
+     |ABRE #30;
+     #30#2 = #0#0;
+     #30#3 = #0#1;
+     |LEE 001#30=;
+     |SI FSalida ! 0;
+         |MENAV "    Empresa Inexistente ...";
+         |CIERRA #30;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+     |SI #30#13 ! dig3;  |O #30#14 ! dig4;  |O #30#15 ! dig5;
+                         |O #30#16 ! dig6;  |O #30#17 ! dig7;
+                         |O #30#18 ! dig8;  |O #30#19 ! dig9;
+         |MENAV "     NO CORRESPONDEN LOS NIVELES";
+     |FINSI;
+     |ATRI I;
+     |PINTA 0811, #30#1;
+     |ATRI 0;
+     |CIERRA #30;
+
+     |ABRE #31;
+     |DDEFECTO #31;
+     #31#0 = #0#0;
+     #31#1 = #0#1;
+     |LEE 040#31=;
+     aMonedaC = #31#2;
+     |CIERRA #31;
+ |FINSI;
+|FPRC;
+
+|PROCESO consulta;
+  |SI FSalida ! 9;  |ACABA;  |FINSI;
+  |SUB_EJECUTA "caconemp.run";
+  |ERROR;
+  |SI Campo = 0;
+      #0#0 = r_emp;
+      #0#1 = r_per;
+      |PTEC 802;
+      |PTEC 802;
+  |FINSI;
+|FPRC;
+
+____________________________________/ CALCULOS DE IMPORTACION
+|PROCESO nivel;
+  sw = 0;
+  alfa1 = #3#0;
+  |QBF alfa1;
+  alfa2 = alfa1 % 0;
+  nume1 = alfa2;
+  |SI dig4 = nume1;  sw = 1;  |FINSI;
+  |SI dig5 = nume1;  sw = 2;  |FINSI;
+  |SI dig6 = nume1;  sw = 3;  |FINSI;
+  |SI dig7 = nume1;  sw = 4;  |FINSI;
+  |SI dig8 = nume1;  sw = 5;  |FINSI;
+  |SI dig9 = nume1;  sw = 6;  |FINSI;
+|FPRC;
+
+|PROCESO lee_cuentas1;
+ #0#4 = #3#0; |PINTA #0#4;
+ |HAZ nivel;
+ |SI sw = 0;                   |ACABA; |FINSI;
+ |SI sw > #0#9;                |ACABA; |FINSI;
+ |SI sw < #0#5; |Y #3#3 = "N"; |ACABA; |FINSI;
+
+ swsuma = 0;
+ |SI #0#11 = "S";
+     swsuma = 1;
+ |SINO;
+     nume2 = 9;  |SI #0#6 = "N"; nume2 = 12; |FINSI;
+     nume3 = 49; |SI #0#7 = "N"; nume3 = 46; |FINSI;
+     |PARA nume1 = nume2; |SI nume1 [ nume3; |HACIENDO nume1 = nume1 + 1;
+           |SI #3nume1 ! 0;
+               swsuma = 1;
+               |SAL;
+           |FINSI;
+     |SIGUE;
+ |FINSI;
+
+ |SI swsuma = 0; |ACABA; |FINSI; || No grabo porque no tiene moivmientos
+
+ |DDEFECTO #1;
+ #1#19 = #0#8;      || agrupacion
+ #1#00 = #3#0;      || cuenta
+ #1#01 = sw;        || nivel
+ |LEE 101#1=;
+ FEstado = FSalida;
+
+ alfa1 = #3#5;
+ |SI alfa1 = "A"; alfa1 = "D"; |FINSI;
+ |SI alfa1 = "P"; alfa1 = "H"; |FINSI;
+ #1#2 = alfa1;                         || signo
+
+|| ...........................   |SI #3#53 ] 0;  #1#2 = "D";  |FINSI;
+|| ...........................   |SI #3#53 < 0;  #1#2 = "H";  |FINSI;
+ #1#03 = "M";                          || tipo mensual
+
+ |SI #1#02 = "D";  factor =  1;  |FINSI;
+ |SI #1#02 = "H";  factor = -1;  |FINSI;
+
+ |SI aMonedaC ! aMonedaA;
+     |PARA nume4 = 9; |SI nume4 [ 53; |HACIENDO nume4 = nume4 + 1;
+             impMoneda = #3nume4;
+             |HAZ ElCambioMoneda;
+             #3nume4 = impMoneda;
+       |SIGUE;
+   |FINSI;
+
+     #1#04 = #3#14 * factor;     || enero
+     #1#05 = #3#17 * factor;     || febrero
+     #1#06 = #3#20 * factor;     || marzo
+     #1#07 = #3#23 * factor;     || abril
+     #1#08 = #3#26 * factor;     || mayo
+     #1#09 = #3#29 * factor;     || junio
+     #1#10 = #3#32 * factor;     || julio
+     #1#11 = #3#35 * factor;     || agosto
+     #1#12 = #3#38 * factor;     || septiembre
+     #1#13 = #3#41 * factor;     || octubre
+     #1#14 = #3#44 * factor;     || noviembre
+     #1#15 = #3#47 * factor;     || diciembre
+
+     |SI #0#6 = "S"; #1#04 = #1#04 + ( #3#11 * factor ); |FINSI; || apertura
+     |SI #0#7 = "S"; #1#15 = #1#15 + ( #3#50 * factor ); |FINSI; || cierre
+
+      #1#16 = 0;                  || presup. anual
+      |PARA nume1 = 4; |SI nume1 [ 15; |HACIENDO nume1 = nume1 + 1;
+            #1#16 = #1#16 + #1nume1;
+      |SIGUE;
+      #1#17 = #3#56;              || desde mes
+      #1#18 = #3#57;              || hasta mes
+
+      |SI FEstado = 0;  |GRABA 020#1a;  |FINSI;
+      |SI FEstado ! 0;  |GRABA 020#1n;  |FINSI;
+      |LIBERA #1;
+      seleccio = 1;
+|FPRC;
+
+|DEFBUCLE lee_cuentas;
+ #3#1;
+ ;
+ #0#2, 0;
+ #0#3, 9;
+ e;
+ NULL, lee_cuentas1;
+|FIN;
+
+|PROCESO borrar;
+ |BORRA 011#1a;
+ |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE borra_ctas;
+ #1#1;
+ ;
+ #0#8, "            ", 0;
+ #0#8, "zzzzzzzzzzzz", 9;
+ e;
+ NULL, borrar;
+|FIN;
+
+|PROCESO importa; |TIPO 3;
+ |DBASE dir_empresa;
+ alfa1 = #0#0;  alfa1 = "00000" + alfa1;  alfa1 = alfa1 % -105;
+ alfa2 = #0#1;
+ dir_empresa = dir_empresa + "fich/" + alfa1 + alfa2 + "/";
+
+ |PATH_DAT #3 dir_empresa;
+ |SI #0#10 = "N";
+     |BUCLE borra_ctas;
+ |FINSI;
+
+ |ABRET #1;
+ |BUCLE lee_cuentas;
+ |SI seleccio = 0;
+     |MENAV "    ATENCION!!! Seleccion vacia ...";
+ |FINSI;
+ |CIERRAT #1;
+|FPRC;

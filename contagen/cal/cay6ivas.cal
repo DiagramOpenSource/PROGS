@@ -1,0 +1,301 @@
+|FICHEROS;
+   cay6ivas #0;
+   camaniva #1;    || iva
+   cacuenta #4;    || Cuentas
+   caclipro #18;   || Clientes y Proveedores
+
+   canempre #30;
+   caselem1 #998;
+
+   &regisnif@ #709;
+   :/basica/def/agim0003  #710;
+   :/integral/def/dsam0103 #711;
+
+|FIN;
+
+|VARIABLES;
+   &entrada = 1;
+
+   &aNombre  = "";
+   &aNif     = "";
+   aAlfa1    = "";
+   aAlfa2    = "";
+   nNume1    = 0;
+   aPath     = "";
+
+   DesdeTipo = "";
+   HastaTipo = "";
+   nSwPr     = 0;
+   informe   = "cay6ivas";
+
+   aNifFra   = "";
+   nRegistro = 0;
+   nSwError  = 0;
+   nSw       = 0;
+   aNomFra   = "";
+
+   &aCta      = "";
+   &enSwLinea = 0;
+   &eaError   = "";
+   &eaErrorl  = "";
+   nCampo     = 0 ;
+   nMensa     = 0;
+   fDFecha    = @;
+|FIN;
+
+|INCLUYE dscont_i;
+
+|PROCESO Tipo8; |TIPO 8;
+   |HAZ inicio;
+   ewNif = 0;
+   enSwDeDonde = -1;
+   |HAZ DirAplicSt;
+   |SI HayAcceso = 1;
+       enSwDeDonde = 1;
+       |REFERENCIA_DEF regisnif@, #711;
+   |SINO;
+       |SI Haybasica = 1;
+           enSwDeDonde = 0;
+           |REFERENCIA_DEF regisnif@, #710;
+       |FINSI;
+   |FINSI;
+   |SI enSwDeDonde = -1; ewNif = 1; |FINSI; || no existe Basica ni Integrada
+|FPRC;
+____________________________________/ CALCULOS DESDE PANTALLA
+
+|CALCULO def_fec; |TIPO 7;
+   |HAZ eParaModelos;
+   fDFecha = fec1;
+   |SI enSwSelFc = 1; fDFecha = "01.01.2000"; |FINSI;
+   #0#3 = fDFecha; |PINTA #0#3;
+   #0#4 = fec2;    |PINTA #0#4;
+|FCAL;
+
+|CALCULO cuenta;|TIPO 6;
+     eaCuenta = #0Campo;
+     salidas  = FSalida;
+     |HAZ FiltraPuntos;
+     #0Campo = eaCuenta; |PINTA #0Campo;
+|FCAL;
+
+|| **************************************************************************
+|PROCESO Leyendo;
+
+   eaCuenta = aCta;
+   |HAZ SacaNivel;
+   aNombre   = "";
+   aNif      = "";
+   nRegistro = 0;
+   enSwLinea = 0;
+   eaError   = "";
+
+   |ABRE #18;
+   #18#23 = "C";
+   #18#10 = eaCuenta;
+   #18#11 = enNivel;
+   |LEE 001#18=;
+   |SI FSalida = 0;
+       aNombre = #18#1;        || nombre del cliente
+       aNif    = #18#9;
+       nRegistro = 1;
+   |SINO;
+       #18#23 = "P";
+       #18#10 = eaCuenta;
+       #18#11 = enNivel;
+       |LEE 001#18=;
+       |SI FSalida ! 0;
+           |DDEFECTO #18;
+           |HAZ lee_cuent;
+           aNombre = #4#2;         || nombre de la cuenta
+       |SINO;
+           aNombre = #18#1;        || nombre del proveedor
+           aNif    = #18#9;
+           nRegistro = 1;
+       |FINSI;
+   |FINSI;
+   |CIERRA #18;
+
+   #18#10 = eaCuenta;
+   #18#1 = aNombre;
+   #18#9 = aNif;
+
+   |QBF aNif;
+   |QBF aNombre;
+   |SI aNif = ""; |O aNombre = "";
+       |SI nRegistro = 0;
+           eaError = "NO existe la Ficha del Cliente / Proveedor ";
+         |PRINT; nSwPr = 1;
+          enSwLinea = 1;
+       |FINSI;
+   |SINO;
+       |SI ewNif = 1; |ACABA; |FINSI;
+       |SI aNif ! "";
+           |ABRE #709;
+           #709#0 = aNif;
+           |LEE 141#709=;
+           |SI FSalida = 0;
+               aAlfa1 = #709#1 > " "; |QBF aAlfa1;
+               aAlfa2 = aNombre > " ";
+       || MIGUE 23.02.2006
+/*
+               |SI aAlfa1 ! aAlfa2;
+                   || eaError = "En el Registro de NIF no tiene el mismo Nombre";
+                   |PRINT; nSwPr = 1;
+                   enSwLinea = 1;
+               |FINSI;
+*/
+           |FINSI;
+           |CIERRA #709;
+       |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO lee_cuent;
+   |ABRE #4;
+   #4#0 = eaCuenta;
+   #4#1 = enNivel;
+   |LEE 001#4=;
+   |SI FSalida ! 0;
+       |DDEFECTO #4;
+   |FINSI;
+   |CIERRA #4;
+|FPRC;
+
+|| **************************************************************************
+
+|PROCESO lee_iva1;
+     |PARA nCampo = 9; |SI nCampo [ 16; |HACIENDO nCampo = nCampo + 1;
+          |SI #1#12 = #0nCampo;
+               |ACABA;
+          |FINSI;
+     |SIGUE;
+
+   |SI nSw = 0; |O aCta ! #1#12;
+       aCta = #1#12;
+       |HAZ Leyendo;
+       nSw = 1;
+   |FINSI;
+
+   aNomFra = #1#13; |QBF aNomFra;
+   aNifFra = #1#14; |QBF aNifFra;
+
+   eaErrorl  = "";
+   nSwError = 0;
+|| MIGUE 23.02.2006
+/*
+   |SI aNomFra ! aNombre; |Y aNomFra ! "";
+       eaErrorl = "Error, Nombre del Registro de IVA diferente a la Ficha ";
+       nSwError = 1;
+   |FINSI;
+*/
+   |SI aNifFra ! aNif;    |Y aNifFra ! "";
+       |SI nSwError = 0;
+           eaErrorl = "Error, NIF del Registro de IVA diferente a la Ficha ";
+       |SINO;
+           eaErrorl = "Error, Nombre y NIF del Registro de IVA diferente a la Ficha ";
+       |FINSI;
+       nSwError = 1;
+   |FINSI;
+   |SI nSwError = 0;
+       |SI aNomFra = ""; |O aNifFra = "";
+           eaErrorl = "Error, Datos incompletos en Registro IVA";
+           nSwError = 1;
+      |FINSI;
+  |FINSI;
+
+   |SI nSwError ! 0;
+       || MIGUE 23.02.2006
+       eaError = eaErrorl;
+       |PRINT; nSwPr = 1;
+       |SI enSwLinea = 0;
+           enSwLinea = 1;
+           |PRINT;
+       |FINSI;
+       enSwLinea = 2;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE lee_iva;
+   #1#4;
+   36;
+   #0#5, #0#3, #0#1, 0000000001, DesdeTipo;
+   #0#6, #0#4, #0#2, 9999999999, HastaTipo;
+   e;
+   NULL, lee_iva1;
+|FIN;
+|| **************************************************************************
+
+|PROCESO HazTodo;
+       nSwPr = 0;
+       nSw   = 0;
+       aCta  = "";
+       |BUCLE lee_iva;
+
+       |SI nSwPr = 1;
+           |PIEINF;
+       |SINO;
+           |SI nMensa = 1;
+               |MENAV "    Sin incidencias";
+           |FINSI;
+       |FINSI;
+|FPRC;
+
+|CALCULO tipo3; |TIPO 3;
+
+   DesdeTipo = #0#0; HastaTipo = #0#0;
+   |SI #0#0 = "A"; DesdeTipo = "R"; HastaTipo = "S"; |FINSI;
+
+   |IMPRE 0;
+   |SI FSalida ! 0;  |ACABA; |FINSI;
+
+   |INFOR informe;
+   |SI FSalida ! 0; |FINIMP; |ACABA; |FINSI;
+
+
+   |SI #48#27 = "S";
+       |HAZ MultiEmpresa;
+   |SINO;
+       |DFICE dirfich0; |QBF dirfich0;
+       nMensa = 1; |HAZ HazTodo;
+   |FINSI;
+
+   |FININF;
+   |FINIMP;
+|FCAL;
+
+|| **************************************************************************
+
+|PROCESO MultiEmp1;
+   cod1 = #caselem1#1;
+   cod2 = #caselem1#2;
+   emEmp = 1;  || Sin mensaje
+   |HAZ leelo;
+   |SI swerror ! 0;  |ACABA;   |FINSI;
+
+   dirfich0 = #caselem1#3;
+   |QBF dirfich0;
+
+   |PATH_DAT #1 dirfich0;
+   |PATH_DAT #4 dirfich0;
+   |PATH_DAT #18 dirfich0;
+
+   |ATRI R; |PINTA 2309, "Empresa: ";      |ATRI 0;
+   |PINTA 2318, #30#2; |PINTA 2324, #30#1; |ATRI 0;
+   |HAZ HazTodo;
+|FPRC;
+
+|DEFBUCLE MultiEmp0;
+ #caselem1#1;
+ ;
+ 00001;
+ 99999;
+ ;
+ NULL,MultiEmp1;
+|FIN;
+
+|PROCESO MultiEmpresa;
+  |SUB_EJECUTA "caselemp";
+  |NOME_DAT #998 eaFichsel;
+  |BUCLE MultiEmp0;
+  |DELINDEX #998;
+|FPRC;

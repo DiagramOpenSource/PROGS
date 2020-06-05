@@ -1,0 +1,314 @@
+|FICHEROS;
+   carbum01 #0,MANTE;
+   carbuz02 #10;
+   caivaasi #200;
+   &espejo@ #900;
+|FIN;
+
+|VARIABLES;
+   nInkey     = 0;
+   aAlfa1     = "";
+   nPara1     = 0;
+   fFecha     = @;
+   nPrimero   = 0;
+   &snFilBa   = "";
+   aMas       = "";
+
+   &fec_am  = @;
+   &imp_am  = 0;
+   &iva_am  = 0;
+   &tiva_am = 0;
+   &c_am    = "";
+   &nLib_am = 0;
+   &aSer_am = "";
+   &nFra_am = 0;
+   &nDoc_am = 0;
+   &nBas_am = 0;
+
+   &enModAmor   = 0;
+   nSwEncuentro = 0;
+   &nOperacion  = 0;
+   aFichero     = "";
+   fDFecha      = @;
+   fHFecha      = @;
+   fDFechaC     = @;
+   fHFechaC     = @;
+   fDFechaV     = @;
+   fHFechaV     = @;
+
+   nClave       = 0;
+   &nSwPinta    = 0;
+   &enSalir     = 0;
+   &enSwPregunta = 0;
+   &enNuevaAlta = 0;
+   &enSwAlta    = 0;
+   nRegisNuevo  = 0;
+   nRegisEste   = 0;
+   nSwBaja      = 0;
+
+   tipoiva = "";
+|FIN;
+
+|INCLUYE dscont_i;
+
+|| /////////////////////// PROCESOS DE TRABAJO \\\\\\\\\\\\\\\\\\\\
+|| ******************************************** Calculos Pantalla
+|CALCULO wTipo12; |TIPO 12;
+|FCAL;
+
+||*********************************************************************
+|PROCESO SoloUno;
+      enSwPregunta = 1;
+      |ABRE #0;
+      #0#0 = enEmpresa;
+      #0#1 = nRegisEste;
+      |LEE 101#0=;
+      |SI FSalida = 0;
+          |PINDA #0#0;
+          |ENDATOS #2#0;
+          |SI FSalida = 0; |Y enSalir = 4;
+              |GRABA 020#0a;
+          |FINSI;
+      |FINSI;
+      |LIBERA #0;
+      |CIERRA #0;
+|FPRC;
+
+|PROCESO PreguntaReper;
+         enSalir = 1;  ||hay error y no graba y salir
+         |CONFI "    SDesea dar de Alta un Elemento Nuevo";
+         |SI FSalida = 0; enSalir = 3; |FINSI;
+|FPRC;
+
+
+|RUTINA ClaveBajaC;
+   #0#0  = enEmpresa;
+   |SI FSalida = "POSICION"; |Y nPrimero = 0;
+       #0#1 = nRegisNuevo;
+   |SINO;
+       #0#1  = 000001;
+   |FINSI;
+|FRUT;
+
+|RUTINA ClaveAltaC;
+   #0#0  = enEmpresa;
+   #0#1  = nRegisNuevo;
+|FRUT;
+
+|PROCESO ElLineal;
+       enNuevaAlta  = 0;
+       enSwPregunta = 0;
+       nPrimero = 0; |SI #10#4 = "R"; nPrimero = 1; |FINSI;
+
+       |PARA; |SI enSalir = 0; |HACIENDO;
+              |SI nPrimero = 0;
+                  |PTEC 802;
+                  |PTEC 802;
+              |FINSI;
+
+              enSalir = 4;
+              |ENTLINEAL #1#0, -2, 2, 22, 0, ClaveBajaC, ClaveAltaC;
+              enSwPregunta = 1;
+              |SI enNuevaAlta = 0; |Y #10#4 = "R"; |Y enSalir = 4; || no ha entrado a ninguna.
+                  |HAZ PreguntaReper;
+              |FINSI;
+
+              |SI enSalir ! 4;
+                  |SI nSwBaja = 1; |HAZ BajaRegistro; |FINSI;
+                  |SI enSalir = 3;
+                      |HAZ AltaRegistro; |PTEC 802;
+                      nPrimero = 0; enSalir = 0;
+                  |FINSI;
+                  |SI enSalir = 2;
+                      enSalir = 0; nPrimero = 1;
+                  |FINSI;
+             |FINSI;
+             |PONCONTROL 23, "SI";
+       |SIGUE;
+|FPRC;
+
+|| /////////////////////////////////////////////////
+|PROCESO BajaRegistro;
+   |ABRE #0;
+   |DDEFECTO #0;
+   #0#0 = enEmpresa;
+   #0#1 = nRegisNuevo;
+   |LEE 041#0=;
+   |SI FSalida = 0;
+       |BORRA 040#0a;
+   |FINSI;
+   |CIERRA #0;
+   nSwBaja = 0;
+|FPRC;
+
+
+|PROCESO AltaRegistro;
+   |ABRE #0;
+   |DDEFECTO #0;
+   #0#0 = enEmpresa;
+   #0#1 = nRegisNuevo;
+   |GRABA 040#0b;
+
+   nSwPinta = 0; |HAZ IgualaDesdeIVA;
+
+   |LIBERA #0;
+   |GRABA 040#0a;
+   |CIERRA #0;
+   nSwBaja = 1;
+|FPRC;
+
+|PROCESO CreoTemporal;
+  |PARA nPara1 = 0; |SI nPara1 [ 21; |HACIENDO nPara1 = nPara1 + 1;
+        #0nPara1 = #900nPara1;
+  |SIGUE;
+  |GRABA 020#0n
+  |LIBERA #900;
+|FPRC;
+
+|DEFBUCLE CreoTemporal;
+   #900#1002;
+   8,15;
+   enEmpresa, 000001, fDFechaC, fDFechaV;
+   enEmpresa, 999999, fHFechaC, fHFechaV;
+   be;
+   NULL, CreoTemporal;
+|FIN;
+
+|PROCESO BuscaOpera;
+
+        |ABRE #900;
+        #900#0 = enEmpresa;
+        #900#1 = 999999;
+        |LEE 041#900];
+        |SI FSalida = 0;
+            |LEE 041#900a;
+        |SINO;
+            |LEE 041#900u;
+        |FINSI;
+        |SI FSalida = 0; |Y #900#0 = enEmpresa;
+             nRegisNuevo = #900#1 + 1;
+        |FINSI;
+
+        |DDEFECTO #900;
+        #900#0  = enEmpresa;
+        |SI #10#4 = "S";
+            |SELECT #4#900;
+            #900#20 = enPeriodo;
+            #900#4  = #10#6;
+            #900#5  = #10#7;
+        |SINO;
+            |SELECT #5#900;
+            #900#21 = enPeriodo;
+            #900#11 = #10#6;
+            #900#12 = #10#7;
+        |FINSI;
+        |LEE 041#900=;
+        |SI FSalida = 0;
+            enSwAlta    = 2;
+            nRegisEste = #900#1;
+        |FINSI;
+        |SELECT #1#900;
+        |CIERRA #900;
+
+        |SI enSwAlta = 0;
+            aFichero = "1t" + Usuario;
+            |NOME_DAT #0 aFichero;
+            |DELINDEX #0;
+            |ABRE #0;
+            |BUCLE CreoTemporal;
+            |CIERRA #0;
+            |SI #10#4 = "S"; |HAZ AltaRegistro; |FINSI;
+        |FINSI;
+
+        |SI #10#4 = "S";
+            |C_M #0#4,1,"N";
+            |C_M #0#5,1,"N";
+        |FINSI;
+        |SI #10#4 = "R";
+            |C_M #0#11,1,"N";
+            |C_M #0#12,1,"N";
+        |FINSI;
+|FPRC;
+
+||*********************************************************************
+
+|PROGRAMA;
+
+    tipoiva = aTipoIVA;
+    |DDEFECTO #10;
+    #10#0 = enEjercicio;
+    #10#1 = enEmpresa;
+    #10#2 = eaNombreEmp;
+
+    #10#4  = aTipoIVA;
+    |SI #10#4 = "R"; #10#5 = "IVA REPERCUTIDO"; |FINSI;
+    |SI #10#4 = "S"; #10#5 = "IVA SOPORTADO  "; |FINSI;
+    #10#6  = nLib_am;
+    #10#7  = nDoc_am;
+    #10#8  = aSer_am;
+    #10#9  = nFra_am;
+    #10#10 = fec_am;
+    #10#11 = c_am;
+    #10#12 = imp_am;
+    #10#13 = tiva_am;
+    #10#14 = iva_am;
+    |SI #10#4 = "S";
+        |C_M #10#13, 1, "N"; |C_V #10#13, 1, "N";
+        |C_M #10#14, 1, "N"; |C_V #10#14, 1, "N";
+    |FINSI;
+    #10#15 = enActividad;
+
+    enSwAlta   = 0;
+    nRegisNuevo= 1;
+    nRegisEste = 0;
+    |SI #10#4 = "R";  ||Pendientes de Venta
+        fDFechaC = "01.01.0000";
+        fHFechaC = "31.12.2999";
+        fDFechaV = "01.01.0000";
+        fHFechaV = "01.01.0000";
+    |FINSI;
+
+    |SI #10#4 = "S"; ||Las Compras.
+        fDFechaC = fec1;
+        fHFechaC = fec2;
+        fDFechaV = "01.01.0000";
+        fHFechaV = "31.12.2999";
+    |FINSI;
+
+    |C_P #0#1, 1, 1402;
+    |C_P #0#2, 1, 1409;
+
+    |DBASE aMas;
+    aMas  = aMas + "def/carbuw01";
+    |CARGA_DEF aMas, espejo@;
+    |SI FSalida ! 0;
+        |MENAV "    Error cargando el def carbuw01";
+        |ACABA;
+    |FINSI;
+
+    |HAZ BuscaOpera;
+
+    |CLS;
+    |CABEZA "Operaciones en el REBU";
+    |PINPA #0#10;
+    |PINDA #0#10;
+    || **************************************************  Tipo3;
+
+    |ATRI R; |PINTA #10#0;
+             |PINTA #10#1;
+             |PINTA #10#2; |ATRI 0;
+    |C_V #10#3, 1, "S";
+
+
+    |SI enSwAlta = 0;
+        |ATRI P; |PINTA 1202, " ALTA/MODIFICACION DE OPER.DE REBU"; |ATRI 0;
+        |HAZ ElLineal;
+    |SINO;
+        |ATRI P; |PINTA 1202, " MODIFICACION DE OPERACION DE REBU"; |ATRI 0;
+        |HAZ SoloUno;
+    |FINSI;
+
+    |DESCARGA_DEF #espejo@;
+
+    aTipoIVA = tipoiva;
+|FPRO;

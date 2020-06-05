@@ -1,0 +1,2 @@
+LeeUbicaciones,zdatoadi
+AbreDocumento,zdatoadi

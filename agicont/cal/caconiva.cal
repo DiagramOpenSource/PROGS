@@ -1,0 +1,499 @@
+|FICHEROS;
+    caconiva #0;
+    caivarep #1;    || repercutido
+    caivasop #2;    || soportado
+    camaasic #3;    || apuntes cabs.
+    camaasil #4;    || apuntes lins.
+    cacuenta #5;    || Plan Contable
+|FIN;
+
+|VARIABLES;
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+
+    nNume1 = 0;
+    nNume2 = 0;
+    aAlfa1 = "";
+    aAlfa2 = "";
+    nError = 0;
+    nAntes = 0;
+    fFecha = @;
+
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+
+    &e = "";
+    base = 0;
+    porc = 0;
+    cuot = 0;
+    punt = 0;
+    swerr = 0;
+
+    tipo  = "";
+    serie = "";
+    factu = 0;
+    libro = 0;
+
+    diari = 0;
+    docum = 0;
+    fecha = @;
+
+    cuenta = "";
+    digito = 0;
+    nivel  = 0;
+    cta    = "";
+    long   = "";
+    nSwRec = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE varnue_i;
+
+
+|PROCESO tipo8; |TIPO 8;
+  |HAZ inicio;
+   |HAZ eVarEmpresa;
+|FPRC;
+
+|PROCESO mayus; |TIPO 0;
+ #0Campo = #0Campo > #0Campo;
+ |PINTA #0Campo;
+|FPRC;
+
+|CALCULO elmargen; |TIPO 7;
+ |SI EURODB = 2;
+     #0#2 = 0.05;
+ |SINO;
+     #0#2 = 5;
+ |FINSI;
+ |PINTA #0#2;
+|FCAL;
+|| ___________________________________/ Busca en Apuntes
+
+|PROCESO busl1;
+  |SI #4#12 = tipo; |Y #4#13 = libro; |Y #4#14 = factu; |Y #4#15 = serie;
+      swerr = 0;
+      |ERROR10;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE buslin1;
+ #4#1;
+ ;
+ diari, fecha, docum, 0001;
+ diari, fecha, docum, 9999;
+ e;
+ NULL, busl1;
+|FIN;
+
+|PROCESO b_asiento;
+  swerr = 0;
+
+  |SI docum = 0;
+      swerr =  1;
+      e = "Asiento Inexistente. Documento Igual a <000000>";
+      |PRINT;
+      |ACABA;
+  |FINSI;
+
+  #3#0 = diari;
+  #3#1 = fecha;
+  #3#2 = docum;
+  |LEE 000#3=;
+  |SI FSalida ! 0;
+      swerr =  1;
+      e = "Asiento Inexistente";
+      |PRINT;
+
+      libro = 0;
+      fecha = "01.01.0001";
+      docum = 0;
+  |SINO;
+      swerr = 1;
+      |BUCLE buslin1;  || Busca el Numero de Factura
+      |SI swerr = 1;
+          e = "Asto. Contable informado no corresponde a la Fra.";
+          |PRINT;
+          libro = 0;
+          fecha = "01.01.0001";
+          docum = 0;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO b_cuenta;
+  cta = cuenta;
+  |QBF cta;           || Cuenta Contable
+  |SI cta = "";
+      e = "CUENTA CONTABLE EN BLANCO";
+      |PRINT;
+  |SINO;
+      nivel = 0;
+      long  = cta % 0;
+      nume1 = long;
+      |SI nume1 = dig4; nivel = 1; |FINSI;
+      |SI nume1 = dig5; nivel = 2; |FINSI;
+      |SI nume1 = dig6; nivel = 3; |FINSI;
+      |SI nume1 = dig7; nivel = 4; |FINSI;
+      |SI nume1 = dig8; nivel = 5; |FINSI;
+      |SI nume1 = dig9; nivel = 6; |FINSI;
+      |SI nivel = 0;
+          e = "CUENTA CONTABLE FUERA DE NIVEL";
+          |PRINT;
+      |SINO;
+          |SI nivel ! digito;
+              e = "CUENTA CONTABLE CON NIVEL ERRONEO";
+              |PRINT;
+          |FINSI;
+      |FINSI;
+  |FINSI;
+  #5#0 = cuenta;
+  #5#1 = digito;
+  |LEE 001#5=;
+  |SI FSalida ! 0;
+      e = "NO EXISTE CUENTA CONTABLE";
+      |PRINT;
+  |SINO;
+      |SI #5#3 = "N";
+          e = "CUENTA CONTABLE SIN ASIENTO DIRECTO";
+          |PRINT;
+      |FINSI;
+  |FINSI;
+|FPRC;
+
+____________________________________/   SOPORTADO
+|PROCESO total_sop;
+    nume1 = #2#8  + #2#9  + #2#10 + #2#52 + #2#53;
+    nume2 = #2#14 + #2#15 + #2#16 + #2#56 + #2#57;
+    nume3 = #2#20 + #2#21 + #2#22 + #2#60 + #2#61;
+    nume4 = nume1 + nume2 + nume3;
+|FPRC;
+
+|PROCESO c_sop2;
+
+    |SI punt < 6; |Y porc ! 0;
+        nNume1 = porc ! 0;
+        |SI nNume1 ! porc; |Y porc ! 0.5; |Y porc ! 7.5; |Y porc ! 8.5; |Y porc ! 10.5;
+            e = "% de IVA igual a " + porc + " en IVA " + punt;
+            |PRINT;
+        |SINO;
+            fFecha = #2#3;
+            nSwRec = 0;
+            |HAZ VerFechas;
+            |SI nError = 1;
+                e = aAlfa2;
+                |PRINT;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+
+    |SI punt ] 6; |Y porc ! 0;
+        nSwRec = 1;
+        nNume1 = porc ! 0;
+        fFecha = #2#3;
+        |HAZ VerFechas;
+        |SI nError = 1;
+            e = aAlfa2;
+            |PRINT;
+        |FINSI;
+   |FINSI;
+    nume1 = (base % porc) ! EURODB;  ||Redondeo EURO
+
+    nume2 = nume1 - cuot;     |SI nume2 < 0; nume2 = nume2 * -1; |FINSI;
+
+|SI nume2 > #0#2;
+    |SI punt =  1;  e = "IVA 1";        #2#14 = nume1; |FINSI;
+    |SI punt =  2;  e = "IVA 2";        #2#15 = nume1; |FINSI;
+    |SI punt =  3;  e = "IVA 3";        #2#16 = nume1; |FINSI;
+    |SI punt =  4;  e = "IVA 4";        #2#56 = nume1; |FINSI;
+    |SI punt =  5;  e = "IVA 5";        #2#57 = nume1; |FINSI;
+    |SI punt =  6;  e = "Recargo 1";    #2#20 = nume1; |FINSI;
+    |SI punt =  7;  e = "Recargo 2";    #2#21 = nume1; |FINSI;
+    |SI punt =  8;  e = "Recargo 3";    #2#22 = nume1; |FINSI;
+    |SI punt =  9;  e = "Recargo 4";    #2#60 = nume1; |FINSI;
+    |SI punt = 10;  e = "Recargo 5";    #2#61 = nume1; |FINSI;
+        e = "Error en " + e;
+    |PRINT;
+    |HAZ total_sop;
+|FINSI;
+|FPRC;
+
+|PROCESO c_sop1;
+ |HAZ total_sop;
+ nume2 = nume4 - #2#26;
+ |SI nume2 < 0; nume2 = nume2 * -1; |FINSI;
+
+ |SI nume2 > #0#2;
+     e = "Error en Importe Total";
+     |PRINT;
+ |FINSI;
+|FPRC;
+
+|PROCESO lee_sopor1;
+    #0#3 = "IVA Soportado  ";      |PINTA #0#3;
+    #0#4 = #2#0;                   |PINTA #0#4;
+    #0#5 = #2#2;                   |PINTA #0#5;
+    #0#6 = #2#27;                  |PINTA #0#6;
+    #0#8 = #2#3;
+
+ |HAZ c_sop1;             || total factura
+
+    base = #2#8;    porc = #2#11;  cuot = #2#14;  punt =  1;|HAZ c_sop2;
+    base = #2#9;    porc = #2#12;  cuot = #2#15;  punt =  2;|HAZ c_sop2;
+    base = #2#10;   porc = #2#13;  cuot = #2#16;  punt =  3;|HAZ c_sop2;
+    base = #2#52;   porc = #2#54;  cuot = #2#56;  punt =  4;|HAZ c_sop2;
+    base = #2#53;   porc = #2#55;  cuot = #2#57;  punt =  5;|HAZ c_sop2;
+
+    base = #2#8;    porc = #2#17;  cuot = #2#20;  punt =  6;|HAZ c_sop2;
+    base = #2#9;    porc = #2#18;  cuot = #2#21;  punt =  7;|HAZ c_sop2;
+    base = #2#10;   porc = #2#19;  cuot = #2#22;  punt =  8;|HAZ c_sop2;
+    base = #2#52;   porc = #2#58;  cuot = #2#60;  punt =  9;|HAZ c_sop2;
+    base = #2#53;   porc = #2#59;  cuot = #2#61;  punt = 10;|HAZ c_sop2;
+
+    tipo = "S";
+    libro = #2#0;
+    factu = #2#2;
+    serie = #2#27;
+    diari = #2#45;
+    fecha = #2#46;
+    docum = #2#47;
+    cuenta = #2#4;
+    digito = #2#5;
+    |HAZ b_asiento;        || existencia asiento
+    |HAZ b_cuenta;
+
+  |SI #1#6 = 0;                   || Concepto
+      e = "CONCEPTO AUTOMATICO IGUAL A CERO";
+      |PRINT;
+  |FINSI;
+
+ |SI #0#1 = "S";
+    |HAZ total_sop; #2#26 = nume4;
+    |GRABA 020#2a;
+ |FINSI;
+ |LIBERA #2;
+|FPRC;
+
+|DEFBUCLE lee_sopor;
+ #2#1;
+ ;
+  1, "  ",      1;
+ 99, "zz", 999999;
+ be;
+ NULL, lee_sopor1;
+|FIN;
+____________________________________/   REPERCUTIDO
+|PROCESO total_rep;
+    nume1 = #1#8  + #1#9  + #1#10 + #1#52 + #1#53;
+    nume2 = #1#14 + #1#15 + #1#16 + #1#56 + #1#57;
+    nume3 = #1#20 + #1#21 + #1#22 + #1#60 + #1#61;
+    nume4 = nume1 + nume2 + nume3;
+|FPRC;
+
+|PROCESO CambioNumero;
+      |SI nAntes = 0;
+          |SI nNume1 = 18;  |O nNume1 = 1.18; |O nNume1 = 0.18; aAlfa2 = "18%";  nNume2 = 18;  |FINSI;
+          |SI nNume1 =  8;  |O nNume1 = 1.08; |O nNume1 = 0.08; aAlfa2 = "8%";   nNume2 = 8;   |FINSI;
+          |SI nNume1 = 10;  |O nNume1 = 1.10; |O nNume1 = 0.10; aAlfa2 = "10%";  nNume2 = 10;  |FINSI;
+          |SI nNume1 = 8.5; |O nNume1 = 0.85;                   aAlfa2 = "8.5%"; nNume2 = 8.5; |FINSI;
+
+          |SI nNume1 = 21;  |O nNume1 = 1.21; |O nNume1 = 0.21; aAlfa2 = "21%";   nNume2 = 21;  |FINSI;
+          |SI nNume1 = 10.5;|O nNume1 = 1.05;                   aAlfa2 = "10.5%"; nNume2 = 10.5;|FINSI;
+
+      |FINSI;
+
+      |SI nAntes = 1;
+          |SI nNume1 = 16;  |O nNume1 = 1.16; |O nNume1 = 0.16; aAlfa2 = "16%";  nNume2 = 16;  |FINSI;
+          |SI nNume1 =  7;  |O nNume1 = 1.07; |O nNume1 = 0.07; aAlfa2 = "7%";   nNume2 = 7;   |FINSI;
+          |SI nNume1 =  9;  |O nNume1 = 1.09; |O nNume1 = 0.09; aAlfa2 = "9%";   nNume2 = 9;   |FINSI;
+          |SI nNume1 = 7.5; |O nNume1 = 0.75;                   aAlfa2 = "7.5%"; nNume2 = 7.5; |FINSI;
+
+          |SI nNume1 = 21;  |O nNume1 = 1.21; |O nNume1 = 0.21; aAlfa2 = "21%";   nNume2 = 21;  |FINSI;
+          |SI nNume1 = 10.5;|O nNume1 = 1.05;                   aAlfa2 = "10.5%"; nNume2 = 10.5;|FINSI;
+      |FINSI;
+
+      |SI nAntes = 2;
+          |SI nNume1 = 18;  |O nNume1 = 1.18; |O nNume1 = 0.18; aAlfa2 = "18%";  nNume2 = 18;  |FINSI;
+          |SI nNume1 =  8;  |O nNume1 = 1.08; |O nNume1 = 0.08; aAlfa2 = "8%";   nNume2 = 8;   |FINSI;
+          |SI nNume1 = 8.5; |O nNume1 = 0.85;                   aAlfa2 = "8.5%"; nNume2 = 8.5; |FINSI;
+
+          |SI nNume1 = 16;  |O nNume1 = 1.16; |O nNume1 = 0.16; aAlfa2 = "16%";  nNume2 = 16;  |FINSI;
+          |SI nNume1 =  7;  |O nNume1 = 1.07; |O nNume1 = 0.07; aAlfa2 = "7%";   nNume2 = 7;   |FINSI;
+          |SI nNume1 =  9;  |O nNume1 = 1.09; |O nNume1 = 0.09; aAlfa2 = "9%";   nNume2 = 9;   |FINSI;
+          |SI nNume1 = 7.5; |O nNume1 = 0.75;                   aAlfa2 = "7.5%"; nNume2 = 7.5; |FINSI;
+      |FINSI;
+|FPRC;
+
+|PROCESO CambioNumeroR;
+
+      |SI nAntes ! 2;
+          |SI nNume1 = 5.20; |O nNume1 = 1.52; |O nNume1 = 0.52; aAlfa2 = "5.20%";  nNume2 = 5.20;  |FINSI;
+          |SI nNume1 = 1.20; |O nNume1 = 1.14; |O nNume1 = 0.14; aAlfa2 = "1.40%";  nNume2 = 1.40;  |FINSI;
+      |FINSI;
+
+      |SI nAntes = 2;
+          |SI nNume1 = 4;   |O nNume1 = 1.40; |O nNume1 = 0.40; aAlfa2 = "4.00%";  nNume2 = 5.20;  |FINSI;
+          |SI nNume1 = 1;   |O nNume1 = 1.10; |O nNume1 = 0.10; aAlfa2 = "1.00%";  nNume2 = 1;     |FINSI;
+      |FINSI;
+|FPRC;
+
+|CALCULO VerFechas;
+  nError  = 0;
+  nAntes  = 0;
+  aAlfa2  = "";
+  aAlfa1  = "Fecha Factura ANTERIOR a 01.07.2010 ";
+  |SI fFecha ] "01.07.2010"; |Y fFecha < "01.09.2012";
+      aAlfa1  = "Fecha Factura ANTERIOR al 01.09.2012 ";
+      nAntes  = 1;
+      |SI enEjercicio < 2012;
+          aAlfa1  = "Fecha Factura POSTERIOR al 01.07.2010 ";
+      |FINSI;
+  |FINSI;
+  |SI fFecha ] "01.09.2012";
+      aAlfa1  = "Fecha Factura POSTERIOR a 01.09.2012 ";
+      nAntes  = 2;
+  |FINSI;
+
+  nNume1 = porc;
+  |SI nSwRec = 0; aAlfa1 = aAlfa1 + "y con IVA al ";    |HAZ CambioNumero;  |FINSI;
+  |SI nSwRec = 1; aAlfa1 = aAlfa1 + "y con Recargo al ";|HAZ CambioNumeroR; |FINSI;
+  |SI aAlfa2 ! "";
+      nError = 1;
+      aAlfa2 = aAlfa1 + aAlfa2;
+  |FINSI;
+|FCAL;
+
+|PROCESO c_rep2;
+
+   |SI punt < 6; |Y porc ! 0;
+        nNume1 = porc ! 0;
+        |SI nNume1 ! porc; |Y porc ! 0.5; |Y porc ! 7.5; |Y porc ! 8.5;
+            e = "% de IVA igual a " + porc + " en IVA " + punt;
+            |PRINT;
+        |SINO;
+            nSwRec = 0;
+            fFecha = #1#3;
+            |HAZ VerFechas;
+            |SI nError = 1;
+                e = aAlfa2;
+                |PRINT;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+
+   |SI punt ] 6; |Y porc ! 0;
+        nSwRec = 1;
+        nNume1 = porc ! 0;
+        fFecha = #1#3;
+        |HAZ VerFechas;
+        |SI nError = 1;
+            e = aAlfa2;
+            |PRINT;
+        |FINSI;
+   |FINSI;
+
+    nume1 = (base % porc) ! EURODB;
+
+    nume2 = nume1 - cuot;     |SI nume2 < 0; nume2 = nume2 * -1; |FINSI;
+
+|SI nume2 > #0#2;
+    |SI punt =  1;  e = "IVA 1";        #1#14 = nume1; |FINSI;
+    |SI punt =  2;  e = "IVA 2";        #1#15 = nume1; |FINSI;
+    |SI punt =  3;  e = "IVA 3";        #1#16 = nume1; |FINSI;
+    |SI punt =  4;  e = "IVA 4";        #1#56 = nume1; |FINSI;
+    |SI punt =  5;  e = "IVA 5";        #1#57 = nume1; |FINSI;
+    |SI punt =  6;  e = "Recargo 1";    #1#20 = nume1; |FINSI;
+    |SI punt =  7;  e = "Recargo 2";    #1#21 = nume1; |FINSI;
+    |SI punt =  8;  e = "Recargo 3";    #1#22 = nume1; |FINSI;
+    |SI punt =  9;  e = "Recargo 4";    #1#60 = nume1; |FINSI;
+    |SI punt = 10;  e = "Recargo 5";    #1#61 = nume1; |FINSI;
+        e = "Error en " + e;
+    |PRINT;
+    |HAZ total_rep;
+|FINSI;
+
+|FPRC;
+
+|PROCESO c_rep1;
+ |HAZ total_rep;
+ nume2 = nume4 - #1#26;
+ |SI nume2 < 0; nume2 = nume2 * -1; |FINSI;
+
+ |SI nume2 > #0#2;
+     e = "Error en Importe Total";
+     |PRINT;
+ |FINSI;
+|FPRC;
+
+|PROCESO lee_reper1;
+    #0#3 = "IVA Repercutido";      |PINTA #0#3;
+    #0#4 = #1#0;                   |PINTA #0#4;
+    #0#5 = #1#2;                   |PINTA #0#5;
+    #0#6 = #1#27;                  |PINTA #0#6;
+    #0#8 = #1#3;
+
+    |HAZ c_rep1;             || total factura
+
+    base = #1#8;    porc = #1#11;  cuot = #1#14;  punt =  1;|HAZ c_rep2;
+    base = #1#9;    porc = #1#12;  cuot = #1#15;  punt =  2;|HAZ c_rep2;
+    base = #1#10;   porc = #1#13;  cuot = #1#16;  punt =  3;|HAZ c_rep2;
+    base = #1#52;   porc = #1#54;  cuot = #1#56;  punt =  4;|HAZ c_rep2;
+    base = #1#53;   porc = #1#55;  cuot = #1#57;  punt =  5;|HAZ c_rep2;
+
+    base = #1#8;    porc = #1#17;  cuot = #1#20;  punt =  6;|HAZ c_rep2;
+    base = #1#9;    porc = #1#18;  cuot = #1#21;  punt =  7;|HAZ c_rep2;
+    base = #1#10;   porc = #1#19;  cuot = #1#22;  punt =  8;|HAZ c_rep2;
+    base = #1#52;   porc = #1#58;  cuot = #1#60;  punt =  9;|HAZ c_rep2;
+    base = #1#53;   porc = #1#59;  cuot = #1#61;  punt = 10;|HAZ c_rep2;
+
+    tipo = "R";
+    libro = #1#0;
+    factu = #1#2;
+    serie = #1#27;
+    diari = #1#45;
+    fecha = #1#46;
+    docum = #1#47;
+    cuenta = #1#4;
+    digito = #1#5;
+    |HAZ b_asiento;        || existencia asiento
+    |HAZ b_cuenta;
+
+    |SI #0#1 = "S";
+        |HAZ total_rep; #1#26 = nume4;
+        |GRABA 020#1a;
+   |FINSI;
+   |LIBERA #1;
+|FPRC;
+
+|DEFBUCLE lee_reper;
+ #1#1;
+ ;
+  1, "  ",      1;
+ 99, "zz", 999999;
+ be;
+ NULL, lee_reper1;
+|FIN;
+____________________________________/ CALCULO PRINCIPAL
+|PROCESO tipo3; |TIPO 3;
+|SI #0#0 = "SI";
+    |IMPRE 0;
+    |SI FSalida = 0;
+        |INFOR "caconiva";
+        |ABRE #3;
+        |ABRE #5;
+        |SI #0#7 = "R";|O #0#7 = "A";   |BUCLE lee_reper;   |FINSI;
+        |SI #0#7 = "S";|O #0#7 = "A";   |BUCLE lee_sopor;   |FINSI;
+        |CIERRA #3;
+        |CIERRA #5;
+        |PIEINF;
+        |FININF;
+    |SINO;
+        |MENAV "    Proceso abortado ...";
+    |FINSI;
+    |FINIMP;
+|FINSI;
+|FPRC;

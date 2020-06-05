@@ -1,0 +1,194 @@
+|FICHEROS;
+     tmp00000 #0;   || Tmp
+     agifa027 #27;
+     agifa142 #142;
+     agifa501 #501;
+     agifa502 #502;
+     agifa505 #505;
+     agifa508 #508;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     &Tempo = "";
+     &enHayVacios = 0;
+     aAlfa = "";
+     &nCaja = 0;
+     &fFecha = @;
+     aTiquets = "";
+     aSer = "";
+     aSerie = "";
+     conta_reg = 0;
+     claveconta = "";
+     &EURODB = 0;
+     nTotal = 0;
+     nBase = 0;
+     nIva = 0;
+|FIN;
+
+|PROCESO agifa502;
+     eaCli = #501#1; enTiva = #502#13; efFiva = #501#14; |HAZ IVACli;
+     #502#10 = #502#6 / (1 + (enIva / 100));
+
+     nTotal = ((#502#6 * #502#5) < #502#14) ! EURODB;
+     nBase = (nTotal / (1 + (enIva / 100))) ! EURODB;
+     nIva = nTotal - nBase;
+     #502#7 = nTotal;
+     #502#21 = nBase;
+     #502#19 = nIva;
+
+     |GRABA 020#502a;
+|FPRC;
+
+|DEFBUCLE agifa502;
+     #502#1;
+     ;
+     #501#36, #501#0, 001;
+     #501#36, #501#0, 999;
+     ;
+     NULL, agifa502;
+|FIN;
+
+|PROCESO SiguienteTiq;
+     |SALVA_FICHA #501;
+
+     |SELECT #2#501;
+     aSer = #501#57;
+     #501#35 = "T";
+     #501#58 = 999999;
+     |LEE 000#501];
+     |SI FSalida = 0;
+          |LEE 000#501a;
+     |SINO;
+          |LEE 000#501u;
+     |FINSI;
+     |SI FSalida = 0; |Y #501#57 = aSer; |Y #501#35 = "T";
+          conta_reg = #501#58 + 1;
+     |SINO;
+          conta_reg = 1;
+     |FINSI;
+     |SELECT #1#501;
+
+     |REPON_FICHA #501;
+|FPRC;
+
+|PROCESO contique; |TIPO 0;
+     conta_reg = 0;
+     |ABRE #508;
+     |DDEFECTO #508;
+     #508#0 = claveconta;
+     claveconta = #508#0;        ||para que lo rellene de blancos
+     #508#1 = #501#57;
+     |LEE 101#508];
+     |PARA; |SI FSalida = 0; |Y #508#0 = claveconta; |Y #508#1 = #501#57; |HACIENDO;
+          claveconta = #508#0;
+          |SI #508#3 = #501#14;
+               conta_reg = #508#2;
+               |BORRA 021#508a;
+               |SAL;
+          |FINSI;
+          |LIBERA #508;
+          |LEE 101#508s;
+     |SIGUE;
+     |CIERRA #508;
+
+     |SI conta_reg = 0;
+          |ABRE #27;
+          #27#0 = claveconta;
+          #27#2 = #501#57;
+          |LEE 101#27=;
+          |SI FSalida ! 0;
+               #27#1 = 1;
+               |GRABA 021#27b;
+          |FINSI;
+          conta_reg = #27#1;
+          #27#1 = #27#1 + 1;
+          |GRABA 021#27a;
+          |CIERRA #27;
+     |FINSI;
+|FPRC;
+
+|PROCESO Tmp;
+     #501#36 = #0#0;
+     #501#0 = #0#1;
+     |LEE 121#501=
+
+     #501#57 = aSerie;
+     |SI #142#137 = "F";
+          claveconta = "vtiquet";
+          |HAZ contique;
+     |SINO;
+          |HAZ SiguienteTiq;
+     |FINSI;
+     #501#58 = conta_reg;
+
+/*
+    Se supone que las l¡neas est n correctas
+     |BUCLE agifa502;
+*/
+     |HAZ Recal501;
+     |HAZ ActCab;
+
+     |GRABA 020#501a;
+     |LIBERA #501;
+
+     aAlfa = #501#57; |QBF aAlfa;
+     aTiquets = aTiquets + aAlfa + "/" + (("000000" + #501#58) % -106) + " ";
+|FPRC;
+
+|DEFBUCLE Tmp;
+     #0#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, Tmp;
+|FIN;
+
+
+|PROCESO agifa501;
+     #0#0 = #501#36;
+     #0#1 = #501#0;
+     |GRABA 020#0n;
+|FPRC;
+
+|DEFBUCLE agifa501; || los tiquest que tienen el Numero documento = 0
+     #501#3;
+     12;
+     fFecha, "      ", "T", "     ", 000000, nCaja;
+     fFecha, "zzzzzz", "T", "zzzzz", 000000, nCaja;
+     be;
+     NULL, agifa501;
+|FIN;
+
+|PROGRAMA;
+     aAlfa = PARAMETRO % 110; fFecha = aAlfa;
+     aAlfa = PARAMETRO % 1105; nCaja = aAlfa;
+
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+
+     |ABRE #505;
+     #505#0 = nCaja;
+     |LEE 020#505=;
+     |CIERRA #505;
+     aSerie = #505#105;
+
+     |HAZ CreaTempo; |NOME_DAT #0 Tempo; |DELINDEX #0; |ABRE #0;
+     |ABRE #0;
+     |BUCLE agifa501;
+     |ABRE #501;
+     |BUCLE Tmp;
+     |CIERRA #501;
+     |CIERRA #0; |DELINDEX #0;
+
+     |SI aTiquets ! "";
+          aTiquets = "0000" + aTiquets;
+          |MENAV "0000Se han detectado tiquets no asignados a documentos.";
+          |MENAV aTiquets;
+          |MENAV "0000Debe entrar a modificar estos tiquets e imprimirlos de nuevo.";
+          enHayVacios = 1;
+     |SINO;
+          enHayVacios = 0;
+     |FINSI;
+|FPRO;

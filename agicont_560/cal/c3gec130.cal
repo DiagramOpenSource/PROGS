@@ -1,0 +1,467 @@
+|FICHEROS;
+  c3gec130 #0;    || def entrada
+  caexistl #1;    || lineas de existencias
+  cacuenta #2;    || Plan contable
+  caplctac #3;    || cabecera Planilla
+  caplctal #4;    || Lineas Planilla
+  caman130 #5;    || modelo 130
+  caportad #8;    || Portadas
+  canempre #30;
+|FIN;
+
+|VARIABLES;
+  sw_def = 0;
+  sw_exi = 0;
+  sw_error = 0;
+  y = "";
+  x = 0;
+  xxq = 0;
+  &r_eje = 0;
+  &estru = 0;
+  &d_mes = 0;
+  &h_mes = 0;
+  &r_nom = "";
+  exini = 0;
+  exfin = 0;
+  cc1 = 0;
+  cc2 = 0;
+  cc3 = 0;
+  cc4 = 0;
+  cc5 = 0;
+  v_anter = 0;
+  f_anter = 0;
+  c_anter = 0;
+  i_anter = 0;
+  r_anter = 0;
+  p_anter = 0;
+    ventas = 0;
+    compra = 0;
+    retenc = 0;
+    empreos = 0;
+    activid = 1;
+    periodo = 0;
+    ejercic = 0;
+  uno = "";
+  dos = "";
+  sumactas = 0;
+  scta = 0;
+  cta = "";
+
+  i_cm1 = 5;
+  alfa1 = "";
+  alfa2 = "";
+  coefi_g = 0;
+|FIN;
+
+|INCLUYE acceso_i;
+|INCLUYE multie_i;
+
+***************************************************************************
+               CAMPO DE PANTALLA
+***************************************************************************
+|PROCESO tipo8;  |TIPO 8;
+  |HAZ inicio;
+  any = #30#26;
+  |HAZ coloca;
+|FPRC;
+
+|PROCESO defectos; |TIPO 7;
+  |SI sw_def = 1; |ACABA; |FINSI;
+  |DDEFECTO #3;
+  |ABRE #3;
+  |LEE 000#3p;
+  |SI FSalida = 0;
+      #0#3 = #3#0; |PINTA #0#3;
+  |FINSI;
+  |CIERRA #3;
+  #0#0 = any; |PINTA #0#0;
+  sw_def = 1;
+|FPRC;
+
+|PROCESO h_per; |TIPO 0;
+  |SI #0#1 > #0#2; |ERROR; |FINSI;
+|FPRC;
+
+|PROCESO mayor; |TIPO 0;
+  alfa1 = #0Campo > " ";
+  #0Campo = alfa1;
+  |PINTA #0Campo;
+|FPRC;
+
+|| ***********************************************************************
+|PROCESO sel_multi;
+  |SI #30#26 ! #0#0;  |ACABA; |FINSI;
+  |SI #30#21 = "I";   |ACABA; |FINSI;
+  sw_error = 0;
+
+  alfa1 = #30#2;
+  alfa2 = #30#3;
+  alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+  alfa2 = "0"     + alfa2;   alfa2 = alfa2 % -101;
+  dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+
+  || ... Busca Datos de Portada
+  |PATH_DAT #8 dirfich0;
+  |DDEFECTO #8;
+  |ABRE #8;
+  #8#0 = #30#2;
+  #8#1 = #30#26;
+  |LEE 000#8=;
+  |SI FSalida ! 0;
+      sw_error = 1;
+  |SINO;
+     |SI #8#82 ! "P"; |Y #8#82 ! "E";
+         sw_error = 2;
+     |FINSI;
+  |FINSI;
+  |CIERRA #8;
+
+||   |SI sw_error = 0; leidos = 1; |FINSI;
+  leidos = 1;
+|FPRC;
+
+|PROCESO esbuena2;
+ |SI FSalida = 2; |ACABA; |FINSI;
+ |CAMPO_MODIFICA #0Campo,0,alfa1;
+ |SI alfa1 = "N"; |ACABA; |FINSI;
+ |SI sw_error !  0; |Y leidos = 1;
+     |SI sw_error = 1; |MENAV "    No encontrado Fichero Portadas Modelos"; |FINSI;
+     |SI sw_error = 2; |MENAV "    Esta Empresa no realiza el Modelo 130 "; |FINSI;
+     leidos = 0;
+     |ERROR;
+ |FINSI;
+|FPRC;
+
+|| ***********************************************************************
+|| ---------- Seleccion DESDE / HASTA Empresa.
+|PROCESO esdesd1;
+  alfa1 = #30#2;
+  alfa2 = #30#3;
+  alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+  alfa2 = "0"   + alfa2;   alfa2 = alfa2 % -101;
+  dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+  sw_error = 0;
+  leidos = 0;
+  |HAZ sel_multi;
+  |SI leidos = 1; |Y sw_error = 0;
+      |HAZ haztodo;
+  |FINSI;
+|FPRC;
+
+|DEFBUCLE esdesde;
+ #30#1;
+ ;
+ d_empres, d_period;
+ h_empres, h_period;
+ e;
+ NULL,esdesd1;
+|FIN;
+
+|| ---------- Seleccion en parrilla.
+|PROCESO esunaauna;
+  |PARA xx = i_cm6; |SI xx [ i_cm7; |HACIENDO xx = xx + 1;
+        |SI #0xx = 0;  |SAL;  |FINSI;
+        yy = xx + 20;
+        alfa1 = #0xx;
+        alfa2 = #0yy;
+
+        || ... lee empresa
+           |ABRE #30;
+           |DDEFECTO #30;
+           #30#2 = #0xx;
+           #30#3 = #0yy;
+           |LEE 011#30=;
+           |CIERRA #30;
+           leidos = 0; sw_error = 0;
+           |HAZ sel_multi;
+           |SI leidos = 0; |O sw_error ! 0; |VETE otramas; |FINSI;
+        || ...................
+
+        alfa1 = "00000" + alfa1;   alfa1 = alfa1 % -105;
+        alfa2 = "0"     + alfa2;   alfa2 = alfa2 % -101;
+        dirfich0 = dir_fich + alfa1 + alfa2 + "/";
+
+        |HAZ haztodo;
+ |ET otramas;
+  |SIGUE;
+|FPRC;
+
+
+|| ***********************************************************************
+|| ===== PROCESO de Existencias
+
+|PROCESO sumaex;
+  exini = exini + #1cc1;
+  exfin = exfin + #1cc2;
+|FPRC;
+
+|DEFBUCLE lineas;
+ #1#1;
+ ;
+ #0#3, 01;
+ #0#3, 99;
+ e;
+ NULL, sumaex;
+|FIN;
+
+|PROCESO lee_exist;
+  |ABRE #1;
+  exini = 0;
+  exfin = 0;
+  |SI periodo = 1; cc1 = 11; cc2 = 14;  |FINSI;
+  |SI periodo = 2; cc1 = 14; cc2 = 17;  |FINSI;
+  |SI periodo = 3; cc1 = 17; cc2 = 20;  |FINSI;
+  |SI periodo = 4; cc1 = 20; cc2 = 23;  |FINSI;
+  |BUCLE lineas;
+|FPRC;
+
+|| ==================================================
+
+|PROCESO anterior;
+  #5#0  = empreos;
+  #5#1  = activid;
+  #5#2  = periodo - 1;
+  #5#3  = ejercic;
+  |LEE 040#5=;
+  |SI FSalida = 0;
+      v_anter = #5#8;
+      f_anter = #5#11;
+      c_anter = #5#14;
+      i_anter = #5#17;
+      r_anter = #5#25;
+      p_anter = #5#28 + #5#29;
+  |FINSI;
+|FPRC;
+
+|PROCESO calcular;
+  |SI #8#83 ! "N";
+      #5#31 = #5#30 % 2;
+      #5#29 = #5#31 - #5#36;
+      |SI #5#29 < 0; #5#29 = 0; |FINSI;
+      |ACABA;
+  |FINSI;
+
+  #5#8  = #5#6 + #5#7;
+  #5#11 = #5#9;
+  #5#14 = #5#12 + #5#13;
+
+  |SI #5#16 ! 0;
+      #5#17 = #5#16;
+  |SINO;
+      #5#17 = #5#15;
+  |FINSI;
+
+  #5#18 = #5#8 + #5#11 - #5#14 - #5#17;
+
+  |SI #8#81 = "B";
+      #5#21 = #5#18 % #5#20;
+      #5#19 = 0;
+  |SINO;
+      |SI #8#82 = "P"; #5#19 = #5#8 % 1; |SINO; #5#19 = 0; |FINSI;
+      #5#21 = 0;
+  |FINSI;
+
+  |SI #5#3 ] 98; |O #5#3 [ 10; #5#19 = 0; |FINSI;
+
+  |SI #5#18 < 0; #5#19 = 0; #5#21 = 0; |FINSI;
+
+  #5#22 = #5#18 - #5#19 - #5#21;
+
+  #5#25 = #5#23 + #5#24;
+
+  |SI #8#87 = 1; #5#26 = #5#18; |SINO; #5#26 = #5#22; |FINSI;
+
+  #5#26 = #5#26 + #5#37;
+
+  #5#27 = #5#26 % 20;
+  #5#29 = #5#27 - #5#28 - #5#25
+
+  |SI #5#29 < 0; #5#29 = 0; |FINSI;
+|FPRC;
+
+|PROCESO cal_ctas2;
+   cta = #2#0 + "            ";
+   cta = cta % A112;
+   |ATRI R; |PINTA 2265, cta; |ATRI 0;
+   cc3 = 12 + (periodo - 1) * 9;
+   cc4 = 15 + (periodo - 1) * 9;
+   cc5 = 18 + (periodo - 1) * 9;
+   |SI #4#4 = "H";
+       cc3 = cc3 + 1;
+       cc4 = cc4 + 1;
+       cc5 = cc5 + 1;
+   |FINSI;
+   |SI #4#4 = "S";
+       cc3 = cc3 + 2;
+       cc4 = cc4 + 2;
+       cc5 = cc5 + 2;
+   |FINSI;
+   scta = #2cc3 + #2cc4 + #2cc5;
+   |SI #4#3 = "I"; |Y #4#4 = "S";
+       scta = - scta;
+   |FINSI;
+   sumactas = sumactas + scta;
+|FPRC;
+
+|DEFBUCLE lee_ctas;
+ #2#1;
+ 3;
+ #4#2, 0, "S";
+ dos,  9, "S";
+ e;
+ NULL, cal_ctas2;
+|FIN;
+
+|PROCESO cal_ctas1;
+   sumactas = 0;
+   |SI #4#4 = "*"; |ACABA; |FINSI;
+   uno = #4#2;
+   |QBF uno;
+   dos = uno + "999999999999";
+   dos = dos % A112;
+   |BUCLE lee_ctas;
+   |SI #4#3 = "I";
+       ventas = ventas + sumactas;
+   |FINSI;
+   |SI #4#3 = "G";
+       compra = compra + sumactas;
+   |FINSI;
+   |SI #4#3 = "R";
+       retenc = retenc + sumactas;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE ctas_130;
+ #4#1;
+ ;
+ #0#3, 001;
+ #0#3, 999;
+ e;
+ NULL, cal_ctas1;
+|FIN;
+
+|PROCESO pon_cero;
+   exini = 0;
+   exfin = 0;
+   v_anter = 0;
+   f_anter = 0;
+   c_anter = 0;
+   i_anter = 0;
+   r_anter = 0;
+   p_anter = 0;
+   ventas = 0;
+   compra = 0;
+   retenc = 0;
+|FPRC;
+
+|PROCESO crea_130;
+  |HAZ pon_cero;
+  |SI #8#83 = "N";
+      |SI periodo ! 1;
+          |HAZ anterior;
+      |FINSI;
+      |HAZ lee_exist;
+  |FINSI;
+  |BUCLE ctas_130;
+  #5#0  = empreos;
+  #5#1  = activid;
+  #5#2  = periodo;
+  #5#3  = ejercic;
+  |LEE 040#5=;
+  |SI FSalida ! 0; |DDEFECTO #5; |FINSI;
+
+  #5#0  = empreos;
+  #5#1  = activid;
+  #5#2  = periodo;
+  #5#3  = ejercic;
+  |SI #8#83 = "N";
+      #5#6  = ventas;
+      #5#7  = v_anter;
+      #5#9  = exfin;
+      #5#10 = f_anter;
+      #5#12 = compra;
+      #5#13 = c_anter;
+      #5#15 = exini;
+      #5#16 = i_anter;
+      #5#23 = retenc;
+      #5#24 = r_anter;
+      #5#28 = p_anter;
+      coefi_g = 0; |SI #8#81 = "B"; coefi_g = #8#86;|FINSI;
+      #5#20 = coefi_g;
+  |SINO;
+      #5#30 = ventas;
+      #5#36 = retenc;
+  |FINSI;
+  |HAZ calcular;
+  |GRABA 020#5n;
+|FPRC;
+
+|| ===== Anula los registros seleccionados
+
+|PROCESO borrando;
+   |BORRA 020#5a;
+|FPRC;
+
+|DEFBUCLE borra;
+ #5#1;
+ ;
+ empreos, activid, #0#1, ejercic;
+ empreos, activid, #0#2, ejercic;
+ e;
+ NULL, borrando;
+|FIN;
+
+|| ==========================================================================
+|PROCESO reo130g; |TIPO 3;
+
+  |PUSHV 2102 2378;
+  |ATRI I;
+  |CUADRO 2102 2378
+  |ATRI N;
+  |ATRI R;
+  |PINTA 2203," EMPRESA:                                                                  ";
+  |ATRI 0;
+
+  |SI #0i_cm1 = "S";
+      |BUCLE esdesde;
+  |SINO;
+      |HAZ esunaauna;
+  |FINSI;
+|FPRC;
+
+|| ******************************** PROCESO
+|PROCESO haztodo;
+
+ enEmpresa = #canempre#2;
+ enPeriodo = #canempre#3;
+ swOperacion = 0;
+ |SUB_EJECUTA "camoneda";
+
+ |PATH_DAT #1 dirfich0;
+ |PATH_DAT #2 dirfich0;
+ |PATH_DAT #3 dirfich0;
+ |PATH_DAT #4 dirfich0;
+ |PATH_DAT #5 dirfich0;
+ |PATH_DAT #8 dirfich0;
+
+  |ATRI R;
+  |PINTA 2213, #30#2;
+  |PINTA 2219, #30#3;
+  |PINTA 2221, #30#1;
+  |ATRI 0;
+    empreos = #30#2;
+    activid = 1;
+    ejercic = #0#0;
+  |BUCLE borra;
+
+  |ABRE #5;
+  |PARA xxq = #0#1; |SI xxq [ #0#2; |HACIENDO xxq = xxq + 1;
+    empreos = #30#2;
+    activid = 1;
+    periodo = xxq;
+    ejercic = #0#0;
+    |HAZ crea_130;
+  |SIGUE;
+  |CIERRA #5;
+|FPRC;
+|| **************************************************************************

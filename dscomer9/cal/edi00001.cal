@@ -1,0 +1,900 @@
+|FICHEROS;
+     edi00001 #0;   || Este def.
+     agifa134 #1;   || Facturas(C).
+     agifa059 #2;   || Facturas(L).
+     agifa024 #3;   || Clientes.
+     agifa010 #4;   || Albaranes(C).
+     agifa071 #5;   || Albaranes(L).
+     agifa091 #6;   || Formas de pago.
+     agifa104 #12;  || Pedidos(C).
+     agifa038 #13;  || Descripcion ampliada.
+     agifa133 #17;  || fichero de vencimientos de las facturas
+     agifa007 #40;  || Series.
+     agifa142 #41;  || Parametros generales.
+     agifa177 #99;  || Tipos de Recibos.
+     edi00002 #80;  || Empresa (EDI).
+     agifa019 #85;  || Articulos.
+     edi00003 #91;  || Codigos Edi Cliente...
+     dsm00109 #109;
+|FIN;
+
+|VARIABLES;
+     &enTiva        = 0;
+     &enIva         = 0;
+     &enRec         = 0;
+     &eaCli         = "";
+     &efFiva = @;
+     aDepar  = "";
+     toimpu  = 0;
+     tdo     = 0;
+     nVic    = 0;
+     aAlfa   = "";
+     nAlfa   = 0;
+     swNo    = 0;
+     b35     = "                                   "; || 35 Blancos.
+     b27     = "                           ";         || 27 Blancos.
+     b22     = "                      ";              || 22 Blancos.
+     b15     = "               ";                     || 15 Blancos.
+     b7      = "       ";                             ||  7 Blancos.
+     b3      = "   ";                                 ||  3 Blancos.
+     swk     = 0;
+     nuv     = 0;
+     nDifDi  = 0;
+     aDif    = "";
+     numeso  = 0;
+     nombre  = "";
+     empresa = "";
+     fiche   = "";
+     handle  = "";
+     art     = "";
+     tipoart = "";
+     pedidos = "";
+     pedidon = "";
+     descrip = "";
+     alfa = "";
+     alf1 = "";
+     alf2 = "";
+     nnn  = 0;
+     nx   = 0;
+     contenido = "";
+     feca = "";
+     fecm = "";
+     fecd = "";
+     numer = 0;
+     numerl = 0;
+     nnume  = 0;
+     anume = "";
+     anume2 = "";
+     lineas = 0;
+     swsaber = 0;
+     swmas   = 0;
+     albaran = "";
+     serieal = "";
+|FIN;
+
+||INC*-LUYE llena_c1;
+
+
+
+
+|CALCULO agifa071b;
+     #12#0  = #5#12;
+     #12#25 = #5#31;
+     |LEE 041#12=;
+     pedidon = #12#3;
+     |ERROR10;
+|FCAL;
+
+|CALCULO agifa071;
+     #12#0  = #5#12;
+     #12#25 = #5#31;
+     |LEE 041#12=;
+     descrip = #5#4;
+     || lectura articulo.
+     #109#0 = #4#3;
+     #109#2 = #5#2;
+     |LEE 000#109=;
+     |SI FSalida = 0;
+          #85#0 = #109#3;
+     |SINO;
+          #85#0 = #5#2;
+     |FINSI;
+     |LEE 041#85=;
+     |SI FSalida ! 0;
+          art = #85#0;
+          tipoart = "  ";
+     |SINO;
+          anume2  = #85#128;
+          |QBF anume2;
+          |SI anume2 = "";
+               art = #85#0;
+               tipoart = "  ";
+          |SINO;
+               art = #85#128;
+               tipoart = "EN";
+          |FINSI;
+     |FINSI;
+     |HAZ cargalin;                         || Carga Lineas Albaran EDI
+|FCAL;
+
+|CALCULO agifa059;
+     |ABRE #12;
+     |SI swmas = 0;
+          albaran = #2#2;
+          serieal = #2#15;
+     |FINSI;
+     #4#0 = #2#2;
+     #4#52= #2#15;
+     |LEE 040#4=;
+     aDepar = #4#55;
+     |QBF aDepar;
+     |SI FSalida = 0;
+          swmas = swmas + 1;
+          |SI swsaber = 0;
+               |BUCLELIN 2 agifa071 #4;
+          |FINSI;
+          |SI swsaber = 1;
+               |BUCLELIN 2 agifa071b #4;   || Para Saber El N§ Pedido.Cliente......
+          |FINSI;
+     |FINSI;
+     |CIERRA #12
+|FCAL;
+
+
+
+|CALCULO agifa134;
+     swNo = 0;
+     |HAZ parrillacli;
+     |SI swNo = 0; |ACABA; |FINSI;
+     swNo = 0;
+     |HAZ parrillaalb;
+     |SI swNo = 0; |ACABA; |FINSI;
+     #3#0 = #1#2;
+     |LEE 000#3=;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+     |ABRE #13;
+     |DDEFECTO #13;
+     #13#0 = #1#7;
+     |LEE 041#13=;
+     |CIERRA #13;
+          swsaber = 1;
+          swmas   = 0;
+          pedidon = "";
+          |BUCLELIN 0 agifa059 #1;            || Lee albaranes para saber si ha mas de uno.
+          |SI swmas > 1;
+               |MENAV "0000Hay Mas de 1 Albaran";
+               |ACABA;
+          |FINSI;
+          swsaber = 0;
+          |HAZ cargacab;                      || Carga Cabecera EDI
+          ||SI #6#0 ! #1#11;
+               |ABRE #6;
+               #6#0 = #1#11;
+               |LEE 041#6=;
+               |SI 0 ! FSalida; |DDEFECTO #6; |FINSI;
+               |HAZ cargapag;                 || Carga Forma de Pago EDI
+               |CIERRA #6;
+          ||FINSI;
+          |BUCLELIN 0 agifa059 #1;
+          |HAZ cargatot;                      || Carga Total Factura EDI
+          |HAZ finsop;
+          #1#87 = "S";
+          |GRABA 020#1a;
+          |LIBERA #1;
+|FCAL;
+
+
+|DEFBUCLE agifa134;
+     #1#1;
+     2,1,31;
+     #0#9, #0#2 , #0#0 , #0#4 ,  #0#7;
+     #0#10,#0#3 , #0#1 , #0#5 ,  #0#8;
+     be;
+     NULL,agifa134;
+|FIN;
+
+|PROGRAMA;
+     |CLS;
+     |CABEZA "Pase Facturas a EDI.";
+     |PINPA #0#0;
+     |PINDA #0#0;
+     |ENDATOS #1#0;
+     |SI FSalida = 0;
+          |HAZ lee_param;
+          |HAZ lee_empresa;
+          |HAZ abr_fic;             || Apertura Fichero Directo.
+          |SI handle ] 0;
+               |ABRE #109; |SELECT #2#109;
+               |ABRE #5;
+               |ABRE #4;
+               |ABRE #3;
+               |ABRE #85;
+               |BUCLE agifa134;
+               |CIERRA #3;
+               |CIERRA #4;
+               |CIERRA #5;
+               |CIERRA #85;
+               |CIERRA #109;
+               FSalida = handle;
+               |FCIERRA FSalida;
+               Pos = -1;
+          |SINO;
+               |MENAV "0000Error En Fichero EDI";
+          |FINSI;
+     |FINSI;
+|FPRO;
+
+|| _______________________________________ Procesos Auxiliares.
+
+|PROCESO lee_param;
+     |ABRE #41;
+     #41#0 = "A";
+     |LEE 001#41=;
+     |SI FSalida ! 0; |DDEFECTO #41;|FINSI;
+     |CIERRA #41;
+|FPRC;
+
+|PROCESO lee_empresa;
+     |ABRE #80;
+     |LEE 000#80p;
+     |SI FSalida ! 0;
+          |DDEFECTO #80;
+     |FINSI;
+     |CIERRA #80;
+|FPRC;
+
+|PROCESO agifa1332;
+     ||---------------------------------- PAT Forma de Pago
+     alfa = "";                                 || 21   = Pago Varios Vtos.
+     alfa = "PA021 " + "                 " + "   " + "   " + b35 + b35 + "   " + "   ";
+     alfa = "PA021";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- DTM Fecha de Pago
+     alfa = "";                                  || #17#3 = Fecha Factura.
+     feca = #17#3 % -104;                        || 102   = Formato AAAAMMDD
+     fecm = #17#3 % 402;
+     fecd = #17#3 % 102;
+     alfa = "DT313 " + feca + fecm + fecd + b27 + "102";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA Importe
+     alfa = "";                                   || 23 = Importe Cargado
+     nnume = (#17#2 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa = "MO023 " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+
+|FPRC;
+
+|DEFBUCLE agifa1332;
+     #17#1;
+     ;
+#1#49,#1#0,1;
+#1#49,#1#0,999;
+;
+NULL,agifa1332;
+|FIN;
+
+|PROCESO agifa1331;
+
+     ||---------------------------------- PAT Forma de Pago
+     nDifDi = #17#3 - #1#1;
+     |SI nDifDi [ 0;
+          nDifDi = 0;
+     |FINSI;
+     aDif = nDifDi;
+     |QBT aDif;
+     aDif = (aDif + "     ") % 103;
+     alfa = "";                                 || 35   = Pago Unico
+     alfa = "PA035 " +  "                 " + "   " + "   " + b35 + b35 +  "29 " + "3  " + "D  " + aDif;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- DTM Fecha de Pago
+     alfa = "";                                  || #17#3 = Fecha Factura.
+     feca = #17#3 % -104;                        || 102   = Formato AAAAMMDD
+     fecm = #17#3 % 402;
+     fecd = #17#3 % 102;
+     alfa = "DT313 " + feca + fecm + fecd + b27 + "102";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA Importe
+     alfa = "";                                   || 23 = Importe Cargado
+     nnume = (#17#2 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa = "MO023 " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+
+|FPRC;
+
+|DEFBUCLE agifa1331;
+     #17#1;
+     ;
+#1#49,#1#0,1;
+#1#49,#1#0,999;
+;
+NULL,agifa1331;
+|FIN;
+
+|PROCESO agifa1330;
+   nuv = nuv + 1;
+|FPRC;
+
+|DEFBUCLE agifa1330;
+     #17#1;
+     ;
+#1#49,#1#0,1;
+#1#49,#1#0,999;
+;
+NULL,agifa1330;
+|FIN;
+
+
+
+||***********************************************************
+||************ APERTURA FICHERO SECUENCIAL........ **********
+||***********************************************************
+
+|PROCESO abr_fic;
+
+  |DFICB empresa;
+  fiche = "wt  " + empresa + "transedi.seq";
+  |QBF fiche;
+  |FABRE fiche;
+  handle = FSalida;
+
+|FPRC;
+
+|PROCESO cargacab;
+   |ABRE #91;
+   #91#0 = #3#0;
+   |LEE 101#91=;
+     |SI FSalida ! 0;
+          |DDEFECTO #91;
+     |FINSI;
+   |LIBERA #91;
+   |CIERRA #91;
+   |SI swk = 0;
+     lineas = 0;
+     swk = 1;
+   |FINSI;
+     numerl = 0;
+     ||---------------------------------- AEH Cabecera Mensaje.....
+     alfa = "";
+     numer = numer + 1;
+     anume = numer;
+     alfa  = "AEH" + "INVOICD  93AUNEAN007";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- BGM Principio de Mensaje.
+  |SI #1#31 ] 0;
+     alfa = "";                                     || 380  = Factura Comercial
+     alfa = "BGM380" + "   " + "   " + b35 + #1#49 + "/"+ #1#0;  || #1#0 = N§ Factura.
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+  |SINO;
+     alfa = "";                                     || 381  = Nota de Abono....
+     alfa = "BGM381" + "   " + "   " + b35 + #1#49 + "/"+ #1#0;  || #1#0 = N§ Factura.
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+  |FINSI;
+     ||---------------------------------- DTM Fecha Factura.
+     alfa = "";                                     || #1#1 = Fecha Factura.
+     feca = #1#1 % -104;                            || 102  = Formato AAAAMMDD
+     fecm = #1#1 % 402;
+     fecd = #1#1 % 102;
+     alfa = "DT0137" + feca + fecm + fecd + b27 + "102";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- RFF Referencias
+     alfa = "";                                 || QD   = N§ Pedido
+     alfa = "RF0ON " + pedidon;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- RFF Referencias
+     alfa = "";                                 || QD   = N§ Albaran
+     alfa = "RF0DQ "  + serieal + "/"+albaran;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- NAD Vendedor.
+     alfa = "";                                 || SU   = Vendedor.
+     alfa = "N01SU " + #80#0 + "    " + "   9";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Nombre Empresa Emisora Factura.
+     alf1 = #80#1 + b35;
+     alf1 = alf1 % 135;
+     || alf2 = #80#2 + b35;
+     || alf2 = alf2 % 135;
+     alfa = "";
+     alfa = "N02" + alf1 + b35;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Direccion Empresa Emisora Factura.
+     alf1 = #80#3 + b35;
+     alf1 = alf1 % 135;
+     alfa = "";
+     alfa = "N03" + alf1 + b35 + b35 + #80#4 + "         " + #80#5;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- RFF NIF Empresa Vendedora.
+     alfa = "";                                || VA   = NIF.
+     alfa = "RF1VA " + #80#13;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- NAD Emisor Factura.
+     alfa = "";                                 || II   = Emisor Factura.
+     alfa = "N01II " + #80#6 + "    " + "   9";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Nombre Empresa Emisora Factura.
+     alf1 = #80#7 + b35;
+     alf1 = alf1 % 135;
+     || alf2 = #80#8 + b35;
+     || alf2 = alf2 % 135;
+     alfa = "";
+     alfa = "N02" + alf1 + b35;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Direccion Empresa Emisora Factura.
+     alf1 = #80#9 + b35;
+     alf1 = alf1 % 135;
+     alfa = "";
+     alfa = "N03" + alf1 + b35 + b35 + #80#10 + "         " + #80#11;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- NAD Comprador.
+     alfa = "";                                 || BY   = Comprador.
+     alfa = "N01BY " + #91#7 + "    " + "   9";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Nombre Empresa Compradora.
+     alf1 = #91#8 + b35;
+     alf1 = alf1 % 135;
+     alfa = "";
+     alfa = "N02" + alf1;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Direccion Empresa Compradora.
+     alf1 = #3#8 + b35;
+     alf1 = alf1 % 135;
+     alf2 = #3#9 + b35;
+     alf2 = alf2 % 135;
+     alfa = "";
+     alfa = "N03" + alf1 + b35 + b35 + alf2 + "         " + #3#183;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- RFF NIF Empresa Compradora.
+     alfa = "";                                || VA   = NIF.
+     alfa = "RF1VA " + #3#15;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- RFF Cod.Departamento Compradora.
+     alfa = "";                                || API  = NIF.
+     alfa = "RF1API" + aDepar;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- NAD Receptor Factura.
+     alfa = "";                                 || IV   = Receptor Factura.
+     alfa = "N01IV " + #91#3 + "    " + "   9  ";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Nombre Empresa Receptora.
+     alf1 = #91#4 + b35;
+     alf1 = alf1 % 135;
+     alfa = "";
+     alfa = "N02" + alf1;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Direccion Empresa Receptora.
+     alf1 = #3#8 + b35;
+     alf1 = alf1 % 135;
+     alf2 = #3#9 + b35;
+     alf2 = alf2 % 135;
+     alfa = "";
+     alfa = "N03" + alf1 + b35 + b35 + alf2 + "         " + #3#183;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- RFF NIF Empresa Receptora.
+     alfa = "";                                || VA   = NIF.
+     alfa = "RF1VA " + #3#15;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- NAD Receptor Mercancia.
+     alfa = "";                                 || DP   = Receptor Mercancia.
+     alfa = "N01DP " + #91#1 + "    " + "   9  ";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Nombre Empresa Receptora.
+     alf1 = #91#2 + b35;
+     alf1 = alf1 % 135;
+     alfa = "";
+     alfa = "N02" + alf1;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||-------- NAD Direccion Empresa Receptora.
+     alf1 = #3#5 + b35;
+     alf1 = alf1 % 135;
+     alf2 = #3#6 + b35;
+     alf2 = alf2 % 135;
+     alfa = "";
+     alfa = "N03" + alf1 + b35 + b35 + alf2 + "         " + #3#180;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- RFF NIF Empresa Receptora.
+     alfa = "";                                || VA   = NIF.
+     alfa = "RF1VA " + #3#15;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+|FPRC;
+
+|PROCESO cargapag;
+     nuv = 0;
+     |BUCLE agifa1330;  || comprobar N§ Vtos.
+     |SI nuv = 1;
+          |BUCLE agifa1331;  || Un Solo Vto.
+     |FINSI;
+     |SI nuv > 1;
+          |BUCLE agifa1332;  || Mas de 1 Vto.
+     |FINSI;
+|| Carga dtos.....................................................
+
+ |SI #1#17 ! 0;
+     nnume = #1#21 +#1#24 + #1#27 + #1#33 + #1#36;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     nx = (( #1#17 * 100 ) / #1#18) ! 3;
+     |SI nx < 0;
+     nx = nx * -1;
+     |FINSI;
+     ||---------------------------------- PCD  % Dto....
+     alfa = "";                           || LIN
+     alfa  = "AC0A  " + b35 + b3 + b3 + "1  " + "TD ";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- PCD  % Dto....
+     alfa = "";                                     ||
+     nnume = ( nx * 10000 ) ! 0;
+     anume = ("00000000000000000000000" + nnume ) % -108;
+     anume = (anume % 104) + "." + (anume % -104);
+     alfa  = "PC11  " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importe Dto....
+     nnume = (#1#17 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO18  " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+ |FINSI;
+|FPRC;
+
+|PROCESO cargalin;
+     ||---------------------------------- LIN  Linea Articulo.
+     alfa = "";                           || LIN
+     numerl = numerl + 1;
+     anume = numerl;
+     anume = ( "000000" + anume ) % -106;
+     alf1 = art + b35;
+     alf1 = alf1 % 135;
+     alfa  = "LIN" + anume + "   " + alf1 + tipoart;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- IMD  Descripcion Articulo
+     alfa = "";                                                 || F = Form.Libre
+     alfa  = "IMDF  M  " + "       " + "   " + "   " + descrip; || M = Mercancia.
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- QTI  Cantidad
+     alfa = "";                                           || QTY
+     nnume = (#5#5 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("0000000000000000000000" + nnume ) % -115;
+     anume = (anume % 112) + "." + (anume % -103);
+     alfa  = "QT147 " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importe Neto....
+     alfa = "";                                           || MOA
+     nnume = (#5#7 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO366 " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- PRI  Precio Unitario....
+     alfa = "";                                     || AAA = Precio Neto
+     nnume = ( #5#6 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -115;
+     anume = (anume % 112) + "." + (anume % -103);
+     alfa  = "PRIAAA" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- PRI  Precio Unitario....
+     alfa = "";                                    || AAB = Precio Bruto.
+     nnume = #5#9 / #5#5;
+     nnume = ( nnume * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -115;
+     anume = (anume % 112) + "." + (anume % -103);
+     alfa  = "PRIAAB" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- TAX  Impuestos....
+     alfa = "";                           || 7 = Impuestos
+     eaCli = #5#15;
+     enIva = #5#11;
+     efFiva = #4#1;
+     |HAZ IVACli;
+     nnume = enIva;
+     nnn   = #1#23 + #1#26 + #1#54 + #1#35 + #1#38;
+     |SI nnn ! 0;
+          nnume = nnume + enRec;
+     |FINSI;
+     toimpu = nnume;
+     anume = nnume
+     anume = ( nnume + "                       " ) % 117;
+     alfa  = "TA27  VAT" + b3 + b3 + b35 + b3 + b3 + b3 + b3 +b15 + b7 + b3 + b3 + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importe Impuesto....
+     alfa = "";                                           || MOA
+     nnume = ((( #5#9 * nnume ) / 100 ) * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO5124" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+tdo = #5#8 + #5#33;
+|SI tdo ! 0;
+     ||---------------------------------- PCD  % Dto....
+     alfa = "";                           || LIN
+     alfa  = "AC1A  " + b35 + b3 + b3 + "1  " + "TD ";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- PCD  % Dto....
+     alfa = "";                                     ||
+     nnume = ( tdo * 10000 ) ! 0;
+     anume = ("00000000000000000000000" + nnume ) % -108;
+     anume = (anume % 104) + "." + (anume % -104);
+     alfa  = "PC31  " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importe Dto....
+     nnume = (#5#7 - #5#9) * 1000;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO6204" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+|FINSI;
+|FPRC;
+
+|PROCESO cargatot;
+     ||---------------------------------- CNT  ?....
+     alfa = "";
+     nnume = (numerl * 1000) ! 0;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "CNT2  " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importes Bruto....
+     alfa = "";                        || 98 = Importe Neto Total Fact.
+     nnume = #1#18 * 1000; || ((#1#21 +#1#24 + #1#27 + #1#33 + #1#36) * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO898 " + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importes Totales....
+     alfa = "";                        ||125 = Base Imponible.
+     nnume = ((#1#21 +#1#24 + #1#27 + #1#33 + #1#36) * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO8125" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importes Totales....
+     alfa = "";                        ||131 = Total Dtos.
+     |SI #1#17 ! 0;
+     nnume = (#1#17 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO8131" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     |FINSI;
+     ||---------------------------------- MOA  Importes Totales....
+     alfa = "";                        ||139 = Importe Total a pagar.
+     nnume = (#1#31 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO8139" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+/*
+     ||---------------------------------- TAX  Punto Verde....
+     alfa = "";                           || ENV
+     alfa  = "TA47  ENV";
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importe Punto Verde....
+     alfa = "";                                           || MOA
+     nnume = (#1#90 * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO9176" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+*/
+     ||---------------------------------- TAX  Impuestos....
+     alfa = "";                           || 7 = Impuestos
+     anume = toimpu;
+     anume = ( nnume + "                       " ) % 117;
+     alfa  = "TA4   VAT" + b3 + b3 + b35 + b3 + b3 + b3 + b3 +b15 + b7 + b3 + b3 + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importes Totales....
+     alfa = "";                        ||125 = Base Imponible.
+     nnume = ((#1#21 +#1#24 + #1#27 + #1#33 + #1#36) * 1000) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO9125" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     ||---------------------------------- MOA  Importes Totales....
+     alfa = "";                        ||176 = Importe Total Impuestos.
+     nnume = #1#22 + #1#25 + #1#28 + #1#34 + #1#37;
+     nnume = nnume + #1#23 + #1#26 + #1#54 + #1#35 + #1#38;
+     nnume = ( nnume * 1000 ) ! 0;
+     |SI nnume < 0;
+     nnume = nnume * -1;
+     |FINSI;
+     anume = ("00000000000000000000000" + nnume ) % -118;
+     anume = (anume % 115) + "." + (anume % -103);
+     alfa  = "MO9176" + anume;
+     contenido = handle + " " + alfa;
+     lineas = lineas + 1;
+     |FGRABA contenido;
+     numeso = numeso + 1;
+|FPRC;
+
+|PROCESO finsop;
+     ||---------------------------------- AET  N§ Lineas....
+     alfa = "";
+     nnume = lineas  + 1;
+     anume = nnume;
+     anume2 = numer;
+     anume = ( "00000000" + anume ) % -106;
+     alfa  = "AET+" + anume;
+     contenido = handle + " " + alfa;
+     |FGRABA contenido;
+|FPRC;
+
+|PROCESO parrillacli;
+     aAlfa = #0#11;
+     |QBF aAlfa;
+     nAlfa = aAlfa;
+     |SI aAlfa = ""; |O nAlfa = 0; swNo = 1; |ACABA; |FINSI;
+     |PARA nVic = 11; |SI nVic [ 30; |HACIENDO nVic = nVic + 1;
+          |SI #0nVic = #1#2;
+               swNo = 1;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;
+
+|PROCESO parrillaalb;
+     |SI #0#31 = 0; swNo = 1; |ACABA; |FINSI;
+     |PARA nVic = 31; |SI nVic [ 50; |HACIENDO nVic = nVic + 1;
+          |SI #0nVic = #1#0;
+               swNo = 1;
+               |SAL;
+          |FINSI;
+     |SIGUE;
+|FPRC;

@@ -1,0 +1,226 @@
+|FICHEROS;
+   dscaz008 #0;
+   dscaz007 #1;
+
+   dscam051 #10;
+   dscam043 #11;
+
+   canempr@ #100;
+|FIN;
+
+|VARIABLES;
+   &MaxDigit = 0;
+   &nDeci_Div = 0;
+
+   &eaCliente   = "";
+   &enDocumento = "";
+   &efFechaVto  = @;
+   &enSwErr     = 0;
+
+   nCalc  = 0;
+   Comodin = "";
+   Parte   = "";
+   Part1   = "";
+   Part2   = "";
+   Parte1  = 0;
+   Parte2  = 0;
+   Long    = 0;
+   LongAlfa = "";
+   aAlfa    = "";
+
+   nAnyo    = 0;
+
+   &efFechaDoc  = @;
+   &efFechaUlt  = @;
+   &eaCodEnlace = "";
+   &efFecha     = @;
+
+   &eaDirConta  = "";
+   &eaEmpContab = "";
+   &enSwError   = 0;
+   &eaSerie     = "";
+|FIN;
+
+|PROCESO MiraFecha;
+   |ABRE #dscam051;
+   |LEE 000#dscam051.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam051;
+      |GRABA 020#dscam051.n;
+      |LEE 000#dscam051.p;
+   |FINSI;
+   |CIERRA #dscam051;
+
+   |SI #dscam051#121 ! "N";  || Certificados de contratistas
+      efFechaVto = #dscaz008#1; |HAZ MiraCertContr;
+      |SI enSwErr ! 0; |ERROR; |ACABA; |FINSI;
+   |FINSI;
+
+   |SI #dscaz008#1 < efFechaUlt; |Y #dscam051#113 = "S";
+      aAlfa = "    Fecha erronea. Fecha ultimo movimiento del documento : " + efFechaUlt;
+      |MENAV aAlfa; |ERROR;
+   |FINSI;
+   |SI #dscaz008#1 < efFechaDoc; |Y #dscam051#74 = "N";
+      aAlfa = "    Fecha erronea. Fecha del documento : " + efFechaDoc;
+      |MENAV aAlfa; |ERROR;
+   |FINSI;
+
+   |HAZ EsLuxe;
+   |SI FSalida = 0;
+      aAlfa = #dscaz008#0; |QBF aAlfa;
+      aAlfa = aAlfa % 0103;
+      |SI aAlfa = "570";
+         |DBASS aAlfa; |QBF aAlfa;
+         aAlfa = aAlfa + "contagen/def/canempre.mas";
+         |CARGA_DEF aAlfa, canempr@;
+         |SI FSalida = 0;
+            |DBASS aAlfa; |QBF aAlfa; aAlfa = aAlfa + "contagen/fich/";
+            |PATH_DAT #canempr@#aAlfa#;
+            |ABRE #canempr@;
+
+            |DFICB aAlfa; |QBF aAlfa; |PATH_DAT #dscam043#aAlfa#;
+            |ABRE #dscam043;
+            |SELECT #2#dscam043;
+            #dscam043#9 = #48#0;
+            |LEE 000#dscam043.];
+            |PARA; |SI FSalida = 0; |HACIENDO;
+               #canempr@#2 = #dscam043#0;
+               #canempr@#3 = #dscam043#1;
+               |LEE 000#canempr@.=;
+               |SI FSalida = 0;
+                  nAnyo = #canempr@#26;
+                  |SI nAnyo > 80;
+                     nAnyo = nAnyo + 1900;
+                  |SINO;
+                     nAnyo = nAnyo + 2000;
+                  |FINSI;
+                  aAlfa = #dscaz008#1; |QBF aAlfa;
+                  aAlfa = aAlfa % -104; nCalc = aAlfa;
+                  |SI nAnyo = nCalc; |Y eaSerie ] #dscam043#7; |Y eaSerie [ #dscam043#8;
+                     enSwError   = 0;
+                     |DBASS eaDirConta; |QBF eaDirConta;
+                     eaDirConta = eaDirConta + "contagen/";
+                     eaEmpContab = (("00000" + #dscam043#0) % -105) + #dscam043#1;
+                     efFecha = #dscaz008#1;
+                     |HAZ CompruebaEmpContable;
+                     |SI enSwError = -1;
+                        |MENAV "    Error. Empresa contable cerrada o inexistente. No se efectuara la operacion";
+                        |ERROR;
+                     |FINSI;
+                     |SI enSwError = -2;
+                        |MENAV "    No se encuentra el fichero de asientos de contabilidad.";
+                        |ERROR;
+                     |FINSI;
+                     |SI enSwError = -3;
+                        |MENAV "    Error. No se encuentra el fichero de empresas contables. No se efectuara la operacion";
+                        |ERROR;
+                     |FINSI;
+                     |SI enSwError = -4;
+                        aAlfa = "    Error. La empresa contable tiene bloqueo con fecha " + efFecha + ". No se efectuara la operacion";
+                        |MENAV aAlfa;
+                        |ERROR;
+                     |FINSI;
+                     |SAL;
+                  |FINSI;
+               |FINSI;
+               |LEE 000#dscam043.s;
+            |SIGUE;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO MiraImporte;
+   |SI #dscaz008#3 > 0;
+      nCalc = (#dscaz008#4 - #dscaz008#9 - #dscaz008#5) ! nDeci_Div;
+      |SI nCalc > #dscaz008#3;
+         |AVISO;
+         |MENAV "    Importe sobrepasado";
+         |ERROR;
+      |FINSI;
+   |SINO;
+      nCalc = (#dscaz008#4 - #dscaz008#9 - #dscaz008#5) ! nDeci_Div;
+      |SI nCalc < #dscaz008#3;
+         |AVISO;
+         |MENAV "    Importe sobrepasado";
+         |ERROR;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO Cuenta; |TIPO 6;
+   Comodin = #dscaz008#0;
+   Comodin = Comodin - ".";
+   |SI FSalida ! 0;
+      Parte = FSalida;
+      Parte1 = 100 + (((Parte / 100) ! 0) - 1);
+      Parte2 = ((((Parte / 100) ! 0) + 1) * 100) + 99;
+      Part1 = #dscaz008#0 % Parte1;
+      Part2 = #dscaz008#0 % Parte2;
+      |QBF Part2;
+      Comodin = Part1 + Part2;
+      LongAlfa = Comodin % 0;
+      Long = MaxDigit - LongAlfa;
+      LongAlfa = "0" * Long;
+      Comodin = Part1 + LongAlfa + Part2;
+      #dscaz008#0 = Comodin;
+      |PINTA #dscaz008#0;
+   |FINSI;
+   Comodin = #dscaz008#0; |QBF Comodin;
+   LongAlfa = Comodin % 0; Long = LongAlfa;
+   |SI Long > MaxDigit;
+      |MENAV "    Cuenta fuera de nivel";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROCESO Calculo;
+   #dscaz008#4 = #dscaz008#3 + #dscaz008#5 + #dscaz008#9;
+   |PINTA #dscaz008#4;
+|FPRC;
+
+|PROCESO MiraEmpCont
+   |HAZ EsLuxe;
+   |SI FSalida = 0;
+      aAlfa = #dscaz008#0; |QBF aAlfa;
+      aAlfa = aAlfa % 0103;
+      |SI aAlfa = "570"; #dscaz008#10 = ""; |FINSI;
+   |FINSI;
+   eaCodEnlace = #dscaz008#10; efFecha = #dscaz008#1;
+   |HAZ ComprEmpContable;
+|FPRC;
+
+|PROCESO MiraParam; |TIPO 7;
+   |ABRE #dscam051;
+   |LEE 000#dscam051.p;
+   |SI FSalida ! 0;
+      |DDEFECTO #dscam051;
+      |GRABA 020#dscam051.n;
+      |LEE 000#dscam051.p;
+   |FINSI;
+   |CIERRA #dscam051;
+
+   |SI #dscam051#1 = "S";
+      Comodin = #dscam051#61;
+      |C_M #dscaz008#10,1,Comodin;
+   |SINO;
+      |C_M #dscaz008#10,1,"N";
+   |FINSI;
+|FPRC;
+
+|PROCESO CompruebaEnl;
+   |HAZ MiraParam;
+
+   |HAZ EsLuxe;
+   |SI FSalida = 0;
+      aAlfa = #dscaz008#0; |QBF aAlfa;
+      aAlfa = aAlfa % 0103;
+      |SI aAlfa = "570";
+         #dscaz008#10 = ""; |PINTA #dscaz008#10;
+         |C_M #dscaz008#10,1,"N";
+      |SINO;
+         #dscaz008#10 = #dscaz007#26; |PINTA #dscaz008#10;
+         |C_M #dscaz008#10,1,"S";
+      |FINSI;
+   |FINSI;
+|FPRC;

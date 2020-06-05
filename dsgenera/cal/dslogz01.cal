@@ -1,0 +1,446 @@
+|FICHEROS;
+     dslogm01;
+     dslogm02;
+     dslogm03;
+
+     defdato@ #100;
+     defactu@ #200;
+|FIN;
+
+|VARIABLES;
+     aAlfa              = "";
+     aAlfa1             = "";
+     aLong              = "";
+     aNombre            = "";
+     aCar               = "";
+     aFicTmp            = "";
+     aDir               = "";
+     aBase              = "";
+     aPathLogger        = "";
+     aPathActu          = "";
+     aFicActu           = "";
+     aFicLog            = "";
+     aFicLogConta       = "";
+     aValClave          = "";
+     aCamClave          = "";
+     aCampo             = "";
+     aValor             = "";
+     aAplica            = "";
+     aFicDef            = "";
+     aEmp               = "";
+     aEmpAnt            = "";
+     aDef               = "";
+     aDefActu           = "";
+     aDefAnt            = "";
+     aPathAplica        = "";
+     aTipo              = "";
+     aTitulo            = "";
+     aQueQuiero         = "";
+     aAbre              = "";
+     aCadena            = "";
+
+     nHandle            = 0;
+     nLong              = 0;
+     nNum               = 0;
+     nCarac             = 0;
+     nCampo             = 0;
+     nNClave            = 0;
+     nNume              = 0;
+     nPos               = 0;
+     nPosCam            = 0;
+     nCamClave          = 0;
+     nOk                = 0;
+     nSwCarga           = 0;
+     nTCampos           = 0;
+     nFich              = 0;
+     nFSalida           = 0;
+     nLabel             = -1;
+     n1Vent             = 0;
+     nConta             = 0;
+     nResto             = 0;
+
+     {40}aModulo        = "";
+|FIN;
+
+|PROCESO LeeReg;
+     aValClave = #dslogm01#7;
+     aAlfa     = "|K000";
+     aCamClave = #defdato@#aAlfa#;
+     aAlfa     = aCamClave % 103;
+     nCamClave = aAlfa;
+
+     nPos    = 4;
+     nPosCam = 1;
+     |PARA nNClave = 1; |SI nNClave [ nCamClave; |HACIENDO nNClave = nNClave + 1;
+          nNume  = nPos * 100 + 3;
+          aCampo = aCamClave % nNume;
+          nCampo = aCampo;
+
+          aAlfa   = "|C" + aCampo + "LONGITUD";
+          aAlfa   = #defdato@#aAlfa#;
+          nLong   = aAlfa;
+          nNume   = nPosCam * 100 + nLong;
+          aValor  = aValClave % nNume;
+
+          #defdato@#nCampo# = aValor;
+
+          nPos    = nPos + 3;
+          nPosCam = nPosCam + nLong + 1;
+     |SIGUE;
+
+     |LEE 101#defdato@.=;
+     |SI FSalida ! 0;
+         |GRABA 000#defdato@.b;
+     |FINSI;
+|FPRC;
+
+|PROCESO GrabaDSLOGM03;
+     #dslogm03#0  = aAplica;
+     #dslogm03#1  = aEmp;
+     #dslogm03#2  = aFicDef;
+     #dslogm03#3  = aTipo;
+     |LEE 101#dslogm03.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #dslogm03;
+         #dslogm03#0  = aAplica;
+         #dslogm03#1  = aEmp;
+         #dslogm03#2  = aFicDef;
+         #dslogm03#3  = aTipo;
+         #dslogm03#4  = aTitulo;
+         |GRABA 000#dslogm03.n;
+         |LIBERA #dslogm03;
+     |FINSI;
+
+     aDefActu = aBase + aAplica + "/def/" +  aFicDef;
+     |CARGA_DEF aDefActu, defactu@;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |PATH_DAT #defactu@#aPathActu#;
+
+     aFicActu = #dslogm03#0;                     |QBF aFicActu;
+     aFicActu = aFicActu + #dslogm03#1;          |QBF aFicActu;
+     aFicActu = aFicActu + #dslogm03#2;          |QBF aFicActu;
+     aFicActu = aFicActu + (#dslogm03#3 % 101);
+     |NOME_DAT #defactu@#aFicActu#;
+
+     |ABRE #defactu@;
+     |PARA nCampo = 0; |SI nCampo [ nTCampos; |HACIENDO nCampo = nCampo + 1;
+           #defactu@#nCampo# = #defdato@#nCampo#;
+     |SIGUE;
+
+     |LEE 101#defactu@.=;
+     nFSalida = FSalida;
+
+     |PARA nCampo = 0; |SI nCampo [ nTCampos; |HACIENDO nCampo = nCampo + 1;
+           #defactu@#nCampo# = #defdato@#nCampo#;
+     |SIGUE;
+
+     |SI nFSalida = 0;
+         |GRABA 000#defactu@.a;
+     |SINO;
+         |GRABA 000#defactu@.n;
+     |FINSI;
+     |LIBERA #defactu@;
+
+     |CIERRA #defactu@;
+     |DESCARGA_DEF #defactu@;
+|FPRC;
+
+|PROCESO SacaEmpresa;
+     aLong   = aAlfa % 0;
+     nLong   = aLong;
+     aEmp    = "";
+     aNombre = "";
+     nFich   = 0;
+     |PARA nCarac = 1; |SI nCarac [ nLong; |HACIENDO nCarac = nCarac + 1;
+          nPos = (nCarac * 100) + 1;
+          aCar = aAlfa % nPos;
+          |SI aCar = "/"; |O aCar = "\";
+              |SI nFich   = 1;
+                  |SAL;
+              |FINSI;
+
+              |SI aNombre = "fich";
+                  nFich   = 1;
+              |FINSI;
+
+              aCar    = "";
+              aNombre = "";
+          |FINSI;
+
+          aNombre = aNombre + aCar;
+     |SIGUE;
+
+     aEmp = aNombre;  |QBF aEmp;
+
+     |SI aEmp = "00";      |ACABA;  |FINSI;
+     |SI aEmp = "000000";  |ACABA;  |FINSI;
+
+     nNum = aEmp;
+     |SI nNum = 0;
+         aEmp = "";
+     |FINSI;
+|FPRC;
+
+|PROCESO dslogm01;
+     |SI #dslogm01#3 = "R";
+         aAplica  = "";
+         IaModulo = aModulo1 <-;
+         |PARA;  |SI;  |HACIENDO;
+              aAlfa = #dslogm01#10 - aModulo;
+              |SI FSalida ! 0;
+                  aAplica = aModulo;
+                  |SAL;
+              |FINSI;
+
+              IaModulo = IaModulo + 1;
+              |SI aModulo = "";  |SAL;  |FINSI;
+         |SIGUE;
+
+         aEmp = "";
+         |SI aAplica = "facturar";  |O aAplica = "contagen";
+             aAlfa = #dslogm01#10;  |QBF aAlfa;
+             |HAZ SacaEmpresa;
+         |FINSI;
+     |FINSI;
+
+     |SI aAplica = "";  |ACABA;  |FINSI;
+
+     nOk = 0;
+
+     |SI #dslogm01#3 = "C";
+         nOk = 1;
+     |FINSI;
+
+     |SI #dslogm01#3 = "R"; |Y #dslogm01#4 = "32";
+         nOk = 1;
+     |FINSI;
+
+     |SI nOk = 0; |ACABA; |FINSI;
+
+     aFicDef = #dslogm01#5; |QBF aFicDef;
+
+     |SI aEmp ! aEmpAnt;  |O  aFicDef ! aDefAnt;
+          |SI nSwCarga = 0;
+              |CIERRA #defdato@;
+              |DESCARGA_DEF #defdato@;
+          |FINSI;
+
+          aEmpAnt = aEmp;
+          aDefAnt = aFicDef;
+
+          aDef = aBase + aAplica + "/def/" +  aFicDef;
+          |CARGA_DEF aDef, defdato@;
+          nSwCarga = FSalida;
+
+          |SI nSwCarga = 0;
+              aAlfa    = "|NC";
+              aAlfa    = #defdato@#aAlfa#;
+              nTCampos = aAlfa;
+              nTCampos = nTCampos - 1;
+
+              aQueQuiero = "|TITULO";
+              aTitulo    = #defdato@#aQueQuiero#;
+
+              aPathAplica = aBase + aAplica + "/fich/";
+              |SI aEmp ! "";
+                  aPathAplica = aBase + aAplica + "/fich/" + aEmp + "/";
+              |FINSI;
+
+              |PATH_DAT #defdato@#aPathAplica#;
+              |ABRE #defdato@;
+          |FINSI;
+     |FINSI;
+
+     |SI nSwCarga ! 0; |ACABA; |FINSI;
+
+
+     |DDEFECTO #defdato@;
+     |HAZ LeeReg;
+     |SI #dslogm01#3 = "C";               || Modifica campo
+          nCampo = #dslogm01#6;
+
+          |SI nCampo [ nTCampos;
+              #defdato@#nCampo# = #dslogm01#12;
+              |GRABA 000#defdato@.a;
+
+              aTipo = "Actualizaciones";
+              |HAZ GrabaDSLOGM03;
+          |FINSI;
+     |FINSI;
+
+     |SI #dslogm01#3 = "R";               || Baja
+          |BORRA 000#defdato@.a;
+
+          aTipo = "Bajas";
+          |HAZ GrabaDSLOGM03;
+     |FINSI;
+     |LIBERA #defdato@;
+
+     |PULSATECLA;
+|FPRC;
+
+|PROCESO TrataRegistro;
+     nConta = nConta + 1;
+     nResto = nConta $ 1000;
+     |SI nResto = 0;  |O nConta = 1;
+         |SI nLabel ! -1;
+             |FIN_CONTROL_WINDOWS nLabel;
+         |FINSI;
+
+         aAlfa = "LABEL,{{16}}" + aAbre + " " + nConta;
+         |CONTROL_SIMPLE 0, aAlfa, 0602, 0688, NULL;
+         nLabel = FSalida;
+     |FINSI;
+
+     |DDEFECTO #dslogm01;
+     aAlfa = aCadena % 0110;  #dslogm01#0 = aAlfa;
+     aAlfa = (aCadena % 1702) + "." + (aCadena % 1502) + "." + (aCadena % 1104);
+     #dslogm01#1 = aAlfa;
+     aAlfa = aCadena % 1908;   #dslogm01#2  = aAlfa;
+     aAlfa = aCadena % 2701;   #dslogm01#3  = aAlfa;
+     aAlfa = aCadena % 2802;   #dslogm01#4  = aAlfa;
+     aAlfa = aCadena % 3012;   #dslogm01#5  = aAlfa;
+     aAlfa = aCadena % 4203;   #dslogm01#6  = aAlfa;
+     aAlfa = aCadena % 4550;   #dslogm01#7  = aAlfa;
+     aAlfa = aCadena % 9517;   #dslogm01#8  = aAlfa;
+     aAlfa = aCadena % 11210;  #dslogm01#9  = aAlfa;
+     aAlfa = aCadena % 12250;  #dslogm01#10 = aAlfa;
+     aAlfa = aCadena % 17230;  #dslogm01#11 = aAlfa;
+     aAlfa = aCadena % 20230;  #dslogm01#12 = aAlfa;
+
+     |HAZ dslogm01;
+|FPRC;
+
+|PROCESO dslogm02;
+     aFicLog  = #dslogm02#2;  |QBF aFicLog;
+     aAbre   = aPathLogger + aFicLog;
+
+     |XABRE "", aAbre, nHandle;
+
+     nSwCarga = -1;
+     nConta   = 0;
+     |PARA;  |SI;  |HACIENDO;
+             |XLEE nHandle, 250, aCadena;
+             |SI FSalida < 0;  |SAL;  |FINSI;
+             |QBF aCadena;
+             |SI aCadena ! "";
+                 |HAZ TrataRegistro;
+             |FINSI;
+     |SIGUE;
+     |XCIERRA nHandle;
+|FPRC;
+
+|DEFBUCLE dslogm02;
+     #dslogm02#1;
+     ;
+     INICIO;
+     FINAL;
+     ;
+     NULL, dslogm02;
+|FIN;
+
+|PROCESO Recuperacion;
+     |VENTANA 0501, 0690, -1, 16, "Realizado recuperacion";
+     n1Vent = FSalida;
+
+     |PTEC 802;  |PAUSA;
+
+     |ABRE #dslogm03;
+     |BUCLE dslogm02;
+     |CIERRA #dslogm03;
+
+     |FINVENTANA n1Vent;
+|FPRC;
+
+|PROCESO SacaNombre;
+     aLong   = aFicLog % 0;
+     nLong   = aLong;
+     aNombre = "";
+     |PARA nCarac = 1; |SI nCarac [ nLong; |HACIENDO nCarac = nCarac + 1;
+          nPos = -100 * nCarac - 1;
+          aCar = aFicLog % nPos;
+          |SI aCar = "/"; |O aCar = "\";
+               |SAL;
+          |FINSI;
+          aNombre = aCar + aNombre;
+     |SIGUE;
+
+     |DDEFECTO #dslogm02;
+
+     aAlfa = aNombre - "logger_spo_dat_";
+
+     aAlfa1 = (aAlfa % 102) + "." + (aAlfa % 402) + "." + (aAlfa % 704);
+     #dslogm02#0 = aAlfa1;
+
+     aAlfa1 = (aAlfa % 1202) + ":" + (aAlfa % 1502) + ":" + (aAlfa % 1802);
+     #dslogm02#1 = aAlfa1;
+     #dslogm02#2 = aNombre;
+
+     |GRABA 000#dslogm02.n;
+     |LIBERA #dslogm02;
+|FPRC;
+
+|PROGRAMA;
+     aModulo1  = "laboral";
+     aModulo2  = "contagen";
+     aModulo3  = "integral";
+     aModulo4  = "contasoc";
+     aModulo5  = "dsoporte";
+     aModulo6  = "dsarchi";
+     aModulo7  = "facturar";
+     aModulo8  = "modelos";
+     aModulo9  = "basica";
+     aModulo10 = "dsnetcom";
+     aModulo11 = "entsal";
+     aModulo12 = "ett";
+     aModulo13 = "ren2014";
+     aModulo14 = "ren2013";
+     aModulo15 = "ren2012";
+     aModulo16 = "ren2011";
+     aModulo17 = "ren2010";
+     aModulo18 = "ren2009";
+     aModulo19 = "ren2008";
+     aModulo20 = "ren2007";
+     aModulo21 = "ren2006";
+     aModulo22 = "ren2005";
+     aModulo23 = "ren2004";
+     aModulo24 = "ren2003";
+     aModulo25 = "ren2002";
+     aModulo26 = "ren2001";
+     aModulo27 = "ren2000";
+     aModulo28 = "contanex";
+     aModulo29 = "agitool";
+     aModulo30 = "aginom";
+
+     aFicTmp = "dslogm02" + Usuario;
+     |NOME_DAT #dslogm02#aFicTmp#;
+     |ABRE #dslogm02;  |CIERRA #dslogm02;  |DELINDEX #dslogm02;
+
+     |ABRE #dslogm02;
+
+     |DBASS aBase;
+     aPathActu    = aBase + "dsgenera/recupera";  |MKDIR aPathActu;
+     aPathActu    = aBase + "dsgenera/recupera/";
+
+     aPathLogger = aPathActu;
+     aDir = aPathLogger + "logger*.dat";
+     |_PDIR aDir;
+     |PARA; |SI FSalida = 0; |HACIENDO;
+          aFicLog = aDir; |QBF aFicLog;
+          |HAZ SacaNombre;
+
+          |_SDIR aDir;
+     |SIGUE;
+
+     |LEE 000#dslogm02.p;
+     |CONSULTA_CLAVE #1#dslogm02;
+     |CIERRA #dslogm02;
+
+     |CONFI "0000NRealizamos la recuperaci¢n de los logs mostrados";
+     |SI FSalida = 0;
+         |HAZ Recuperacion;
+     |FINSI;
+
+     |DELINDEX #dslogm02;
+|FPRO;

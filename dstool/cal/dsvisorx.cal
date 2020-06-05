@@ -1,0 +1,501 @@
+|| -----------------------------------------------------------------------||
+|| dsvisorx.cal                                                [dstool]   ||
+||                                                                        ||
+|| Utilidad encargada de visionar los datos de cualquier dat, para su     ||
+|| filtrado, exportacion, consulta, etc ...                               ||
+|| Solo para DIAGRAM.X                                                    ||
+||                                                                        ||
+|| Ini: 23feb2006                                                         ||
+|| Ult: 15may2006                                           dsPRODUCCION  ||
+|| -----------------------------------------------------------------------||
+
+|FICHEROS;
+     :/agitool/def/dsvisorx       #000;
+     :/agitool/def/dsvisfav       #001;
+
+     :/agitool/def/dsw00009       #100;  || TMP.favoritos
+
+     refer@                        #200;
+|FIN;
+
+|VARIABLES;
+     nGridVisor = 0;
+     &enCtrFin = 0;
+
+     aAlfa     = "";
+     aAlfa2    = "";
+     auff      = "";
+     asw       = "";
+
+     naux      = 0;
+     nNum      = 0;
+     nNum2     = 0;
+     x         = 0;
+     y         = 0;
+     xx        = 0;
+     nlin      = 0;
+     nu        = 0;
+
+     aTecla    = "";
+     aEsc1     = "";
+     aEsc2     = "";
+     aRetu     = "";
+     nRango    = 0;
+
+     nPanta0   = 0;
+     nVent0    = 0;
+     nGridFAV  = 0;
+
+     nRegActual  = 0;
+
+     swNew       = 0;         || indica si ha habido nuevo visor
+     swDesdeTool = 0;         || indica si llamamos al visor desde dstool
+
+     aUsr      = "";
+     dUsr      = "";
+     hUsr      = "";
+
+     aDBASS    = "";
+     aAquiApl  = "";          || la aplicacion desde el que llamamos
+     aAquiEmp  = "";          || el path de los datos desde el que llamamos
+     aApl      = "";
+     afDef     = "";          || el fichero del def
+     apData    = "";
+
+|FIN;
+
+
+
+
+
+
+
+|| ----------------------------------------------------------------
+|| Arranques/finalizaciones y tipos raros
+|| ----------------------------------------------------------------
+|PROCESO Tipo80; |TIPO 80;
+     FSalida = 2999;
+|FPRC;
+
+
+
+|| -----------------------------------------------------------------
+|| El programa.
+|| -----------------------------------------------------------------
+|PROGRAMA;
+     |HAZ InicioClasico;
+
+     |ABRET #100;
+     |HAZ InicioX;
+
+     aEsc1  = &255 + "806";
+     aEsc2  = &255 + "807";
+     aRetu  = &255 + "802";
+     |PARA; |SI;  |HACIENDO;
+          FSalida = "::{{001}}Salir," + nGridFAV;
+          |LEETECLA aTecla;
+          |SI aTecla = aRetu; |SAL;  |FINSI;
+          |SI aTecla = aEsc1; |SAL;  |FINSI;
+          |SI aTecla = aEsc2; |SAL;  |FINSI;
+     |SIGUE;
+
+     |CIERRAT #100;
+
+     |SI swNew = 1;
+          |HAZ VuelcaTMP_FAV;
+     |FINSI;
+     |ABRE #100; |CIERRA #100; |DELINDEX #100;
+
+|FPRO;
+
+
+
+
+
+
+|| -----------------------------------------------------------------
+|| Procesos de eventos
+|| -----------------------------------------------------------------
+|PROCESO evBtnNew;
+     |HAZ NuevaVista;                   || ES EL ASISTENTE !!
+     |REFRESCACONTROL nGridFAV;
+|FPRC;
+
+|PROCESO evBtnBorra;
+     |SI nRegActual = 0; |ACABA; |FINSI;
+
+     |HAZ BorraVista;
+     |REFRESCACONTROL nGridFAV;
+|FPRC;
+
+|PROCESO evBtnVer;
+     |SI #100#00 > 0;
+          |HAZ MostrarVista;
+     |FINSI;
+|FPRC;
+
+
+
+|PROCESO evGridFAV;
+     |SI FSalida = 1; |O FSalida = 4;
+          nRegActual = #100#00;
+     |FINSI;
+
+     |SI FSalida = 4; |Y #100#00 > 0;
+          |HAZ MostrarVista;
+     |FINSI;
+
+     FSalida = "SKIPDEFAULT";
+|FPRC;
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------------
+|| Programacion GRAFICA.
+|| -----------------------------------------------------------------
+
+|PROCESO InicioX;
+
+     |PINPA #0#00;
+     nPanta0 = FSalida;
+
+     nRango  = 2 + 4 + 8 + 16 + 32;
+     |LINEAL_SIMPLE #2#100, nRango, 1205, 2480, NULL, NULL, evGridFAV;
+     nGridFAV = FSalida;
+
+     |CONTROL_SIMPLE nPanta0, "BOTON,{{193}} Nueva ", 2605, 2620, evBtnNew;
+     |CONTROL_SIMPLE nPanta0, "BOTON,{{207}} Borra ", 2625, 2640, evBtnBorra;
+     |CONTROL_SIMPLE nPanta0, "BOTON,{{155}} Ver ",   2645, 2660, evBtnVer;
+
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------------
+|| Programacion CLASICA
+|| -----------------------------------------------------------------
+
+|PROCESO InicioClasico;
+
+
+     |DBASS aDBASS; |QBT aDBASS;
+
+     || Comporbamos desde donde hemos llamado a la apl ...
+     |DFICE aAlfa;
+     aAlfa2 = aAlfa - "tool";
+     swDesdeTool = FSalida;
+
+     aAquiApl = "";
+     aAquiEmp = "";
+     |SI swDesdeTool = 0;
+     || desde que empresa y desde que apicacion ....
+          |DBASE aAlfa; |QBT aAlfa;
+          aAquiApl = aAlfa - aDBASS;
+          aAquiApl = aAquiApl - "/";
+
+          |DFICB aAlfa;  |QBT aAlfa;
+          |DFICE aAlfa2; |QBT aAlfa2;
+          aAquiEmp = aAlfa2 - aAlfa;
+          aAquiEmp = aAquiEmp - "/";
+     |FINSI;
+
+     || con que usuario ...
+     aUsr = Usuario % 0810;
+     aUsr = (aUsr + (" " * 10)) % 0110;
+
+     |HAZ VuelcaFAV_TMP;
+|FPRC;
+
+
+
+
+|| -----------------------------------------------------------------------
+|| Volcado FAVORITOS -> TEMPORAL
+|| se vuelca lo propio y lo comun.
+|| otra cosa es que solamente visualizamos lo que interesa.
+
+|PROCESO InsertaFAV_TMP;
+     |HAZ GrabaFichaT;
+     nu = #001#00;
+|FPRC;
+
+|DEFBUCLE _InsertaFAV_TMP;
+  #001#1;
+  1,2;
+  0000000, dUsr, asw;
+  9999999, hUsr, asw;
+  e;
+  NULL, InsertaFAV_TMP;
+|FIN;
+
+
+|PROCESO VuelcaFAV_TMP;
+
+     aAlfa = "f1" + Usuario; |NOME_DAT #100#aAlfa#;
+     |ABRE #100; |CIERRA #100; |DELINDEX #100;
+
+     || comenzamos el volcado ....
+     |ABRE     #100;
+
+     nu    = 0;
+     asw   = "N";
+     dUsr  = aUsr;
+     hUsr  = aUsr;
+     |BUCLE _InsertaFAV_TMP;
+     nlin  = nu;
+
+     nu    = 0;
+     asw   = "S";
+     dUsr  = "          ";
+     hUsr  = "zzzzzzzzzz";
+     |BUCLE _InsertaFAV_TMP;
+
+     |SI nu > nlin; nlin = nu; |FINSI;
+     nlin = nlin + 1;
+
+     |CIERRA   #100;
+
+|FPRC;
+
+
+
+
+
+
+|| -----------------------------------------------------------------------
+|| Volcado TEMPORAL -> FAVORITOS (primero borramos)
+
+|PROCESO BorraFAV;
+     |BORRA 040#001.a;
+|FPRC;
+
+|DEFBUCLE _BorraFAV;
+  #001#1;
+  1;
+  0000000, aUsr;
+  9999999, aUsr;
+  be;
+  NULL, BorraFAV;
+|FIN;
+|| ---
+
+|PROCESO InsertaTMP_FAV;
+     |HAZ GrabaFichaF;
+|FPRC;
+
+|DEFBUCLE _InsertaTMP_FAV;
+  #100#1;
+  1;
+  0000000, aUsr;
+  9999999, aUsr;
+  ;
+  NULL, InsertaTMP_FAV;
+|FIN;
+
+
+|PROCESO VuelcaTMP_FAV;
+
+     || primero borramos todo lo relativo a ese usuario
+     |BUCLE _BorraFAV;
+
+     || despues volcamos el contenido del tmp (integro)
+     |ABRE   #001;
+     |BUCLE _InsertaTMP_FAV;
+     |CIERRA #001;
+
+|FPRC;
+
+
+|| copiando la ficha en si FAV --> TMP
+|PROCESO GrabaFichaT;
+     |DDEFECTO #100;
+     aAlfa  = "|NC";
+     aAlfa2 = #001#aAlfa#; xx = aAlfa2;
+     |PARA x=0; |SI x < xx; |HACIENDO x=x+1;
+          #100#x# = #001#x#;
+     |SIGUE;
+     |GRABA 040#100.n;
+|FPRC;
+
+|| ----
+|| copiando la ficha en si TMP --> FAV
+|| si esa vista YA existe, le damos el ultimo numero+1 a la vista.
+|PROCESO GrabaFichaF;
+     |DDEFECTO #001;
+     #001#00 = #100#00;
+     |LEE 040#001.=;
+     naux = #001#00;
+     |SI FSalida = 0;
+          |LEE 040#001.u;
+          naux = #001#00 + 1;
+     |FINSI;
+
+     aAlfa  = "|NC";
+     aAlfa2 = #001#aAlfa#; xx = aAlfa2;
+     |PARA x=1; |SI x < xx; |HACIENDO x=x+1;
+          #001#x# = #100#x#;
+     |SIGUE;
+
+     #001#00 = naux;
+     |GRABA 040#001.n;
+|FPRC;
+
+
+
+
+
+
+
+
+
+
+|| -----------------------------------------------------------
+|| alta/baja/consulta de vistas
+
+|VARIABLES;
+     &_swDesdeTool = 0;
+
+     &_swMulti = "";
+     &_aCodApl = "";
+     &_aNomApl = "";
+     &_aCodEmp = "";
+     &_aNomEmp = "";
+     &_aDef    = "";
+     &_aDesDef = "";
+     &_aTabla  = "";
+     &_error   = 0;
+|FIN;
+
+|PROCESO NuevaVista;
+
+     _swMulti = "";
+     _aCodApl = "";
+     _aNomApl = "";
+     _aCodEmp = "";
+     _aNomEmp = "";
+     _aDef    = "";
+     _aDesDef = "";
+     _aTabla  = "";
+     _error   = 0;
+
+     _swDesdeTool = swDesdeTool;
+
+     || si swDesdeTool = 0 --> parametros de ENTRADA.
+     |SI swDesdeTool = 0;          || si llamamos desde cualquier sitio ..
+          _aCodApl = aAquiApl;
+          _aCodEmp = aAquiEmp;
+     |FINSI;
+
+     |VENTANA 0501, 2999, -1, -1, "";
+     nVent0 = FSalida;
+
+     || ---------------------------------------
+     |HAZ _AsistenteX;
+     || ---------------------------------------
+
+     |FINVENTANA nVent0;
+
+     |SI _error = 0;
+
+          swNew = 1;               || registro nuevo.
+          |DDEFECTO #100;
+          #100#00 = nlin;
+          #100#01 = aUsr;
+          #100#02 = _swMulti;
+          #100#03 = _aCodApl;
+          #100#04 = _aNomApl;
+          #100#05 = _aCodEmp;
+          #100#06 = _aNomEmp;
+          #100#07 = _aDef;
+          #100#08 = _aDesDef;
+          #100#09 = _aTabla;
+          |GRABA 040#100.n;
+
+          nlin = nlin + 1;
+     |FINSI;
+
+|FPRC;
+
+|PROCESO BorraVista;
+
+     aAlfa2 = #100#09; |QBF aAlfa2;
+     aAlfa = "0000NBorrando <<" + aAlfa2 + ">>";
+     |CONFI aAlfa;
+     |SI FSalida = 0;
+          #100#00 = nRegActual;
+          |BORRA 040#100.c;
+          swNew = 1;
+          nRegActual = 0;
+     |FINSI;
+|FPRC;
+
+|PROCESO EvtVisor;
+     |SI FSalida = 4;
+          |LEE 101#refer@.=;
+          |SI FSalida = 0;
+               |CONFI "0000NBorrar registro S/N:";
+               |SI FSalida = 0;
+                    |BORRA 020#refer@.a;
+               |FINSI;
+               |LIBERA #refer@;
+               |REFRESCACONTROL nGridVisor;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO MostrarVista;
+
+     || el fichero de def y de apl lo pillamos siempre de favoritos.
+     aApl  = #100#03; |QBT aApl;
+     afDef = #100#07; |QBT afDef;
+
+     || si llamamos al visor desde fuera y la aplicacion es la misma
+     || que la vista, lanzamos la vista con este empresa
+     |SI swDesdeTool = 0; |Y aApl = aAquiApl;
+          apData = aAquiEmp;
+     |SINO;
+          apData = #100#05;
+     |FINSI;
+     |QBT apData;
+
+      aAlfa = aDBASS + aApl + "/def/" + afDef;
+     |CARGA_DEF aAlfa, refer@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aAlfa = aDBASS + aApl + "/fich/";
+     |SI apData ! "NULL";
+          aAlfa = aAlfa + apData + "/";
+     |FINSI;
+     |PATH_DAT #refer@#aAlfa#;
+
+     |ABRE     #refer@;
+
+     |VENTANA 0501, 2797, -1, 17, "Visor Tablas     (Doble-click borrar registro)";
+     nRango = 4 + 8 + 16 + 32;
+     |LINEAL_SIMPLE #1#refer@, nRango, 0502, 2598, NULL, NULL, EvtVisor;
+     nGridVisor = FSalida;
+     enCtrFin = nGridVisor; |HAZ EsperaFin;
+     |DESTRUYECONTROL nGridVisor;
+     |HAZ PopVenModal;
+
+     |CIERRA   #refer@;
+
+     |DESCARGA_DEF #refer@;
+|FPRC;
+
+
+
+|| -------------------------- F I N.

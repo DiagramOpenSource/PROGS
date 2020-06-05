@@ -1,0 +1,198 @@
+|FICHEROS;
+     dsmom027 #0;
+     dsmom029 #29,MANTE;
+     dsmociva #300;
+|FIN;
+
+|VARIABLES;
+     aTecla = "";
+     nDAct = 0;
+     nHAct = 0;
+     nUno  = 0;
+     nInkey = 0;
+     nCampo1 = 0;
+     nCampo2 = 0;
+
+     nConIVA = 0;
+     nSinIVA = 0;
+     nSinIVA1 = 0;
+     nNume1  = 0;
+     nNume2  = 0;
+     &enSw80 = 0;
+|FIN;
+
+|INCLUYE i_variar;
+
+
+|| .......... Proceso que recoge los datos de La Empresa
+|PROCESO dsmociva;
+     |SI #300#6 = 1; |Y #300#7 = 1; || Para adade Solo Regimen General
+         |PARA nCampo2 = 15;  |SI nCampo2 [ 33;  |HACIENDO nCampo2 = nCampo2 + 3;
+               nCampo1 = nCampo2 - 1;
+               |SI #300nCampo2 ! 0;
+                   nConIVA = nConIVA + #300nCampo1;
+               |SINO;
+                   nSinIVA1 = nSinIVA1 + #300nCampo1;
+               |FINSI;
+         |SIGUE;
+     |FINSI;
+
+     |SI #300#6 = 3; |Y #300#7 = 12; || Para adade Solo Regimen General
+         nSinIVA = nSinIVA + #300#12;
+     |FINSI;
+|FPRC;
+
+|DEFBUCLE dsmociva;
+    #300#1;
+    ;
+    #0#0, #0#1, 01, enModelo, 00, 01, 1, 00;
+    #0#0, #0#1, 12, enModelo, 99, 99, 3, 99;
+    ;
+    NULL, dsmociva;
+|FIN;
+
+|PROCESO Recalcula;
+
+  nConIVA  = 0;
+  nSinIVA  = 0;
+  nSinIVA1 = 0;
+  |BUCLE dsmociva;
+
+  #0#4 = nConIVA;
+  #0#5 = nSinIVA;
+  #0#6  = #0#4 + #0#5;
+
+  nNume1 = ((#0#4 / #0#6) * 100) ! 2;
+  nNume2 = nNume1 ! 0;
+  |SI nNume2 < nNume1;
+      nNume2 = nNume1 ! 0 + 1;
+  |FINSI;
+  #0#3  = nNume2;
+  |SI #0#3 > 100; #0#3 = 100; |FINSI;
+
+  |PINDA #0#0;
+  #29#4 = #0#3;
+  #29#5 = #29#3 % #29#4;
+  #29#6 = #29#3 - #29#5;
+
+|FPRC;
+
+|PROCESO RecalAda; |TIPO 11;
+ nInkey = FSalida;
+
+ |SI nInkey = 11; |Y #29#9 = 0; |Y #29#2 = 12;
+
+     |CONFI "    SDesea Recalcular la Prorrata en Base a los Datos de los Modelos ";
+     |SI FSalida ! 0;
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |LEE 001#29=;
+     |HAZ Recalcula;
+     |GRABA 020#29a;
+     |PTEC 808;
+ |FINSI;
+
+|FPRC;
+
+|PROCESO ReMiro;
+ #0#39 = #0#39 + #29#3;
+ #0#40 = #0#40 + #29#5;
+ #0#41 = #0#39 - #0#40;
+ #0#44 = #0#44 + #29#8;
+|FPRC;
+
+|DEFBUCLE ReMiro;
+ #29#1;
+ ;
+ enEmpresa, enEjer, 01, 00;
+ enEmpresa, enEjer, 99, 00;
+ e;
+ NULL, ReMiro;
+|FIN;
+
+|PROCESO ClaveBaja29;
+ #29#0 = enEmpresa;
+ #29#1 = enEjer;
+ #29#2 = 01;
+ #29#9 = nDAct;
+|FPRC;
+
+|PROCESO ClaveAlta29;
+ #29#0 = enEmpresa;
+ #29#1 = enEjer;
+ #29#2 = 99;
+ #29#9 = nHAct;
+|FPRC;
+
+|PROGRAMA;
+
+     |HAZ LeeCtrlProrr;
+
+     |SI enSwProrr ! 2;
+         |ABRE #29;
+         |LEE 0001#29p;
+         |SI FSalida ! 0;
+             |CIERRA #29;
+             |SI enEjer < enEjerPro; |SUB_EJECUTA_NP "dsmozprq;todo"; |FINSI;
+         |SINO;
+             |CIERRA #29;
+         |FINSI;
+     |SINO;
+         |AVISO;
+         |ACABA;
+     |FINSI;
+
+     eaNomDef = "dsmom027";
+
+|| \\\\\\ Consulta del Modelo ////////
+
+     |SI enTipoEntrada = 4;              || Consulta del Modelo
+         |CABEZA "Prorratas";
+
+         |SI enEjer < enEjerPro;
+             |ABRE #0;
+             #0#0 = enEmpresa;
+             #0#1 = enEjer;
+             |LEE 101#0=;
+             |SI FSalida ! 0;
+                 |DDEFECTO #0;
+                 #0#0 = enEmpresa;
+                 #0#1 = enEjer;
+                 |GRABA 020#0b;
+             |FINSI;
+
+             |SI #0#2 > 100; #0#2 = 100; |FINSI;
+             |SI #0#3 > 100; #0#3 = 100; |FINSI;
+
+             #0#39 = 0;
+             #0#40 = 0;
+             #0#44 = 0;
+             |BUCLE ReMiro;
+             nDAct = 0;
+             nHAct = 0;
+             |PINPA #0#0;
+             |PINDA #0#0;
+             |ENTLINEAL #2#29, -4, 4, 20,0, ClaveBaja29, ClaveAlta29;
+
+||         |LEETECLA aTecla;
+           |SI enSw80 = 0;
+               |CONFI "0000NDesea cambiar el Porcentaje a Aplicar en este Ejercicio ";
+               |SI FSalida = 0;
+                   |ENDATOS #1#0;
+                   |SI FSalida = 0;
+                       #0#42 = #0#2;
+                       |GRABA 020#0a;
+                   |FINSI;
+               |FINSI;
+           |FINSI;
+           |LIBERA #0;
+           |CIERRA #0;
+
+         |SINO;
+
+              |SUB_EJECUTA_NP "dsmoz071";
+         |FINSI;
+     |FINSI;
+|FPRO;

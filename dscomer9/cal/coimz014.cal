@@ -1,0 +1,502 @@
+|FICHEROS;
+     dsm00003 #3;
+     agifa019 #19;
+     coima023 #23;
+     agifa024 #24;
+     agifa025 #25;
+     coima031 #31;
+     coima032 #32;
+     coima033 #33;
+     coima034 #34;
+     coima035 #35;
+     dsm00046 #46;
+     agifa049 #49;
+     agifa073 #73;
+     agifa104 #104;
+     agifa142 #142;
+     agifa321 #321;
+     agifa324 #324;
+     agifa048 #480;
+     dsm00113;
+|FIN;
+
+|INCLUYE i_varart;
+
+|VARIABLES;
+     &eaImpresora = "";
+     {1}aBaseLocal = "";
+     &num_ped = 0;
+     &ser_ped = "";
+     aIP = "";
+     aServidor = "";
+     aFrom = "";
+     aTo = "";
+     aSubject = "";
+     aMensaje = "";
+     aDjunto = "";
+     aPath = "";
+     aAlfa = "";
+     &aMoneda = "";
+     &aDivisa = "";
+     &fed_dt = @;   || Fecha....
+     &art_dt = "";  || Articulo.
+     &cli_dt = "";  || Cliente..
+     &fam_dt = "";  || Familia.
+     &iva_dt = 0;   || Tipo Iva.
+     &dtos_2 = 0;   || Descuento 2.
+     &dto_pt = 0;   || Descuento Ptas.
+     &dtos_1 = 0;   || Descuento 1.
+     &pvp_ve = 0;   || Precio Venta.
+     &tarifa = 0;   || Tarifa Cliente.
+     &quedto = 0;   || 1=cli./art, 2=cli./familia, 3=cli./subfam.
+     &gru_dt = "";  || Grupo Cliente.
+     &uni_dt = 0;
+     &enMensaje = 0;
+     &aParam    = "";
+     &nPromo    = 0;
+
+     &enSwMenu = 0;
+     &enDescuento1 = 0;
+     &enDescuento2 = 0;
+     &eaTComision  = "";
+     &enComision   = 0;
+
+     aCli = "";
+     nDir = "";
+     aRep = "";
+     aPeComple = "";
+     aColComple = "";
+     aSubfam = "";
+     nLin = 0;
+     nLinKit = 0;
+     nImpo = 0;
+     nForma = 1;
+     fmes = "";
+     mes = 0;
+     &eaTag = "";
+     nCalc = 0;
+     aEmail = "";
+|FIN;
+
+|PROCESO CalcConIva;
+     |ABRE #dsm00113;
+     #dsm00113#0 = #agifa104#4;
+     #dsm00113#1 = #agifa073#14;
+     |LEE 000#dsm00113.=;
+     |SI FSalida = 0;
+        nCalc = #agifa073#11 % #dsm00113#3;
+        |SI #agifa024#47 = "S";
+           nCalc = nCalc + (#agifa073#11 % #dsm00113#4);
+        |FINSI;
+     |SINO;
+
+        enTiva = #agifa073#14;
+        efFiva = #agifa104#1;
+        |HAZ SacaIVA;
+
+         nCalc = #agifa073#11 % enIva;
+        |SI #agifa024#47 = "S";
+              nCalc = nCalc + (#agifa073#11 % enRec);
+        |FINSI;
+     |FINSI;
+     |CIERRA #dsm00113;
+
+     nImpo = nImpo + (#agifa073#11 + nCalc);
+|FPRC;
+
+|DEFBUCLE CalcConIva;
+#agifa073#1;
+;
+#agifa104#25, #agifa104#0,001;
+#agifa104#25, #agifa104#0,999;
+;
+NULL,CalcConIva;
+|FIN;
+
+|PROCESO ActCli;
+     #19#0 = #73#2;
+     |LEE 020#19=;
+
+     |DDEFECTO #24;
+     #24#0 = #104#4;
+     |LEE 121#24=;
+     |SI FSalida ! 0; |GRABA 020#24b; |FINSI;
+
+     |SI #19#194 = 2;
+          nImpo = ((((#73#44 * #73#6) < #73#8) < #73#29) < #104#5) < #104#17;
+     |SINO;
+          nImpo = ((((#73#5 * #73#6) < #73#8) < #73#29) < #104#5) < #104#17;
+     |FINSI;
+     |SI #142#115 = "S";
+          nImpo = nImpo < #104#6;
+     |FINSI;
+     nImpo = nImpo * nForma;
+     fmes = #104#1 % A402;
+     mes = fmes - 1;
+     mes = mes * 3;
+     mes = mes + 114;
+     #24mes = #24mes   + nImpo;     || VENTA.
+     #24#150 = #24#150 + nImpo;
+     |GRABA 020#24a;
+
+     eaCliente = #agifa104#4;
+     efFecha = #agifa104#1;
+     enImpCliPed = nImpo;
+     |HAZ AcumulaCli;
+     |LIBERA #24;
+|FPRC;
+
+|PROCESO Final;
+     |ABRE #24;
+     |ABRE #19;
+     |BUCLELIN 2 ActCli #104;
+     |CIERRA #24;
+     |CIERRA #19;
+     nImpo = 0; |BUCLE CalcConIva;
+     eaTag = "PE";  |HAZ Riesgos;
+     |HAZ CalCabAgifa104;
+
+     |SI aEmail = ""; |ACABA; |FINSI;
+     |SI #35#16 = "N"; |ACABA; |FINSI;
+
+     aIP = ""; |IP_REMOTO aIP;
+     |SI aIP = "";
+          |DFICE aAlfa;
+          aDjunto = aAlfa + #104#25 + "_" + (("000000" + #104#0)%-106)+ ".pdf";
+          |QBT aDjunto;
+          eaImpresora = "CrystalReport;" + aDjunto;
+          ser_ped = #104#25;
+          num_ped = #104#0;
+          |SUB_EJECUTA_NP "agifa105";
+     |SINO;
+          |DFICE aAlfa;
+          aDjunto = aAlfa + #104#25 + "_" + (("000000" + #104#0)%-106)+ ".pdf";
+          |QBT aDjunto;
+          |ESPECIFICA "RBASS", aBaseLocal;
+          aAlfa = aBaseLocal1 + #104#25 + "_" + (("000000" + #104#0)%-106)+ ".pdf";
+          |QBT aAlfa;
+          eaImpresora = "CrystalReport;" + aAlfa;
+          ser_ped = #104#25;
+          num_ped = #104#0;
+          |SUB_EJECUTA_NP "agifa105";
+          |RECIBE_FICHERO aAlfa, aDjunto;
+          |RFBORRA aAlfa;
+     |FINSI;
+
+     aIP = "";
+     |SI #35#8 = "L";
+          |IP_REMOTO aIP;
+     |SINO;
+          |SI #35#8 = "S";
+               |IP_LOCAL aIP;
+          |SINO;
+               aIP = #35#7; |QBF aIP;
+          |FINSI;
+     |FINSI;
+     aServidor = #35#14; |QBF aServidor;
+     aFrom = #35#15; |QBF aFrom;
+     aTo = aEmail;
+     aSubject = "Confirmación pedido web.";
+     aMensaje = "Adjunto pedido:" + #104#25 + "/" + (("000000" + #104#0)%-106);
+     |DSCORREO_ENVIA aIP, aServidor, aFrom, aTo, aSubject, aMensaje, aDjunto;
+
+     aTo = #25#62; |QBF aTo;
+     |SI aTo ! "";
+          |DSCORREO_ENVIA aIP, aServidor, aFrom, aTo, aSubject, aMensaje, aDjunto;
+     |FINSI;
+|FPRC;
+
+|PROCESO Comi;
+     enDescuento1 = #73#8;
+     enDescuento2 = #73#29;
+     eaTComision  = #73#17;
+     eaCliente    = #104#4;
+     eaRepre      = #104#7;
+     eaArticulo   = #73#2;
+     eaSerie      = #73#28;
+     enDirEnt = #104#57;
+     enAlmacen = #73#3;
+     |HAZ Comisiones;
+|FPRC;
+
+|PROCESO Precio;
+     fed_dt = #104#1;   || Fecha....
+     art_dt = #73#2;   || Articulo.
+     cli_dt = #104#4;  || Cliente..
+     fam_dt = #73#18;  || Familia.
+     iva_dt = #19#30;  || Tipo Iva.
+     dtos_2 = 0;      || Descuento 2.
+     dto_pt = 0;      || Descuento Ptas.
+     dtos_1 = 0;      || Descuento 1.
+     pvp_ve = 0;      || Precio Venta.
+     tarifa = #24#39;  || Tarifa Cliente....
+     gru_dt = #24#158; || Grupo Cliente.
+     |SI #73#36 ! 0;
+           uni_dt = #73#36;
+     |SINO;
+           uni_dt = #73#5;
+     |FINSI;
+     nPromo = #104#56;
+     enMensaje = 0;
+     aParam = "";
+     eaSerie = #73#28;
+     enDirEnt = #104#57;
+     |SI #19#176 = "S";  enMensaje = 1;  |FINSI;
+     enAlmacen = #73#3;
+     |HAZ calcdtos;
+|FPRC;
+
+|PROCESO Cabecera;
+
+     aAlfa = #33#1; aAlfa = ("000000" + #33#1) % -106;
+     |DDEFECTO #24;
+     |ABRE #24;
+     #24#0 = aAlfa;
+     |LEE 000#24=;
+     |CIERRA #24;
+
+     |DDEFECTO #25;
+     |ABRE #25;
+     #25#0 = #24#25;
+     |LEE 000#25=;
+     |CIERRA #25;
+
+     |DDEFECTO #3;
+     |ABRE #3;
+     #3#0 = #33#1;
+     #3#1 = #33#2;
+     |LEE 000#3=;
+     |CIERRA #3;
+
+     |LIBERA #104;
+     |DDEFECTO #104;
+     #104#25 = #35#10;
+     enSwMenu = 1;
+     |HAZ ContaPV7;
+     #104#1 = #23#2;
+     #104#2 = #23#2;
+     #104#4 = #24#0;
+     #104#5 = #24#37;
+     #104#6 = #24#38;
+     #104#7 = #25#0;
+     #104#8 = #24#2;
+     #104#9 = #24#20;
+
+     #104#57 = #3#1;
+     #104#19 = #3#10;
+     #104#14 = #3#2;
+     #104#20 = #3#3;
+     #104#21 = #3#7;
+     #104#59 = #3#6;
+     |SI #3#14 = "  ";
+         #104#7 = #24#25;
+     |SINO;
+         #104#7 = #3#14;
+     |FINSI;
+
+     #104#16 = #25#7;
+     #104#17 = #24#156;
+     #104#18 = #24#4;
+     #104#22 = #24#47;
+     #104#23 = #24#41;
+     #104#26 = "WEB";
+     #104#35 = #24#192;
+     |ABRE #324;
+     #324#0 = #104#35;
+     |LEE 000#324=;
+     #104#36 = #324#2;
+     #104#37 = #24#193;
+     #104#40 = #321#9;
+     #324#0 = #104#40;
+     |LEE 000#324=;
+     |CIERRA #324;
+     #104#41 = #324#2;
+     #104#60 = #24#202;
+     #104#64 = #24#15;
+
+     aAlfa = #33#4; |QBF aAlfa;
+     |SI aAlfa ! ""; #104#64 = #33#4; |FINSI;
+     aAlfa = #104#8; |QBF aAlfa;
+     |SI aAlfa = "";
+           #104#8 = #33#5;
+     |FINSI;
+     aAlfa = #104#19; |QBF aAlfa;
+     |SI aAlfa = "";
+           #104#19 = #33#5;
+     |FINSI;
+     aAlfa = #104#14; |QBF aAlfa;
+     |SI aAlfa = "";
+          #104#14 = #33#6;
+     |FINSI;
+     aAlfa = #104#59; |QBF aAlfa;
+     |SI aAlfa = "";
+          #104#59 = #33#7;
+     |FINSI;
+     aAlfa = #104#20; |QBF aAlfa;
+     |SI aAlfa = "";
+          #104#20 = #33#8;
+     |FINSI;
+     aAlfa = #104#21; |QBF aAlfa;
+     |SI aAlfa = "";
+          #104#21 = #33#9;
+     |FINSI;
+     #104#53 = #33#10;
+     #104#54 = #33#11;
+     #104#55 = #33#12;
+
+     #31#0 = #33#13;
+     |LEE 000#31=;
+     |SI FSalida = 0;
+          #104#9 = #31#2;
+     |FINSI;
+     #32#0 = #33#14;
+     |LEE 000#32=;
+     |SI FSalida = 0;
+          #104#60 = #32#2;
+     |FINSI;
+
+     |GRABA 020#104b;
+
+     aDivisa = #104#35;
+     aMoneda = #104#37;
+     |HAZ Divisas104;
+|FPRC;
+
+|PROCESO Kit;
+     nLinKit = nLinKit + 1;
+     |DDEFECTO #46;
+     #46#0 = #73#28;
+     #46#1 = #73#0;
+     #46#2 = #73#1;
+     #46#3 = #49#2;
+     #46#4 = #49#9;
+     #46#5 = #49#4;
+     #46#6 = nLinKit;
+     #46#8 = #19#9;
+     |GRABA 020#46n;
+|FPRC;
+
+|PROCESO precio_divisa;
+     #73#38 = #73#6 / #104#41 * #104#36;
+     |SI #104#37 = "D";
+          #73#6 = #73#38 / #104#36 * #104#41;
+     |SINO;
+          #73#38 = #73#6 / #104#41 * #104#36
+     |FINSI;
+     |SI #104#37 = "D";
+          #73#40 = #73#6;
+     |SINO;
+          #73#40 = #73#38;
+     |FINSI;
+|FPRC;
+
+|PROCESO Lineas;
+     |DDEFECTO #19;
+     |ABRE #19;
+     #19#0 = #34#2;
+     |LEE 000#19=;
+     |CIERRA #19;
+
+     nLin = nLin + 1;
+     |DDEFECTO #73;
+     #73#28 = #104#25;
+     #73#0 = #104#0;
+     #73#1 = nLin;
+     #73#2 = #19#0;
+     #73#3 = #35#11;
+     #73#4 = #19#1;
+     #73#5 = #34#3
+     ||||HAZ Precio;
+     |||#73#6 = pvp_ve - dto_pt;       || Precio
+     |||#73#8 = dtos_1;
+     |||#73#29 = dtos_2;
+     #73#6 = #34#4;
+     |HAZ precio_divisa;
+     |HAZ Comi;
+     #73#10 = enComision;      || Comi
+     #73#13 = #104#2;
+     |SI #24#28 = "S";   || Exportacion
+          #73#14 = 0;
+     |SINO;
+          #73#14 = #19#30;
+     |FINSI;
+     #73#16 = #104#7;
+     #73#17 = #25#7;
+     #73#18 = #19#2;
+     #73#19 = #24#4;
+     #73#20 = #104#4;
+     #73#22 = #35#9;
+     #73#23 = #104#5;
+     #73#24 = #104#6;
+     #73#25 = #104#17;
+     #73#26 = #104#9;
+     #73#42 = #73#5;
+     |GRABA 020#73n;
+
+     #480#0 = #73#2;
+     |LEE 000#480=;
+     |SI FSalida = 0;
+          |ABRE #46;
+          nLinKit = 0;
+          |BUCLELIN 2 Kit #480;
+          |CIERRA #46;
+     |FINSI;
+
+     enForma = 1;
+     |HAZ AcumulaPV;
+|FPRC;
+
+|DEFBUCLE Lineas;
+     #34#1;
+     ;
+     #33#0, 001;
+     #33#0, 999;
+     be;
+     NULL, Lineas;
+|FIN;
+
+|PROCESO coima033;
+     #23#0 = #24#0;
+     |LEE 000#23=;
+
+     |HAZ Cabecera;
+     aEmail = #33#12; |QBF aEmail;
+     nLin = 0;
+     |BUCLE Lineas;
+     |HAZ Final;
+
+     #33#15 = "S";
+     |GRABA 020#33a;
+     |LIBERA #33;
+|FPRC;
+
+|DEFBUCLE coima033;
+     #33#2;
+     ;
+     "N", 00000001;
+     "N", 99999999;
+     be;
+     NULL, coima033;
+|FIN;
+
+|PROGRAMA;
+     |ABRE #142; |LEE 000#142p; |CIERRA #142;
+     |ABRE #321; |LEE 000#321p; |CIERRA #321;
+     |ABRE #35; |LEE 000#35p; |CIERRA #35;
+
+     |ABRET #104;
+     |ABRET #73;
+     |ABRE #23;
+     |ABRE #480;
+     |ABRE #46;
+     |ABRE #31;
+     |ABRE #32;
+     |BUCLE coima033;
+     |CIERRA #31;
+     |CIERRA #32;
+     |CIERRA #46;
+     |CIERRA #480;
+     |CIERRA #23;
+     |CIERRAT #73;
+     |CIERRAT #104;
+|FPRO;

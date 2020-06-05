@@ -1,0 +1,1241 @@
+|FICHEROS;
+    labpen01 #0;         || introduccion
+    labpen02 #1,MANTE;   || periodos cotizados
+    labpen03 #2,MANTE;   || bases cotizadas
+
+    labtraba #20;        || trabajadores (recoge datos)
+    nomhicca #21;        || historico cabs. (captura importes)
+
+    labpen51 #51;        || (%) segun edad
+    labpen52 #52;        || (%) segun a¤os cotizados
+    labpen53 #53;        || coeficientes IPC
+    labpen54 #54;        || complementos 1967
+    labpen55 #55;        || minimos cotizacion grupo 10
+    labpen56 #56;        || topes minimos y maximos cuantia pensiones
+    labpen57 #57,MANTE;  || pantallas de ayuda
+|FIN;
+
+|VARIABLES;
+    alfa1 = "";
+    alfa2 = "";
+    alfa3 = "";
+    alfa4 = "";
+    nume1 = 0;
+    nume2 = 0;
+    nume3 = 0;
+    nume4 = 0;
+    para1 = 0;
+    para2 = 0;
+    para3 = 0;
+    para4 = 0;
+    fech1 = @;
+    fech2 = @;
+    fech3 = @;
+    fech4 = @;
+    elsw1 = 0;
+    elsw2 = 0;
+    elsw3 = 0;
+    elsw4 = 0;
+    FEstado = 0;
+    seleccio = 0;
+    modo = 0;
+    sw_rup = 0;
+    inkey = 0;
+
+    nume1m = 0;
+    nume2m = 0;
+    nume3m = 0;
+    nume4m = 0;
+    alfa1m = "";
+    alfa2m = "";
+    alfa3m = "";
+    alfa4m = "";
+    para1m = 0;
+    mswdec = 0;
+    mconta = 0;
+    mtopes = 0;
+    mimpo1 = "";
+    mimpo2 = "";
+    &mdecim = 2;
+    &mlongi = 12;
+    &mcanti = 0;
+    &mcanta = "";
+
+    opcion = 0;
+{-1}imenu = "";
+    imenu1 = "2400";
+    imenu2 = "1";
+    imenu3 = "";
+    imenu4 = "PBA";
+    imenu5 = " Periodos Cotizados ";
+    imenu6 = " Bases Cotizadas ";
+    imenu7 = " Ambos ";
+
+{-1}menu   = "";
+    menu1  = "1754";
+    menu2  = "1";
+    menu3  = "4";
+    menu4  = "Periodos cotizados.";
+    menu5  = "Bases cotizadas.";
+    menu6  = "Capturar bases.";
+    menu7  = "Informe impreso.";
+    sw_repinta = 0;
+
+    tany1 = 0;
+    tmes1 = 0;
+    tdia1 = 0;
+    tany2 = 0;
+    tmes2 = 0;
+    tdia2 = 0;
+    dfec = @;
+    dfec1 = @;
+    dfec2 = @;
+    dany = 0;
+    dmes = 0;
+    pmes = 0;
+    ddia = 0;
+    anyos = 0;
+    sw_labtraba = 0;
+    sw_repetido = 0;
+    sw_soloanyo = 0;
+    rep_ant = @;
+    lin_repe = 0;
+    desde_any = 0;
+    desde_mes = 0;
+    hasta_any = 0;
+    hasta_mes = 0;
+    bisiesto = 0;
+    topemes = 0;
+    selec_histo = 0;
+    &ipc = 0;
+    &acum_bases = 0;
+    ultima_base = 0;
+    &divisor = 0;
+    &desde = "";
+    &hasta = "";
+    sw_imprime = 0;
+    &any = 0;
+    &mes = "";
+    &base1 = 0;
+    &ipc2 = 0;
+    &coef = 0;
+    &base2 = 0;
+    &mesipc = "";
+    &anyipc = 0;
+    &mensa = "";
+    nombremes = "";
+    nmes = 0;
+    copias = 1;
+    hay_algo = 0;
+    ulti_error = 0;
+    dh_any = 0;
+    hh_any = 0;
+    aAviso1 = "";
+    aAviso2 = "";
+    swAviso2 = 0;
+    swNo_Mut = 0;
+    &EURODB = 0;
+    &eaVarDni  = "";
+    &enCalcCif = 0;
+|FIN;
+____________________________________/ CALCULOS DESDE CAMPOS
+|PROCESO Tipo88pen01; |TIPO 88;
+     |HAZ LeeEURODB;
+|FPRC;
+
+|PROCESO labtraba; |TIPO 6;
+  |SI FSalida = 10;
+      eaVarDni  = #0Campo;
+      enCalcCif = 1;
+      |HAZ CalculoDNI;
+      #0Campo = eaVarDni;
+      |PINTA #0Campo;
+      |ERROR;
+      |ACABA;
+  |FINSI;
+
+  eaVarDni  = #0Campo;
+  enCalcCif = 0;
+  |HAZ CalculoDNI;
+  eaVarDni = (eaVarDni + "            ") % 112;
+  |SI #0Campo ! eaVarDni;
+      |CONFI "0000SEl Nif puede ser Erroneo. Desea Calcularlo.";
+      |SI FSalida = 0;
+          #0Campo = eaVarDni;  |PINTA #0Campo;
+         |ERROR;
+         |ACABA;
+      |FINSI;
+  |FINSI;
+
+    sw_labtraba = 0;
+|ABRE #20;
+|SELECT #2#20;
+    #20#7 = #0#0;
+|LEE 000#20=;
+|SI FSalida = 0;
+        sw_labtraba = 1;
+|FINSI;
+|SELECT #1#20;
+|CIERRA #20;
+
+    modo = (FEntrada / 100) ! 0;        || en alta arrastra los datos
+|SI modo = 1;|Y sw_labtraba = 1;        ||/del maestro de trabajadores
+        #0#1 = #20#2;    || apellidos y nombre
+        #0#2 = #20#75;   || NAFSS
+        #0#3 = #20#11;   || fecha nacimiento
+    |HAZ pinta_panta;
+|FINSI;
+|FPRC;
+
+|PROCESO no_mut; |TIPO 0;
+     |SI Campo = 7; |O Campo = 22;
+          |SI FSalida = 2; |ACABA; |FINSI;
+          swAviso2 = 0;
+          aAviso2 = "    Revise los datos del trabajador si es necesario";
+          |SI #0#9 = "N";
+               |SI #0#6 < 65;
+                    |SI #0#6 ] 61;
+                         |SI #0#21 ! "N";
+                              swAviso2 = 1;
+                              aAviso1 = "    En los no mutualistas se exige ";
+                              aAviso1 = aAviso1 + "que el cese en el trabajo ";
+                              aAviso1 = aAviso1 + "no haya sido por causa ";
+                              aAviso1 = aAviso1 + "imputable al trabajador";
+                              |MENAV aAviso1;
+                         |FINSI;
+                         |SI #0#22 ! "S";
+                              swAviso2 = 1;
+                              aAviso1 = "    En los no mutualistas se exige ";
+                              aAviso1 = aAviso1 + "estar inscrito en el INEM ";
+                              aAviso1 = aAviso1 + "al menos seis meses antes ";
+                              aAviso1 = aAviso1 + "de la jubilacion";
+                              |MENAV aAviso1;
+                         |FINSI;
+                         |SI swAviso2 ! 0;
+                              |MENAV aAviso2;
+                              |ERROR;
+                         |FINSI;
+                    |SINO;
+                         aAviso1 = "    En los no mutualistas se exige ";
+                         aAviso1 = aAviso1 + "una edad minima de 61 a¤os ";
+                         aAviso1 = aAviso1 + "para solicitar la jubilacion ";
+                         aAviso1 = aAviso1 + "anticipada";
+                         |MENAV aAviso1;
+                         |MENAV aAviso2;
+                         |ERROR;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |SINO;
+          ||SI nume1 < 30; |Y #0#9 = "N";
+          |SI nume1 < 30; |Y #0#6 < 65;
+               swAviso2 = 1;
+               aAviso1 = "    En los no mutualistas menores de 65 a¤os ";
+               aAviso1 = aAviso1 + "se exige un minimo de 30 a¤os de cotizacion";
+               |MENAV aAviso1;
+               |MENAV aAviso2;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO porcen_edad;
+    swNo_Mut = 0;
+    #0#17 = 0;
+|ABRE #51;
+    #51#0 = #0#6;
+|LEE 000#51=;
+|SI #0#6 = 60; |Y #0#9 = "N"; swNo_Mut = 1; |FINSI;
+|SI FSalida ! 0; |O swNo_Mut ! 0;
+    |SI #51#0 > 65;
+            #0#17 = 100;
+    |SINO;
+        alfa1 = "    Porcentaje segun edad inexistente para " + #51#0 + " a¤os ...";
+        |SI swNo_Mut = 0;
+            |MENAV alfa1;
+        |FINSI;
+    |FINSI;
+|SINO;
+    |SI #0#15 ! 0;
+            nume1 = #0#14 + 1;
+    |SINO;
+            nume1 = #0#14;
+    |FINSI;
+||    |SI #0#21 = "N";|Y #0#9 = "S"; || cese forzoso y mutualista
+||        |SI nume1 ] 40;
+||                #0#17 = #51#2;     || 40 a¤os o mas
+||        |SINO;
+||                #0#17 = #51#1;     || menos de 40 a¤os
+||        |FINSI;
+||    |SINO;
+||            #0#17 = #51#1;    || cese voluntario o no mutualista
+||    |FINSI;
+
+    |SI #0#9 = "S";                     || MUTUALISTA
+        |SI #0#21 = "N"; |Y nume1 ] 31; || cese NO imputable a la libre volun-
+                                        || tad del trabajador = cese NO voluntario
+            |SI nume1 ] 31; |Y nume1 [ 34;
+                #0#17 = #51#3;
+            |FINSI;
+            |SI nume1 ] 35; |Y nume1 [ 37;
+                #0#17 = #51#4;
+            |FINSI;
+            |SI nume1 ] 38; |Y nume1 [ 39;
+                #0#17 = #51#5;
+            |FINSI;
+            |SI nume1 ] 40;
+                #0#17 = #51#6;
+            |FINSI;
+        |SINO;
+            #0#17 = #51#1;    || cese voluntario = IMPUTABLE a la voluntad del
+        |FINSI;               || trabajador o [ 30 a¤os de cotizacion
+    |SINO;                         || NO MUTUALISTA
+        |SI #0#6 ] 61;
+            |SI nume1 ] 15;
+                |SI nume1 [ 30;
+                    #0#17 = #51#1;
+                |FINSI;
+                |SI nume1 ] 31; |Y nume1 [ 34;
+                    #0#17 = #51#3;
+                |FINSI;
+                |SI nume1 ] 35; |Y nume1 [ 37;
+                    #0#17 = #51#4;
+                |FINSI;
+                |SI nume1 ] 38; |Y nume1 [ 39;
+                    #0#17 = #51#5;
+                |FINSI;
+                |SI nume1 ] 40;
+                    #0#17 = #51#6;
+                |FINSI;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+|FINSI;
+|CIERRA #51;
+|PINTA #0#17;
+|FPRC;
+
+|PROCESO compu_any;
+|PDEFECTO #0, 7, 8;
+|SI #0#4 < "05.08.1997";                          #0#7 = 8; |FINSI;
+|SI #0#4 ] "05.08.1997";|Y #0#4 [ "31.12.1997";   #0#7 = 9; |FINSI;
+|SI #0#4 ] "01.01.1998";|Y #0#4 [ "31.12.1998";   #0#7 =10; |FINSI;
+|SI #0#4 ] "01.01.1999";|Y #0#4 [ "31.12.1999";   #0#7 =11; |FINSI;
+|SI #0#4 ] "01.01.2000";|Y #0#4 [ "31.12.2000";   #0#7 =12; |FINSI;
+|SI #0#4 ] "01.01.2001";|Y #0#4 [ "31.12.2001";   #0#7 =13; |FINSI;
+|SI #0#4 ] "01.01.2002";                          #0#7 =15; |FINSI;
+|PINTA #0#7;
+|FPRC;
+
+|PROCESO calcula_edad;
+    dfec1 = #0#3;   dfec2 = #0#4;  sw_soloanyo = 0;
+|HAZ resta_anyos;
+    #0#6 = anyos;   |PINTA #0#6;
+|FPRC;
+
+|PROCESO fec_cese; |TIPO 0;
+    fech1 = Contenido;   || comprueba la modificacion de la fecha de cese
+|SI #0#8 > #0#4;
+    |MENAV "    La fecha de cese sera igual o inferior a la de jubilacion ...";
+    |ERROR;
+|SINO;
+    |SI fech1 ! #0#8;
+        |PDEFECTO #0, 10, 21;
+        |HAZ pinta_panta;
+        |HAZ bor_periodos;
+        |HAZ bor_importes;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO fec_jubila; |TIPO 0;
+    inkey = FSalida;
+
+    fech1 = Contenido;   || comprueba la modificacion de la fecha de jubil.
+|SI fech1 ! #0#4;
+        #0#8 = #0#4;     || fecha de cese
+    |PDEFECTO #0, 10, 21;
+    |HAZ pinta_panta;
+    |HAZ bor_periodos;
+    |HAZ bor_importes;
+|FINSI;
+
+|HAZ compu_any;
+|HAZ calcula_edad;
+|SI #0#6 < 60;
+    |MENAV "    El titular no ha cumplido los 60 a¤os ...";
+    |SI inkey ! 2;  |ERROR;   |FINSI;
+|SINO;
+    |SI #0#6 < 65;|Y fech1 ! #0#4;
+        |AVISO;
+        |PUSHV 0501 2380;
+        |CAMPO_ATRIBUTO #0#6, P, 0, 0;
+        |PINTA #0#6;
+        |CAMPO_ATRIBUTO #0#6, D, 0, 0;
+        |PINPA #0#57;
+        |PAUSA;
+        |POPV;
+    |FINSI;
+    |HAZ porcen_edad;
+|FINSI;
+|FPRC;
+
+|PROCESO si_cese; |TIPO 0;
+|HAZ porcen_edad;
+|FPRC;
+
+|PROCESO mayus; |TIPO 0;
+    #0Campo = #0Campo > #0Campo;
+|PINTA #0Campo;
+|FPRC;
+____________________________________/ CONTROL DEL SUBMENU
+|PROCESO repinta;
+    sw_repinta = 1;
+|PINPA #0#0;
+|PINDA #0#0;
+    sw_repinta = 0;
+|FPRC;
+
+|PROCESO el_menu;
+    modo = (FEntrada / 100) ! 0;
+|SI modo ! 3;|Y modo ! 0;
+    |HAZ repinta;
+    |PARA; |SI; |HACIENDO;
+        |MENUG menu;
+        |SI FSalida > 0;
+                menu2 = FSalida;
+            |SI FSalida = 1;  |HAZ periodos; |FINSI;
+            |SI FSalida = 2;  |HAZ importes; |FINSI;
+            |SI FSalida = 3;  |HAZ capturar; |FINSI;
+            |SI FSalida = 4;  |HAZ imprimir; |FINSI;
+        |SINO;
+            |SAL;
+        |FINSI;
+        |HAZ repinta;
+    |SIGUE;
+    |HAZ repinta;
+|FINSI;
+|FPRC;
+
+|PROCESO tipo13; |TIPO 13;
+|SI sw_repinta = 0;
+    |HAZ el_menu;
+|FINSI;
+|FPRC;
+
+|PROCESO tipo30; |TIPO 30;
+|HAZ el_menu;
+|FPRC;
+
+|PROCESO inem; |TIPO 0;
+     |C_M #0#22, 1, "S";
+     |SI #0#9 = "S";
+          |C_M #0#22, 1, "N";
+     |FINSI;
+|FPRC;
+____________________________________/ CALCULO DE LOS COMPLEMENTOS
+|PROCESO complemento; |TIPO 0;
+|SI #0#9 = "S";
+        dfec1 = #0#3;    dfec2 = "01.01.1967";    sw_soloanyo = 0;
+    |HAZ resta_anyos;
+    |DDEFECTO #54;
+    |ABRE #54;
+        #54#0 = anyos;
+    |LEE 000#54=;
+    |SI FSalida ! 0;
+            alfa1 = "    Complemento de edad en 1967 inexistente para " + #54#0 + " a¤os ...";
+        |MENAV alfa1;
+    |FINSI;
+        #0#10 = #54#1;   || anyos
+        #0#11 = #54#2;   || dias
+    |CIERRA #54;
+|SINO;
+        #0#10 = 0;       || anyos
+        #0#11 = 0;       || dias
+        #0#21 = "S";     || cese voluntario
+|FINSI;
+|PINTA #0#10;
+|PINTA #0#11;
+|PINTA #0#21;
+|HAZ total_anyos;
+|HAZ porcen_edad;
+|FPRC;
+____________________________________/ PERIODOS COTIZADOS
+|PROCESO lee_algo1;
+    hay_algo = 1;
+|ERROR10;
+|FPRC;
+
+|DEFBUCLE lee_algo;
+ #2#1;
+ ;
+ #0#0, 1979;
+ #0#0, 2999;
+ ;
+ NULL, lee_algo1;
+|FIN;
+
+|PROCESO porcen_anyos;
+|SI #0#15 ! 0;
+        anyos = #0#14 + 1;    || se redondea por arriba
+|SINO;
+        anyos = #0#14;
+|FINSI;
+    #0#16 = 0;
+|SI anyos ] 15;
+    |DDEFECTO #52;
+    |ABRE #52;
+        #52#0 = anyos;
+    |LEE 000#52=;
+    |SI FSalida ! 0;
+        |SI #52#0 > 35;
+                #0#16 = 100;      || cuando tiene mas de 35 a¤os
+        |SINO;
+                alfa1 = "    Porcentaje segun a¤os cotizados inexistente para " + #52#0 + " a¤os ...";
+            |MENAV alfa1;
+        |FINSI;
+    |SINO;
+            #0#16 = #52#1;
+    |FINSI;
+    |CIERRA #52;
+|FINSI;
+|FPRC;
+
+|PROCESO total_anyos;
+    nume1 = ((#0#10 + #0#12) * 365) + #0#11 + #0#13;
+    #0#15 = nume1 $ 365;                || total a¤os
+    #0#14 = (nume1 - #0#15) / 365;      || total dias
+|HAZ porcen_anyos;
+|HAZ pinta_panta;
+|FPRC;
+
+|PROCESO lee_tiempo1;
+    nume1 = #1#3 - #1#2;
+    ddia = ddia + nume1;
+|FPRC;
+
+|DEFBUCLE lee_tiempo;
+ #1#1;
+ ;
+ #0#0,   1;
+ #0#0, 999;
+ ;
+ NULL, lee_tiempo1;
+|FIN;
+
+|PROCESO tiempo_cotiz;
+    #0#12 = 0;
+    #0#13 = 0;
+    ddia = 0;
+|BUCLE lee_tiempo;
+    #0#13 = ddia $ 365;
+    #0#12 = (ddia - #0#13) / 365;
+|HAZ total_anyos;
+|SI anyos < 15;
+    |MENAV "    Tiempo contratado inferior a 15 a¤os ...";
+        sw_repetido = -1;
+|FINSI;
+|HAZ porcen_edad;
+|HAZ no_mut;
+|FPRC;
+
+|PROCESO repetidos1;
+|SI sw_rup = 0;
+        sw_rup = 1;
+|SINO;
+    |SI #1#2 [ rep_ant;
+            lin_repe = #1#1;
+            sw_repetido = -1;
+        |ERROR10;
+    |FINSI;
+|FINSI;
+    rep_ant = #1#3;
+|FPRC;
+
+|DEFBUCLE repetidos;
+ #1#2;
+ ;
+ #0#0, "01.01.0001", "01.01.0001";
+ #0#0, "31.12.9999", "31.12.9999";
+ ;
+ NULL, repetidos1;
+|FIN;
+
+|PROCESO aviso_repe;
+    sw_rup = 0;
+    sw_repetido = 0;
+|BUCLE repetidos;
+|SI sw_repetido = -1;
+        alfa1 = "    Se han informado periodos repetidos. Deberia revisar la linea " + lin_repe;
+    |MENAV alfa1;
+|FINSI;
+|FPRC;
+
+|PROCESO def_fecha1; |TIPO 7;
+|SI #1Campo = "01.01.0001";
+    |SI Campo = 2;  #1Campo = "01.01.1960";  |FINSI;
+    |SI Campo = 3;  #1Campo = #0#8;          |FINSI;
+    |PINTA #1Campo;
+|FINSI;
+|FPRC;
+
+|PROCESO fecha1; |TIPO 0;
+|SI #1Campo < "01.01.1960";
+    |MENAV "    El periodo debera ser posterior al 1 de enero de 1960 ...";
+        #1Campo = "01.01.1960";
+    |PINTA #1Campo;
+    |ERROR;
+|SINO;
+    |SI #1Campo > #0#8;
+        |MENAV "    El periodo debera ser inferior a la fecha de cese ...";
+            #1Campo = #0#8;
+        |PINTA #1Campo;
+        |ERROR;
+    |SINO;
+        |SI #1#3 < #1#2;|Y #1#3 ! "01.01.0001";
+            |MENAV "    Error de entrada ...";
+            |ERROR;
+        |FINSI;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO min1;
+    #1#0 = #0#0;
+    #1#1 = 1;
+|FPRC;
+
+|PROCESO max1;
+    #1#0 = #0#0;
+    #1#1 = 999;
+|FPRC;
+
+|PROCESO periodos;
+|PUSHV 1425 2377;
+|HAZ desde_hasta;
+|SI modo ! 3;|Y modo ! 4;
+        sw_repetido = -1;
+    |PARA; |SI sw_repetido = -1; |HACIENDO;
+        |ENTLINEAL #1#1, 2, 3, 22, 1, min1, max1;
+        |HAZ aviso_repe;
+    |SIGUE;
+    |POPV;
+    |HAZ tiempo_cotiz;
+        hay_algo = 0;
+    |BUCLE lee_algo;     || por si aun no han introducido las bases
+    |SI hay_algo ! 0;
+            sw_imprime = 0;
+        |HAZ la_pension;
+    |FINSI;
+    |GRABA 020#0a;
+|SINO;
+    |ENTLINEAL #1#1, 2, 4, 22, 1, min1, max1;
+    |POPV;
+|FINSI;
+|HAZ pinta_panta;
+|FPRC;
+____________________________________/ CALCULO DE LA PENSION
+|PROCESO los_topes;
+|ABRE #56;
+|LEE 000#56p;
+|SI FSalida = 0;
+    |SI #0#20 > #56#5;
+        |SI sw_imprime = 0;
+            |MENAV "    Aplicado el tope maximo de cuantias de pensiones ...";
+        |SINO;
+                mensa = "NOTA: Aplicado el tope m ximo de cuant¡as de pensiones.";
+        |FINSI;
+            #0#20 = #56#5;
+    |SINO;
+        |SI #0#5 = "S";
+            |SI #0#6 ] 65;
+                |SI #0#20 < #56#4;
+                    |SI sw_imprime = 0;
+                        |MENAV "    Aplicado el tope minimo para titular con conyuge de 65 a¤os o mas ...";
+                    |SINO;
+                            mensa = "NOTA: Aplicado el tope m¡nimo para titular con conyuge de 65 a¤os o m s.";
+                    |FINSI;
+                        #0#20 = #56#4;
+                |FINSI;
+            |SINO;
+                |SI #0#20 < #56#2;
+                    |SI sw_imprime = 0;
+                        |MENAV "    Aplicado el tope minimo para titular con conyuge de menos de 65 a¤os ...";
+                    |SINO;
+                            mensa = "NOTA: Aplicado el tope m¡nimo para titular con conyuge de menos de 65 a¤os.";
+                    |FINSI;
+                        #0#20 = #56#2;
+                |FINSI;
+            |FINSI;
+        |SINO;
+            |SI #0#6 ] 65;
+                |SI #0#20 < #56#3;
+                    |SI sw_imprime = 0;
+                        |MENAV "    Aplicado el tope minimo para titular sin conyuge de 65 a¤os o mas ...";
+                    |SINO;
+                            mensa = "NOTA: Aplicado el tope m¡nimo para titular sin conyuge de 65 a¤os o m s.";
+                    |FINSI;
+                        #0#20 = #56#3;
+                |FINSI;
+            |SINO;
+                |SI #0#20 < #56#1;
+                    |SI sw_imprime = 0;
+                        |MENAV "    Aplicado el tope minimo para titular sin conyuge de menos de 65 a¤os ...";
+                    |SINO;
+                            mensa = "NOTA: Aplicado el tope m¡nimo para titular sin conyuge de menos de 65 a¤os.";
+                    |FINSI;
+                        #0#20 = #56#1;
+                |FINSI;
+            |FINSI;
+        |FINSI;
+    |FINSI;
+|SINO;
+    |MENAV "    Cuantias minimas y maximas de pension no definidas ...";
+|FINSI;
+|CIERRA #56;
+|FPRC;
+
+|PROCESO base_reguladora;
+    #0#18 = (acum_bases ! EURODB);      || total bases
+    divisor = #0#7 * 14;           || 12 meses + 2 pagas
+    #0#19 = (#0#18 / divisor) ! EURODB; || base reguladora
+    nume1 = #0#19 * (#0#16 / 100);
+    nume2 = nume1 * (#0#17 / 100);
+    #0#20 = (nume2 ! EURODB);           || cuantia pension
+|FPRC;
+
+|PROCESO actualiza_ipc;
+    #53#0 = anyos;
+|LEE 000#53=;
+|SI FSalida ! 0;
+    |SI #53#0 > ulti_error;
+            ulti_error = #53#0;
+            alfa1 = "    Tabla de IPC inexistente para " + #53#0 + " ...";
+        |MENAV alfa1;
+    |FINSI;
+        #53pmes = ipc;
+|FINSI;
+
+|SI #53pmes > ipc;
+        #53pmes = ipc;
+        ulti_error = 9999;    || para que ya no de mensajes
+|FINSI;
+
+    acum_bases = acum_bases + ((#2dmes * (ipc / #53pmes)) ! EURODB);
+
+|SI sw_imprime = 1;
+    |HAZ imprime_ipc2;        || si estamos imprimiendo
+|FINSI;
+|FPRC;
+
+|PROCESO la_pension;
+|MENSA "    Calculando la cuantia de la pension ...";
+    ulti_error = 0;
+    acum_bases = 0;
+|ABRE #2;
+|ABRE #53;
+    #53#0 = hasta_any - 2;
+|LEE 000#53=;
+|SI FSalida = 0;
+        dany = #53#0;
+        ipc = #53hasta_mes;
+    |SI sw_imprime = 1;  |HAZ imprime_ipc1;  |FINSI;
+    |PARA anyos = desde_any; |SI anyos [ hasta_any; |HACIENDO anyos = anyos + 1;
+            #2#0 = #0#0;
+            #2#1 = anyos;
+        |LEE 000#2=;
+        |SI FSalida = 0;
+            |PARA dmes = 2; |SI dmes [ 13; |HACIENDO dmes = dmes + 1;
+                    pmes = dmes - 1;
+                |SI anyos = desde_any;|Y pmes < desde_mes;
+                |SINO;
+                    |SI anyos = hasta_any;|Y pmes > hasta_mes;
+                    |SINO;
+                        |HAZ actualiza_ipc;
+                    |FINSI;
+                |FINSI;
+            |SIGUE;
+        |SINO;
+                alfa1 = "    Bases de cotizacion del a¤o " + anyos + " no informadas ...";
+            |MENAV alfa1;
+        |FINSI;
+    |SIGUE;
+    |HAZ base_reguladora;
+    |HAZ los_topes;
+|SINO;
+        alfa1 = "    Tabla de IPC inexistente para " + #53#0 + " ...";
+    |MENAV alfa1;
+    |MENAV "    Calculo no realizable ...";
+|FINSI;
+|CIERRA #2;
+|CIERRA #53;
+|ATRI R;  |BLIN 4;  |ATRI 0;
+|FPRC;
+____________________________________/ IMPORTES COTIZADOS
+|PROCESO minimo; |TIPO 0;
+    nume4 = Contenido;
+|SI FSalida = 9;                   || pulsa F1 para arrastrar ultima base
+    |SI ultima_base ! 0;
+            #2Campo = ultima_base; |PINTA #2Campo;
+    |FINSI;
+|FINSI;
+|C_M #2Campo, 0, alfa1;
+|SI alfa1 = "S";
+    |DDEFECTO #55;
+    |ABRE #55;
+        #55#0 = #2#1;
+    |LEE 000#55=;
+    |SI FSalida ! 0;
+            alfa1 = "    Minimo de cotizacion inexistente para " + #55#0 + " ...";
+        |MENAV alfa1;
+    |SINO;
+        |SI #2Campo < #55#1;
+            |MENAV "    Base de cotizacion por debajo del minimo ...";
+        |FINSI;
+    |FINSI;
+    |CIERRA #55;
+    |SI #2Campo ! 0;|Y nume4 ! #2Campo;
+            ultima_base = #2Campo;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO no_mes; |TIPO 7;
+|C_M #2Campo, 1, "S";
+    nume1 = Campo - 1;
+|SI #2#1 = desde_any;
+    |SI nume1 < desde_mes;    |C_M #2Campo, 1, "N";    |FINSI;
+|FINSI;
+|SI #2#1 = hasta_any;
+    |SI nume1 > hasta_mes;    |C_M #2Campo, 1, "N";    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO los_minimos;
+|ABRE #2;
+|ABRE #55;
+|PARA anyos = desde_any; |SI anyos [ hasta_any; |HACIENDO anyos = anyos + 1;
+
+    |DDEFECTO #55;
+        #55#0 = anyos;
+    |LEE 000#55=;
+    |SI FSalida ! 0;
+            alfa1 = "    Minimo de cotizacion inexistente para " + #55#0 + " ...";
+        |MENAV alfa1;
+    |FINSI;
+
+    |DDEFECTO #2;
+        #2#0 = #0#0;
+        #2#1 = anyos;
+    |LEE 101#2=;
+        FEstado = FSalida;
+    |PARA dmes = 2; |SI dmes [ 13; |HACIENDO dmes = dmes + 1;
+        |SI #2dmes = 0;
+                pmes = dmes - 1;
+            |SI anyos = desde_any;|Y pmes < desde_mes;
+            |SINO;
+                |SI anyos = hasta_any;|Y pmes > hasta_mes;
+                |SINO;
+                        #2dmes = #55#1;      || base minima
+                |FINSI;
+            |FINSI;
+        |FINSI;
+    |SIGUE;
+    |SI FEstado ! 0;     |GRABA 020#2n; |FINSI;
+    |SI FEstado = 0;     |GRABA 020#2a; |FINSI;
+    |LIBERA #2;
+
+|SIGUE;
+|CIERRA #2;
+|CIERRA #55;
+|FPRC;
+
+|PROCESO min2;
+    #2#0 = #0#0;
+    #2#1 = desde_any;
+|FPRC;
+
+|PROCESO max2;
+    #2#0 = #0#0;
+    #2#1 = hasta_any;
+|FPRC;
+
+|PROCESO importes;
+|PUSHV 1050 2376;
+|HAZ desde_hasta;
+|SI modo ! 3;|Y modo ! 4;
+    |HAZ los_minimos;
+    |ENTLINEAL #1#2, 2, 3, 22, 1, min2, max2;
+        sw_imprime = 0;
+    |HAZ la_pension;
+    |GRABA 020#0a;
+|SINO;
+    |ENTLINEAL #1#2, 2, 4, 22, 1, min2, max2;
+|FINSI;
+|POPV;
+|HAZ pinta_panta;
+|FPRC;
+____________________________________/ CAPTURAR BASES
+|PROCESO lee_histo1;
+|DDEFECTO #2;
+    #2#0 = #20#7;   || dni
+|SI #21#66 < 70;
+        #2#1 = 2000 + #21#66; || a¤o
+|SINO;
+        #2#1 = 1900 + #21#66; || a¤o
+|FINSI;
+|LEE 101#2=;
+    FEstado = FSalida;
+
+    nume1 = #21#2 + 1;
+|SI #2#1 = desde_any;|Y #21#2 < desde_mes;
+        #2nume1 = 0;
+|SINO;
+    |SI #2#1 = hasta_any;|Y #21#2 > hasta_mes;
+            #2nume1 = 0;
+    |SINO;
+            selec_histo = 1;
+            #2nume1 = #2nume1 + #21#39;      || base cotizacion CC
+    |FINSI;
+|FINSI;
+
+|SI FEstado ! 0;    |GRABA 020#2n; |FINSI;
+|SI FEstado = 0;    |GRABA 020#2a; |FINSI;
+|LIBERA #2;
+|FPRC;
+
+|DEFBUCLE lee_histo;
+ #21#1;
+ ;
+ #20#0, #20#1, dh_any,  1, 00;
+ #20#0, #20#1, hh_any, 12, 99;
+ ;
+ NULL, lee_histo1;
+|FIN;
+
+|PROCESO leetraba1;
+|SI tany2 < tany1;       || por el a¤o 2000 (se trabaja por 2 cifras)
+        dh_any = tany1;
+        hh_any = 99;
+    |BUCLE lee_histo;
+        dh_any = 0;
+        hh_any = tany2;
+    |BUCLE lee_histo;
+|SINO;
+        dh_any = tany1;
+        hh_any = tany2;
+    |BUCLE lee_histo;
+|FINSI;
+|FPRC;
+
+|DEFBUCLE leetraba;
+ #20#2;
+ ;
+ #0#0;
+ #0#0;
+ ;
+ NULL, leetraba1;
+|FIN;
+
+|PROCESO historico;
+    tany1 = desde_any $ 100;       || los desde/hasta para el historico
+    tany2 = hasta_any $ 100;
+|HAZ bor_importes;
+|ABRE #2;
+|BUCLE leetraba;
+|CIERRA #2;
+|FPRC;
+
+|PROCESO capturar;
+|SI modo ! 3;|Y modo ! 4;
+    |HAZ labtraba;      || si entramos con F-11 no entra a este calculo
+    |SI sw_labtraba = 1;
+        |MENSA "    Capturando bases de cotizacion del historico de nominas ...";
+        |HAZ desde_hasta;
+            selec_histo = 0;
+        |HAZ historico;
+        |SI selec_histo = 0;
+            |MENAV "    No existen nominas en el historico de los a¤os correspondientes ...";
+        |SINO;
+            |MENAV "    Captura realizada ...";
+        |FINSI;
+    |SINO;
+        |MENAV "    DNI/NIF inexistente en el fichero de trabajadores ...";
+    |FINSI;
+|SINO;
+    |MENAV "    Opcion activa solamente en alta o modificacion ...";
+|FINSI;
+|FPRC;
+____________________________________/ INFORME IMPRESO
+|PROCESO imprime_ipc2;
+    any = anyos;
+    nmes = pmes;    |HAZ nombre_mes;
+    mes = nombremes;
+    base1 = #2dmes;
+    ipc2 = #53pmes;
+    coef = ipc / #53pmes;
+    base2 = (#2dmes * coef) ! EURODB;
+    mcanti = base2; |HAZ millares;      || puntos de millar y decimales
+|PRINT;
+|FPRC;
+
+|PROCESO imprime_ipc1;
+    anyipc = dany;
+    nmes = hasta_mes;    |HAZ nombre_mes;
+    mesipc = nombremes;
+|FPRC;
+
+|PROCESO imprime_ipc;
+    sw_imprime = 1;      || para el calculo de la pension
+|INFOR "labpen03";
+|HAZ la_pension;
+|PIEINF;
+|FININF;
+|FPRC;
+
+|PROCESO lee_periodo1;
+    fech1 = #1#2 % 2;    alfa1 = fech1; desde = alfa1 % 11;
+    fech1 = #1#3 % 2;    alfa1 = fech1; hasta = alfa1 % 11;
+|PRINT;
+|FPRC;
+
+|DEFBUCLE lee_periodo;
+ #1#1;
+ ;
+ #0#0,   1;
+ #0#0, 999;
+ ;
+ NULL, lee_periodo1;
+|FIN;
+
+|PROCESO imprime_per;
+|INFOR "labpen01";
+|BUCLE lee_periodo;
+|PIEINF;
+|FININF;
+|FPRC;
+
+|PROCESO imprimir;
+|SI #0#20 ! 0;
+    |MENU imenu;
+        opcion = FSalida;
+    |SI opcion ] 1;|Y opcion [ 3;
+            imenu2 = opcion;
+        |IMPRE 0;
+        |SI FSalida = 0;
+            |HAZ desde_hasta;
+            |PUSHV 2048 2380;
+            |PINPA #1#57;
+            |AVISO;
+                E_inf = 1;
+                E_sup = 9;
+                copias = 2176 ? 1;
+            |SI FSalida = 0;
+                |PARA para1 = 1; |SI para1 [ copias; |HACIENDO para1 = para1 + 1;
+                    |ATRI P; |PINTA 2176, para1; |ATRI 0;
+                    |SI opcion = 1;|O opcion = 3;   |HAZ imprime_per;   |FINSI;
+                    |SI opcion = 2;|O opcion = 3;   |HAZ imprime_ipc;   |FINSI;
+                |SIGUE;
+            |FINSI;
+            |POPV;
+        |SINO;
+            |MENAV "    Proceso abortado ...";
+        |FINSI;
+        |FINIMP;
+    |FINSI;
+|SINO;
+    |MENAV "    Calculo nulo ...";
+|FINSI;
+|FPRC;
+____________________________________/ RUTINAS COMUNES
+|PROCESO resta_anyos;
+    dfec = dfec1; |HAZ desglosa; tany1 = dany; tmes1 = dmes; tdia1 = ddia;
+    dfec = dfec2; |HAZ desglosa; tany2 = dany; tmes2 = dmes; tdia2 = ddia;
+
+    anyos = tany2 - tany1;
+
+|SI sw_soloanyo = 0;               || para tener en cuenta o no el mes y
+    |SI tmes2 ] tmes1;             ||/el dia en la resta
+        |SI tmes2 = tmes1;
+            |SI tdia2 < tdia1;
+                    anyos = anyos - 1;
+            |FINSI;
+        |FINSI;
+    |SINO;
+            anyos = anyos - 1;
+    |FINSI;
+|FINSI;
+|FPRC;
+
+|PROCESO desglosa;
+    alfa1 = dfec % -104;      dany = alfa1;
+    alfa1 = dfec %  402;      dmes = alfa1;
+    alfa1 = dfec %  102;      ddia = alfa1;
+|FPRC;
+
+|PROCESO borra_imp1;
+|BORRA 020#2a;
+|LIBERA #2;
+|FPRC;
+
+|DEFBUCLE borra_imp;
+ #2#1;
+ ;
+ #0#0, 1979;
+ #0#0, 2999;
+ be;
+ NULL, borra_imp1;
+|FIN;
+
+|PROCESO bor_importes;
+|BUCLE borra_imp;
+|FPRC;
+
+|PROCESO borra_per1;
+|BORRA 020#1a;
+|LIBERA #1;
+|FPRC;
+
+|DEFBUCLE borra_per;
+ #1#1;
+ ;
+ #0#0,   1;
+ #0#0, 999;
+ be;
+ NULL, borra_per1;
+|FIN;
+
+|PROCESO bor_periodos;
+|BUCLE borra_per;
+|FPRC;
+
+|PROCESO pinta_panta;
+|PARA para1 = 0; |SI para1 [ 20; |HACIENDO para1 = para1 + 1;
+    |PINTA #0para1;
+|SIGUE;                  || se hace asi por el tipo 13
+|FPRC;
+
+|PROCESO nombre_mes;
+    nombremes = "";
+|SI nmes = 1;  nombremes = "ENERO";     |FINSI;
+|SI nmes = 2;  nombremes = "FEBRERO";   |FINSI;
+|SI nmes = 3;  nombremes = "MARZO";     |FINSI;
+|SI nmes = 4;  nombremes = "ABRIL";     |FINSI;
+|SI nmes = 5;  nombremes = "MAYO";      |FINSI;
+|SI nmes = 6;  nombremes = "JUNIO";     |FINSI;
+|SI nmes = 7;  nombremes = "JULIO";     |FINSI;
+|SI nmes = 8;  nombremes = "AGOSTO";    |FINSI;
+|SI nmes = 9;  nombremes = "SEPTIEMBRE";|FINSI;
+|SI nmes =10;  nombremes = "OCTUBRE";   |FINSI;
+|SI nmes =11;  nombremes = "NOVIEMBRE"; |FINSI;
+|SI nmes =12;  nombremes = "DICIEMBRE"; |FINSI;
+|FPRC;
+
+|PROCESO ulti_dia;
+    bisiesto = dany $ 4;
+|SI bisiesto = 0;   bisiesto = 1;  |SINO;    bisiesto = 0;  |FINSI;
+|SI dmes = 1;  topemes = 31;  |FINSI;
+|SI dmes = 2;  topemes = 28 + bisiesto;  |FINSI;
+|SI dmes = 3;  topemes = 31;  |FINSI;
+|SI dmes = 4;  topemes = 30;  |FINSI;
+|SI dmes = 5;  topemes = 31;  |FINSI;
+|SI dmes = 6;  topemes = 30;  |FINSI;
+|SI dmes = 7;  topemes = 31;  |FINSI;
+|SI dmes = 8;  topemes = 31;  |FINSI;
+|SI dmes = 9;  topemes = 30;  |FINSI;
+|SI dmes =10;  topemes = 31;  |FINSI;
+|SI dmes =11;  topemes = 30;  |FINSI;
+|SI dmes =12;  topemes = 31;  |FINSI;
+|FPRC;
+
+|PROCESO desde_hasta;
+    dfec = #0#8; |HAZ desglosa; tany1 = dany; tmes1 = dmes; tdia1 = ddia;
+
+    hasta_any = tany1;
+    hasta_mes = tmes1;
+    dany = hasta_any;    dmes = tmes1;  |HAZ ulti_dia;
+|SI tdia1 = topemes;
+        hasta_mes = tmes1;
+|SINO;
+        hasta_mes = tmes1 - 1;
+    |SI hasta_mes = 0;
+            hasta_any = hasta_any - 1;
+            hasta_mes = 12;
+    |FINSI;
+|FINSI;
+    desde_mes = hasta_mes + 1;
+    desde_any = hasta_any - #0#7;
+|SI desde_mes = 13;
+        desde_mes = 1;
+        desde_any = desde_any + 1;
+|FINSI;
+|FPRC;
+____________________________________/ PUNTACION DE MILLAR CON DECIMALES
+|PROCESO &millares;
+     || variable de entrada de la cantidad -> mcanti
+     || variable de salida de la cantidad --> mcanta
+     || variable para numero de decimales --> mdecim
+     || variable para longitud de salida ---> mlongi
+
+    nume3m = mcanti ! 0;          || comprueba si tiene decimales
+    nume4m = 0;
+|SI nume3m = mcanti;  mswdec = 1;  |SINO;  mswdec = 0;  |FINSI;
+
+    nume4m = mcanti ! mdecim; mimpo1 = nume4m;    || importe para bucle
+    alfa2m = mimpo1 % 0;      mtopes = alfa2m;    || longitud para bucle
+    mconta = 0;                                   || contador para miles
+    mimpo2 = "";                                  || importe salida 1
+
+|PARA para1m = mtopes; |SI para1m ] 1; |HACIENDO para1m = para1m - 1;
+        nume2m = (para1m * 100) + 1;
+        alfa2m = mimpo1 % nume2m;
+    |SI mswdec = 1;
+            mconta = mconta + 1;
+        |SI mconta = 4;
+                mconta = 1;
+                alfa2m = "." + alfa2m;
+        |FINSI;
+    |FINSI;
+    |SI alfa2m = ".";|Y mswdec = 0;
+            mswdec = 1;
+            alfa2m = ",";
+    |FINSI;
+        mimpo2 = mimpo2 + alfa2m;
+|SIGUE;
+
+    alfa2m = mimpo2 % 0;           || da la vuelta a la variable
+    mtopes = alfa2m;
+    mimpo1 = "";
+|PARA para1m = mtopes; |SI para1m ] 1; |HACIENDO para1m = para1m - 1;
+        nume2m = (para1m * 100) + 1;
+        alfa2m = mimpo2 % nume2m;
+        mimpo1 = mimpo1 + alfa2m;
+|SIGUE;
+
+    nume3m = mcanti ! 0;
+|SI nume3m = mcanti;
+        mimpo1 = mimpo1 + "," + ("0" * mdecim);   || si no tenia decimales
+|SINO;
+        nume1m = mdecim - 1;
+    |PARA para1m = 1; |SI para1m [ nume1m; |HACIENDO para1m = para1m + 1;
+            nume3m = mcanti ! para1m;
+        |SI nume3m = mcanti;
+                mimpo1 = mimpo1 + "0";
+        |FINSI;
+    |SIGUE;
+|FINSI;
+
+    nume1m = (mlongi + 100) * -1;
+    mcanta = ((" " * mlongi) + mimpo1) % nume1m;
+|FPRC;
+
+|PROCESO Tipo8; |TIPO 8;
+     |ABRE #labpen53;
+     |LEE 000#labpen53.p;
+     |SI FSalida ! 0;
+          |CONFI "     ATENCION. Tablas vacias. Desea cargar las tablas de coeficientes?"
+          |SI FSalida = 0;
+               |SUB_EJECUTA "labpen04";
+          |FINSI;
+     |FINSI;
+     |CIERRA #labpen53;
+|FPRC;

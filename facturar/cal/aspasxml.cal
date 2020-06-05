@@ -1,0 +1,662 @@
+          **** PASE DEL HISTORICO DE RECIBOS AL SECUENCIAL ADAPTADO A LA ***
+                        ***   XML  ****
+
+|FICHEROS;
+  aspascar #0;
+  asclient #2;
+  indrecib #3;
+  ascaisec #5;
+  asprovin #6;
+  n19sepax #901;
+|FIN;
+
+|VARIABLES;
+   aId      = "";
+   nPersona = 0;
+   fHoy     = @;
+   aHora    = "";
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   nNume    = 0;
+   aPais    = "";
+   aSufijo  = "";
+
+   aLon       = "";
+   nLon       = 0;
+   aDeci      = "";
+   aCar       = "";
+   aCadena    = "";
+
+   Comodin    = "";
+   Comodin1   = "";
+   &eaOrigen  = "";
+   &eaNombre1 = "";
+   &eaPain    = "";
+   &eaFichero = "";
+   &eaTag     = "";
+   &eaVal     = "";
+   &eaGrupo   = "";
+
+   aCodigo    = "";
+   aPoblacion = "";
+   aProvincia = "";
+   aDireccion = "";
+   aNif       = "";
+   aFechaMand = "";
+   aCodBIC    = "";
+   aCodPais   = "";
+   aCodIBAN   = "";
+   aRefer     = "";
+
+   &SwXml     = 0;
+   &nConta    = 0;
+   &nTotal    = 0;
+   nRegistros = 0;
+   fDFecVto   = @;
+   fHFecVto   = @;
+
+   nPmtInfId  = 0;
+|FIN;
+
+|| ////////////////////////////////////////////////////////////////////
+|PROCESO NumDeci;
+     nNume = (nNume * 100) ! 0;
+     aAlfa = nNume;
+     aLon = aAlfa % A0; nLon = aLon;
+     aDeci = aAlfa % -102;
+     nLon = nLon + 100 - 2;
+     aAlfa = (aAlfa % nLon) + "." + aDeci;
+|FPRC;
+
+|PROCESO FormaFecha;
+     eaVal = (eaVal % 704) + "-" + (eaVal % 402) + "-" + (eaVal % 102);
+|FPRC;
+
+|PROCESO HoraActual;
+     fHoy = ~;
+     |HORA aAlfa;
+     aAlfa = (fHoy % 704) + "-" + (fHoy % 402) + "-" + (fHoy % 102) + "T" + aAlfa;
+|FPRC;
+
+|PROCESO Mod_9710;
+     aAlfa2 = aAlfa % 0101;
+     |PARA; |SI aAlfa2 = "0"; |HACIENDO;
+          aAlfa = aAlfa % 0299; aAlfa2 = aAlfa % 0101;
+     |SIGUE;
+
+     aAlfa1 = "";
+     |PARA; |SI aAlfa ! ""; |HACIENDO;
+          aAlfa2 = aAlfa % 0; nNume = aAlfa2;
+          |SI nNume > 5;
+               aAlfa2 = aAlfa % 0105;
+               aAlfa = aAlfa % 0699;
+          |SINO;
+               aAlfa2 = aAlfa;
+               aAlfa = "";
+          |FINSI;
+          aAlfa1 = aAlfa1 + aAlfa2;
+          nNume = aAlfa1;
+          nNume = nNume / 97;
+          aAlfa2 = nNume;
+          aAlfa2 = aAlfa2 - ".";
+          |SI FSalida ! 0;
+               nNume = FSalida + 98;
+               aAlfa2 = aAlfa2 % nNume;
+               aAlfa2 = "0." + aAlfa2;
+               nNume = aAlfa2;
+          |SINO;
+               nNume = 0;
+          |FINSI;
+          nNume = (nNume * 97) ! 0;
+          aAlfa1 = nNume;
+     |SIGUE;
+     nNume  = aAlfa1;
+     nNume = 98 - nNume;
+     aAlfa = ("00" + nNume) % -102;
+||nNume  = 98 - (nNume - (((nNume / 97) ! 0) * 97)); || MOD 97-10  ISO 7604
+|FPRC;
+
+|PROCESO ObtenIdMXL;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - "/"; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - "-"; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - "?"; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - ":"; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - "("; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - ")"; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - "."; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - ","; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - "'"; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - "+"; |SIGUE;
+     |PARA FSalida = 1; |SI FSalida ! 0; |HACIENDO; aNif = aNif - &34; |SIGUE;
+
+     aAlfa = aNif + aPais + "00";
+
+     aAlfa = aAlfa > aAlfa;
+     aCar = ""; aCadena = "";
+     |PARA; |SI aAlfa ! ""; |HACIENDO;
+          aCar = aAlfa % 0101; aAlfa = aAlfa % 0299;
+          |SI aCar ] "0"; |Y aCar [ "9";
+               aCadena = aCadena + aCar;
+          |SINO;
+               |SI aCar ] "A"; |Y aCar [ "Z"; |Y aCar ! "Ñ";
+                    nNume = &aCar;
+                    nNume = nNume - 55;
+                    aCar = nNume;
+                    aCadena = aCadena + aCar;
+               |FINSI;
+          |FINSI;
+     |SIGUE;
+     aAlfa = aCadena;
+     |HAZ Mod_9710;
+     aId = aPais + aAlfa + aSufijo + aNif;
+|FPRC;
+|| ////////////////////////////////////////////////////////////////////
+|PROCESO Cabecera;
+     eaGrupo = "S";
+     eaTag = "CstmrDrctDbtInitn";|HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "GrpHdr"; |HAZ XmlTag;
+
+     fHoy = ~;
+     |HORA aHora;
+     aAlfa = #5#2; |QBF aAlfa;
+     eaVal = aAlfa + (fHoy % 102) + (fHoy % 402) + (fHoy % 704);
+     eaVal = eaVal + (aHora % 102) + (aHora % 402) + (aHora % 702);
+     eaVal = eaVal + ("000000" + #0#16) % -106;
+     |SI #0#26 = "S";
+         eaVal = "FSDD" + eaVal;
+     |FINSI;
+     eaTag = "MsgId"; |HAZ XmlTag;
+
+     |HAZ HoraActual; eaVal = aAlfa;
+     eaTag = "CreDtTm"; |HAZ XmlTag;
+
+     eaVal = nRegistros;
+     eaTag = "NbOfTxs"; |HAZ XmlTag;
+
+     nNume = nTotal; |HAZ NumDeci; eaVal = aAlfa;
+     eaTag = "CtrlSum"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "InitgPty"; |HAZ XmlTag;
+
+     eaVal = #5#3;
+     eaTag = "Nm"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Id"; |HAZ XmlTag;
+
+     aAlfa = #5#2; |QBF aAlfa; aAlfa = aAlfa % 0101;
+     |SI aAlfa ] "A"; |Y aAlfa [ "W";
+          nPersona = 1; || Persona juridica
+     |SINO;
+          nPersona = 2; || Persona fisica
+     |FINSI;
+
+     |SI nPersona = 1;
+          eaGrupo = "S";
+          eaTag = "OrgId"; |HAZ XmlTag;
+     /*
+          eaVal =
+          eaTag = "BICOrBEI"; |HAZ XmlTag;
+     */
+          eaGrupo = "S";
+          eaTag = "Othr"; |HAZ XmlTag;
+
+          aPais = "ES";
+          aNif = #5#2;
+          aSufijo = #0#12; |QBF aSufijo; aSufijo = ("000" + aSufijo) % -103;
+          |HAZ ObtenIdMXL;
+          eaVal = aId;
+          eaTag = "Id"; |HAZ XmlTag;
+
+          eaGrupo = "N"; |HAZ XmlTag;
+          eaGrupo = "N"; |HAZ XmlTag;
+     |SINO;
+          eaGrupo = "S";
+          eaTag = "PrvtId"; |HAZ XmlTag;
+
+          eaGrupo = "S";
+          eaTag = "Othr"; |HAZ XmlTag;
+
+          aPais   = "ES";
+          aNif    = #5#2;
+          aSufijo = #0#12; |QBF aSufijo; aSufijo = ("000" + aSufijo) % -103;
+          |HAZ ObtenIdMXL;
+          eaVal = aId;
+          eaTag = "Id"; |HAZ XmlTag;
+
+          eaGrupo = "N"; |HAZ XmlTag;
+          eaGrupo = "N"; |HAZ XmlTag;
+     |FINSI;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+|FPRC;
+
+|PROCESO InfoPago;
+     eaGrupo = "S";
+     eaTag = "PmtInf"; |HAZ XmlTag;
+
+     nPmtInfId = nPmtInfId + 1;
+
+     aAlfa = #5#2; |QBF aAlfa;
+     eaVal = aAlfa + (fHoy % 102) + (fHoy % 402) + (fHoy % 704);
+     eaVal = eaVal + (aHora % 102) + (aHora % 402) + (aHora % 702);
+     eaVal = eaVal + (("00000" + #0#16) % -105) + (("000" + nPmtInfId) % -103);
+     eaTag = "PmtInfId"; |HAZ XmlTag;
+
+     eaVal = "DD";
+     eaTag = "PmtMtd"; |HAZ XmlTag;
+
+     eaVal = "true"; |SI #0#27 = "N"; eaVal = "false"; |FINSI;
+     eaTag = "BtchBookg"; |HAZ XmlTag;  || tique 700000 _ 9624
+
+     eaVal = nRegistros;
+     eaTag = "NbOfTxs"; |HAZ XmlTag;
+
+     nNume = nTotal; |HAZ NumDeci; eaVal = aAlfa;
+     eaTag = "CtrlSum"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "PmtTpInf"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "SvcLvl"; |HAZ XmlTag;
+
+     eaVal = "SEPA";
+     eaTag = "Cd"; |HAZ XmlTag;
+
+     eaGrupo= "N"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "LclInstrm"; |HAZ XmlTag;
+
+     |SI #0#23 = "B";
+          eaVal = "B2B";
+     |SINO;
+          |SI #0#24 = "S";
+               eaVal = "COR1";
+          |SINO;
+               eaVal = "CORE";
+          |FINSI;
+     |FINSI;
+     eaTag = "Cd"; |HAZ XmlTag;
+
+     eaGrupo= "N"; |HAZ XmlTag;
+
+     eaVal = "RCUR";
+     eaTag = "SeqTp"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "CtgyPurp"; |HAZ XmlTag;
+
+     eaVal = "SUPP";
+     eaTag = "Cd"; |HAZ XmlTag;
+
+     eaGrupo= "N"; |HAZ XmlTag;
+     eaGrupo= "N"; |HAZ XmlTag;
+
+     eaVal = #0#11; |HAZ FormaFecha;
+     eaTag = "ReqdColltnDt"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Cdtr"; |HAZ XmlTag;
+
+     eaVal = #5#22;
+     eaTag = "Nm"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "CdtrAcct"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Id"; |HAZ XmlTag;
+
+     eaVal = #5#32;
+     eaTag = "IBAN"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "CdtrAgt"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "FinInstnId"; |HAZ XmlTag;
+
+     eaVal = #5#31; |QBF eaVal;
+     |SI eaVal ! "";
+          eaTag = "BIC"; |HAZ XmlTag;
+     |SINO;
+          eaGrupo = "S";
+          eaTag = "Othr"; |HAZ XmlTag;
+
+          eaVal = "NOTPROVIDED";
+          eaTag = "Id"; |HAZ XmlTag;
+          eaGrupo = "N"; |HAZ XmlTag;
+
+/* aqui  || Tique 2884 _ 3099
+          aNif = #5#23;  ||????
+          eaVal = aNif;
+          eaTag = "Id"; |HAZ XmlTag;
+          eaGrupo = "N"; |HAZ XmlTag;
+*/
+     |FINSI;
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "CdtrSchmeId"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Id"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "PrvtId"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Othr"; |HAZ XmlTag;
+
+     aPais   = "ES";
+     aNif    = #5#23;
+     aSufijo = #0#21; |QBF aSufijo; aSufijo = ("000" + aSufijo) % -103;
+     |HAZ ObtenIdMXL;
+     eaVal = aId;
+     eaTag = "Id"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "SchmeNm"; |HAZ XmlTag;
+
+     eaVal = "SEPA";
+     eaTag = "Prtry"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+|FPRC;
+
+|PROCESO InfoAdeudo;
+     #asclient#0 = #3#9;
+     |LEE 000#asclient.=;
+     |SI FSalida ! 0; |DDEFECTO #asclient; |FINSI;
+
+     #asprovin#0 = #3#12;
+     |LEE 000#asprovin.=;
+     |SI FSalida ! 0; |DDEFECTO #asprovin; |FINSI;
+
+     aCodigo    = ("00000" + #3#9) % -105;
+     aPoblacion = #3#11; |QBF aPoblacion;
+     aProvincia = #asprovin#1; |QBF aProvincia;
+     aDireccion = #3#10; |QBF aDireccion;
+     aNif       = #3#3;  |QBF aNif;
+     aFechaMand = #3#16;
+     aCodBIC    = #3#17;
+     aCodPais   = #asclient#86;
+     aCodIBAN   = #3#15;
+     aRefer     = #3#19;
+
+     aAlfa = aNif; aAlfa = aAlfa % 0101;
+     |SI aAlfa ] "A"; |Y aAlfa [ "W";
+          nPersona = 1; || Persona juridica
+     |SINO;
+          nPersona = 2; || Persona fisica
+     |FINSI;
+
+     eaGrupo = "S";
+     eaTag = "DrctDbtTxInf"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "PmtId"; |HAZ XmlTag;
+
+     aAlfa = #5#23; |QBF aAlfa;
+     aAlfa = aAlfa + (#0#8%102) + (#0#8%402) + (#0#8%704);
+     eaVal = aAlfa + (("000000" + #0#16) % -106) + (("000" + #3#14) % -103);
+     eaTag = "EndToEndId"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     nNume = #3#7; |HAZ NumDeci; eaVal = aAlfa;
+     eaTag = "InstdAmt Ccy=" + &34 + "EUR" + &34; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "DrctDbtTx"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "MndtRltdInf"; |HAZ XmlTag;
+
+||2.48
+/*
+     aAlfa = aNif + "CLI" + aCodigo;
+     eaVal = aAlfa;
+*/
+     eaVal = aRefer;
+     eaTag = "MndtId"; |HAZ XmlTag;
+
+     eaVal = aFechaMand; |HAZ FormaFecha;
+     eaTag = "DtOfSgntr"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+
+||2.70
+     eaGrupo = "S";
+     eaTag = "DbtrAgt"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "FinInstnId"; |HAZ XmlTag;
+
+     eaVal = aCodBIC; |QBF eaVal;
+     |SI eaVal ! "";
+          eaTag = "BIC"; |HAZ XmlTag;
+     |SINO;
+          eaGrupo = "S";
+          eaTag = "Othr"; |HAZ XmlTag;
+
+          eaVal = "NOTPROVIDED";
+          eaTag = "Id"; |HAZ XmlTag;
+
+          eaGrupo = "N"; |HAZ XmlTag;
+     |FINSI;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Dbtr"; |HAZ XmlTag;
+
+     eaVal = #3#2; |QBF eaVal;
+     |SI eaVal ! "";
+         eaTag = "Nm"; |HAZ XmlTag;
+     |FINSI;
+
+     eaGrupo = "S";
+     eaTag = "PstlAdr"; |HAZ XmlTag;
+
+     eaVal = aCodPais; |QBF aCodPais;
+     |SI aCodPais = ""; eaVal = "ES"; |FINSI;
+     eaTag = "Ctry"; |HAZ XmlTag;
+
+     eaVal = aDireccion; |QBF eaVal;
+     |SI eaVal ! "";
+         eaTag = "AdrLine"; |HAZ XmlTag;
+     |FINSI;
+
+     |SI aPoblacion = "";
+          |SI aProvincia ! "";
+               eaVal = aProvincia;
+               eaTag = "AdrLine"; |HAZ XmlTag;
+          |FINSI;
+     |SINO;
+          |SI aProvincia ! "";
+               eaVal = aPoblacion + ", " + aProvincia;
+               eaTag = "AdrLine"; |HAZ XmlTag;
+          |SINO;
+               eaVal = aPoblacion;
+               eaTag = "AdrLine"; |HAZ XmlTag;
+          |FINSI;
+     |FINSI;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Id"; |HAZ XmlTag; || 2.72
+
+     |SI nPersona = 1;   || Persona juridica (2.72)
+          eaGrupo = "S";
+          eaTag = "OrgId"; |HAZ XmlTag;
+
+|| ..          |QBF aCodBIC;      ||  Tique 2884 _ 3099
+|| ..          |SI aCodBIC ! "";
+|| ..              eaVal = aCodBIC;
+|| ..              eaTag = "BICOrBEI"; |HAZ XmlTag;
+|| ..          |SINO;
+               eaGrupo = "S";
+               eaTag = "Othr"; |HAZ XmlTag;
+
+               eaVal = aNif;
+               eaTag = "Id"; |HAZ XmlTag;
+
+               eaGrupo = "N"; |HAZ XmlTag;
+|| ..          |FINSI;
+          eaGrupo = "N"; |HAZ XmlTag;
+     |SINO;              || Persona fisica
+          eaGrupo = "S";
+          eaTag = "PrvtId"; |HAZ XmlTag;
+
+          eaGrupo = "S";
+          eaTag = "Othr"; |HAZ XmlTag;
+
+          eaVal = aNif;
+          eaTag = "Id"; |HAZ XmlTag;
+
+          eaGrupo = "N"; |HAZ XmlTag;
+          eaGrupo = "N"; |HAZ XmlTag;
+     |FINSI;
+     eaGrupo = "N"; |HAZ XmlTag;
+     eaGrupo = "N"; |HAZ XmlTag;
+||2.73
+     eaGrupo = "S";
+     eaTag = "DbtrAcct"; |HAZ XmlTag;
+
+     eaGrupo = "S";
+     eaTag = "Id"; |HAZ XmlTag;
+
+     eaVal = aCodIBAN;
+     eaTag = "IBAN"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+
+||2.76
+     eaGrupo = "S";
+     eaTag = "Purp"; |HAZ XmlTag;
+
+     eaVal = "SUPP";
+     eaTag = "Cd"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+
+||2.88
+     eaGrupo = "S";
+     eaTag = "RmtInf"; |HAZ XmlTag;
+
+     aAlfa = "Factura:" + #3#0; |QBF aAlfa;
+     aAlfa = aAlfa + "/" +  (("000000" + #3#1)%-106);
+     eaVal = aAlfa;
+     eaTag = "Ustrd"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+|FPRC;
+
+|DEFBUCLE Auxiliar;
+  #3#3;
+  8;
+  "               ", "                    ", fDFecVto;
+  "zzzzzzzzzzzzzzz", "zzzzzzzzzzzzzzzzzzzz", fHFecVto;
+  e;
+  NULL, InfoAdeudo;
+|FIN;
+
+|PROCESO Financiada;
+     nRegistros = #901#1;
+     nTotal     = #901#2;
+     #0#11      = #901#0;
+     |HAZ InfoPago;
+
+     fDFecVto = #901#0;
+     fHFecVto = #901#0;
+     |BUCLE Auxiliar;
+
+     eaGrupo = "N"; |HAZ XmlTag;
+|FPRC;
+
+|DEFBUCLE Financiada;
+     #901#1;
+     ;
+     "01.01.0000";
+     "31.12.9999";
+     ;
+     NULL, Financiada;
+|FIN;
+
+|| ////////////////////////////////////////////////////////////////////
+|PROCESO NuevoXML;
+
+   |SI #0#26 = "S";
+       aAlfa = Usuario; aAlfa = "r1" + aAlfa;
+       |NOME_DAT #901 aAlfa;
+       |ABRE #901;
+   |FINSI;
+   SwXml = 1;
+
+   |DFICB Comodin;
+   Comodin1 = ("00000" + #0#16) % -105;
+   Comodin1 = "n19" + Comodin1 + ".xml";
+   eaOrigen = Comodin;
+   eaNombre1 = Comodin1;
+   eaFichero = Comodin + Comodin1;
+   eaPain = "008.001.02";
+   |HAZ XmlIni;
+   |SI FSalida ] 0;
+
+      fDFecVto = "01.01.0000";
+      fHFecVto = "31.12.9999";
+      nRegistros = nConta;
+
+      nPmtInfId = 0;
+      |HAZ Cabecera;
+
+      |ABRE #asclient;
+      |ABRE #asprovin;
+      |SI #0#26 = "N";
+          |HAZ InfoPago;
+          |BUCLE Auxiliar;
+          eaGrupo = "N"; |HAZ XmlTag;
+      |SINO;
+          |BUCLE Financiada;
+      |FINSI;
+      |CIERRA #asprovin;
+      |CIERRA #asclient;
+
+      eaGrupo = "N"; |HAZ XmlTag;
+      |HAZ XmlFin;
+
+      #0#17 = nConta; |PINTA #0#17;
+      #0#19 = nTotal; |PINTA #0#19;
+   |FINSI;
+
+   |SI #0#26 = "S";
+       |CIERRA #901;
+       |DELINDEX #901;
+   |FINSI;
+|FPRC;

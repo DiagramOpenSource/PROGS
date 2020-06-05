@@ -1,0 +1,1 @@
+tar zcvf /tmp/ccc/dsarchi.cals.tgz cal/* bin/* def/ pan/ *.men *.plb 

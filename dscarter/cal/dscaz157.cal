@@ -1,0 +1,567 @@
+|FICHEROS;
+   dscam166 #10,MANTE;
+   dscam167 #11;
+   dscaw119 #12;
+   dscam051 #13;
+   dscam168 #14;
+   dscam169 #15;
+
+   ReferCab@ #1000;
+   ReferLin@ #1001;
+|FIN;
+
+|VARIABLES;
+   &eaClvUsuarios = "";
+   &eaEntrada     = "";
+   &eaSalida      = "";
+   &enEmpCartera  = 0;
+
+   aComando = "";
+   aClave   = "";
+   aAlfa    = "";
+   aAlfa1   = "";
+   aAlfa2   = "";
+   aBase    = "";
+   aAbre    = "";
+   aAntClave   = "";
+   aAntUsuario = "";
+   aUsuario = "";
+   aHora    = "";
+   aEstado  = "";
+   nAntRemesa  = 0;
+
+   nCalc    = 0;
+   nCalc1   = 0;
+   nHandle  = 0;
+   nRemesa  = 0;
+   nSwHayAviso = 0;
+   nSwAviso    = 0;
+   nSwError    = 0;
+
+   fFecha   = @;
+
+   aAdjunto    = "";
+   aDsCorreoIP = "";
+   aDirOrigen  = "";
+   aDirDestino = "";
+   aServidor   = "";
+   aAsunto     = "";
+   aTexto      = "";
+   aUser       = "";
+   aPwd        = "";
+   aPath       = "";
+
+   aPathFicE   = "";
+|FIN;
+
+|PROCESO RecogeUsuarios;
+   |DBASS aBase; |QBF aBase;
+   aAbre = aBase + "dev/usr/ds_sys.psw"
+   |XABRE "U", aAbre, nHandle;
+   |SI FSalida ] 0;
+      |PARA; |SI; |HACIENDO;
+         |XLEE nHandle, 37, aAlfa;
+         |SI FSalida < 0;  |SAL;  |FINSI;
+         |DDEFECTO #dscam167;
+         #dscam167#0 = aAlfa % 410;
+         |GRABA 020#dscam167.n;
+      |SIGUE;
+   |FINSI;
+   |XCIERRA nHandle;
+|FPRC;
+
+|RUTINA infm166;
+   #dscam166#0 = aClave;
+   #dscam166#1 = "          ";
+|FRUT;
+
+|RUTINA supm166;
+   #dscam166#0 = aClave;
+   #dscam166#1 = "zzzzzzzzzz";
+|FRUT;
+
+|PROCESO MiraRemesa;
+   fFecha = ~; nCalc = fFecha;
+   fFecha = #ReferLin@#6; nCalc1 = fFecha;
+   nCalc = nCalc1 - nCalc;
+   |SI nCalc < 3;
+      nSwHayAviso = 1;
+
+      #ReferCab@#0 = #ReferLin@#0;
+      |LEE 000#ReferCab@.=;
+      |SI FSalida ! 0; |DDEFECTO #ReferCab@; |FINSI;
+
+      |SALVA_FICHA #dscam166;
+      aAlfa = "dscam012" + (("00000" + nRemesa) % -105);
+      #dscam166#0 = aAlfa; aAlfa = #dscam166#0;
+      #dscam166#1 = "";
+      |LEE 000#dscam166.];
+      |PARA; |SI FSalida = 0; |Y #dscam166#0 = aAlfa; |HACIENDO;
+         |DDEFECTO #dscaw119;
+         #dscaw119#0 = #dscam166#1;
+         #dscaw119#1 = #ReferLin@#0;
+         #dscaw119#2 = #ReferLin@#1;
+         #dscaw119#3 = #ReferLin@#16;
+         #dscaw119#4 = #ReferLin@#4;
+         #dscaw119#5 = #ReferLin@#3;
+         #dscaw119#6 = #ReferLin@#7;
+         #dscaw119#7 = #ReferLin@#6;
+         #dscaw119#8 = #ReferCab@#1;
+         #dscaw119#9 = #dscam166#2;
+         |GRABA 020#dscaw119.n;
+
+         |LEE 000#dscam166.s;
+      |SIGUE;
+
+      |REPON_FICHA #dscam166;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE MiraRemesa;
+#ReferLin@#1002;
+15;
+nRemesa, 001, "N";
+nRemesa, 999, "N";
+;
+NULL, MiraRemesa;
+|FIN;
+
+|PROCESO Chequeo;
+   || Para las remesas marcadas y que no estan en el historico de envios
+   ||   compruebo que si hay lineas no descontadas del riesgo con vencimiento
+   ||   inferior a tres dias. Si la hay, grabo la linea en un temporal
+
+   |SI aAntClave ! #dscam166#0;
+      aAntClave = #dscam166#0;
+      aAlfa = aAntClave; |QBF aAlfa; aAlfa = aAlfa % 905;
+      nRemesa = aAlfa; |BUCLE MiraRemesa;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Chequeo;
+#dscam166#1;
+;
+"dscam012     ", "          ";
+"dscam012zzzzz", "zzzzzzzzzz";
+;
+NULL, Chequeo;
+|FIN;
+
+|PROCESO CreaAvisos;
+   |SI aAntUsuario ! #dscaw119#0;
+      |SI aAntUsuario ! ""; || La primera vez esta vacio
+         |XCIERRA nHandle;
+      |FINSI;
+      aAntUsuario = #dscaw119#0;
+
+      fFecha = ~; |HORA aHora; aUsuario = #dscaw119#0;
+
+      nHandle = -1;
+      aAlfa = aPathFicE; |QBF aAlfa;
+      aAlfa = aAlfa + "avisos/"; |MKDIR aAlfa;
+      aAlfa = aAlfa + #dscaw119#0; |QBF aAlfa;
+      aAlfa1 = fFecha; aAlfa1 = aAlfa1 - "."; aAlfa1 = aAlfa1 - ".";
+      aAlfa = aAlfa + aAlfa1; |QBF aAlfa;
+      aAlfa1 = aHora; aAlfa1 = aAlfa1 - ":"; aAlfa1 = aAlfa1 - ":";
+      aAlfa = aAlfa + aAlfa1; |QBF aAlfa;
+      aAlfa = aAlfa + ".txt";
+      |XABRE "W", aAlfa, nHandle;
+      |SI FSalida < 0;
+         |MENAV "    No se puede generar el listado para envio de correos de avisos.";
+      |SINO;
+         aAlfa = " " + ("*" * 78) + " "; |XGRABA nHandle, aAlfa;
+         aAlfa = " *****        INFORME RECIBOS PENDIENTES DE RECIBIR TRANSFERENCIA         *****"; |XGRABA nHandle, aAlfa;
+         aAlfa = " " + ("*" * 78) + " "; |XGRABA nHandle, aAlfa;
+         aAlfa = " "; |XGRABA nHandle, aAlfa;
+         aAlfa = " N§ Remesa  Fecha remesa  Documento  N§ Factura         Importe  Fecha vto.   "; |XGRABA nHandle, aAlfa;
+         aAlfa = " -----------------------------------------------------------------------------"; |XGRABA nHandle, aAlfa;
+      |FINSI;
+
+      |DDEFECTO #dscam169;
+      #dscam169#0 = fFecha;
+      #dscam169#1 = aHora;
+      #dscam169#2 = aUsuario;
+      aAlfa = Usuario % 810; aAlfa = (aAlfa + "          ") % 0110;
+      |SI #dscaw119#9 = "C"; #dscam169#3 = "S"; |FINSI;
+      #dscam169#6 = #dscaw119#9;
+      |GRABA 020#dscam169.n;
+   |FINSI;
+
+   |SI nHandle ] 0;
+      |SI nAntRemesa ! #dscaw119#1; |Y nAntRemesa ! 0;
+         aAlfa = " "; |XGRABA nHandle, aAlfa;
+      |FINSI;
+      nAntRemesa = #dscaw119#1;
+      aAlfa = "   " + (("00000" + #dscaw119#1) % -105);
+      aAlfa = aAlfa + "     " + #dscaw119#8;
+      aAlfa = aAlfa + "   "   + (("         " + #dscaw119#3) % -109);
+      aAlfa = aAlfa + "  "    + #dscaw119#4 + "/" + (("000000" + #dscaw119#5) % -106);
+      aAlfa1 = #dscaw119#6; |QBF aAlfa1;
+      aAlfa2 = aAlfa1 % -301;
+      |SI aAlfa2 ! ".";
+         aAlfa2 = aAlfa1 % -201;
+         |SI aAlfa2 ! ".";
+            aAlfa2 = aAlfa1 - ".";
+            |SI FSalida = 0;
+               aAlfa1 = aAlfa1 + ".00";
+            |FINSI;
+         |SINO;
+            aAlfa1 = aAlfa1 + "0";
+         |FINSI;
+      |FINSI;
+      aAlfa = aAlfa + "  "    + (("            " + aAlfa1) % -112);
+      aAlfa = aAlfa + "  "    + #dscaw119#7 + "   ";
+      |XGRABA nHandle, aAlfa;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CreaAvisos;
+#dscaw119#1;
+;
+INICIO;
+FINAL;
+;
+NULL, CreaAvisos;
+|FIN;
+
+|PROCESO EnviaCorreo;
+   #dscam168#0 = aUsuario;
+   |LEE 000#dscam168.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam168; |FINSI;
+   aDirDestino = #dscam168#1; |QBF aDirDestino;
+   |SI aDirDestino = ""; nSwError = -1; |ACABA; |FINSI;
+
+   aAlfa  = fFecha; |QBF aAlfa;
+   FSalida = 1;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa = aAlfa - ".";
+   |SIGUE;
+   aAlfa1 = aHora; |QBF aAlfa1;
+   FSalida = 1;
+   |PARA; |SI FSalida ! 0; |HACIENDO;
+      aAlfa1 = aAlfa1 - ":";
+   |SIGUE;
+   aAlfa2 = aUsuario; |QBF aAlfa2;
+
+   aAsunto     = "[" + aAlfa2 + aAlfa + aAlfa1 + "] Informe de recibos pendientes de transferencia";
+   |DFICE aTexto; |QBF aTexto;
+   aTexto = aPathFicE; |QBF aTexto;
+   aTexto = aTexto + "avisos/" + aAlfa2 + aAlfa + aAlfa1 + ".txt";
+   aAdjunto = aTexto;
+   aTexto = "$$$$" + aTexto;
+
+   aAlfa = "    Conectando con servidor de DSCORREO [" + aDsCorreoIP + "]";
+   |MENSA aAlfa;
+   |DSCORREO_ENVIA aDsCorreoIP, aServidor, aDirOrigen, aDirDestino, aAsunto, aTexto, aAdjunto;
+   |SI FSalida ] 0;
+      |FBORRA aAdjunto;
+   |SINO;
+       nSwError = -1;
+   |FINSI;
+   |BLIN 4;
+|FPRC;
+
+|PROCESO ActualizaHistorico;
+   aAlfa = #dscam051#81; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#82; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#83; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#84; |QBF aAlfa;
+   |SI aAlfa = "0.0.0.0"; |ACABA; |FINSI;
+   aDsCorreoIP = aAlfa;
+   aServidor   = #dscam051#85; |QBF aServidor;
+
+   aUser       = #dscam051#86; |QBF aUser;
+   eaEntrada   = #dscam051#92; |HAZ Encriptado; aPwd = eaSalida;
+   |DFICE aPath; |QBF aPath;
+   aPath = aPath + "tmp/"; |MKDIR aPath;
+   aEstado = "0";
+   |PARA; |SI aEstado = "0"; |HACIENDO;
+      aAlfa = "    Conectando con servidor de DSCORREO [" + aDsCorreoIP + "]";
+      |MENSA aAlfa;
+
+      |DSCORREO_RECIBE aDsCorreoIP, aServidor, aUser, aPwd, aPath, aAdjunto;
+      aEstado = FSalida; aEstado = aEstado % 0102; |QBF aEstado;
+      aAlfa = FSalida; || Quito la version del dscorreo
+
+      |BLIN 4;
+
+      aAlfa1 = aAlfa % 0301;
+      |SI aAlfa1 = "[";
+         aAlfa1 = aAlfa % 1101;
+         |SI aAlfa1 = "]"; aAlfa = (aAlfa % 0102) + (aAlfa % 1299); |FINSI;
+      |SINO;
+         aAlfa1 = aAlfa % 0401;
+         |SI aAlfa1 = "[";
+            aAlfa1 = aAlfa % 1201;
+            |SI aAlfa1 = "]"; aAlfa = (aAlfa % 0103) + (aAlfa % 1399); |FINSI;
+         |FINSI;
+      |FINSI;
+      aAsunto = aAlfa % 0399;
+      aAsunto = aAsunto - "=5B";
+      |SI FSalida ! 0;
+         nCalc = FSalida + 96; aAsunto = aAsunto % nCalc;
+         aAsunto = aAsunto - "=5D";
+         |SI FSalida ! 0;
+            nCalc = ((FSalida / 100) ! 0) + 99; aAsunto = aAsunto % nCalc;
+         |FINSI;
+      |SINO;
+         aAsunto = aAsunto - "[";
+         |SI FSalida ! 0;
+            nCalc = FSalida + 96; aAsunto = aAsunto % nCalc;
+            aAsunto = aAsunto - "]";
+            |SI FSalida ! 0;
+               nCalc = ((FSalida / 100) ! 0) + 99; aAsunto = aAsunto % nCalc;
+            |FINSI;
+         |SINO;
+         |FINSI;
+      |FINSI;
+      aAlfa = aAsunto % -708; aAsunto = aAsunto - aAlfa;
+      aAlfa = (aAlfa % 0102) + "." + (aAlfa % 0302) + "." + (aAlfa % 0504);
+      fFecha = aAlfa;
+      aAlfa = aAsunto % -106; aAsunto = aAsunto - aAlfa;
+      aAlfa = (aAlfa % 0102) + ":" + (aAlfa % 0302) + ":" + (aAlfa % 0502);
+      aHora = aAlfa;
+      aUsuario = aAsunto;
+      |ABRE #dscam169;
+      #dscam169#0 = fFecha;
+      #dscam169#1 = aHora;
+      #dscam169#2 = aUsuario;
+      |LEE 101#dscam169.=;
+      |SI FSalida = 0;
+         #dscam169#5 = "S";
+         |GRABA 020#dscam169.a; |LIBERA #dscam169;
+      |FINSI;
+      |CIERRA #dscam169;
+   |SIGUE;
+|FPRC;
+
+|PROCESO MiraSiAviso;
+   fFecha = ~; aUsuario = Usuario % 0810;
+   |SELECT #2#dscam169;
+   #dscam169#0 = fFecha;
+   #dscam169#1 = "";
+   #dscam169#2 = aUsuario; aUsuario = #dscam169#2;
+   |LEE 000#dscam169.];
+   |SI FSalida = 0; |Y #dscam169#0 = fFecha; |Y #dscam169#2 = aUsuario;
+      nSwAviso = 0;
+      |SELECT #1#dscam169;
+      |LEE 000#dscam169.=;
+   |SINO;
+      nSwAviso = 1;
+      |SELECT #1#dscam169;
+      |DDEFECTO #dscam169;
+   |FINSI;
+|FPRC;
+
+|PROCESO RevisaRemesas;
+   |HAZ CargaDefs;
+   aAlfa = "tc" + Usuario; |NOME_DAT #dscaw119#aAlfa#;
+   |DELINDEX #dscaw119; |ABRE #dscaw119;
+   |ABRE #dscam168;
+
+   nSwHayAviso = 0; |BUCLE Chequeo;
+   |SI nSwHayAviso ! 0;
+      aAntUsuario = "";
+      |BUCLE CreaAvisos;
+      |SI aAntUsuario ! ""; |XCIERRA nHandle; |FINSI;
+   |FINSI;
+
+   |CIERRA #dscam168;
+   |CIERRA #dscaw119;   |DELINDEX #dscaw119;
+   |HAZ DescargaDefs;
+|FPRC;
+
+|PROCESO CargaDefs;
+   |DDEF aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscam012.mas";
+   |CARGA_DEF aAlfa, ReferCab@;
+   |SI FSalida ! 0;
+      |MENAV "    No puedo encontrar los ficheros de remesas de cartera";
+      nSwError = 1;
+      |ACABA;
+   |FINSI;
+
+   |DDEF aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "dscam013.mas";
+   |CARGA_DEF aAlfa, ReferLin@;
+   |SI FSalida ! 0;
+      |DESCARGA_DEF #ReferCab@;
+      |MENAV "    No puedo encontrar los ficheros de remesas de cartera";
+      nSwError = 1;
+      |ACABA;
+   |FINSI;
+
+   |PATH_DAT #ReferCab@#aPathFicE#; |PATH_DAT #ReferLin@#aPathFicE#;
+   |ABRE #ReferCab@;
+|FPRC;
+
+|PROCESO DescargaDefs;
+   |DESCARGA_DEF #ReferLin@;
+   |CIERRA #ReferCab@; |DESCARGA_DEF #ReferCab@;
+|FPRC;
+
+|PROCESO AvisoPantalla;
+   |PUSHV 1119 1861;
+   |BLANCO 1119 1861;
+   |CUADRO 1220 1760;
+   |ATRI I;
+   |PINTA 1321, " Hay  recibos  pendientes  de  recibir";
+   |PINTA 1421, " transferencia con vto.inferior a tres";
+   |PINTA 1521, " dias. Por favor, reviselos           ";
+   |ATRI N;
+   |PAUSA;
+   |POPV;
+|FPRC;
+
+|PROCESO AvisoPorPantalla;
+   |HAZ AvisoPantalla;
+
+   |LEE 101#dscam169.=;
+   |SI FSalida = 0;
+      #dscam169#3 = "S";
+      |GRABA 020#dscam169.a; |LIBERA #dscam169;
+   |FINSI;
+|FPRC;
+
+|PROCESO LinHistoPendientes;
+   fFecha   = #dscam169#0;
+   aHora    = #dscam169#1;
+   aUsuario = #dscam169#2;
+
+   nSwError = 0;
+   |HAZ EnviaCorreo;
+
+   |SI nSwError = 0;
+      #dscam169#4 = "S";
+      |GRABA 020#dscam169.a;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE LinHistoPendientes;
+#dscam169#3;
+;
+"N", "01.01.0000", "        ", "          ";
+"N", "31.12.9999", "zzzzzzzz", "zzzzzzzzzz";
+be;
+NULL, LinHistoPendientes;
+|FIN;
+
+|PROCESO CompruebaEnvioCorreos;
+   aAlfa = #dscam051#81; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#82; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#83; |QBF aAlfa;
+   aAlfa = aAlfa + "." + #dscam051#84; |QBF aAlfa;
+   |SI aAlfa = "0.0.0.0"; |ACABA; |FINSI;
+
+   aDsCorreoIP = aAlfa;
+   aDirOrigen  = #dscam051#90;
+   aServidor   = #dscam051#88; |QBF aServidor;
+   fFecha      = ~;
+
+   |SI #dscam051#89 = "S";
+      eaEntrada = #dscam051#92; |HAZ Encriptado;
+      aAlfa = eaSalida;             |QBF aAlfa; aAlfa = aAlfa + ":";
+      aAlfa = aAlfa + #dscam051#86; |QBF aAlfa; aAlfa = aAlfa + ":";
+      aDirOrigen = aAlfa + aDirOrigen;
+   |FINSI;
+   aDirOrigen = "!" + aDirOrigen;
+
+   |BUCLE LinHistoPendientes;
+|FPRC;
+
+|PROCESO MiraCorreo;
+   #dscam168#0 = #dscam166#1;
+   |LEE 000#dscam168.=;
+   |SI FSalida ! 0; |DDEFECTO #dscam168; |FINSI;
+   aAlfa = #dscam168#1; |QBF aAlfa;
+   |SI aAlfa = "";
+      |MENAV "    El usuario no tiene direccion de correo. Revisela";
+      |ERROR;
+   |FINSI;
+|FPRC;
+
+|PROGRAMA;
+   |DFICB aPathFicE; |QBF aPathFicE;
+   aPathFicE = aPathFicE + (("00000" + #48#0) % -105) + "/";
+   |PATH_DAT #dscam166#aPathFicE#;
+   |PATH_DAT #dscam167#aPathFicE#;
+   |PATH_DAT #dscaw119#aPathFicE#;
+   |PATH_DAT #dscam051#aPathFicE#;
+   |PATH_DAT #dscam168#aPathFicE#;
+   |PATH_DAT #dscam169#aPathFicE#;
+
+   |ABRE #dscam051;
+   |LEE 000#dscam051.p;
+   |SI FSalida ! 0; |DDEFECTO #dscam051; |FINSI;
+   |CIERRA #dscam051;
+
+   aAlfa = PARAMETRO;
+   aAlfa = aAlfa - ",";
+   |SI FSalida ! 0;
+      nCalc = FSalida + 98;
+      aComando = aAlfa % nCalc;
+      aAlfa = "," + aComando;
+      aClave = PARAMETRO; |QBF aClave;
+      aClave = aClave - aAlfa;
+   |SINO;
+      aComando = PARAMETRO;
+      aClave = "";
+   |FINSI;
+
+   |SI aComando = "MTOUSU";
+      |SI aClave ! "";
+         |DELINDEX #dscam167; |ABRE #dscam167;
+         |ABRE #dscam168;
+
+         |HAZ RecogeUsuarios;
+
+         #dscam166#0 = aClave; aClave = #dscam166#0;
+         |ENTLINEAL #1#dscam166, -2, 2, 21, 1, infm166, supm166;
+         |CIERRA #dscam168;
+         |CIERRA #dscam167;   |DELINDEX #dscam167;
+      |FINSI;
+   |FINSI;
+
+   |SI aComando = "CHECKEMPRESA"; |O aComando = "CHECKEXTERNO";
+      enEmpCartera  = #48#0;
+      |HAZ Tipo8;
+
+      || Hay varias partes detalladas a continuacion.
+      ||  1 - Comprobacion del historico de avisos para ver si procede
+      ||      avisar o ya se hizo un aviso hoy.
+      ||  2 - Comprobacion de las remesas que tienen recibos pendientes
+      ||      de recibir transferencia a menos de tres dias de vencer. Esta
+      ||      tarea debe de hacerse tanto a la entrada al acceso a empresas
+      ||      como a la llamada de la tarea programada.
+      ||  3 - Comprobacion del historico de avisos a la entrada del acceso
+      ||      a empresas para avisar por pantalla.
+      ||  4 - Comprobacion del historico de avisos a una llamada especial que
+      ||      la ejecutara una tarea programada que se encargara de enviar
+      ||      los correos pendientes de envio a cada usuario.
+      ||  5 - Actualizacion del historico de avisos con los correos de 'Leido'
+      ||      remitidos por los usuarios que recibieron el correo de aviso.
+
+      |ABRE #dscam169; |ABRE #dscam168;
+      nSwAviso = 0; |HAZ MiraSiAviso;      || Proceso 1
+      |SI nSwAviso = 1;
+         nSwError = 0; |HAZ RevisaRemesas; || Proceso 2
+         nSwAviso = 0; |HAZ MiraSiAviso;
+      |FINSI;
+
+      |SI aComando = "CHECKEMPRESA";
+         |SI nSwAviso = 0;
+            |SI #dscam169#3 = "N";
+               |HAZ AvisoPorPantalla; || Proceso 3
+            |FINSI;
+         |FINSI;
+         |HAZ ActualizaHistorico;     || Proceso 5
+      |FINSI;
+
+      |SI aComando = "CHECKEXTERNO";
+         |HAZ CompruebaEnvioCorreos;  || Proceso 4
+      |FINSI;
+
+      |CIERRA #dscam168; |CIERRA #dscam169;
+      |HAZ Tipo9;
+   |FINSI;
+|FPRO;

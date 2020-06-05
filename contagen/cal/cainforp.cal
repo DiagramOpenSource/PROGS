@@ -1,0 +1,833 @@
+|FICHEROS;
+    cainforp #0;
+
+    :/modelos/def/dsmom030 #330;
+    :/basica/def/dspase97  #97;
+    :/basica/def/dspase22  #122;
+
+    cainforq #40;   || def trabajo importacion
+    caivaasi #200;
+
+    calibros #10;   || Libros de IVA
+    caclipro #12;   || clientes/proveedores
+    cacuenta #24;   || cuentas AGICONT
+
+    camaniva #13;   || registros iva cabecera
+    caivalin #14;   || registros iva Linea
+    camaasic #22;   || asientos cabs. AGICONT
+    camaasil #23;   || asientos lins. AGICONT
+
+    canempre #30;   || empresas AGICONT
+    ca8m0002 #822;
+    ca8cumay #810;
+    cacuebal #28;
+|FIN;
+
+|VARIABLES;
+    alfa1     = "";
+    alfa2     = "";
+    alfa3     = "";
+    NumDoc    = 0;
+    nBase     = 0;
+    nIva      = 0;
+    nRec      = 0;
+    nTpIVA    = 0;
+    nTpRec    = 0;
+
+    fecha     = "";
+    fabre     = "";
+    fcanl     = "";
+    field1    = "";
+    field2    = "";
+    fsali1    = 0;
+    fsali2    = 0;
+    ctiva     = "";
+    ctrec     = "";
+    ctven     = "";
+    ctdes     = "";
+    conte     = "";
+    FEstadoF  = 0;
+    FEstadoA  = 0;
+    impor     = 0;
+    signe     = "";
+    ult_apunt = 0;
+    nConcepto = 0;
+    descr     = "";
+    tacu      = "";
+    nacu      = 0;
+    impcuadre = 0;
+    para1     = 0;
+    para2     = 0;
+    para3     = 0;
+    nume1     = 0;
+    fech1     = @;
+
+    aPath     = "";
+    nContador = 0;
+    nLinea    = 0;
+    nLibro    = 0;
+    descu     = 0;
+    aInver    = "";
+    estado_iva= 0;
+    sw_fecha  = 0;
+    seleccio  = 0;
+    guarda_pos = 0;
+
+    aAlfa1 = "";
+    aAlfa2 = "";
+    aAlfa3 = "";
+    aAlfa4 = "";
+    nNume1 = 0;
+    nNume2 = 0;
+    nNume3 = 0;
+    nNume4 = 0;
+    nLongi = 0;
+|FIN;
+
+|INCLUYE dscont_i;
+|INCLUYE dscoiv_i;
+|INCLUYE defec1_i;
+|INCLUYE cla340_i;
+
+|| ************************************************************************
+|PROCESO alta_cli;
+    #24#0 = conte;
+    eaCuenta = #24#0; |HAZ SacaNivel;
+    |LEE 041#24=;
+    |SI FSalida ! 0;
+        |DDEFECTO #24;
+        #24#0 = eaCuenta;
+        |HAZ SacaNivel;
+        |HAZ defect1;
+        #24#1 = enNivel;
+        #24#2 = #40#4;
+        #24#3 = "S";
+        |GRABA 020#24b;
+    |FINSI;
+    |LIBERA #24;
+
+    guarda_pos = Pos;
+    Pos = -1;
+    #12#23 = "C";
+    #12#10 = eaCuenta;
+    |LEE 041#12=;
+    |SI FSalida ! 0;
+        |DDEFECTO #12;
+        #12#23 = "C";
+        #12#10 = eaCuenta;
+        #12#1 = #24#2;        || nombre
+        #12#9 = #40#6;        || cif
+        #12#0 = eaCuenta;
+        |PUSHV 0501 2380;
+        |PINPA #0#12;
+        |PINDA #0#12;
+        |ENDATOS #1#12;
+        |SI FSalida = 0;
+            |GRABA 020#12c;
+        |FINSI;
+        |POPV;
+    |FINSI;
+    |LIBERA #12;
+    Pos = guarda_pos;
+|FPRC;
+
+|PROCESO Actualiza;
+   MasMenos     = #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nNIVELCUENTA = #camaasil#5;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+
+   |HAZ ActDiario;
+   |HAZ ActCuenta;
+   |HAZ ActTesteo;
+|FPRC;
+
+|PROCESO cabecera;
+    |DDEFECTO #22;
+    #22#0 = #23#0;
+    #22#1 = #23#1;
+    #22#2 = #23#2;
+    |LEE 101#22=;
+    FEstadoA = FSalida;
+    #22#0 = #23#0;         || diario
+    #22#1 = #23#1;         || fecha
+    #22#2 = #23#2;         || documento
+    #22#3 = #22#2;         || asiento
+    |SI #23#8 = "D";
+        #22#4 = #22#4 + #23#9;
+        |SI #22#09 = 0; #22#08 = #23#4; #22#09 = #23#5; |FINSI; || contrp.HABER
+    |FINSI;
+    |SI #23#8 = "H";
+        #22#5 = #22#5 + #23#9;
+        |SI #22#11 = 0; #22#10 = #23#4; #22#11 = #23#5; |FINSI; || contrp.DEBE
+    |FINSI;
+    #22#6 = #22#4 - #22#5;
+    #22#12 = nREGISTRO;
+    #22#13 = 1;
+    |SI FEstadoA = 0;  |GRABA 020#22a;  |FINSI;
+    |SI FEstadoA ! 0;  |GRABA 020#22n;  |FINSI;
+    |LIBERA #22;
+|FPRC;
+
+|PROCESO apuntes;
+    |SI impor ! 0; |Y  conte ! "            ";
+            |SI #40#33 = "1";     || en abonos cambia el signo
+                |SI signe = "D";
+                    signe = "H";
+                |SINO;
+                    signe = "D";
+                |FINSI;
+            |FINSI;
+            |DDEFECTO #23;
+            #23#00 = #13#7;        || diario
+            #23#01 = #13#8;       || fecha
+            #23#02 = #13#9;       || documento
+            #23#03 = ult_apunt;   || apunte
+            #23#04 = conte;       || cuenta
+            #23#05 = enNivel;     || digito cuenta
+            #23#06 = nConcepto;   || concepto
+            #23#07 = descr;       || descripcion
+            #23#08 = signe;       || signo
+            #23#09 = impor;       || importe
+            |SI #23#08 = "D";
+                #23#16 = #23#4;
+                #23#17 = #23#5;
+            |SINO;
+                #23#10 = #23#4;
+                #23#11 = #23#5;
+            |FINSI;
+            #23#12 = "R";     || tipo relacion
+            #23#13 = #13#0;   || libro
+            #23#14 = #13#3;   || nro.factura
+            #23#15 = #13#2;   || serie
+            #23#19 = tacu;    || tipo acumulador
+            #23#20 = nacu;    || nro. acumulador
+            #23#21 = "";          || oficial
+            |SI #40#34 = "1";     #23#21 = "01"; |FINSI;   || no oficial
+            |SI signe = "D";
+                impcuadre = impcuadre + #23#9;
+            |SINO;
+                impcuadre = impcuadre - #23#9;
+            |FINSI;
+            impcuadre = impcuadre ! EURODB;
+            |SI impcuadre = 0.01; |O impcuadre = -0.01; #23#9 = #23#9 + impcuadre; impcuadre = 0; |FINSI;
+            |GRABA 020#23n;
+            |HAZ cabecera;
+            |HAZ Actualiza;
+            ult_apunt = ult_apunt + 10;
+    |FINSI;
+|FPRC;
+
+|PROCESO asiento;        || grabacion de asientos
+    |ABRE #camaasil;
+    nacu = 0;
+    signe="D"; impor=#40#8; |HAZ Conversion;
+               conte=#40#3;
+    |HAZ alta_cli;
+    tacu ="F";  |HAZ apuntes;
+    signe="D";  impor=#40#11; |HAZ Conversion;
+                conte=ctdes;
+    tacu="D";   |HAZ apuntes;
+
+    |PARA para1 = 12; |SI para1 [ 15; |HACIENDO para1 = para1 + 1;
+          |SI #40para1 ! 0;
+              para2 = para1 + 4;
+              para3 = para1 + 8;
+
+             nacu = para1 - 11;
+             signe="H"; impor=#40para2; |HAZ Conversion; conte=ctiva; tacu="I"; |HAZ apuntes;
+             signe="H"; impor=#40para3; |HAZ Conversion; conte=ctrec; tacu="R"; |HAZ apuntes;
+             signe="H"; impor=#40para1; |HAZ Conversion; conte=ctven; tacu="B"; |HAZ apuntes;
+          |FINSI;
+    |SIGUE;
+    |CIERRA #camaasil;
+|FPRC;
+
+|PROCESO BorraAsiento;
+
+   MasMenos     = 0 - #camaasil#9;
+   DebeHaber    = #camaasil#8;
+   aCUENTA      = #camaasil#4;
+   nNIVELCUENTA = #camaasil#5;
+   nREGISTRO    = #camaasil#24;
+   nDIARIO      = #camaasil#0;
+   aFECHA       = #camaasil#1;
+   nDOCUMENTO   = #camaasil#2;
+
+   |HAZ ActDiario;
+   |HAZ ActCuenta;
+   |HAZ ActTesteo;
+
+   |BORRA 020#camaasil.a;
+   |LIBERA #camaasil;
+|FPRC;
+
+|DEFBUCLE BorraAsiento;
+  #camaasil#1;
+  ;
+  #13#7,#13#8,#13#9,0000;
+  #13#7,#13#8,#13#9,9999;
+  be;
+  NULL,BorraAsiento;
+|FIN;
+
+|PROCESO BorraLineas;
+  |BORRA 020#14a;
+|FPRC;
+
+|DEFBUCLE BorraLineas;
+  #14#1;
+  ;
+  #13#0,#13#1,01;
+  #13#0,#13#1,99;
+  ;
+  NULL,BorraLineas;
+|FIN;
+
+|PROCESO BorraAntes;
+
+   #camaasic#0 = #13#7;
+   #camaasic#1 = #13#8;
+   #camaasic#2 = #13#9;
+   |LEE 000#camaasic.=;
+   |SI FSalida = 0;
+       |BUCLE BorraAsiento;
+       |BORRA 020#camaasic.a;
+   |FINSI;
+
+   |BUCLE BorraLineas;
+   ult_apunt = 1;
+|FPRC;
+
+____________________________________/ GRABACION DE FACTURAS
+|PROCESO BuscaDoc;
+   |SELECT #1#13;
+   nLibro = #13#0;
+   #13#0 = nLibro;
+   #13#1 = 9999999999;
+   |LEE 010#13];
+   |SI FSalida = 0;
+       |LEE 040#13a;
+   |SINO;
+       |LEE 040#13u;
+   |FINSI;
+   NumDoc = 1;
+   |SI FSalida = 0; |Y #13#0 = nLibro;
+       NumDoc = #13#1 + 1;
+   |FINSI;
+|FPRC;
+
+|PROCESO Periodo;
+   alfa1 = #13#4; |QBF alfa1;
+   alfa1 = alfa1 % 0402;
+   #13#5 = alfa1;
+   |SI enEjercicio [ 2009;
+       |SI #200#46 = "T";
+           |SI alfa1 ] "01"; |Y alfa1 [ "03"; #13#5 = 1; |FINSI;
+           |SI alfa1 ] "04"; |Y alfa1 [ "06"; #13#5 = 2; |FINSI;
+           |SI alfa1 ] "07"; |Y alfa1 [ "09"; #13#5 = 3; |FINSI;
+           |SI alfa1 ] "10"; |Y alfa1 [ "12"; #13#5 = 4; |FINSI;
+       |SINO;
+           |SI #200#46 = "A"; #13#5 = 0; |FINSI;
+       |FINSI;
+  |FINSI;
+|FPRC;
+
+|PROCESO LaLinea;
+    |SI #40#33 = "1";   || en abonos cambia el signo
+        nBase = -nBase;
+        nIva  = -nIva;
+        nRec  = -nRec;
+    |FINSI;
+
+   |DDEFECTO #14;
+   #14#0 = #13#0;                       || Libro
+   #14#1 = #13#1;                       || N§ registro
+   #14#2 = nLinea;                            || Linea de base
+   #14#3 = #13#27;                      || Concepto linea
+   #14#4 = #13#28;                      || Descripcion linea
+
+   #14#6  = nBase;
+   #14#7  = nTpIVA;
+   #14#8  = nIva;
+   #14#9  = nTpRec;
+   #14#10 = nRec;
+   |SI nLinea = 1; |Y descu ! 0;
+       #14#11 = descu;
+   |FINSI;
+   #14#15 = "";
+   #14#17 = aInver;
+
+   efFechaIVA = #13#4; enLineaIVA = 0;
+   enPorcIVA = #14#7; enPorcREC = #14#9;
+   eaCtaIVA  = #14#13; eaCtaREC = #14#14;
+   |HAZ BuscaTipoIVA;
+   #14#16 = enLineaIVA;
+   #14#13 = eaCtaIVA;
+   #14#14 = eaCtaREC;
+
+   |SI #14#11 ! 0; #14#15 = eaCtaDTO;  |FINSI;
+   #14#12 = #40#32;
+   #14#30 = #13#10;
+   #14#31 = #13#11;
+
+   |GRABA 020#14n;
+   |LIBERA #14;
+
+   #14#24 = "N";
+   #13#19 = #13#19 + #14#6;
+   #13#15 = #13#15 + #14#6;
+   #13#17 = #13#15 %  #13#16;
+   #13#20 = #13#20 + #14#22;
+   #13#23 = #13#23 + (#14#8 + #14#10);
+   #13#26 = #13#26 + #14#11;
+
+   |SI #13#36 = "N";
+       #13#21 = #13#19 + #13#23 - #13#26 - #13#20;
+   |SINO;
+       #13#21 = #13#19 + #13#23 - #13#20;
+   |FINSI;
+    ctiva = #14#13;
+    ctrec = #14#14;
+    ctven = #14#12;
+    |SI #14#11 ! 0; ctdes = #14#15; |FINSI;
+|FPRC;
+
+|PROCESO gra_factura;
+    |SI NumDoc = -1;
+        |DDEFECTO #13;
+        #13#0  = #40#5;      || libro
+        |HAZ BuscaDoc;
+    |FINSI;
+    #13#0  = #40#5;      || libro
+    #13#1  = NumDoc;
+    |LEE 041#13=;
+    FEstadoF = FSalida;
+
+    #13#2  = "";         || serie
+    #13#3  = #40#1;      || nro. fra.
+    #13#4  = fecha;      || fecha
+    |HAZ Periodo;
+
+    |SI FEstadoF ! 0;
+        |HAZ contador1;
+        #13#7  = #0#0;       || Diario
+        #13#8  = fecha;      || fecha
+        #13#9  = nContador;
+    |FINSI;
+
+    nContador = #13#9;
+    #13#10 = eaDfDepC;   ||departamento
+    #13#11 = eaDfSubC;   ||subdepartamento
+
+    #13#12 = #40#3;      || Cuenta
+    #13#13 = #40#4;      || Nombre
+    #13#14 = #40#6;      || NIF
+
+    |PDEFECTO #13, 15, 22;
+    #13#21 = #40#8;
+    #13#23 = 0;
+    #13#24 = eaDfDepN;
+    #13#25 = eaDfSubN;
+
+    #13#27 = nConcepto;  || cto.
+    #13#28 = descr;      || descripcion
+
+    #13#29 = #13#27;
+    #13#30 = #13#28;
+
+    #13#36 = "R";
+    aTipoIVA = "R";
+    #13#35 = "N";        || inversiones
+    #13#37 = "N";        || exportado S/N
+    #13#40 = 0;          || periodo
+
+    |ABRE #14;
+    nLinea = 0;
+    |SI #40#12 ! 0;
+        nLinea = nLinea + 1;
+        impor  = #40#12; |HAZ Conversion; nBase = impor;
+        nTpIVA = #40#24;
+        impor  = #40#16; |HAZ Conversion; nIva  = impor;
+        nTpRec = #40#28;
+        impor  = #40#20; |HAZ Conversion; nRec  = impor;
+        |HAZ LaLinea;
+    |FINSI;
+    |SI #40#13 ! 0;
+        nLinea = nLinea + 1;
+        impor  = #40#13; |HAZ Conversion; nBase = impor;
+        nTpIVA = #40#25;
+        impor  = #40#17; |HAZ Conversion; nIva  = impor;
+        nTpRec = #40#29;
+        impor  = #40#21; |HAZ Conversion; nRec  = impor;
+        |HAZ LaLinea;
+    |FINSI;
+    |SI #40#14 ! 0;
+        nLinea = nLinea + 1;
+        impor  = #40#14; |HAZ Conversion; nBase = impor;
+        nTpIVA = #40#26;
+        impor  = #40#18; |HAZ Conversion; nIva  = impor;
+        nTpRec = #40#30;
+        impor  = #40#22; |HAZ Conversion; nRec  = impor;
+        |HAZ LaLinea;
+    |FINSI;
+
+    |SI #40#15 ! 0;
+        nLinea = nLinea + 1;
+        impor  = #40#15; |HAZ Conversion; nBase = impor;
+        nTpIVA = #40#27;
+        impor  = #40#19; |HAZ Conversion; nIva  = impor;
+        nTpRec = #40#31;
+        impor  = #40#23; |HAZ Conversion; nRec  = impor;
+        |HAZ LaLinea;
+    |FINSI;
+    |CIERRA #14;
+
+    |SI #40#34 = "1";   #13#10 = "01"; |FINSI;
+
+    aClau340 = #13#42;
+    nNumFras = #13#38;
+    |HAZ ClauDefecto;
+    #13#42 = aClau340;
+
+   |SI FEstadoF = 0;    |GRABA 020#13a;     |FINSI;
+   |SI FEstadoF ! 0;    |GRABA 020#13n;     |FINSI;
+
+   estado_iva = FSalida;
+|FPRC;
+
+|PROCESO factura;
+    estado_iva = -1;
+
+    |DDEFECTO #13;
+
+    |SELECT #3#13;
+    #13#0  = #40#5;      || libro
+    #13#2  = "";         || serie
+    #13#3  = #40#1;      || nro. fra.
+    |LEE 041#13=;
+    FEstadoF = FSalida;
+    |SI FEstadoF = 0;
+        NumDoc = #13#1;
+        |AVISO;
+        alfa1 = "    La factura [" + #13#0 + "-" + #13#3 + "] YA existe ...";
+        |MENSA alfa1;
+        |CONFI "    NRemplazarla (S/N): ";
+        |SI FSalida = 0;
+            NumDoc = #13#1;
+            |HAZ BorraAntes;
+            |HAZ gra_factura;
+        |SINO;
+            |MENAV "    Deberia revisar el Libro de IVA Repercutido ...";
+            |DDEFECTO #13;
+        |FINSI;
+    |SINO;
+        NumDoc = -1;
+        |HAZ gra_factura;
+    |FINSI;
+    |LIBERA #13;
+|FPRC;
+
+____________________________________/ CARGA VARIABLES VARIAS IVA Y ASIENTOS
+|PROCESO fecha;
+    alfa1 = #40#2 % 102;      || a¤o
+    alfa2 = #40#2 % 302;      || mes
+    alfa3 = #40#2 % 502;      || dia
+
+    nume1 = alfa1;
+    |SI nume1 > 80;
+        alfa1 ="19" + alfa1;
+    |SINO;
+        alfa1= "20" + alfa1;
+    |FINSI;
+
+    fecha = alfa3 + "." + alfa2 + "." + alfa1;
+|FPRC;
+
+|PROCESO descuento;
+    descu = #40#11;
+    |SI descu ! 0;      || si hay descuento
+        nume1 = #40#12;
+        nume1 = nume1 + descu;
+ ||       #40#12 = nume1;  no hace falta
+   |FINSI;
+|FPRC;
+
+|PROCESO concepto;
+     |SI nConcepto = 0; nConcepto = 1; |FINSI;
+
+     |ABRE #97;
+     |SI #122#4 = "S";
+         #97#0 = 0;
+         #97#1 = 0;
+         #97#2 = nConcepto;
+         #97#3 = nLibro;
+     |SINO;
+         #97#0 = enEmpresa;
+         #97#1 = enPeriodo;
+         #97#2 = nConcepto;
+         #97#3 = nLibro;
+     |FINSI;
+     |LEE 040#97=;
+     |SI FSalida = 0;
+         nConcepto = #97#4;
+     |SINO;
+         nConcepto = #200#5;
+     |FINSI;
+     |CIERRA #97;
+
+     |DDEFECTO #330;
+     #330#0 = nConcepto;
+     |LEE 040#330=;
+     descr = #330#1;  |QBF descr;
+
+     alfa1 = #40#1;  |QBT alfa1;    || nro.fra.
+     descr = descr + "[" + alfa1 + "]-[" + fecha + "]";
+
+     aInver = "N";
+     |SI #330#34 = 14;  aInver = "S"; |FINSI;
+
+     alfa1 = #40#32; |QBF alfa1;
+     |SI alfa1 = ""; #40#32 = #330#20; |FINSI;
+|FPRC;
+
+|PROCESO cuentas;
+    ctiva = "";
+    ctrec = "";
+    ctven = "";
+    ctdes = "";
+|FPRC;
+
+|PROCESO contador1;
+     |HAZ NuevoDoc;
+     ult_apunt = 1;
+
+     nContador = nDOCUMENTO;
+     |PINTA 2243, nContador;
+|FPRC;
+
+|PROCESO varios;         || variables varias
+    nLibro    = #40#5;
+    nConcepto = #40#9;
+    |HAZ cuentas;
+    |HAZ fecha;
+    |HAZ concepto;
+    |HAZ descuento;
+|FPRC;
+
+|PROCESO conta1;         || comprobaciones y calculos
+
+    |DDEFECTO #40;
+    #40#0 = field1 % 0101;    || tipo factura
+    #40#1 = field1 % 0210;    || numero factura
+    #40#2 = field1 % 1206;    || fecha factura
+    #40#3 = field1 % 1810;    || cuenta cliente
+    #40#4 = field1 % 2829;    || nombre cliente
+    #40#5 = field1 % 5701;    || clase factura
+    |SI #40#5 = "0";    #40#5 = "1";   |FINSI;        || por defecto a 1
+    #40#6 = field1 % 5812;    || cif cliente
+    #40#7 = field1 % 7301;    || recargo S/N
+    #40#8 = field1 % 7411;    || total factura
+    #40#9 = field1 % 8502;    || cto. autom.
+    #40#10= field1 % 8720;    || descrip.apunte
+    #40#11= field1 % 10709;   || ptas.dto.fra.
+    #40#12= field2 % 0111;    || base 1
+    #40#13= field2 % 1211;    || base 2
+    #40#14= field2 % 2311;    || base 3
+    #40#15= field2 % 3411;    || base 4
+    #40#16= field2 % 4511;    || iva 1
+    #40#17= field2 % 5611;    || iva 2
+    #40#18= field2 % 6711;    || iva 3
+    #40#19= field2 % 7811;    || iva 4
+    #40#20= field2 % 8911;    || recargo 1
+    #40#21= field2 % 10011;   || recargo 2
+    #40#22= field2 % 11111;   || recargo 3
+    #40#23= field2 % 12211;   || recargo 4
+    #40#24= field2 % 13302;   || (%) iva 1
+    #40#25= field2 % 13502;   || (%) iva 2
+    #40#26= field2 % 13702;   || (%) iva 3
+    #40#27= field2 % 13902;   || (%) iva 4
+    #40#28= field2 % 14102;   || (%) rec. 1
+    #40#29= field2 % 14302;   || (%) rec. 2
+    #40#30= field2 % 14502;   || (%) rec. 3
+    #40#31= field2 % 14702;   || (%) rec. 4
+    #40#32= field2 % 14910;   || cuenta ventas
+    #40#33= field2 % 15901;   || signo factura
+    #40#34= field2 % 16001;   || tipo apunte
+    |HAZ CalculoCtas;
+    eaCuenta = #40#3; |HAZ SacaNivel;
+
+    |SI #40#0 = "E"; |Y enNivel ! 0;      || solo las emitidas y cuentas validas
+        |HAZ varios;
+        fech1 = fecha;
+        |SI fech1 ] fec1; |Y fech1 [ fec2;
+            |SI #40#8 ! 0;|Y #40#12 = 0;|Y #40#13 = 0;|Y #40#14 = 0;|Y #40#15 = 0;
+                #40#12 = #40#8;         || exentas!!
+            |FINSI;
+            |HAZ factura;
+            |SI estado_iva = 0;
+                seleccio = 1;
+                |HAZ asiento;
+            |FINSI;
+        |SINO;
+            sw_fecha = 1;
+        |FINSI;
+   |FINSI;
+
+   |SI enNivel = 0;  estado_iva = -2;  |FINSI;   || corta el bucle
+|FPRC;
+
+
+|PROCESO tipo3;
+
+   |SI #0#1 ! "SI";  |ACABA; |FINSI;
+
+   |DBASS aPath;
+   aPath = aPath + "basica/fich/";
+   |PATH_DAT #122 aPath;
+   |ABRE #122;
+   |DDEFECTO #122;
+   |LEE 040#122p;
+   |CIERRA #122;
+   |DBASS aPath;
+   aPath = aPath + "basica/pases/";
+   |PATH_DAT #97  aPath;
+
+   |ABRE #200;
+   |DDEFECTO #200;
+   |LEE 040#200p;
+   |CIERRA #200;
+
+   fabre = #0#2;  |QBF fabre;
+
+   fabre = "rb  " + fabre;
+   |FABRE fabre;
+   |SI FSalida ] 0;
+       fcanl = FSalida;
+
+       |ABRE #12;      || clientes/proveedores
+       |ABRE #13;      || camaniva iva
+       |ABRE #22;
+       |ABRE #24;
+       |ABRE #330;
+
+       field1 = fcanl + " 115";   |FLEE field1;  fsali1 = FSalida;
+       field2 = fcanl + " 160";   |FLEE field2;  fsali2 = FSalida;
+
+       |PARA; |SI fsali1 = 115;|Y fsali2 = 160; |HACIENDO;
+              |HAZ conta1;
+              |SI estado_iva = -2;    || error en digito de cuenta
+                  |MENAV "    Longitud de Cuenta fuera de nivel ...";
+                  |SAL;
+               |FINSI;
+               field1 = fcanl + " 115";   |FLEE field1;  fsali1 = FSalida;
+               field2 = fcanl + " 160";   |FLEE field2;  fsali2 = FSalida;
+       |SIGUE;
+
+       |CIERRA #330;
+       |CIERRA #24;
+       |CIERRA #22;
+       |CIERRA #13;
+       |CIERRA #12;
+
+       |FCIERRA fcanl;
+       Pos = -1;
+   |SINO;
+       alfa1 = "    [" + (fabre % 5) + "] inaccesible o inexistente ...";
+       |MENAV alfa1;
+   |FINSI;
+
+   |SI sw_fecha = 1;
+       |MENAV "    Hay apuntes con fecha fuera de periodo ...";
+   |FINSI;
+
+   |SI seleccio = 0;
+       |MENAV "    Seleccion vacia ...";
+   |FINSI;
+
+|FPRC;
+
+|PROGRAMA;
+
+    |HAZ inicio;
+    |CLS;
+    |CABEZA "Enlace KRISPIN";
+    |PINPA #0#0;
+
+    |DDEFECTO #0;
+    |ABRE #0;
+    |LEE 101#0p;
+    |SI FSalida ! 0;
+        |GRABA 020#0b;
+    |FINSI;
+
+    |PINDA #0#0;
+    |ENDATOS #1#0;
+    |SI FSalida = 0;
+        |HAZ tipo3;
+        #0#1 = "NO";
+        |GRABA 020#0a;
+    |FINSI;
+    |LIBERA #0;
+    |CIERRA #0;
+|FPRO;
+
+|PROCESO Conversion;
+   |SI EURODB = 0;
+      |SI eaMoneda = "E";
+          impor = ((impor * 166.386) ! 0) * 100;
+      |FINSI;
+   |SINO;
+      |SI eaMoneda = "P";
+          impor = (impor / 166.386) ! 2;
+      |SINO;
+          impor = (impor / 100) ! EURODB;
+      |FINSI;
+   |FINSI;
+|FPRC;
+
+|PROCESO caso1;
+   aAlfa1 = eaCuenta; |QBF aAlfa1;
+   |SI aAlfa1 = ""; |ACABA; |FINSI;
+
+   aAlfa2 = aAlfa1 % 0;
+   nLongi = aAlfa2;
+
+   nNume1 = MaximoDigitos - nLongi;
+   aAlfa1 = "0" * nNume1;  ||digitos que hacen falta para rellenar
+   aAlfa2 = eaCuenta;  |QBF aAlfa2;
+
+   |SI #122#6 ! "N";
+
+       nNume3 = dig3 - 1;         || el nivel anterior
+       |SI nNume3 = 1; nNume4 = dig4; |FINSI;
+       |SI nNume3 = 2; nNume4 = dig5; |FINSI;
+       |SI nNume3 = 3; nNume4 = dig6; |FINSI;
+       |SI nNume3 = 4; nNume4 = dig7; |FINSI;
+       |SI nNume3 = 5; nNume4 = dig8; |FINSI;
+
+       nNume2 = 100 + nNume4;
+       aAlfa3 = nNume2; |QBF aAlfa3;      || digitos del principio
+
+       nNume4 = nLongi - nNume4;   ||Diferencia entre anterior y este
+       nNume4 = 0 - (100 + nNume4);   || parte posterior
+       aAlfa4 = nNume4;
+
+       eaCuenta = (aAlfa2 % aAlfa3) + aAlfa1 + (aAlfa2 % aAlfa4);
+   |SINO;
+       eaCuenta = aAlfa2 + aAlfa1; || cuenta destino ||al final
+   |FINSI;
+|FPRC;
+
+|PROCESO CalculoCtas;
+   |SI MaximoDigitos > 10;  ||Las cuentas vienen con 10 digitos
+
+       eaCuenta = #40#3;  |HAZ caso1; #40#3  = eaCuenta;
+       eaCuenta = #40#32; |HAZ caso1; #40#32 = eaCuenta;
+
+   |FINSI;
+|FPRC;

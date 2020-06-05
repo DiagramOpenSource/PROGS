@@ -1,0 +1,217 @@
+|FICHEROS;
+   finm0000 #0;
+
+   Empresas@ #100;
+|FIN;
+
+|VARIABLES;
+   &eaClave = "";
+   &eaTitulo = "";
+
+   ModoEntrada = 0;
+   nChequea    = 0;
+   nHandle     = 0;
+   nEmpOrigen  = 0;
+   nEmpDestino = 0;
+
+   aAlfa       = "";
+   aAlfa1      = "";
+   aAlfa2      = "";
+   aOrigen     = "";
+   aDestino    = "";
+
+   aNomEmOrigen  = "";
+   aNomEmDestino = "";
+|FIN;
+
+|PROCESO Comienzo; |TIPO 8;
+|FPRC;
+
+|PROCESO Final; |TIPO 9;
+|FPRC;
+
+|PROCESO BorraDir; |TIPO 2;
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 1;
+      |DBASE aAlfa1; |QBF aAlfa1;
+      aAlfa1 = aAlfa1 + "fich/" + (("00000" + #finm0000#0) % -105);
+      |MKDIR aAlfa1;
+
+      |HAZ CopiaPatrones;
+   |FINSI;
+
+   |SI ModoEntrada = 3;
+      aAlfa = ""; |DIRECTORIO aAlfa;
+      |DBASE aAlfa1; |QBF aAlfa1;
+      aAlfa1 = aAlfa1 + "fich/" + (("00000" + #finm0000#0) % -105);
+      aAlfa = aAlfa + "bin/agirm -r " + aAlfa1;
+      |SYSTEM aAlfa;
+   |FINSI;
+|FPRC;
+
+|PROCESO CopiaEstudio;
+   |DBASE aOrigen;  |QBF aOrigen;
+   aOrigen = aOrigen + "fich/" + (("00000" + nEmpOrigen) % -105) + "/*.*";
+   |_PDIR aOrigen;
+   |PARA; |SI FSalida = 0; |HACIENDO;
+      aAlfa1 = ""; aAlfa = aOrigen; aAlfa2 = "";
+      |PARA; |SI aAlfa1 ! "/"; |HACIENDO;
+         aAlfa1 = aAlfa % -101; aAlfa = aAlfa % -299;
+         |SI aAlfa1 ! "/"; aAlfa2 = aAlfa1 + aAlfa2; |FINSI;
+      |SIGUE;
+      |DFICB aDestino; |QBF aDestino;
+      aDestino = aDestino + (("00000" + nEmpDestino) % -105);
+      aAlfa2 = aDestino + "/" + aAlfa2;
+      |XABRE "E", aAlfa2, nHandle;
+      |SI FSalida < 0;
+         aDestino = aAlfa2;
+         |COPIA_FICHERO aOrigen, aDestino;
+      |FINSI;
+      |_SDIR aOrigen;
+   |SIGUE;
+|FPRC;
+
+|PROCESO CopiaPatrones;
+   ModoEntrada = (FEntrada / 100) ! 0;
+
+   |SI ModoEntrada = 1;
+      |DBASE aOrigen;  |QBF aOrigen;  aOrigen = aOrigen + "fich/patrones/*.*";
+      |_PDIR aOrigen;
+      |PARA; |SI FSalida = 0; |HACIENDO;
+         aAlfa1 = ""; aAlfa = aOrigen; aAlfa2 = "";
+         |PARA; |SI aAlfa1 ! "/"; |HACIENDO;
+            aAlfa1 = aAlfa % -101; aAlfa = aAlfa % -299;
+            |SI aAlfa1 ! "/"; aAlfa2 = aAlfa1 + aAlfa2; |FINSI;
+         |SIGUE;
+
+         |DFICB aDestino; |QBF aDestino;
+         aDestino = aDestino + (("00000" + #finm0000#0) % -105);
+         aAlfa2 = aDestino + "/" + aAlfa2;
+
+         |XABRE "E", aAlfa2, nHandle;
+         |SI FSalida < 0;
+            aDestino = aAlfa2;
+            |COPIA_FICHERO aOrigen, aDestino;
+         |FINSI;
+
+         |_SDIR aOrigen;
+      |SIGUE;
+   |FINSI;
+|FPRC;
+
+|PROCESO Copiado; |TIPO 20;
+   |SI FSalida = "OPCION";
+      FSalida = "Copiar estudio";
+      |ACABA;
+   |FINSI;
+
+|DEBUG;
+   |DDEF aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "finm0000.mas";
+   |CARGA_DEF aAlfa, Empresas@;
+   |SI FSalida = 0;
+      |ABRE #Empresas@;
+      |DDEFECTO #Empresas@;
+
+      |PUSHV 0501 2380;
+      |BLANCO 1104 1676;
+      |CUADRO 1205 1675;
+      |ATRI R; |PINTA 1206, " Seleccione los codigos de estudio a copiar "; |ATRI N;
+      |PINTA 1308, "Estudio origen  ";
+      |PINTA 1408, "Estudio destino ";
+      |MENSA "    <F2> Consulta de estudios";
+      |PINTA 1424, #Empresas@#0;
+      |PINTA 1331, #Empresas@#1;
+      |PINTA 1431, #Empresas@#1;
+
+      nEmpOrigen = 0;
+      |ET OtraVez;
+      E_sup = 99999; E_inf = 0;
+      nEmpOrigen = 1324 ? 1;
+      |SI FSalida = 0;
+         #Empresas@#0 = nEmpOrigen;
+         |LEE 000#Empresas@.=;
+         |SI FSalida ! 0;
+            |MENAV "    Empresa inexistente";
+            |DDEFECTO #Empresas@; |PINTA 1330, #Empresas@#1;
+            |VETE OtraVez;
+         |SINO;
+            |PINTA 1331, #Empresas@#1;
+            nEmpDestino = 0;
+            |ET OtraVez1;
+            E_sup = 99999; E_inf = 0;
+            nEmpDestino = 1424 ? 1;
+            |SI FSalida = 0;
+               #Empresas@#0 = nEmpDestino;
+               |LEE 000#Empresas@.=;
+               |SI FSalida = 0;
+                  aAlfa = "    NLa empresa destino ya existe. Se sustituiran los datos por los de la empresa de origen. " + &191 + " Continuar ?";
+                  |CONFI aAlfa;
+                  |SI FSalida ! 0;
+                     |DDEFECTO #Empresas@; |PINTA 1430, #Empresas@#1;
+                     |VETE OtraVez1;
+                  |SINO;
+                     |PINTA 1331, #Empresas@#1;
+                  |FINSI;
+               |SINO;
+                  |PINTA 1331, #Empresas@#1;
+               |FINSI;
+            |SINO;
+               |SI FSalida = 10; |O FSalida = 7;
+                  |SI FSalida = 10;
+                     |CONSULTA_CLAVE #1#Empresas@;
+                     nEmpDestino = #Empresas@#0; |PINTA 1431, #Empresas@#1;
+                  |SINO;
+                     |CIERRA #Empresas@; |DESCARGA_DEF #Empresas@;
+                     |MENAV "    Proceso cancelado"; |VETE Final;
+                  |FINSI;
+               |FINSI;
+               |VETE OtraVez1;
+            |FINSI;
+            aNomEmDestino = "";
+            |SI nEmpDestino > 0;
+               aNomEmDestino = #Empresas@#1;
+            |FINSI;
+         |FINSI;
+      |SINO;
+         |SI FSalida = 10; |O FSalida = 7;
+            |SI FSalida = 10;
+               |CONSULTA_CLAVE #1#Empresas@;
+               nEmpOrigen = #Empresas@#0; |PINTA 1331, #Empresas@#1;
+            |SINO;
+               |CIERRA #Empresas@; |DESCARGA_DEF #Empresas@;
+               |MENAV "    Proceso cancelado"; |VETE Final;
+            |FINSI;
+         |FINSI;
+         |VETE OtraVez;
+      |FINSI;
+      aNomEmOrigen = "";
+      |SI nEmpOrigen > 0; aNomEmOrigen = #Empresas@#1; |FINSI;
+
+      aAlfa = "    N" + &191 + " Es Correcto ? ";
+      |CONFI aAlfa;
+      |SI FSalida = 0;
+          #Empresas@#0 = nEmpDestino;
+          |LEE 000#Empresas@.=;
+          |SI FSalida ! 0;
+             #Empresas@#0 = nEmpOrigen;
+             |LEE 000#Empresas@.=;
+             |SI FSalida = 0;
+                #Empresas@#0 = nEmpDestino;
+                |GRABA 020#Empresas@.n;
+             |FINSI;
+             |DBASE aAlfa1; |QBF aAlfa1;
+             aAlfa1 = aAlfa1 + "fich/" + (("00000" + nEmpDestino) % -105);
+             |MKDIR aAlfa1;
+          |FINSI;
+          |HAZ CopiaEstudio;
+      |FINSI;
+
+      |CIERRA #Empresas@; |DESCARGA_DEF #Empresas@;
+   |FINSI;
+
+   |ET Final;
+
+   |POPV; |ERROR;
+|FPRC;

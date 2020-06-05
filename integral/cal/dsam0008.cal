@@ -1,0 +1,254 @@
+|FICHEROS;
+     :/integral/def/dsam0008,MANTE;
+     :/integral/def/dsam0000;
+     :/basica/def/agitab03;
+     :/facturar/def/facemp1;
+
+     :/facturar/def/asconcep;
+     :/facturar/def/asconcli;
+     :/facturar/def/asclient;
+|FIN;
+
+|VARIABLES;
+     nTope  = 0;
+     nModo = 0;
+     aPrograma   = "";
+     aFacturar   = "";
+     aPath       = "";
+     aBase       = "";
+
+     &enBorra    = 1;
+     &enEmpresa  = 0;
+     &enConcepto = 0;
+     &enModo     = 0;
+|FIN;
+
+|PROCESO GrabaConceptoE;
+     |PATH_DAT #asconcep#aPath#;
+     |PATH_DAT #asconcli#aPath#;
+     |PATH_DAT #asclient#aPath#;
+
+     |SI enBorra = 1;
+         |ABRE #asconcli;
+         #asconcli#0 = #dsam0008#0
+         #asconcli#1 = #agitab03#2;
+         #asconcli#2 = #agitab03#3;
+         |LEE 101#asconcli.=;
+         |SI FSalida = 0;
+             |BORRA 020#asconcli.a;
+             |LIBERA #asconcli;
+         |FINSI;
+         |CIERRA #asconcli;
+
+         |ACABA;
+     |FINSI;
+
+     |SI #dsam0008#12 ! "01.01.0000"; |Y #dsam0008#12 ! "00.00.0000";
+         |ACABA;
+     |FINSI;
+
+     |ABRE #asclient;
+     #asclient#0 = #dsam0008#0;
+     |LEE 040#asclient.=;
+     |SI FSalida ! 0;
+         |CIERRA #asclient;
+         |ACABA;
+     |FINSI;
+
+     |SI #agitab03#2 = "    "; |Y #agitab03#3 = "  ";
+         |CIERRA #asclient;
+         |ACABA;
+     |FINSI;
+     |CIERRA #asclient;
+
+     |ABRE #asconcep;
+     #asconcep#0 = #agitab03#2;
+     #asconcep#1 = #agitab03#3;
+     |LEE 140#asconcep.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #asconcep;
+         #asconcep#0  = #agitab03#2;
+         #asconcep#1  = #agitab03#3;
+         #asconcep#2  = #agitab03#1;
+         #asconcep#3  = #agitab03#4;
+         #asconcep#4  = #dsam0008#5;
+         #asconcep#5  = "G";
+         #asconcep#16 = #asconcep#2;
+         |GRABA 140#asconcep.n;
+         |LIBERA #asconcep;
+     |FINSI;
+     |CIERRA #asconcep;
+
+     |ABRE #asconcli;
+     #asconcli#0 = #dsam0008#0
+     #asconcli#1 = #agitab03#2;
+     #asconcli#2 = #agitab03#3;
+     |LEE 140#asconcli.=;
+     |SI FSalida ! 0;
+         |DDEFECTO #asconcli;
+         #asconcli#0  = #dsam0008#0
+         #asconcli#1  = #agitab03#2;
+         #asconcli#2  = #agitab03#3;
+         #asconcli#3  = #agitab03#4;
+         #asconcli#4  = #agitab03#6;
+         #asconcli#6  = #agitab03#1;
+         #asconcli#7  = #agitab03#1;
+         #asconcli#10 = #dsam0008#5;
+         #asconcli#11 = #asconcep#32;
+         |GRABA 140#asconcli.b;
+     |FINSI;
+
+     #asconcli#10 = #dsam0008#5;
+     #asconcli#11 = #asconcep#32;
+     |GRABA 140#asconcli.a;
+     |LIBERA #asconcli;
+
+     |CIERRA #asconcli;
+|FPRC;
+
+|PROCESO facemp1;
+     |DBASS aBase;  |QBT aBase;
+     aPath = aBase + "facturar/fich/" + (("00" + #facemp1#0) % -102) + "/";
+     |HAZ GrabaConceptoE;
+|FPRC;
+
+|DEFBUCLE facemp1;
+     #facemp1#2;
+     ;
+     "S", 00;
+     "S", 99;
+     ;
+     NULL, facemp1;
+|FIN;
+
+|PROCESO GrabaConcepto;
+     #agitab03#0 = #dsam0008#2;
+     |LEE 040#agitab03.=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+
+     |SI #agitab03#5 ! 0;
+         |DBASS aBase;  |QBT aBase;
+         aPath = aBase + "facturar/fich/" + (("00" + #agitab03#5) % -102) + "/";
+         |HAZ GrabaConceptoE;
+     |SINO;
+         |BUCLE facemp1;
+     |FINSI;
+|FPRC;
+
+|PROCESO PasaConceptos;
+     enBorra    = 0;
+     |HAZ GrabaConcepto;
+|FPRC;
+
+|DEFBUCLE dsam0008;
+     #dsam0008#1;
+     ;
+     #dsam0000#0, 01;
+     #dsam0000#0, 99;
+     ;
+     NULL, PasaConceptos;
+|FIN;
+
+|PROCESO PasaFacturacion;
+     |ABRE #agitab03;
+     |BUCLE dsam0008;
+     |CIERRA #agitab03;
+|FPRC;
+
+|PROCESO Filtros;
+     nTope = 31;
+
+     |SI #dsam0008#6 = 2;  nTope = 29; |FINSI;
+     |SI #dsam0008#6 = 4;  nTope = 30; |FINSI;
+     |SI #dsam0008#6 = 6;  nTope = 30; |FINSI;
+     |SI #dsam0008#6 = 9;  nTope = 30; |FINSI;
+     |SI #dsam0008#6 = 11; nTope = 30; |FINSI;
+
+     |SI nTope < #dsam0008#7;
+         |MENAV "      El dia no coincide con los dias del mes introducido.";
+         |ERROR;
+     |FINSI;
+|FPRC;
+
+|PROCESO Pantalla;
+     |SI FSalida ! 9; |ACABA; |FINSI;
+
+     |PUSHV 0501 2380;
+     |CUADRO 0856 1577;
+
+     |ATRI R;
+     |PINTA 0957, " 01 al 12 Meses     ";
+     |PINTA 1057, " 13.- Mensual       ";
+     |PINTA 1157, " 14.- Bimensual     ";
+     |PINTA 1257, " 15.- Trimestral    ";
+     |PINTA 1357, " 16.- Cuatrimestral ";
+     |PINTA 1457, " 17.- Semestral     ";
+     |ATRI r;
+
+     |PAUSA;
+     |POPV;
+
+     |ERROR;
+|FPRC;
+
+|PROCESO SNIva; |TIPO 0;
+     |SI #dsam0008#8 = "S";
+         |C_M #dsam0008#9, 1, "S";
+     |SINO;
+         |C_M #dsam0008#9, 1, "N";
+         #dsam0008#9 = 0; |PINTA #dsam0008#9;
+     |FINSI;
+|FPRC;
+
+|PROCESO CalcuTotal; |TIPO 0;
+     |SI #dsam0008#Campo# = Contenido; |ACABA; |FINSI;
+
+     #dsam0008#10 = #dsam0008#5 + (#dsam0008#5 % #dsam0008#9);
+     |PINTA #dsam0008#10;
+     |PINTA #dsam0008#10;
+|FPRC;
+
+|PROCESO Agente;  |TIPO 7;
+     nModo = (FEntrada / 100) ! 0;
+     |SI nModo ! 1;  |Y #dsam0008#16 ! 0;  |ACABA;  |FINSI;
+
+     #dsam0008#16 = #dsam0000#72;  |PINTA #dsam0008#16;
+|FPRC;
+
+|PROCESO Tipo2m001;  |TIPO 2;
+     nModo = (FEntrada / 100) ! 0;
+
+     |SI #dsam0008#12 ! "01.01.0000";  |Y #dsam0008#12 ! "00.00.0000";
+         nModo = 3;
+     |FINSI;
+
+     |SI nModo ! 3;  |ACABA;  |FINSI;
+
+     |ABRE #agitab03;
+     #agitab03#0 = #dsam0008#2;
+     |LEE 040#agitab03.=;
+     |SI FSalida ! 0;  |ACABA;  |FINSI;
+     |CIERRA #agitab03;
+
+     |SI #agitab03#5 ! 0;
+         |ABRE #facemp1;
+         #facemp1#0 = #agitab03#5;
+         |LEE 040#facemp1.=;
+         |SI FSalida ! 0;  |DDEFECTO #facemp1;  |FINSI;
+         |CIERRA #facemp1;
+
+         |SI #facemp1#3 = "S";
+             enBorra    = 1;
+             |ABRE #agitab03;
+             |HAZ GrabaConcepto;
+             |CIERRA #agitab03;
+         |SINO;
+            |MENAV "      Conceptos con empresas no Activadas en la Integrada.";
+         |FINSI;
+     |SINO;
+         enBorra    = 1;
+         |ABRE #agitab03;
+         |HAZ GrabaConcepto;
+         |CIERRA #agitab03;
+     |FINSI;
+|FPRC;

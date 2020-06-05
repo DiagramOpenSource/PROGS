@@ -1,0 +1,651 @@
+|FICHEROS;
+   agifa019 #19;
+   agif0041 #41;
+   agifa142 #142;
+   agifa200 #200;
+   agifa205 #205;
+   agifa208 #208;
+   dsm00279 #279;
+
+   agifa017 #517;
+   dsm00211 #511;
+   dsm00212 #512;
+
+   agifa019@ #1100;
+   CtrlGen@  #2000;
+   ArticCom@ #2001;
+   ArticGer@ #2002;
+   tecam002@ #2003;
+   rodm0005@;
+   referen@ #1;
+   dsm00087@;
+   dsm00305 #305;
+|FIN;
+
+|VARIABLES;
+   &enCambiCodi = 0;   || para la copia de empresas
+   &eaRodExporta = "";
+   aUsu = "";
+   nContaLog = 0;
+   aSer = "";
+   aNum = "";
+   aTipo = "";
+   nTipo = 0;
+   nReg = 0;
+   aDef = "";
+
+   &enSwNoCopia = 0; || Para desactivar la actualizacion
+   &enSwAltaArt = 0; || solo esta en el agifa019 (o copias)
+
+   nAbre17  = 0;
+   nAbre211 = 0;
+   nAbre212 = 0;
+   nAbre142 = 0;
+
+   aPath  = "";
+   aAlfa  = "";
+   aOrig  = "";
+   aDest  = "";
+   aGrCli = "";
+
+   fHastaF = @;
+
+   nPVP1  = 0;
+   nModo  = 0;
+   nCampo = 0;
+   nCalc  = 0;
+   nCont  = 0;
+|FIN;
+
+|PROCESO Es_Iber21;
+     |DBASE aPath;
+     aPath = aPath + "/bin/iber0001.tab";
+     |XABRE "E", aPath, 0;
+|FPRC;
+
+|PROCESO Es__Constru;
+     |DBASE aPath;
+     aPath = aPath + "/def/gomantho.mas";
+     |XABRE "E", aPath, 0;
+     |SI FSalida = 0;
+          |HAZ Es_Iber21;
+          |SI FSalida = 0;
+               FSalida = 1;
+          |SINO;
+               FSalida = 0;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROCESO Campos019;
+   |SI nModo = 1; |Y #agifa208#3 = "S";
+      nCampo = #agifa208#1;
+      #agifa019@#nCampo# = #agifa019#nCampo#;
+   |FINSI;
+   |SI nModo = 2; |Y #agifa208#4 = "S";
+      nCampo = #agifa208#1;
+      #agifa019@#nCampo# = #agifa019#nCampo#;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Campos1019;
+#agifa208#2;
+;
+"agifa019", 000, "S";
+"agifa019", 999, "S";
+e;
+NULL,Campos019;
+|FIN;
+
+|DEFBUCLE Campos2019;
+#agifa208#3;
+;
+"agifa019", 000, "S";
+"agifa019", 999, "S";
+e;
+NULL,Campos019;
+|FIN;
+
+|PROCESO Grabacion019;
+   |SI nModo = 1; |Y #agifa200#4 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 2; |Y #agifa200#5 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 3;
+          |SI enCambiCodi = 0;
+               |SI #agifa200#6 ! "S"; |ACABA; |FINSI;
+          |SINO;
+               |SI #agifa200#4 ! "S"; |ACABA; |FINSI;
+          |FINSI;
+   |FINSI;
+
+   |DFICB aAlfa; |QBF aAlfa; |PATH_DAT #41 aAlfa;
+   |ABRE #agif0041; |SALVA_FICHA #agif0041;
+   #agif0041#0 = #agifa200#0;
+   |LEE 000#agif0041.=;
+   |SI FSalida = 0;
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/agifa019.mas";
+      |CARGA_DEF aAlfa, agifa019@;
+      |SI FSalida = 0;
+         |DFICB aAlfa; |QBF aAlfa;
+         aAlfa = aAlfa + (("00000" + #agifa200#0) % -105) + "/";
+         |PATH_DAT #1100 aAlfa;
+         |ABRE #agifa019@;
+         #agifa019@#0 = #agifa019#0;
+         |LEE 140#agifa019@.=;
+         |SI FSalida = 107;
+               || hace el lee sin error y no espera bloqueo
+               || porque si esta la autmatizacion de empresas activa falla
+         |SINO;
+              |SI nModo = 3;
+                 |SI FSalida = 0;
+                    |BORRA 020#agifa019@.a; |LIBERA #agifa019@;
+                 |FINSI;
+              |SINO;
+                 |SI FSalida ! 0;
+                    |DDEFECTO #agifa019@;
+                    #agifa019@#0 = #agifa019#0;
+                    |GRABA 020#agifa019@.b;
+                 |FINSI;
+
+                 |SI nModo = 1; |BUCLE Campos1019; |FINSI;
+                 |SI nModo = 2; |BUCLE Campos2019; |FINSI;
+                 |GRABA 020#agifa019@.a; |LIBERA #agifa019@;
+              |FINSI;
+         |FINSI;
+         |CIERRA #agifa019@; |DESCARGA_DEF #agifa019@;
+      |FINSI;
+   |FINSI;
+   |REPON_FICHA #agif0041; |CIERRA #agif0041;
+|FPRC;
+
+|DEFBUCLE ControlEmp019;
+#agifa200#1;
+;
+INICIO;
+FINAL;
+;
+NULL,Grabacion019;
+|FIN;
+
+|PROCESO CtrlExtArt;
+   |SI nModo = 1; |Y #agifa205#6 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 2; |Y #agifa205#7 ! "S"; |ACABA; |FINSI;
+   |SI nModo = 3; |Y #agifa205#5 ! "S"; |ACABA; |FINSI;
+
+   |SI #agifa205#11 = "S";
+      |DBASE aOrig; |QBF aOrig; aOrig = aOrig + "def/agifa019.mas";
+      aDest = #agifa205#2; |QBF aDest;
+      aDest = aDest + "def/agifa019.mas";
+      |COPIA_FICHERO aOrig, aDest;
+   |FINSI;
+
+   aAlfa = #agifa205#2; |QBF aAlfa;
+   aAlfa = aAlfa + "def/agifa019.mas";
+   |CARGA_DEF aAlfa, agifa019@;
+   |SI FSalida = 0;
+      aAlfa = #agifa205#2; |QBF aAlfa;
+      aAlfa = aAlfa + "fich/" + #agifa205#9; |QBF aAlfa;
+      aAlfa = aAlfa + "/"; |PATH_DAT #1100 aAlfa;
+      |ABRET #agifa019@;
+      |SI nModo = 1; |O nModo = 2;
+         #agifa019@#0 = #agifa019#0;
+         |LEE 101#agifa019@.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #agifa019@;
+            #agifa019@#0 = #agifa019#0;
+            |GRABA 020#agifa019@.b;
+         |FINSI;
+         aAlfa = "|NC"; aAlfa = #agifa019@#aAlfa#;
+         nCalc = aAlfa; nCalc = nCalc - 1;
+         |PARA nCont = 0; |SI nCont [ nCalc; |HACIENDO nCont = nCont + 1;
+            #agifa019@#nCont# = #agifa019#nCont#;
+         |SIGUE;
+         |GRABA 020#agifa019@.a; |LIBERA #agifa019@;
+      |FINSI;
+      |SI nModo = 3;
+         #agifa019@#0 = #agifa019#0;
+         |LEE 101#agifa019@.=;
+         |SI FSalida = 0;
+            |BORRA 020#agifa019@.a; |LIBERA #agifa019@;
+         |FINSI;
+      |FINSI;
+      |CIERRAT #agifa019@; |DESCARGA_DEF #agifa019@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE CtrlExtArt;
+#agifa205#2;
+;
+"A",01;
+"A",99;
+;
+NULL,CtrlExtArt;
+|FIN;
+
+|PROCESO &Arti15; |TIPO 15;
+     |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+     nTipo = 15; |HAZ LogArti;
+
+     |HAZ JamaActPcm;
+
+     nTipo = 15; |HAZ RodacalCopArt;
+     |SI FSalida = 0; |ACABA; |FINSI;
+
+     |HAZ Es__Constru;
+     |SI FSalida = 0;
+          nModo = 1;
+          |HAZ AuxArtiCons1;
+     |FINSI;
+|FPRC;
+
+|PROCESO &Arti16; |TIPO 16;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   nTipo = 16; |HAZ LogArti;
+   nTipo = 16; |HAZ ArtOk5050;
+
+   |HAZ AuditoriaArti;
+   |HAZ JamaActPcm;
+
+   nTipo = 16; |HAZ RodacalCopArt;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   |SALVA_FICHA #agifa142;
+   |LEE 000#agifa142.p;
+   |SI FSalida = 102; nAbre142 = 1; |ABRE #agifa142; |FINSI;
+   |LEE 001#agifa142.p;
+
+   |DBASE aAlfa;
+   aAlfa = aAlfa + "/def/tecam001.mas";
+   |XABRE "E", aAlfa, 0;
+   |SI FSalida = 0;
+      nModo = 1; |HAZ ReplicaArt;
+   |FINSI;
+
+   |SI enSwAltaArt = 1; || Solo es alta desde el mantenimiento (agifa019)
+      nModo = 1;
+   |SINO;
+      nModo = 2;
+   |FINSI;
+
+   ||MENSA "    Actualizando articulos ... ";
+   |SI #agifa142#28  = "S"; |BUCLE ControlEmp019; |FINSI;
+   |SI #agifa142#221 = "S"; |BUCLE CtrlExtArt;    |FINSI;
+   |BLIN 4;
+
+   |SI nAbre142 = 1; |CIERRA #agifa142; |FINSI;
+   |REPON_FICHA #agifa142;
+
+   enSwAltaArt = 0;
+|FPRC;
+
+|PROCESO &Arti17; |TIPO 17;
+   |SI enSwNoCopia ! 0; |ACABA; |FINSI;
+
+   nTipo = 17; |HAZ LogArti;
+   nTipo = 16; |HAZ ArtOk5050;
+
+   nTipo = 17; |HAZ RodacalCopArt;
+   |SI FSalida = 0; |ACABA; |FINSI;
+
+   |HAZ Es__Constru;
+   |SI FSalida = 0;
+        nModo = 3;
+        |HAZ AuxArtiCons1;
+   |FINSI;
+   |SALVA_FICHA #agifa142;
+   |LEE 000#agifa142.p;
+   |SI FSalida = 102; nAbre142 = 1; |ABRE #agifa142; |FINSI;
+   |LEE 001#agifa142.p;
+
+   |DBASE aAlfa;
+   aAlfa = aAlfa + "/def/tecam001.mas";
+   |XABRE "E", aAlfa, 0;
+   |SI FSalida = 0;
+      nModo = 2; |HAZ ReplicaArt;
+   |FINSI;
+
+   nModo = 3;
+
+   ||MENSA "    Actualizando articulos ... ";
+   |SI #agifa142#28  = "S"; |BUCLE ControlEmp019; |FINSI;
+   |SI #agifa142#221 = "S"; |BUCLE CtrlExtArt;    |FINSI;
+   |BLIN 4;
+
+   |SI nAbre142 = 1; |CIERRA #agifa142; |FINSI;
+   |REPON_FICHA #agifa142;
+|FPRC;
+
+|PROCESO ReplicaArt;
+   |DBASE aAlfa; |QBF aAlfa;
+   aAlfa = aAlfa + "def/tecam020.mas";
+   |CARGA_DEF aAlfa, CtrlGen@;
+   |SI FSalida = 0;
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/tecaw020.mas";
+      |CARGA_DEF aAlfa, ArticCom@;
+      |SI FSalida ! 0;
+         |DESCARGA_DEF #CtrlGen@; |ACABA;
+      |FINSI;
+
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/tecaw021.mas";
+      |CARGA_DEF aAlfa, ArticGer@;
+      |SI FSalida ! 0;
+         |DESCARGA_DEF #ArticCom@; |DESCARGA_DEF #CtrlGen@; |ACABA;
+      |FINSI;
+
+      |DBASE aAlfa; |QBF aAlfa;
+      aAlfa = aAlfa + "def/tecam002.mas";
+      |CARGA_DEF aAlfa, tecam002@;
+      |SI FSalida ! 0;
+         |DESCARGA_DEF #ArticGer@; |DESCARGA_DEF #ArticCom@;
+         |DESCARGA_DEF #CtrlGen@;  |ACABA;
+      |FINSI;
+
+      |ABRE #CtrlGen@;
+      |LEE 101#CtrlGen@.p;
+      |SI FSalida ! 0; |DDEFECTO #CtrlGen@; |FINSI;
+      aPath = #CtrlGen@#0; |QBF aPath;
+      |SI aPath = ""; |O #CtrlGen@#8 = "N"; |O #CtrlGen@#4 ! #agifa019#200;
+         |LIBERA #CtrlGen@;
+         |DESCARGA_DEF #tecam002@;
+         |DESCARGA_DEF #ArticGer@; |DESCARGA_DEF #ArticCom@;
+         |CIERRA #CtrlGen@;        |DESCARGA_DEF #CtrlGen@;
+         |ACABA;
+      |FINSI;
+
+      #CtrlGen@#7 = #CtrlGen@#7 + 1;
+      |GRABA 020#CtrlGen@.a; |LIBERA #CtrlGen@;
+
+      aPath = aPath + (("00000" + #48#0) % -105) + "/";
+      aGrCli = #CtrlGen@#6; fHastaF = #CtrlGen@#5;
+      |MKDIR aPath;
+
+      |PATH_DAT #2001 aPath; |PATH_DAT #2002 aPath;
+      |DFICE aAlfa; |QBF aAlfa; |PATH_DAT #2003 aAlfa;
+
+      |ABRE #ArticGer@; |ABRE #ArticCom@;
+      |ABRE #tecam002@;
+
+      |SI nModo = 1; |Y #CtrlGen@#4 = #agifa019#200;
+         #ArticCom@#0 = #agifa019#0;
+         |LEE 101#ArticCom@.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #ArticCom@;
+            #ArticCom@#0 = #agifa019#0;
+            |GRABA 020#ArticCom@.b;
+         |FINSI;
+
+         #ArticCom@#1 = #agifa019#1;
+         |GRABA 020#ArticCom@.a; |LIBERA #ArticCom@;
+
+         #ArticGer@#0 = #agifa019#0;
+         |LEE 101#ArticGer@.=;
+         |SI FSalida ! 0;
+            |DDEFECTO #ArticGer@;
+            #ArticGer@#0 = #agifa019#0;
+            |GRABA 020#ArticGer@.b;
+         |FINSI;
+         #ArticGer@#1 = #agifa019#1;
+         #ArticGer@#3 = #agifa019#19;
+
+         #tecam002@#0 = #agifa019#0;
+         |LEE 000#tecam002@.=;
+         |SI FSalida ! 0; |DDEFECTO #tecam002@; |FINSI;
+
+         #ArticGer@#4 = #agifa019#28;
+         #ArticGer@#5 = #tecam002@#2;
+         |GRABA 020#ArticGer@.a; |LIBERA #ArticGer@;
+      |FINSI;
+      |SI nModo = 2; |Y #CtrlGen@#4 = #agifa019#200;
+         #ArticCom@#0 = #agifa019#0;
+         |LEE 101#ArticCom@.=;
+         |SI FSalida = 0;
+            |BORRA 020#ArticCom@.a; |LIBERA #ArticCom@;
+         |FINSI;
+
+         #ArticGer@#0 = #agifa019#0;
+         |LEE 101#ArticGer@.=;
+         |SI FSalida = 0;
+            |BORRA 020#ArticGer@.a; |LIBERA #ArticGer@;
+         |FINSI;
+      |FINSI;
+
+      |LEE 101#CtrlGen@.p;
+      #CtrlGen@#7 = #CtrlGen@#7 - 1;
+      |SI #CtrlGen@#7 < 0; #CtrlGen@#7 = 0; |FINSI;
+      |GRABA 020#CtrlGen@.a; |LIBERA #CtrlGen@;
+
+      |CIERRA #tecam002@; |DESCARGA_DEF #tecam002@;
+      |CIERRA #ArticGer@; |DESCARGA_DEF #ArticGer@;
+      |CIERRA #ArticCom@; |DESCARGA_DEF #ArticCom@;
+      |CIERRA #CtrlGen@;  |DESCARGA_DEF #CtrlGen@;
+   |FINSI;
+|FPRC;
+
+|PROCESO AuxArtiCons1;   || Tambien esta en dsz99943
+     |DDEF aDef;
+     aDef = aDef + "goartaux";
+     |CARGA_DEF aDef, referen@;
+     |SI FSalida = 0;
+          aAlfa = Usuario % 810;
+          |ABRE #1;
+          #1#0 = #19#0;
+          #1#1 = ~;
+          #1#2 = aAlfa;
+          |SI nModo = 1;
+               |GRABA 000#1n;
+          |FINSI;
+          |SI nModo = 3;
+               |BORRA 000#1c;
+          |FINSI;
+          |CIERRA #1;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+|FPRC;
+
+|PROCESO RodacalCopArt;
+     FSalida = 0;
+     |SI eaRodExporta = "S"; |ACABA; |FINSI; || lo activa rodw0004
+
+     |DBASE aPath;
+     aPath = aPath + "/def/rodm0001.mas";
+     |XABRE "E", aPath, 0;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     |DDEF aDef;
+     aDef = aDef + "rodm0005";
+     |CARGA_DEF aDef, rodm0005@;
+     |SI FSalida ! 0;
+          |MENAV "0000ERROR al cargar 'rodm0005'";
+     |SINO;
+          |ABRE #rodm0005@;
+          |LEE 000#rodm0005@.u;
+          |SI FSalida = 0; nReg = #rodm0005@#0 + 1; |SINO; nReg = 1; |FINSI;
+          |DDEFECTO #rodm0005@;
+          #rodm0005@#0 = nReg;
+          #rodm0005@#1 = #19#0;
+          #rodm0005@#2 = "agifa019";
+          |SI nTipo = 15; #rodm0005@#3 = "A"; |FINSI;
+          |SI nTipo = 16; #rodm0005@#3 = "M"; |FINSI;
+          |SI nTipo = 17; #rodm0005@#3 = "B"; |FINSI;
+          |SELECT #3#rodm0005@;
+          |LEE 101#rodm0005@.=;
+          |SI FSalida ! 0; |GRABA 020#rodm0005@.b; |FINSI;
+          aAlfa = Usuario % 810;
+          #rodm0005@#4 = aAlfa;
+          #rodm0005@#5 = ~;
+          |HORA aAlfa;
+          #rodm0005@#6 = aAlfa;
+          |GRABA 020#rodm0005@.a;
+          |CIERRA #rodm0005@;
+          |DESCARGA_DEF #rodm0005@;
+     |FINSI;
+     FSalida = 0;
+|FPRC;
+
+|PROCESO LogArti;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "dsm00087";
+     |CARGA_DEF aAlfa, dsm00087@;
+     |SI FSalida ! 0; |ACABA; |FINSI;
+
+     aSer = "";
+     aNum = #19#0;
+     aTipo = "AR";
+
+     |ABRE #dsm00087@;
+     |DDEFECTO #dsm00087@;
+     |SELECT #2#dsm00087@;
+     #dsm00087@#1 = aSer;
+     #dsm00087@#2 = aNum;
+     #dsm00087@#3 = aTipo;
+     |LEE 101#dsm00087@.=;
+     |SI FSalida ! 0;
+          |SELECT #1#dsm00087@;
+          |LEE 000#dsm00087@.u;
+          |SI FSalida = 0;
+               nContaLog = #dsm00087@#0 + 1;
+          |SINO;
+               nContaLog = 1;
+          |FINSI;
+          |DDEFECTO #dsm00087@;
+          #dsm00087@#0 = nContaLog;
+          #dsm00087@#1 = aSer;
+          #dsm00087@#2 = aNum;
+          #dsm00087@#3 = aTipo;
+          |GRABA 020#dsm00087@.b;
+     |FINSI;
+     |SI FSalida = 0;
+          |HORA aAlfa;
+          aUsu = Usuario % 810;
+          |SI nTipo = 15;
+               #dsm00087@#4 = aUsu;
+               #dsm00087@#5 = ~;
+               #dsm00087@#6 = aAlfa;
+               #dsm00087@#7 = "";
+               #dsm00087@#8 = "01.01.0000";
+               #dsm00087@#9 = ""
+               #dsm00087@#10 = "";
+               #dsm00087@#11 = "01.01.0000";
+               #dsm00087@#12 = ""
+          |FINSI;
+          |SI nTipo = 16;
+               #dsm00087@#7 = aUsu;
+               #dsm00087@#8 = ~;
+               #dsm00087@#9 = aAlfa;
+          |FINSI;
+          |SI nTipo = 17;
+               #dsm00087@#10 = aUsu;
+               #dsm00087@#11 = ~;
+               #dsm00087@#12 = aAlfa;
+          |FINSI;
+          |GRABA 020#dsm00087@.a;
+     |FINSI;
+     |CIERRA #dsm00087@;
+     |DESCARGA_DEF #dsm00087@;
+|FPRC;
+
+|PROCESO JamaActPcm;
+/*
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "cafe0001.mas";
+     |XABRE "E", aAlfa, 0;
+     |SI FSalida ] 0;
+          aAlfa = "cafe0026;ULTIPRE" + #19#0+ #19#133;
+          |SUB_EJECUTA_NP aAlfa;
+     |FINSI;
+*/
+|FPRC;
+
+|PROCESO ArtOk5050;
+     |DDEF aAlfa;
+     aAlfa = aAlfa + "okm00006";
+     |CARGA_DEF aAlfa, referen@;
+     |SI FSalida = 0;
+          |ABRE #referen@;
+          #referen@#1 = #19#0;
+          |LEE 101#referen@.=;
+          |SI nTipo = 17;
+               |SI FSalida = 0; |BORRA 000#referen@.a; |FINSI;
+          |SINO;
+               |SI FSalida ! 0; |GRABA 020#referen@.b; |FINSI;
+               #referen@#0 = "1"; || #19#3;
+               #referen@#2 = #19#18;
+               |GRABA 020#referen@.a;
+          |FINSI;
+          |CIERRA #referen@;
+          |DESCARGA_DEF #referen@;
+     |FINSI;
+|FPRC;
+
+|PROCESO AuditoriaArti;
+     |ABRE #279; |LEE 000#279=; |CIERRA #279;
+     |SI #279#27 ! "S"; |ACABA; |FINSI;
+
+     |ABRE #305;
+     #305#0 = #19#0;
+     #305#17 = 999999999;
+     |LEE 101#305];
+     |SI FSalida = 0;
+          |LEE 000#305a;
+     |SINO;
+          |LEE 000#305u;
+     |FINSI;
+     |SI FSalida = 0; |Y #305#0 = #19#0;
+          #305#0 = #19#0;
+          aAlfa = Usuario % 810;
+          #305#1 = aAlfa;
+          #305#2 = ~;
+          |HORA aAlfa;
+          #305#3 = aAlfa;
+          |MODULO aAlfa;
+          #305#4 = aAlfa;
+          |SI #305#5 ! #19#18; #305#5 = #305#11; #305#11 = #19#18; |FINSI;
+          |SI #305#6 ! #19#19; #305#6 = #305#12; #305#12 = #19#19; |FINSI;
+          |SI #305#7 ! #19#20; #305#7 = #305#13; #305#13 = #19#20; |FINSI;
+          |SI #305#8 ! #19#147; #305#8 = #305#14; #305#14 = #19#147; |FINSI;
+          |SI #305#9 ! #19#148; #305#9 = #305#15; #305#15 = #19#148; |FINSI;
+          |SI #305#10 ! #19#149; #305#10 = #305#16; #305#16 = #19#149; |FINSI;
+          #305#17 = #305#17 + 1;
+          |GRABA 020#305n;
+     |SINO;
+          |DDEF aAlfa;
+          aAlfa = aAlfa + "agifa019";
+          |CARGA_DEF aAlfa, referen@;
+          |SI FSalida = 0;
+               |ABRE #referen@;
+               #referen@#0 = #19#0;
+               |LEE 000#referen@.=;
+               |CIERRA #referen@;
+
+               |DDEFECTO #305;
+               #305#0 = #19#0;
+               aAlfa = Usuario % 810;
+               #305#1 = aAlfa;
+               #305#2 = ~;
+               |HORA aAlfa;
+               #305#3 = aAlfa;
+               |MODULO aAlfa;
+               #305#4 = aAlfa;
+               #305#5 = #referen@#18;
+               #305#6 = #referen@#19;
+               #305#7 = #referen@#20;
+               #305#8 = #referen@#147;
+               #305#9 = #referen@#148;
+               #305#10 = #referen@#149;
+               #305#11 = #19#18;
+               #305#12 = #19#19;
+               #305#13 = #19#20;
+               #305#14 = #19#147;
+               #305#15 = #19#148;
+               #305#16 = #19#149;
+               #305#17 = 1;
+               |GRABA 020#305n;
+               |DESCARGA_DEF #referen@;
+          |FINSI;
+     |FINSI;
+     |CIERRA #305;
+|FPRC;

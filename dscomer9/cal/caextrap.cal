@@ -1,0 +1,154 @@
+|FICHEROS;
+    caextrap #0;
+    agifa142 #99;
+    canempr@ #30;
+|FIN;
+
+|VARIABLES;
+     aAlfa = "";
+     aPlica = "";
+     aDef3      = "";
+     aPath     = "";
+     aMensa    = "";
+     mensa1 = "    ATENCION!!! Fecha fuera de periodo ...";
+     linea = 0;
+     FEstado = 0;
+     hay_alguno = 0;
+     &ext1   = "";
+     &ext2   = "";
+     base_fich = "";
+     num_empre = "";
+     dig_cuen    ="";
+     sub_prog    = "";
+     dig1 = 0;
+     dig2 = 0;
+     dig3 = 0;
+     dig4 = 0;
+     dig5 = 0;
+     dig6 = 0;
+     dig7 = 0;
+     dig8 = 0;
+     dig9 = 0;
+     swerror = 0;
+     clave1 = "";
+     clave2 = "";
+
+     nOpcion = 0;
+
+{-1}Menu   = "";
+    Menu1  = "2400";
+    Menu2  = "1";
+    Menu3  = " Extracto por : ";
+    Menu4  = "PI";
+    Menu5  = " Pantalla ";
+    Menu6  = " Impresora ";
+
+|FIN;
+
+_____________________________________________________________________________
+
+|PROCESO path;
+     |ABRE #99; |LEE 000#99p; |CIERRA #99;
+
+     base_fich = #99#151;  |QBF base_fich;
+     |SI base_fich = ""; |O #99#152 = 0;
+          |MENAV "0000Parametros extracto contable no configurado";
+          swerror = 1;
+     |SINO;
+          aPath = base_fich;
+          num_empre = ("000000" + #99#152) % -106;
+          base_fich= base_fich + "fich/";
+     |FINSI;
+|FPRC;
+_____________________________________________________________________________
+
+|PROCESO niveles;
+     dig_cuen = ext1; |QBF dig_cuen;
+     dig_cuen = dig_cuen % 0;
+     |SI dig4 = dig_cuen; ext2 = "1"; |FINSI;    ||Nivel 1
+     |SI dig5 = dig_cuen; ext2 = "2"; |FINSI;    ||Nivel 2
+     |SI dig6 = dig_cuen; ext2 = "3"; |FINSI;    ||Nivel 3
+     |SI dig7 = dig_cuen; ext2 = "4"; |FINSI;    ||Nivel 4
+     |SI dig8 = dig_cuen; ext2 = "5"; |FINSI;    ||Nivel 5
+     |SI dig9 = dig_cuen; ext2 = "6"; |FINSI;    ||Nivel 6
+|FPRC;
+
+|PROCESO inicio;
+  clave1 = num_empre %  105;
+  clave2 = num_empre % -101;
+  swerror = 0;
+ |ABRE #30;
+ #30#2 = clave1;
+ #30#3 = clave2;
+ |LEE 040#30=;
+ |SI FSalida ! 0;
+     swerror = 1;
+     |MENAV "    No existe Empresa !!!";
+     |ACABA;
+ |FINSI;
+ dig1 = #30#11;       || desde mes
+ dig3 = #30#13;       || nro. niveles
+ dig4 = #30#14;       || 1 nivel
+ dig5 = #30#15;       || 2 nivel
+ dig6 = #30#16;       || 3 nivel
+ dig7 = #30#17;       || 4 nivel
+ dig8 = #30#18;       || 5 nivel
+ dig9 = #30#19;       || 6 nivel
+ |CIERRA #30;
+|FPRC;
+
+|PROGRAMA;
+     |HAZ path;
+     |SI swerror = 1; |ACABA; |FINSI;
+
+     aDef3 = aPath + "def/canempre";
+     |CARGA_DEF aDef3, canempr@;
+     |SI FSalida = 0;
+          |PATH_DAT #30 base_fich;
+          base_fich= base_fich + num_empre + "/";
+          |HAZ inicio;
+          |SI swerror = 0;
+               |HAZ niveles;
+               |DESCARGA_DEF #canempr@;
+               sub_prog =  num_empre;
+               |MENU Menu;
+               nOpcion = FSalida;
+
+               |HAZ QueAplica;
+
+               |SI nOpcion < 0; |O nOpcion > 2; |ACABA; |FINSI;
+               |SI nOpcion = 1; sub_prog = ":" + aPlica + "/caextrap canempr1 " + sub_prog; |FINSI;
+               |SI nOpcion = 2; sub_prog = ":" + aPlica + "/caextrim canempr1 " + sub_prog; |FINSI;
+               |QBF sub_prog;
+               |SUB_EJECUTA_NP sub_prog;
+          |FINSI;
+     |SINO;
+          aMensa = "0000Error al cargar:" + aDef3;
+          |MENAV aMensa;
+     |FINSI;
+|FPRO;
+_____________________________________________________________________________
+|PROCESO QueAplica;
+/*
+     |DBASS aAlfa;
+     aAlfa = aAlfa + "contagen/contagen.men";
+     |XABRE "E", aAlfa, 0;
+     |SI FSalida = 0;
+          aPlica = "contagen";
+     |SINO;
+          aPlica = "agicont";
+     |FINSI;
+*/
+|| Abdon 03/11/2005
+||     No hace caso del camino que se indica en parametros generales para
+||     determinar que aplicacion es la que debe cargar. Por tanto puede que
+||     el camino indicado en parametros generales sea una aplicacion e
+||     intente acceder a la empresa indicada en otra aplicacion distinta
+   aAlfa = #99#151; |QBF aAlfa;
+   aAlfa = aAlfa - "contagen";
+   |SI FSalida ! 0;
+      aPlica = "contagen";
+   |SINO;
+      aPlica = "agicont";
+   |FINSI;
+|FPRC;

@@ -1,0 +1,214 @@
+|FICHEROS;
+     dsapum02;
+|FIN;
+
+|VARIABLES;
+     aAlfa               = "";
+     aLon                = "";
+     aCar                = "";
+     aPath               = "";
+
+     nLon                = 0;
+     nOk                 = 0;
+     nCar                = 0;
+     nPos                = 0;
+     nNume               = 0;
+     nMes                = 0;
+     nDia                = 0;
+     nPan                = 0;
+     nBtn1               = -1;
+     nBtn2               = -1;
+     nSal                = -1;
+
+     fFec                = @;
+
+     &enLin              = 0;
+     &eaCmp8             = "";
+|FIN;
+
+|PROCESO CambAct;
+     |GRABA 020#dsapum02.a;
+     |LIBERA #dsapum02;
+
+     enLin = #dsapum02#7;
+     |SI enLin = 0;  enLin = -1;  |FINSI;
+
+     |SUB_EJECUTA ":agitool/protarea;ADSAPUZ01";
+
+     |LEE 101#dsapum02.p;
+
+     |PTEC 806;
+|FPRC;
+
+|PROCESO Salir;
+     nSal = 1;
+     |PTEC 806;
+|FPRC;
+
+|PROCESO T12;  |TIPO 12;
+     |SI FSalida = 7;  |ACABA;  |FINSI;
+
+     nOk = 0;
+     aAlfa = #dsapum02#1 + #dsapum02#2 + #dsapum02#3 + #dsapum02#4 + #dsapum02#5;
+     |QBT aAlfa;
+
+     |SI aAlfa = "*****";
+         |MENAV "0000Por favor introduzca un horario coherente";
+         |ERROR;
+         |ACABA;
+     |FINSI;
+
+     |GRABA 020#dsapum02.a;
+     |LIBERA #dsapum02;
+
+     |SI nSal = 1;
+         |ACABA;
+     |FINSI;
+
+     enLin = #dsapum02#7;
+     |SI enLin = 0;  enLin = -1;  |FINSI;
+
+     |SUB_EJECUTA ":agitool/protarea;GDSAPUZ01";
+
+     |LEE 101#dsapum02.p;
+
+     |ERROR;
+|FPRC;
+
+|PROCESO T7C1;  |TIPO 7;
+     |SI #dsapum02#7 = 0;  |ACABA;  |FINSI;
+
+     |SI nBtn1 ! -1;
+         |FIN_CONTROL_WINDOWS nBtn1;
+         |FIN_CONTROL_WINDOWS nBtn2;
+     |FINSI;
+
+     enLin = #dsapum02#7;
+     |SI enLin = 0;  enLin = -1;  |FINSI;
+
+     |SUB_EJECUTA ":agitool/protarea;VDSAPUZ01";
+     |SI eaCmp8 = "S";
+         |PINTA 1859, "TAREA ACTIVADA";
+
+         aAlfa = "BOTON,{{197}}Desactivar";
+     |SINO;
+         |PINTA 1859, "TAREA DESACTIVADA";
+
+         aAlfa = "BOTON,{{197}}Activar";
+     |FINSI;
+
+     |CONTROL_SIMPLE nPan, aAlfa, 2359, 2369, CambAct;
+     nBtn1 = FSalida;
+
+     |CONTROL_SIMPLE nPan, "BOTON,{{001}}Salir", 2372, 2378, Salir;
+     nBtn2 = FSalida;
+|FPRC;
+
+|PROCESO T0C1;
+     aAlfa = #dsapum02#Campo#; |QBF aAlfa;
+     |SI aAlfa = "*";  |ACABA;  |FINSI;
+
+     aLon = aAlfa % 0;
+     nLon = aLon;
+     nOk  = 0;
+     |PARA nCar = 0; |SI nCar [ nLon; |HACIENDO nCar = nCar + 1;
+           nPos = (nCar * 100) + 1;
+           aCar = aAlfa % nPos;
+
+           |SI aCar = "/";  nOk = 1;  |SAL; |FINSI;
+           |SI aCar = "-";  nOk = 1;  |SAL; |FINSI;
+     |SIGUE;
+
+     |SI nOk = 1;  |ACABA;  |FINSI;
+
+     nNume = #dsapum02#Campo#;
+     #dsapum02#Campo# = nNume;
+     |PINTA #dsapum02#Campo#;
+
+     |SI Campo = 1;
+          |SI #dsapum02#1 < 0; |O #dsapum02#1 > 23;
+               |MENAV "0000Hora incorrecta...";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+
+     |SI Campo = 2;
+          |SI #dsapum02#2 < 0; |O #dsapum02#2 > 59;
+               |MENAV "0000Minutos incorrectos...";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+
+     |SI Campo = 3;
+          |SI #dsapum02#3 < 1; |O #dsapum02#3 > 12;
+               |MENAV "0000Mes incorrecto...";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+
+     |SI Campo = 4;
+          |SI #dsapum02#4 < 0; |O #dsapum02#4 > 31;
+               |MENAV "0000Dia incorrecto...";
+               |ERROR;
+          |SINO;
+               aAlfa = #dsapum02#3; |QBF aAlfa;
+               |SI aAlfa ! "*";
+                    aAlfa = #dsapum02#4; |QBF aAlfa;
+                    |SI aAlfa ! "*";
+                        nMes  = #dsapum02#3;
+                        nDia  = #dsapum02#4;
+                        aAlfa = (("00" + nDia) % -102) + "." + (("00" + nMes) % -102) + ".2000";
+                        fFec  = aAlfa;
+                        nNume = fFec;
+                        fFec  = nNume;
+                        |SI fFec ! aAlfa;
+                            |MENAV "0000Dia incorrecto...";
+                            |ERROR;
+                        |FINSI;
+                    |FINSI;
+               |FINSI;
+          |FINSI;
+     |FINSI;
+
+     |SI Campo = 5;
+          |SI #dsapum02#5 < 0; |O #dsapum02#5 > 7;
+               |MENAV "0000Dia de la semana incorrectos...";
+               |ERROR;
+          |FINSI;
+     |FINSI;
+|FPRC;
+
+|PROGRAMA;
+     |ABRE #dsapum02;
+     |LEE 101#dsapum02.p;
+     |SI FSalida ! 0;
+         |DDEFECTO #dsapum02;
+
+         fFec  = ~;
+         aAlfa = fFec % -104;
+         #dsapum02#8 = aAlfa;
+         #dsapum02#9 = aAlfa;
+
+         |GRABA 020#dsapum02.b;
+     |FINSI;
+
+     |PINPA #0#dsapum02;  nPan = FSalida;
+     |PINDA #0#dsapum02;
+
+     |ENDATOS #1#dsapum02;
+     |SI FSalida = 0;
+         |GRABA 020#dsapum02.a;
+         |LIBERA #dsapum02;
+     |SINO;
+         |SI #dsapum02#7 = 0;
+             |BORRA 020#dsapum02.a;
+         |FINSI;
+     |FINSI;
+     |LIBERA #dsapum02;
+     |CIERRA #dsapum02;
+
+     |SI nBtn1 ! -1;
+         |FIN_CONTROL_WINDOWS nBtn1;
+         |FIN_CONTROL_WINDOWS nBtn2;
+     |FINSI;
+|FPRO;

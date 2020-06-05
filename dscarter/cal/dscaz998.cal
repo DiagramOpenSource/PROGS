@@ -1,0 +1,278 @@
+|FICHEROS;
+   dscaz998 #0;
+
+   dscam003 #10;
+   dscam004 #11;
+   dscam045 #12;
+   dscam044 #13;
+
+   agifa010@ #20;
+   agifa134@ #21;
+   agis0002@ #22;
+|FIN;
+
+|VARIABLES;
+   &eaTitulo = "";
+
+   aAlfa = "";
+   aDSerie = "";
+   aHSerie = "";
+
+   nExisteEntACta = 0;
+   nCalc  = 0;
+   nCalc1 = 0;
+
+   nSwPrintCab = 0;
+
+   nEmpresa = 0;
+
+   nSwFind     = 0;
+   nSwFind1    = 0;
+   nSwFindComp = 0;
+   nSwFindRem  = 0;
+   nSwFindPT   = 0;
+|FIN;
+
+|PROCESO Albaranes;
+   |SI #agifa010@#61 = 0; |ACABA; |FINSI;
+
+   #agis0002@#30 = "A";
+   #agis0002@#20 = #agifa010@#52;
+   #agis0002@#17 = #agifa010@#0;
+   #agis0002@#18 = 0;
+   |LEE 000#agis0002@.];
+   |PARA; |SI FSalida = 0; |Y #agis0002@#30 = "A"; |Y #agis0002@#20 = #agifa010@#52;
+         |Y #agis0002@#17 = #agifa010@#0; |HACIENDO;
+      #dscam003#27 = 0;
+      #dscam003#40 = 1;
+      #dscam003#69 = "A";
+      #dscam003#0  = #agifa010@#52;
+      #dscam003#1  = #agifa010@#0;
+      #dscam003#2  = 0;
+      |LEE 000#dscam003.];
+      |SI FSalida ! 0; |O #dscam003#27 ! 0; |O #dscam003#0 ! #agifa010@#52; |O #dscam003#1 ! #agifa010@#0;
+         |SI nSwPrintCab = 0;
+            eaTitulo = " Comprobando la factura " + #agifa134@#49 + "/" + #agifa134@#0 + " ..."; |PRINT;
+            nSwPrintCab = 1;
+         |FINSI;
+         eaTitulo = "*     La  entrega A/" + #agifa010@#52 + "/" + #agifa010@#0 + " no existe en Cartera"; |PRINT;
+      |SINO;
+         nSwFind1 = 0;
+         || Compruebo si esta compensado y si no es asi, busco algun recibo de
+         ||     la factura. Si está compensado , miro si ha sido con el documento 00000000
+         |SI #dscam003#14 = "e";
+            |SALVA_FICHA #dscam003;
+            #dscam003#27 = 0;
+            #dscam003#40 = 1;
+            #dscam003#69 = " ";
+            #dscam003#0  = #agifa134@#49;
+            #dscam003#1  = #agifa134@#0;
+            #dscam003#2  = 0;
+            |LEE 000#dscam003.];
+            |PARA; |SI FSalida = 0; |Y #dscam003#27 = 0; |Y #dscam003#69 = " ";
+             |Y #dscam003#0 = #agifa134@#49; |Y #dscam003#1 = #agifa134@#0; |HACIENDO;
+               |SI #dscam003#4 = #agifa134@#1; nSwFind1 = 1; nCalc1 = #dscam003#40; |SAL; |FINSI;
+               |LEE 000#dscam003.s;
+            |SIGUE;
+            |REPON_FICHA #dscam003;
+            |SI nSwFind1 = 1;
+               |SI nSwPrintCab = 0;
+                  eaTitulo = " Comprobando la factura " + #agifa134@#49 + "/" + #agifa134@#0 + " ..."; |PRINT;
+                  nSwPrintCab = 1;
+               |FINSI;
+               eaTitulo = "*     La  entrega n." + #dscam003#40 + " no está compensada y existen recibos de la factura ";
+               eaTitulo = eaTitulo + #agifa134@#49 + "/" + #agifa134@#0 + " [" + nCalc1 + "]"; |PRINT;
+            |SINO;
+               || eaTitulo = "      La  entrega n." + #dscam003#40 + " no está compensada pero la factura ";
+               || eaTitulo = eaTitulo + #agifa134@#49 + "/" + #agifa134@#0 + " no tiene recibos"; |PRINT;
+            |FINSI;
+         |SINO;
+            #dscam004#17 = #dscam003#40;
+            #dscam004#3  = 0;
+            |LEE 000#dscam004.];
+            |PARA; |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40; |HACIENDO;
+               |SI #dscam004#5 = "REC";
+                  aAlfa = #dscam004#16; |QBF aAlfa;
+                  aAlfa = aAlfa - "Cobro Doc. ";
+                  |SI FSalida ! 0;
+                     |SI aAlfa = "0000000000";
+                        eaTitulo = "*     La  entrega n." + #dscam003#40 + " [";
+                        eaTitulo = eaTitulo + (("00" + #dscam004#3) % -102) + "] está compensada con el documento 0"; |PRINT;
+                     |FINSI;
+                  |FINSI;
+               |FINSI;
+               |LEE 000#dscam004.s;
+            |SIGUE;
+         |FINSI;
+      |FINSI;
+      |LEE 000#agis0002@.s;
+   |SIGUE;
+
+   nExisteEntACta = 1;
+|FPRC;
+
+|DEFBUCLE Albaranes;
+#agifa010@#5004;
+;
+#agifa134@#49, #agifa134@#0, "     ", 000001;
+#agifa134@#49, #agifa134@#0, "zzzzz", 999999;
+;
+NULL, Albaranes;
+|FIN;
+
+|PROCESO Facturas;
+   |SI #agifa134@#32 = 0; |ACABA; |FINSI;
+   nSwPrintCab = 0;
+
+   |SELECT #6#dscam003;
+   |BUCLE Albaranes;
+
+   |SELECT #9#dscam003;
+   #dscam003#27 = 0;
+   #dscam003#0 = #agifa134@#49;
+   #dscam003#1 = #agifa134@#0;
+   #dscam003#2 = 0;
+   #dscam003#40 = 1;
+   |LEE 000#dscam003.];
+   |PARA; |SI FSalida = 0; |Y #dscam003#27 = 0; |Y #dscam003#0 = #agifa134@#49;
+           |Y #dscam003#1 = #agifa134@#0; |HACIENDO;
+      |SI #dscam003#4 = #agifa134@#1;
+         nSwFindComp = 0; nSwFindRem = 0; nSwFindPT = 0;
+         #dscam004#17 = #dscam003#40;
+         #dscam004#3  = 0;
+         |LEE 000#dscam004.];
+         |PARA; |SI FSalida = 0; |Y #dscam004#17 = #dscam003#40; |HACIENDO;
+            aAlfa = #dscam004#16; |QBF aAlfa;
+            aAlfa = aAlfa - "Cobro entr. ";
+            |SI FSalida ! 0;
+               nSwFindComp = 1;
+               nSwFind = 0;
+               nCalc = aAlfa;
+               |SALVA_FICHA #dscam004;
+               #dscam004#17 = nCalc;
+               #dscam004#3  = 0;
+               |LEE 000#dscam004.];
+               |PARA; |SI FSalida = 0; |Y #dscam004#17 = nCalc; |HACIENDO;
+                  aAlfa = #dscam004#16; |QBF aAlfa;
+                  aAlfa = aAlfa - "Cobro Doc. ";
+                  |SI FSalida ! 0;
+                     nCalc1 = aAlfa;
+                     |SI nCalc1 = #dscam003#40; nSwFind = 1; |SAL; |FINSI;
+                  |FINSI;
+                  |LEE 000#dscam004.s;
+               |SIGUE;
+               |SI nSwFind = 0;
+                  |SI nSwPrintCab = 0;
+                     eaTitulo = " Comprobando la factura " + #agifa134@#49 + "/" + #agifa134@#0 + " ..."; |PRINT;
+                     nSwPrintCab = 1;
+                  |FINSI;
+                  eaTitulo = "*     El recibo n." + #dscam003#40 + " no está compensado con la entrega n." + nCalc; |PRINT;
+               |SINO;
+                  || eaTitulo = "      El recibo n." + #dscam003#40 + " está compensado con la entrega n." + nCalc; |PRINT;
+               |FINSI;
+               |REPON_FICHA #dscam004;
+            |FINSI;
+
+            |SI #dscam004#5 = "REM"; |O #dscam004#5 = "EMR"; nSwFindRem = 1; |FINSI;
+            |SI #dscam004#5 = "RPT"; nSwFindPT = 1; |FINSI;
+
+            |LEE 000#dscam004.s;
+         |SIGUE;
+         |SI nSwFindComp = 1;
+            |SI nSwFindRem = 1;
+               |SI nSwPrintCab = 0;
+                  eaTitulo = " Comprobando la factura " + #agifa134@#49 + "/" + #agifa134@#0 + " ..."; |PRINT;
+                  nSwPrintCab = 1;
+               |FINSI;
+               eaTitulo = "*     El recibo " + #dscam003#40 + " además de haber sido compensado ha sido remesado"; |PRINT;
+            |FINSI;
+            |SI nSwFindPT = 1;
+               |SI nSwPrintCab = 0;
+                  eaTitulo = " Comprobando la factura " + #agifa134@#49 + "/" + #agifa134@#0 + " ..."; |PRINT;
+                  nSwPrintCab = 1;
+               |FINSI;
+               eaTitulo = "*     El recibo " + #dscam003#40 + " además de haber sido compensado se le ha asignado un talón"; |PRINT;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+      |LEE 000#dscam003.s;
+   |SIGUE;
+   |SELECT #1#dscam003;
+|FPRC;
+
+|DEFBUCLE Facturas;
+#agifa134@#3004;
+;
+"      ", #dscaz998#0, aDSerie, 000001;
+"zzzzzz", #dscaz998#1, aHSerie, 999999;
+;
+NULL, Facturas;
+|FIN;
+
+|PROCESO Empresas;
+   aDSerie = #dscam045#4; aHSerie = #dscam045#5;
+
+   #dscam044#0 = #dscam045#0;
+   |LEE 000#dscam044.=;
+   |SI FSalida = 0;
+      aAlfa = #dscam044#1; |QBF aAlfa;
+      aAlfa = aAlfa + "fich/" + (("00000" + #dscam044#0) % -105) + "/";
+      |PATH_DAT #agifa010@#aAlfa#; |PATH_DAT #agifa134@#aAlfa#;
+      |PATH_DAT #agis0002@#aAlfa#;
+      |ABRE #agifa010@; |ABRE #agifa134@; |ABRE #agis0002@;
+      |BUCLE Facturas;
+      |CIERRA #agis0002@; |CIERRA #agifa010@; |CIERRA #agifa134@;
+   |FINSI;
+|FPRC;
+
+|DEFBUCLE Empresas;
+#dscam045#2;
+2;
+nEmpresa, "V";
+nEmpresa, "V";
+;
+NULL, Empresas;
+|FIN;
+
+|PROGRAMA;
+   |CLS;
+   |CABEZA "Informe cotejo entregas a cuenta";
+
+   |PINPA #0#0; |PINDA #0#0;
+   |ENDATOS #1#0;
+   |SI FSalida = 0;
+      aAlfa = #48#17; |QBF aAlfa;
+      aAlfa = aAlfa + "def/agifa134.mas";
+      |CARGA_DEF aAlfa, agifa134@;
+      |SI FSalida = 0;
+         aAlfa = #48#17; |QBF aAlfa;
+         aAlfa = aAlfa + "def/agifa010.mas";
+         |CARGA_DEF aAlfa, agifa010@;
+         |SI FSalida = 0;
+            aAlfa = #48#17; |QBF aAlfa;
+            aAlfa = aAlfa + "def/agis0002.mas";
+            |CARGA_DEF aAlfa, agis0002@;
+            |SI FSalida = 0;
+               |IMPRE 0;
+               |SI FSalida = 0;
+                  |INFOR "dscaz998";
+                  |SI FSalida = 0;
+                     |DFICB aAlfa; |QBF aAlfa;
+                     |PATH_DAT #dscam045#aAlfa#; |PATH_DAT #dscam044#aAlfa#;
+                     |ABRE #dscam044; |ABRE #dscam003; |ABRE #dscam004;
+
+                     nEmpresa = #48#0;
+                     |BUCLE Empresas;
+
+                     |CIERRA #dscam044; |CIERRA #dscam003; |CIERRA #dscam004;
+                     |DESCARGA_DEF #agis0002@;
+                     |DESCARGA_DEF #agifa010@; |DESCARGA_DEF #agifa134@;
+                     |PIEINF; |FININF;
+                  |FINSI;
+                  |FINIMP;
+               |FINSI;
+            |FINSI;
+         |FINSI;
+      |FINSI;
+   |FINSI;
+|FPRO;

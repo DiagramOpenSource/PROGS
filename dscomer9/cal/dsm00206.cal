@@ -1,0 +1,165 @@
+|FICHEROS;
+     dsm00206 #0;
+     dsm00201 #1;
+     dsimpw19 #119;      || pantalla de aviso de instalacion
+|FIN;
+
+|VARIABLES;
+     ip_serv = "";
+     serv_correo = "";
+     us = "";
+     pass = "";
+     &path = "";
+     ficheros = "";
+     asystem = "";
+     from = "";
+     to = "";
+     subject = "";
+     mensaje = "";
+     ficheros2 = "";
+     mensaj = "";
+     sal = 0;
+     pos = 0;
+     car = "";
+     dele = "";
+     del = 0;
+     num = 0;
+     reg = 0;
+     almenosuno = 0;
+     master = "";
+     fich = "";
+     nDSCorreoSal = 0;
+     aAlfa1 = "";
+     aAlfa2 = "";
+     aParametro = "";
+     aMensaje = "";
+     aPath     = "";
+     aDir      = "";
+     aProg     = "";
+     aOrg      = "";
+     aDes      = "";
+     aMenLog  = "";
+     nErrLog  = 0;
+|FIN;
+
+|PROGRAMA;
+     aParametro = PARAMETRO;
+     |QBF aParametro;
+     |CONFI "0000SEsta seguro de que desea recibir los datos";
+     |SI FSalida = 0;
+          |ABRE #1;
+          |LEE 010#1p;
+          |SI FSalida ! 0;
+               |MENAV "0000No se han establecido los parametros de recepcion";
+          |SINO;
+               ip_serv = "";
+               |SI #1#1 = 0;|Y #1#2 = 0;|Y #1#3 = 0;|Y #1#4 = 0;
+                    |IP_LOCAL ip_serv;
+               |SINO;
+                    ip_serv = #1#1+"."+#1#2+"."+#1#3+"."+#1#4;
+               |FINSI;
+               serv_correo = #1#11;
+               us          = #1#12;
+               pass        = #1#13;
+               ficheros    = "";
+               |QBT ip_serv;
+               |QBF serv_correo;
+               |QBF us;
+               |QBF pass;
+               |QBF path;
+               |QBF ficheros;
+               |MENSA "0000Recibiendo mensajes ..."
+               almenosuno = 0;
+               nDSCorreoSal = 0;
+               |PARA; |SI nDSCorreoSal = 0; |HACIENDO;
+                    |DSCORREO_RECIBE ip_serv,serv_correo,us,pass,path,ficheros;
+                    nDSCorreoSal = FSalida;
+                    |SI nDSCorreoSal = 0;|Y ficheros = "";
+                         nDSCorreoSal = -1;       || no hay correo
+                    |FINSI;
+                    |SI nDSCorreoSal = 0;
+                         ||TODO CCC.
+                         aAlfa2 = ficheros % -104;
+                         |SI aAlfa2 = ".tgz"; |Y aParametro = "tpv";
+                              ||Si nos viene un archivo tgz y estamos en TPV.
+                              ||Lo instalaremos automaticamente.
+                              |HAZ Actualiza04;
+                         |SINO;
+                              |QUE_SISTEMA asystem;
+                              |SI asystem = "ESBSD";
+                                   asystem = "chmod 777 " + ficheros;
+                                   |SYSTEM asystem;
+                              |FINSI;
+                              almenosuno = almenosuno + 1;
+                         |FINSI;
+                    |FINSI;
+               |SIGUE;
+               |SI almenosuno = 0;
+                    |MENAV "0000No hay correo.";
+               |SINO;
+                    aAlfa1 = "0000Recibidos [" + almenosuno + "] correos.";
+                    |MENAV aAlfa1;
+               |FINSI;
+          |FINSI;
+          |CIERRA #1;
+     |FINSI;
+|FPRO;
+
+
+|PROCESO Actualiza04;    ||Los programas son el Tipo 4.
+
+     |MENSA "2405Actualizando Programas ...";
+
+     aPath  = path;
+     aProg = ficheros - path;
+     |DIRECTORIO aDir;
+
+     |PUSHV 0501 2380;
+     |AVISO;
+     |PINPA #0#119;
+     |ATRI P;
+     aAlfa1 = aProg;
+     |QBF aAlfa1;
+     |PINTA 1015, aAlfa1;
+     |ATRI 0;
+
+     aOrg = aPath + aProg;
+     aDes = aDir + aProg;
+     |COPIA_FICHERO aOrg, aDes;
+     |SI FSalida = 0;
+          |DESCOMPRIME aDes;
+          |SI FSalida = 0;
+               |DETAR aDes, aDir;
+               |SI FSalida = 0;
+                    |FBORRA aDes;
+                    aDes = aDes - ".tgz";
+                    aDes = aDes + ".tar";
+                    |FBORRA aDes;
+                    aMenLog = "    [" + aAlfa1 + "] instalado.";
+                    nErrLog = 1;
+                    |HAZ Log;
+               |SINO;
+                    aAlfa1 = aProg; |QBF aAlfa1;
+                    aMenLog = "    [" + aAlfa1 + "] no instalado (DETAR).";
+                    nErrLog = 1;
+                    |HAZ Log;
+               |FINSI;
+          |SINO;
+               aAlfa1 = aProg; |QBF aAlfa1;
+               aMenLog = "    [" + aAlfa1 + "] no instalado (COMPRIME).";
+               nErrLog = 1;
+               |HAZ Log;
+          |FINSI;
+     |SINO;
+          aAlfa1 = aProg; |QBF aAlfa1;
+          aMenLog = "    [" + aAlfa1 + "] no instalado (COPIA).";
+          nErrLog = 1;
+          |HAZ Log;
+     |FINSI;
+     |POPV;
+|FPRC;
+
+|PROCESO Log;
+     aMensaje = aMenLog;
+     |MENAV aMensaje;
+|FPRC;
